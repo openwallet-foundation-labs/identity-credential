@@ -13,7 +13,6 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Timestamp
 
 interface SecureAreaSupport {
-
     /**
      * This function should create a composable that will render the portion of the UI
      * for the specific [SecureArea] setup inside the [AddSelfSignedDocumentScreen].
@@ -37,7 +36,7 @@ interface SecureAreaSupport {
     fun Fragment.unlockKey(
         credential: MdocCredential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
-        onUnlockFailure: (wasCancelled: Boolean) -> Unit
+        onUnlockFailure: (wasCancelled: Boolean) -> Unit,
     )
 
     /**
@@ -61,13 +60,13 @@ interface SecureAreaSupport {
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
         validFrom: Timestamp,
-        validUntil: Timestamp
+        validUntil: Timestamp,
     ): CreateKeySettings
 
     companion object {
         fun getInstance(
             context: Context,
-            currentSecureArea: CurrentSecureArea
+            currentSecureArea: CurrentSecureArea,
         ): SecureAreaSupport {
             return when (currentSecureArea.secureArea) {
                 is AndroidKeystoreSecureArea -> {

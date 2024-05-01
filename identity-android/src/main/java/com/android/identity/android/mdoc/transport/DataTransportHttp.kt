@@ -50,7 +50,7 @@ class DataTransportHttp(
     context: Context,
     role: Role,
     private var connectionMethod: ConnectionMethodHttp?,
-    options: DataTransportOptions
+    options: DataTransportOptions,
 ) : DataTransport(context, role, options) {
     var socket: Socket? = null
     var writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
@@ -76,16 +76,18 @@ class DataTransportHttp(
         try {
             // Loop to read headers.
             while (true) {
-                val line = dis.readLine()
-                    ?: // End of stream...
-                    return ByteArray(0)
+                val line =
+                    dis.readLine()
+                        ?: // End of stream...
+                        return ByteArray(0)
                 if (line.lowercase().startsWith("content-length:")) {
-                    contentLength = try {
-                        line.substring(15).trim { it <= ' ' }.toInt()
-                    } catch (e: NumberFormatException) {
-                        Logger.w(TAG, "Error parsing Content-Length line '$line'")
-                        return null
-                    }
+                    contentLength =
+                        try {
+                            line.substring(15).trim { it <= ' ' }.toInt()
+                        } catch (e: NumberFormatException) {
+                            Logger.w(TAG, "Error parsing Content-Length line '$line'")
+                            return null
+                        }
                 }
                 if (line.length == 0) {
                     // End of headers...
@@ -95,8 +97,9 @@ class DataTransportHttp(
                     }
                     if (contentLength > MAX_MESSAGE_SIZE) {
                         Logger.w(
-                            TAG, "Content-Length $contentLength rejected "
-                                    + "exceeds max size of $MAX_MESSAGE_SIZE"
+                            TAG,
+                            "Content-Length $contentLength rejected " +
+                                "exceeds max size of $MAX_MESSAGE_SIZE",
                         )
                         return null
                     }
@@ -112,40 +115,42 @@ class DataTransportHttp(
     }
 
     private fun connectAsMdocReader() {
-        serverSocket = try {
-            ServerSocket(0)
-        } catch (e: IOException) {
-            reportError(e)
-            return
-        }
+        serverSocket =
+            try {
+                ServerSocket(0)
+            } catch (e: IOException) {
+                reportError(e)
+                return
+            }
         val port = serverSocket!!.localPort
-        val socketServerThread: Thread = object : Thread() {
-            override fun run() {
-                try {
-                    // We only accept a single client with this server socket...
-                    //
-                    socket = serverSocket!!.accept()
-                    serverSocket = null
-                    setupWritingThread(true)
-                    reportConnected()
-                    val inputStream = socket!!.getInputStream()
-                    while (!socket!!.isClosed()) {
-                        val data = readMessageFromSocket(inputStream)
-                        if (data == null) {
-                            reportError(Error("Error reading message from socket"))
-                            break
-                        } else if (data.size == 0) {
-                            // End Of Stream
-                            reportDisconnected()
-                            break
+        val socketServerThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    try {
+                        // We only accept a single client with this server socket...
+                        //
+                        socket = serverSocket!!.accept()
+                        serverSocket = null
+                        setupWritingThread(true)
+                        reportConnected()
+                        val inputStream = socket!!.getInputStream()
+                        while (!socket!!.isClosed()) {
+                            val data = readMessageFromSocket(inputStream)
+                            if (data == null) {
+                                reportError(Error("Error reading message from socket"))
+                                break
+                            } else if (data.size == 0) {
+                                // End Of Stream
+                                reportDisconnected()
+                                break
+                            }
+                            reportMessageReceived(data)
                         }
-                        reportMessageReceived(data)
+                    } catch (e: Exception) {
+                        reportError(Error("Error reading from socket", e))
                     }
-                } catch (e: Exception) {
-                    reportError(Error("Error reading from socket", e))
                 }
             }
-        }
         socketServerThread.start()
         // Use http://<ip>:<port>/mdocreader as the URI
         //
@@ -183,28 +188,32 @@ class DataTransportHttp(
         }
         if (Logger.isDebugEnabled) {
             Logger.d(
-                TAG, String.format(
-                    Locale.US, "HTTP POST to %s with payload of length %d",
-                    connectionMethod!!.uri, data.size
-                )
+                TAG,
+                String.format(
+                    Locale.US,
+                    "HTTP POST to %s with payload of length %d",
+                    connectionMethod!!.uri,
+                    data.size,
+                ),
             )
         }
-        val request = CborRequest(
-            Request.Method.POST,
-            connectionMethod!!.uri,
-            data,
-            "application/cbor",
-            { response ->
-                if (Logger.isDebugEnabled) {
-                    Logger.d(TAG, "Received response to HTTP request payload of length " + response.size)
-                }
-                reportMessageReceived(response)
+        val request =
+            CborRequest(
+                Request.Method.POST,
+                connectionMethod!!.uri,
+                data,
+                "application/cbor",
+                { response ->
+                    if (Logger.isDebugEnabled) {
+                        Logger.d(TAG, "Received response to HTTP request payload of length " + response.size)
+                    }
+                    reportMessageReceived(response)
+                },
+            ) { error ->
+                Logger.d(TAG, "Received error in response to HTTP request", error)
+                error.printStackTrace()
+                reportError(Error("Error sending HTTP request", error))
             }
-        ) { error ->
-            Logger.d(TAG, "Received error in response to HTTP request", error)
-            error.printStackTrace()
-            reportError(Error("Error sending HTTP request", error))
-        }
         // We use long-polling because the duration between delivering a HTTP Request (containing
         // DeviceResponse) and receiving the response (containing DeviceRequest) may be spent
         // by the verifier configuring the mdoc reader which request to make next... set this
@@ -213,8 +222,8 @@ class DataTransportHttp(
             DefaultRetryPolicy(
                 2 * 60 * 1000,
                 0,
-                1.0f
-            )
+                1.0f,
+            ),
         )
         requestQueue!!.add(request)
     }
@@ -228,52 +237,53 @@ class DataTransportHttp(
     }
 
     fun setupWritingThread(isListener: Boolean) {
-        socketWriterThread = object : Thread() {
-            override fun run() {
-                while (socket!!.isConnected) {
-                    var messageToSend: ByteArray? = null
-                    try {
-                        messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
-                        if (messageToSend == null) {
+        socketWriterThread =
+            object : Thread() {
+                override fun run() {
+                    while (socket!!.isConnected) {
+                        var messageToSend: ByteArray? = null
+                        try {
+                            messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
+                            if (messageToSend == null) {
+                                continue
+                            }
+                            // An empty message is used to convey that the writing thread should be
+                            // shut down.
+                            if (messageToSend.size == 0) {
+                                Logger.d(TAG, "Empty message, shutting down writer")
+                                break
+                            }
+                        } catch (e: InterruptedException) {
                             continue
                         }
-                        // An empty message is used to convey that the writing thread should be
-                        // shut down.
-                        if (messageToSend.size == 0) {
-                            Logger.d(TAG, "Empty message, shutting down writer")
-                            break
-                        }
-                    } catch (e: InterruptedException) {
-                        continue
-                    }
-                    try {
-                        val os = socket!!.getOutputStream()
-                        if (isListener) {
-                            os.write(
-                                """HTTP/1.1 200 OK
+                        try {
+                            val os = socket!!.getOutputStream()
+                            if (isListener) {
+                                os.write(
+                                    """HTTP/1.1 200 OK
 Content-Length: ${messageToSend.size}
 Content-Type: application/cbor
 
-""".toByteArray()
-                            )
-                        } else {
-                            os.write(
-                                """POST $_path HTTP/1.1
+""".toByteArray(),
+                                )
+                            } else {
+                                os.write(
+                                    """POST $_path HTTP/1.1
 Host: $_host
 Content-Length: ${messageToSend.size}
 Content-Type: application/cbor
 
-""".toByteArray()
-                            )
+""".toByteArray(),
+                                )
+                            }
+                            os.write(messageToSend)
+                        } catch (e: IOException) {
+                            reportError(e)
+                            break
                         }
-                        os.write(messageToSend)
-                    } catch (e: IOException) {
-                        reportError(e)
-                        break
                     }
                 }
             }
-        }
         socketWriterThread!!.start()
     }
 
@@ -341,9 +351,8 @@ Content-Type: application/cbor
         private val body: ByteArray,
         private val bodyContentType: String,
         private val listener: Response.Listener<ByteArray>,
-        errorListener: Response.ErrorListener?
+        errorListener: Response.ErrorListener?,
     ) : Request<ByteArray>(method, url, errorListener) {
-
         override fun deliverResponse(response: ByteArray) {
             listener.onResponse(response)
         }
@@ -371,11 +380,13 @@ Content-Type: application/cbor
 
         // The maximum message size we support.
         private const val MAX_MESSAGE_SIZE = 16 * 1024 * 1024
+
         @Suppress("deprecation")
         private fun getWifiIpAddress(context: Context): String {
-            val wifiManager = context.getSystemService(
-                WifiManager::class.java
-            )
+            val wifiManager =
+                context.getSystemService(
+                    WifiManager::class.java,
+                )
             return Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
         }
 
@@ -383,7 +394,7 @@ Content-Type: application/cbor
             context: Context,
             cm: ConnectionMethodHttp,
             role: Role,
-            options: DataTransportOptions
+            options: DataTransportOptions,
         ): DataTransport {
             // For the mdoc reader role, this should be empty since DataTransportHttp will return
             // an ConnectionMethodHttp object containing the local IP address and the TCP port that
@@ -394,11 +405,12 @@ Content-Type: application/cbor
             }
 
             // For the mdoc role, this should be an URI pointing to a server on the Internet.
-            val uri = try {
-                URI(cm.uri)
-            } catch (e: URISyntaxException) {
-                throw IllegalArgumentException(e)
-            }
+            val uri =
+                try {
+                    URI(cm.uri)
+                } catch (e: URISyntaxException) {
+                    throw IllegalArgumentException(e)
+                }
             val transport = DataTransportHttp(context, role, cm, options)
             if (uri.getScheme() == "http") {
                 transport.host = uri.getHost()

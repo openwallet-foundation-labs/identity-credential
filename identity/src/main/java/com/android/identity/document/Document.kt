@@ -94,7 +94,7 @@ class Document private constructor(
     private val storageEngine: StorageEngine,
     val secureAreaRepository: SecureAreaRepository,
     private val store: DocumentStore,
-    private val credentialFactory: CredentialFactory
+    private val credentialFactory: CredentialFactory,
 ) {
     private var addedToStore = false
 
@@ -143,18 +143,19 @@ class Document private constructor(
             return
         }
         val t0 = Timestamp.now()
-        val mapBuilder = CborMap.builder().apply {
-            put("applicationData", _applicationData.encodeAsCbor())
-            val pendingCredentialsArrayBuilder = putArray("pendingCredentials")
-            for (pendingCredential in _pendingCredentials) {
-                pendingCredentialsArrayBuilder.add(pendingCredential.toCbor())
+        val mapBuilder =
+            CborMap.builder().apply {
+                put("applicationData", _applicationData.encodeAsCbor())
+                val pendingCredentialsArrayBuilder = putArray("pendingCredentials")
+                for (pendingCredential in _pendingCredentials) {
+                    pendingCredentialsArrayBuilder.add(pendingCredential.toCbor())
+                }
+                val certifiedCredentialsArrayBuilder = putArray("certifiedCredentials")
+                for (certifiedCredential in _certifiedCredentials) {
+                    certifiedCredentialsArrayBuilder.add(certifiedCredential.toCbor())
+                }
+                put("credentialCounter", credentialCounter)
             }
-            val certifiedCredentialsArrayBuilder = putArray("certifiedCredentials")
-            for (certifiedCredential in _certifiedCredentials) {
-                certifiedCredentialsArrayBuilder.add(certifiedCredential.toCbor())
-            }
-            put("credentialCounter", credentialCounter)
-        }
         storageEngine.put(DOCUMENT_PREFIX + name, Cbor.encode(mapBuilder.end().build()))
         val t1 = Timestamp.now()
 
@@ -171,10 +172,11 @@ class Document private constructor(
         val data = storageEngine[DOCUMENT_PREFIX + name] ?: return false
         val map = Cbor.decode(data)
 
-        _applicationData = SimpleApplicationData
-            .decodeFromCbor(map["applicationData"].asBstr) {
-                saveDocument()
-            }
+        _applicationData =
+            SimpleApplicationData
+                .decodeFromCbor(map["applicationData"].asBstr) {
+                    saveDocument()
+                }
 
         _pendingCredentials = ArrayList()
         for (item in map["pendingCredentials"].asArray) {
@@ -205,15 +207,15 @@ class Document private constructor(
      */
     fun findCredential(
         domain: String,
-        now: Timestamp?
+        now: Timestamp?,
     ): Credential? {
         var candidate: Credential? = null
         _certifiedCredentials.filter {
             it.domain == domain && (
-                    now != null
-                            && (now.toEpochMilli() >= it.validFrom.toEpochMilli())
-                            && (now.toEpochMilli() <= it.validUntil.toEpochMilli())
-                    )
+                now != null &&
+                    (now.toEpochMilli() >= it.validFrom.toEpochMilli()) &&
+                    (now.toEpochMilli() <= it.validUntil.toEpochMilli())
+            )
         }.forEach { credential ->
             // If we already have a candidate, prefer this one if its usage count is lower
             candidate?.let { candidateCredential ->
@@ -223,15 +225,12 @@ class Document private constructor(
             } ?: run {
                 candidate = credential
             }
-
         }
         return candidate
     }
 
     // Adds a newly created [Credential] to the document, returns the assigned credential counter
-    internal fun addCredential(
-        credential: Credential,
-    ) : Long {
+    internal fun addCredential(credential: Credential): Long {
         val assignedCounter = credentialCounter++
         _pendingCredentials.add(credential)
         return assignedCounter
@@ -277,8 +276,12 @@ class Document private constructor(
     }
 
     internal fun removeCredential(credential: Credential) {
-        val listToModify = if (credential.isCertified) _certifiedCredentials
-            else _pendingCredentials
+        val listToModify =
+            if (credential.isCertified) {
+                _certifiedCredentials
+            } else {
+                _pendingCredentials
+            }
         check(listToModify.remove(credential)) { "Error removing credential" }
 
         if (credential.replacementForIdentifier != null) {
@@ -306,9 +309,7 @@ class Document private constructor(
      *
      * @param credential The credential to certify.
      */
-    internal fun certifyPendingCredential(
-        credential: Credential
-    ): Credential {
+    internal fun certifyPendingCredential(credential: Credential): Credential {
         check(_pendingCredentials.remove(credential)) { "Error removing credential from pending list" }
         _certifiedCredentials.add(credential)
         saveDocument()
@@ -326,9 +327,8 @@ class Document private constructor(
             secureAreaRepository: SecureAreaRepository,
             name: String,
             store: DocumentStore,
-            credentialFactory: CredentialFactory
-        ): Document =
-            Document(name, storageEngine, secureAreaRepository, store, credentialFactory).apply { saveDocument() }
+            credentialFactory: CredentialFactory,
+        ): Document = Document(name, storageEngine, secureAreaRepository, store, credentialFactory).apply { saveDocument() }
 
         // Called by DocumentStore.lookupDocument().
         internal fun lookup(
@@ -336,13 +336,14 @@ class Document private constructor(
             secureAreaRepository: SecureAreaRepository,
             name: String,
             store: DocumentStore,
-            credentialFactory: CredentialFactory
-        ): Document? = Document(name, storageEngine, secureAreaRepository, store, credentialFactory).run {
-            if (loadDocument()) {
-                this// return this Document object
-            } else { // when document.loadDocument() == false
-                null // return null
+            credentialFactory: CredentialFactory,
+        ): Document? =
+            Document(name, storageEngine, secureAreaRepository, store, credentialFactory).run {
+                if (loadDocument()) {
+                    this // return this Document object
+                } else { // when document.loadDocument() == false
+                    null // return null
+                }
             }
-        }
     }
 }

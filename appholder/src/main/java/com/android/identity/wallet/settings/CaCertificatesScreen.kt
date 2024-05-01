@@ -30,46 +30,49 @@ fun CaCertificatesScreen(
     screenState: CaCertificatesScreenState,
     onSelectCertificate: (item: CertificateItem) -> Unit,
     onImportCertificate: () -> Unit,
-    onPasteCertificate: () -> Unit
+    onPasteCertificate: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val scrollState = rememberScrollState()
         Column(
-            modifier = Modifier
-                .verticalScroll(scrollState)
-                .weight(1f)
+            modifier =
+                Modifier
+                    .verticalScroll(scrollState)
+                    .weight(1f),
         ) {
             if (screenState.certificates.isEmpty()) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
                         text = "No certificates provided",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(screenState.certificates) { certificateItem ->
                         Text(
                             modifier = Modifier.clickable { onSelectCertificate(certificateItem) },
                             text = certificateItem.title,
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
@@ -90,55 +93,60 @@ fun CaCertificatesScreen(
 private fun PreviewCaCertificatesScreen() {
     HolderAppTheme {
         CaCertificatesScreen(
-            screenState = CaCertificatesScreenState(
-                listOf(
-                    CertificateItem(
-                        title = "Test 1",
-                        commonNameSubject = "*.google.com",
-                        organisationSubject = "<Not part of certificate>",
-                        organisationalUnitSubject = "<Not part of certificate>",
-                        commonNameIssuer = "GTS CA 1C3",
-                        organisationIssuer = "Google Trust Services LLC",
-                        organisationalUnitIssuer = "<Not part of certificate>",
-                        notBefore = Date.from(
-                            LocalDateTime.now().minusDays(365).toInstant(ZoneOffset.UTC)
+            screenState =
+                CaCertificatesScreenState(
+                    listOf(
+                        CertificateItem(
+                            title = "Test 1",
+                            commonNameSubject = "*.google.com",
+                            organisationSubject = "<Not part of certificate>",
+                            organisationalUnitSubject = "<Not part of certificate>",
+                            commonNameIssuer = "GTS CA 1C3",
+                            organisationIssuer = "Google Trust Services LLC",
+                            organisationalUnitIssuer = "<Not part of certificate>",
+                            notBefore =
+                                Date.from(
+                                    LocalDateTime.now().minusDays(365).toInstant(ZoneOffset.UTC),
+                                ),
+                            notAfter =
+                                Date.from(
+                                    LocalDateTime.now().plusDays(365).toInstant(ZoneOffset.UTC),
+                                ),
+                            sha255Fingerprint = "03 5C 31 E7 A9 F3 71 2B 27 1C 5A 8D 82 E5 6C 5B 92 BC FC 28 7F72D7 4A B6 9D 61 BF 53 EF 3E 67",
+                            sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
+                            docTypes = emptyList(),
+                            supportsDelete = false,
+                            trustPoint = null,
                         ),
-                        notAfter = Date.from(
-                            LocalDateTime.now().plusDays(365).toInstant(ZoneOffset.UTC)
+                        CertificateItem(
+                            title = "Test 2",
+                            commonNameSubject = "*.google.com",
+                            organisationSubject = "<Not part of certificate>",
+                            organisationalUnitSubject = "<Not part of certificate>",
+                            commonNameIssuer = "GTS CA 1C3",
+                            organisationIssuer = "Google Trust Services LLC",
+                            organisationalUnitIssuer = "<Not part of certificate>",
+                            notBefore =
+                                Date.from(
+                                    LocalDateTime.now().minusDays(100).toInstant(
+                                        ZoneOffset.UTC,
+                                    ),
+                                ),
+                            notAfter =
+                                Date.from(
+                                    LocalDateTime.now().plusDays(100).toInstant(ZoneOffset.UTC),
+                                ),
+                            sha255Fingerprint = "03 5C 31 E7 A9 F3 71 2B 27 1C 5A 8D 82 E5 6C 5B 92 BC FC 28 7F72D7 4A B6 9D 61 BF 53 EF 3E 67",
+                            sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
+                            docTypes = emptyList(),
+                            supportsDelete = false,
+                            trustPoint = null,
                         ),
-                        sha255Fingerprint = "03 5C 31 E7 A9 F3 71 2B 27 1C 5A 8D 82 E5 6C 5B 92 BC FC 28 7F72D7 4A B6 9D 61 BF 53 EF 3E 67",
-                        sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
-                        docTypes = emptyList(),
-                        supportsDelete = false,
-                        trustPoint = null
                     ),
-                    CertificateItem(
-                        title = "Test 2",
-                        commonNameSubject = "*.google.com",
-                        organisationSubject = "<Not part of certificate>",
-                        organisationalUnitSubject = "<Not part of certificate>",
-                        commonNameIssuer = "GTS CA 1C3",
-                        organisationIssuer = "Google Trust Services LLC",
-                        organisationalUnitIssuer = "<Not part of certificate>",
-                        notBefore = Date.from(
-                            LocalDateTime.now().minusDays(100).toInstant(
-                                ZoneOffset.UTC
-                            )
-                        ),
-                        notAfter = Date.from(
-                            LocalDateTime.now().plusDays(100).toInstant(ZoneOffset.UTC)
-                        ),
-                        sha255Fingerprint = "03 5C 31 E7 A9 F3 71 2B 27 1C 5A 8D 82 E5 6C 5B 92 BC FC 28 7F72D7 4A B6 9D 61 BF 53 EF 3E 67",
-                        sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
-                        docTypes = emptyList(),
-                        supportsDelete = false,
-                        trustPoint = null
-                    )
-                )
-            ),
+                ),
             onSelectCertificate = {},
             onImportCertificate = {},
-            onPasteCertificate = {}
+            onPasteCertificate = {},
         )
     }
 }

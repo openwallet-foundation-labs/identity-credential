@@ -1,7 +1,7 @@
 package com.android.identity.issuance.evidence
 
-import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.annotation.CborSerializable
 
 /**
  * A response to an evidence request.

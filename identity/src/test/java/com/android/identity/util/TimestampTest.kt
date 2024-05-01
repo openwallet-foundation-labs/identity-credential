@@ -26,7 +26,7 @@ class TimestampTest {
         val secondTime = Timestamp.now()
         Assert.assertTrue(
             firstTime.toEpochMilli().toString() + " < " + secondTime.toEpochMilli(),
-            firstTime.toEpochMilli() < secondTime.toEpochMilli()
+            firstTime.toEpochMilli() < secondTime.toEpochMilli(),
         )
     }
 
@@ -53,15 +53,15 @@ class TimestampTest {
     fun testHashCode() {
         Assert.assertEquals(
             Timestamp.ofEpochMilli(0).hashCode().toLong(),
-            Timestamp.ofEpochMilli(0).hashCode().toLong()
+            Timestamp.ofEpochMilli(0).hashCode().toLong(),
         )
         Assert.assertEquals(
             Timestamp.ofEpochMilli(1).hashCode().toLong(),
-            Timestamp.ofEpochMilli(1).hashCode().toLong()
+            Timestamp.ofEpochMilli(1).hashCode().toLong(),
         )
         Assert.assertNotEquals(
             Timestamp.ofEpochMilli(0).hashCode().toLong(),
-            Timestamp.ofEpochMilli(1).hashCode().toLong()
+            Timestamp.ofEpochMilli(1).hashCode().toLong(),
         )
     }
 }

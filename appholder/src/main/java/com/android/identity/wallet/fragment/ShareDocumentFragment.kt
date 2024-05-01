@@ -13,15 +13,15 @@ import com.android.identity.wallet.util.TransferStatus
 import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
 
 class ShareDocumentFragment : Fragment() {
-
     private val viewModel: ShareDocumentViewModel by viewModels()
 
     private var _binding: FragmentShareDocumentBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentShareDocumentBinding.inflate(inflater)
         binding.vm = viewModel
@@ -30,7 +30,10 @@ class ShareDocumentFragment : Fragment() {
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
         viewModel.message.set("Scan QR code with mdoc verifier device")
         viewModel.getTransferStatus().observe(viewLifecycleOwner) {
@@ -73,11 +76,12 @@ class ShareDocumentFragment : Fragment() {
         viewModel.showQrCode()
     }
 
-    private val onBackCallback = object : OnBackPressedCallback(true) {
-        override fun handleOnBackPressed() {
-            onCancel()
+    private val onBackCallback =
+        object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                onCancel()
+            }
         }
-    }
 
     fun onCancel() {
         viewModel.cancelPresentation()

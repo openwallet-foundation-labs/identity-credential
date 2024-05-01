@@ -68,7 +68,7 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
         }
 
         var signature: ByteArray? = null
-        var signatureMediaType: String? = null;
+        var signatureMediaType: String? = null
         if (data.dataGroups.containsKey(7)) {
             val bytes = data.dataGroups[7]!!
             val digestBytes = MessageDigest.getInstance(sod.digestAlgorithm).digest(bytes)
@@ -95,12 +95,15 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
         var digestEncryptionAlgorithm = sod.digestEncryptionAlgorithm
         if (sod.digestEncryptionAlgorithm.equals("SSAwithRSA/PSS")) {
             val digestAlg = sod.signerInfoDigestAlgorithm
-            digestEncryptionAlgorithm = digestAlg.replace("-", "") + "withRSA/PSS";
+            digestEncryptionAlgorithm = digestAlg.replace("-", "") + "withRSA/PSS"
             mrtdLogI(TAG, "Modified SOD signature algorithm: $digestEncryptionAlgorithm")
         }
 
-        val sig = Signature.getInstance(
-            digestEncryptionAlgorithm, BouncyCastleProvider.PROVIDER_NAME)
+        val sig =
+            Signature.getInstance(
+                digestEncryptionAlgorithm,
+                BouncyCastleProvider.PROVIDER_NAME,
+            )
         sig.initVerify(sod.docSigningCertificate)
         sig.update(sod.eContent)
         try {
@@ -131,7 +134,7 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
             photoMediaType = photoMediaType,
             photo = photo,
             signatureMediaType = signatureMediaType,
-            signature = signature
+            signature = signature,
         )
     }
 

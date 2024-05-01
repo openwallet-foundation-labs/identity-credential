@@ -20,7 +20,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-class QrEngagementViewModel(val context: Application) : AndroidViewModel(context)  {
+class QrEngagementViewModel(val context: Application) : AndroidViewModel(context) {
     companion object {
         private const val TAG = "QrEngagementViewModel"
     }
@@ -30,7 +30,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
         STARTING,
         LISTENING,
         CONNECTED,
-        ERROR
+        ERROR,
     }
 
     var state by mutableStateOf(State.IDLE)
@@ -46,37 +46,41 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
         state = State.STARTING
 
         viewModelScope.launch(
-            CoroutineExceptionHandler{ _, exception ->
+            CoroutineExceptionHandler { _, exception ->
                 Logger.e(TAG, "CoroutineExceptionHandler got $exception")
                 stopQrConnection()
                 state = State.ERROR
-            }
+            },
         ) {
             eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
-            val qrEngagementListener = object : QrEngagementHelper.Listener {
+            val qrEngagementListener =
+                object : QrEngagementHelper.Listener {
+                    override fun onDeviceConnecting() {
+                        Logger.i(TAG, "onDeviceConnecting")
+                    }
 
-                override fun onDeviceConnecting() {
-                    Logger.i(TAG, "onDeviceConnecting")
+                    override fun onDeviceConnected(transport: DataTransport) {
+                        Logger.i(TAG, "OnDeviceConnected via QR: qrEngagement=$qrEngagementHelper")
+
+                        state = State.CONNECTED
+                        PresentationActivity.startPresentation(
+                            context,
+                            transport,
+                            qrEngagementHelper!!.handover,
+                            eDeviceKey!!,
+                            qrEngagementHelper!!.deviceEngagement,
+                        )
+
+                        qrEngagementHelper?.close()
+                        qrEngagementHelper = null
+                    }
+
+                    override fun onError(error: Throwable) {
+                        Logger.i(TAG, "QR onError: ${error.message}")
+                        stopQrConnection()
+                        state = State.ERROR
+                    }
                 }
-
-                override fun onDeviceConnected(transport: DataTransport) {
-                    Logger.i(TAG, "OnDeviceConnected via QR: qrEngagement=$qrEngagementHelper")
-
-                    state = State.CONNECTED
-                    PresentationActivity.startPresentation(context, transport,
-                        qrEngagementHelper!!.handover, eDeviceKey!!,
-                        qrEngagementHelper!!.deviceEngagement)
-
-                    qrEngagementHelper?.close()
-                    qrEngagementHelper = null
-                }
-
-                override fun onError(error: Throwable) {
-                    Logger.i(TAG, "QR onError: ${error.message}")
-                    stopQrConnection()
-                    state = State.ERROR
-                }
-            }
 
             val options = DataTransportOptions.Builder().build()
             val connectionMethods = mutableListOf<ConnectionMethod>()
@@ -86,16 +90,17 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
                     false,
                     true,
                     null,
-                    bleUuid
-                )
+                    bleUuid,
+                ),
             )
-            qrEngagementHelper = QrEngagementHelper.Builder(
-                context,
-                eDeviceKey!!.publicKey,
-                options,
-                qrEngagementListener,
-                ContextCompat.getMainExecutor(context)
-            ).setConnectionMethods(connectionMethods).build()
+            qrEngagementHelper =
+                QrEngagementHelper.Builder(
+                    context,
+                    eDeviceKey!!.publicKey,
+                    options,
+                    qrEngagementListener,
+                    ContextCompat.getMainExecutor(context),
+                ).setConnectionMethods(connectionMethods).build()
             state = State.LISTENING
         }
     }

@@ -4,7 +4,6 @@ package com.android.identity.issuance
  * An enumeration of Credential Formats that an issuer may support.
  */
 enum class CredentialFormat {
-
     /**
      * This CredentialFormat for mdoc as defined in
      * [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html).

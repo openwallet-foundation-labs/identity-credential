@@ -48,7 +48,6 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
-import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity_credential.mrtd.MrtdNfc
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
@@ -56,14 +55,13 @@ import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.android.identity_credential.wallet.ui.PassphraseEntryField
+import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 
 private const val TAG = "EvidenceRequest"
 
@@ -72,21 +70,21 @@ fun EvidenceRequestMessageView(
     evidenceRequest: EvidenceRequestMessage,
     provisioningViewModel: ProvisioningViewModel,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    documentStore: DocumentStore
+    documentStore: DocumentStore,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         RichTextSnippet(
-                modifier = Modifier.padding(8.dp),
-                content = evidenceRequest.message,
-                assets = evidenceRequest.assets
-            )
+            modifier = Modifier.padding(8.dp),
+            content = evidenceRequest.message,
+            assets = evidenceRequest.assets,
+        )
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         if (evidenceRequest.rejectButtonText != null) {
             Button(
@@ -95,9 +93,10 @@ fun EvidenceRequestMessageView(
                     provisioningViewModel.provideEvidence(
                         evidence = EvidenceResponseMessage(false),
                         issuingAuthorityRepository = issuingAuthorityRepository,
-                        documentStore = documentStore
+                        documentStore = documentStore,
                     )
-            }) {
+                },
+            ) {
                 Text(evidenceRequest.rejectButtonText)
             }
         }
@@ -107,9 +106,10 @@ fun EvidenceRequestMessageView(
                 provisioningViewModel.provideEvidence(
                     evidence = EvidenceResponseMessage(true),
                     issuingAuthorityRepository = issuingAuthorityRepository,
-                    documentStore = documentStore
+                    documentStore = documentStore,
                 )
-        }) {
+            },
+        ) {
             Text(evidenceRequest.acceptButtonText)
         }
     }
@@ -121,9 +121,8 @@ fun EvidenceRequestNotificationPermissionView(
     evidenceRequest: EvidenceRequestNotificationPermission,
     provisioningViewModel: ProvisioningViewModel,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    documentStore: DocumentStore
+    documentStore: DocumentStore,
 ) {
-
     // Only need to request POST_NOTIFICATIONS permission if on Android 13 (Tiramisu) or later.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
         // TODO: This is a hack, this check should be done in the model instead of here.
@@ -131,7 +130,7 @@ fun EvidenceRequestNotificationPermissionView(
             provisioningViewModel.provideEvidence(
                 evidence = EvidenceResponseNotificationPermission(true),
                 issuingAuthorityRepository = issuingAuthorityRepository,
-                documentStore = documentStore
+                documentStore = documentStore,
             )
         }
         return
@@ -142,7 +141,7 @@ fun EvidenceRequestNotificationPermissionView(
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseNotificationPermission(true),
             issuingAuthorityRepository = issuingAuthorityRepository,
-            documentStore = documentStore
+            documentStore = documentStore,
         )
     } else {
         Column {
@@ -152,18 +151,18 @@ fun EvidenceRequestNotificationPermissionView(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 RichTextSnippet(
                     modifier = Modifier.padding(8.dp),
                     content = evidenceRequest.permissionNotGrantedMessage,
-                    assets = evidenceRequest.assets
+                    assets = evidenceRequest.assets,
                 )
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Button(
                     modifier = Modifier.padding(8.dp),
@@ -171,53 +170,55 @@ fun EvidenceRequestNotificationPermissionView(
                         provisioningViewModel.provideEvidence(
                             evidence = EvidenceResponseNotificationPermission(false),
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            documentStore = documentStore
+                            documentStore = documentStore,
                         )
-                    }) {
+                    },
+                ) {
                     Text(evidenceRequest.continueWithoutPermissionButtonText)
                 }
                 Button(
                     modifier = Modifier.padding(8.dp),
                     onClick = {
                         postNotificationsPermissionState.launchPermissionRequest()
-                    }) {
+                    },
+                ) {
                     Text(evidenceRequest.grantPermissionButtonText)
                 }
             }
         }
     }
-
 }
 
 @Composable
 fun EvidenceRequestQuestionStringView(
     evidenceRequest: EvidenceRequestQuestionString,
-    onAccept: (String) -> Unit
+    onAccept: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         RichTextSnippet(
             modifier = Modifier.padding(8.dp),
             content = evidenceRequest.message,
-            assets = evidenceRequest.assets
+            assets = evidenceRequest.assets,
         )
     }
 
     var inputText by remember { mutableStateOf(evidenceRequest.defaultValue) }
     TextField(
         value = inputText,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
         onValueChange = { inputText = it },
-        label = { Text(stringResource(R.string.evidence_question_label_answer)) }
+        label = { Text(stringResource(R.string.evidence_question_label_answer)) },
     )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         Button(onClick = {
             onAccept(inputText)
@@ -231,7 +232,7 @@ fun EvidenceRequestQuestionStringView(
 fun EvidenceRequestCreatePassphraseView(
     context: Context,
     evidenceRequest: EvidenceRequestCreatePassphrase,
-    onAccept: (String) -> Unit
+    onAccept: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var chosenPassphrase by remember { mutableStateOf("") }
@@ -242,19 +243,19 @@ fun EvidenceRequestCreatePassphraseView(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         if (chosenPassphrase.isEmpty()) {
             RichTextSnippet(
                 modifier = Modifier.padding(8.dp),
                 content = evidenceRequest.message,
-                assets = evidenceRequest.assets
+                assets = evidenceRequest.assets,
             )
         } else {
             RichTextSnippet(
                 modifier = Modifier.padding(8.dp),
                 content = evidenceRequest.verifyMessage,
-                assets = evidenceRequest.assets
+                assets = evidenceRequest.assets,
             )
         }
     }
@@ -275,19 +276,20 @@ fun EvidenceRequestCreatePassphraseView(
                 } else if (donePressed) {
                     chosenPassphrase = passphrase
                 }
-            }
+            },
         )
 
         if (constraints.minLength != constraints.maxLength) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
                 Button(
                     enabled = currentPassphraseMeetsRequirements,
-                    onClick = { chosenPassphrase = currentPassphrase }
+                    onClick = { chosenPassphrase = currentPassphrase },
                 ) {
                     Text(stringResource(id = R.string.evidence_create_passphrase_next))
                 }
@@ -307,13 +309,14 @@ fun EvidenceRequestCreatePassphraseView(
                 } else if (donePressed) {
                     verifiedPassphrase = passphrase
                 }
-            }
+            },
         )
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
             horizontalArrangement = Arrangement.End,
         ) {
             Spacer(modifier = Modifier.weight(1.0f))
@@ -335,7 +338,7 @@ fun EvidenceRequestCreatePassphraseView(
                 constraints = constraints,
                 checkWeakPassphrase = false,
                 onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
-                }
+                },
             )
             SideEffect {
                 scope.launch {
@@ -347,40 +350,43 @@ fun EvidenceRequestCreatePassphraseView(
         }
     }
 
-    val matchErrorText = if (showMatchErrorText) {
-        if (constraints.requireNumerical) {
-             context.getString(R.string.evidence_create_passphrase_no_match_pin)
+    val matchErrorText =
+        if (showMatchErrorText) {
+            if (constraints.requireNumerical) {
+                context.getString(R.string.evidence_create_passphrase_no_match_pin)
+            } else {
+                context.getString(R.string.evidence_create_passphrase_no_match)
+            }
         } else {
-            context.getString(R.string.evidence_create_passphrase_no_match)
+            ""
         }
-    } else ""
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(
             text = matchErrorText,
-            color = Color.Red
+            color = Color.Red,
         )
     }
-
 }
 
 @Composable
 fun EvidenceRequestQuestionMultipleChoiceView(
     evidenceRequest: EvidenceRequestQuestionMultipleChoice,
-    onAccept: (String) -> Unit
+    onAccept: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         RichTextSnippet(
             modifier = Modifier.padding(8.dp),
             content = evidenceRequest.message,
-            assets = evidenceRequest.assets
+            assets = evidenceRequest.assets,
         )
     }
 
@@ -396,19 +402,19 @@ fun EvidenceRequestQuestionMultipleChoiceView(
                         selected = (entry.key == radioOptionsKeys[selectedOption]),
                         onClick = {
                             onOptionSelected(radioOptionsKeys.indexOf(entry.key))
-                        }
+                        },
                     )
                     .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(
                     selected = (entry.key == radioOptionsKeys[selectedOption]),
-                    onClick = { onOptionSelected(radioOptionsKeys.indexOf(entry.key)) }
+                    onClick = { onOptionSelected(radioOptionsKeys.indexOf(entry.key)) },
                 )
                 Text(
                     text = entry.value,
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp),
                 )
             }
         }
@@ -416,7 +422,7 @@ fun EvidenceRequestQuestionMultipleChoiceView(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         Button(onClick = {
             onAccept(radioOptionsKeys[selectedOption])
@@ -426,7 +432,6 @@ fun EvidenceRequestQuestionMultipleChoiceView(
             Text(evidenceRequest.acceptButtonText)
         }
     }
-
 }
 
 @Composable
@@ -435,17 +440,17 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
     provisioningViewModel: ProvisioningViewModel,
     issuingAuthorityRepository: IssuingAuthorityRepository,
     documentStore: DocumentStore,
-    permissionTracker: PermissionTracker
+    permissionTracker: PermissionTracker,
 ) {
     EvidenceRequestIcaoView(
         MrtdNfcDataReader(evidenceRequest.requestedDataGroups),
         permissionTracker,
-        IcaoMrtdCommunicationModel.Route.CAMERA_SCAN
+        IcaoMrtdCommunicationModel.Route.CAMERA_SCAN,
     ) { nfcData ->
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod),
             issuingAuthorityRepository = issuingAuthorityRepository,
-            documentStore = documentStore
+            documentStore = documentStore,
         )
     }
 }
@@ -454,7 +459,7 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
 fun EvidenceRequestIcaoNfcTunnelView(
     evidenceRequest: EvidenceRequestIcaoNfcTunnel,
     provisioningViewModel: ProvisioningViewModel,
-    permissionTracker: PermissionTracker
+    permissionTracker: PermissionTracker,
 ) {
     val tunnelScanner = NfcTunnelScanner(provisioningViewModel)
     // Start with the camera scan only if it was requested
@@ -477,61 +482,64 @@ fun <ResultT> EvidenceRequestIcaoView(
     reader: MrtdNfcReader<ResultT>,
     permissionTracker: PermissionTracker,
     initialRoute: IcaoMrtdCommunicationModel.Route,
-    onResult: (ResultT) -> Unit
+    onResult: (ResultT) -> Unit,
 ) {
-    val requiredPermissions = if (initialRoute == IcaoMrtdCommunicationModel.Route.CAMERA_SCAN) {
-        listOf(Manifest.permission.CAMERA, Manifest.permission.NFC)
-    } else {
-        listOf(Manifest.permission.NFC)
-    }
+    val requiredPermissions =
+        if (initialRoute == IcaoMrtdCommunicationModel.Route.CAMERA_SCAN) {
+            listOf(Manifest.permission.CAMERA, Manifest.permission.NFC)
+        } else {
+            listOf(Manifest.permission.NFC)
+        }
     permissionTracker.PermissionCheck(requiredPermissions) {
         val navController = rememberNavController()
         val icaoCommunication = rememberIcaoMrtdCommunicationModel(reader, navController, onResult)
-        NavHost(navController = navController, startDestination = initialRoute.route ) {
+        NavHost(navController = navController, startDestination = initialRoute.route) {
             composable(IcaoMrtdCommunicationModel.Route.CAMERA_SCAN.route) {
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             text = stringResource(R.string.evidence_camera_scan_mrz_title),
                             modifier = Modifier.padding(16.dp),
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
                         )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp),
                             text = stringResource(R.string.evidence_camera_scan_mrz_instruction),
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
                         )
                     }
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(),
-                        horizontalArrangement = Arrangement.Center
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         AndroidView(
                             modifier = Modifier.padding(16.dp),
                             factory = { context ->
                                 PreviewView(context).apply {
-                                    layoutParams = LinearLayout.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
+                                    layoutParams =
+                                        LinearLayout.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                        )
                                     scaleType = PreviewView.ScaleType.FILL_START
                                     implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                                     post {
                                         icaoCommunication.launchCameraScan(surfaceProvider)
                                     }
                                 }
-                            }
+                            },
                         )
                     }
                 }
@@ -541,57 +549,58 @@ fun <ResultT> EvidenceRequestIcaoView(
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             text = stringResource(R.string.evidence_nfc_scan_title),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
                         )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             style = MaterialTheme.typography.bodyLarge,
-                            text = when (icaoCommunication.status.value) {
-                                is MrtdNfc.Initial -> stringResource(R.string.nfc_status_initial)
-                                is MrtdNfc.Connected -> stringResource(R.string.nfc_status_connected)
-                                is MrtdNfc.AttemptingPACE -> stringResource(R.string.nfc_status_attempting_pace)
-                                is MrtdNfc.PACESucceeded -> stringResource(R.string.nfc_status_pace_succeeded)
-                                is MrtdNfc.PACENotSupported -> stringResource(R.string.nfc_status_pace_not_supported)
-                                is MrtdNfc.PACEFailed -> stringResource(R.string.nfc_status_pace_failed)
-                                is MrtdNfc.AttemptingBAC -> stringResource(R.string.nfc_status_attempting_bac)
-                                is MrtdNfc.BACSucceeded -> stringResource(R.string.nfc_status_bac_succeeded)
-                                is MrtdNfc.ReadingData -> {
-                                    val s = icaoCommunication.status.value as MrtdNfc.ReadingData
-                                    stringResource(
-                                        R.string.nfc_status_reading_data,
-                                        s.progressPercent
-                                    )
-                                }
+                            text =
+                                when (icaoCommunication.status.value) {
+                                    is MrtdNfc.Initial -> stringResource(R.string.nfc_status_initial)
+                                    is MrtdNfc.Connected -> stringResource(R.string.nfc_status_connected)
+                                    is MrtdNfc.AttemptingPACE -> stringResource(R.string.nfc_status_attempting_pace)
+                                    is MrtdNfc.PACESucceeded -> stringResource(R.string.nfc_status_pace_succeeded)
+                                    is MrtdNfc.PACENotSupported -> stringResource(R.string.nfc_status_pace_not_supported)
+                                    is MrtdNfc.PACEFailed -> stringResource(R.string.nfc_status_pace_failed)
+                                    is MrtdNfc.AttemptingBAC -> stringResource(R.string.nfc_status_attempting_bac)
+                                    is MrtdNfc.BACSucceeded -> stringResource(R.string.nfc_status_bac_succeeded)
+                                    is MrtdNfc.ReadingData -> {
+                                        val s = icaoCommunication.status.value as MrtdNfc.ReadingData
+                                        stringResource(
+                                            R.string.nfc_status_reading_data,
+                                            s.progressPercent,
+                                        )
+                                    }
 
-                                is MrtdNfc.TunnelAuthenticating -> {
-                                    val s =
-                                        icaoCommunication.status.value as MrtdNfc.TunnelAuthenticating
-                                    stringResource(
-                                        R.string.nfc_status_tunnel_authenticating,
-                                        s.progressPercent
-                                    )
-                                }
+                                    is MrtdNfc.TunnelAuthenticating -> {
+                                        val s =
+                                            icaoCommunication.status.value as MrtdNfc.TunnelAuthenticating
+                                        stringResource(
+                                            R.string.nfc_status_tunnel_authenticating,
+                                            s.progressPercent,
+                                        )
+                                    }
 
-                                is MrtdNfc.TunnelReading -> {
-                                    val s = icaoCommunication.status.value as MrtdNfc.TunnelReading
-                                    stringResource(
-                                        R.string.nfc_status_tunnel_reading_data,
-                                        s.progressPercent
-                                    )
-                                }
+                                    is MrtdNfc.TunnelReading -> {
+                                        val s = icaoCommunication.status.value as MrtdNfc.TunnelReading
+                                        stringResource(
+                                            R.string.nfc_status_tunnel_reading_data,
+                                            s.progressPercent,
+                                        )
+                                    }
 
-                                is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
-                            }
+                                    is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
+                                },
                         )
                     }
                 }

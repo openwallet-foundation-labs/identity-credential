@@ -58,20 +58,22 @@ class SoftwareSecureAreaTest {
         attestationKeyIssuer = "CN=Test Attestation Key"
         attestationKeySignatureAlgorithm = Algorithm.ES256
         val validFrom = Clock.System.now()
-        val validUntil = Instant.fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 24 * 3600 * 1000
-        )
-        val certificate = Crypto.createX509v3Certificate(
-            attestationKey.publicKey,
-            attestationKey,
-            null,
-            attestationKeySignatureAlgorithm,
-            "1",
-            "CN=Test Attestation Key",
-            "CN=Test Attestation Key",
-            validFrom,
-            validUntil, setOf(), listOf()
-        )
+        val validUntil =
+            Instant.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 24 * 3600 * 1000,
+            )
+        val certificate =
+            Crypto.createX509v3Certificate(
+                attestationKey.publicKey,
+                attestationKey,
+                null,
+                attestationKeySignatureAlgorithm,
+                "1",
+                "CN=Test Attestation Key",
+                "CN=Test Attestation Key",
+                validFrom,
+                validUntil, setOf(), listOf(),
+            )
         attestationKeyCertification = CertificateChain(listOf(certificate))
     }
 
@@ -83,7 +85,7 @@ class SoftwareSecureAreaTest {
         // First create the key...
         ks.createKey(
             "testKey",
-            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         val (certificates) = keyInfo.attestation
@@ -112,7 +114,7 @@ class SoftwareSecureAreaTest {
         val ks = SoftwareSecureArea(storage)
         ks.createKey(
             "testKey",
-            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
@@ -123,18 +125,19 @@ class SoftwareSecureAreaTest {
         Assert.assertNull(keyInfo.passphraseConstraints)
         val dataToSign = byteArrayOf(4, 5, 6)
         val derSignature: ByteArray
-        derSignature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
+        derSignature =
+            try {
+                ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            } catch (e: KeyLockedException) {
+                throw AssertionError(e)
+            }
         Assert.assertTrue(
             Crypto.checkSignature(
                 keyInfo.publicKey,
                 dataToSign,
                 Algorithm.ES256,
-                derSignature
-            )
+                derSignature,
+            ),
         )
     }
 
@@ -144,7 +147,7 @@ class SoftwareSecureAreaTest {
         val ks = SoftwareSecureArea(storage)
         ks.createKey(
             "testKey",
-            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
@@ -157,7 +160,7 @@ class SoftwareSecureAreaTest {
         // Check the leaf certificate is self-signed.
         Assert.assertTrue(
             keyInfo.attestation.certificates[0]
-                .verify(ks.getKeyInfo("testKey").publicKey)
+                .verify(ks.getKeyInfo("testKey").publicKey),
         )
     }
 
@@ -174,9 +177,9 @@ class SoftwareSecureAreaTest {
                     attestationKey,
                     attestationKeySignatureAlgorithm,
                     attestationKeyIssuer,
-                    attestationKeyCertification
+                    attestationKeyCertification,
                 )
-                .build()
+                .build(),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
@@ -193,7 +196,7 @@ class SoftwareSecureAreaTest {
         // Check the leaf certificate is signed by mAttestationKey.
         Assert.assertTrue(
             keyInfo.attestation.certificates[0]
-                .verify(attestationKey.publicKey)
+                .verify(attestationKey.publicKey),
         )
     }
 
@@ -224,7 +227,7 @@ class SoftwareSecureAreaTest {
             "testKey",
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
-                .build()
+                .build(),
         )
         val dataToSign = byteArrayOf(4, 5, 6)
         try {
@@ -242,18 +245,19 @@ class SoftwareSecureAreaTest {
         val storage = EphemeralStorageEngine()
         val ks = SoftwareSecureArea(storage)
         val otherKeyPair: KeyPair
-        otherKeyPair = try {
-            val kpg = KeyPairGenerator.getInstance("EC")
-            kpg.initialize(256)
-            kpg.generateKeyPair()
-        } catch (e: NoSuchAlgorithmException) {
-            throw AssertionError("Unexpected exception", e)
-        }
+        otherKeyPair =
+            try {
+                val kpg = KeyPairGenerator.getInstance("EC")
+                kpg.initialize(256)
+                kpg.generateKeyPair()
+            } catch (e: NoSuchAlgorithmException) {
+                throw AssertionError("Unexpected exception", e)
+            }
         ks.createKey(
             "testKey",
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
-                .build()
+                .build(),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
@@ -265,30 +269,32 @@ class SoftwareSecureAreaTest {
 
         // First do the ECDH from the perspective of our side...
         val ourSharedSecret: ByteArray
-        ourSharedSecret = try {
-            ks.keyAgreement(
-                "testKey",
-                otherKeyPair.public.toEcPublicKey(EcCurve.P256),
-                null
-            )
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
+        ourSharedSecret =
+            try {
+                ks.keyAgreement(
+                    "testKey",
+                    otherKeyPair.public.toEcPublicKey(EcCurve.P256),
+                    null,
+                )
+            } catch (e: KeyLockedException) {
+                throw AssertionError(e)
+            }
         val cert =
             keyInfo.attestation.certificates[0].javaX509Certificate
 
         // ...now do it from the perspective of the other side...
         val theirSharedSecret: ByteArray
-        theirSharedSecret = try {
-            val ka = KeyAgreement.getInstance("ECDH")
-            ka.init(otherKeyPair.private)
-            ka.doPhase(cert.publicKey, true)
-            ka.generateSecret()
-        } catch (e: NoSuchAlgorithmException) {
-            throw AssertionError("Unexpected exception", e)
-        } catch (e: InvalidKeyException) {
-            throw AssertionError("Unexpected exception", e)
-        }
+        theirSharedSecret =
+            try {
+                val ka = KeyAgreement.getInstance("ECDH")
+                ka.init(otherKeyPair.private)
+                ka.doPhase(cert.publicKey, true)
+                ka.generateSecret()
+            } catch (e: NoSuchAlgorithmException) {
+                throw AssertionError("Unexpected exception", e)
+            } catch (e: InvalidKeyException) {
+                throw AssertionError("Unexpected exception", e)
+            }
 
         // ... finally, check that both sides compute the same shared secret.
         Assert.assertArrayEquals(theirSharedSecret, ourSharedSecret)
@@ -299,18 +305,19 @@ class SoftwareSecureAreaTest {
         val storage = EphemeralStorageEngine()
         val ks = SoftwareSecureArea(storage)
         val otherKeyPair: KeyPair
-        otherKeyPair = try {
-            val kpg = KeyPairGenerator.getInstance("EC")
-            kpg.initialize(256)
-            kpg.generateKeyPair()
-        } catch (e: NoSuchAlgorithmException) {
-            throw AssertionError("Unexpected exception", e)
-        }
+        otherKeyPair =
+            try {
+                val kpg = KeyPairGenerator.getInstance("EC")
+                kpg.initialize(256)
+                kpg.generateKeyPair()
+            } catch (e: NoSuchAlgorithmException) {
+                throw AssertionError("Unexpected exception", e)
+            }
         ks.createKey(
             "testKey",
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build()
+                .build(),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
@@ -322,46 +329,49 @@ class SoftwareSecureAreaTest {
 
         // First do the ECDH from the perspective of our side...
         val ourSharedSecret: ByteArray
-        ourSharedSecret = try {
-            ks.keyAgreement(
-                "testKey",
-                otherKeyPair.public.toEcPublicKey(EcCurve.P256),
-                null
-            )
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
+        ourSharedSecret =
+            try {
+                ks.keyAgreement(
+                    "testKey",
+                    otherKeyPair.public.toEcPublicKey(EcCurve.P256),
+                    null,
+                )
+            } catch (e: KeyLockedException) {
+                throw AssertionError(e)
+            }
         val cert = keyInfo.attestation.certificates[0].javaX509Certificate
 
         // ...now do it from the perspective of the other side...
         val theirSharedSecret: ByteArray
-        theirSharedSecret = try {
-            val ka = KeyAgreement.getInstance("ECDH")
-            ka.init(otherKeyPair.private)
-            ka.doPhase(cert.publicKey, true)
-            ka.generateSecret()
-        } catch (e: NoSuchAlgorithmException) {
-            throw AssertionError("Unexpected exception", e)
-        } catch (e: InvalidKeyException) {
-            throw AssertionError("Unexpected exception", e)
-        }
+        theirSharedSecret =
+            try {
+                val ka = KeyAgreement.getInstance("ECDH")
+                ka.init(otherKeyPair.private)
+                ka.doPhase(cert.publicKey, true)
+                ka.generateSecret()
+            } catch (e: NoSuchAlgorithmException) {
+                throw AssertionError("Unexpected exception", e)
+            } catch (e: InvalidKeyException) {
+                throw AssertionError("Unexpected exception", e)
+            }
 
         // ... finally, check that both sides compute the same shared secret.
         Assert.assertArrayEquals(theirSharedSecret, ourSharedSecret)
         val dataToSign = byteArrayOf(4, 5, 6)
         val derSignature: ByteArray
-        derSignature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
+        derSignature =
+            try {
+                ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            } catch (e: KeyLockedException) {
+                throw AssertionError(e)
+            }
         Assert.assertTrue(
             Crypto.checkSignature(
                 keyInfo.publicKey,
                 dataToSign,
                 Algorithm.ES256,
-                derSignature
-            )
+                derSignature,
+            ),
         )
     }
 
@@ -370,23 +380,24 @@ class SoftwareSecureAreaTest {
         val storage = EphemeralStorageEngine()
         val ks = SoftwareSecureArea(storage)
         val otherKeyPair: KeyPair
-        otherKeyPair = try {
-            val kpg = KeyPairGenerator.getInstance("EC")
-            kpg.initialize(256)
-            kpg.generateKeyPair()
-        } catch (e: NoSuchAlgorithmException) {
-            throw AssertionError("Unexpected exception", e)
-        }
+        otherKeyPair =
+            try {
+                val kpg = KeyPairGenerator.getInstance("EC")
+                kpg.initialize(256)
+                kpg.generateKeyPair()
+            } catch (e: NoSuchAlgorithmException) {
+                throw AssertionError("Unexpected exception", e)
+            }
         ks.createKey(
             "testKey",
-            SoftwareCreateKeySettings.Builder(ByteArray(0)) //.setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
-                .build()
+            SoftwareCreateKeySettings.Builder(ByteArray(0)) // .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
+                .build(),
         )
         try {
             ks.keyAgreement(
                 "testKey",
                 otherKeyPair.public.toEcPublicKey(EcCurve.P256),
-                null
+                null,
             )
             Assert.fail("ECDH shouldn't work with a key w/o purpose AGREE_KEY")
         } catch (e: KeyLockedException) {
@@ -406,7 +417,7 @@ class SoftwareSecureAreaTest {
             "testKey",
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setPassphraseRequired(true, passphrase, passphraseConstraints)
-                .build()
+                .build(),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
@@ -419,12 +430,13 @@ class SoftwareSecureAreaTest {
         val dataToSign = byteArrayOf(4, 5, 6)
         var derSignature = ByteArray(0)
         try {
-            derSignature = ks.sign(
-                "testKey",
-                Algorithm.ES256,
-                dataToSign,
-                null
-            )
+            derSignature =
+                ks.sign(
+                    "testKey",
+                    Algorithm.ES256,
+                    dataToSign,
+                    null,
+                )
             Assert.fail()
         } catch (e: KeyLockedException) {
             // This is the expected path.
@@ -432,28 +444,30 @@ class SoftwareSecureAreaTest {
 
         // Try with the wrong passphrase. This should fail.
         try {
-            derSignature = ks.sign(
-                "testKey",
-                Algorithm.ES256,
-                dataToSign,
-                SoftwareKeyUnlockData("wrongPassphrase")
-            )
+            derSignature =
+                ks.sign(
+                    "testKey",
+                    Algorithm.ES256,
+                    dataToSign,
+                    SoftwareKeyUnlockData("wrongPassphrase"),
+                )
             Assert.fail()
         } catch (e: KeyLockedException) {
             // This is the expected path.
         }
 
         // ... and with the right passphrase. This should work.
-        derSignature = try {
-            ks.sign(
-                "testKey",
-                Algorithm.ES256,
-                dataToSign,
-                SoftwareKeyUnlockData(passphrase)
-            )
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
+        derSignature =
+            try {
+                ks.sign(
+                    "testKey",
+                    Algorithm.ES256,
+                    dataToSign,
+                    SoftwareKeyUnlockData(passphrase),
+                )
+            } catch (e: KeyLockedException) {
+                throw AssertionError(e)
+            }
 
         // Verify the signature is correct.
         Assert.assertTrue(
@@ -461,8 +475,8 @@ class SoftwareSecureAreaTest {
                 keyInfo.publicKey,
                 dataToSign,
                 Algorithm.ES256,
-                derSignature
-            )
+                derSignature,
+            ),
         )
     }
 
@@ -472,25 +486,26 @@ class SoftwareSecureAreaTest {
         val ks = SoftwareSecureArea(storage)
         ks.createKey(
             "testKey",
-            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
         val keyInfoOld = ks.getKeyInfo("testKey")
         val certChainOld = keyInfoOld.attestation
         Assert.assertTrue(certChainOld.certificates.size >= 1)
         ks.createKey(
             "testKey",
-            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
         val keyInfo = ks.getKeyInfo("testKey")
         val certChain = keyInfo.attestation
         Assert.assertTrue(certChain.certificates.size >= 1)
         val dataToSign = byteArrayOf(4, 5, 6)
         var derSignature = ByteArray(0)
-        derSignature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
+        derSignature =
+            try {
+                ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            } catch (e: KeyLockedException) {
+                throw AssertionError(e)
+            }
 
         // Check new key is a different cert chain.
         Assert.assertNotEquals(certChainOld, certChain)
@@ -501,8 +516,8 @@ class SoftwareSecureAreaTest {
                 keyInfo.publicKey,
                 dataToSign,
                 Algorithm.ES256,
-                derSignature
-            )
+                derSignature,
+            ),
         )
     }
 
@@ -510,23 +525,24 @@ class SoftwareSecureAreaTest {
     fun testEcKeySigningAllCurves() {
         val storage = EphemeralStorageEngine()
         val ks = SoftwareSecureArea(storage)
-        val knownEcCurves = arrayOf(
-            EcCurve.P256,
-            EcCurve.P384,
-            EcCurve.P521,
-            EcCurve.BRAINPOOLP256R1,
-            EcCurve.BRAINPOOLP320R1,
-            EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1,
-            EcCurve.ED25519,
-            EcCurve.ED448
-        )
+        val knownEcCurves =
+            arrayOf(
+                EcCurve.P256,
+                EcCurve.P384,
+                EcCurve.P521,
+                EcCurve.BRAINPOOLP256R1,
+                EcCurve.BRAINPOOLP320R1,
+                EcCurve.BRAINPOOLP384R1,
+                EcCurve.BRAINPOOLP512R1,
+                EcCurve.ED25519,
+                EcCurve.ED448,
+            )
         for (ecCurve in knownEcCurves) {
             ks.createKey(
                 "testKey",
                 SoftwareCreateKeySettings.Builder(ByteArray(0))
                     .setEcCurve(ecCurve)
-                    .build()
+                    .build(),
             )
             val keyInfo = ks.getKeyInfo("testKey")
             Assert.assertNotNull(keyInfo)
@@ -535,40 +551,44 @@ class SoftwareSecureAreaTest {
             Assert.assertEquals(ecCurve, keyInfo.publicKey.curve)
             Assert.assertFalse(keyInfo.isPassphraseProtected)
             Assert.assertNull(keyInfo.passphraseConstraints)
-            val signatureAlgorithms = when (ecCurve) {
-                EcCurve.P256,
-                EcCurve.P384,
-                EcCurve.P521,
-                EcCurve.BRAINPOOLP256R1,
-                EcCurve.BRAINPOOLP320R1,
-                EcCurve.BRAINPOOLP384R1,
-                EcCurve.BRAINPOOLP512R1 -> {
+            val signatureAlgorithms =
+                when (ecCurve) {
+                    EcCurve.P256,
+                    EcCurve.P384,
+                    EcCurve.P521,
+                    EcCurve.BRAINPOOLP256R1,
+                    EcCurve.BRAINPOOLP320R1,
+                    EcCurve.BRAINPOOLP384R1,
+                    EcCurve.BRAINPOOLP512R1,
+                    -> {
                         arrayOf(
                             Algorithm.ES256,
                             Algorithm.ES384,
-                            Algorithm.ES512
+                            Algorithm.ES512,
                         )
+                    }
+                    EcCurve.ED25519,
+                    EcCurve.ED448,
+                    -> {
+                        arrayOf(Algorithm.EDDSA)
+                    }
+                    else -> throw AssertionError()
                 }
-                EcCurve.ED25519,
-                EcCurve.ED448 -> {
-                    arrayOf(Algorithm.EDDSA)
-                }
-                else -> throw AssertionError()
-            }
             for (signatureAlgorithm in signatureAlgorithms) {
                 val dataToSign = byteArrayOf(4, 5, 6)
-                val derSignature = try {
-                    ks.sign("testKey", signatureAlgorithm, dataToSign, null)
-                } catch (e: KeyLockedException) {
-                    throw AssertionError(e)
-                }
+                val derSignature =
+                    try {
+                        ks.sign("testKey", signatureAlgorithm, dataToSign, null)
+                    } catch (e: KeyLockedException) {
+                        throw AssertionError(e)
+                    }
                 Assert.assertTrue(
                     Crypto.checkSignature(
                         keyInfo.publicKey,
                         dataToSign,
                         signatureAlgorithm,
-                        derSignature
-                    )
+                        derSignature,
+                    ),
                 )
             }
         }
@@ -578,17 +598,18 @@ class SoftwareSecureAreaTest {
     fun testEcKeyEcdhAllCurves() {
         val storage = EphemeralStorageEngine()
         val ks = SoftwareSecureArea(storage)
-        val curvesSupportingKeyAgreement = arrayOf(
-            EcCurve.P256,
-            EcCurve.P384,
-            EcCurve.P521,
-            EcCurve.BRAINPOOLP256R1,
-            EcCurve.BRAINPOOLP320R1,
-            EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1,
-            EcCurve.X25519,
-            EcCurve.X448
-        )
+        val curvesSupportingKeyAgreement =
+            arrayOf(
+                EcCurve.P256,
+                EcCurve.P384,
+                EcCurve.P521,
+                EcCurve.BRAINPOOLP256R1,
+                EcCurve.BRAINPOOLP320R1,
+                EcCurve.BRAINPOOLP384R1,
+                EcCurve.BRAINPOOLP512R1,
+                EcCurve.X25519,
+                EcCurve.X448,
+            )
         for (ecCurve in curvesSupportingKeyAgreement) {
             var otherKey = Crypto.createEcPrivateKey(ecCurve)
 
@@ -601,9 +622,9 @@ class SoftwareSecureAreaTest {
                         attestationKey,
                         attestationKeySignatureAlgorithm,
                         attestationKeyIssuer,
-                        attestationKeyCertification
+                        attestationKeyCertification,
                     )
-                    .build()
+                    .build(),
             )
             val keyInfo = ks.getKeyInfo("testKey")
             Assert.assertNotNull(keyInfo)
@@ -615,15 +636,16 @@ class SoftwareSecureAreaTest {
 
             // First do the ECDH from the perspective of our side...
             var ourSharedSecret: ByteArray
-            ourSharedSecret = try {
-                ks.keyAgreement(
-                    "testKey",
-                    otherKey.publicKey,
-                    null
-                )
-            } catch (e: KeyLockedException) {
-                throw AssertionError(e)
-            }
+            ourSharedSecret =
+                try {
+                    ks.keyAgreement(
+                        "testKey",
+                        otherKey.publicKey,
+                        null,
+                    )
+                } catch (e: KeyLockedException) {
+                    throw AssertionError(e)
+                }
             val cert = keyInfo.attestation.certificates[0].javaX509Certificate
 
             // ...now do it from the perspective of the other side...

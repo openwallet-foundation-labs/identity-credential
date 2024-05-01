@@ -53,13 +53,13 @@ class DeviceRetrievalHelper internal constructor(
     private val context: Context,
     private val listener: Listener,
     private val listenerExecutor: Executor,
-    private val eDeviceKey: EcPrivateKey
+    private val eDeviceKey: EcPrivateKey,
 ) {
     private var _eReaderKey: EcPublicKey? = null
-    
+
     private var _handover: ByteArray? = null
     private var _deviceEngagement: ByteArray? = null
-    
+
     private var sessionEncryption: SessionEncryption? = null
     private var encodedSessionTranscript: ByteArray? = null
     private var transport: DataTransport? = null
@@ -130,8 +130,11 @@ class DeviceRetrievalHelper internal constructor(
     }
 
     fun reportDeviceDisconnected(transportSpecificTermination: Boolean) {
-        Logger.d(TAG, "reportDeviceDisconnected: transportSpecificTermination: " +
-                    "$transportSpecificTermination")
+        Logger.d(
+            TAG,
+            "reportDeviceDisconnected: transportSpecificTermination: " +
+                "$transportSpecificTermination",
+        )
         listenerExecutor.execute {
             if (!inhibitCallbacks) {
                 listener.onDeviceDisconnected(transportSpecificTermination)
@@ -149,77 +152,81 @@ class DeviceRetrievalHelper internal constructor(
     }
 
     fun start() {
-        transport!!.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {
-                Logger.d(TAG, "onConnecting")
-            }
-
-            override fun onDisconnected() {
-                Logger.d(TAG, "onDisconnected")
-                if (transport != null) {
-                    transport!!.close()
+        transport!!.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {
+                    Logger.d(TAG, "onConnecting")
                 }
-                if (!receivedSessionTerminated) {
-                    reportError(Error("Peer disconnected without proper session termination"))
-                } else {
-                    reportDeviceDisconnected(false)
+
+                override fun onDisconnected() {
+                    Logger.d(TAG, "onDisconnected")
+                    if (transport != null) {
+                        transport!!.close()
+                    }
+                    if (!receivedSessionTerminated) {
+                        reportError(Error("Peer disconnected without proper session termination"))
+                    } else {
+                        reportDeviceDisconnected(false)
+                    }
                 }
-            }
 
-            override fun onConnected() {
-                Logger.d(TAG, "onConnected")
-                if (reverseEngagementReaderEngagement != null) {
-                    Logger.d(TAG, "onConnected for reverse engagement")
-                    val generator = EngagementGenerator(
-                        eDeviceKey.publicKey,
-                        EngagementGenerator.ENGAGEMENT_VERSION_1_1
-                    )
-                    generator.addOriginInfos(reverseEngagementOriginInfos!!)
-                    _deviceEngagement = generator.generate()
+                override fun onConnected() {
+                    Logger.d(TAG, "onConnected")
+                    if (reverseEngagementReaderEngagement != null) {
+                        Logger.d(TAG, "onConnected for reverse engagement")
+                        val generator =
+                            EngagementGenerator(
+                                eDeviceKey.publicKey,
+                                EngagementGenerator.ENGAGEMENT_VERSION_1_1,
+                            )
+                        generator.addOriginInfos(reverseEngagementOriginInfos!!)
+                        _deviceEngagement = generator.generate()
 
-                    // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
-                    // is available and neither QR or NFC is used.
-                    _handover = Cbor.encode(Tagged(24, Bstr(reverseEngagementReaderEngagement!!)))
+                        // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
+                        // is available and neither QR or NFC is used.
+                        _handover = Cbor.encode(Tagged(24, Bstr(reverseEngagementReaderEngagement!!)))
 
-                    // 18013-7 says to transmit DeviceEngagementBytes in MessageData
-                    val builder = CborMap.builder()
-                    builder.put(
-                        "deviceEngagementBytes",
-                        Cbor.encode(Tagged(24, Bstr(_deviceEngagement!!)))
-                    )
-                    val messageData = Cbor.encode(builder.end().build())
-                    Logger.dCbor(TAG, "MessageData for reverse engagement to send", messageData)
-                    transport!!.sendMessage(messageData)
-                } else {
-                    throw IllegalStateException("Unexpected onConnected callback")
+                        // 18013-7 says to transmit DeviceEngagementBytes in MessageData
+                        val builder = CborMap.builder()
+                        builder.put(
+                            "deviceEngagementBytes",
+                            Cbor.encode(Tagged(24, Bstr(_deviceEngagement!!))),
+                        )
+                        val messageData = Cbor.encode(builder.end().build())
+                        Logger.dCbor(TAG, "MessageData for reverse engagement to send", messageData)
+                        transport!!.sendMessage(messageData)
+                    } else {
+                        throw IllegalStateException("Unexpected onConnected callback")
+                    }
                 }
-            }
 
-            override fun onError(error: Throwable) {
-                if (transport != null) {
-                    transport!!.close()
+                override fun onError(error: Throwable) {
+                    if (transport != null) {
+                        transport!!.close()
+                    }
+                    reportError(error)
                 }
-                reportError(error)
-            }
 
-            override fun onMessageReceived() {
-                val data = transport!!.getMessage()
-                if (data == null) {
-                    reportError(Error("onMessageReceived but no message"))
-                    return
+                override fun onMessageReceived() {
+                    val data = transport!!.getMessage()
+                    if (data == null) {
+                        reportError(Error("onMessageReceived but no message"))
+                        return
+                    }
+                    processMessageReceived(data)
                 }
-                processMessageReceived(data)
-            }
 
-            override fun onTransportSpecificSessionTermination() {
-                Logger.d(TAG, "Received transport-specific session termination")
-                receivedSessionTerminated = true
-                if (transport != null) {
-                    transport!!.close()
+                override fun onTransportSpecificSessionTermination() {
+                    Logger.d(TAG, "Received transport-specific session termination")
+                    receivedSessionTerminated = true
+                    if (transport != null) {
+                        transport!!.close()
+                    }
+                    reportDeviceDisconnected(true)
                 }
-                reportDeviceDisconnected(true)
-            }
-        }, listenerExecutor)
+            },
+            listenerExecutor,
+        )
         val data = transport!!.getMessage()
         data?.let { processMessageReceived(it) }
         if (reverseEngagementReaderEngagement != null) {
@@ -229,13 +236,15 @@ class DeviceRetrievalHelper internal constructor(
             reverseEngagementEncodedEReaderKey = Cbor.decode(readerEngagement.eSenderKeyBytes).asTagged.asBstr
 
             // This is reverse engagement, we actually haven't connected yet...
-            val encodedEDeviceKeyBytes: ByteArray = Cbor.encode(
-                Tagged(
-                    24, Bstr(
-                        Cbor.encode(eDeviceKey.toCoseKey().toDataItem)
-                    )
+            val encodedEDeviceKeyBytes: ByteArray =
+                Cbor.encode(
+                    Tagged(
+                        24,
+                        Bstr(
+                            Cbor.encode(eDeviceKey.toCoseKey().toDataItem),
+                        ),
+                    ),
                 )
-            )
             transport!!.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
             transport!!.connect()
         }
@@ -256,34 +265,40 @@ class DeviceRetrievalHelper internal constructor(
             // This is unnecessary but a nice warning regardless...
             val map = Cbor.decode(data)
             if (map.hasKey("eReaderKey")) {
-                Logger.w(TAG, "Ignoring eReaderKey in SessionEstablishment since we "
-                            + "already got this get in ReaderEngagement")
+                Logger.w(
+                    TAG,
+                    "Ignoring eReaderKey in SessionEstablishment since we " +
+                        "already got this get in ReaderEngagement",
+                )
             }
         } else {
             // This is the first message. Extract eReaderKey to set up session encryption...
             val map = Cbor.decode(data)
-            encodedEReaderKey = try {
-                map["eReaderKey"].asTagged.asBstr
-            } catch (e: Exception) {
-                Logger.w(TAG, "Error extracting eReaderKey", e)
-                return Constants.SESSION_DATA_STATUS_ERROR_CBOR_DECODING
-            }
+            encodedEReaderKey =
+                try {
+                    map["eReaderKey"].asTagged.asBstr
+                } catch (e: Exception) {
+                    Logger.w(TAG, "Error extracting eReaderKey", e)
+                    return Constants.SESSION_DATA_STATUS_ERROR_CBOR_DECODING
+                }
         }
         _eReaderKey = Cbor.decode(encodedEReaderKey).asCoseKey.ecPublicKey
-        encodedSessionTranscript = Cbor.encode(
-            CborArray.builder()
-                .add(Tagged(24, Bstr(_deviceEngagement!!)))
-                .add(Tagged(24, Bstr(encodedEReaderKey)))
-                .add(RawCbor(_handover!!))
-                .end()
-                .build()
-        )
-        sessionEncryption = SessionEncryption(
-            SessionEncryption.Role.MDOC,
-            eDeviceKey,
-            _eReaderKey!!,
-            encodedSessionTranscript!!
-        )
+        encodedSessionTranscript =
+            Cbor.encode(
+                CborArray.builder()
+                    .add(Tagged(24, Bstr(_deviceEngagement!!)))
+                    .add(Tagged(24, Bstr(encodedEReaderKey)))
+                    .add(RawCbor(_handover!!))
+                    .end()
+                    .build(),
+            )
+        sessionEncryption =
+            SessionEncryption(
+                SessionEncryption.Role.MDOC,
+                eDeviceKey,
+                _eReaderKey!!,
+                encodedSessionTranscript!!,
+            )
         reportEReaderKeyReceived(_eReaderKey!!)
         return null
     }
@@ -299,19 +314,20 @@ class DeviceRetrievalHelper internal constructor(
         }
 
         val decryptedMessage =
-        try {
-            sessionEncryption!!.decryptMessage(data)
-        } catch(e: IllegalStateException) {
-            Logger.d(TAG, "Decryption failed!")
-            transport!!.sendMessage(
-                sessionEncryption!!.encryptMessage(
-                    null, Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION
+            try {
+                sessionEncryption!!.decryptMessage(data)
+            } catch (e: IllegalStateException) {
+                Logger.d(TAG, "Decryption failed!")
+                transport!!.sendMessage(
+                    sessionEncryption!!.encryptMessage(
+                        null,
+                        Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION,
+                    ),
                 )
-            )
-            transport!!.close()
-            reportError(Error("Error decrypting message from reader"))
-            return
-        }
+                transport!!.close()
+                reportError(Error("Error decrypting message from reader"))
+                return
+            }
 
         // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
         // currently does not define other kinds of messages).
@@ -338,7 +354,7 @@ class DeviceRetrievalHelper internal constructor(
             }
         }
     }
-    
+
     /**
      * Send a response to the remote mdoc verifier.
      *
@@ -354,22 +370,29 @@ class DeviceRetrievalHelper internal constructor(
      */
     fun sendDeviceResponse(
         deviceResponseBytes: ByteArray?,
-        status: Long?
+        status: Long?,
     ) {
-        val sessionDataMessage = if (deviceResponseBytes == null) {
-            require(status != null) { "deviceResponseBytes and status cannot both be null" }
-            Logger.d(TAG, "sendDeviceResponse: status is $status and data is unset")
-            SessionEncryption.encodeStatus(status)
-        } else {
-            if (status != null) {
-                Logger.dCbor(TAG, "sendDeviceResponse: status is $status and data is",
-                    deviceResponseBytes)
+        val sessionDataMessage =
+            if (deviceResponseBytes == null) {
+                require(status != null) { "deviceResponseBytes and status cannot both be null" }
+                Logger.d(TAG, "sendDeviceResponse: status is $status and data is unset")
+                SessionEncryption.encodeStatus(status)
             } else {
-                Logger.dCbor(TAG, "sendDeviceResponse: status is unset and data is",
-                    deviceResponseBytes)
+                if (status != null) {
+                    Logger.dCbor(
+                        TAG,
+                        "sendDeviceResponse: status is $status and data is",
+                        deviceResponseBytes,
+                    )
+                } else {
+                    Logger.dCbor(
+                        TAG,
+                        "sendDeviceResponse: status is unset and data is",
+                        deviceResponseBytes,
+                    )
+                }
+                sessionEncryption!!.encryptMessage(deviceResponseBytes, status)
             }
-            sessionEncryption!!.encryptMessage(deviceResponseBytes, status)
-        }
         if (transport == null) {
             Logger.d(TAG, "sendDeviceResponse: ignoring because transport is unset")
             return
@@ -403,9 +426,12 @@ class DeviceRetrievalHelper internal constructor(
      * Whether transport specific termination is available for the current connection.
      */
     val isTransportSpecificTerminationSupported: Boolean
-        get() = if (transport == null) {
-            false
-        } else transport!!.supportsTransportSpecificTerminationMessage()
+        get() =
+            if (transport == null) {
+                false
+            } else {
+                transport!!.supportsTransportSpecificTerminationMessage()
+            }
 
     /**
      * Sends a transport-specific termination message.
@@ -434,9 +460,12 @@ class DeviceRetrievalHelper internal constructor(
      * The time spent doing BLE scanning or 0 if no scanning happened.
      */
     val scanningTimeMillis: Long
-        get() = if (transport is DataTransportBle) {
-            (transport as DataTransportBle?)!!.scanningTimeMillis
-        } else 0
+        get() =
+            if (transport is DataTransportBle) {
+                (transport as DataTransportBle?)!!.scanningTimeMillis
+            } else {
+                0
+            }
 
     /**
      * Interface for listening to messages from the remote verifier device.
@@ -505,7 +534,7 @@ class DeviceRetrievalHelper internal constructor(
         context: Context,
         listener: Listener,
         executor: Executor,
-        eDeviceKey: EcPrivateKey
+        eDeviceKey: EcPrivateKey,
     ) {
         var helper = DeviceRetrievalHelper(context, listener, executor, eDeviceKey)
 
@@ -520,7 +549,7 @@ class DeviceRetrievalHelper internal constructor(
         fun useForwardEngagement(
             transport: DataTransport,
             deviceEngagement: ByteArray,
-            handover: ByteArray
+            handover: ByteArray,
         ) = apply {
             helper.transport = transport
             helper._deviceEngagement = deviceEngagement
@@ -538,7 +567,7 @@ class DeviceRetrievalHelper internal constructor(
         fun useReverseEngagement(
             transport: DataTransport,
             readerEngagement: ByteArray?,
-            originInfos: List<OriginInfo>?
+            originInfos: List<OriginInfo>?,
         ) = apply {
             helper.transport = transport
             helper.reverseEngagementReaderEngagement = readerEngagement

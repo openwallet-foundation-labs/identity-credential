@@ -22,7 +22,7 @@ import org.junit.Test
 class SimpleApplicationDataTest {
     private fun testEncodingConsistency(
         original: SimpleApplicationData,
-        other: SimpleApplicationData
+        other: SimpleApplicationData,
     ) {
         Assert.assertArrayEquals(original.encodeAsCbor(), other.encodeAsCbor())
     }
@@ -54,13 +54,15 @@ class SimpleApplicationDataTest {
         Assert.assertEquals(false, appData.getBoolean("foo"))
         testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setNameSpacedData(
-            "foo", NameSpacedData.Builder()
+            "foo",
+            NameSpacedData.Builder()
                 .putEntryString("foo", "bar", "baz")
-                .build()
+                .build(),
         )
         Assert.assertEquals(
-            "baz", appData.getNameSpacedData("foo")
-                .getDataElementString("foo", "bar")
+            "baz",
+            appData.getNameSpacedData("foo")
+                .getDataElementString("foo", "bar"),
         )
         testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
@@ -75,10 +77,11 @@ class SimpleApplicationDataTest {
         appData.setString("foo", "bar")
         Assert.assertEquals("bar", appData.getString("foo"))
         val numOnDataSetCalled = intArrayOf(0)
-        testEncodingConsistency(appData,
+        testEncodingConsistency(
+            appData,
             SimpleApplicationData.decodeFromCbor(
-                appData.encodeAsCbor()
-            ) { key: String? -> numOnDataSetCalled[0] += 1 }
+                appData.encodeAsCbor(),
+            ) { key: String? -> numOnDataSetCalled[0] += 1 },
         )
         Assert.assertEquals(0, numOnDataSetCalled[0].toLong())
     }

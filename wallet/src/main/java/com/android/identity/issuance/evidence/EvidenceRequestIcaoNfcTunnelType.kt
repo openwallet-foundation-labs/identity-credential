@@ -38,5 +38,5 @@ enum class EvidenceRequestIcaoNfcTunnelType {
      * [EvidenceRequestIcaoNfcTunnel.progressPercent] indicates approximate progress of the reading
      * step.
      */
-    READING
+    READING,
 }

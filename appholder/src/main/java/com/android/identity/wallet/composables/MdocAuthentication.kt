@@ -19,49 +19,51 @@ import com.android.identity.wallet.composables.state.MdocAuthStateOption
 fun MdocAuthentication(
     modifier: Modifier = Modifier,
     state: MdocAuthOption,
-    onMdocAuthOptionChange: (newValue: MdocAuthStateOption) -> Unit
+    onMdocAuthOptionChange: (newValue: MdocAuthStateOption) -> Unit,
 ) {
     LabeledUserInput(
         modifier = modifier,
-        label = stringResource(id = R.string.mdoc_authentication_label)
+        label = stringResource(id = R.string.mdoc_authentication_label),
     ) {
         var expanded by remember { mutableStateOf(false) }
         val alpha = if (state.isEnabled) 1f else .5f
-        val clickModifier = if (state.isEnabled) {
-            Modifier.clickable { expanded = true }
-        } else {
-            Modifier
-        }
+        val clickModifier =
+            if (state.isEnabled) {
+                Modifier.clickable { expanded = true }
+            } else {
+                Modifier
+            }
         OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(clickModifier)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .alpha(alpha)
+                    .then(clickModifier),
         ) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = mdocAuthOptionLabelFor(state.mDocAuthentication)
+                label = mdocAuthOptionLabelFor(state.mDocAuthentication),
             )
             DropDownIndicator()
         }
         DropdownMenu(
             modifier = Modifier.fillMaxWidth(0.8f),
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
         ) {
             TextDropDownRow(
                 label = stringResource(id = R.string.mdoc_auth_ecdsa),
                 onSelected = {
                     onMdocAuthOptionChange(MdocAuthStateOption.ECDSA)
                     expanded = false
-                }
+                },
             )
             TextDropDownRow(
                 label = stringResource(id = R.string.mdoc_auth_mac),
                 onSelected = {
                     onMdocAuthOptionChange(MdocAuthStateOption.MAC)
                     expanded = false
-                }
+                },
             )
         }
     }

@@ -40,8 +40,7 @@ class DocumentTypeRepository {
      *
      * @param documentType the Document Type to add
      */
-    fun addDocumentType(documentType: DocumentType) =
-        _documentTypes.add(documentType)
+    fun addDocumentType(documentType: DocumentType) = _documentTypes.add(documentType)
 
     /**
      * Gets the first [DocumentType] in [documentTypes] with a given mdoc doctype.

@@ -38,12 +38,12 @@ class EngagementParserTest {
         Assert.assertNull(cmBle.peripheralServerModeUuid)
         Assert.assertEquals(
             "45efef74-2b2c-4837-a9a3-b0e1d05a6917",
-            cmBle.centralClientModeUuid.toString()
+            cmBle.centralClientModeUuid.toString(),
         )
         val eDeviceKeyBytes = engagement.eSenderKeyBytes
         Assert.assertEquals(
             TestVectors.ISO_18013_5_ANNEX_D_E_DEVICE_KEY_BYTES,
-            eDeviceKeyBytes.toHex
+            eDeviceKeyBytes.toHex,
         )
     }
 }

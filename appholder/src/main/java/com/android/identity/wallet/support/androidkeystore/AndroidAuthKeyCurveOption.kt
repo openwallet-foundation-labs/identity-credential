@@ -6,7 +6,10 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 enum class AndroidAuthKeyCurveOption : Parcelable {
-    P_256, Ed25519, X25519;
+    P_256,
+    Ed25519,
+    X25519,
+    ;
 
     fun toEcCurve(): EcCurve =
         when (this) {

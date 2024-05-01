@@ -30,13 +30,13 @@ data class DocumentDetails(
     val typeName: String,
     val portrait: Bitmap?,
     val signatureOrUsualMark: Bitmap?,
-    val attributes: Map<String, String>
+    val attributes: Map<String, String>,
 )
 
 private data class VisitNamespaceResult(
     val portrait: ByteArray?,
     val signatureOrUsualMark: ByteArray?,
-    val keysAndValues: Map<String, String>
+    val keysAndValues: Map<String, String>,
 )
 
 private fun visitNamespace(
@@ -60,16 +60,19 @@ private fun visitNamespace(
         var elementValueAsString: String? = null
 
         if (mdocDataElement != null) {
-            elementValueAsString = mdocDataElement.renderValue(
-                value = Cbor.decode(encodedElementValue),
-                trueFalseStrings = Pair(
-                    context.resources.getString(R.string.document_details_boolean_false_value),
-                    context.resources.getString(R.string.document_details_boolean_true_value),
+            elementValueAsString =
+                mdocDataElement.renderValue(
+                    value = Cbor.decode(encodedElementValue),
+                    trueFalseStrings =
+                        Pair(
+                            context.resources.getString(R.string.document_details_boolean_false_value),
+                            context.resources.getString(R.string.document_details_boolean_true_value),
+                        ),
                 )
-            )
 
             if (mdocDataElement.attribute.type == DocumentAttributeType.Picture &&
-                namespaceName == DrivingLicense.MDL_NAMESPACE) {
+                namespaceName == DrivingLicense.MDL_NAMESPACE
+            ) {
                 when (mdocDataElement.attribute.identifier) {
                     "portrait" -> {
                         portrait = elementValue.asBstr
@@ -85,10 +88,11 @@ private fun visitNamespace(
         }
 
         if (elementValueAsString == null) {
-            elementValueAsString = Cbor.toDiagnostics(
-                encodedElementValue,
-                setOf(DiagnosticOption.BSTR_PRINT_LENGTH)
-            )
+            elementValueAsString =
+                Cbor.toDiagnostics(
+                    encodedElementValue,
+                    setOf(DiagnosticOption.BSTR_PRINT_LENGTH),
+                )
         }
 
         val elementName = mdocDataElement?.attribute?.displayName ?: elementIdentifier
@@ -99,7 +103,7 @@ private fun visitNamespace(
 
 fun Document.renderDocumentDetails(
     context: Context,
-    documentTypeRepository: DocumentTypeRepository
+    documentTypeRepository: DocumentTypeRepository,
 ): DocumentDetails {
     if (certifiedCredentials.size == 0) {
         return DocumentDetails("Unknown", null, null, mapOf())
@@ -120,18 +124,21 @@ fun Document.renderDocumentDetails(
     val kvPairs = mutableMapOf<String, String>()
     for (namespaceName in mso.valueDigestNamespaces) {
         val digestIdMapping = documentData.digestIdMapping[namespaceName] ?: continue
-        val result = visitNamespace(
-            context,
-            documentType?.mdocDocumentType,
-            namespaceName,
-            digestIdMapping
-        )
+        val result =
+            visitNamespace(
+                context,
+                documentType?.mdocDocumentType,
+                namespaceName,
+                digestIdMapping,
+            )
         if (result.portrait != null) {
             portrait = Jpeg2kConverter.decodeByteArray(context, result.portrait)
         }
         if (result.signatureOrUsualMark != null) {
-            signatureOrUsualMark = Jpeg2kConverter.decodeByteArray(
-                context, result.signatureOrUsualMark)
+            signatureOrUsualMark =
+                Jpeg2kConverter.decodeByteArray(
+                    context, result.signatureOrUsualMark,
+                )
         }
         kvPairs += result.keysAndValues
     }

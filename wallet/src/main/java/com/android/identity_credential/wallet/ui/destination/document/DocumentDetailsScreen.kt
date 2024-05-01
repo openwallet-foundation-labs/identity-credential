@@ -46,7 +46,6 @@ import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import kotlinx.coroutines.launch
 
-
 private const val TAG = "DocumentDetailsScreen"
 
 @Composable
@@ -54,7 +53,7 @@ fun DocumentDetailsScreen(
     documentId: String,
     documentModel: DocumentModel,
     requireAuthentication: Boolean,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
 ) {
     val documentInfo = documentModel.getDocumentInfo(documentId)
     if (documentInfo == null) {
@@ -68,18 +67,18 @@ fun DocumentDetailsScreen(
     var needAuthBeforeShowing = remember { mutableStateOf(requireAuthentication) }
 
     Box(
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight(),
     ) {
-
         ScreenWithAppBarAndBackButton(
             title = stringResource(R.string.document_details_screen_title),
-            onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
+            onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
         ) {
             if (needAuthBeforeShowing.value) {
                 DocumentAuthenticationRequired(
                     documentInfo,
                     needAuthBeforeShowing,
-                    onNavigate)
+                    onNavigate,
+                )
             } else {
                 DocumentDetails(documentInfo)
             }
@@ -88,7 +87,7 @@ fun DocumentDetailsScreen(
         if (!needAuthBeforeShowing.value) {
             Column(
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center),
             ) {
                 Text(
                     text = stringResource(id = R.string.document_details_screen_disclaimer),
@@ -97,15 +96,17 @@ fun DocumentDetailsScreen(
                     color = Color(red = 255, green = 128, blue = 128, alpha = 192),
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
-                    style = TextStyle(
-                        fontSize = 30.sp,
-                        shadow = Shadow(
-                            color = Color.Black,
-                            offset = Offset(0f, 0f),
-                            blurRadius = 2f
+                    style =
+                        TextStyle(
+                            fontSize = 30.sp,
+                            shadow =
+                                Shadow(
+                                    color = Color.Black,
+                                    offset = Offset(0f, 0f),
+                                    blurRadius = 2f,
+                                ),
                         ),
-                    ),
-                    modifier = Modifier.rotate(-30f)
+                    modifier = Modifier.rotate(-30f),
                 )
             }
         }
@@ -116,12 +117,12 @@ fun DocumentDetailsScreen(
 private fun DocumentAuthenticationRequired(
     documentInfo: DocumentInfo,
     needAuthBeforeShowing: MutableState<Boolean>,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val activity = LocalContext.current
     SideEffect {
-        coroutineScope.launch() {
+        coroutineScope.launch {
             // TODO: unlock one of the Credentials instead so we support other kind of
             //  authentications methods too, including e.g. passphrase
             showBiometricPrompt(
@@ -129,10 +130,11 @@ private fun DocumentAuthenticationRequired(
                 title = "Use your screen lock",
                 subtitle = "Authentication is required to view document data",
                 cryptoObject = null,
-                userAuthenticationTypes = setOf(
-                    UserAuthenticationType.LSKF,
-                    UserAuthenticationType.BIOMETRIC
-                ),
+                userAuthenticationTypes =
+                    setOf(
+                        UserAuthenticationType.LSKF,
+                        UserAuthenticationType.BIOMETRIC,
+                    ),
                 requireConfirmation = false,
                 onSuccess = {
                     needAuthBeforeShowing.value = false
@@ -142,35 +144,34 @@ private fun DocumentAuthenticationRequired(
                 },
                 onError = {
                     onNavigate(WalletDestination.PopBackStack.route)
-                }
+                },
             )
         }
     }
 }
 
 @Composable
-private fun DocumentDetails(
-    documentInfo: DocumentInfo,
-) {
-    Column() {
+private fun DocumentDetails(documentInfo: DocumentInfo) {
+    Column {
         Text(
             text = stringResource(R.string.document_details_screen_flash_pass_lecture),
             textAlign = TextAlign.Center,
             fontStyle = FontStyle.Italic,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier.padding(8.dp),
         )
 
         if (documentInfo.attributePortrait != null) {
             Row(
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Image(
                     bitmap = documentInfo.attributePortrait.asImageBitmap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .size(200.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .size(200.dp),
                     contentDescription = stringResource(R.string.accessibility_portrait),
                 )
             }
@@ -182,14 +183,15 @@ private fun DocumentDetails(
 
         if (documentInfo.attributeSignatureOrUsualMark != null) {
             Row(
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Image(
                     bitmap = documentInfo.attributeSignatureOrUsualMark.asImageBitmap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .size(75.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .size(75.dp),
                     contentDescription = stringResource(R.string.accessibility_signature),
                 )
             }

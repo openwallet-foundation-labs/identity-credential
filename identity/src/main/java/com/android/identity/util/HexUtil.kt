@@ -13,7 +13,10 @@ object HexUtil {
      * @param upperCase if `true`, will use upper-case characters, otherwise lower-case is used.
      * @return a string with hexadecimal numbers.
      */
-    fun toHex(bytes: ByteArray, upperCase: Boolean = false): String {
+    fun toHex(
+        bytes: ByteArray,
+        upperCase: Boolean = false,
+    ): String {
         val sb = StringBuilder(bytes.size * 2)
         for (n in 0 until bytes.size) {
             val b = bytes[n]

@@ -4,7 +4,6 @@ package com.android.identity.issuance
  * A flow used to create a new document.
  */
 interface RegistrationFlow {
-
     /**
      * Gets the configuration for registering a document with the issuer.
      *

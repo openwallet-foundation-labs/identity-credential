@@ -25,7 +25,10 @@ class EphemeralStorageEngine : StorageEngine {
 
     override fun get(key: String): ByteArray? = data[key]
 
-    override fun put(key: String, data: ByteArray) {
+    override fun put(
+        key: String,
+        data: ByteArray,
+    ) {
         this.data[key] = data
     }
 

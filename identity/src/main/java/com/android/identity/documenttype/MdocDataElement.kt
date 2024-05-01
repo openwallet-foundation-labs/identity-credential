@@ -18,8 +18,8 @@ package com.android.identity.documenttype
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.Tagged
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -38,7 +38,7 @@ import kotlinx.datetime.toLocalDateTime
  */
 data class MdocDataElement(
     val attribute: DocumentAttribute,
-    val mandatory: Boolean
+    val mandatory: Boolean,
 ) {
     companion object {
         private const val TAG = "MdocDataElement"
@@ -62,88 +62,104 @@ data class MdocDataElement(
     fun renderValue(
         value: DataItem,
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
-        trueFalseStrings: Pair<String, String> = Pair("false", "true")
+        trueFalseStrings: Pair<String, String> = Pair("false", "true"),
     ): String {
         val diagnosticsOptions = setOf(DiagnosticOption.BSTR_PRINT_LENGTH)
-        val ret = try {
-            when (attribute.type) {
-                // TODO: translations? maybe take the strings to use for true/false as a param
-                DocumentAttributeType.Boolean -> {
-                    if (value.asBoolean)
-                        trueFalseStrings.second
-                    else
-                        trueFalseStrings.first
-                }
-
-                DocumentAttributeType.ComplexType -> Cbor.toDiagnostics(value)
-
-                DocumentAttributeType.Date -> {
-                    // value can be either tdate or full-date
-                    val tagNumber = (value as Tagged).tagNumber
-                    val dt = when (tagNumber) {
-                        Tagged.FULL_DATE_STRING -> {
-                            LocalDateTime(
-                                LocalDate.parse(value.asTagged.asTstr),
-                                LocalTime(0, 0, 0)
-                            )
-                        }
-                        Tagged.DATE_TIME_STRING -> {
-                            val pointInTime = Instant.parse(value.asTagged.asTstr)
-                            pointInTime.toLocalDateTime(timeZone)
-                        }
-                        else -> {
-                            throw IllegalArgumentException("Unexpected tag $tagNumber")
+        val ret =
+            try {
+                when (attribute.type) {
+                    // TODO: translations? maybe take the strings to use for true/false as a param
+                    DocumentAttributeType.Boolean -> {
+                        if (value.asBoolean) {
+                            trueFalseStrings.second
+                        } else {
+                            trueFalseStrings.first
                         }
                     }
-                    // TODO: use DateTimeFormat in kotlinx-datetime 0.6.0 when released
-                    String.format(
-                        "%04d-%02d-%02d", dt.year, dt.monthNumber, dt.dayOfMonth
-                    )
-                }
 
-                DocumentAttributeType.DateTime -> {
-                    // value can be either tdate or full-date
-                    val tagNumber = (value as Tagged).tagNumber
-                    val dt = when (tagNumber) {
-                        Tagged.FULL_DATE_STRING -> {
-                            LocalDateTime(
-                                LocalDate.parse(value.asTagged.asTstr),
-                                LocalTime(0, 0, 0)
-                            )
-                        }
-                        Tagged.DATE_TIME_STRING -> {
-                            val pointInTime = Instant.parse(value.asTagged.asTstr)
-                            pointInTime.toLocalDateTime(timeZone)
-                        }
-                        else -> {
-                            throw IllegalArgumentException("Unexpected tag $tagNumber")
-                        }
+                    DocumentAttributeType.ComplexType -> Cbor.toDiagnostics(value)
+
+                    DocumentAttributeType.Date -> {
+                        // value can be either tdate or full-date
+                        val tagNumber = (value as Tagged).tagNumber
+                        val dt =
+                            when (tagNumber) {
+                                Tagged.FULL_DATE_STRING -> {
+                                    LocalDateTime(
+                                        LocalDate.parse(value.asTagged.asTstr),
+                                        LocalTime(0, 0, 0),
+                                    )
+                                }
+                                Tagged.DATE_TIME_STRING -> {
+                                    val pointInTime = Instant.parse(value.asTagged.asTstr)
+                                    pointInTime.toLocalDateTime(timeZone)
+                                }
+                                else -> {
+                                    throw IllegalArgumentException("Unexpected tag $tagNumber")
+                                }
+                            }
+                        // TODO: use DateTimeFormat in kotlinx-datetime 0.6.0 when released
+                        String.format(
+                            "%04d-%02d-%02d",
+                            dt.year,
+                            dt.monthNumber,
+                            dt.dayOfMonth,
+                        )
                     }
-                    // TODO: use DateTimeFormat in kotlinx-datetime 0.6.0 when released
-                    String.format(
-                        "%04d-%02d-%02d %02d:%02d:%02d",
-                        dt.year, dt.monthNumber, dt.dayOfMonth, dt.time.hour, dt.time.minute, dt.time.second
-                    )
-                }
 
-                is DocumentAttributeType.IntegerOptions -> {
-                    val option = attribute.type.options.find { it.value == value.asNumber.toInt() }
-                    option?.displayName ?: value.asNumber.toString()
+                    DocumentAttributeType.DateTime -> {
+                        // value can be either tdate or full-date
+                        val tagNumber = (value as Tagged).tagNumber
+                        val dt =
+                            when (tagNumber) {
+                                Tagged.FULL_DATE_STRING -> {
+                                    LocalDateTime(
+                                        LocalDate.parse(value.asTagged.asTstr),
+                                        LocalTime(0, 0, 0),
+                                    )
+                                }
+                                Tagged.DATE_TIME_STRING -> {
+                                    val pointInTime = Instant.parse(value.asTagged.asTstr)
+                                    pointInTime.toLocalDateTime(timeZone)
+                                }
+                                else -> {
+                                    throw IllegalArgumentException("Unexpected tag $tagNumber")
+                                }
+                            }
+                        // TODO: use DateTimeFormat in kotlinx-datetime 0.6.0 when released
+                        String.format(
+                            "%04d-%02d-%02d %02d:%02d:%02d",
+                            dt.year,
+                            dt.monthNumber,
+                            dt.dayOfMonth,
+                            dt.time.hour,
+                            dt.time.minute,
+                            dt.time.second,
+                        )
+                    }
+
+                    is DocumentAttributeType.IntegerOptions -> {
+                        val option = attribute.type.options.find { it.value == value.asNumber.toInt() }
+                        option?.displayName ?: value.asNumber.toString()
+                    }
+                    DocumentAttributeType.Number -> value.asNumber.toString()
+                    DocumentAttributeType.Picture -> Cbor.toDiagnostics(value, diagnosticsOptions)
+                    DocumentAttributeType.String -> value.asTstr
+                    is DocumentAttributeType.StringOptions -> {
+                        val option = attribute.type.options.find { it.value == value.asTstr }
+                        option?.displayName ?: value.asTstr
+                    }
                 }
-                DocumentAttributeType.Number -> value.asNumber.toString()
-                DocumentAttributeType.Picture -> Cbor.toDiagnostics(value, diagnosticsOptions)
-                DocumentAttributeType.String -> value.asTstr
-                is DocumentAttributeType.StringOptions -> {
-                    val option = attribute.type.options.find { it.value == value.asTstr }
-                    option?.displayName ?: value.asTstr
-                }
+            } catch (e: Throwable) {
+                val diagnosticsString = Cbor.toDiagnostics(value, diagnosticsOptions)
+                Logger.w(
+                    TAG,
+                    "Error decoding value $diagnosticsString for data element " +
+                        "${attribute.identifier}, falling back to diagnostics",
+                    e,
+                )
+                diagnosticsString
             }
-        } catch (e: Throwable) {
-            val diagnosticsString = Cbor.toDiagnostics(value, diagnosticsOptions)
-            Logger.w(TAG, "Error decoding value $diagnosticsString for data element " +
-                    "${attribute.identifier}, falling back to diagnostics", e)
-            diagnosticsString
-        }
 
         return ret
     }

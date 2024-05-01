@@ -4,8 +4,8 @@ import com.android.identity.cbor.annotation.CborMerge
 
 data class EvidenceResponseIcaoPassiveAuthentication(
     @com.android.identity.cbor.annotation.CborMerge
-    val dataGroups: Map<Int, ByteArray>,  // data from the passport (DG1-DG15 indexed by 1-15)
-    val securityObject: ByteArray  // Card Security Object (SOD)
+    val dataGroups: Map<Int, ByteArray>, // data from the passport (DG1-DG15 indexed by 1-15)
+    val securityObject: ByteArray, // Card Security Object (SOD)
 ) : EvidenceResponse() {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -28,4 +28,3 @@ data class EvidenceResponseIcaoPassiveAuthentication(
         return result
     }
 }
-

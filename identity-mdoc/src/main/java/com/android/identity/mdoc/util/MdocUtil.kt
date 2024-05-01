@@ -21,9 +21,6 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.RawCbor
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
-import com.android.identity.document.DocumentRequest
-import com.android.identity.document.DocumentRequest.DataElement
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CreateCertificateOption
@@ -32,6 +29,9 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509v3Extension
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.DocumentRequest.DataElement
+import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.util.Logger
@@ -102,7 +102,7 @@ object MdocUtil {
         data: NameSpacedData,
         randomProvider: Random,
         dataElementRandomSize: Int,
-        overrides: Map<String, Map<String, ByteArray>>?
+        overrides: Map<String, Map<String, ByteArray>>?,
     ): Map<String, List<ByteArray>> {
         // ISO 18013-5 section 9.1.2.5 Message digest function says that random must
         // be at least 16 bytes long.
@@ -139,13 +139,14 @@ object MdocUtil {
                         encodedValue = overriddenValue
                     }
                 }
-                val issuerSignedItem = CborMap.builder()
-                    .put("digestID", digestId)
-                    .put("random", random)
-                    .put("elementIdentifier", elemName)
-                    .put("elementValue", RawCbor(encodedValue!!))
-                    .end()
-                    .build()
+                val issuerSignedItem =
+                    CborMap.builder()
+                        .put("digestID", digestId)
+                        .put("random", random)
+                        .put("elementIdentifier", elemName)
+                        .put("elementValue", RawCbor(encodedValue!!))
+                        .end()
+                        .build()
                 val encodedIssuerSignedItem = Cbor.encode(issuerSignedItem)
                 val encodedIssuerSignedItemBytes = Cbor.encode(Tagged(24, Bstr(encodedIssuerSignedItem)))
                 list.add(encodedIssuerSignedItemBytes)
@@ -171,7 +172,7 @@ object MdocUtil {
     @JvmStatic
     fun stripIssuerNameSpaces(
         issuerNameSpaces: Map<String, List<ByteArray>>,
-        exceptions: Map<String, List<String>>?
+        exceptions: Map<String, List<String>>?,
     ): Map<String, List<ByteArray>> {
         val ret = mutableMapOf<String, List<ByteArray>>()
         for (nameSpaceName in issuerNameSpaces.keys) {
@@ -192,9 +193,10 @@ object MdocUtil {
                 val encodedIssuerSignedItem = Cbor.encode(issuerSignedItem)
                 val modifiedEncodedIssuerSignedItem =
                     issuerSignedItemClearValue(encodedIssuerSignedItem)
-                val modifiedEncodedIssuerSignedItemBytes = Cbor.encode(
-                    Tagged(24, Bstr(modifiedEncodedIssuerSignedItem))
-                )
+                val modifiedEncodedIssuerSignedItemBytes =
+                    Cbor.encode(
+                        Tagged(24, Bstr(modifiedEncodedIssuerSignedItem)),
+                    )
                 list.add(modifiedEncodedIssuerSignedItemBytes)
             }
             ret[nameSpaceName] = list
@@ -212,14 +214,14 @@ object MdocUtil {
      * @throws IllegalArgumentException if the digest algorithm isn't supported.
      */
     @JvmStatic
-
     fun calculateDigestsForNameSpace(
         nameSpaceName: String,
         issuerNameSpaces: Map<String, List<ByteArray>>,
-        digestAlgorithm: Algorithm
+        digestAlgorithm: Algorithm,
     ): Map<Long, ByteArray> {
-        val list = issuerNameSpaces[nameSpaceName]
-            ?: throw IllegalArgumentException("No namespace $nameSpaceName in IssuerNameSpaces")
+        val list =
+            issuerNameSpaces[nameSpaceName]
+                ?: throw IllegalArgumentException("No namespace $nameSpaceName in IssuerNameSpaces")
         val ret: MutableMap<Long, ByteArray> = LinkedHashMap()
         for (encodedIssuerSignedItemBytes in list) {
             val issuerSignedItem = Cbor.decode(encodedIssuerSignedItemBytes).asTaggedEncodedCbor
@@ -230,9 +232,7 @@ object MdocUtil {
     }
 
     // Note: this also unwraps the bstr tagging of the IssuerSignedItem!
-    private fun calcIssuerSignedItemMap(
-        issuerNameSpaces: Map<String, List<ByteArray>>
-    ): Map<String, Map<String, ByteArray>> {
+    private fun calcIssuerSignedItemMap(issuerNameSpaces: Map<String, List<ByteArray>>): Map<String, Map<String, ByteArray>> {
         val ret: MutableMap<String, Map<String, ByteArray>> = LinkedHashMap()
         for (nameSpaceName in issuerNameSpaces.keys) {
             val innerMap: MutableMap<String, ByteArray> = LinkedHashMap()
@@ -249,7 +249,7 @@ object MdocUtil {
     private fun lookupIssuerSignedMap(
         issuerSignedMap: Map<String, Map<String, ByteArray>>,
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ): ByteArray? {
         val innerMap = issuerSignedMap[nameSpaceName] ?: return null
         return innerMap[dataElementName]
@@ -278,7 +278,7 @@ object MdocUtil {
     fun mergeIssuerNamesSpaces(
         request: DocumentRequest,
         documentData: NameSpacedData,
-        staticAuthData: StaticAuthData
+        staticAuthData: StaticAuthData,
     ): Map<String, MutableList<ByteArray>> {
         val issuerSignedItemMap = calcIssuerSignedItemMap(staticAuthData.digestIdMapping)
         val issuerSignedData: MutableMap<String, MutableList<ByteArray>> = LinkedHashMap()
@@ -287,9 +287,10 @@ object MdocUtil {
                 continue
             }
             if (!documentData.hasDataElement(nameSpaceName, dataElementName)) {
-                Logger.d(TAG,
-                    "No data element in document for nameSpace $nameSpaceName "
-                            + " dataElementName $dataElementName"
+                Logger.d(
+                    TAG,
+                    "No data element in document for nameSpace $nameSpaceName " +
+                        " dataElementName $dataElementName",
                 )
                 continue
             }
@@ -326,9 +327,7 @@ object MdocUtil {
      * @return a [DocumentRequest] representing for the given [com.android.identity.mdoc.request.DeviceRequestParser.DocRequest].
      */
     @JvmStatic
-    fun generateDocumentRequest(
-        documentRequest: DeviceRequestParser.DocRequest
-    ): DocumentRequest {
+    fun generateDocumentRequest(documentRequest: DeviceRequestParser.DocRequest): DocumentRequest {
         val elements: MutableList<DataElement> = ArrayList()
         for (namespaceName in documentRequest.namespaces) {
             for (dataElementName in documentRequest.getEntryNames(namespaceName!!)) {
@@ -359,7 +358,7 @@ object MdocUtil {
         validFrom: Instant,
         validUntil: Instant,
         issuerAltName: String,
-        crlUrl: String
+        crlUrl: String,
     ): Certificate {
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
@@ -387,8 +386,8 @@ object MdocUtil {
             X509v3Extension(
                 Extension.keyUsage.toString(),
                 true,
-                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded
-            )
+                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded,
+            ),
         )
 
         // From 18013-5 table B.1: non-critical, Email or URL
@@ -397,8 +396,8 @@ object MdocUtil {
             X509v3Extension(
                 Extension.issuerAlternativeName.toString(),
                 false,
-                GeneralName(GeneralName.uniformResourceIdentifier, issuerAltName).encoded
-            )
+                GeneralName(GeneralName.uniformResourceIdentifier, issuerAltName).encoded,
+            ),
         )
 
         // From 18013-5 table B.1: critical, CA=true, pathLenConstraint=0
@@ -406,8 +405,8 @@ object MdocUtil {
             X509v3Extension(
                 Extension.basicConstraints.toString(),
                 true,
-                BasicConstraints(0).encoded
-            )
+                BasicConstraints(0).encoded,
+            ),
         )
 
         // From 18013-5 table B.1: non-critical, The ‘reasons’ and ‘cRL Issuer’
@@ -416,18 +415,18 @@ object MdocUtil {
             DistributionPoint(
                 DistributionPointName(
                     GeneralNames(
-                        GeneralName(GeneralName.uniformResourceIdentifier, crlUrl)
-                    )
+                        GeneralName(GeneralName.uniformResourceIdentifier, crlUrl),
+                    ),
                 ),
                 null,
-                null
+                null,
             )
         extensions.add(
             X509v3Extension(
                 Extension.cRLDistributionPoints.toString(),
                 false,
-                CRLDistPoint(listOf(distributionPoint).toTypedArray()).encoded
-            )
+                CRLDistPoint(listOf(distributionPoint).toTypedArray()).encoded,
+            ),
         )
 
         return Crypto.createX509v3Certificate(
@@ -443,9 +442,9 @@ object MdocUtil {
             // 18013-5 Annex C requires both of these to be present
             setOf(
                 CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER
+                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER,
             ),
-            extensions
+            extensions,
         )
     }
 
@@ -472,7 +471,6 @@ object MdocUtil {
         validFrom: Instant,
         validUntil: Instant,
     ): Certificate {
-
         val iacaCertJava = iacaCert.javaX509Certificate
 
         // Must be same exact binary value as the subject of IACA certificate.
@@ -486,8 +484,8 @@ object MdocUtil {
             X509v3Extension(
                 Extension.keyUsage.toString(),
                 true,
-                KeyUsage(KeyUsage.digitalSignature).encoded
-            )
+                KeyUsage(KeyUsage.digitalSignature).encoded,
+            ),
         )
 
         extensions.add(
@@ -495,9 +493,9 @@ object MdocUtil {
                 Extension.extendedKeyUsage.toString(),
                 true,
                 ExtendedKeyUsage(
-                    KeyPurposeId.getInstance(ASN1ObjectIdentifier("1.0.18013.5.1.2"))
-                ).encoded
-            )
+                    KeyPurposeId.getInstance(ASN1ObjectIdentifier("1.0.18013.5.1.2")),
+                ).encoded,
+            ),
         )
 
         // Copy cRLDistributionPoints and issuerAlternativeName from IACA cert
@@ -505,33 +503,34 @@ object MdocUtil {
             X509v3Extension(
                 Extension.cRLDistributionPoints.toString(),
                 false,
-                iacaCertJava.getExtensionValue(Extension.cRLDistributionPoints.toString())
-            )
+                iacaCertJava.getExtensionValue(Extension.cRLDistributionPoints.toString()),
+            ),
         )
         extensions.add(
             X509v3Extension(
                 Extension.issuerAlternativeName.toString(),
                 false,
-                iacaCertJava.getExtensionValue(Extension.issuerAlternativeName.toString())
-            )
+                iacaCertJava.getExtensionValue(Extension.issuerAlternativeName.toString()),
+            ),
         )
 
-        val documentSigningKeyCert = Crypto.createX509v3Certificate(
-            dsKey,
-            iacaKey,
-            iacaCert,
-            Algorithm.ES256,
-            serial,
-            subject,
-            issuer,
-            validFrom,
-            validUntil,
-            setOf(
-                CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE
-            ),
-            extensions
-        )
+        val documentSigningKeyCert =
+            Crypto.createX509v3Certificate(
+                dsKey,
+                iacaKey,
+                iacaCert,
+                Algorithm.ES256,
+                serial,
+                subject,
+                issuer,
+                validFrom,
+                validUntil,
+                setOf(
+                    CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                    CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE,
+                ),
+                extensions,
+            )
 
         return documentSigningKeyCert
     }
@@ -543,7 +542,7 @@ object MdocUtil {
 
     private fun issuerSignedItemSetValue(
         encodedIssuerSignedItem: ByteArray,
-        encodedElementValue: ByteArray
+        encodedElementValue: ByteArray,
     ): ByteArray {
         val map = Cbor.decode(encodedIssuerSignedItem)
         val builder = CborMap.builder()
@@ -556,6 +555,4 @@ object MdocUtil {
         }
         return Cbor.encode(builder.end().build())
     }
-
-
 }

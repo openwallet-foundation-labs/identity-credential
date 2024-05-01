@@ -31,7 +31,6 @@ import com.android.identity_credential.wallet.navigation.WalletNavigation
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 
 class MainActivity : FragmentActivity() {
-
     companion object {
         private const val TAG = "MainActivity"
     }
@@ -40,21 +39,28 @@ class MainActivity : FragmentActivity() {
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
 
-    private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
-        PermissionTracker(this, mapOf(
-            Manifest.permission.CAMERA to R.string.permission_camera,
-            Manifest.permission.NFC to R.string.permission_nfc,
-            Manifest.permission.BLUETOOTH_ADVERTISE to R.string.permission_bluetooth_advertise,
-            Manifest.permission.BLUETOOTH_SCAN to R.string.permission_bluetooth_scan,
-            Manifest.permission.BLUETOOTH_CONNECT to R.string.permission_bluetooth_connect
-        ))
-    } else {
-        PermissionTracker(this, mapOf(
-            Manifest.permission.CAMERA to R.string.permission_camera,
-            Manifest.permission.NFC to R.string.permission_nfc,
-            Manifest.permission.ACCESS_FINE_LOCATION to R.string.permission_bluetooth_connect
-        ))
-    }
+    private val permissionTracker: PermissionTracker =
+        if (Build.VERSION.SDK_INT >= 31) {
+            PermissionTracker(
+                this,
+                mapOf(
+                    Manifest.permission.CAMERA to R.string.permission_camera,
+                    Manifest.permission.NFC to R.string.permission_nfc,
+                    Manifest.permission.BLUETOOTH_ADVERTISE to R.string.permission_bluetooth_advertise,
+                    Manifest.permission.BLUETOOTH_SCAN to R.string.permission_bluetooth_scan,
+                    Manifest.permission.BLUETOOTH_CONNECT to R.string.permission_bluetooth_connect,
+                ),
+            )
+        } else {
+            PermissionTracker(
+                this,
+                mapOf(
+                    Manifest.permission.CAMERA to R.string.permission_camera,
+                    Manifest.permission.NFC to R.string.permission_nfc,
+                    Manifest.permission.ACCESS_FINE_LOCATION to R.string.permission_bluetooth_connect,
+                ),
+            )
+        }
 
     override fun onStart() {
         super.onStart()
@@ -73,7 +79,7 @@ class MainActivity : FragmentActivity() {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     val navController = rememberNavController()
 
@@ -84,7 +90,7 @@ class MainActivity : FragmentActivity() {
                         permissionTracker = permissionTracker,
                         sharedPreferences = application.sharedPreferences,
                         qrEngagementViewModel = qrEngagementViewModel,
-                        documentModel = application.documentModel
+                        documentModel = application.documentModel,
                     )
                 }
             }

@@ -16,10 +16,10 @@ import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.cbor.Cbor
-import com.android.identity.documenttype.DocumentAttributeType
-import com.android.identity.documenttype.MdocDataElement
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.MdocDataElement
 import com.android.identity.jpeg2k.Jpeg2kConverter
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.mdl.appreader.R
@@ -38,7 +38,6 @@ import java.security.cert.X509Certificate
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class ShowDocumentFragment : Fragment() {
-
     companion object {
         private const val TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
@@ -55,19 +54,21 @@ class ShowDocumentFragment : Fragment() {
     private lateinit var transferManager: TransferManager
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
-
         _binding = FragmentShowDocumentBinding.inflate(inflater, container, false)
         transferManager = TransferManager.getInstance(requireContext())
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
         return binding.root
-
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         val documents = transferManager.getDeviceResponse().documents
@@ -77,7 +78,7 @@ class ShowDocumentFragment : Fragment() {
         portraitBytes?.let { pb ->
             logDebug("Showing portrait " + pb.size + " bytes")
             binding.ivPortrait.setImageBitmap(
-                Jpeg2kConverter.decodeByteArray(requireContext(), portraitBytes!!)
+                Jpeg2kConverter.decodeByteArray(requireContext(), portraitBytes!!),
             )
             binding.ivPortrait.visibility = View.VISIBLE
         }
@@ -85,7 +86,7 @@ class ShowDocumentFragment : Fragment() {
         signatureBytes?.let { signature ->
             logDebug("Showing signature " + signature.size + " bytes")
             binding.ivSignature.setImageBitmap(
-                Jpeg2kConverter.decodeByteArray(requireContext(), signatureBytes!!)
+                Jpeg2kConverter.decodeByteArray(requireContext(), signatureBytes!!),
             )
             binding.ivSignature.visibility = View.VISIBLE
         }
@@ -96,27 +97,27 @@ class ShowDocumentFragment : Fragment() {
         binding.btCloseConnection.setOnClickListener {
             transferManager.stopVerification(
                 sendSessionTerminationMessage = false,
-                useTransportSpecificSessionTermination = false
+                useTransportSpecificSessionTermination = false,
             )
             hideButtons()
         }
         binding.btCloseTransportSpecific.setOnClickListener {
             transferManager.stopVerification(
                 sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = true
+                useTransportSpecificSessionTermination = true,
             )
             hideButtons()
         }
         binding.btCloseTerminationMessage.setOnClickListener {
             transferManager.stopVerification(
                 sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = false
+                useTransportSpecificSessionTermination = false,
             )
             hideButtons()
         }
         binding.btNewRequest.setOnClickListener {
             findNavController().navigate(
-                ShowDocumentFragmentDirections.actionShowDocumentToRequestOptions(true)
+                ShowDocumentFragmentDirections.actionShowDocumentToRequestOptions(true),
             )
         }
         transferManager.getTransferStatus().observe(viewLifecycleOwner) {
@@ -140,8 +141,9 @@ class ShowDocumentFragment : Fragment() {
 
                 TransferStatus.ERROR -> {
                     Toast.makeText(
-                        requireContext(), "Error with the connection.",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error with the connection.",
+                        Toast.LENGTH_SHORT,
                     ).show()
                     transferManager.disconnect()
                     hideButtons()
@@ -167,33 +169,36 @@ class ShowDocumentFragment : Fragment() {
             if (!checkPortraitPresenceIfRequired(doc)) {
                 // Warn if portrait isn't included in the response.
                 sb.append(
-                    "<h3>WARNING: <font color=\"red\">No portrait image provided "
-                            + "for ${doc.docType}.</font></h3><br>"
+                    "<h3>WARNING: <font color=\"red\">No portrait image provided " +
+                        "for ${doc.docType}.</font></h3><br>",
                 )
                 sb.append(
-                    "<i>This means it's not possible to verify the presenter is the authorized "
-                            + "holder. Be careful doing any business transactions or inquiries until "
-                            + "proper identification is confirmed.</i><br>"
+                    "<i>This means it's not possible to verify the presenter is the authorized " +
+                        "holder. Be careful doing any business transactions or inquiries until " +
+                        "proper identification is confirmed.</i><br>",
                 )
                 sb.append("<br>")
             }
         }
 
         // Get primary color from theme to use in the HTML formatted document.
-        val primaryColor = String.format(
-            "#%06X",
-            0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
-        )
+        val primaryColor =
+            String.format(
+                "#%06X",
+                0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data,
+            )
 
-        val totalDuration = transferManager.getTapToEngagementDurationMillis() +
+        val totalDuration =
+            transferManager.getTapToEngagementDurationMillis() +
                 transferManager.getEngagementToRequestDurationMillis() +
                 transferManager.getRequestToResponseDurationMillis()
         sb.append("Tap to Engagement Received: ${transferManager.getTapToEngagementDurationMillis()} ms<br>")
-        val scanningText = if (transferManager.getBleScanningMillis() > 0) {
-            "${transferManager.getBleScanningMillis()} ms"
-        } else {
-            "N/A"
-        }
+        val scanningText =
+            if (transferManager.getBleScanningMillis() > 0) {
+                "${transferManager.getBleScanningMillis()} ms"
+            } else {
+                "N/A"
+            }
         sb.append("BLE scanning: $scanningText ms<br>")
         sb.append("Engagement Received to Request Sent: ${transferManager.getEngagementToRequestDurationMillis()} ms<br>")
         sb.append("Request Sent to Response Received: ${transferManager.getRequestToResponseDurationMillis()} ms<br>")
@@ -208,13 +213,14 @@ class ShowDocumentFragment : Fragment() {
         for (doc in documents) {
             sb.append("<h3>Doctype: <font color=\"$primaryColor\">${doc.docType}</font></h3>")
             val cc = mutableListOf<X509Certificate>()
-            doc.issuerCertificateChain.certificates.forEach() { c -> cc.add(c.javaX509Certificate) }
+            doc.issuerCertificateChain.certificates.forEach { c -> cc.add(c.javaX509Certificate) }
             var certChain: List<X509Certificate> = cc
             val customValidators = CustomValidators.getByDocType(doc.docType)
-            val result = VerifierApp.trustManagerInstance.verify(
-                chain = certChain,
-                customValidators = customValidators
-            )
+            val result =
+                VerifierApp.trustManagerInstance.verify(
+                    chain = certChain,
+                    customValidators = customValidators,
+                )
             if (result.trustChain.any()) {
                 certChain = result.trustChain
             }
@@ -226,9 +232,10 @@ class ShowDocumentFragment : Fragment() {
             sb.append("${getFormattedCheck(result.isTrusted)}Issuer’s DS Key Recognized: ($commonName)<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
             var macOrSignatureString = "MAC"
-            if (doc.deviceSignedAuthenticatedViaSignature)
+            if (doc.deviceSignedAuthenticatedViaSignature) {
                 macOrSignatureString = "ECDSA"
-            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated (${macOrSignatureString})<br>")
+            }
+            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated ($macOrSignatureString)<br>")
 
             sb.append("<h6>MSO</h6>")
 
@@ -253,10 +260,11 @@ class ShowDocumentFragment : Fragment() {
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
             sb.append("${getFormattedCheck(true)}Curve: <b>${doc.deviceKey.curve}</b><br>")
-            val deviceKeySha1 = FormatUtil.encodeToString(
-                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.javaPublicKey.encoded)
-            )
-            sb.append("${getFormattedCheck(true)}SHA-1: ${deviceKeySha1}<br>")
+            val deviceKeySha1 =
+                FormatUtil.encodeToString(
+                    MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.javaPublicKey.encoded),
+                )
+            sb.append("${getFormattedCheck(true)}SHA-1: $deviceKeySha1<br>")
             // TODO: log DeviceKey's that we've seen and show warning if a DeviceKey is seen
             //  a second time. Also would want button in Settings page to clear the log.
 
@@ -291,10 +299,10 @@ class ShowDocumentFragment : Fragment() {
                             getFormattedCheck(
                                 doc.getIssuerEntryDigestMatch(
                                     ns,
-                                    elem
-                                )
+                                    elem,
+                                ),
                             )
-                        }<b>$name</b> -> $valueStr<br>"
+                        }<b>$name</b> -> $valueStr<br>",
                     )
                 }
                 sb.append("</p><br>")
@@ -303,7 +311,10 @@ class ShowDocumentFragment : Fragment() {
         return sb.toString()
     }
 
-    private fun isPortraitApplicable(docType: String, namespace: String?): Boolean {
+    private fun isPortraitApplicable(
+        docType: String,
+        namespace: String?,
+    ): Boolean {
         val hasPortrait = docType == MDL_DOCTYPE
         val namespaceContainsPortrait = namespace == MDL_NAMESPACE
         return hasPortrait && namespaceContainsPortrait
@@ -333,7 +344,9 @@ class ShowDocumentFragment : Fragment() {
         return true
     }
 
-    private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {
+    private fun Resources.Theme.attr(
+        @AttrRes attribute: Int,
+    ): TypedValue {
         val typedValue = TypedValue()
         if (!resolveAttribute(attribute, typedValue, true)) {
             throw IllegalArgumentException("Failed to resolve attribute: $attribute")
@@ -341,18 +354,20 @@ class ShowDocumentFragment : Fragment() {
         return typedValue
     }
 
-    private fun getFormattedCheck(authenticated: Boolean) = if (authenticated) {
-        "<font color=green>&#x2714;</font> "
-    } else {
-        "<font color=red>&#x274C;</font> "
-    }
-
-    private var callback = object : OnBackPressedCallback(true /* enabled by default */) {
-        override fun handleOnBackPressed() {
-            TransferManager.getInstance(requireContext()).disconnect()
-            findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
+    private fun getFormattedCheck(authenticated: Boolean) =
+        if (authenticated) {
+            "<font color=green>&#x2714;</font> "
+        } else {
+            "<font color=red>&#x274C;</font> "
         }
-    }
+
+    private var callback =
+        object : OnBackPressedCallback(true /* enabled by default */) {
+            override fun handleOnBackPressed() {
+                TransferManager.getInstance(requireContext()).disconnect()
+                findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
+            }
+        }
 
     override fun onDestroyView() {
         super.onDestroyView()

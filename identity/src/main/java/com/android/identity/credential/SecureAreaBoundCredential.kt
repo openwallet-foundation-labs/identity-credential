@@ -31,6 +31,7 @@ import com.android.identity.securearea.SecureArea
 open class SecureAreaBoundCredential : Credential {
     companion object {
         private const val TAG = "SecureAreaBoundCredential"
+
         // This is to avoid collisions with other uses of the Secure Area.
         private const val SECURE_AREA_ALIAS_PREFIX = "SecureAreaBoundCredential_"
     }

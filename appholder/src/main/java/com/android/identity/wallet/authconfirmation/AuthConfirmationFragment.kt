@@ -23,7 +23,6 @@ import com.android.identity.wallet.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class AuthConfirmationFragment : BottomSheetDialogFragment() {
-
     private val viewModel: TransferDocumentViewModel by activityViewModels()
     private val arguments by navArgs<AuthConfirmationFragmentArgs>()
     private var isSendingInProgress = mutableStateOf(false)
@@ -31,7 +30,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val elementsToSign = viewModel.requestedElements()
         val sheetData = mapToConfirmationSheetData(elementsToSign)
@@ -50,7 +49,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                         onCancel = {
                             dismiss()
                             cancelAuthorization()
-                        }
+                        },
                     )
                 }
             }
@@ -65,31 +64,35 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         viewModel.onAuthenticationCancelled()
     }
 
-    private fun mapToConfirmationSheetData(
-        elementsToSign: List<RequestedDocumentData>
-    ): List<ConfirmationSheetData> {
+    private fun mapToConfirmationSheetData(elementsToSign: List<RequestedDocumentData>): List<ConfirmationSheetData> {
         return elementsToSign.map { documentData ->
             viewModel.addDocumentForSigning(documentData)
-            val elements = documentData.requestedElements.map { element ->
-                viewModel.toggleSignedElement(element)
-                val displayName = stringValueFor(
-                    documentData.requestedDocument.docType,
-                    element.namespace,
-                    element.value
-                )
-                ConfirmationSheetData.DocumentElement(displayName, element)
-            }
+            val elements =
+                documentData.requestedElements.map { element ->
+                    viewModel.toggleSignedElement(element)
+                    val displayName =
+                        stringValueFor(
+                            documentData.requestedDocument.docType,
+                            element.namespace,
+                            element.value,
+                        )
+                    ConfirmationSheetData.DocumentElement(displayName, element)
+                }
             ConfirmationSheetData(documentData.userReadableName, elements)
         }
     }
 
-    private fun stringValueFor(docType: String, namespace: String, element: String): String {
+    private fun stringValueFor(
+        docType: String,
+        namespace: String,
+        element: String,
+    ): String {
         return HolderApp.documentTypeRepositoryInstance
             .getDocumentTypeForMdoc(docType)
             ?.mdocDocumentType
             ?.namespaces?.get(
-            namespace
-        )?.dataElements?.get(element)?.attribute?.displayName ?: element
+                namespace,
+            )?.dataElements?.get(element)?.attribute?.displayName ?: element
     }
 
     private fun sendResponse() {
@@ -97,7 +100,8 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         viewModel.sendResponseForSelection(
             onResultReady = {
                 onSendResponseResult(it)
-            })
+            },
+        )
     }
 
     private fun getSubtitle(): String {
@@ -117,11 +121,11 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     private fun onSendResponseResult(result: AddDocumentToResponseResult) {
         when (result) {
             is AddDocumentToResponseResult.DocumentLocked -> {
-
-                val secureAreaSupport = SecureAreaSupport.getInstance(
-                    requireContext(),
-                    result.credential.secureArea
-                )
+                val secureAreaSupport =
+                    SecureAreaSupport.getInstance(
+                        requireContext(),
+                        result.credential.secureArea,
+                    )
                 with(secureAreaSupport) {
                     unlockKey(
                         credential = result.credential,
@@ -131,7 +135,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                                     onSendResponseResult(it)
                                 },
                                 result.credential,
-                                keyUnlockData
+                                keyUnlockData,
                             )
                         },
                         onUnlockFailure = { wasCancelled ->
@@ -140,7 +144,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                             } else {
                                 viewModel.closeConnection()
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -154,7 +158,10 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         }
     }
 
-    private fun toast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+    private fun toast(
+        message: String,
+        duration: Int = Toast.LENGTH_SHORT,
+    ) {
         Toast.makeText(requireContext(), message, duration).show()
     }
 }

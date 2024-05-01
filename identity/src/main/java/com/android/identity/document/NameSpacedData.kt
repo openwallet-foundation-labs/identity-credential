@@ -39,7 +39,7 @@ import com.android.identity.cbor.toDataItem
  * This type is immutable.
  */
 class NameSpacedData private constructor(
-    private val map: MutableMap<String, MutableMap<String, ByteArray>>
+    private val map: MutableMap<String, MutableMap<String, ByteArray>>,
 ) {
     /**
      * Names of all the namespaces.
@@ -67,7 +67,7 @@ class NameSpacedData private constructor(
      */
     fun hasDataElement(
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ) = map[nameSpaceName]?.run { return this[dataElementName] != null } ?: false
 
     /**
@@ -81,10 +81,11 @@ class NameSpacedData private constructor(
      */
     fun getDataElement(
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ): ByteArray {
-        val innerMap = map[nameSpaceName]
-            ?: throw IllegalArgumentException("No such namespace '$nameSpaceName'")
+        val innerMap =
+            map[nameSpaceName]
+                ?: throw IllegalArgumentException("No such namespace '$nameSpaceName'")
         return innerMap[dataElementName]
             ?: throw IllegalArgumentException("No such data element '$dataElementName'")
     }
@@ -101,7 +102,7 @@ class NameSpacedData private constructor(
      */
     fun getDataElementString(
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asTstr
 
     /**
@@ -116,7 +117,7 @@ class NameSpacedData private constructor(
      */
     fun getDataElementByteString(
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asBstr
 
     /**
@@ -131,7 +132,7 @@ class NameSpacedData private constructor(
      */
     fun getDataElementNumber(
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asNumber
 
     /**
@@ -146,23 +147,24 @@ class NameSpacedData private constructor(
      */
     fun getDataElementBoolean(
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asBoolean
 
-    fun toCbor(): DataItem = CborMap.builder().run {
-        for (namespaceName in map.keys) {
-            val innerMapBuilder = putMap(namespaceName)
-            val namespace = map[namespaceName]!!
-            for ((dataElementName, dataElementValue) in namespace) {
-                innerMapBuilder.putTagged(
-                    dataElementName,
-                    Tagged.ENCODED_CBOR,
-                    Bstr(dataElementValue)
-                )
+    fun toCbor(): DataItem =
+        CborMap.builder().run {
+            for (namespaceName in map.keys) {
+                val innerMapBuilder = putMap(namespaceName)
+                val namespace = map[namespaceName]!!
+                for ((dataElementName, dataElementValue) in namespace) {
+                    innerMapBuilder.putTagged(
+                        dataElementName,
+                        Tagged.ENCODED_CBOR,
+                        Bstr(dataElementValue),
+                    )
+                }
             }
+            return end().build()
         }
-        return end().build()
-    }
 
     /**
      * Encodes the given [NameSpacedData] as CBOR.
@@ -232,13 +234,14 @@ class NameSpacedData private constructor(
         fun putEntry(
             nameSpaceName: String,
             dataElementName: String,
-            value: ByteArray
-        ): Builder = apply {
-            map.putIfAbsent(nameSpaceName, mutableMapOf())
-            map[nameSpaceName]?.run {
-                this[dataElementName] = value
+            value: ByteArray,
+        ): Builder =
+            apply {
+                map.putIfAbsent(nameSpaceName, mutableMapOf())
+                map[nameSpaceName]?.run {
+                    this[dataElementName] = value
+                }
             }
-        }
 
         /**
          * Encode the given value as `tstr` CBOR and adds it to the builder.
@@ -251,7 +254,7 @@ class NameSpacedData private constructor(
         fun putEntryString(
             nameSpaceName: String,
             dataElementName: String,
-            value: String
+            value: String,
         ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
@@ -265,7 +268,7 @@ class NameSpacedData private constructor(
         fun putEntryByteString(
             nameSpaceName: String,
             dataElementName: String,
-            value: ByteArray
+            value: ByteArray,
         ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
@@ -279,7 +282,7 @@ class NameSpacedData private constructor(
         fun putEntryNumber(
             nameSpaceName: String,
             dataElementName: String,
-            value: Long
+            value: Long,
         ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
@@ -293,7 +296,7 @@ class NameSpacedData private constructor(
         fun putEntryBoolean(
             nameSpaceName: String,
             dataElementName: String,
-            value: Boolean
+            value: Boolean,
         ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**

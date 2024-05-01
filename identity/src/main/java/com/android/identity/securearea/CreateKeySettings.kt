@@ -17,5 +17,5 @@ import com.android.identity.crypto.EcCurve
 open class CreateKeySettings(
     val attestationChallenge: ByteArray,
     val keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN),
-    val ecCurve: EcCurve = EcCurve.P256
+    val ecCurve: EcCurve = EcCurve.P256,
 )

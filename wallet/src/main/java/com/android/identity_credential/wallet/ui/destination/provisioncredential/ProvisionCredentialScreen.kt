@@ -34,7 +34,6 @@ import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 
-
 @Composable
 fun ProvisionDocumentScreen(
     context: Context,
@@ -42,32 +41,34 @@ fun ProvisionDocumentScreen(
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    documentStore: DocumentStore
+    documentStore: DocumentStore,
 ) {
-    ScreenWithAppBar(title = stringResource(R.string.provisioning_title), navigationIcon = {
-        if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
-            IconButton(
-                onClick = {
-                    onNavigate(WalletDestination.PopBackStack.route)
+    ScreenWithAppBar(
+        title = stringResource(R.string.provisioning_title),
+        navigationIcon = {
+            if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
+                IconButton(
+                    onClick = {
+                        onNavigate(WalletDestination.PopBackStack.route)
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.accessibility_go_back_icon),
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.accessibility_go_back_icon)
-                )
             }
-        }
-    }
+        },
     ) {
         when (provisioningViewModel.state.value) {
             ProvisioningViewModel.State.IDLE -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = stringResource(R.string.provisioning_idle)
+                        text = stringResource(R.string.provisioning_idle),
                     )
                 }
             }
@@ -75,11 +76,11 @@ fun ProvisionDocumentScreen(
             ProvisioningViewModel.State.CREDENTIAL_REGISTRATION -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = stringResource(R.string.provisioning_creating_key)
+                        text = stringResource(R.string.provisioning_creating_key),
                     )
                 }
             }
@@ -96,9 +97,9 @@ fun ProvisionDocumentScreen(
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionString(inputString),
                                     issuingAuthorityRepository = issuingAuthorityRepository,
-                                    documentStore = documentStore
+                                    documentStore = documentStore,
                                 )
-                            }
+                            },
                         )
                     }
 
@@ -110,9 +111,9 @@ fun ProvisionDocumentScreen(
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseCreatePassphrase(inputString),
                                     issuingAuthorityRepository = issuingAuthorityRepository,
-                                    documentStore = documentStore
+                                    documentStore = documentStore,
                                 )
-                            }
+                            },
                         )
                     }
 
@@ -121,7 +122,7 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            documentStore = documentStore
+                            documentStore = documentStore,
                         )
                     }
 
@@ -130,7 +131,7 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            documentStore = documentStore
+                            documentStore = documentStore,
                         )
                     }
 
@@ -141,9 +142,9 @@ fun ProvisionDocumentScreen(
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionMultipleChoice(selectedOption),
                                     issuingAuthorityRepository = issuingAuthorityRepository,
-                                    documentStore = documentStore
+                                    documentStore = documentStore,
                                 )
-                            }
+                            },
                         )
                     }
 
@@ -153,7 +154,7 @@ fun ProvisionDocumentScreen(
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
                             documentStore = documentStore,
-                            permissionTracker = permissionTracker
+                            permissionTracker = permissionTracker,
                         )
                     }
 
@@ -161,7 +162,7 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestIcaoNfcTunnelView(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            permissionTracker = permissionTracker
+                            permissionTracker = permissionTracker,
                         )
                     }
                 }
@@ -170,13 +171,13 @@ fun ProvisionDocumentScreen(
             ProvisioningViewModel.State.SUBMITTING_EVIDENCE -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center,
-                        text = stringResource(R.string.provisioning_submitting)
+                        text = stringResource(R.string.provisioning_submitting),
                     )
                 }
             }
@@ -188,28 +189,31 @@ fun ProvisionDocumentScreen(
                             listOf(
                                 Pair(
                                     WalletDestination.PopBackStack.Argument.ROUTE,
-                                    WalletDestination.Main.route
+                                    WalletDestination.Main.route,
                                 ),
                                 Pair(
                                     WalletDestination.PopBackStack.Argument.INCLUSIVE,
-                                    false
-                                )
-                            )
-                        )
+                                    false,
+                                ),
+                            ),
+                        ),
                 )
             }
 
             ProvisioningViewModel.State.FAILED -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center,
-                        text = stringResource(R.string.provisioning_error,
-                            provisioningViewModel.error.toString())
+                        text =
+                            stringResource(
+                                R.string.provisioning_error,
+                                provisioningViewModel.error.toString(),
+                            ),
                     )
                 }
             }
@@ -217,14 +221,17 @@ fun ProvisionDocumentScreen(
             else -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center,
-                        text = stringResource(R.string.provisioning_unexpected,
-                            provisioningViewModel.state.value)
+                        text =
+                            stringResource(
+                                R.string.provisioning_unexpected,
+                                provisioningViewModel.state.value,
+                            ),
                     )
                 }
             }

@@ -19,7 +19,6 @@ package com.example.simple_verifier
 class MdocReaderSettings private constructor(
     private val mRequestedAge: AgeVerificationType,
 ) {
-
     internal fun getAgeDisplayString(): String {
         return when (mRequestedAge) {
             AgeVerificationType.Over18 -> "Age over 18"
@@ -32,7 +31,6 @@ class MdocReaderSettings private constructor(
     }
 
     class Builder {
-
         private var mRequestedAge: AgeVerificationType = AgeVerificationType.Over18
 
         /**
@@ -55,5 +53,5 @@ class MdocReaderSettings private constructor(
 
 enum class AgeVerificationType() {
     Over18,
-    Over21
+    Over21,
 }

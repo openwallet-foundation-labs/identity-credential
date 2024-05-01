@@ -3,8 +3,6 @@ package com.android.mdl.appreader.util
 import android.content.Context
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaX509Certificate
 import com.android.mdl.appreader.R
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
@@ -18,45 +16,57 @@ import java.util.*
 object KeysAndCertificates {
     private fun getKeyBytes(keyInputStream: InputStream): ByteArray {
         val keyBytes = keyInputStream.readBytes()
-        val publicKeyPEM = String(keyBytes, StandardCharsets.US_ASCII)
-            .replace("-----BEGIN PUBLIC KEY-----", "")
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("\r", "")
-            .replace("\n", "")
-            .replace("-----END PUBLIC KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
+        val publicKeyPEM =
+            String(keyBytes, StandardCharsets.US_ASCII)
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("\r", "")
+                .replace("\n", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
 
         return Base64.getDecoder().decode(publicKeyPEM)
     }
 
-    private fun getPrivateKey(context: Context, resourceId: Int): PrivateKey {
+    private fun getPrivateKey(
+        context: Context,
+        resourceId: Int,
+    ): PrivateKey {
         val keyBytes: ByteArray = getKeyBytes(context.resources.openRawResource(resourceId))
         val spec = PKCS8EncodedKeySpec(keyBytes)
         val kf = KeyFactory.getInstance("EC")
         return kf.generatePrivate(spec)
     }
 
-    private fun getCertificate(context: Context, resourceId: Int): X509Certificate {
+    private fun getCertificate(
+        context: Context,
+        resourceId: Int,
+    ): X509Certificate {
         val certInputStream = context.resources.openRawResource(resourceId)
         val factory: CertificateFactory = CertificateFactory.getInstance("X509")
         return factory.generateCertificate(certInputStream) as X509Certificate
     }
 
-    fun getRAGooglePrivateKey(context: Context) =
-        getPrivateKey(context, R.raw.google_mdl_ra_privkey)
+    fun getRAGooglePrivateKey(context: Context) = getPrivateKey(context, R.raw.google_mdl_ra_privkey)
 
-    fun getRAGoogleCertificate(context: Context) =
-        getCertificate(context, R.raw.google_mdl_ra_cert)
+    fun getRAGoogleCertificate(context: Context) = getCertificate(context, R.raw.google_mdl_ra_cert)
 
-    fun getGoogleReaderCA(context: Context) =
-        getCertificate(context, R.raw.google_reader_ca)
+    fun getGoogleReaderCA(context: Context) = getCertificate(context, R.raw.google_reader_ca)
 
     fun getReaderAuthority(context: Context): Pair<Certificate, EcPrivateKey> {
-        val certificate = Certificate.fromPem(String(
-            context.resources.openRawResource(R.raw.owf_identity_credential_reader_cert).readBytes()))
-        val privateKey = EcPrivateKey.fromPem(String(
-            context.resources.openRawResource(R.raw.owf_identity_credential_reader_private_key).readBytes()),
-            certificate.publicKey)
+        val certificate =
+            Certificate.fromPem(
+                String(
+                    context.resources.openRawResource(R.raw.owf_identity_credential_reader_cert).readBytes(),
+                ),
+            )
+        val privateKey =
+            EcPrivateKey.fromPem(
+                String(
+                    context.resources.openRawResource(R.raw.owf_identity_credential_reader_private_key).readBytes(),
+                ),
+                certificate.publicKey,
+            )
         return Pair(certificate, privateKey)
     }
 
@@ -100,7 +110,6 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.ul_cert_iaca_02),
             getCertificate(context, R.raw.ul_cert_iaca_02_cer),
             getCertificate(context, R.raw.ul_micov_testset),
-            getCertificate(context, R.raw.owf_wallet_iaca_root)
+            getCertificate(context, R.raw.owf_wallet_iaca_root),
         )
-
 }

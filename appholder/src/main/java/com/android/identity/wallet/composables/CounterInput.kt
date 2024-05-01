@@ -10,13 +10,13 @@ fun CounterInput(
     modifier: Modifier = Modifier,
     label: String,
     value: Int,
-    onValueChange: (newValue: Int) -> Unit
+    onValueChange: (newValue: Int) -> Unit,
 ) {
     Column(modifier = modifier) {
         OutlinedContainerHorizontal(modifier = Modifier.fillMaxWidth()) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = label
+                label = label,
             )
             NumberChanger(number = value, onNumberChanged = onValueChange)
         }

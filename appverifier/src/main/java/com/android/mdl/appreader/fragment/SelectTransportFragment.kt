@@ -18,7 +18,6 @@ import com.android.mdl.appreader.util.logDebug
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class SelectTransportFragment : Fragment() {
-
     private val args: SelectTransportFragmentArgs by navArgs()
     private var _binding: FragmentSelectTransportBinding? = null
 
@@ -27,16 +26,18 @@ class SelectTransportFragment : Fragment() {
     private val binding get() = _binding!!
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
-
         _binding = FragmentSelectTransportBinding.inflate(inflater, container, false)
         return binding.root
-
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
         val transferManager = TransferManager.getInstance(requireContext())
 
@@ -60,8 +61,8 @@ class SelectTransportFragment : Fragment() {
         binding.btNext.setOnClickListener {
             findNavController().navigate(
                 SelectTransportFragmentDirections.actionSelectTransportToTransfer(
-                    args.requestDocumentList
-                )
+                    args.requestDocumentList,
+                ),
             )
         }
         binding.btCancel.setOnClickListener {

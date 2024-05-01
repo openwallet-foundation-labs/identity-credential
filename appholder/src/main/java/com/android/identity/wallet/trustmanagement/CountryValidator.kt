@@ -18,7 +18,6 @@ class CountryValidator : PKIXCertPathChecker() {
         // intentionally left empty
     }
 
-
     /**
      * Forward checking supported: the order of the certificate chain is not relevant for the check
      * on country code.
@@ -30,14 +29,19 @@ class CountryValidator : PKIXCertPathChecker() {
     /**
      * Check the country code
      */
-    override fun check(certificate: Certificate?, state: MutableCollection<String>?) {
+    override fun check(
+        certificate: Certificate?,
+        state: MutableCollection<String>?,
+    ) {
         if (certificate is X509Certificate) {
             val countryCode = certificate.subjectX500Principal.countryCode("")
             if (countryCode.isBlank()) {
                 throw CertificateException("Country code is not present in certificate " + certificate.subjectX500Principal.name)
             }
             if (previousCountryCode.isNotBlank() && previousCountryCode.uppercase() != countryCode.uppercase()) {
-                throw CertificateException("There are different country codes in the certificate chain: $previousCountryCode and $countryCode")
+                throw CertificateException(
+                    "There are different country codes in the certificate chain: $previousCountryCode and $countryCode",
+                )
             } else {
                 previousCountryCode = countryCode
             }

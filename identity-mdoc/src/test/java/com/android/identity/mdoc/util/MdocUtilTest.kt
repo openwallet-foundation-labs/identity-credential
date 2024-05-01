@@ -18,9 +18,9 @@ package com.android.identity.mdoc.util
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Tstr
+import com.android.identity.crypto.Algorithm
 import com.android.identity.document.DocumentRequest.DataElement
 import com.android.identity.document.NameSpacedData
-import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.request.DeviceRequestParser
@@ -45,13 +45,14 @@ class MdocUtilTest {
 
     @Test
     fun testGenerateIssuerNameSpaces() {
-        val nameSpacedData = NameSpacedData.Builder()
-            .putEntryString("ns1", "foo1", "bar1")
-            .putEntryString("ns1", "foo2", "bar2")
-            .putEntryString("ns1", "foo3", "bar3")
-            .putEntryString("ns2", "bar1", "foo1")
-            .putEntryString("ns2", "bar2", "foo2")
-            .build()
+        val nameSpacedData =
+            NameSpacedData.Builder()
+                .putEntryString("ns1", "foo1", "bar1")
+                .putEntryString("ns1", "foo2", "bar2")
+                .putEntryString("ns1", "foo3", "bar3")
+                .putEntryString("ns2", "bar1", "foo1")
+                .putEntryString("ns2", "bar2", "foo2")
+                .build()
         val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
         val overridesForNs1: MutableMap<String, ByteArray> = HashMap()
         overridesForNs1["foo3"] = Cbor.encode(Tstr("bar3_override"))
@@ -59,12 +60,13 @@ class MdocUtilTest {
         val exceptions: MutableMap<String, List<String>> = HashMap()
         exceptions["ns1"] = mutableListOf("foo3")
         exceptions["ns2"] = mutableListOf("bar2")
-        val issuerNameSpaces = generateIssuerNameSpaces(
-            nameSpacedData,
-            Random(42),
-            16,
-            overrides
-        )
+        val issuerNameSpaces =
+            generateIssuerNameSpaces(
+                nameSpacedData,
+                Random(42),
+                16,
+                overrides,
+            )
         Assert.assertEquals(2, issuerNameSpaces.size.toLong())
         var ns1Values = issuerNameSpaces["ns1"]!!
         Assert.assertEquals(3, ns1Values.size.toLong())
@@ -79,8 +81,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns1Values[0],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -91,8 +93,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns1Values[1],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -103,8 +105,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns1Values[2],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -115,8 +117,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns2Values[0],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -127,8 +129,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns2Values[1],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
 
         // Compare with digests above.
@@ -137,25 +139,25 @@ class MdocUtilTest {
         Assert.assertEquals(3, digests.size.toLong())
         Assert.assertEquals(
             "9f10afbca223fcfe0ee9f239e995cfe79e7f845b68981a4a0943706717c64efa",
-            digests[0L]!!.toHex
+            digests[0L]!!.toHex,
         )
         Assert.assertEquals(
             "a5e74b031ea380267d39905981ea80c68178229219556ffd72d312a0366a7d63",
-            digests[4L]!!.toHex
+            digests[4L]!!.toHex,
         )
         Assert.assertEquals(
             "03f0ac0623c2eaefd76bcbca00df782d84f544cf7ac1b1f9ed46144275e1d47c",
-            digests[2L]!!.toHex
+            digests[2L]!!.toHex,
         )
         digests = calculateDigestsForNameSpace("ns2", issuerNameSpaces, Algorithm.SHA256)
         Assert.assertEquals(2, digests.size.toLong())
         Assert.assertEquals(
             "fd69be5fcc0df04ae78e147bb3ad95ce4ecff51028322cccf02195f36612a212",
-            digests[1L]!!.toHex
+            digests[1L]!!.toHex,
         )
         Assert.assertEquals(
             "47083a3473ddfcf3c8cc00f2035ac41d0b791fc50106be416c068536c249c0dd",
-            digests[3L]!!.toHex
+            digests[3L]!!.toHex,
         )
 
         // Check stripping
@@ -173,8 +175,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns1Values[0],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -185,8 +187,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns1Values[1],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -197,8 +199,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns1Values[2],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -209,8 +211,8 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns2Values[0],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -221,22 +223,24 @@ class MdocUtilTest {
 } >>)""",
             Cbor.toDiagnostics(
                 ns2Values[1],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
     }
 
     @Test
     fun testGetDigestsForNameSpaceInTestVectors() {
-        val deviceResponse = Cbor.decode(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex
-        )
+        val deviceResponse =
+            Cbor.decode(
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex,
+            )
         val documentDataItem = deviceResponse["documents"][0]
         val issuerSigned = documentDataItem["issuerSigned"]
         val issuerAuthDataItem = issuerSigned["issuerAuth"]
         val (_, _, _, payload) = issuerAuthDataItem.asCoseSign1
-        val mobileSecurityObject = Cbor.decode(payload!!)
-            .asTaggedEncodedCbor
+        val mobileSecurityObject =
+            Cbor.decode(payload!!)
+                .asTaggedEncodedCbor
         val encodedMobileSecurityObject = Cbor.encode(mobileSecurityObject)
         val mso = MobileSecurityObjectParser(encodedMobileSecurityObject).parse()
         val nameSpaces = issuerSigned["nameSpaces"]
@@ -247,11 +251,12 @@ class MdocUtilTest {
         }
         val issuerNameSpacesFromTestVector: MutableMap<String, List<ByteArray>> = LinkedHashMap()
         issuerNameSpacesFromTestVector["org.iso.18013.5.1"] = issuerNamespacesForMdlNamespace
-        val digestsCalculatedFromResponseInTestVector = calculateDigestsForNameSpace(
-            "org.iso.18013.5.1",
-            issuerNameSpacesFromTestVector,
-            Algorithm.SHA256
-        )
+        val digestsCalculatedFromResponseInTestVector =
+            calculateDigestsForNameSpace(
+                "org.iso.18013.5.1",
+                issuerNameSpacesFromTestVector,
+                Algorithm.SHA256,
+            )
         val digestsListedInMsoInTestVector = mso.getDigestIDs("org.iso.18013.5.1")
 
         // Note: Because of selective disclosure, the response doesn't contain all the data
@@ -269,22 +274,25 @@ class MdocUtilTest {
     fun testGenerateDocumentRequest() {
         val encodedSessionTranscriptBytes =
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
-        val encodedSessionTranscript = Cbor.encode(
-            Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
-        )
-        val parser = DeviceRequestParser(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
-            encodedSessionTranscript
-        )
+        val encodedSessionTranscript =
+            Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor,
+            )
+        val parser =
+            DeviceRequestParser(
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
+                encodedSessionTranscript,
+            )
         val request = parser.parse()
-        val elementsInRequest = arrayOf(
-            DataElement("org.iso.18013.5.1", "family_name", true, false),
-            DataElement("org.iso.18013.5.1", "document_number", true, false),
-            DataElement("org.iso.18013.5.1", "driving_privileges", true, false),
-            DataElement("org.iso.18013.5.1", "issue_date", true, false),
-            DataElement("org.iso.18013.5.1", "expiry_date", true, false),
-            DataElement("org.iso.18013.5.1", "portrait", false, false)
-        )
+        val elementsInRequest =
+            arrayOf(
+                DataElement("org.iso.18013.5.1", "family_name", true, false),
+                DataElement("org.iso.18013.5.1", "document_number", true, false),
+                DataElement("org.iso.18013.5.1", "driving_privileges", true, false),
+                DataElement("org.iso.18013.5.1", "issue_date", true, false),
+                DataElement("org.iso.18013.5.1", "expiry_date", true, false),
+                DataElement("org.iso.18013.5.1", "portrait", false, false),
+            )
         val cr = generateDocumentRequest(request.docRequests[0])
         Assert.assertEquals(elementsInRequest.size.toLong(), cr.requestedDataElements.size.toLong())
         var n = 0

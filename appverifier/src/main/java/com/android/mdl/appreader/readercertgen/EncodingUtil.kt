@@ -7,6 +7,7 @@ import java.util.Locale
 
 object EncodingUtil {
     private val SHORT_ISO_DATEFORMAT = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+
     fun parseShortISODate(date: String): Date {
         return try {
             SHORT_ISO_DATEFORMAT.parse(date)!!

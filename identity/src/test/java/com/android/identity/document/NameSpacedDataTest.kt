@@ -23,19 +23,20 @@ import org.junit.Test
 class NameSpacedDataTest {
     @Test
     fun testNameSpacedData() {
-        val nameSpacedData = NameSpacedData.Builder()
-            .putEntryString("ns1", "foo1", "bar1")
-            .putEntryString("ns1", "foo2", "bar2")
-            .putEntryString("ns1", "foo3", "bar3")
-            .putEntryString("ns2", "bar1", "foo1")
-            .putEntryString("ns2", "bar2", "foo2")
-            .putEntryString("test", "tstr", "a string")
-            .putEntryByteString("test", "bstr", byteArrayOf(1, 2))
-            .putEntryNumber("test", "pos", 42)
-            .putEntryNumber("test", "neg", -42)
-            .putEntryBoolean("test", "true", true)
-            .putEntryBoolean("test", "false", false)
-            .build()
+        val nameSpacedData =
+            NameSpacedData.Builder()
+                .putEntryString("ns1", "foo1", "bar1")
+                .putEntryString("ns1", "foo2", "bar2")
+                .putEntryString("ns1", "foo3", "bar3")
+                .putEntryString("ns2", "bar1", "foo1")
+                .putEntryString("ns2", "bar2", "foo2")
+                .putEntryString("test", "tstr", "a string")
+                .putEntryByteString("test", "bstr", byteArrayOf(1, 2))
+                .putEntryNumber("test", "pos", 42)
+                .putEntryNumber("test", "neg", -42)
+                .putEntryBoolean("test", "true", true)
+                .putEntryBoolean("test", "false", false)
+                .build()
         val asCbor = nameSpacedData.encodeAsCbor()
         Assert.assertEquals(
             """{
@@ -59,8 +60,8 @@ class NameSpacedDataTest {
 }""",
             Cbor.toDiagnostics(
                 asCbor,
-                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
-            )
+                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR),
+            ),
         )
         checkNameSpaced(nameSpacedData)
         val decoded = NameSpacedData.fromEncodedCbor(asCbor)
@@ -69,37 +70,39 @@ class NameSpacedDataTest {
 
     @Test
     fun testBuilderWithCopy() {
-        val foo = NameSpacedData.Builder()
-            .putEntryString("ns1", "de1", "foo")
-            .putEntryString("ns1", "de2", "bar")
-            .build()
+        val foo =
+            NameSpacedData.Builder()
+                .putEntryString("ns1", "de1", "foo")
+                .putEntryString("ns1", "de2", "bar")
+                .build()
         Assert.assertEquals(
             "{\n" +
-                    "  \"ns1\": {\n" +
-                    "    \"de1\": 24(<< \"foo\" >>),\n" +
-                    "    \"de2\": 24(<< \"bar\" >>)\n" +
-                    "  }\n" +
-                    "}",
+                "  \"ns1\": {\n" +
+                "    \"de1\": 24(<< \"foo\" >>),\n" +
+                "    \"de2\": 24(<< \"bar\" >>)\n" +
+                "  }\n" +
+                "}",
             Cbor.toDiagnostics(
                 foo.toCbor(),
-                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
-            )
+                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR),
+            ),
         )
 
-        val fooModified = NameSpacedData.Builder(foo)
-            .putEntryString("ns1", "de2", "foobar")
-            .build()
+        val fooModified =
+            NameSpacedData.Builder(foo)
+                .putEntryString("ns1", "de2", "foobar")
+                .build()
         Assert.assertEquals(
             "{\n" +
-                    "  \"ns1\": {\n" +
-                    "    \"de1\": 24(<< \"foo\" >>),\n" +
-                    "    \"de2\": 24(<< \"foobar\" >>)\n" +
-                    "  }\n" +
-                    "}",
+                "  \"ns1\": {\n" +
+                "    \"de1\": 24(<< \"foo\" >>),\n" +
+                "    \"de2\": 24(<< \"foobar\" >>)\n" +
+                "  }\n" +
+                "}",
             Cbor.toDiagnostics(
                 fooModified.toCbor(),
-                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
-            )
+                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR),
+            ),
         )
     }
 
@@ -117,7 +120,7 @@ class NameSpacedDataTest {
         Assert.assertEquals("a string", nameSpacedData.getDataElementString("test", "tstr"))
         Assert.assertArrayEquals(
             byteArrayOf(1, 2),
-            nameSpacedData.getDataElementByteString("test", "bstr")
+            nameSpacedData.getDataElementByteString("test", "bstr"),
         )
         Assert.assertEquals(42, nameSpacedData.getDataElementNumber("test", "pos"))
         Assert.assertEquals(-42, nameSpacedData.getDataElementNumber("test", "neg"))

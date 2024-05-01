@@ -15,15 +15,17 @@ import com.android.identity.cose.toCoseLabel
 data class EcPrivateKeyOkp(
     override val curve: EcCurve,
     override val d: ByteArray,
-    val x: ByteArray
-): EcPrivateKey(curve, d) {
-
+    val x: ByteArray,
+) : EcPrivateKey(curve, d) {
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
-        return CoseKey(mapOf(
-            Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_OKP.toDataItem),
-            Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
-            Pair(Cose.COSE_KEY_PARAM_D.toCoseLabel, d.toDataItem),
-            Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem)) + additionalLabels)
+        return CoseKey(
+            mapOf(
+                Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_OKP.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_D.toCoseLabel, d.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem),
+            ) + additionalLabels,
+        )
     }
 
     override val publicKey: EcPublicKey

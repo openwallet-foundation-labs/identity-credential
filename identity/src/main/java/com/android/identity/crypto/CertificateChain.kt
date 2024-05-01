@@ -11,9 +11,8 @@ import java.security.cert.X509Certificate
  * @param certificates the certificates in the chain.
  */
 data class CertificateChain(
-    val certificates: List<Certificate>
+    val certificates: List<Certificate>,
 ) {
-
     /**
      * Encodes the certificate chain as CBOR.
      *
@@ -23,15 +22,15 @@ data class CertificateChain(
      * Use [fromDataItem] to decode the returned data item.
      */
     val toDataItem: DataItem
-        get() = if (certificates.size == 1) {
-            certificates[0].toDataItem
-        } else {
-            CborArray.builder().run {
-                certificates.forEach { certificate -> add(certificate.toDataItem) }
-                return end().build()
+        get() =
+            if (certificates.size == 1) {
+                certificates[0].toDataItem
+            } else {
+                CborArray.builder().run {
+                    certificates.forEach { certificate -> add(certificate.toDataItem) }
+                    return end().build()
+                }
             }
-
-        }
 
     companion object {
         /**

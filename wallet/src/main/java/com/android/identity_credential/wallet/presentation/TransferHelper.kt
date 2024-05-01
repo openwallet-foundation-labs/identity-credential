@@ -6,16 +6,16 @@ import android.os.Looper
 import android.widget.Toast
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.cbor.Cbor
-import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.javaX509Certificates
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
-import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.IssuingAuthorityRepository
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
@@ -49,7 +49,7 @@ class TransferHelper(
     private val trustManager: TrustManager,
     private val context: Context,
     private val deviceRetrievalHelper: DeviceRetrievalHelper,
-    private val onError: (Throwable) -> Unit
+    private val onError: (Throwable) -> Unit,
 ) {
     companion object {
         private const val TAG = "TransferHelper"
@@ -67,19 +67,21 @@ class TransferHelper(
         private var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
         var onError: (Throwable) -> Unit = {},
     ) {
-        fun setDeviceRetrievalHelper(deviceRetrievalHelper: DeviceRetrievalHelper) = apply {
-            this.deviceRetrievalHelper = deviceRetrievalHelper
-        }
+        fun setDeviceRetrievalHelper(deviceRetrievalHelper: DeviceRetrievalHelper) =
+            apply {
+                this.deviceRetrievalHelper = deviceRetrievalHelper
+            }
 
-        fun build() = TransferHelper(
-            settingsModel = settingsModel,
-            documentStore = documentStore,
-            issuingAuthorityRepository = issuingAuthorityRepository,
-            trustManager = trustManager,
-            context = context,
-            deviceRetrievalHelper = deviceRetrievalHelper!!,
-            onError = onError,
-        )
+        fun build() =
+            TransferHelper(
+                settingsModel = settingsModel,
+                documentStore = documentStore,
+                issuingAuthorityRepository = issuingAuthorityRepository,
+                trustManager = trustManager,
+                context = context,
+                deviceRetrievalHelper = deviceRetrievalHelper!!,
+                onError = onError,
+            )
     }
 
     /**
@@ -91,7 +93,6 @@ class TransferHelper(
      * and generate response bytes, or null if no credential id could be found.
      */
     fun startProcessingRequest(deviceRequest: ByteArray): PresentationRequestData? {
-
         // TODO: we currently only look at the first docRequest ... in the future need to process
         //  all of them sequentially.
         val request = DeviceRequestParser(deviceRequest, deviceRetrievalHelper.sessionTranscript).parse()
@@ -103,21 +104,24 @@ class TransferHelper(
 
         // TODO when selecting a matching credential of the MDOC_MSO format, also use docRequest.docType
         //     to select a credential of the right doctype
-        val credentialId: String = findFirstdocumentSatisfyingRequest(
-            settingsModel, credentialFormat, docRequest)
-            ?: run {
-                onError(IllegalStateException("No matching credentials in wallet"))
-                return null
-            }
+        val credentialId: String =
+            findFirstdocumentSatisfyingRequest(
+                settingsModel, credentialFormat, docRequest,
+            )
+                ?: run {
+                    onError(IllegalStateException("No matching credentials in wallet"))
+                    return null
+                }
 
         val credential = documentStore.lookupDocument(credentialId)!!
 
         var trustPoint: TrustPoint? = null
         if (docRequest.readerAuthenticated) {
-            val result = trustManager.verify(
-                docRequest.readerCertificateChain!!.javaX509Certificates,
-                customValidators = emptyList()  // not neeeded for reader auth
-            )
+            val result =
+                trustManager.verify(
+                    docRequest.readerCertificateChain!!.javaX509Certificates,
+                    customValidators = emptyList(), // not neeeded for reader auth
+                )
             if (result.isTrusted && !result.trustPoints.isEmpty()) {
                 trustPoint = result.trustPoints.first()
             } else if (result.error != null) {
@@ -131,7 +135,7 @@ class TransferHelper(
             credential,
             credentialRequest,
             requestedDocType,
-            trustPoint
+            trustPoint,
         )
     }
 
@@ -161,18 +165,21 @@ class TransferHelper(
         onFinishedProcessing: (ByteArray) -> Unit,
         onAuthenticationKeyLocked: (mdocCredential: MdocCredential) -> Unit,
         keyUnlockData: KeyUnlockData? = null,
-        credential: MdocCredential? = null
+        credential: MdocCredential? = null,
     ) {
         val document = documentStore.lookupDocument(credentialId)!!
         val encodedDeviceResponse: ByteArray
         val credentialConfiguration = document.documentConfiguration
         val now = Timestamp.now()
-        val credentialToUse: MdocCredential = credential
-            ?: (document.findCredential(WalletApplication.CREDENTIAL_DOMAIN, now)
-                ?: run {
-                    onError(IllegalStateException("No valid credentials, please request more"))
-                    return
-                }) as MdocCredential
+        val credentialToUse: MdocCredential =
+            credential
+                ?: (
+                    document.findCredential(WalletApplication.CREDENTIAL_DOMAIN, now)
+                        ?: run {
+                            onError(IllegalStateException("No valid credentials, please request more"))
+                            return
+                        }
+                ) as MdocCredential
 
         val staticAuthData = StaticAuthDataParser(credentialToUse.issuerProvidedData).parse()
         val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
@@ -180,27 +187,29 @@ class TransferHelper(
         val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
         val mso = MobileSecurityObjectParser(encodedMso).parse()
 
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            documentRequest,
-            credentialConfiguration.staticData,
-            staticAuthData
-        )
+        val mergedIssuerNamespaces =
+            MdocUtil.mergeIssuerNamesSpaces(
+                documentRequest,
+                credentialConfiguration.staticData,
+                staticAuthData,
+            )
 
         val deviceResponseGenerator =
             DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
 
         // in sep coroutine so that an unexpected error will still allow this function to
         // finish and send potentially empty response
-        val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
-            addDocumentToResponse(
-                deviceResponseGenerator = deviceResponseGenerator,
-                docType = mso.docType,
-                issuerAuth = staticAuthData.issuerAuth,
-                mergedIssuerNamespaces = mergedIssuerNamespaces,
-                credential = credentialToUse,
-                keyUnlockData = keyUnlockData
-            )
-        }
+        val result =
+            withContext(Dispatchers.IO) { // <- Offload from UI thread
+                addDocumentToResponse(
+                    deviceResponseGenerator = deviceResponseGenerator,
+                    docType = mso.docType,
+                    issuerAuth = staticAuthData.issuerAuth,
+                    mergedIssuerNamespaces = mergedIssuerNamespaces,
+                    credential = credentialToUse,
+                    keyUnlockData = keyUnlockData,
+                )
+            }
 
         if (result != null) {
             onAuthenticationKeyLocked(result)
@@ -216,7 +225,7 @@ class TransferHelper(
         issuerAuth: ByteArray,
         mergedIssuerNamespaces: Map<String, MutableList<ByteArray>>,
         credential: MdocCredential,
-        keyUnlockData: KeyUnlockData?
+        keyUnlockData: KeyUnlockData?,
     ) = suspendCancellableCoroutine { continuation ->
         var result: MdocCredential?
 
@@ -224,7 +233,8 @@ class TransferHelper(
             deviceResponseGenerator.addDocument(
                 DocumentGenerator(
                     docType,
-                    issuerAuth, deviceRetrievalHelper.sessionTranscript
+                    issuerAuth,
+                    deviceRetrievalHelper.sessionTranscript,
                 )
                     .setIssuerNamespaces(mergedIssuerNamespaces)
                     .setDeviceNamespacesSignature(
@@ -232,9 +242,9 @@ class TransferHelper(
                         credential.secureArea,
                         credential.alias,
                         keyUnlockData,
-                        Algorithm.ES256
+                        Algorithm.ES256,
                     )
-                    .generate()
+                    .generate(),
             )
             credential.increaseUsageCount()
             if (credential.usageCount > 1) {
@@ -242,7 +252,7 @@ class TransferHelper(
                     Toast.makeText(
                         context,
                         context.resources.getString(R.string.presentation_credential_usage_warning),
-                        Toast.LENGTH_SHORT
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
             }
@@ -261,7 +271,7 @@ class TransferHelper(
     fun sendResponse(deviceResponseBytes: ByteArray) {
         deviceRetrievalHelper.sendDeviceResponse(
             deviceResponseBytes,
-            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
         )
     }
 
@@ -282,8 +292,8 @@ class TransferHelper(
     ): String? {
         // prefer the credential which is on-screen if possible
         val credentialIdFromPager: String? = settingsModel.focusedCardId.value
-        if (credentialIdFromPager != null
-            && candocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docRequest)
+        if (credentialIdFromPager != null &&
+            candocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docRequest)
         ) {
             return credentialIdFromPager
         }
@@ -305,7 +315,7 @@ class TransferHelper(
     private fun candocumentSatisfyRequest(
         credentialId: String,
         credentialFormat: CredentialFormat,
-        docRequest: DeviceRequestParser.DocRequest
+        docRequest: DeviceRequestParser.DocRequest,
     ): Boolean {
         val credential = documentStore.lookupDocument(credentialId)!!
         val issuingAuthorityIdentifier = credential.issuingAuthorityIdentifier
@@ -314,7 +324,7 @@ class TransferHelper(
                 ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
         val credentialFormats = issuer.configuration.documentFormats
         if (!credentialFormats.contains(credentialFormat)) {
-            return false;
+            return false
         }
 
         val credConf = credential.documentConfiguration

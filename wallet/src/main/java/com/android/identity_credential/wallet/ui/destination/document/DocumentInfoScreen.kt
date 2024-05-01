@@ -48,7 +48,6 @@ import com.android.identity_credential.wallet.ui.durationFromNowText
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-
 private const val TAG = "DocumentInfoScreen"
 
 @Composable
@@ -80,10 +79,11 @@ fun DocumentInfoScreen(
                 Button(
                     onClick = {
                         showErrorMessage = null
-                    }) {
+                    },
+                ) {
                     Text(stringResource(R.string.document_info_screen_error_dialog_confirm_button))
                 }
-            }
+            },
         )
     }
 
@@ -95,10 +95,10 @@ fun DocumentInfoScreen(
             onDismissRequest = { showRequestUpdateDialog = false },
             title = { Text(text = stringResource(R.string.document_info_screen_request_update_title)) },
             text = {
-                Column() {
+                Column {
                     Text(stringResource(R.string.document_info_screen_request_update_message))
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(checked = remoteDeletionCheckedState.value, onCheckedChange = {
                             remoteDeletionCheckedState.value = it
@@ -106,7 +106,7 @@ fun DocumentInfoScreen(
                         Text(stringResource(R.string.document_info_screen_request_update_remote_deletion_checkbox_string))
                     }
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(checked = notifyApplicationCheckedState.value, onCheckedChange = {
                             notifyApplicationCheckedState.value = it
@@ -124,19 +124,21 @@ fun DocumentInfoScreen(
                             documentModel.developerModeRequestUpdate(
                                 documentInfo,
                                 remoteDeletionCheckedState.value,
-                                notifyApplicationCheckedState.value
+                                notifyApplicationCheckedState.value,
                             )
                         }
-                    }) {
+                    },
+                ) {
                     Text(stringResource(R.string.document_info_screen_request_update_confirm_button))
                 }
             },
             dismissButton = {
                 Button(
-                    onClick = { showRequestUpdateDialog = false }) {
+                    onClick = { showRequestUpdateDialog = false },
+                ) {
                     Text(stringResource(R.string.document_info_screen_request_update_dismiss_button))
                 }
-            }
+            },
         )
     }
 
@@ -154,16 +156,18 @@ fun DocumentInfoScreen(
                         showDeleteConfirmationDialog = false
                         documentModel.deleteCard(documentInfo)
                         onNavigate(WalletDestination.PopBackStack.route)
-                    }) {
+                    },
+                ) {
                     Text(stringResource(R.string.document_info_screen_confirm_deletion_confirm_button))
                 }
             },
             dismissButton = {
                 Button(
-                    onClick = { showDeleteConfirmationDialog = false }) {
+                    onClick = { showDeleteConfirmationDialog = false },
+                ) {
                     Text(stringResource(R.string.document_info_screen_confirm_deletion_dismiss_button))
                 }
-            }
+            },
         )
     }
 
@@ -177,7 +181,7 @@ fun DocumentInfoScreen(
             }
             DropdownMenu(
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false }
+                onDismissRequest = { showMenu = false },
             ) {
                 DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_check_for_update)) },
@@ -194,22 +198,26 @@ fun DocumentInfoScreen(
                                 showErrorMessage = "Unexpected exception while refreshing: $e"
                             }
                         }
-                    }
+                    },
                 )
                 DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_show_data)) },
                     leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                     onClick = {
-                        onNavigate(WalletDestination.DocumentInfo.getRouteWithArguments(
-                            listOf(
-                                Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
-                                Pair(WalletDestination.DocumentInfo.Argument.SECTION, "details"),
-                                Pair(WalletDestination.DocumentInfo.Argument.AUTH_REQUIRED,
-                                    documentInfo.requireUserAuthenticationToViewDocument),
-                            )
-                        ))
+                        onNavigate(
+                            WalletDestination.DocumentInfo.getRouteWithArguments(
+                                listOf(
+                                    Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
+                                    Pair(WalletDestination.DocumentInfo.Argument.SECTION, "details"),
+                                    Pair(
+                                        WalletDestination.DocumentInfo.Argument.AUTH_REQUIRED,
+                                        documentInfo.requireUserAuthenticationToViewDocument,
+                                    ),
+                                ),
+                            ),
+                        )
                         showMenu = false
-                    }
+                    },
                 )
                 DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_delete)) },
@@ -217,7 +225,7 @@ fun DocumentInfoScreen(
                     onClick = {
                         showMenu = false
                         showDeleteConfirmationDialog = true
-                    }
+                    },
                 )
                 if (settingsModel.developerModeEnabled.value == true) {
                     Divider()
@@ -226,7 +234,7 @@ fun DocumentInfoScreen(
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.experiment_icon),
-                                contentDescription = null
+                                contentDescription = null,
                             )
                         },
                         onClick = {
@@ -234,51 +242,50 @@ fun DocumentInfoScreen(
                                 WalletDestination.DocumentInfo.getRouteWithArguments(
                                     listOf(
                                         Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
-                                        Pair(WalletDestination.DocumentInfo.Argument.SECTION, "credentials")
-                                    )
-                                )
+                                        Pair(WalletDestination.DocumentInfo.Argument.SECTION, "credentials"),
+                                    ),
+                                ),
                             )
                             showMenu = false
-                        }
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text(text = stringResource(R.string.document_info_screen_menu_item_request_update)) },
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.experiment_icon),
-                                contentDescription = null
+                                contentDescription = null,
                             )
                         },
                         onClick = {
                             showMenu = false
                             showRequestUpdateDialog = true
-                        }
+                        },
                     )
                 }
             }
-        }
+        },
     ) {
-
         Column(Modifier.padding(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Image(
                     bitmap = documentInfo.documentArtwork.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.name),
-                    modifier = Modifier.height(200.dp)
+                    modifier = Modifier.height(200.dp),
                 )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Text(
                     text = documentInfo.typeName,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier.padding(8.dp),
                 )
             }
             Spacer(modifier = Modifier.weight(0.5f))
@@ -288,19 +295,23 @@ fun DocumentInfoScreen(
             KeyValuePairText(
                 stringResource(R.string.document_info_screen_data_last_update_check),
                 durationFromNowText(documentInfo.lastRefresh).replaceFirstChar {
-                    if (it.isLowerCase()) it.titlecase(
-                        Locale.US
-                    ) else it.toString()
-                }
+                    if (it.isLowerCase()) {
+                        it.titlecase(
+                            Locale.US,
+                        )
+                    } else {
+                        it.toString()
+                    }
+                },
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Image(
                     bitmap = documentInfo.issuerLogo.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.issuerName),
-                    modifier = Modifier.height(150.dp)
+                    modifier = Modifier.height(150.dp),
                 )
             }
         }

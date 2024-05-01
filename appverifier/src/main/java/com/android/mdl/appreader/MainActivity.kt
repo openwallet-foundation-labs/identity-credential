@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
@@ -16,11 +15,8 @@ import androidx.navigation.ui.setupWithNavController
 import com.android.mdl.appreader.databinding.ActivityMainBinding
 import com.android.mdl.appreader.util.logDebug
 import com.google.android.material.elevation.SurfaceColors
-import java.security.Security
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
 
     private var mAdapter: NfcAdapter? = null
@@ -42,9 +38,10 @@ class MainActivity : AppCompatActivity() {
         // Create a generic PendingIntent that will be deliver to this activity. The NFC stack
         // will fill in the intent with the details of the discovered tag before delivering to
         // this activity.
-        val intent = Intent(this, javaClass).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
+        val intent =
+            Intent(this, javaClass).apply {
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
         mPendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 

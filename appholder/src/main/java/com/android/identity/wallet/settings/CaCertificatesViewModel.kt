@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class CaCertificatesViewModel() : ViewModel() {
-
     private val _screenState = MutableStateFlow(CaCertificatesScreenState())
     val screenState: StateFlow<CaCertificatesScreenState> = _screenState.asStateFlow()
 
     private val _currentCertificateItem = MutableStateFlow<CertificateItem?>(null)
     val currentCertificateItem = _currentCertificateItem.asStateFlow()
+
     fun loadCertificates() {
         val certificates =
             HolderApp.trustManagerInstance.getAllTrustPoints().map { it.toCertificateItem() }

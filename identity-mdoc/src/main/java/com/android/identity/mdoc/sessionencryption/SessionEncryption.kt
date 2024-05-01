@@ -48,7 +48,7 @@ class SessionEncryption(
     val role: Role,
     private val eSelfKey: EcPrivateKey,
     remotePublicKey: EcPublicKey,
-    encodedSessionTranscript: ByteArray
+    encodedSessionTranscript: ByteArray,
 ) {
     /**
      * Enumeration for the two different sides of an encrypted channel.
@@ -58,7 +58,7 @@ class SessionEncryption(
         MDOC,
 
         /** The role of acting as a mdoc reader. */
-        MDOC_READER
+        MDOC_READER,
     }
 
     private var sessionEstablishmentSent = false
@@ -101,7 +101,7 @@ class SessionEncryption(
     fun setSendSessionEstablishment(sendSessionEstablishment: Boolean) {
         check(role != Role.MDOC) {
             "Only mdoc readers should be sending sessionEstablishment messages " +
-                    " but this object was constructed with role MDOC"
+                " but this object was constructed with role MDOC"
         }
         this.sendSessionEstablishment = sendSessionEstablishment
     }
@@ -122,7 +122,7 @@ class SessionEncryption(
      */
     fun encryptMessage(
         messagePlaintext: ByteArray?,
-        statusCode: Long?
+        statusCode: Long?,
     ): ByteArray {
         var messageCiphertext: ByteArray? = null
         if (messagePlaintext != null) {
@@ -132,9 +132,10 @@ class SessionEncryption(
             val ivIdentifier = if (role == Role.MDOC) 0x00000001 else 0x00000000
             iv.putInt(4, ivIdentifier)
             iv.putInt(8, encryptedCounter)
-            messageCiphertext = Crypto.encrypt(
-                Algorithm.A128GCM, skSelf, iv.array(), messagePlaintext
-            )
+            messageCiphertext =
+                Crypto.encrypt(
+                    Algorithm.A128GCM, skSelf, iv.array(), messagePlaintext,
+                )
             encryptedCounter += 1
         }
         val mapBuilder = CborMap.builder()
@@ -142,7 +143,7 @@ class SessionEncryption(
             var eReaderKey = eSelfKey.publicKey
             mapBuilder.putTaggedEncodedCbor(
                 "eReaderKey",
-                Cbor.encode(eReaderKey.toCoseKey().toDataItem)
+                Cbor.encode(eReaderKey.toCoseKey().toDataItem),
             )
             checkNotNull(messageCiphertext) { "Data cannot be empty in initial message" }
         }
@@ -170,9 +171,7 @@ class SessionEncryption(
      * @exception IllegalArgumentException if the passed in data does not conform to the CDDL.
      * @exception IllegalStateException if decryption fails.
      */
-    fun decryptMessage(
-        messageData: ByteArray
-    ): Pair<ByteArray?, Long?> {
+    fun decryptMessage(messageData: ByteArray): Pair<ByteArray?, Long?> {
         val map = Cbor.decode(messageData)
         val dataDataItem = map.getOrNull("data")
         var messageCiphertext: ByteArray? = null

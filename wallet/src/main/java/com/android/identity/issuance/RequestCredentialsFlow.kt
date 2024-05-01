@@ -4,7 +4,6 @@ package com.android.identity.issuance
  * A flow used to request new credentials.
  */
 interface RequestCredentialsFlow {
-
     /**
      * Gets the configuration to use for credentials.
      *

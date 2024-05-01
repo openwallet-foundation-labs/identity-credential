@@ -12,12 +12,10 @@ data class DocumentState(
      * The point in time this state object was generated.
      */
     val timestamp: Instant,
-
     /**
      * The current condition of the document.
      */
     val condition: DocumentCondition,
-
     /**
      * The number of pending credentials.
      *
@@ -25,7 +23,6 @@ data class DocumentState(
      * the be collected.
      */
     val numPendingCredentials: Int,
-
     /**
      * The number of available credentials.
      *
@@ -33,7 +30,7 @@ data class DocumentState(
      * be collected
      */
     val numAvailableCredentials: Int,
-    ) {
+) {
     companion object {
         fun fromCbor(encodedData: ByteArray): DocumentState {
             val map = Cbor.decode(encodedData)
@@ -41,7 +38,7 @@ data class DocumentState(
                 Instant.fromEpochMilliseconds(map["timestamp"].asNumber),
                 DocumentCondition.fromInt(map["condition"].asNumber.toInt()),
                 map["numPendingCredentials"].asNumber.toInt(),
-                map["numAvailableCredentials"].asNumber.toInt()
+                map["numAvailableCredentials"].asNumber.toInt(),
             )
         }
     }
@@ -54,6 +51,7 @@ data class DocumentState(
                 .put("numPendingCredentials", numPendingCredentials)
                 .put("numAvailableCredentials", numAvailableCredentials)
                 .end()
-                .build())
+                .build(),
+        )
     }
 }

@@ -8,9 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 
 class DocumentPagerItemDecoration(
     context: Context,
-    @DimenRes horizontalMarginInDp: Int
+    @DimenRes horizontalMarginInDp: Int,
 ) : RecyclerView.ItemDecoration() {
-
     private val horizontalMarginInPx: Int =
         context.resources.getDimension(horizontalMarginInDp).toInt()
 
@@ -18,7 +17,7 @@ class DocumentPagerItemDecoration(
         outRect: Rect,
         view: View,
         parent: RecyclerView,
-        state: RecyclerView.State
+        state: RecyclerView.State,
     ) {
         outRect.right = horizontalMarginInPx
         outRect.left = horizontalMarginInPx

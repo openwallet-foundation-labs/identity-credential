@@ -58,7 +58,7 @@ import com.android.identity.wallet.util.ProvisioningUtil
 @Composable
 fun AddSelfSignedDocumentScreen(
     viewModel: AddSelfSignedViewModel,
-    onNext: () -> Unit
+    onNext: () -> Unit,
 ) {
     val screenState by viewModel.screenState.collectAsState()
 
@@ -75,7 +75,7 @@ fun AddSelfSignedDocumentScreen(
         onMaxUseOfMsoChanged = viewModel::updateMaxUseOfMso,
         onValidityInDaysChanged = viewModel::updateValidityInDays,
         onMinValidityInDaysChanged = viewModel::updateMinValidityInDays,
-        onNext = onNext
+        onNext = onNext,
     )
 }
 
@@ -93,87 +93,97 @@ private fun AddSelfSignedDocumentScreenContent(
     onMaxUseOfMsoChanged: (newValue: Int) -> Unit,
     onValidityInDaysChanged: (newValue: Int) -> Unit,
     onMinValidityInDaysChanged: (newValue: Int) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
 ) {
     Scaffold(modifier = modifier) { paddingValues ->
         val scrollState = rememberScrollState()
         Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier =
+                Modifier
+                    .padding(paddingValues)
+                    .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Spacer(modifier = Modifier.fillMaxWidth())
             DocumentTypeChooser(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 documentItems = documentItems,
                 currentDocumentType = screenState.documentType,
-                onDocumentTypeSelected = onDocumentTypeChanged
+                onDocumentTypeSelected = onDocumentTypeChanged,
             )
             CardArtChooser(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 currentCardArt = screenState.cardArt,
-                onCardArtSelected = onCardArtSelected
+                onCardArtSelected = onCardArtSelected,
             )
             DocumentNameInput(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 value = screenState.documentName,
-                onValueChanged = onDocumentNameChanged
+                onValueChanged = onDocumentNameChanged,
             )
             KeystoreImplementationChooser(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 currentImplementation = screenState.currentSecureArea,
-                onKeystoreImplementationChanged = onKeystoreImplementationChanged
+                onKeystoreImplementationChanged = onKeystoreImplementationChanged,
             )
             SecureAreaSupport.getInstance(
                 LocalContext.current,
-                screenState.currentSecureArea
+                screenState.currentSecureArea,
             ).SecureAreaAuthUi(onUiStateUpdated = onSecureAreaSupportStateUpdated)
             CounterInput(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 label = stringResource(id = R.string.txt_number_mso),
                 value = screenState.numberOfMso,
-                onValueChange = onNumberOfMsoChanged
+                onValueChange = onNumberOfMsoChanged,
             )
             CounterInput(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 label = stringResource(id = R.string.txt_max_use_mso),
                 value = screenState.maxUseOfMso,
-                onValueChange = onMaxUseOfMsoChanged
+                onValueChange = onMaxUseOfMsoChanged,
             )
             CounterInput(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 label = stringResource(id = R.string.validity_in_days),
                 value = screenState.validityInDays,
-                onValueChange = onValidityInDaysChanged
+                onValueChange = onValidityInDaysChanged,
             )
             CounterInput(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 label = stringResource(id = R.string.minimum_validity_in_days),
                 value = screenState.minValidityInDays,
-                onValueChange = onMinValidityInDaysChanged
+                onValueChange = onMinValidityInDaysChanged,
             )
             Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                onClick = onNext
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                onClick = onNext,
             ) {
                 Text(text = "Next")
             }
@@ -186,39 +196,41 @@ private fun DocumentTypeChooser(
     modifier: Modifier = Modifier,
     documentItems: List<DocumentItem>,
     currentDocumentType: String,
-    onDocumentTypeSelected: (newType: String, newName: String) -> Unit
+    onDocumentTypeSelected: (newType: String, newName: String) -> Unit,
 ) {
     LabeledUserInput(
         modifier = modifier,
-        label = stringResource(id = R.string.txt_document_type)
+        label = stringResource(id = R.string.txt_document_type),
     ) {
         var expanded by remember { mutableStateOf(false) }
         OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true }
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = true },
         ) {
-            documentItems.find {it.docType == currentDocumentType}?.let {
+            documentItems.find { it.docType == currentDocumentType }?.let {
                 ValueLabel(
                     modifier = Modifier.weight(1f),
-                    label = it.displayName
+                    label = it.displayName,
                 )
             }
             DropDownIndicator()
         }
         DropdownMenu(
-            modifier = Modifier
-                .fillMaxWidth(0.8f),
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.8f),
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
         ) {
-            documentItems.forEach{
+            documentItems.forEach {
                 TextDropDownRow(
                     label = it.displayName,
                     onSelected = {
                         onDocumentTypeSelected(it.docType, it.displayName)
                         expanded = false
-                    }
+                    },
                 )
             }
         }
@@ -229,66 +241,70 @@ private fun DocumentTypeChooser(
 private fun CardArtChooser(
     modifier: Modifier,
     currentCardArt: DocumentColor,
-    onCardArtSelected: (newCardArt: DocumentColor) -> Unit
+    onCardArtSelected: (newCardArt: DocumentColor) -> Unit,
 ) {
     LabeledUserInput(
         modifier = modifier,
-        label = stringResource(id = R.string.txt_card_art)
+        label = stringResource(id = R.string.txt_card_art),
     ) {
         var expanded by remember { mutableStateOf(false) }
         OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true },
-            outlineBrush = gradientFor(currentCardArt)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = true },
+            outlineBrush = gradientFor(currentCardArt),
         ) {
             Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(gradientFor(currentCardArt), RoundedCornerShape(8.dp)),
+                modifier =
+                    Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(gradientFor(currentCardArt), RoundedCornerShape(8.dp)),
             )
             ValueLabel(
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .weight(1f),
-                label = stringResource(id = colorNameFor(currentCardArt))
+                modifier =
+                    Modifier
+                        .padding(horizontal = 12.dp)
+                        .weight(1f),
+                label = stringResource(id = colorNameFor(currentCardArt)),
             )
             DropDownIndicator()
         }
         DropdownMenu(
-            modifier = Modifier
-                .fillMaxWidth(0.8f),
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.8f),
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
         ) {
             CardArtDropDownRow(
                 cardArt = DocumentColor.Green,
                 onSelected = {
                     onCardArtSelected(DocumentColor.Green)
                     expanded = false
-                }
+                },
             )
             CardArtDropDownRow(
                 cardArt = DocumentColor.Yellow,
                 onSelected = {
                     onCardArtSelected(DocumentColor.Yellow)
                     expanded = false
-                }
+                },
             )
             CardArtDropDownRow(
                 cardArt = DocumentColor.Blue,
                 onSelected = {
                     onCardArtSelected(DocumentColor.Blue)
                     expanded = false
-                }
+                },
             )
             CardArtDropDownRow(
                 cardArt = DocumentColor.Red,
                 onSelected = {
                     onCardArtSelected(DocumentColor.Red)
                     expanded = false
-                }
+                },
             )
         }
     }
@@ -298,23 +314,25 @@ private fun CardArtChooser(
 private fun DocumentNameInput(
     modifier: Modifier = Modifier,
     value: String,
-    onValueChanged: (newValue: String) -> Unit
+    onValueChanged: (newValue: String) -> Unit,
 ) {
     LabeledUserInput(
         modifier = modifier,
-        label = stringResource(id = R.string.txt_document_name)
+        label = stringResource(id = R.string.txt_document_name),
     ) {
         OutlinedContainerHorizontal(modifier = Modifier.fillMaxWidth()) {
             BasicTextField(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                textStyle = MaterialTheme.typography.labelMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                textStyle =
+                    MaterialTheme.typography.labelMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
                 value = value,
                 onValueChange = onValueChanged,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface)
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
             )
         }
     }
@@ -324,29 +342,31 @@ private fun DocumentNameInput(
 private fun KeystoreImplementationChooser(
     modifier: Modifier = Modifier,
     currentImplementation: CurrentSecureArea,
-    onKeystoreImplementationChanged: (newImplementation: CurrentSecureArea) -> Unit
+    onKeystoreImplementationChanged: (newImplementation: CurrentSecureArea) -> Unit,
 ) {
     LabeledUserInput(
         modifier = modifier,
-        label = stringResource(id = R.string.txt_keystore_implementation)
+        label = stringResource(id = R.string.txt_keystore_implementation),
     ) {
         var expanded by remember { mutableStateOf(false) }
         OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true }
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = true },
         ) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = currentImplementation.displayName
+                label = currentImplementation.displayName,
             )
             DropDownIndicator()
         }
         DropdownMenu(
-            modifier = Modifier
-                .fillMaxWidth(0.8f),
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.8f),
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
         ) {
             ProvisioningUtil.getInstance(LocalContext.current)
                 .secureAreaRepository.implementations.forEach { implementation ->
@@ -355,7 +375,7 @@ private fun KeystoreImplementationChooser(
                         onSelected = {
                             onKeystoreImplementationChanged(implementation.toSecureAreaState())
                             expanded = false
-                        }
+                        },
                     )
                 }
         }
@@ -366,25 +386,26 @@ private fun KeystoreImplementationChooser(
 private fun CardArtDropDownRow(
     modifier: Modifier = Modifier,
     cardArt: DocumentColor,
-    onSelected: () -> Unit
+    onSelected: () -> Unit,
 ) {
     DropdownMenuItem(
         text = {
             Row(
                 modifier = modifier,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(gradientFor(cardArt), RoundedCornerShape(8.dp)),
+                    modifier =
+                        Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(gradientFor(cardArt), RoundedCornerShape(8.dp)),
                 )
                 ValueLabel(label = stringResource(id = colorNameFor(cardArt)))
             }
         },
-        onClick = onSelected
+        onClick = onSelected,
     )
 }
 
@@ -393,20 +414,21 @@ fun OutlinedContainerVertical(
     modifier: Modifier = Modifier,
     outlineBorderWidth: Dp = 2.dp,
     outlineBrush: Brush? = null,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val brush = outlineBrush ?: SolidColor(MaterialTheme.colorScheme.outline)
     Row(
-        modifier = modifier
-            .heightIn(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(outlineBorderWidth, brush, RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.inverseOnSurface),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            modifier
+                .heightIn(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(outlineBorderWidth, brush, RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.inverseOnSurface),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             content()
         }

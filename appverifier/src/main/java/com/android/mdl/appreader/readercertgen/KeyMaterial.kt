@@ -9,5 +9,5 @@ data class KeyMaterial(
     val publicKey: PublicKey,
     val signingAlgorithm: String,
     val issuerCertificate: Optional<X509Certificate>,
-    val signingKey: PrivateKey
+    val signingKey: PrivateKey,
 )

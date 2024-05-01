@@ -95,9 +95,8 @@ import java.security.Security
 import java.util.UUID
 
 class MdocReaderPrompt(
-    private val mdocReaderSettings: MdocReaderSettings
+    private val mdocReaderSettings: MdocReaderSettings,
 ) : BottomSheetDialogFragment() {
-
     private lateinit var context: Context
     private lateinit var readerModeListener: NfcAdapter.ReaderCallback
 
@@ -129,15 +128,16 @@ class MdocReaderPrompt(
             AgeVerificationType.Over21 -> requestedElemsIntent["age_over_21"] = false
         }
 
-        val generator = DeviceRequestGenerator(verification.sessionTranscript)
-            .addDocumentRequest(
-                "org.iso.18013.5.1.mDL",
-                mapOf("org.iso.18013.5.1" to requestedElemsIntent),
-                null,
-                null,
-                Algorithm.UNSET,
-                null
-            )
+        val generator =
+            DeviceRequestGenerator(verification.sessionTranscript)
+                .addDocumentRequest(
+                    "org.iso.18013.5.1.mDL",
+                    mapOf("org.iso.18013.5.1" to requestedElemsIntent),
+                    null,
+                    null,
+                    Algorithm.UNSET,
+                    null,
+                )
 
         verification.sendRequest(generator.generate())
     }
@@ -146,66 +146,69 @@ class MdocReaderPrompt(
         Logger.d("init", "new init")
         context = requireActivity().applicationContext
         vibrator = context.getSystemService(Vibrator::class.java)
-        responseListener = object : VerificationHelper.Listener {
-            override fun onReaderEngagementReady(readerEngagement: ByteArray) {
-                this@MdocReaderPrompt.readerEngagement = readerEngagement
-            }
-
-            override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
-                // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
-                // if both BLE modes are available at the same time.
-                Logger.d("Listener", "device engagement received")
-                navController.navigate("ReaderReady/Connecting")
-                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-                val availableMdocConnectionMethods = ConnectionMethod.disambiguate(connectionMethods)
-                if (availableMdocConnectionMethods.isNotEmpty()) {
-                    this@MdocReaderPrompt.mdocConnectionMethod = availableMdocConnectionMethods.first()
+        responseListener =
+            object : VerificationHelper.Listener {
+                override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+                    this@MdocReaderPrompt.readerEngagement = readerEngagement
                 }
-                if (hasStarted)
-                    throw IllegalStateException("Connection has already started. It is necessary to stop verification before starting a new one.")
 
-                if (mdocConnectionMethod == null)
-                    throw IllegalStateException("No mdoc connection method selected.")
+                override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+                    // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+                    // if both BLE modes are available at the same time.
+                    Logger.d("Listener", "device engagement received")
+                    navController.navigate("ReaderReady/Connecting")
+                    vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
+                    val availableMdocConnectionMethods = ConnectionMethod.disambiguate(connectionMethods)
+                    if (availableMdocConnectionMethods.isNotEmpty()) {
+                        this@MdocReaderPrompt.mdocConnectionMethod = availableMdocConnectionMethods.first()
+                    }
+                    if (hasStarted) {
+                        throw IllegalStateException("Connection has already started. It is necessary to stop verification before starting a new one.")
+                    }
 
-                // Start connection
-                mdocConnectionMethod?.let { verification.connect(it) }
-                hasStarted = true
-            }
+                    if (mdocConnectionMethod == null) {
+                        throw IllegalStateException("No mdoc connection method selected.")
+                    }
 
-            override fun onMoveIntoNfcField() {
-                Logger.d("Listener", "onMoveIntoNfcField")
-                navController.navigate("Status/Move into NFC Field")
-            }
+                    // Start connection
+                    mdocConnectionMethod?.let { verification.connect(it) }
+                    hasStarted = true
+                }
 
-            override fun onDeviceConnected() {
-                Logger.d("Listener", "onDeviceConnected")
-                sendRequest()
-            }
+                override fun onMoveIntoNfcField() {
+                    Logger.d("Listener", "onMoveIntoNfcField")
+                    navController.navigate("Status/Move into NFC Field")
+                }
 
-            override fun onResponseReceived(deviceResponseBytes: ByteArray) {
-                Logger.d("Listener", "onResponseReceived")
-                responseBytes = deviceResponseBytes
-                navController.navigate("Results")
-            }
+                override fun onDeviceConnected() {
+                    Logger.d("Listener", "onDeviceConnected")
+                    sendRequest()
+                }
 
-            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-                Logger.d("Listener", "onDeviceDisconnected")
-                disconnect()
-                if (responseBytes == null) {
-                    navController.navigate("ReaderReady")
-                    initializeWithContext()
+                override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+                    Logger.d("Listener", "onResponseReceived")
+                    responseBytes = deviceResponseBytes
+                    navController.navigate("Results")
+                }
+
+                override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                    Logger.d("Listener", "onDeviceDisconnected")
+                    disconnect()
+                    if (responseBytes == null) {
+                        navController.navigate("ReaderReady")
+                        initializeWithContext()
+                    }
+                }
+
+                override fun onError(error: Throwable) {
+                    Logger.d("Listener", "onError")
+                    disconnect()
+                    if (responseBytes == null) {
+                        navController.navigate("ReaderReady")
+                        initializeWithContext()
+                    }
                 }
             }
-
-            override fun onError(error: Throwable) {
-                Logger.d("Listener", "onError")
-                disconnect()
-                if (responseBytes == null) {
-                    navController.navigate("ReaderReady")
-                    initializeWithContext()
-                }
-            }
-        }
 
         val connectionMethods = mutableListOf<ConnectionMethod>()
         val bleUuid = UUID.randomUUID()
@@ -214,15 +217,18 @@ class MdocReaderPrompt(
                 false,
                 true,
                 null,
-                bleUuid)
+                bleUuid,
+            ),
         )
-        verification = VerificationHelper.Builder(context, responseListener, context.mainExecutor)
-            .setDataTransportOptions(DataTransportOptions.Builder().build())
-            .setNegotiatedHandoverConnectionMethods(connectionMethods)
-            .build()
-        readerModeListener = NfcAdapter.ReaderCallback { tag ->
-            verification.nfcProcessOnTagDiscovered(tag)
-        }
+        verification =
+            VerificationHelper.Builder(context, responseListener, context.mainExecutor)
+                .setDataTransportOptions(DataTransportOptions.Builder().build())
+                .setNegotiatedHandoverConnectionMethods(connectionMethods)
+                .build()
+        readerModeListener =
+            NfcAdapter.ReaderCallback { tag ->
+                verification.nfcProcessOnTagDiscovered(tag)
+            }
     }
 
     private fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
@@ -236,7 +242,7 @@ class MdocReaderPrompt(
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in the OS itself.
@@ -252,10 +258,12 @@ class MdocReaderPrompt(
         ageRequested = mdocReaderSettings.getAgeRequested()
         val adapter = NfcAdapter.getDefaultAdapter(context)
         adapter.enableReaderMode(
-            activity, readerModeListener,
-            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-            null)
+            activity,
+            readerModeListener,
+            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B +
+                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+            null,
+        )
 
         return ComposeView(requireContext()).apply {
             setContent {
@@ -265,16 +273,17 @@ class MdocReaderPrompt(
                     NavHost(
                         navController = navController,
                         startDestination = "ReaderReady",
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     ) {
                         composable(route = "ReaderReady") {
                             ReaderScreen(
                                 onClose = { dismiss() },
                                 onQrClicked = { navController.navigate("QrScanner") },
                                 mdocReaderSettings = mdocReaderSettings,
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .fillMaxSize()
+                                modifier =
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.background)
+                                        .fillMaxSize(),
                             )
                         }
                         composable(route = "ReaderReady/Connecting") {
@@ -283,36 +292,40 @@ class MdocReaderPrompt(
                                 onQrClicked = { navController.navigate("QrScanner") },
                                 mdocReaderSettings = mdocReaderSettings,
                                 connecting = true,
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .fillMaxSize()
+                                modifier =
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.background)
+                                        .fillMaxSize(),
                             )
                         }
                         composable(route = "QrScanner") {
                             QrScanner(
                                 onClose = { dismiss() },
                                 qrCodeReturn = { qrText -> verification.setDeviceEngagementFromQrCode(qrText) },
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .fillMaxSize()
+                                modifier =
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.background)
+                                        .fillMaxSize(),
                             )
                         }
                         composable(route = "Results") {
                             ResultsScreen(
                                 onClose = { dismiss() },
                                 deviceResponse = getDeviceResponse(),
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .fillMaxSize()
+                                modifier =
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.background)
+                                        .fillMaxSize(),
                             )
                         }
                         composable(route = "Status/{description}") {
                             StatusScreen(
                                 onClose = { dismiss() },
                                 description = it.arguments?.getString("description")!!,
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .fillMaxSize()
+                                modifier =
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.background)
+                                        .fillMaxSize(),
                             )
                         }
                     }
@@ -330,20 +343,22 @@ class MdocReaderPrompt(
 @Composable
 private fun CloseBtn(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Button(
         onClick = { onClick() },
         colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primaryContainer),
-        modifier = modifier
-            .minimumInteractiveComponentSize(),
+        modifier =
+            modifier
+                .minimumInteractiveComponentSize(),
     ) {
         Text(
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             text = "Close",
-            modifier = Modifier
-                .padding(5.dp)
+            modifier =
+                Modifier
+                    .padding(5.dp),
         )
     }
 }
@@ -352,7 +367,7 @@ private fun CloseBtn(
 private fun StatusScreen(
     onClose: () -> Unit,
     description: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier,
@@ -361,26 +376,27 @@ private fun StatusScreen(
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground,
             text = description,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(40.dp)
-                .align(Alignment.TopCenter)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(40.dp)
+                    .align(Alignment.TopCenter),
         )
         CloseBtn(
             onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(15.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(15.dp),
         )
     }
 }
-
 
 @Composable
 private fun QrScanner(
     qrCodeReturn: (String) -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
@@ -390,20 +406,23 @@ private fun QrScanner(
                 modifier = Modifier,
                 factory = {
                     CodeScannerView(it).apply {
-                        val codeScanner = CodeScanner(it, this).apply {
-                            isAutoFocusEnabled = true
-                            isAutoFocusButtonVisible = false
-                            scanMode = ScanMode.SINGLE
-                            decodeCallback = DecodeCallback { result ->
-                                qrCodeReturn.invoke(result.text)
-                                releaseResources()
+                        val codeScanner =
+                            CodeScanner(it, this).apply {
+                                isAutoFocusEnabled = true
+                                isAutoFocusButtonVisible = false
+                                scanMode = ScanMode.SINGLE
+                                decodeCallback =
+                                    DecodeCallback { result ->
+                                        qrCodeReturn.invoke(result.text)
+                                        releaseResources()
+                                    }
+                                errorCallback =
+                                    ErrorCallback {
+                                        releaseResources()
+                                    }
+                                camera = CodeScanner.CAMERA_BACK
+                                isFlashEnabled = false
                             }
-                            errorCallback = ErrorCallback {
-                                releaseResources()
-                            }
-                            camera = CodeScanner.CAMERA_BACK
-                            isFlashEnabled = false
-                        }
                         codeScanner.startPreview()
                     }
                 },
@@ -412,7 +431,6 @@ private fun QrScanner(
         CloseBtn(onClick = onClose)
     }
 }
-
 
 @Composable
 private fun MovingSquares(nfcConnecting: Boolean) {
@@ -445,22 +463,21 @@ private fun MovingSquares(nfcConnecting: Boolean) {
     }
 }
 
-
 @Composable
 private fun DrawSquareOnCanvas(
     scale: Float,
     color: Color,
 ) {
     Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
     ) { drawRoundRect(color = color) }
 }
-
 
 @Composable
 private fun scaleInfiniteTransition(
@@ -472,15 +489,15 @@ private fun scaleInfiniteTransition(
     val scale: Float by infiniteTransition.animateFloat(
         initialValue = initialValue,
         targetValue = targetValue,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "nfc connect"
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "nfc connect",
     )
     return scale
 }
-
-
 
 @Composable
 private fun ReaderScreen(
@@ -494,51 +511,54 @@ private fun ReaderScreen(
     Box(
         modifier = modifier,
     ) {
-        Column (
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(vertical = 60.dp)
-                .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .clip(RoundedCornerShape(12.dp))
-                .align(Alignment.TopCenter)
+        Column(
+            modifier =
+                Modifier
+                    .padding(horizontal = 20.dp)
+                    .padding(vertical = 60.dp)
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    .clip(RoundedCornerShape(12.dp))
+                    .align(Alignment.TopCenter),
         ) {
             Text(
-                modifier = Modifier
-                    .padding(vertical = 15.dp)
-                    .fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .padding(vertical = 15.dp)
+                        .fillMaxWidth(),
                 textAlign = TextAlign.Center,
                 text = "Requesting",
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             Text(
                 textAlign = TextAlign.Center,
                 text = "\t\u2022\t\t" + "Portrait",
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.padding(horizontal = 25.dp, vertical = 5.dp)
+                modifier = Modifier.padding(horizontal = 25.dp, vertical = 5.dp),
             )
             Text(
                 textAlign = TextAlign.Center,
                 text = "\t\u2022\t\t" + mdocReaderSettings.getAgeDisplayString(),
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.padding(horizontal = 25.dp, vertical = 5.dp)
+                modifier = Modifier.padding(horizontal = 25.dp, vertical = 5.dp),
             )
         }
 
         // center dialog
-        Column (
+        Column(
             modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
-                modifier = Modifier
-                    .requiredSize(100.dp)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .requiredSize(100.dp)
+                        .fillMaxSize(),
+                contentAlignment = Alignment.Center,
             ) {
                 MovingSquares(connecting)
                 if (connecting) {
@@ -546,23 +566,25 @@ private fun ReaderScreen(
                         textAlign = TextAlign.Center,
                         text = "Connected, waiting on user",
                         overflow = TextOverflow.Visible,
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                        modifier =
+                            Modifier
+                                .padding(horizontal = 4.dp)
+                                .align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                     )
                 } else {
                     IconButton(
                         onClick = { },
-                        modifier = Modifier
-                            .requiredSize(80.dp)
-                            .align(Alignment.Center)
+                        modifier =
+                            Modifier
+                                .requiredSize(80.dp)
+                                .align(Alignment.Center),
                     ) {
                         Icon(
                             modifier = Modifier.requiredSize(70.dp),
                             imageVector = Icons.Filled.Nfc,
                             contentDescription = stringResource(R.string.nfc),
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
                 }
@@ -573,43 +595,46 @@ private fun ReaderScreen(
                     text = "Tap here to\n Present",
                     overflow = TextOverflow.Visible,
                     modifier = Modifier.padding(horizontal = 4.dp),
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             }
         }
 
         // bottom btns
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(vertical = 10.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(vertical = 10.dp),
         ) {
             Button(
                 onClick = { onQrClicked() },
                 colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primaryContainer),
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 5.dp),
+                modifier =
+                    Modifier
+                        .minimumInteractiveComponentSize()
+                        .align(Alignment.CenterHorizontally)
+                        .padding(vertical = 5.dp),
             ) {
                 Text(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     text = "Use QR Code",
-                    modifier = Modifier
-                        .padding(5.dp)
+                    modifier =
+                        Modifier
+                            .padding(5.dp),
                 )
             }
             CloseBtn(
                 onClick = onClose,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 5.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(vertical = 5.dp),
             )
         }
     }
 }
-
 
 @Composable
 private fun ResultsScreen(
@@ -620,18 +645,23 @@ private fun ResultsScreen(
     Box(
         modifier = modifier,
     ) {
-        Column (
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(vertical = 40.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .align(Alignment.TopCenter)
+        Column(
+            modifier =
+                Modifier
+                    .padding(horizontal = 20.dp)
+                    .padding(vertical = 40.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .align(Alignment.TopCenter),
         ) {
             val documents = deviceResponse?.documents
             val mdoc: DeviceResponseParser.Document? = documents?.get(0)
             if (mdoc != null && "org.iso.18013.5.1" in mdoc.issuerNamespaces) {
-                val portraitBytes = mdoc.getIssuerEntryByteString("org.iso.18013.5.1", "portrait") // could break - need to fail more gracefully
+                val portraitBytes =
+                    mdoc.getIssuerEntryByteString(
+                        "org.iso.18013.5.1",
+                        "portrait",
+                    ) // could break - need to fail more gracefully
                 val portraitColor: Color
                 val namespaces: List<String> = mdoc.getIssuerEntryNames("org.iso.18013.5.1")
                 var ageError = true
@@ -655,53 +685,55 @@ private fun ResultsScreen(
 
                 if (ageError) {
                     portraitColor = Color.Red
-                }
-                else if (!mdoc.issuerSignedAuthenticated or !mdoc.deviceSignedAuthenticated) {
+                } else if (!mdoc.issuerSignedAuthenticated or !mdoc.deviceSignedAuthenticated) {
                     portraitColor = Color.Red
                     resultDescription = "Person could not prove age"
-                }
-                else {
+                } else {
                     portraitColor = Color.Green
                 }
 
-                Image(modifier = Modifier
-                    .size(200.dp)
-                    .padding(horizontal = 20.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .background(portraitColor),
+                Image(
+                    modifier =
+                        Modifier
+                            .size(200.dp)
+                            .padding(horizontal = 20.dp)
+                            .align(Alignment.CenterHorizontally)
+                            .background(portraitColor),
                     bitmap = BitmapFactory.decodeByteArray(portraitBytes, 0, portraitBytes.size).asImageBitmap(),
                     contentScale = ContentScale.None,
-                    contentDescription = "Portrait image + $resultDescription"
+                    contentDescription = "Portrait image + $resultDescription",
                 )
 
                 Text(
                     textAlign = TextAlign.Center,
                     text = resultDescription,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 20.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp),
                 )
             } else {
                 Text(
                     textAlign = TextAlign.Center,
                     text = "Error - mDL not as expected",
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 20.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp),
                 )
             }
         }
         CloseBtn(
             onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(vertical = 15.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(vertical = 15.dp),
         )
     }
 }
-
 
 @Preview(showBackground = true)
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -710,11 +742,13 @@ private fun ReaderScreenPreview() {
     IdentityCredentialTheme {
         ReaderScreen(
             modifier = Modifier.fillMaxSize(),
-            mdocReaderSettings = MdocReaderSettings.Builder()
-                .setAgeVerificationType(AgeVerificationType.Over21)
-                .build(),
+            mdocReaderSettings =
+                MdocReaderSettings.Builder()
+                    .setAgeVerificationType(AgeVerificationType.Over21)
+                    .build(),
             onClose = {},
-            onQrClicked = {})
+            onQrClicked = {},
+        )
     }
 }
 
@@ -724,7 +758,8 @@ private fun ResultsScreenPreview() {
     IdentityCredentialTheme {
         ResultsScreen(
             deviceResponse = null,
-            onClose = {})
+            onClose = {},
+        )
     }
 }
 
@@ -734,7 +769,7 @@ private fun QrPreview() {
     IdentityCredentialTheme {
         QrScanner(
             qrCodeReturn = {},
-            onClose = {})
+            onClose = {},
+        )
     }
 }
-

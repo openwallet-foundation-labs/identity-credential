@@ -25,11 +25,11 @@ fun NumberChanger(
     modifier: Modifier = Modifier,
     number: Int,
     onNumberChanged: (newValue: Int) -> Unit,
-    counterTextStyle: TextStyle = MaterialTheme.typography.bodyLarge
+    counterTextStyle: TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = { onNumberChanged(number - 1) }) {
             Icon(imageVector = Icons.Default.Remove, contentDescription = null)
@@ -43,12 +43,12 @@ fun NumberChanger(
                 } else {
                     slideInVertically { it } with slideOutVertically { -it }
                 }
-            }
+            },
         ) { count ->
             Text(
                 text = "$count",
                 textAlign = TextAlign.Center,
-                style = counterTextStyle
+                style = counterTextStyle,
             )
         }
         IconButton(onClick = { onNumberChanged(number + 1) }) {

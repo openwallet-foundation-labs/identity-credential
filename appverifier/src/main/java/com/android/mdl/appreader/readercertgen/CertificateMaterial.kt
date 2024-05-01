@@ -10,7 +10,7 @@ data class CertificateMaterial(
     val endDate: Date,
     val keyUsage: Int,
     val extendedKeyUsage: Optional<String>,
-    val pathLengthConstraint: Int
+    val pathLengthConstraint: Int,
 ) {
     companion object {
         const val PATHLENGTH_NOT_A_CA = -1

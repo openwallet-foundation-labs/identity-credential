@@ -9,9 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 class SettingsViewModel(
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
 ) : ViewModel() {
-
     private val mutableScreenState = MutableStateFlow(SettingsScreenState())
     val screenState: StateFlow<SettingsScreenState> = mutableScreenState
 
@@ -101,12 +100,11 @@ class SettingsViewModel(
             isWifiAwareEnabled = wifiAware,
             isNfcTransferEnabled = nfcTransfer,
             isDebugLoggingEnabled = debugLogging,
-            readerAuthentication = authentication
+            readerAuthentication = authentication,
         )
     }
 
     companion object {
-
         fun factory(userPreferences: UserPreferences): ViewModelProvider.Factory {
             return viewModelFactory {
                 initializer { SettingsViewModel(userPreferences) }

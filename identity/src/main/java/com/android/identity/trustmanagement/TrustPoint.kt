@@ -13,5 +13,5 @@ import java.security.cert.X509Certificate
 data class TrustPoint(
     val certificate: X509Certificate,
     val displayName: String? = null,
-    val displayIcon: ByteArray? = null
+    val displayIcon: ByteArray? = null,
 )

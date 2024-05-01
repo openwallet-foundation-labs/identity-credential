@@ -24,7 +24,6 @@ import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 
 class ShowQrFragment : Fragment() {
-
     private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
 
     private var _binding: FragmentShowQrBinding? = null
@@ -35,10 +34,10 @@ class ShowQrFragment : Fragment() {
     private lateinit var transferManager: TransferManager
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
-
         _binding = FragmentShowQrBinding.inflate(inflater, container, false)
         transferManager = TransferManager.getInstance(requireContext())
         transferManager.initVerificationHelperReverseEngagement()
@@ -47,14 +46,18 @@ class ShowQrFragment : Fragment() {
 
     private fun encodeQRCodeAsBitmap(str: String): Bitmap {
         val width = 800
-        val result: BitMatrix = try {
-            MultiFormatWriter().encode(
-                str,
-                BarcodeFormat.QR_CODE, width, width, null
-            )
-        } catch (e: WriterException) {
-            throw java.lang.IllegalArgumentException(e)
-        }
+        val result: BitMatrix =
+            try {
+                MultiFormatWriter().encode(
+                    str,
+                    BarcodeFormat.QR_CODE,
+                    width,
+                    width,
+                    null,
+                )
+            } catch (e: WriterException) {
+                throw java.lang.IllegalArgumentException(e)
+            }
         val w = result.width
         val h = result.height
         val pixels = IntArray(w * h)
@@ -69,21 +72,28 @@ class ShowQrFragment : Fragment() {
         return bitmap
     }
 
-    private fun getViewForReaderEngagementQrCode(readerEngagement : ByteArray): View {
-        val base64Encoded = Base64.encodeToString(readerEngagement,
-            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-        val uriEncoded = Uri.Builder()
-            .scheme("mdoc://")
-            .encodedOpaquePart(base64Encoded)
-            .build()
-            .toString()
+    private fun getViewForReaderEngagementQrCode(readerEngagement: ByteArray): View {
+        val base64Encoded =
+            Base64.encodeToString(
+                readerEngagement,
+                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
+            )
+        val uriEncoded =
+            Uri.Builder()
+                .scheme("mdoc://")
+                .encodedOpaquePart(base64Encoded)
+                .build()
+                .toString()
         val qrCodeBitmap = encodeQRCodeAsBitmap(uriEncoded)
         val qrCodeView = ImageView(context)
         qrCodeView.setImageBitmap(qrCodeBitmap)
         return qrCodeView
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btCancel.setOnClickListener {
@@ -95,7 +105,7 @@ class ShowQrFragment : Fragment() {
                 TransferStatus.READER_ENGAGEMENT_READY -> {
                     logDebug("Reader engagement ready")
                     binding.layoutEngagement.addView(
-                        getViewForReaderEngagementQrCode(transferManager.readerEngagement!!)
+                        getViewForReaderEngagementQrCode(transferManager.readerEngagement!!),
                     )
                 }
 
@@ -103,7 +113,7 @@ class ShowQrFragment : Fragment() {
                     logDebug("Connected")
                     val requestedDocuments = createRequestViewModel.calculateRequestDocumentList(false)
                     findNavController().navigate(
-                        ShowQrFragmentDirections.actionShowQrToTransfer(requestedDocuments)
+                        ShowQrFragmentDirections.actionShowQrToTransfer(requestedDocuments),
                     )
                 }
                 else -> {}

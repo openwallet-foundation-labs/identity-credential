@@ -23,10 +23,10 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
-import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -47,7 +47,6 @@ import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.days
 
 class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
-
     private lateinit var softwareAttestationKey: EcPrivateKey
     private lateinit var softwareAttestationKeySignatureAlgorithm: Algorithm
     private lateinit var softwareAttestationKeyIssuer: String
@@ -58,7 +57,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
     override fun Fragment.unlockKey(
         credential: MdocCredential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
-        onUnlockFailure: (wasCancelled: Boolean) -> Unit
+        onUnlockFailure: (wasCancelled: Boolean) -> Unit,
     ) {
         val viewModel: PassphrasePromptViewModel by activityViewModels()
         var didAttemptToUnlock = false
@@ -75,56 +74,60 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
                 }
             }
         }
-        val destination = AuthConfirmationFragmentDirections.openPassphrasePrompt(
-            showIncorrectPassword = didAttemptToUnlock
-        )
+        val destination =
+            AuthConfirmationFragmentDirections.openPassphrasePrompt(
+                showIncorrectPassword = didAttemptToUnlock,
+            )
         val runnable = { findNavController().navigate(destination) }
         // The system needs a little time to get back to this screen
         Handler(Looper.getMainLooper()).postDelayed(runnable, 500)
     }
 
     @Composable
-    override fun SecureAreaAuthUi(
-        onUiStateUpdated: (newState: SecureAreaSupportState) -> Unit
-    ) {
+    override fun SecureAreaAuthUi(onUiStateUpdated: (newState: SecureAreaSupportState) -> Unit) {
         var compositionState by remember { mutableStateOf(screenState) }
         LaunchedEffect(key1 = compositionState) {
             onUiStateUpdated(compositionState)
         }
         SoftwareSetupContainer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             passphrase = compositionState.passphrase,
             onPassphraseChanged = {
                 compositionState = compositionState.copy(passphrase = it)
-            }
+            },
         )
         MdocAuthentication(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             state = compositionState.mDocAuthOption,
             onMdocAuthOptionChange = {
                 val newValue = compositionState.mDocAuthOption.copy(mDocAuthentication = it)
-                compositionState = compositionState.copy(
-                    mDocAuthOption = newValue,
-                    softwareAuthKeyCurveState = compositionState.softwareAuthKeyCurveState.copy(
-                        authCurve = SoftwareAuthKeyCurveOption.P256
+                compositionState =
+                    compositionState.copy(
+                        mDocAuthOption = newValue,
+                        softwareAuthKeyCurveState =
+                            compositionState.softwareAuthKeyCurveState.copy(
+                                authCurve = SoftwareAuthKeyCurveOption.P256,
+                            ),
                     )
-                )
-            }
+            },
         )
         AuthenticationKeyCurveSoftware(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             state = compositionState.softwareAuthKeyCurveState,
             mDocAuthState = compositionState.mDocAuthOption,
             onSoftwareAuthKeyCurveChanged = {
                 val newValue = compositionState.authKeyCurve.copy(authCurve = it)
                 compositionState = compositionState.copy(softwareAuthKeyCurveState = newValue)
-            }
+            },
         )
     }
 
@@ -143,53 +146,59 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
                 .setSubject("CN=Software Attestation Root")
                 .setValidityPeriod(
                     now,
-                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
+                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000),
                 )
-                .build()
+                .build(),
         )
         val validFrom = Clock.System.now()
         val validUntil = validFrom + 100.days
         softwareAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
         softwareAttestationKeySignatureAlgorithm = Algorithm.ES256
         softwareAttestationKeyIssuer = "CN=Software Attestation Root"
-        softwareAttestationKeyCertification = CertificateChain(
-            listOf(
-                Crypto.createX509v3Certificate(
-                    softwareAttestationKey.publicKey,
-                    softwareAttestationKey,
-                    null,
-                    Algorithm.ES256,
-                    "1",
-                    "CN=Software Attestation Root",
-                    "CN=Software Attestation Root",
-                    validFrom,
-                    validUntil,
-                    setOf(),
-                    listOf()
-                )
+        softwareAttestationKeyCertification =
+            CertificateChain(
+                listOf(
+                    Crypto.createX509v3Certificate(
+                        softwareAttestationKey.publicKey,
+                        softwareAttestationKey,
+                        null,
+                        Algorithm.ES256,
+                        "1",
+                        "CN=Software Attestation Root",
+                        "CN=Software Attestation Root",
+                        validFrom,
+                        validUntil,
+                        setOf(),
+                        listOf(),
+                    ),
+                ),
             )
-        )
     }
 
     override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
         val state = secureAreaSupportState as SoftwareKeystoreSecureAreaSupportState
         return FormatUtil.cborEncode(
             CborBuilder()
-            .addMap()
-            .put("curve", state.softwareAuthKeyCurveState.authCurve.toEcCurve().coseCurveIdentifier.toLong())
-            .put("purposes", KeyPurpose.encodeSet(
-                setOf(state.mDocAuthOption.mDocAuthentication.toKeyPurpose())).toLong())
-            .put("passphraseRequired", state.passphrase.isNotEmpty())
-            .put("passphrase", state.passphrase)
-            .end()
-            .build().get(0))
+                .addMap()
+                .put("curve", state.softwareAuthKeyCurveState.authCurve.toEcCurve().coseCurveIdentifier.toLong())
+                .put(
+                    "purposes",
+                    KeyPurpose.encodeSet(
+                        setOf(state.mDocAuthOption.mDocAuthentication.toKeyPurpose()),
+                    ).toLong(),
+                )
+                .put("passphraseRequired", state.passphrase.isNotEmpty())
+                .put("passphrase", state.passphrase)
+                .end()
+                .build().get(0),
+        )
     }
 
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
         validFrom: Timestamp,
-        validUntil: Timestamp
+        validUntil: Timestamp,
     ): CreateKeySettings {
         if (!this::softwareAttestationKey.isInitialized) {
             initSoftwareAttestationKey()
@@ -209,7 +218,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
                 softwareAttestationKey,
                 softwareAttestationKeySignatureAlgorithm,
                 softwareAttestationKeyIssuer,
-                softwareAttestationKeyCertification
+                softwareAttestationKeyCertification,
             )
             .build()
     }

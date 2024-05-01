@@ -38,7 +38,8 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
     }
 
     private suspend fun onCameraReady(
-        cameraProvider: ProcessCameraProvider, surfaceProvider: Preview.SurfaceProvider
+        cameraProvider: ProcessCameraProvider,
+        surfaceProvider: Preview.SurfaceProvider,
     ): MrtdAccessDataMrz {
         val mainHandler = Handler(mActivity.mainLooper)
 
@@ -53,7 +54,7 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
         val executor = Executors.newFixedThreadPool(1)!!
         return suspendCoroutine { continuation ->
             analysisUseCase.setAnalyzer(
-                executor
+                executor,
             ) { image ->
                 try {
                     recognize(image) { pictureData ->
@@ -80,26 +81,32 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
 
             // Bind use cases to camera
             cameraProvider.bindToLifecycle(
-                mActivity, CameraSelector.DEFAULT_BACK_CAMERA, previewUseCase, analysisUseCase
+                mActivity,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                previewUseCase,
+                analysisUseCase,
             )
         }
     }
 
     @androidx.annotation.OptIn(ExperimentalGetImage::class)
-    private fun recognize(imageProxy: ImageProxy, dataCb: (keyData: MrtdAccessDataMrz) -> Unit) {
+    private fun recognize(
+        imageProxy: ImageProxy,
+        dataCb: (keyData: MrtdAccessDataMrz) -> Unit,
+    ) {
         val mediaImage = imageProxy.image ?: return
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         recognizer.process(image).addOnSuccessListener { visionText ->
-                imageProxy.close()
-                val value = extractMrtdMrzData(visionText.text)
-                if (value != null) {
-                    mrtdLogI(TAG, "MRZ scanned successfully")
-                    dataCb(value)
-                }
-            }.addOnFailureListener { err ->
-                mrtdLogE(TAG, "Error MRZ scanning", err)
-                imageProxy.close()
+            imageProxy.close()
+            val value = extractMrtdMrzData(visionText.text)
+            if (value != null) {
+                mrtdLogI(TAG, "MRZ scanned successfully")
+                dataCb(value)
             }
+        }.addOnFailureListener { err ->
+            mrtdLogE(TAG, "Error MRZ scanning", err)
+            imageProxy.close()
+        }
     }
 }

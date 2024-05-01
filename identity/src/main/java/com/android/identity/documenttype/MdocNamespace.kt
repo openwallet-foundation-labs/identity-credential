@@ -28,16 +28,15 @@ import com.android.identity.cbor.DataItem
  */
 class MdocNamespace private constructor(
     val namespace: String,
-    val dataElements: Map<String, MdocDataElement>
+    val dataElements: Map<String, MdocDataElement>,
 ) {
     /**
      * Builder class for class [MdocNamespace].
      */
     data class Builder(
         val namespace: String,
-        val dataElements: MutableMap<String, MdocDataElement> = mutableMapOf()
+        val dataElements: MutableMap<String, MdocDataElement> = mutableMapOf(),
     ) {
-
         /**
          * Add a data element to a namespace in the mDoc
          * Document Type.
@@ -57,10 +56,11 @@ class MdocNamespace private constructor(
             mandatory: Boolean,
             sampleValue: DataItem?,
         ) = apply {
-            dataElements[identifier] = MdocDataElement(
-                DocumentAttribute(type, identifier, displayName, description, sampleValue),
-                mandatory
-            )
+            dataElements[identifier] =
+                MdocDataElement(
+                    DocumentAttribute(type, identifier, displayName, description, sampleValue),
+                    mandatory,
+                )
         }
 
         /**

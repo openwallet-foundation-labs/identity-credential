@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
 class PassphraseValidationTest {
-
     @Test
     fun defaultValue() {
         val viewModel = PassphrasePromptViewModel()
@@ -26,10 +25,11 @@ class PassphraseValidationTest {
 
     @Test
     fun resetting() {
-        val viewModel = PassphrasePromptViewModel().apply {
-            val passphrase = ":irrelevant:"
-            authorize(passphrase)
-        }
+        val viewModel =
+            PassphrasePromptViewModel().apply {
+                val passphrase = ":irrelevant:"
+                authorize(passphrase)
+            }
 
         viewModel.reset()
 

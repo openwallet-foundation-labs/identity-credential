@@ -27,7 +27,6 @@ import java.math.BigInteger
  * [RFC 9052](https://datatracker.ietf.org/doc/rfc9052/).
  */
 object Cose {
-
     /**
      * The COSE Key common parameter for the key type (tstr / int).
      *
@@ -102,8 +101,9 @@ object Cose {
 
     private fun stripLeadingZeroes(array: ByteArray): ByteArray {
         val idx = array.indexOfFirst { it != 0.toByte() }
-        if (idx == -1)
+        if (idx == -1) {
             return array
+        }
         return array.copyOfRange(idx, array.size)
     }
 
@@ -119,12 +119,16 @@ object Cose {
      * concatenated together to form a byte string that is the resulting
      * signature.
      */
-    private fun signatureDerToCose(signature: ByteArray, keySize: Int): ByteArray {
-        val asn1 = try {
-            ASN1InputStream(ByteArrayInputStream(signature)).readObject()
-        } catch (e: IOException) {
-            throw IllegalArgumentException("Error decoding DER signature", e)
-        }
+    private fun signatureDerToCose(
+        signature: ByteArray,
+        keySize: Int,
+    ): ByteArray {
+        val asn1 =
+            try {
+                ASN1InputStream(ByteArrayInputStream(signature)).readObject()
+            } catch (e: IOException) {
+                throw IllegalArgumentException("Error decoding DER signature", e)
+            }
         val asn1Encodables = (asn1 as ASN1Sequence).toArray()
         require(asn1Encodables.size == 2) { "Expected two items in sequence" }
         val r = (asn1Encodables[0].toASN1Primitive() as ASN1Integer).value
@@ -150,12 +154,16 @@ object Cose {
     private fun signatureCoseToDer(signature: ByteArray): ByteArray {
         // r and s are always positive and may use all bits so use the constructor which
         // parses them as unsigned.
-        val r = BigInteger(
-            1, signature.copyOfRange(0, signature.size / 2)
-        )
-        val s = BigInteger(
-            1, signature.copyOfRange(signature.size / 2, signature.size)
-        )
+        val r =
+            BigInteger(
+                1,
+                signature.copyOfRange(0, signature.size / 2),
+            )
+        val s =
+            BigInteger(
+                1,
+                signature.copyOfRange(signature.size / 2, signature.size),
+            )
         val baos = ByteArrayOutputStream()
         try {
             DERSequenceGenerator(baos).apply {
@@ -169,25 +177,25 @@ object Cose {
         return baos.toByteArray()
     }
 
-
     private fun coseBuildToBeSigned(
         encodedProtectedHeaders: ByteArray,
         dataToBeSigned: ByteArray,
     ): ByteArray {
-        val arrayBuilder = CborArray.builder().apply {
-            add("Signature1")
-            add(encodedProtectedHeaders)
+        val arrayBuilder =
+            CborArray.builder().apply {
+                add("Signature1")
+                add(encodedProtectedHeaders)
 
-            // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
-            // so external_aad is the empty bstr
-            val emptyExternalAad = ByteArray(0)
-            add(emptyExternalAad)
+                // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
+                // so external_aad is the empty bstr
+                val emptyExternalAad = ByteArray(0)
+                add(emptyExternalAad)
 
-            // Next field is the payload, independently of how it's transported (RFC
-            // 8152 section 4.4).
-            add(dataToBeSigned)
-            end()
-        }
+                // Next field is the payload, independently of how it's transported (RFC
+                // 8152 section 4.4).
+                add(dataToBeSigned)
+                end()
+            }
 
         return Cbor.encode(arrayBuilder.end().build())
     }
@@ -209,11 +217,11 @@ object Cose {
         publicKey: EcPublicKey,
         detachedData: ByteArray?,
         signature: CoseSign1,
-        signatureAlgorithm: Algorithm
+        signatureAlgorithm: Algorithm,
     ): Boolean {
         require(
             (detachedData != null && signature.payload == null) ||
-                    (detachedData == null && signature.payload != null)
+                (detachedData == null && signature.payload != null),
         )
         val encodedProtectedHeaders =
             if (signature.protectedHeaders.isNotEmpty()) {
@@ -223,34 +231,41 @@ object Cose {
             } else {
                 byteArrayOf()
             }
-        val toBeSigned = coseBuildToBeSigned(
-            encodedProtectedHeaders = encodedProtectedHeaders,
-            dataToBeSigned = detachedData ?: signature.payload!!
-        )
+        val toBeSigned =
+            coseBuildToBeSigned(
+                encodedProtectedHeaders = encodedProtectedHeaders,
+                dataToBeSigned = detachedData ?: signature.payload!!,
+            )
 
-        val rawSignature = when (publicKey.curve) {
-            EcCurve.P256,
-            EcCurve.P384,
-            EcCurve.P521,
-            EcCurve.BRAINPOOLP256R1,
-            EcCurve.BRAINPOOLP320R1,
-            EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1 -> signatureCoseToDer(signature.signature)
+        val rawSignature =
+            when (publicKey.curve) {
+                EcCurve.P256,
+                EcCurve.P384,
+                EcCurve.P521,
+                EcCurve.BRAINPOOLP256R1,
+                EcCurve.BRAINPOOLP320R1,
+                EcCurve.BRAINPOOLP384R1,
+                EcCurve.BRAINPOOLP512R1,
+                -> signatureCoseToDer(signature.signature)
 
-            EcCurve.ED25519,
-            EcCurve.ED448 -> {
-                // The signature format of ED25519 and ED448 is already (r, s)
-                signature.signature
+                EcCurve.ED25519,
+                EcCurve.ED448,
+                -> {
+                    // The signature format of ED25519 and ED448 is already (r, s)
+                    signature.signature
+                }
+
+                EcCurve.X25519,
+                EcCurve.X448,
+                -> throw IllegalStateException("Cannot sign with this curve")
             }
-
-            EcCurve.X25519,
-            EcCurve.X448 -> throw IllegalStateException("Cannot sign with this curve")
-
-        }
         return Crypto.checkSignature(publicKey, toBeSigned, signatureAlgorithm, rawSignature)
     }
 
-    private fun toCoseSignatureFormat(curve: EcCurve, signature: ByteArray): ByteArray =
+    private fun toCoseSignatureFormat(
+        curve: EcCurve,
+        signature: ByteArray,
+    ): ByteArray =
         when (curve) {
             EcCurve.P256,
             EcCurve.P384,
@@ -258,19 +273,22 @@ object Cose {
             EcCurve.BRAINPOOLP256R1,
             EcCurve.BRAINPOOLP320R1,
             EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1 -> {
+            EcCurve.BRAINPOOLP512R1,
+            -> {
                 val keySizeOctets = (curve.bitSize + 7) / 8
                 signatureDerToCose(signature, keySizeOctets)
             }
 
             EcCurve.ED25519,
-            EcCurve.ED448 -> {
+            EcCurve.ED448,
+            -> {
                 // The signature format of ED25519 and ED448 is already (r, s)
                 signature
             }
 
             EcCurve.X25519,
-            EcCurve.X448 -> throw IllegalStateException("Cannot sign with this curve")
+            EcCurve.X448,
+            -> throw IllegalStateException("Cannot sign with this curve")
         }
 
     /**
@@ -302,26 +320,28 @@ object Cose {
         signatureAlgorithm: Algorithm,
         protectedHeaders: Map<CoseLabel, DataItem>,
         unprotectedHeaders: Map<CoseLabel, DataItem>,
-        keyUnlockData: KeyUnlockData?
+        keyUnlockData: KeyUnlockData?,
     ): CoseSign1 {
-        val encodedProtectedHeaders = if (protectedHeaders.isNotEmpty()) {
-            val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
-            Cbor.encode(phb.end().build())
-        } else {
-            byteArrayOf()
-        }
+        val encodedProtectedHeaders =
+            if (protectedHeaders.isNotEmpty()) {
+                val phb = CborMap.builder()
+                protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+                Cbor.encode(phb.end().build())
+            } else {
+                byteArrayOf()
+            }
         val toBeSigned = coseBuildToBeSigned(encodedProtectedHeaders, message)
         val signature = secureArea.sign(alias, signatureAlgorithm, toBeSigned, keyUnlockData)
 
         return CoseSign1(
             protectedHeaders = protectedHeaders,
             unprotectedHeaders = unprotectedHeaders,
-            signature = toCoseSignatureFormat(
-                secureArea.getKeyInfo(alias).publicKey.curve,
-                signature
-            ),
-            payload = if (includeMessageInPayload) message else null
+            signature =
+                toCoseSignatureFormat(
+                    secureArea.getKeyInfo(alias).publicKey.curve,
+                    signature,
+                ),
+            payload = if (includeMessageInPayload) message else null,
         )
     }
 
@@ -350,15 +370,16 @@ object Cose {
         includeDataInPayload: Boolean,
         signatureAlgorithm: Algorithm,
         protectedHeaders: Map<CoseLabel, DataItem>,
-        unprotectedHeaders: Map<CoseLabel, DataItem>
+        unprotectedHeaders: Map<CoseLabel, DataItem>,
     ): CoseSign1 {
-        val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
-            val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
-            Cbor.encode(phb.end().build())
-        } else {
-            byteArrayOf()
-        }
+        val encodedProtectedHeaders =
+            if (protectedHeaders.size > 0) {
+                val phb = CborMap.builder()
+                protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+                Cbor.encode(phb.end().build())
+            } else {
+                byteArrayOf()
+            }
         val toBeSigned = coseBuildToBeSigned(encodedProtectedHeaders, dataToSign)
         val signature = Crypto.sign(key, signatureAlgorithm, toBeSigned)
 
@@ -366,7 +387,7 @@ object Cose {
             protectedHeaders = protectedHeaders,
             unprotectedHeaders = unprotectedHeaders,
             signature = toCoseSignatureFormat(key.curve, signature),
-            payload = if (includeDataInPayload) dataToSign else null
+            payload = if (includeDataInPayload) dataToSign else null,
         )
     }
 
@@ -392,20 +413,21 @@ object Cose {
         protectedHeaders: Map<CoseLabel, DataItem>,
         unprotectedHeaders: Map<CoseLabel, DataItem>,
     ): CoseMac0 {
-        val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
-            val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
-            Cbor.encode(phb.end().build())
-        } else {
-            byteArrayOf()
-        }
+        val encodedProtectedHeaders =
+            if (protectedHeaders.size > 0) {
+                val phb = CborMap.builder()
+                protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+                Cbor.encode(phb.end().build())
+            } else {
+                byteArrayOf()
+            }
         val toBeMACed = coseBuildToBeMACed(encodedProtectedHeaders, message)
         val mac = Crypto.mac(algorithm, key, toBeMACed)
         return CoseMac0(
             protectedHeaders = protectedHeaders,
             unprotectedHeaders = unprotectedHeaders,
             tag = mac,
-            payload = if (includeMessageInPayload) message else null
+            payload = if (includeMessageInPayload) message else null,
         )
     }
 
@@ -413,15 +435,16 @@ object Cose {
         encodedProtectedHeaders: ByteArray,
         data: ByteArray,
     ): ByteArray {
-        val arrayBuilder = CborArray.builder().apply {
-            add("MAC0")
-            add(encodedProtectedHeaders)
-            // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
-            // so external_aad is the empty bstr
-            val emptyExternalAad = ByteArray(0)
-            add(emptyExternalAad)
-            add(data)
-        }
+        val arrayBuilder =
+            CborArray.builder().apply {
+                add("MAC0")
+                add(encodedProtectedHeaders)
+                // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
+                // so external_aad is the empty bstr
+                val emptyExternalAad = ByteArray(0)
+                add(emptyExternalAad)
+                add(data)
+            }
 
         return Cbor.encode(arrayBuilder.end().build())
     }

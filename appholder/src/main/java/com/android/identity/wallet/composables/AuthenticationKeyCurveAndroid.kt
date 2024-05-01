@@ -22,34 +22,36 @@ fun AuthenticationKeyCurveAndroid(
     modifier: Modifier = Modifier,
     state: AndroidAuthKeyCurveState,
     mDocAuthState: MdocAuthOption,
-    onAndroidAuthKeyCurveChanged: (newValue: AndroidAuthKeyCurveOption) -> Unit
+    onAndroidAuthKeyCurveChanged: (newValue: AndroidAuthKeyCurveOption) -> Unit,
 ) {
     LabeledUserInput(
         modifier = modifier,
-        label = stringResource(id = R.string.authentication_key_curve_label)
+        label = stringResource(id = R.string.authentication_key_curve_label),
     ) {
         var keyCurveDropDownExpanded by remember { mutableStateOf(false) }
-        val clickModifier = if (state.isEnabled) {
-            Modifier.clickable { keyCurveDropDownExpanded = true }
-        } else {
-            Modifier
-        }
+        val clickModifier =
+            if (state.isEnabled) {
+                Modifier.clickable { keyCurveDropDownExpanded = true }
+            } else {
+                Modifier
+            }
         val alpha = if (state.isEnabled) 1f else .5f
         OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(clickModifier)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .alpha(alpha)
+                    .then(clickModifier),
         ) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = curveLabelFor(state.authCurve.toEcCurve())
+                label = curveLabelFor(state.authCurve.toEcCurve()),
             )
             DropDownIndicator()
         }
         DropdownMenu(
             expanded = keyCurveDropDownExpanded,
-            onDismissRequest = { keyCurveDropDownExpanded = false }
+            onDismissRequest = { keyCurveDropDownExpanded = false },
         ) {
             val ecCurveOption =
                 if (mDocAuthState.mDocAuthentication == MdocAuthStateOption.ECDSA) {
@@ -62,14 +64,14 @@ fun AuthenticationKeyCurveAndroid(
                 onSelected = {
                     onAndroidAuthKeyCurveChanged(AndroidAuthKeyCurveOption.P_256)
                     keyCurveDropDownExpanded = false
-                }
+                },
             )
             TextDropDownRow(
                 label = curveLabelFor(curveOption = ecCurveOption.toEcCurve()),
                 onSelected = {
                     onAndroidAuthKeyCurveChanged(ecCurveOption)
                     keyCurveDropDownExpanded = false
-                }
+                },
             )
         }
     }

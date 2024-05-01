@@ -5,7 +5,6 @@ class SignedDocumentData(
     val identityCredentialName: String,
     val documentType: String,
 ) {
-
     fun issuerSignedEntries(): MutableMap<String, Collection<String>> {
         val byNamespace = signedElements.groupBy { it.namespace }
         val result = mutableMapOf<String, Collection<String>>()

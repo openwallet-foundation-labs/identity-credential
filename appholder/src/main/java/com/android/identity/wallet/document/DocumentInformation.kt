@@ -12,9 +12,8 @@ data class DocumentInformation(
     val documentColor: Int,
     val maxUsagesPerKey: Int,
     val lastTimeUsed: String,
-    val authKeys: List<KeyData>
+    val authKeys: List<KeyData>,
 ) {
-
     data class KeyData(
         val counter: Int,
         val validFrom: String,
@@ -25,7 +24,6 @@ data class DocumentInformation(
         val keyPurposes: KeyPurpose,
         val ecCurve: EcCurve,
         val isHardwareBacked: Boolean,
-        val secureAreaDisplayName: String
+        val secureAreaDisplayName: String,
     )
 }
-

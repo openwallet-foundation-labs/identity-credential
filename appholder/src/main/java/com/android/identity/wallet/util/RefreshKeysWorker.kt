@@ -7,9 +7,8 @@ import com.android.identity.wallet.document.DocumentManager
 
 class RefreshKeysWorker(
     context: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
 ) : Worker(context, params) {
-
     private val documentManager = DocumentManager.getInstance(context)
     private val provisioningUtil = ProvisioningUtil.getInstance(context)
 

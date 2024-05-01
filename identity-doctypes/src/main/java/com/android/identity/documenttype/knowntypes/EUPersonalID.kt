@@ -43,7 +43,7 @@ object EUPersonalID {
                 "Current last name(s), surname(s), or primary identifier of the PID holder",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.familyName.toDataItem
+                SampleData.familyName.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -52,7 +52,7 @@ object EUPersonalID {
                 "Current first name(s), other name(s), or secondary identifier of the PID holder",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.givenName.toDataItem
+                SampleData.givenName.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -61,7 +61,7 @@ object EUPersonalID {
                 "Day, month, and year on which the PID holder was born. If unknown, approximate date of birth.",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.birthDate.toDataItemFullDate
+                SampleData.birthDate.toDataItemFullDate,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -70,7 +70,7 @@ object EUPersonalID {
                 "The age of the PID holder in years",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.ageInYears.toDataItem
+                SampleData.ageInYears.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -79,7 +79,7 @@ object EUPersonalID {
                 "The year when the PID holder was born",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.ageBirthYear.toDataItem
+                SampleData.ageBirthYear.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Boolean,
@@ -88,7 +88,7 @@ object EUPersonalID {
                 "Age over 18?",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.ageOver18.toDataItem
+                SampleData.ageOver18.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Boolean,
@@ -97,7 +97,7 @@ object EUPersonalID {
                 "Age over 21?",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.ageOver21.toDataItem
+                SampleData.ageOver21.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -106,7 +106,7 @@ object EUPersonalID {
                 "Last name(s), surname(s), or primary identifier of the PID holder at birth",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.familyNameBirth.toDataItem
+                SampleData.familyNameBirth.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -115,7 +115,7 @@ object EUPersonalID {
                 "First name(s), other name(s), or secondary identifier of the PID holder at birth",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.givenNameBirth.toDataItem
+                SampleData.givenNameBirth.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -124,7 +124,7 @@ object EUPersonalID {
                 "Country and municipality or state/province where the PID holder was born",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.birthPlace.toDataItem
+                SampleData.birthPlace.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -133,7 +133,7 @@ object EUPersonalID {
                 "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.birthCountry.toDataItem
+                SampleData.birthCountry.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -142,7 +142,7 @@ object EUPersonalID {
                 "The state, province, district, or local area where the PID User was born",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.birthState.toDataItem
+                SampleData.birthState.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -151,7 +151,7 @@ object EUPersonalID {
                 "The municipality, city, town, or village where the PID User was born",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.birthCity.toDataItem
+                SampleData.birthCity.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -160,7 +160,7 @@ object EUPersonalID {
                 "The full address of the place where the PID holder currently resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentAddress.toDataItem
+                SampleData.residentAddress.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -169,7 +169,7 @@ object EUPersonalID {
                 "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentCountry.toDataItem
+                SampleData.residentCountry.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -178,7 +178,7 @@ object EUPersonalID {
                 "The state, province, district, or local area where the PID User currently resides.",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentState.toDataItem
+                SampleData.residentState.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -187,7 +187,7 @@ object EUPersonalID {
                 "The city where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentCity.toDataItem
+                SampleData.residentCity.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -196,7 +196,7 @@ object EUPersonalID {
                 "The postal code of the place where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentPostalCode.toDataItem
+                SampleData.residentPostalCode.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -205,7 +205,7 @@ object EUPersonalID {
                 "The name of the street where the PID User currently resides.",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentStreet.toDataItem
+                SampleData.residentStreet.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -214,7 +214,7 @@ object EUPersonalID {
                 "The house number where the PID User currently resides, including any affix or suffix",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.residentHouseNumber.toDataItem
+                SampleData.residentHouseNumber.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -223,7 +223,7 @@ object EUPersonalID {
                 "PID holder’s gender",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.sexIso5218.toDataItem
+                SampleData.sexIso5218.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -232,7 +232,7 @@ object EUPersonalID {
                 "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User.",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.nationality.toDataItem
+                SampleData.nationality.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -241,7 +241,7 @@ object EUPersonalID {
                 "Date (and possibly time) when the PID was issued.",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.issueDate.toDataItemFullDate
+                SampleData.issueDate.toDataItemFullDate,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -250,18 +250,18 @@ object EUPersonalID {
                 "Date (and possibly time) when the PID will expire.",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.expiryDate.toDataItemFullDate
+                SampleData.expiryDate.toDataItemFullDate,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
                 "issuing_authority",
                 "Issuing Authority",
                 "Name of the administrative authority that has issued this PID instance, or the " +
-                        "ISO 3166 Alpha-2 country code of the respective Member State if there is" +
-                        "no separate authority authorized to issue PIDs.",
+                    "ISO 3166 Alpha-2 country code of the respective Member State if there is" +
+                    "no separate authority authorized to issue PIDs.",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.issuingAuthorityEuPid.toDataItem
+                SampleData.issuingAuthorityEuPid.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -270,7 +270,7 @@ object EUPersonalID {
                 "A number for the PID, assigned by the PID Provider.",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.documentNumber.toDataItem
+                SampleData.documentNumber.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -279,28 +279,28 @@ object EUPersonalID {
                 "A number assigned by the PID Provider for audit control or other purposes.",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.administrativeNumber.toDataItem
+                SampleData.administrativeNumber.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
                 "issuing_jurisdiction",
                 "Issuing Jurisdiction",
                 "Country subdivision code of the jurisdiction that issued the PID, as defined in " +
-                        "ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
-                        "as the value for issuing_country.",
+                    "ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
+                    "as the value for issuing_country.",
                 false,
                 EUPID_NAMESPACE,
-                SampleData.issuingJurisdiction.toDataItem
+                SampleData.issuingJurisdiction.toDataItem,
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "issuing_country",
                 "Issuing Country",
                 "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s " +
-                        "country or territory",
+                    "country or territory",
                 true,
                 EUPID_NAMESPACE,
-                SampleData.issuingCountry.toDataItem
+                SampleData.issuingCountry.toDataItem,
             )
             .build()
     }

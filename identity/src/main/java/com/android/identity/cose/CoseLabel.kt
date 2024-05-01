@@ -9,7 +9,6 @@ import com.android.identity.cbor.Uint
  * Abstract base class for COSE Labels.
  */
 sealed class CoseLabel {
-
     /**
      * The CBOR encoding for a COSE Label.
      */

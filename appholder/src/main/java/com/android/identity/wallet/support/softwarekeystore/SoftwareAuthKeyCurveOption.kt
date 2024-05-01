@@ -16,7 +16,8 @@ enum class SoftwareAuthKeyCurveOption : Parcelable {
     Ed25519,
     Ed448,
     X25519,
-    X448;
+    X448,
+    ;
 
     fun toEcCurve(): EcCurve =
         when (this) {

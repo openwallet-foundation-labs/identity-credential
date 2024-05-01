@@ -34,5 +34,5 @@ data class ConsentPromptData(
 @Immutable
 data class ConsentDataElement(
     val displayName: String,
-    val dataElement: DocumentRequest.DataElement
+    val dataElement: DocumentRequest.DataElement,
 )

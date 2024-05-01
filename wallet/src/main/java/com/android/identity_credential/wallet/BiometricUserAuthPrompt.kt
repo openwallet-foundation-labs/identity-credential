@@ -40,8 +40,8 @@ fun showBiometricPrompt(
     if (userAuthenticationTypes.isEmpty()) {
         onError.invoke(
             IllegalStateException(
-                "userAuthenticationTypes must contain at least one authentication type"
-            )
+                "userAuthenticationTypes must contain at least one authentication type",
+            ),
         )
     }
 
@@ -54,7 +54,7 @@ fun showBiometricPrompt(
         requireConfirmation = requireConfirmation,
         onSuccess = onSuccess,
         onCanceled = onCanceled,
-        onError = onError
+        onError = onError,
     ).authenticate()
 }
 
@@ -75,39 +75,42 @@ private class BiometricUserAuthPrompt(
 
     private var lskfOnNegativeBtn: Boolean = false
 
-    private var biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {
-        override fun onAuthenticationError(
-            errorCode: Int,
-            errorString: CharSequence
-        ) {
-            super.onAuthenticationError(errorCode, errorString)
-            if (setOf(BiometricPrompt.ERROR_NEGATIVE_BUTTON,
-                    BiometricPrompt.ERROR_NO_BIOMETRICS,
-                    BiometricPrompt.ERROR_UNABLE_TO_PROCESS).contains(errorCode) && lskfOnNegativeBtn) {
-                // if no delay is injected, then biometric prompt's auth callbacks would not be called
-                Handler(Looper.getMainLooper()).postDelayed({
-                    authenticateLskf()
-                }, 100)
-            } else if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
-                onCanceled.invoke()
-            } else {
-                onError.invoke(IllegalStateException(errorString.toString()))
+    private var biometricAuthCallback =
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationError(
+                errorCode: Int,
+                errorString: CharSequence,
+            ) {
+                super.onAuthenticationError(errorCode, errorString)
+                if (setOf(
+                        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                        BiometricPrompt.ERROR_NO_BIOMETRICS,
+                        BiometricPrompt.ERROR_UNABLE_TO_PROCESS,
+                    ).contains(errorCode) && lskfOnNegativeBtn
+                ) {
+                    // if no delay is injected, then biometric prompt's auth callbacks would not be called
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        authenticateLskf()
+                    }, 100)
+                } else if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                    onCanceled.invoke()
+                } else {
+                    onError.invoke(IllegalStateException(errorString.toString()))
+                }
+            }
+
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                onSuccess()
             }
         }
 
-        override fun onAuthenticationSucceeded(
-            result: BiometricPrompt.AuthenticationResult
-        ) {
-            super.onAuthenticationSucceeded(result)
-            onSuccess()
-        }
-    }
-
-    private var biometricPrompt = BiometricPrompt(
-        activity,
-        ContextCompat.getMainExecutor(activity),
-        biometricAuthCallback
-    )
+    private var biometricPrompt =
+        BiometricPrompt(
+            activity,
+            ContextCompat.getMainExecutor(activity),
+            biometricAuthCallback,
+        )
 
     fun authenticate() {
         lskfOnNegativeBtn = userAuthenticationTypes.contains(UserAuthenticationType.LSKF)
@@ -121,15 +124,19 @@ private class BiometricUserAuthPrompt(
 
     private fun authenticateBiometric() {
         val negativeTxt =
-            if (lskfOnNegativeBtn) resourceString(R.string.biometric_prompt_negative_btn_lskf)
-            else resourceString(R.string.biometric_prompt_negative_btn_no_lskf)
+            if (lskfOnNegativeBtn) {
+                resourceString(R.string.biometric_prompt_negative_btn_lskf)
+            } else {
+                resourceString(R.string.biometric_prompt_negative_btn_no_lskf)
+            }
 
-        val biometricPromptInfo = PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle(subtitle)
-            .setNegativeButtonText(negativeTxt)
-            .setConfirmationRequired(requireConfirmation)
-            .build()
+        val biometricPromptInfo =
+            PromptInfo.Builder()
+                .setTitle(title)
+                .setSubtitle(subtitle)
+                .setNegativeButtonText(negativeTxt)
+                .setConfirmationRequired(requireConfirmation)
+                .build()
 
         if (cryptoObject != null) {
             biometricPrompt.authenticate(biometricPromptInfo, cryptoObject!!)
@@ -141,12 +148,13 @@ private class BiometricUserAuthPrompt(
     private fun authenticateLskf() {
         lskfOnNegativeBtn = false
 
-        val lskfPromptInfo = PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle(subtitle)
-            .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-            .setConfirmationRequired(requireConfirmation)
-            .build()
+        val lskfPromptInfo =
+            PromptInfo.Builder()
+                .setTitle(title)
+                .setSubtitle(subtitle)
+                .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .setConfirmationRequired(requireConfirmation)
+                .build()
 
         if (cryptoObject != null) {
             biometricPrompt.authenticate(lskfPromptInfo, cryptoObject!!)
@@ -155,7 +163,10 @@ private class BiometricUserAuthPrompt(
         }
     }
 
-    private fun resourceString(id: Int, vararg text: String): String {
+    private fun resourceString(
+        id: Int,
+        vararg text: String,
+    ): String {
         return activity.applicationContext.resources.getString(id, *text)
     }
 }

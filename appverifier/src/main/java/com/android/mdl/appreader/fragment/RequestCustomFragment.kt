@@ -23,7 +23,6 @@ import com.android.mdl.appreader.viewModel.RequestCustomViewModel
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class RequestCustomFragment : Fragment() {
-
     private val args: RequestCustomFragmentArgs by navArgs()
     private var _binding: FragmentRequestCustomBinding? = null
 
@@ -42,20 +41,22 @@ class RequestCustomFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
-
         _binding = FragmentRequestCustomBinding.inflate(inflater, container, false)
         vm = ViewModelProvider(this).get(RequestCustomViewModel::class.java)
 
         vm.init(requestDocument)
 
         return binding.root
-
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         // Dynamically creates the list of checkbox
@@ -70,15 +71,15 @@ class RequestCustomFragment : Fragment() {
                             ?.mdocDocumentType
                             ?.namespaces?.get(ns.key)?.dataElements?.get(el)?.attribute?.displayName
                             ?: el,
-                        vm.isSelectedDataItem(ns.key, el)
-                    )
+                        vm.isSelectedDataItem(ns.key, el),
+                    ),
                 )
             }
         }
 
         binding.btNext.setOnClickListener {
             // TODO: get intent to retain from user
-            //requestDocument.setSelectedDataItems(vm.getSelectedDataItems(false))
+            // requestDocument.setSelectedDataItems(vm.getSelectedDataItems(false))
             requestDocumentList.getAll()
                 .find { it.docType == requestDocument.docType }
                 .also {
@@ -86,8 +87,8 @@ class RequestCustomFragment : Fragment() {
                 }
             findNavController().navigate(
                 RequestCustomFragmentDirections.actionRequestCustomToScanDeviceEngagement(
-                    requestDocumentList
-                )
+                    requestDocumentList,
+                ),
             )
         }
         binding.btCancel.setOnClickListener {
@@ -100,15 +101,16 @@ class RequestCustomFragment : Fragment() {
         namespace: String,
         identifier: String,
         text: String,
-        isSelected: Boolean
+        isSelected: Boolean,
     ): CheckBox {
         val checkBox = CheckBox(requireContext())
         checkBox.let {
             it.text = text
-            it.layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT
-            )
+            it.layoutParams =
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                )
             it.isChecked = isSelected
             it.setOnClickListener {
                 vm.dataItemSelected(namespace, identifier)
@@ -122,5 +124,4 @@ class RequestCustomFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
-
 }

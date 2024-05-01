@@ -39,7 +39,10 @@ interface StorageEngine {
      * @param key the key used to identify the data.
      * @param data the data to store.
      */
-    fun put(key: String, data: ByteArray)
+    fun put(
+        key: String,
+        data: ByteArray,
+    )
 
     /**
      * Deletes data.

@@ -17,9 +17,9 @@ class SoftwareKeyInfo internal constructor(
     attestation: CertificateChain,
     keyPurposes: Set<KeyPurpose>,
     val isPassphraseProtected: Boolean,
-    val passphraseConstraints: PassphraseConstraints?
-): KeyInfo(
-    publicKey,
-    attestation,
-    keyPurposes
-)
+    val passphraseConstraints: PassphraseConstraints?,
+) : KeyInfo(
+        publicKey,
+        attestation,
+        keyPurposes,
+    )

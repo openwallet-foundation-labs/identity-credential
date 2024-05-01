@@ -6,5 +6,5 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class SoftwareAuthKeyCurveState(
     val isEnabled: Boolean = true,
-    val authCurve: SoftwareAuthKeyCurveOption = SoftwareAuthKeyCurveOption.P256
+    val authCurve: SoftwareAuthKeyCurveOption = SoftwareAuthKeyCurveOption.P256,
 ) : Parcelable

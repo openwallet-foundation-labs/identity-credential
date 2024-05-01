@@ -14,7 +14,6 @@ import com.android.identity.crypto.EcPublicKey
  * @param labels the labels in the COSE Key.
  */
 class CoseKey(val labels: Map<CoseLabel, DataItem>) {
-
     init {
         require(labels[Cose.COSE_KEY_KTY.toCoseLabel] != null)
     }
@@ -29,12 +28,12 @@ class CoseKey(val labels: Map<CoseLabel, DataItem>) {
      * Encodes the COSE Key as a CBOR data item.
      */
     val toDataItem: DataItem
-        get() = CborMap.builder().apply {
-            for ((key, value) in labels) {
-                put(key.toDataItem, value)
-            }
-        }.end().build()
-
+        get() =
+            CborMap.builder().apply {
+                for ((key, value) in labels) {
+                    put(key.toDataItem, value)
+                }
+            }.end().build()
 
     /**
      * Gets the public key in the COSE Key as a [EcPublicKey].
@@ -59,12 +58,13 @@ class CoseKey(val labels: Map<CoseLabel, DataItem>) {
             require(dataItem is CborMap)
             val labels = mutableMapOf<CoseLabel, DataItem>()
             for ((item, value) in dataItem.items) {
-                val label = when (item) {
-                    is Nint -> CoseNumberLabel(item.asNumber)
-                    is Uint -> CoseNumberLabel(item.asNumber)
-                    is Tstr -> CoseTextLabel(item.value)
-                    else -> throw IllegalStateException("Unexpected item $item in array")
-                }
+                val label =
+                    when (item) {
+                        is Nint -> CoseNumberLabel(item.asNumber)
+                        is Uint -> CoseNumberLabel(item.asNumber)
+                        is Tstr -> CoseTextLabel(item.value)
+                        else -> throw IllegalStateException("Unexpected item $item in array")
+                    }
                 labels[label] = value
             }
             return CoseKey(labels)

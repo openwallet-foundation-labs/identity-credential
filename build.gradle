@@ -26,7 +26,7 @@ plugins {
 
 allprojects {
     // add ktlint to all modules
-//    apply plugin: libs.plugins.ktlint.get().pluginId
+    apply plugin: libs.plugins.ktlint.get().pluginId
 }
 
 version = 'YYYYMMDD'

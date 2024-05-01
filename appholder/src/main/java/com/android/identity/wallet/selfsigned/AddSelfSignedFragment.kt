@@ -11,20 +11,19 @@ import androidx.navigation.fragment.findNavController
 import com.android.identity.wallet.theme.HolderAppTheme
 
 class AddSelfSignedFragment : Fragment() {
-
     private val viewModel: AddSelfSignedViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
                 HolderAppTheme {
                     AddSelfSignedDocumentScreen(
                         viewModel = viewModel,
-                        onNext = { onNext() }
+                        onNext = { onNext() },
                     )
                 }
             }
@@ -34,19 +33,21 @@ class AddSelfSignedFragment : Fragment() {
     private fun onNext() {
         val state = viewModel.screenState.value
         val secureAreaScreenState = requireNotNull(state.secureAreaSupportState)
-        val provisionInfo = ProvisionInfo(
-            docType = state.documentType,
-            docName = state.documentName,
-            docColor = state.cardArt.value,
-            currentSecureArea = state.currentSecureArea,
-            secureAreaSupportState = secureAreaScreenState,
-            validityInDays = state.validityInDays,
-            minValidityInDays = state.minValidityInDays,
-            numberMso = state.numberOfMso,
-            maxUseMso = state.maxUseOfMso
-        )
-        val destination = AddSelfSignedFragmentDirections
-            .actionAddSelfSignedToSelfSignedDetails(provisionInfo)
+        val provisionInfo =
+            ProvisionInfo(
+                docType = state.documentType,
+                docName = state.documentName,
+                docColor = state.cardArt.value,
+                currentSecureArea = state.currentSecureArea,
+                secureAreaSupportState = secureAreaScreenState,
+                validityInDays = state.validityInDays,
+                minValidityInDays = state.minValidityInDays,
+                numberMso = state.numberOfMso,
+                maxUseMso = state.maxUseOfMso,
+            )
+        val destination =
+            AddSelfSignedFragmentDirections
+                .actionAddSelfSignedToSelfSignedDetails(provisionInfo)
         findNavController().navigate(destination)
     }
 }

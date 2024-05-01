@@ -21,7 +21,7 @@ public fun extractMrtdMrzData(text: String): MrtdAccessDataMrz? {
     for (i in 0 until lines.lastIndex) {
         val firstLine = lines[i]
         if (firstLine.length < 10) {
-            continue;
+            continue
         }
         val secondLine = lines[i + 1]
         val firstChar = firstLine[0]
@@ -35,7 +35,7 @@ public fun extractMrtdMrzData(text: String): MrtdAccessDataMrz? {
                 return extractT23Text(secondLine)
             }
             if (secondLine.length == 30) {
-                val firstTwoLines = firstLine + secondLine;
+                val firstTwoLines = firstLine + secondLine
                 if (validateT1Text(firstTwoLines)) {
                     return extractT1Text(firstTwoLines)
                 }
@@ -46,86 +46,111 @@ public fun extractMrtdMrzData(text: String): MrtdAccessDataMrz? {
 }
 
 private val td1DocNumberValidator = MrtdMrzChecksumValidator(listOf(MrtdMrzChecksumValidator.Range(5, 13)), 14)
-private val td1DateOfBirthValidator = MrtdMrzChecksumValidator(listOf(
-    MrtdMrzChecksumValidator.Range(
-        30,
-        35
+private val td1DateOfBirthValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(
+                30,
+                35,
+            ),
+        ),
+        36,
     )
-), 36)
-private val td1ExpirationValidator = MrtdMrzChecksumValidator(listOf(
-    MrtdMrzChecksumValidator.Range(
-        38,
-        43
+private val td1ExpirationValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(
+                38,
+                43,
+            ),
+        ),
+        44,
     )
-), 44)
-private val td1CompositeValidator = MrtdMrzChecksumValidator(
-    listOf(
-        MrtdMrzChecksumValidator.Range(5, 29),
-        MrtdMrzChecksumValidator.Range(30, 36),
-        MrtdMrzChecksumValidator.Range(38, 44),
-        MrtdMrzChecksumValidator.Range(48, 58)
-    ), 59)
+private val td1CompositeValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(5, 29),
+            MrtdMrzChecksumValidator.Range(30, 36),
+            MrtdMrzChecksumValidator.Range(38, 44),
+            MrtdMrzChecksumValidator.Range(48, 58),
+        ),
+        59,
+    )
 
-private val td2CompositeValidator = MrtdMrzChecksumValidator(
-    listOf(
-        MrtdMrzChecksumValidator.Range(0, 9),
-        MrtdMrzChecksumValidator.Range(13, 19),
-        MrtdMrzChecksumValidator.Range(21, 34)
-    ), 35)
+private val td2CompositeValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(0, 9),
+            MrtdMrzChecksumValidator.Range(13, 19),
+            MrtdMrzChecksumValidator.Range(21, 34),
+        ),
+        35,
+    )
 
 private val td23DocNumberValidator = MrtdMrzChecksumValidator(listOf(MrtdMrzChecksumValidator.Range(0, 8)), 9)
-private val td23DateOfBirthValidator = MrtdMrzChecksumValidator(listOf(
-    MrtdMrzChecksumValidator.Range(
-        13,
-        18
+private val td23DateOfBirthValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(
+                13,
+                18,
+            ),
+        ),
+        19,
     )
-), 19)
-private val td23ExpirationValidator = MrtdMrzChecksumValidator(listOf(
-    MrtdMrzChecksumValidator.Range(
-        21,
-        26
+private val td23ExpirationValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(
+                21,
+                26,
+            ),
+        ),
+        27,
     )
-), 27)
-private val td3CompositeValidator = MrtdMrzChecksumValidator(
-    listOf(
-        MrtdMrzChecksumValidator.Range(0, 9),
-        MrtdMrzChecksumValidator.Range(13, 19),
-        MrtdMrzChecksumValidator.Range(21, 42)
-    ), 43)
+private val td3CompositeValidator =
+    MrtdMrzChecksumValidator(
+        listOf(
+            MrtdMrzChecksumValidator.Range(0, 9),
+            MrtdMrzChecksumValidator.Range(13, 19),
+            MrtdMrzChecksumValidator.Range(21, 42),
+        ),
+        43,
+    )
 
 private fun isIDChar(firstChar: Char): Boolean {
     return firstChar == 'A' || firstChar == 'I' || firstChar == 'C'
 }
 
 internal fun validateT1Text(text: String): Boolean {
-    if (text.length != 60) {  // first and second lines
+    if (text.length != 60) { // first and second lines
         return false
     }
     return isIDChar(text[0]) &&
-            td1DocNumberValidator.validate(text) &&
-            td1DateOfBirthValidator.validate(text) &&
-            td1ExpirationValidator.validate(text) &&
-            td1CompositeValidator.validate(text)
+        td1DocNumberValidator.validate(text) &&
+        td1DateOfBirthValidator.validate(text) &&
+        td1ExpirationValidator.validate(text) &&
+        td1CompositeValidator.validate(text)
 }
 
 internal fun validateT2Text(text: String): Boolean {
-    if (text.length != 36) {  // last line
+    if (text.length != 36) { // last line
         return false
     }
     return td23DocNumberValidator.validate(text) &&
-            td23DateOfBirthValidator.validate(text) &&
-            td23ExpirationValidator.validate(text) &&
-            td2CompositeValidator.validate(text)
+        td23DateOfBirthValidator.validate(text) &&
+        td23ExpirationValidator.validate(text) &&
+        td2CompositeValidator.validate(text)
 }
 
 internal fun validateT3Text(line: String): Boolean {
-    if (line.length != 44) {  // last line
+    if (line.length != 44) { // last line
         return false
     }
     return td23DocNumberValidator.validate(line) &&
-            td23DateOfBirthValidator.validate(line) &&
-            td23ExpirationValidator.validate(line) &&
-            td3CompositeValidator.validate(line)
+        td23DateOfBirthValidator.validate(line) &&
+        td23ExpirationValidator.validate(line) &&
+        td3CompositeValidator.validate(line)
 }
 
 internal fun fixCommonMistakes(input: String): String {
@@ -136,7 +161,7 @@ private fun extractT1Text(firstTwoLines: String): MrtdAccessDataMrz {
     return MrtdAccessDataMrz(
         firstTwoLines.substring(5, 14),
         firstTwoLines.substring(30, 36),
-        firstTwoLines.substring(38, 44)
+        firstTwoLines.substring(38, 44),
     )
 }
 
@@ -144,6 +169,6 @@ private fun extractT23Text(secondLine: String): MrtdAccessDataMrz {
     return MrtdAccessDataMrz(
         secondLine.substring(0, 9),
         secondLine.substring(13, 19),
-        secondLine.substring(21, 27)
+        secondLine.substring(21, 27),
     )
 }

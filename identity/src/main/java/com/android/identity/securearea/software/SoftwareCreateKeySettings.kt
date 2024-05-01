@@ -29,17 +29,17 @@ class SoftwareCreateKeySettings internal constructor(
     val attestationKeyIssuer: String?,
     val attestationKeyCertification: CertificateChain?,
 ) : CreateKeySettings(
-    attestationChallenge,
-    keyPurposes,
-    ecCurve
-) {
+        attestationChallenge,
+        keyPurposes,
+        ecCurve,
+    ) {
     /**
      * A builder for [SoftwareCreateKeySettings].
      *
      * @param attestationChallenge challenge to include in attestation for the key.
      */
     class Builder(
-        private val attestationChallenge: ByteArray
+        private val attestationChallenge: ByteArray,
     ) {
         private var keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN)
         private var ecCurve: EcCurve = EcCurve.P256
@@ -60,26 +60,27 @@ class SoftwareCreateKeySettings internal constructor(
          * @param configuration configuration from a CBOR map.
          * @return the builder.
          */
-        fun applyConfiguration(configuration: DataItem) = apply {
-            var passphraseRequired = false
-            var passphrase: String? = null
-            var passphraseConstraints: PassphraseConstraints? = null
-            for ((key, value) in configuration.asMap) {
-                when (key.asTstr) {
-                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
-                    "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
-                    "passphrase" -> {
-                        passphraseRequired = true
-                        passphrase = value.asTstr
-                    }
-                    "passphraseConstraints" -> {
-                        passphraseRequired = true
-                        passphraseConstraints = PassphraseConstraints.fromDataItem(value)
+        fun applyConfiguration(configuration: DataItem) =
+            apply {
+                var passphraseRequired = false
+                var passphrase: String? = null
+                var passphraseConstraints: PassphraseConstraints? = null
+                for ((key, value) in configuration.asMap) {
+                    when (key.asTstr) {
+                        "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
+                        "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
+                        "passphrase" -> {
+                            passphraseRequired = true
+                            passphrase = value.asTstr
+                        }
+                        "passphraseConstraints" -> {
+                            passphraseRequired = true
+                            passphraseConstraints = PassphraseConstraints.fromDataItem(value)
+                        }
                     }
                 }
+                setPassphraseRequired(passphraseRequired, passphrase, passphraseConstraints)
             }
-            setPassphraseRequired(passphraseRequired, passphrase, passphraseConstraints)
-        }
 
         /**
          * Sets the attestation key to use for attesting to the key.
@@ -95,7 +96,7 @@ class SoftwareCreateKeySettings internal constructor(
             attestationKey: EcPrivateKey,
             attestationKeySignatureAlgorithm: Algorithm,
             attestationKeyIssuer: String,
-            attestationKeyCertification: CertificateChain
+            attestationKeyCertification: CertificateChain,
         ) = apply {
             this.attestationKey = attestationKey
             this.attestationKeySignatureAlgorithm = attestationKeySignatureAlgorithm
@@ -112,10 +113,11 @@ class SoftwareCreateKeySettings internal constructor(
          * @return the builder.
          * @throws IllegalArgumentException if no purpose is set.
          */
-        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) = apply {
-            require(keyPurposes.isNotEmpty()) { "Purposes cannot be empty" }
-            this.keyPurposes = keyPurposes
-        }
+        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) =
+            apply {
+                require(keyPurposes.isNotEmpty()) { "Purposes cannot be empty" }
+                this.keyPurposes = keyPurposes
+            }
 
         /**
          * Sets the curve to use for EC keys.
@@ -125,9 +127,10 @@ class SoftwareCreateKeySettings internal constructor(
          * @param curve the curve to use.
          * @return the builder.
          */
-        fun setEcCurve(curve: EcCurve) = apply {
-            ecCurve = curve
-        }
+        fun setEcCurve(curve: EcCurve) =
+            apply {
+                ecCurve = curve
+            }
 
         /**
          * Sets the passphrase required to use a key.
@@ -140,7 +143,7 @@ class SoftwareCreateKeySettings internal constructor(
         fun setPassphraseRequired(
             required: Boolean,
             passphrase: String?,
-            constraints: PassphraseConstraints?
+            constraints: PassphraseConstraints?,
         ) = apply {
             check(!passphraseRequired || passphrase != null) {
                 "Passphrase cannot be null if passphrase is required"
@@ -156,9 +159,10 @@ class SoftwareCreateKeySettings internal constructor(
          * @param subject subject field
          * @return the builder.
          */
-        fun setSubject(subject: String?) = apply {
-            this.subject = subject
-        }
+        fun setSubject(subject: String?) =
+            apply {
+                this.subject = subject
+            }
 
         /**
          * Sets the key validity period.
@@ -169,7 +173,10 @@ class SoftwareCreateKeySettings internal constructor(
          * @param validUntil the point in time after which the key is not valid.
          * @return the builder.
          */
-        fun setValidityPeriod(validFrom: Timestamp, validUntil: Timestamp) = apply {
+        fun setValidityPeriod(
+            validFrom: Timestamp,
+            validUntil: Timestamp,
+        ) = apply {
             this.validFrom = validFrom
             this.validUntil = validUntil
         }
@@ -185,7 +192,7 @@ class SoftwareCreateKeySettings internal constructor(
                 keyPurposes, attestationChallenge,
                 subject, validFrom, validUntil,
                 attestationKey, attestationKeySignatureAlgorithm,
-                attestationKeyIssuer, attestationKeyCertification
+                attestationKeyIssuer, attestationKeyCertification,
             )
     }
 }

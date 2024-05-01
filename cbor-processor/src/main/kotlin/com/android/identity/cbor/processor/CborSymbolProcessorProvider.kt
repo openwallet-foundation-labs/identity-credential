@@ -13,7 +13,7 @@ class CborSymbolProcessorProvider : SymbolProcessorProvider {
         return CborSymbolProcessor(
             options = environment.options,
             logger = environment.logger,
-            codeGenerator = environment.codeGenerator
+            codeGenerator = environment.codeGenerator,
         )
     }
 }

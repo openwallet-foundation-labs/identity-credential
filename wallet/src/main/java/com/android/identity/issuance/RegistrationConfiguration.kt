@@ -10,6 +10,5 @@ data class RegistrationConfiguration(
      * issued by the issuer.
      */
     val documentId: String,
-
     // TODO: include challenge/nonces for setting up E2EE encryption.
 )

@@ -74,7 +74,6 @@ import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-
 /**
  * Cryptographic support routines.
  *
@@ -93,16 +92,17 @@ object Crypto {
     @JvmStatic
     fun digest(
         algorithm: Algorithm,
-        message: ByteArray
+        message: ByteArray,
     ): ByteArray {
-        val algName = when (algorithm) {
-            Algorithm.SHA256 -> "SHA-256"
-            Algorithm.SHA384 -> "SHA-384"
-            Algorithm.SHA512 -> "SHA-512"
-            else -> {
-                throw IllegalArgumentException("Unsupported algorithm $algorithm")
+        val algName =
+            when (algorithm) {
+                Algorithm.SHA256 -> "SHA-256"
+                Algorithm.SHA384 -> "SHA-384"
+                Algorithm.SHA512 -> "SHA-512"
+                else -> {
+                    throw IllegalArgumentException("Unsupported algorithm $algorithm")
+                }
             }
-        }
         return MessageDigest.getInstance(algName).digest(message)
     }
 
@@ -120,16 +120,17 @@ object Crypto {
     fun mac(
         algorithm: Algorithm,
         key: ByteArray,
-        message: ByteArray
+        message: ByteArray,
     ): ByteArray {
-        val algName = when (algorithm) {
-            Algorithm.HMAC_SHA256 -> "HmacSha256"
-            Algorithm.HMAC_SHA384 -> "HmacSha384"
-            Algorithm.HMAC_SHA512 -> "HmacSha512"
-            else -> {
-                throw IllegalArgumentException("Unsupported algorithm $algorithm")
+        val algName =
+            when (algorithm) {
+                Algorithm.HMAC_SHA256 -> "HmacSha256"
+                Algorithm.HMAC_SHA384 -> "HmacSha384"
+                Algorithm.HMAC_SHA512 -> "HmacSha512"
+                else -> {
+                    throw IllegalArgumentException("Unsupported algorithm $algorithm")
+                }
             }
-        }
 
         return Mac.getInstance(algName).run {
             init(SecretKeySpec(key, ""))
@@ -202,7 +203,7 @@ object Crypto {
                 init(
                     Cipher.DECRYPT_MODE,
                     SecretKeySpec(key, "AES"),
-                    GCMParameterSpec(128, nonce)
+                    GCMParameterSpec(128, nonce),
                 )
                 doFinal(messageCiphertext)
             }
@@ -229,7 +230,7 @@ object Crypto {
         ikm: ByteArray,
         salt: ByteArray?,
         info: ByteArray?,
-        size: Int
+        size: Int,
     ): ByteArray {
         // This function is based on
         //
@@ -293,26 +294,27 @@ object Crypto {
         publicKey: EcPublicKey,
         message: ByteArray,
         algorithm: Algorithm,
-        signature: ByteArray
+        signature: ByteArray,
     ): Boolean {
-        val signatureAlgorithm = when (algorithm) {
-            Algorithm.UNSET -> throw IllegalArgumentException("Algorithm not set")
-            Algorithm.ES256 -> "SHA256withECDSA"
-            Algorithm.ES384 -> "SHA384withECDSA"
-            Algorithm.ES512 -> "SHA512withECDSA"
-            Algorithm.EDDSA -> {
-                when (publicKey.curve) {
-                    EcCurve.ED25519 -> "Ed25519"
-                    EcCurve.ED448 -> "Ed448"
-                    else -> throw IllegalArgumentException(
-                        "Algorithm $algorithm incompatible " +
-                                "with curve ${publicKey.curve}"
-                    )
+        val signatureAlgorithm =
+            when (algorithm) {
+                Algorithm.UNSET -> throw IllegalArgumentException("Algorithm not set")
+                Algorithm.ES256 -> "SHA256withECDSA"
+                Algorithm.ES384 -> "SHA384withECDSA"
+                Algorithm.ES512 -> "SHA512withECDSA"
+                Algorithm.EDDSA -> {
+                    when (publicKey.curve) {
+                        EcCurve.ED25519 -> "Ed25519"
+                        EcCurve.ED448 -> "Ed448"
+                        else -> throw IllegalArgumentException(
+                            "Algorithm $algorithm incompatible " +
+                                "with curve ${publicKey.curve}",
+                        )
+                    }
                 }
-            }
 
-            else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
-        }
+                else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
+            }
 
         return try {
             Signature.getInstance(signatureAlgorithm).run {
@@ -339,7 +341,8 @@ object Crypto {
             EcCurve.BRAINPOOLP256R1,
             EcCurve.BRAINPOOLP320R1,
             EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1 -> {
+            EcCurve.BRAINPOOLP512R1,
+            -> {
                 val kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
                 kpg.initialize(ECGenParameterSpec(curve.SECGName))
                 val keyPair = kpg.generateKeyPair()
@@ -409,64 +412,69 @@ object Crypto {
     fun sign(
         key: EcPrivateKey,
         signatureAlgorithm: Algorithm,
-        message: ByteArray
-    ): ByteArray = when (key.curve) {
-        EcCurve.P256,
-        EcCurve.P384,
-        EcCurve.P521,
-        EcCurve.BRAINPOOLP256R1,
-        EcCurve.BRAINPOOLP320R1,
-        EcCurve.BRAINPOOLP384R1,
-        EcCurve.BRAINPOOLP512R1 -> {
-            val signatureAlgorithmName = when (signatureAlgorithm) {
-                Algorithm.ES256 -> "SHA256withECDSA"
-                Algorithm.ES384 -> "SHA384withECDSA"
-                Algorithm.ES512 -> "SHA512withECDSA"
-                else -> throw IllegalArgumentException(
-                    "Unsupported signing algorithm $signatureAlgorithm for curve ${key.curve}"
-                )
-            }
-            val spec = ECPrivateKeySpec(
-                BigIntegers.fromUnsignedByteArray(key.d),
-                ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
-            )
-            val kf = KeyFactory.getInstance("EC")
-            val privateKey = kf.generatePrivate(spec)
-            try {
-                Signature.getInstance(signatureAlgorithmName, BouncyCastleProvider.PROVIDER_NAME)
-                    .run {
-                        initSign(privateKey)
-                        update(message)
-                        sign()
+        message: ByteArray,
+    ): ByteArray =
+        when (key.curve) {
+            EcCurve.P256,
+            EcCurve.P384,
+            EcCurve.P521,
+            EcCurve.BRAINPOOLP256R1,
+            EcCurve.BRAINPOOLP320R1,
+            EcCurve.BRAINPOOLP384R1,
+            EcCurve.BRAINPOOLP512R1,
+            -> {
+                val signatureAlgorithmName =
+                    when (signatureAlgorithm) {
+                        Algorithm.ES256 -> "SHA256withECDSA"
+                        Algorithm.ES384 -> "SHA384withECDSA"
+                        Algorithm.ES512 -> "SHA512withECDSA"
+                        else -> throw IllegalArgumentException(
+                            "Unsupported signing algorithm $signatureAlgorithm for curve ${key.curve}",
+                        )
                     }
-            } catch (e: Exception) {
-                throw IllegalStateException("Unexpected Exception", e)
+                val spec =
+                    ECPrivateKeySpec(
+                        BigIntegers.fromUnsignedByteArray(key.d),
+                        ECNamedCurveTable.getParameterSpec(key.curve.SECGName),
+                    )
+                val kf = KeyFactory.getInstance("EC")
+                val privateKey = kf.generatePrivate(spec)
+                try {
+                    Signature.getInstance(signatureAlgorithmName, BouncyCastleProvider.PROVIDER_NAME)
+                        .run {
+                            initSign(privateKey)
+                            update(message)
+                            sign()
+                        }
+                } catch (e: Exception) {
+                    throw IllegalStateException("Unexpected Exception", e)
+                }
+            }
+
+            EcCurve.ED25519 -> {
+                val privateKey = Ed25519PrivateKeyParameters(key.d, 0)
+                Ed25519Signer().run {
+                    init(true, privateKey)
+                    update(message, 0, message.size)
+                    generateSignature()
+                }
+            }
+
+            EcCurve.ED448 -> {
+                val privateKey = Ed448PrivateKeyParameters(key.d, 0)
+                Ed448Signer(byteArrayOf()).run {
+                    init(true, privateKey)
+                    update(message, 0, message.size)
+                    generateSignature()
+                }
+            }
+
+            EcCurve.X25519,
+            EcCurve.X448,
+            -> {
+                throw IllegalStateException("Key with curve ${key.curve} does not support signing")
             }
         }
-
-        EcCurve.ED25519 -> {
-            val privateKey = Ed25519PrivateKeyParameters(key.d, 0)
-            Ed25519Signer().run {
-                init(true, privateKey)
-                update(message, 0, message.size)
-                generateSignature()
-            }
-        }
-
-        EcCurve.ED448 -> {
-            val privateKey = Ed448PrivateKeyParameters(key.d, 0)
-            Ed448Signer(byteArrayOf()).run {
-                init(true, privateKey)
-                update(message, 0, message.size)
-                generateSignature()
-            }
-        }
-
-        EcCurve.X25519,
-        EcCurve.X448 -> {
-            throw IllegalStateException("Key with curve ${key.curve} does not support signing")
-        }
-    }
 
     /**
      * Performs Key Agreement.
@@ -477,7 +485,7 @@ object Crypto {
     @JvmStatic
     fun keyAgreement(
         key: EcPrivateKey,
-        otherKey: EcPublicKey
+        otherKey: EcPublicKey,
     ): ByteArray =
         when (key.curve) {
             EcCurve.P256,
@@ -486,10 +494,11 @@ object Crypto {
             EcCurve.BRAINPOOLP256R1,
             EcCurve.BRAINPOOLP320R1,
             EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1 -> {
+            EcCurve.BRAINPOOLP512R1,
+            -> {
                 ECPrivateKeySpec(
                     BigIntegers.fromUnsignedByteArray(key.d),
-                    ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
+                    ECNamedCurveTable.getParameterSpec(key.curve.SECGName),
                 ).run {
                     val kf = KeyFactory.getInstance("EC")
                     val privateKey = kf.generatePrivate(this)
@@ -505,7 +514,8 @@ object Crypto {
             }
 
             EcCurve.ED25519,
-            EcCurve.ED448 -> {
+            EcCurve.ED448,
+            -> {
                 throw IllegalStateException("Key with curve ${key.curve} does not support key-agreement")
             }
 
@@ -548,60 +558,66 @@ object Crypto {
      * @param additionalExtensions additional extensions to put into the certificate.
      */
     @JvmStatic
-    fun createX509v3Certificate(publicKey: EcPublicKey,
-                                signingKey: EcPrivateKey,
-                                signingKeyCertificate: Certificate?,
-                                signatureAlgorithm: Algorithm,
-                                serial: String,
-                                subject: String,
-                                issuer: String,
-                                validFrom: Instant,
-                                validUntil: Instant,
-                                options: Set<CreateCertificateOption>,
-                                additionalExtensions: List<X509v3Extension>): Certificate {
-        val signatureAlgorithmString = when (signatureAlgorithm) {
-            Algorithm.ES256 -> "SHA256withECDSA"
-            Algorithm.ES384 -> "SHA384withECDSA"
-            Algorithm.ES512 -> "SHA512withECDSA"
-            Algorithm.EDDSA -> {
-                when (signingKey.curve) {
-                    EcCurve.ED25519 -> "Ed25519"
-                    EcCurve.ED448 -> "Ed448"
-                    else -> throw IllegalArgumentException(
-                        "ALGORITHM_EDDSA can only be used with Ed25519 and Ed448"
-                    )
+    fun createX509v3Certificate(
+        publicKey: EcPublicKey,
+        signingKey: EcPrivateKey,
+        signingKeyCertificate: Certificate?,
+        signatureAlgorithm: Algorithm,
+        serial: String,
+        subject: String,
+        issuer: String,
+        validFrom: Instant,
+        validUntil: Instant,
+        options: Set<CreateCertificateOption>,
+        additionalExtensions: List<X509v3Extension>,
+    ): Certificate {
+        val signatureAlgorithmString =
+            when (signatureAlgorithm) {
+                Algorithm.ES256 -> "SHA256withECDSA"
+                Algorithm.ES384 -> "SHA384withECDSA"
+                Algorithm.ES512 -> "SHA512withECDSA"
+                Algorithm.EDDSA -> {
+                    when (signingKey.curve) {
+                        EcCurve.ED25519 -> "Ed25519"
+                        EcCurve.ED448 -> "Ed448"
+                        else -> throw IllegalArgumentException(
+                            "ALGORITHM_EDDSA can only be used with Ed25519 and Ed448",
+                        )
+                    }
                 }
-            }
 
-            else -> throw IllegalArgumentException("Algorithm cannot be used for signing")
-        }
+                else -> throw IllegalArgumentException("Algorithm cannot be used for signing")
+            }
         val certSigningKeyJava = signingKey.javaPrivateKey
 
         val publicKeyJava = publicKey.javaPublicKey
-        val certBuilder = JcaX509v3CertificateBuilder(
-            X500Name(issuer),
-            BigInteger(serial),
-            Date(validFrom.toEpochMilliseconds()),
-            Date(validUntil.toEpochMilliseconds()),
-            X500Name(subject),
-            publicKeyJava
-        )
+        val certBuilder =
+            JcaX509v3CertificateBuilder(
+                X500Name(issuer),
+                BigInteger(serial),
+                Date(validFrom.toEpochMilliseconds()),
+                Date(validUntil.toEpochMilliseconds()),
+                X500Name(subject),
+                publicKeyJava,
+            )
         if (options.contains(CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER)) {
             certBuilder.addExtension(
                 Extension.subjectKeyIdentifier,
                 false,
-                JcaX509ExtensionUtils().createSubjectKeyIdentifier(publicKeyJava)
+                JcaX509ExtensionUtils().createSubjectKeyIdentifier(publicKeyJava),
             )
         }
         if (options.contains(CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER)) {
             certBuilder.addExtension(
                 Extension.authorityKeyIdentifier,
                 false,
-                JcaX509ExtensionUtils().createAuthorityKeyIdentifier(publicKeyJava)
+                JcaX509ExtensionUtils().createAuthorityKeyIdentifier(publicKeyJava),
             )
         }
         if (options.contains(
-                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE)) {
+                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE,
+            )
+        ) {
             check(signingKeyCertificate != null)
             val signerCert = signingKeyCertificate.javaX509Certificate
             val encoded = signerCert.getExtensionValue(Extension.subjectKeyIdentifier.toString())
@@ -609,14 +625,14 @@ object Crypto {
             certBuilder.addExtension(
                 Extension.authorityKeyIdentifier,
                 false,
-                AuthorityKeyIdentifier(subjectKeyIdentifier.keyIdentifier)
+                AuthorityKeyIdentifier(subjectKeyIdentifier.keyIdentifier),
             )
         }
         additionalExtensions.forEach { extension ->
             certBuilder.addExtension(
                 ASN1ObjectIdentifier(extension.oid),
                 extension.isCritical,
-                extension.payload
+                extension.payload,
             )
         }
         val signer = JcaContentSignerBuilder(signatureAlgorithmString).build(certSigningKeyJava)
@@ -634,80 +650,92 @@ object Crypto {
 
     private fun hpkeGetKeysetHandles(
         publicKey: EcPublicKey,
-        privateKey: EcPrivateKey?
+        privateKey: EcPrivateKey?,
     ): Pair<KeysetHandle, KeysetHandle?> {
         val primaryKeyId = 1
 
-        val params = HpkeParams.newBuilder()
-            .setAead(HpkeAead.AES_128_GCM)
-            .setKdf(HpkeKdf.HKDF_SHA256)
-            .setKem(HpkeKem.DHKEM_P256_HKDF_SHA256)
-            .build()
+        val params =
+            HpkeParams.newBuilder()
+                .setAead(HpkeAead.AES_128_GCM)
+                .setKdf(HpkeKdf.HKDF_SHA256)
+                .setKem(HpkeKem.DHKEM_P256_HKDF_SHA256)
+                .build()
 
         val javaPublicKey = publicKey.javaPublicKey as ECPublicKey
-        val encodedKey = EllipticCurves.pointEncode(
-            EllipticCurves.CurveType.NIST_P256,
-            EllipticCurves.PointFormatType.UNCOMPRESSED,
-            javaPublicKey.w
-        )
+        val encodedKey =
+            EllipticCurves.pointEncode(
+                EllipticCurves.CurveType.NIST_P256,
+                EllipticCurves.PointFormatType.UNCOMPRESSED,
+                javaPublicKey.w,
+            )
 
-        val hpkePublicKey = HpkePublicKey.newBuilder()
-            .setVersion(0)
-            .setPublicKey(ByteString.copyFrom(encodedKey))
-            .setParams(params)
-            .build()
+        val hpkePublicKey =
+            HpkePublicKey.newBuilder()
+                .setVersion(0)
+                .setPublicKey(ByteString.copyFrom(encodedKey))
+                .setParams(params)
+                .build()
 
-        val publicKeyData = KeyData.newBuilder()
-            .setKeyMaterialType(KeyData.KeyMaterialType.ASYMMETRIC_PUBLIC)
-            .setTypeUrl("type.googleapis.com/google.crypto.tink.HpkePublicKey")
-            .setValue(hpkePublicKey.toByteString())
-            .build()
+        val publicKeyData =
+            KeyData.newBuilder()
+                .setKeyMaterialType(KeyData.KeyMaterialType.ASYMMETRIC_PUBLIC)
+                .setTypeUrl("type.googleapis.com/google.crypto.tink.HpkePublicKey")
+                .setValue(hpkePublicKey.toByteString())
+                .build()
 
-        val publicKeysetKey = Keyset.Key.newBuilder()
-            .setKeyId(primaryKeyId)
-            .setKeyData(publicKeyData)
-            .setOutputPrefixType(OutputPrefixType.RAW)
-            .setStatus(KeyStatusType.ENABLED)
-            .build()
+        val publicKeysetKey =
+            Keyset.Key.newBuilder()
+                .setKeyId(primaryKeyId)
+                .setKeyData(publicKeyData)
+                .setOutputPrefixType(OutputPrefixType.RAW)
+                .setStatus(KeyStatusType.ENABLED)
+                .build()
 
-        val publicKeyset = Keyset.newBuilder()
-            .setPrimaryKeyId(primaryKeyId)
-            .addKey(publicKeysetKey)
-            .build()
+        val publicKeyset =
+            Keyset.newBuilder()
+                .setPrimaryKeyId(primaryKeyId)
+                .addKey(publicKeysetKey)
+                .build()
 
-        val publicKeysetHandle = TinkProtoKeysetFormat.parseKeyset(
-            publicKeyset.toByteArray(),
-            InsecureSecretKeyAccess.get()
-        )
+        val publicKeysetHandle =
+            TinkProtoKeysetFormat.parseKeyset(
+                publicKeyset.toByteArray(),
+                InsecureSecretKeyAccess.get(),
+            )
         var privateKeysetHandle: KeysetHandle? = null
 
         if (privateKey != null) {
             val javaPrivateKey = privateKey.javaPrivateKey as ECPrivateKey
-            val hpkePrivateKey = HpkePrivateKey.newBuilder()
-                .setPublicKey(hpkePublicKey)
-                .setPrivateKey(ByteString.copyFrom(javaPrivateKey.s.toByteArray()))
-                .build()
+            val hpkePrivateKey =
+                HpkePrivateKey.newBuilder()
+                    .setPublicKey(hpkePublicKey)
+                    .setPrivateKey(ByteString.copyFrom(javaPrivateKey.s.toByteArray()))
+                    .build()
 
-            val privateKeyData = KeyData.newBuilder()
-                .setKeyMaterialType(KeyData.KeyMaterialType.ASYMMETRIC_PRIVATE)
-                .setTypeUrl("type.googleapis.com/google.crypto.tink.HpkePrivateKey")
-                .setValue(hpkePrivateKey.toByteString())
-                .build()
+            val privateKeyData =
+                KeyData.newBuilder()
+                    .setKeyMaterialType(KeyData.KeyMaterialType.ASYMMETRIC_PRIVATE)
+                    .setTypeUrl("type.googleapis.com/google.crypto.tink.HpkePrivateKey")
+                    .setValue(hpkePrivateKey.toByteString())
+                    .build()
 
-            val privateKeysetKey = Keyset.Key.newBuilder()
-                .setKeyId(primaryKeyId)
-                .setKeyData(privateKeyData)
-                .setOutputPrefixType(OutputPrefixType.RAW)
-                .setStatus(KeyStatusType.ENABLED)
-                .build()
-            val privateKeyset = Keyset.newBuilder()
-                .setPrimaryKeyId(primaryKeyId)
-                .addKey(privateKeysetKey)
-                .build()
-            privateKeysetHandle = TinkProtoKeysetFormat.parseKeyset(
-                privateKeyset.toByteArray(),
-                InsecureSecretKeyAccess.get()
-            )
+            val privateKeysetKey =
+                Keyset.Key.newBuilder()
+                    .setKeyId(primaryKeyId)
+                    .setKeyData(privateKeyData)
+                    .setOutputPrefixType(OutputPrefixType.RAW)
+                    .setStatus(KeyStatusType.ENABLED)
+                    .build()
+            val privateKeyset =
+                Keyset.newBuilder()
+                    .setPrimaryKeyId(primaryKeyId)
+                    .addKey(privateKeysetKey)
+                    .build()
+            privateKeysetHandle =
+                TinkProtoKeysetFormat.parseKeyset(
+                    privateKeyset.toByteArray(),
+                    InsecureSecretKeyAccess.get(),
+                )
         }
 
         return Pair(publicKeysetHandle, privateKeysetHandle)
@@ -730,7 +758,7 @@ object Crypto {
         cipherSuite: Algorithm,
         receiverPublicKey: EcPublicKey,
         plainText: ByteArray,
-        aad: ByteArray
+        aad: ByteArray,
     ): Pair<ByteArray, EcPublicKey> {
         require(cipherSuite == Algorithm.HPKE_BASE_P256_SHA256_AES128GCM) {
             "Only HPKE_BASE_P256_SHA256_AES128GCM is supported right now"
@@ -746,13 +774,14 @@ object Crypto {
         // up ourselves
 
         receiverPublicKey as EcPublicKeyDoubleCoordinate
-        val coordinateSize = (receiverPublicKey.curve.bitSize + 7)/8
-        val encapsulatedPublicKeySize = 1 + 2*coordinateSize
+        val coordinateSize = (receiverPublicKey.curve.bitSize + 7) / 8
+        val encapsulatedPublicKeySize = 1 + 2 * coordinateSize
 
-        val encapsulatedKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
-            EcCurve.P256,
-            output.sliceArray(IntRange(0, encapsulatedPublicKeySize - 1))
-        )
+        val encapsulatedKey =
+            EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
+                EcCurve.P256,
+                output.sliceArray(IntRange(0, encapsulatedPublicKeySize - 1)),
+            )
         val encryptedData = output.sliceArray(IntRange(encapsulatedPublicKeySize, output.size - 1))
 
         return Pair(encryptedData, encapsulatedKey)

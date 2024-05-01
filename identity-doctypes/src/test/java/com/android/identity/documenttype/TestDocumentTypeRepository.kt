@@ -16,7 +16,6 @@ import org.junit.Assert
 import org.junit.Test
 
 class TestDocumentTypeRepository {
-
     @Test
     fun testCredentialTypeRepositoryDrivingLicense() {
         val documentTypeRepository = DocumentTypeRepository()
@@ -28,25 +27,25 @@ class TestDocumentTypeRepository {
         assert(credentialTypes[0].vcDocumentType?.type == "Iso18013DriversLicenseCredential")
         assert(
             credentialTypes[0].mdocDocumentType?.namespaces?.iterator()
-                ?.next()?.key == "org.iso.18013.5.1"
+                ?.next()?.key == "org.iso.18013.5.1",
         )
         assert(
             credentialTypes[0].mdocDocumentType?.namespaces?.iterator()
-                ?.next()?.value?.namespace == "org.iso.18013.5.1"
+                ?.next()?.value?.namespace == "org.iso.18013.5.1",
         )
         assert(
             credentialTypes[0].mdocDocumentType?.namespaces?.get("org.iso.18013.5.1")?.dataElements?.get(
-                "family_name"
-            )?.attribute?.type == DocumentAttributeType.String
+                "family_name",
+            )?.attribute?.type == DocumentAttributeType.String,
         )
         assert(
             credentialTypes[0].mdocDocumentType?.namespaces?.values?.toList()
-                ?.last()?.namespace == "org.iso.18013.5.1.aamva"
+                ?.last()?.namespace == "org.iso.18013.5.1.aamva",
         )
         assert(
             credentialTypes[0].mdocDocumentType?.namespaces?.get("org.iso.18013.5.1.aamva")?.dataElements?.get(
-                "domestic_driving_privileges"
-            )?.attribute?.type == DocumentAttributeType.ComplexType
+                "domestic_driving_privileges",
+            )?.attribute?.type == DocumentAttributeType.ComplexType,
         )
     }
 
@@ -59,69 +58,73 @@ class TestDocumentTypeRepository {
         // CredentialAttributeType.Boolean
         Assert.assertEquals(
             "true",
-            mdlNs.dataElements["age_over_18"]?.renderValue(Simple.TRUE)
+            mdlNs.dataElements["age_over_18"]?.renderValue(Simple.TRUE),
         )
         Assert.assertEquals(
             "false",
-            mdlNs.dataElements["age_over_18"]?.renderValue(Simple.FALSE)
+            mdlNs.dataElements["age_over_18"]?.renderValue(Simple.FALSE),
         )
         Assert.assertEquals(
             "yes",
             mdlNs.dataElements["age_over_18"]?.renderValue(
-                Simple.TRUE, trueFalseStrings = Pair("no", "yes"))
+                Simple.TRUE,
+                trueFalseStrings = Pair("no", "yes"),
+            ),
         )
         Assert.assertEquals(
             "no",
             mdlNs.dataElements["age_over_18"]?.renderValue(
-                Simple.FALSE, trueFalseStrings = Pair("no", "yes"))
+                Simple.FALSE,
+                trueFalseStrings = Pair("no", "yes"),
+            ),
         )
 
         // CredentialAttributeType.String
         Assert.assertEquals(
             "Erika",
-            mdlNs.dataElements["given_name"]?.renderValue(Tstr("Erika"))
+            mdlNs.dataElements["given_name"]?.renderValue(Tstr("Erika")),
         )
 
         // CredentialAttributeType.Number
         Assert.assertEquals(
             "180",
-            mdlNs.dataElements["height"]?.renderValue(Uint(180UL))
+            mdlNs.dataElements["height"]?.renderValue(Uint(180UL)),
         )
 
         // CredentialAttributeType.IntegerOptions
         Assert.assertEquals(
             "Donor",
-            aamvaNs.dataElements["organ_donor"]?.renderValue(Uint(1UL))
+            aamvaNs.dataElements["organ_donor"]?.renderValue(Uint(1UL)),
         )
         // If we don't know the enumerated value, check we render the raw value.
         Assert.assertEquals(
             "2",
-            aamvaNs.dataElements["organ_donor"]?.renderValue(Uint(2UL))
+            aamvaNs.dataElements["organ_donor"]?.renderValue(Uint(2UL)),
         )
 
         // CredentialAttributeType.StringOptions
         Assert.assertEquals(
             "Asian or Pacific Islander",
-            aamvaNs.dataElements["race_ethnicity"]?.renderValue(Tstr("AP"))
+            aamvaNs.dataElements["race_ethnicity"]?.renderValue(Tstr("AP")),
         )
         // If we don't know the enumerated value, check we render the raw value.
         Assert.assertEquals(
             "AddedLater",
-            aamvaNs.dataElements["race_ethnicity"]?.renderValue(Tstr("AddedLater"))
+            aamvaNs.dataElements["race_ethnicity"]?.renderValue(Tstr("AddedLater")),
         )
 
         // CredentialAttributeType.Picture
         Assert.assertEquals(
             "0 bytes",
-            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf()))
+            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf())),
         )
         Assert.assertEquals(
             "1 byte",
-            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1)))
+            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1))),
         )
         Assert.assertEquals(
             "3 bytes",
-            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1, 2, 3)))
+            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1, 2, 3))),
         )
 
         // CredentialAttributeType.DateTime - supports both tdate and full-date
@@ -133,13 +136,13 @@ class TestDocumentTypeRepository {
                     "",
                     "",
                     "",
-                    null
+                    null,
                 ),
-                false
+                false,
             ).renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString,
-                timeZone = TimeZone.of("Europe/Copenhagen")
-            )
+                timeZone = TimeZone.of("Europe/Copenhagen"),
+            ),
         )
         // ... if using a full-date we render the point in time as midnight. The timezone
         // isn't taken into account, check a couple of different timezones
@@ -152,13 +155,13 @@ class TestDocumentTypeRepository {
                         "",
                         "",
                         "",
-                        null
+                        null,
                     ),
-                    false
+                    false,
                 ).renderValue(
                     LocalDate.parse("1976-02-03").toDataItemFullDate,
-                    timeZone = TimeZone.of(zoneId)
-                )
+                    timeZone = TimeZone.of(zoneId),
+                ),
             )
         }
 
@@ -168,44 +171,45 @@ class TestDocumentTypeRepository {
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString,
-                timeZone = TimeZone.of("Europe/Copenhagen")
-            )
+                timeZone = TimeZone.of("Europe/Copenhagen"),
+            ),
         )
         Assert.assertEquals(
             "1976-02-02",
             mdlNs.dataElements["birth_date"]?.renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString,
-                timeZone = TimeZone.of("America/Los_Angeles")
-            )
+                timeZone = TimeZone.of("America/Los_Angeles"),
+            ),
         )
         Assert.assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
                 LocalDate.parse("1976-02-03").toDataItemFullDate,
-                timeZone = TimeZone.of("Europe/Copenhagen")
-            )
+                timeZone = TimeZone.of("Europe/Copenhagen"),
+            ),
         )
         Assert.assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
                 LocalDate.parse("1976-02-03").toDataItemFullDate,
-                timeZone = TimeZone.of("America/Los_Angeles")
-            )
+                timeZone = TimeZone.of("America/Los_Angeles"),
+            ),
         )
 
         // CredentialAttributeType.ComplexType
-        val drivingPrivileges = CborArray.builder()
-            .addMap()
-            .put("vehicle_category_code", "A")
-            .put("issue_date", Tagged(1004, Tstr("2018-08-09")))
-            .put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
-            .end()
-            .addMap()
-            .put("vehicle_category_code", "B")
-            .put("issue_date", Tagged(1004, Tstr("2017-02-23")))
-            .put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
-            .end()
-            .end().build()
+        val drivingPrivileges =
+            CborArray.builder()
+                .addMap()
+                .put("vehicle_category_code", "A")
+                .put("issue_date", Tagged(1004, Tstr("2018-08-09")))
+                .put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
+                .end()
+                .addMap()
+                .put("vehicle_category_code", "B")
+                .put("issue_date", Tagged(1004, Tstr("2017-02-23")))
+                .put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
+                .end()
+                .end().build()
         // Note, this isn't very nice but it's not clear we can do any better at this point,
         // fitting complex stuff like this into a string is going to be a mess no matter how
         // you slice or dice it.
@@ -216,19 +220,16 @@ class TestDocumentTypeRepository {
         //
         Assert.assertEquals(
             "[{\"vehicle_category_code\": \"A\", \"issue_date\": 1004(\"2018-08-09\"), " +
-                    "\"expiry_date\": 1004(\"2024-10-20\")}, {\"vehicle_category_code\": \"B\", " +
-                    "\"issue_date\": 1004(\"2017-02-23\"), \"expiry_date\": 1004(\"2024-10-20\")}]",
-            mdlNs.dataElements["driving_privileges"]?.renderValue(drivingPrivileges)
+                "\"expiry_date\": 1004(\"2024-10-20\")}, {\"vehicle_category_code\": \"B\", " +
+                "\"issue_date\": 1004(\"2017-02-23\"), \"expiry_date\": 1004(\"2024-10-20\")}]",
+            mdlNs.dataElements["driving_privileges"]?.renderValue(drivingPrivileges),
         )
-
 
         // Now check that it does the right thing if a value is passed which
         // isn't expected by the document type
         Assert.assertEquals(
             "3 bytes",
-            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1, 2, 3)))
+            mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1, 2, 3))),
         )
-
     }
-
 }

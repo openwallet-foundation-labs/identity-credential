@@ -38,11 +38,11 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.IntegerOption
 import com.android.identity.documenttype.StringOption
 import com.android.identity.wallet.databinding.FragmentSelfSignedDetailsBinding
+import com.android.identity.wallet.selfsigned.ProvisionInfo
+import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil.fullDateStringToMilliseconds
 import com.android.identity.wallet.util.FormatUtil.millisecondsToFullDateString
-import com.android.identity.wallet.selfsigned.ProvisionInfo
-import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.viewmodel.SelfSignedViewModel
@@ -54,7 +54,6 @@ import kotlin.math.max
 import kotlin.math.min
 
 class SelfSignedDetailsFragment : Fragment() {
-
     private val vm: SelfSignedViewModel by viewModels()
     private val args: SelfSignedDetailsFragmentArgs by navArgs()
     private val nameElements = listOf("given_name", "name", "gn")
@@ -72,8 +71,9 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentSelfSignedDetailsBinding.inflate(inflater)
         binding.fragment = this
@@ -90,8 +90,8 @@ class SelfSignedDetailsFragment : Fragment() {
                 "Document Name",
                 provisionInfo.docName,
                 DocumentAttributeType.String,
-                documentName
-            )
+                documentName,
+            ),
         )
         documentNameEditText = binding.layoutSelfSignedDetails.findViewById(0)
         vm.getFields(provisionInfo.docType).forEach { field ->
@@ -108,11 +108,12 @@ class SelfSignedDetailsFragment : Fragment() {
 
         vm.created.observe(viewLifecycleOwner) {
             Toast.makeText(
-                requireContext(), "Document created successfully!",
-                Toast.LENGTH_SHORT
+                requireContext(),
+                "Document created successfully!",
+                Toast.LENGTH_SHORT,
             ).show()
             findNavController().navigate(
-                SelfSignedDetailsFragmentDirections.actionSelfSignedDetailsToSelectDocumentFragment()
+                SelfSignedDetailsFragmentDirections.actionSelfSignedDetailsToSelectDocumentFragment(),
             )
         }
     }
@@ -154,7 +155,7 @@ class SelfSignedDetailsFragment : Fragment() {
                     namespace = field.namespace,
                     parentId = field.parentId,
                     stringOptions = field.stringOptions,
-                    integerOptions = field.integerOptions
+                    integerOptions = field.integerOptions,
                 )
             }
 
@@ -168,7 +169,7 @@ class SelfSignedDetailsFragment : Fragment() {
                     namespace = field.namespace,
                     parentId = field.parentId,
                     stringOptions = field.stringOptions,
-                    integerOptions = field.integerOptions
+                    integerOptions = field.integerOptions,
                 )
             }
 
@@ -183,7 +184,7 @@ class SelfSignedDetailsFragment : Fragment() {
                     isArray = field.isArray,
                     parentId = field.parentId,
                     stringOptions = field.stringOptions,
-                    integerOptions = field.integerOptions
+                    integerOptions = field.integerOptions,
                 )
             }
         }
@@ -193,115 +194,138 @@ class SelfSignedDetailsFragment : Fragment() {
         when (field.fieldType) {
             is DocumentAttributeType.Picture -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label)
+                    getTextView(field.id + 500, field.label),
                 )
-                binding.layoutSelfSignedDetails.addView(getImageView(
-                    field.id, field.value as Bitmap
-                ) { dispatchTakePictureIntent(field.id) })
+                binding.layoutSelfSignedDetails.addView(
+                    getImageView(
+                        field.id,
+                        field.value as Bitmap,
+                    ) { dispatchTakePictureIntent(field.id) },
+                )
             }
 
             is DocumentAttributeType.Boolean -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label)
+                    getTextView(field.id + 500, field.label),
                 )
                 binding.layoutSelfSignedDetails.addView(
-                    checkBox(field.id, field.value as Boolean)
+                    checkBox(field.id, field.value as Boolean),
                 )
             }
 
             is DocumentAttributeType.String, DocumentAttributeType.Number -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label)
+                    getTextView(field.id + 500, field.label),
                 )
                 binding.layoutSelfSignedDetails.addView(
-                    getEditView(field.id, field.value.toString(), null)
+                    getEditView(field.id, field.value.toString(), null),
                 )
             }
 
             is DocumentAttributeType.Date, DocumentAttributeType.DateTime -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label)
+                    getTextView(field.id + 500, field.label),
                 )
                 binding.layoutSelfSignedDetails.addView(
-                    getEditView(field.id, field.value as String, picker(field.id, field.id + 500))
+                    getEditView(field.id, field.value as String, picker(field.id, field.id + 500)),
                 )
             }
 
             is DocumentAttributeType.IntegerOptions -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label)
+                    getTextView(field.id + 500, field.label),
                 )
                 binding.layoutSelfSignedDetails.addView(
                     integerOptionsSpinner(
-                        field.integerOptions!!, field.id, field.value
-                    )
+                        field.integerOptions!!,
+                        field.id,
+                        field.value,
+                    ),
                 )
             }
 
             is DocumentAttributeType.StringOptions -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label)
+                    getTextView(field.id + 500, field.label),
                 )
                 binding.layoutSelfSignedDetails.addView(
                     stringOptionsSpinner(
-                        field.stringOptions!!, field.id, field.value
-                    )
+                        field.stringOptions!!,
+                        field.id,
+                        field.value,
+                    ),
                 )
             }
 
             is DocumentAttributeType.ComplexType -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTitleView(field.id + 500, field.label)
+                    getTitleView(field.id + 500, field.label),
                 )
             }
         }
     }
 
     private fun getImageView(
-        id: Int, bitmap: Bitmap, onClickListener: View.OnClickListener?
+        id: Int,
+        bitmap: Bitmap,
+        onClickListener: View.OnClickListener?,
     ): View {
         val imageView = ImageView(requireContext())
         imageView.id = id
         imageView.setImageBitmap(bitmap)
 
-        imageView.layoutParams = LinearLayout.LayoutParams(bitmap.width, bitmap.height).also {
-            it.setMargins(16, 16, 16, 0)
-        }
+        imageView.layoutParams =
+            LinearLayout.LayoutParams(bitmap.width, bitmap.height).also {
+                it.setMargins(16, 16, 16, 0)
+            }
         onClickListener?.let {
             imageView.setOnClickListener(it)
         }
         return imageView
     }
 
-    private fun getTextView(id: Int, value: String): View {
+    private fun getTextView(
+        id: Int,
+        value: String,
+    ): View {
         val textView = TextView(requireContext())
         textView.id = id
         textView.text = value
-        textView.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
-            it.setMargins(16, 16, 16, 0)
-        }
+        textView.layoutParams =
+            LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
+                it.setMargins(16, 16, 16, 0)
+            }
         return textView
     }
 
-    private fun getTitleView(id: Int, value: String): View {
+    private fun getTitleView(
+        id: Int,
+        value: String,
+    ): View {
         val textView = TextView(requireContext())
         textView.id = id
         textView.text = value
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18f)
         textView.setTypeface(textView.typeface, Typeface.BOLD)
-        textView.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
-            it.setMargins(16, 32, 16, 16)
-        }
+        textView.layoutParams =
+            LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
+                it.setMargins(16, 32, 16, 16)
+            }
         return textView
     }
 
-    private fun getEditView(id: Int, value: String, onClickListener: View.OnClickListener?): View {
+    private fun getEditView(
+        id: Int,
+        value: String,
+        onClickListener: View.OnClickListener?,
+    ): View {
         val editText = EditText(requireContext())
         editText.id = id
         editText.text = Editable.Factory.getInstance().newEditable(value)
-        editText.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
-            it.setMargins(16, 0, 16, 0)
-        }
+        editText.layoutParams =
+            LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
+                it.setMargins(16, 0, 16, 0)
+            }
         onClickListener?.let {
             editText.setOnClickListener(it)
             // avoid open keyboard
@@ -313,18 +337,23 @@ class SelfSignedDetailsFragment : Fragment() {
 
     fun onCreateSelfSigned() {
         updateList()
-        val dData = SelfSignedDocumentData(
-            provisionInfo, vm.getFields(provisionInfo.docType)
-        )
+        val dData =
+            SelfSignedDocumentData(
+                provisionInfo,
+                vm.getFields(provisionInfo.docType),
+            )
         vm.createSelfSigned(dData)
         binding.loadingProgress.visibility = View.VISIBLE
     }
 
     private fun getImageViewValue(id: Int): Bitmap {
         val imageView = binding.layoutSelfSignedDetails.findViewById<ImageView>(id)
-        val bitmap = Bitmap.createBitmap(
-            imageView.width, imageView.height, Bitmap.Config.ARGB_8888
-        )
+        val bitmap =
+            Bitmap.createBitmap(
+                imageView.width,
+                imageView.height,
+                Bitmap.Config.ARGB_8888,
+            )
         val canvas = Canvas(bitmap)
         imageView.draw(canvas)
         return bitmap
@@ -348,14 +377,16 @@ class SelfSignedDetailsFragment : Fragment() {
                 }
             }
 
-
             else -> {
                 String()
             }
         }
     }
 
-    private fun setViewValue(id: Int, value: String) {
+    private fun setViewValue(
+        id: Int,
+        value: String,
+    ) {
         val view = binding.layoutSelfSignedDetails.findViewById<View>(id)
         if (view is TextView) {
             view.text = value
@@ -365,12 +396,16 @@ class SelfSignedDetailsFragment : Fragment() {
     /**
      * OnClickListener for date picker
      */
-    private fun picker(id: Int, idLabel: Int) = View.OnClickListener {
+    private fun picker(
+        id: Int,
+        idLabel: Int,
+    ) = View.OnClickListener {
         val titleText = getViewValue(idLabel) as String
         val dateText = getViewValue(id) as String
         log("$dateText - ${fullDateStringToMilliseconds(dateText)}")
-        val datePicker = MaterialDatePicker.Builder.datePicker().setTitleText(titleText)
-            .setSelection(fullDateStringToMilliseconds(dateText)).build()
+        val datePicker =
+            MaterialDatePicker.Builder.datePicker().setTitleText(titleText)
+                .setSelection(fullDateStringToMilliseconds(dateText)).build()
         datePicker.addOnPositiveButtonClickListener {
             log("$it - ${millisecondsToFullDateString(it)}")
             setViewValue(id, millisecondsToFullDateString(it))
@@ -379,7 +414,9 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     private fun stringOptionsSpinner(
-        options: List<StringOption>, id: Int, value: Any?
+        options: List<StringOption>,
+        id: Int,
+        value: Any?,
     ): View {
         val spinner = Spinner(context)
         spinner.id = id
@@ -394,7 +431,9 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     private fun integerOptionsSpinner(
-        options: List<IntegerOption>, id: Int, value: Any?
+        options: List<IntegerOption>,
+        id: Int,
+        value: Any?,
     ): View {
         val spinner = Spinner(context)
         spinner.id = id
@@ -408,7 +447,10 @@ class SelfSignedDetailsFragment : Fragment() {
         return spinner
     }
 
-    private fun checkBox(id: Int, value: Boolean): View {
+    private fun checkBox(
+        id: Int,
+        value: Boolean,
+    ): View {
         val checkBox = CheckBox(context)
         checkBox.id = id
         checkBox.isChecked = value
@@ -419,17 +461,19 @@ class SelfSignedDetailsFragment : Fragment() {
     private lateinit var photoUri: Uri
     private lateinit var currentPhotoPath: String
     private var imageViewId: Int? = null
-    private val takePicture = registerForActivityResult(TakePicture()) { isSuccess ->
-        if (isSuccess) {
-            val rotation = calculateDegrees()
-            setPic(rotation)
+    private val takePicture =
+        registerForActivityResult(TakePicture()) { isSuccess ->
+            if (isSuccess) {
+                val rotation = calculateDegrees()
+                setPic(rotation)
+            }
         }
-    }
-    private val cameraLauncher = registerForActivityResult(RequestPermission()) { granted ->
-        if (granted) {
-            proceedTakingPhoto()
+    private val cameraLauncher =
+        registerForActivityResult(RequestPermission()) { granted ->
+            if (granted) {
+                proceedTakingPhoto()
+            }
         }
-    }
 
     private fun dispatchTakePictureIntent(viewId: Int) {
         imageViewId = viewId
@@ -475,9 +519,9 @@ class SelfSignedDetailsFragment : Fragment() {
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
         val storageDir: File? = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         return File.createTempFile(
-            "JPEG_${timeStamp}_", /* prefix */
-            ".jpg", /* suffix */
-            storageDir /* directory */
+            "JPEG_${timeStamp}_", // prefix
+            ".jpg", // suffix
+            storageDir, // directory
         ).apply {
             currentPhotoPath = absolutePath
         }
@@ -514,29 +558,32 @@ class SelfSignedDetailsFragment : Fragment() {
         val targetW: Int = imageView.width
         val targetH: Int = imageView.height
 
-        val bmOptions = BitmapFactory.Options().apply {
-            // Get the dimensions of the bitmap
-            inJustDecodeBounds = true
+        val bmOptions =
+            BitmapFactory.Options().apply {
+                // Get the dimensions of the bitmap
+                inJustDecodeBounds = true
 
-            val photoW: Int = outWidth
-            val photoH: Int = outHeight
+                val photoW: Int = outWidth
+                val photoH: Int = outHeight
 
-            // Determine how much to scale down the image
-            val scaleFactor: Int = max(1, min(photoW / targetW, photoH / targetH))
+                // Determine how much to scale down the image
+                val scaleFactor: Int = max(1, min(photoW / targetW, photoH / targetH))
 
-            // Decode the image file into a Bitmap sized to fill the View
-            inJustDecodeBounds = false
-            inSampleSize = scaleFactor
-            inPurgeable = true
-        }
+                // Decode the image file into a Bitmap sized to fill the View
+                inJustDecodeBounds = false
+                inSampleSize = scaleFactor
+                inPurgeable = true
+            }
 
         val original = BitmapFactory.decodeFile(currentPhotoPath, bmOptions)
-        val rotated = if (rotation != 0f) {
-            val matrix = Matrix()
-            matrix.postRotate(rotation)
-            Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
-        } else original
+        val rotated =
+            if (rotation != 0f) {
+                val matrix = Matrix()
+                matrix.postRotate(rotation)
+                Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
+            } else {
+                original
+            }
         imageView.setImageBitmap(rotated)
     }
 }
-

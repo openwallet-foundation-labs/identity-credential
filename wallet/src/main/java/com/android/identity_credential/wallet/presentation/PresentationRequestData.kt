@@ -10,9 +10,9 @@ import com.android.identity.trustmanagement.TrustPoint
  * them, this PresentationRequestData object is used to finish processing the request and ultimately
  * produce the response data to send to the party who initiated the Presentation.
  */
-data class PresentationRequestData (
+data class PresentationRequestData(
     val document: Document,
     val documentRequest: DocumentRequest,
-    val docType : String,
-    val trustPoint : TrustPoint?
+    val docType: String,
+    val trustPoint: TrustPoint?,
 )

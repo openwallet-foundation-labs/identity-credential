@@ -6,8 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.android.identity.documenttype.DocumentAttributeType
-import com.android.identity.documenttype.MdocDocumentType
 import com.android.identity.documenttype.MdocDataElement
+import com.android.identity.documenttype.MdocDocumentType
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.MdocComplexTypeDefinition
@@ -21,7 +21,6 @@ import kotlinx.coroutines.withContext
 
 class SelfSignedViewModel(val app: Application) :
     AndroidViewModel(app) {
-
     companion object {
         private const val LOG_TAG = "SelfSignedViewModel"
     }
@@ -67,63 +66,69 @@ class SelfSignedViewModel(val app: Application) :
             for (dataElement in namespace.dataElements.values) {
                 when (dataElement.attribute.type) {
                     is DocumentAttributeType.ComplexType -> {
-                        val complexTypeDefinitions = namespaceComplexTypes?.dataElements?.filter {
-                            it.parentIdentifiers.contains(dataElement.attribute.identifier)
-                        }
+                        val complexTypeDefinitions =
+                            namespaceComplexTypes?.dataElements?.filter {
+                                it.parentIdentifiers.contains(dataElement.attribute.identifier)
+                            }
 
                         if (complexTypeDefinitions?.first()?.partOfArray == true) {
                             val arrayLength =
                                 SampleDataProvider.getArrayLength(
                                     namespace.namespace,
-                                    dataElement.attribute.identifier
+                                    dataElement.attribute.identifier,
                                 )
-                            val parentField = Field(
-                                id++,
-                                "${dataElement.attribute.displayName} ($arrayLength items)",
-                                dataElement.attribute.identifier,
-                                dataElement.attribute.type,
-                                null,
-                                namespace = namespace.namespace,
-                                isArray = true,
-                            )
+                            val parentField =
+                                Field(
+                                    id++,
+                                    "${dataElement.attribute.displayName} ($arrayLength items)",
+                                    dataElement.attribute.identifier,
+                                    dataElement.attribute.type,
+                                    null,
+                                    namespace = namespace.namespace,
+                                    isArray = true,
+                                )
                             fields.add(parentField)
                             addArrayFields(
                                 parentField,
                                 fields,
-                                namespaceComplexTypes.dataElements)
-                        } else {
-                            val parentField = Field(
-                                id++,
-                                dataElement.attribute.displayName,
-                                dataElement.attribute.identifier,
-                                dataElement.attribute.type,
-                                null,
-                                namespace = namespace.namespace
+                                namespaceComplexTypes.dataElements,
                             )
+                        } else {
+                            val parentField =
+                                Field(
+                                    id++,
+                                    dataElement.attribute.displayName,
+                                    dataElement.attribute.identifier,
+                                    dataElement.attribute.type,
+                                    null,
+                                    namespace = namespace.namespace,
+                                )
                             fields.add(parentField)
                             addMapFields(
                                 parentField,
                                 fields,
-                                namespaceComplexTypes?.dataElements!!)
+                                namespaceComplexTypes?.dataElements!!,
+                            )
                         }
                     }
 
                     else -> {
-
-                        val sampleValue = SampleDataProvider.getSampleValue(
-                            app,
-                            namespace.namespace,
-                            dataElement.attribute.identifier,
-                            dataElement.attribute.type
-                        )
-                        val field = Field(
-                            id++,
-                            dataElement.attribute.displayName,
-                            dataElement.attribute.identifier,
-                            dataElement.attribute.type,
-                            sampleValue,
-                            namespace = namespace.namespace
-                        )
+                        val sampleValue =
+                            SampleDataProvider.getSampleValue(
+                                app,
+                                namespace.namespace,
+                                dataElement.attribute.identifier,
+                                dataElement.attribute.type,
+                            )
+                        val field =
+                            Field(
+                                id++,
+                                dataElement.attribute.displayName,
+                                dataElement.attribute.identifier,
+                                dataElement.attribute.type,
+                                sampleValue,
+                                namespace = namespace.namespace,
+                            )
                         addOptions(field, dataElement)
                         fields.add(field)
                     }
@@ -133,12 +138,11 @@ class SelfSignedViewModel(val app: Application) :
         return fields
     }
 
-
     private fun addArrayFields(
         parentField: Field,
         fields: MutableList<Field>,
         dataElements: List<MdocComplexTypeDefinition>,
-        prefix: String = ""
+        prefix: String = "",
     ) {
         val arrayLength =
             SampleDataProvider.getArrayLength(parentField.namespace!!, parentField.name)
@@ -146,60 +150,62 @@ class SelfSignedViewModel(val app: Application) :
         for (i in 0..arrayLength - 1) {
             for (childElement in childElements) {
                 if (childElement.type is DocumentAttributeType.ComplexType) {
-
                     if (dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }) {
-                        val childField = Field(
-                            id++,
-                            "$prefix${i + 1} | ${childElement.displayName} (${
-                                SampleDataProvider.getArrayLength(
-                                    parentField.namespace,
-                                    childElement.identifier
-                                )
-                            } items)",
-                            childElement.identifier,
-                            childElement.type,
-                            null,
-                            namespace = parentField.namespace,
-                            isArray = true,
-                            parentId = parentField.id
-                        )
+                        val childField =
+                            Field(
+                                id++,
+                                "$prefix${i + 1} | ${childElement.displayName} (${
+                                    SampleDataProvider.getArrayLength(
+                                        parentField.namespace,
+                                        childElement.identifier,
+                                    )
+                                } items)",
+                                childElement.identifier,
+                                childElement.type,
+                                null,
+                                namespace = parentField.namespace,
+                                isArray = true,
+                                parentId = parentField.id,
+                            )
                         fields.add(childField)
                         addArrayFields(
                             childField,
                             fields,
                             dataElements,
-                            "$prefix${i + 1} | "
+                            "$prefix${i + 1} | ",
                         )
                     } else {
-                        val childField = Field(
-                            id++,
-                            "$prefix${i + 1} | ${childElement.displayName}",
-                            childElement.identifier,
-                            childElement.type,
-                            null,
-                            namespace = parentField.namespace,
-                            parentId = parentField.id
-                        )
+                        val childField =
+                            Field(
+                                id++,
+                                "$prefix${i + 1} | ${childElement.displayName}",
+                                childElement.identifier,
+                                childElement.type,
+                                null,
+                                namespace = parentField.namespace,
+                                parentId = parentField.id,
+                            )
                         fields.add(childField)
                         addMapFields(
                             childField,
                             fields,
                             dataElements,
-                            "$prefix${i + 1} | "
+                            "$prefix${i + 1} | ",
                         )
                     }
                 } else {
                     val sampleValue =
                         SampleDataProvider.getSampleValue(parentField.namespace, childElement.identifier, childElement.type, i)
-                    val childField = Field(
-                        id++,
-                        "$prefix${i + 1} | ${childElement.displayName}",
-                        childElement.identifier,
-                        childElement.type,
-                        sampleValue,
-                        namespace = parentField.namespace,
-                        parentId = parentField.id
-                    )
+                    val childField =
+                        Field(
+                            id++,
+                            "$prefix${i + 1} | ${childElement.displayName}",
+                            childElement.identifier,
+                            childElement.type,
+                            sampleValue,
+                            namespace = parentField.namespace,
+                            parentId = parentField.id,
+                        )
                     addOptions(childField, childElement)
                     fields.add(childField)
                 }
@@ -211,25 +217,25 @@ class SelfSignedViewModel(val app: Application) :
         parentField: Field,
         fields: MutableList<Field>,
         dataElements: List<MdocComplexTypeDefinition>,
-        prefix: String = ""
+        prefix: String = "",
     ) {
-
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (childElement in childElements) {
             if (childElement.type is DocumentAttributeType.ComplexType) {
                 val isArray = dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }
-                val childField = Field(
-                    id++,
-                    "$prefix${childElement.displayName}",
-                    childElement.identifier,
-                    childElement.type,
-                    null,
-                    namespace = parentField.namespace,
-                    isArray = isArray,
-                    parentId = parentField.id
-                )
+                val childField =
+                    Field(
+                        id++,
+                        "$prefix${childElement.displayName}",
+                        childElement.identifier,
+                        childElement.type,
+                        null,
+                        namespace = parentField.namespace,
+                        isArray = isArray,
+                        parentId = parentField.id,
+                    )
                 fields.add(childField)
-                if (isArray){
+                if (isArray) {
                     addArrayFields(childField, fields, dataElements, prefix)
                 } else {
                     addMapFields(childField, fields, dataElements, prefix)
@@ -240,47 +246,55 @@ class SelfSignedViewModel(val app: Application) :
                         app,
                         parentField.namespace!!,
                         childElement.identifier,
-                        childElement.type
+                        childElement.type,
                     )
-                val childField = Field(
-                    id++,
-                    "$prefix${childElement.displayName}",
-                    childElement.identifier,
-                    childElement.type,
-                    sampleValue,
-                    namespace = parentField.namespace,
-                    parentId = parentField.id
-                )
+                val childField =
+                    Field(
+                        id++,
+                        "$prefix${childElement.displayName}",
+                        childElement.identifier,
+                        childElement.type,
+                        sampleValue,
+                        namespace = parentField.namespace,
+                        parentId = parentField.id,
+                    )
                 addOptions(childField, childElement)
                 fields.add(childField)
             }
-
         }
     }
 
-    fun addOptions(field: Field, dataElement: MdocDataElement) {
+    fun addOptions(
+        field: Field,
+        dataElement: MdocDataElement,
+    ) {
         when (dataElement.attribute.type) {
-            is DocumentAttributeType.StringOptions -> field.stringOptions =
-                (dataElement.attribute.type as DocumentAttributeType.StringOptions).options
+            is DocumentAttributeType.StringOptions ->
+                field.stringOptions =
+                    (dataElement.attribute.type as DocumentAttributeType.StringOptions).options
 
-            is DocumentAttributeType.IntegerOptions -> field.integerOptions =
-                (dataElement.attribute.type as DocumentAttributeType.IntegerOptions).options
+            is DocumentAttributeType.IntegerOptions ->
+                field.integerOptions =
+                    (dataElement.attribute.type as DocumentAttributeType.IntegerOptions).options
 
             else -> {}
         }
     }
 
-    fun addOptions(field: Field, dataElement: MdocComplexTypeDefinition) {
+    fun addOptions(
+        field: Field,
+        dataElement: MdocComplexTypeDefinition,
+    ) {
         when (dataElement.type) {
-            is DocumentAttributeType.StringOptions -> field.stringOptions =
-                dataElement.type.options
+            is DocumentAttributeType.StringOptions ->
+                field.stringOptions =
+                    dataElement.type.options
 
-            is DocumentAttributeType.IntegerOptions -> field.integerOptions =
-                dataElement.type.options
+            is DocumentAttributeType.IntegerOptions ->
+                field.integerOptions =
+                    dataElement.type.options
 
             else -> {}
         }
     }
-
 }
-

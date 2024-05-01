@@ -67,7 +67,7 @@ enum class ShareButtonState {
     DISABLED,
 
     // for initializing the state flow
-    INIT
+    INIT,
 }
 
 /**
@@ -80,21 +80,20 @@ fun ConsentPrompt(
     consentData: ConsentPromptData,
     documentTypeRepository: DocumentTypeRepository,
     onConfirm: () -> Unit = {},
-    onCancel: () -> Unit = {}
+    onCancel: () -> Unit = {},
 ) {
     /**
      * Extension function for extracting the display name for an element name in a CredentialRequest.DataElement
      */
     fun DocumentTypeRepository.getDataElementDisplayName(
         dataElement: DocumentRequest.DataElement,
-        docType: String
+        docType: String,
     ) = getDocumentTypeForMdoc(docType)
         ?.mdocDocumentType
         ?.namespaces
         ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
         ?.attribute?.displayName
         ?: dataElement.dataElementName
-
 
     // used for bottom sheet
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -108,10 +107,11 @@ fun ConsentPrompt(
                 consentData.credentialData.hasDataElement(it.nameSpaceName, it.dataElementName)
             }
             .map { dataElement ->
-                val displayName = documentTypeRepository.getDataElementDisplayName(
-                    dataElement = dataElement,
-                    docType = consentData.docType
-                )
+                val displayName =
+                    documentTypeRepository.getDataElementDisplayName(
+                        dataElement = dataElement,
+                        docType = consentData.docType,
+                    )
                 ConsentDataElement(displayName, dataElement)
             }
 
@@ -123,15 +123,16 @@ fun ConsentPrompt(
     val lastVisibleRowIndexState = remember { mutableIntStateOf(0) }
 
     // total rows that contain data element texts, with at most 2 per row
-    val totalDataElementRows = remember {
-        floor(consentDataElements.size / 2.0).toInt().run {
-            if (consentDataElements.size % 2 != 0) { //odd number of elements
-                this + 1// 1 more row to represent the single element
-            } else {
-                this// even number of elements, row count remains unchanged
+    val totalDataElementRows =
+        remember {
+            floor(consentDataElements.size / 2.0).toInt().run {
+                if (consentDataElements.size % 2 != 0) { // odd number of elements
+                    this + 1 // 1 more row to represent the single element
+                } else {
+                    this // even number of elements, row count remains unchanged
+                }
             }
         }
-    }
     // the index of the last row that will be/is rendered in the LazyColumn
     val lastRowIndex = remember { totalDataElementRows - 1 }
 
@@ -143,7 +144,7 @@ fun ConsentPrompt(
         shareButtonState.value =
             if (lastRowIndex > lastVisibleRowIndexState.intValue) {
                 ShareButtonState.DISABLED // user needs to scroll to reach the bottom of the list
-            } else {// last visible row index has reached the LazyColumnI last row index
+            } else { // last visible row index has reached the LazyColumnI last row index
                 // remember that user already saw the bottom-most row even if they scroll back up
                 scrolledToBottom.value = true
                 ShareButtonState.SHARE // user has the option to now share their sensitive data
@@ -154,19 +155,19 @@ fun ConsentPrompt(
         modifier = Modifier.fillMaxHeight(0.6F),
         onDismissRequest = { onCancel() },
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     ) {
-
         ConsentPromptHeader(
             modifier = Modifier,
-            consentData = consentData
+            consentData = consentData,
         )
 
         Box(
-            modifier = Modifier
-                .fillMaxHeight(0.8f)
-                .fillMaxWidth()
-                .padding(top = 16.dp, bottom = 8.dp)
+            modifier =
+                Modifier
+                    .fillMaxHeight(0.8f)
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 8.dp),
         ) {
             DataElementsListView(
                 dataElements = consentDataElements,
@@ -183,7 +184,7 @@ fun ConsentPrompt(
                     onCancel()
                 }
             },
-            onShareButtonPress = { onConfirm.invoke() }
+            onShareButtonPress = { onConfirm.invoke() },
         )
     }
 }
@@ -193,21 +194,25 @@ fun ConsentPrompt(
  * the icon too.
  */
 @Composable
-private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptData) {
+private fun ConsentPromptHeader(
+    modifier: Modifier,
+    consentData: ConsentPromptData,
+) {
     // title of dialog, if verifier is null or verifier.displayName is null, use default text
-    val title = if (consentData.verifier?.displayName == null) {
-        LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
-    } else { // title is based on TrustPoint's displayName
-        LocalContext.current.getString(
-            R.string.consent_prompt_title_verifier,
-            consentData.verifier.displayName,
-            consentData.documentName
-        )
-    }
+    val title =
+        if (consentData.verifier?.displayName == null) {
+            LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
+        } else { // title is based on TrustPoint's displayName
+            LocalContext.current.getString(
+                R.string.consent_prompt_title_verifier,
+                consentData.verifier.displayName,
+                consentData.documentName,
+            )
+        }
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         // show icon if icon bytes are present
         consentData.verifier?.displayIcon?.let { iconBytes ->
@@ -215,7 +220,7 @@ private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptDa
                 modifier = Modifier.size(24.dp),
                 // TODO: we're computing a bitmap every recomposition and this could be slow
                 bitmap = iconBytes.toImageBitmap(),
-                contentDescription = stringResource(id = R.string.consent_prompt_icon_description)
+                contentDescription = stringResource(id = R.string.consent_prompt_icon_description),
             )
         }
         Text(
@@ -224,7 +229,7 @@ private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptDa
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -243,10 +248,14 @@ private fun DataElementsListView(
     // callback to update what the last visible row index is currently shown
     lastVisibleRowIndexState: MutableIntState,
 ) {
-    val groupedElements = dataElements.chunked(2).map { pair ->
-        if (pair.size == 1) Pair(pair.first(), null)
-        else Pair(pair.first(), pair.last())
-    }
+    val groupedElements =
+        dataElements.chunked(2).map { pair ->
+            if (pair.size == 1) {
+                Pair(pair.first(), null)
+            } else {
+                Pair(pair.first(), pair.last())
+            }
+        }
     val lazyListState = rememberLazyListState()
     val visibleRows = remember { derivedStateOf { lazyListState.layoutInfo.visibleItemsInfo } }
 
@@ -256,10 +265,11 @@ private fun DataElementsListView(
     }
     LazyColumn(
         state = lazyListState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .focusGroup()
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .focusGroup(),
     ) {
         items(groupedElements.size) { index ->
             val pair = groupedElements[index]
@@ -280,10 +290,11 @@ private fun DataElementsRow(
     right: ConsentDataElement?,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 1.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 1.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         val chipModifier = if (right != null) Modifier.weight(1f) else Modifier
         DataElementView(
@@ -312,20 +323,19 @@ private fun DataElementView(
         modifier = modifier,
         selected = true,
         enabled = false,
-        colors = FilterChipDefaults.filterChipColors(
-            disabledContainerColor = Color.Transparent,
-            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface,
-            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface,
-            disabledLabelColor = MaterialTheme.colorScheme.onSurface,
-            disabledSelectedContainerColor = Color.Transparent,
-
+        colors =
+            FilterChipDefaults.filterChipColors(
+                disabledContainerColor = Color.Transparent,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface,
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurface,
+                disabledSelectedContainerColor = Color.Transparent,
             ),
-
         onClick = {},
         label = {
             Text(
                 text = "• ${documentElement.displayName}",
-                fontWeight = FontWeight.Normal
+                fontWeight = FontWeight.Normal,
             )
         },
     )
@@ -339,17 +349,16 @@ private fun DataElementView(
 private fun ConsentPromptActions(
     shareButtonState: MutableState<ShareButtonState>,
     onCancel: () -> Unit,
-    onShareButtonPress: () -> Unit
+    onShareButtonPress: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxHeight()) {
-
         Row(
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             // Cancel button
             Button(
                 modifier = Modifier.weight(1f),
-                onClick = { onCancel.invoke() }
+                onClick = { onCancel.invoke() },
             ) {
                 Text(text = stringResource(id = R.string.consent_prompt_button_cancel))
             }
@@ -361,7 +370,7 @@ private fun ConsentPromptActions(
                 modifier = Modifier.weight(1f),
                 // enabled when user scrolled to bottom
                 enabled = shareButtonState.value == ShareButtonState.SHARE,
-                onClick = { onShareButtonPress.invoke() }
+                onClick = { onShareButtonPress.invoke() },
             ) {
                 Text(text = stringResource(id = R.string.consent_prompt_button_share))
             }
@@ -370,16 +379,17 @@ private fun ConsentPromptActions(
         AnimatedVisibility(
             visible = shareButtonState.value == ShareButtonState.DISABLED,
             enter = fadeIn(),
-            exit = fadeOut()
+            exit = fadeOut(),
         ) {
             Text(
                 text = stringResource(id = R.string.consent_prompt_text_scroll_to_bottom),
                 fontSize = 12.sp,
-                style = TextStyle.Default.copy(
-                    color = Color.Gray
-                ),
+                style =
+                    TextStyle.Default.copy(
+                        color = Color.Gray,
+                    ),
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
     }

@@ -4,7 +4,6 @@ package com.android.identity.issuance
  * An enumeration of possible conditions a credential can be in from the issuer's perspective.
  */
 enum class DocumentCondition(val value: Int) {
-
     /**
      * Proofing is required.
      *
@@ -44,10 +43,10 @@ enum class DocumentCondition(val value: Int) {
      * The application should initiate the deletion flow when this state
      * has been reached
      */
-    DELETION_REQUESTED(6);
+    DELETION_REQUESTED(6),
+    ;
 
     companion object {
-        fun fromInt(value: Int): DocumentCondition =
-            DocumentCondition.values().first() {it.value == value}
+        fun fromInt(value: Int): DocumentCondition = DocumentCondition.values().first { it.value == value }
     }
 }

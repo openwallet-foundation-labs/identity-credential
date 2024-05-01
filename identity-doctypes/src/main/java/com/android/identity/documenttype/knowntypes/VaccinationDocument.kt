@@ -39,7 +39,7 @@ object VaccinationDocument {
                 "Vaccination against Yellow Fever",
                 "Attestation that the holder has been fully vaccinated against Yellow Fever",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Boolean,
@@ -47,7 +47,7 @@ object VaccinationDocument {
                 "Vaccination against COVID-19",
                 "Attestation that the holder has been fully vaccinated against COVID-19",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -55,7 +55,7 @@ object VaccinationDocument {
                 "Test Event for COVID-19",
                 "Attestation that the holder has obtained a negative test for COVID-19",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -63,7 +63,7 @@ object VaccinationDocument {
                 "Safe Entry Indication",
                 "Attest that the holder fulfils certain set requirements for safe entry in a leisure context (without disclosing if it is based on vaccination, recovery, or negative test)",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -71,7 +71,7 @@ object VaccinationDocument {
                 "Facial Image",
                 "Facial Image of the holder",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -79,7 +79,7 @@ object VaccinationDocument {
                 "Family Name Initial",
                 "Initial letter of the Family Name of the holder",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -87,7 +87,7 @@ object VaccinationDocument {
                 "Given Name Initial",
                 "Initial letter of the Given Name of the holder",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -95,7 +95,7 @@ object VaccinationDocument {
                 "Birth Year",
                 "Birth Year of the holder",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -103,7 +103,7 @@ object VaccinationDocument {
                 "Birth Month",
                 "Birth Month of the holder",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -111,7 +111,7 @@ object VaccinationDocument {
                 "Birth Day",
                 "Birth Day of the holder",
                 false,
-                MICOV_ATT_NAMESPACE
+                MICOV_ATT_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -119,7 +119,7 @@ object VaccinationDocument {
                 "Family Name",
                 "Family Name of the holder",
                 true,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -127,7 +127,7 @@ object VaccinationDocument {
                 "Given Name",
                 "Given Name of the holder",
                 true,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -135,7 +135,7 @@ object VaccinationDocument {
                 "Date of Birth",
                 "Date of Birth of the holder",
                 true,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -143,7 +143,7 @@ object VaccinationDocument {
                 "Sex",
                 "Sex",
                 false,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -151,7 +151,7 @@ object VaccinationDocument {
                 "RA01 First Vaccination",
                 "COVID-19 – first vaccination data",
                 false,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -159,7 +159,7 @@ object VaccinationDocument {
                 "RA01 Second Vaccination",
                 "COVID-19 – second vaccination data",
                 false,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -167,7 +167,7 @@ object VaccinationDocument {
                 "ID with Pasport Number",
                 "Unique set of elements identifying the holder by passport number",
                 false,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -175,7 +175,7 @@ object VaccinationDocument {
                 "ID with Driver’s License Number",
                 "Unique set of elements identifying the holder by driver’s license number",
                 false,
-                MICOV_VTR_NAMESPACE
+                MICOV_VTR_NAMESPACE,
             )
             .build()
     }

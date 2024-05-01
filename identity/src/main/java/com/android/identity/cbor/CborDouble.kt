@@ -9,7 +9,6 @@ import kotlin.experimental.or
  * @param value the value.
  */
 class CborDouble(val value: Double) : DataItem(MajorType.SPECIAL) {
-
     override fun encode(builder: ByteStringBuilder) =
         builder.run {
             val majorTypeShifted = (majorType.type shl 5).toByte()
@@ -26,10 +25,13 @@ class CborDouble(val value: Double) : DataItem(MajorType.SPECIAL) {
             append((raw shr 0).and(0xff).toByte())
         }
 
-
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborDouble> {
-            val raw = (encodedCbor[offset + 1].toLong().and(0xffL) shl 56) +
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, CborDouble> {
+            val raw =
+                (encodedCbor[offset + 1].toLong().and(0xffL) shl 56) +
                     (encodedCbor[offset + 2].toLong().and(0xffL) shl 48) +
                     (encodedCbor[offset + 3].toLong().and(0xffL) shl 40) +
                     (encodedCbor[offset + 4].toLong().and(0xffL) shl 32) +

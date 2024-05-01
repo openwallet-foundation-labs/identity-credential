@@ -14,14 +14,14 @@ import kotlinx.io.bytestring.ByteStringBuilder
  *
  * @param encodedCbor the bytes of valid CBOR.
  */
-class RawCbor(val encodedCbor: ByteArray)
-    : DataItem(MajorType.fromInt(encodedCbor[0].toInt().and(0xff) ushr 5)) {
-
+class RawCbor(val encodedCbor: ByteArray) :
+    DataItem(MajorType.fromInt(encodedCbor[0].toInt().and(0xff) ushr 5)) {
     override fun encode(builder: ByteStringBuilder) {
         builder.append(encodedCbor)
     }
 
-    override fun equals(other: Any?): Boolean = other is RawCbor &&
+    override fun equals(other: Any?): Boolean =
+        other is RawCbor &&
             encodedCbor.contentEquals(other.encodedCbor)
 
     override fun hashCode(): Int = encodedCbor.contentHashCode()

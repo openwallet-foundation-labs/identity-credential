@@ -51,7 +51,11 @@ fun X500Principal.countryCode(defaultValue: String): String {
 /**
  * Read a relative distinguished name from a distinguished name
  */
-private fun readRdn(name: String, field: ASN1ObjectIdentifier, defaultValue: String): String {
+private fun readRdn(
+    name: String,
+    field: ASN1ObjectIdentifier,
+    defaultValue: String,
+): String {
     val x500name = X500Name(name)
     for (rdn in x500name.getRDNs(field)) {
         val attributes = rdn.typesAndValues

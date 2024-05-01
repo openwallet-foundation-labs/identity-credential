@@ -8,5 +8,5 @@ data class DocumentElements(
     val signature: Bitmap? = null,
     val fingerprint: Bitmap? = null,
     val requestUserAuthorization: Boolean = false,
-    val passphrase: String = ""
+    val passphrase: String = "",
 )

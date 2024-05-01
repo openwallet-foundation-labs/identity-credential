@@ -22,10 +22,9 @@ import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.Date
 
-
 class TrustManagerTest {
-
-    val mdlDsCertificatePem = """
+    val mdlDsCertificatePem =
+        """
         -----BEGIN CERTIFICATE-----
         MIICIzCCAamgAwIBAgIQR29vZ2xlX1Rlc3RfRFNfMTAKBggqhkjOPQQDAzA8MQswCQYDVQQGEwJV
         UzEOMAwGA1UECBMFVVMtTUExHTAbBgNVBAMMFEdvb2dsZSBURVNUIElBQ0EgbURMMB4XDTIzMDcy
@@ -38,9 +37,10 @@ class TrustManagerTest {
         im8MI5BbnT9YKmCPDBb0NrXu41h9LKl3FnxvFqK53hD+Hd0W3gcuT4ZvBgWnAjBqSIlCH5uzdLi9
         4XWz1qsjIWupfmiVEJdK4PZZoQ6VhGm1vYDfwQWIgx2TGYGmOZg=
         -----END CERTIFICATE-----
-    """.trimIndent()
+        """.trimIndent()
 
-    val mdlCaCertificatePem = """
+    val mdlCaCertificatePem =
+        """
         -----BEGIN CERTIFICATE-----
         MIICGzCCAaGgAwIBAgIQR29vZ2xlX1Rlc3RfQ0FfMjAKBggqhkjOPQQDAzA8MQswCQYDVQQGEwJV
         UzEOMAwGA1UECBMFVVMtTUExHTAbBgNVBAMMFEdvb2dsZSBURVNUIElBQ0EgbURMMB4XDTIzMDcy
@@ -53,7 +53,7 @@ class TrustManagerTest {
         lCdG+dVipQN6t3OKYLb9G5O86GBaNVkuZp4L5dcvrOFLbEggjAIwKKbF1keoCaZsUXmwJolWDnYz
         nH5NbLz9MgAhNPxc99c+z1XNn5PhsOBn6CiFybHc
         -----END CERTIFICATE-----
-    """.trimIndent()
+        """.trimIndent()
 
     val mdlDsCertificate: X509Certificate
     val mdlCaCertificate: X509Certificate
@@ -77,23 +77,24 @@ class TrustManagerTest {
         val keyPairCA = kpg.generateKeyPair()
         val caPublicKeyInfo: SubjectPublicKeyInfo =
             SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(
-                PublicKeyFactory.createKey(keyPairCA.public.encoded)
+                PublicKeyFactory.createKey(keyPairCA.public.encoded),
             )
         val nowMillis = System.currentTimeMillis()
-        val certBuilderCA = JcaX509v3CertificateBuilder(
-            X500Name("CN=Test TrustManager CA"),
-            BigInteger.ONE,
-            Date(nowMillis),
-            Date(nowMillis + 24 * 3600 * 1000),
-            X500Name("CN=Test TrustManager CA"),
-            keyPairCA.public
-        ).addExtension(Extension.basicConstraints, true, BasicConstraints(0))
-            .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.keyCertSign))
-            .addExtension(
-                Extension.subjectKeyIdentifier,
-                false,
-                extensionUtils.createSubjectKeyIdentifier(caPublicKeyInfo)
-            )
+        val certBuilderCA =
+            JcaX509v3CertificateBuilder(
+                X500Name("CN=Test TrustManager CA"),
+                BigInteger.ONE,
+                Date(nowMillis),
+                Date(nowMillis + 24 * 3600 * 1000),
+                X500Name("CN=Test TrustManager CA"),
+                keyPairCA.public,
+            ).addExtension(Extension.basicConstraints, true, BasicConstraints(0))
+                .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.keyCertSign))
+                .addExtension(
+                    Extension.subjectKeyIdentifier,
+                    false,
+                    extensionUtils.createSubjectKeyIdentifier(caPublicKeyInfo),
+                )
         val signerCA = JcaContentSignerBuilder("SHA256withECDSA").build(keyPairCA.private)
         val caHolder = certBuilderCA.build(signerCA)
         val cf = CertificateFactory.getInstance("X.509")
@@ -104,27 +105,28 @@ class TrustManagerTest {
         val keyPairIntermediate = kpg.generateKeyPair()
         val intermediatePublicKeyInfo: SubjectPublicKeyInfo =
             SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(
-                PublicKeyFactory.createKey(keyPairIntermediate.public.encoded)
+                PublicKeyFactory.createKey(keyPairIntermediate.public.encoded),
             )
-        val certBuilderIntermediate = JcaX509v3CertificateBuilder(
-            X500Name("CN=Test TrustManager CA"),
-            BigInteger.TWO,
-            Date(nowMillis),
-            Date(nowMillis + 24 * 3600 * 1000),
-            X500Name("CN=Test TrustManager Intermediate"),
-            keyPairIntermediate.public
-        ).addExtension(Extension.basicConstraints, true, BasicConstraints(0))
-            .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.keyCertSign))
-            .addExtension(
-                Extension.authorityKeyIdentifier,
-                false,
-                extensionUtils.createAuthorityKeyIdentifier(caHolder)
-            )
-            .addExtension(
-                Extension.subjectKeyIdentifier,
-                false,
-                extensionUtils.createSubjectKeyIdentifier(intermediatePublicKeyInfo)
-            )
+        val certBuilderIntermediate =
+            JcaX509v3CertificateBuilder(
+                X500Name("CN=Test TrustManager CA"),
+                BigInteger.TWO,
+                Date(nowMillis),
+                Date(nowMillis + 24 * 3600 * 1000),
+                X500Name("CN=Test TrustManager Intermediate"),
+                keyPairIntermediate.public,
+            ).addExtension(Extension.basicConstraints, true, BasicConstraints(0))
+                .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.keyCertSign))
+                .addExtension(
+                    Extension.authorityKeyIdentifier,
+                    false,
+                    extensionUtils.createAuthorityKeyIdentifier(caHolder),
+                )
+                .addExtension(
+                    Extension.subjectKeyIdentifier,
+                    false,
+                    extensionUtils.createSubjectKeyIdentifier(intermediatePublicKeyInfo),
+                )
 
         val intermediateHolder = certBuilderIntermediate.build(signerCA)
         val intermediateStream = ByteArrayInputStream(intermediateHolder.encoded)
@@ -134,27 +136,28 @@ class TrustManagerTest {
         val keyPairDS = kpg.generateKeyPair()
         val dsPublicKeyInfo: SubjectPublicKeyInfo =
             SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(
-                PublicKeyFactory.createKey(keyPairDS.public.encoded)
+                PublicKeyFactory.createKey(keyPairDS.public.encoded),
             )
-        val certBuilderDS = JcaX509v3CertificateBuilder(
-            X500Name("CN=Test TrustManager Intermediate"),
-            BigInteger.ONE.add(BigInteger.TWO),
-            Date(nowMillis),
-            Date(nowMillis + 24 * 3600 * 1000),
-            X500Name("CN=Test TrustManager DS"),
-            keyPairDS.public
-        ).addExtension(Extension.basicConstraints, true, BasicConstraints(0))
-            .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.digitalSignature))
-            .addExtension(
-                Extension.authorityKeyIdentifier,
-                false,
-                extensionUtils.createAuthorityKeyIdentifier(intermediateHolder)
-            )
-            .addExtension(
-                Extension.subjectKeyIdentifier,
-                false,
-                extensionUtils.createSubjectKeyIdentifier(dsPublicKeyInfo)
-            )
+        val certBuilderDS =
+            JcaX509v3CertificateBuilder(
+                X500Name("CN=Test TrustManager Intermediate"),
+                BigInteger.ONE.add(BigInteger.TWO),
+                Date(nowMillis),
+                Date(nowMillis + 24 * 3600 * 1000),
+                X500Name("CN=Test TrustManager DS"),
+                keyPairDS.public,
+            ).addExtension(Extension.basicConstraints, true, BasicConstraints(0))
+                .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.digitalSignature))
+                .addExtension(
+                    Extension.authorityKeyIdentifier,
+                    false,
+                    extensionUtils.createAuthorityKeyIdentifier(intermediateHolder),
+                )
+                .addExtension(
+                    Extension.subjectKeyIdentifier,
+                    false,
+                    extensionUtils.createSubjectKeyIdentifier(dsPublicKeyInfo),
+                )
         val signerIntermediate =
             JcaContentSignerBuilder("SHA256withECDSA").build(keyPairIntermediate.private)
         val dsHolder = certBuilderDS.build(signerIntermediate)
@@ -222,7 +225,7 @@ class TrustManagerTest {
         Assert.assertEquals(
             "Trustmanager complains about missing CA Certificate",
             "No trusted root certificate could not be found",
-            result.error?.message
+            result.error?.message,
         )
     }
 

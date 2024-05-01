@@ -8,12 +8,10 @@ data class CredentialConfiguration(
      * The challenge to use when creating the device-bound key.
      */
     val challenge: ByteArray,
-
     /**
      * The Secure Area to use for the device-bound key,
      */
     val secureAreaIdentifier: String,
-
     /**
      * The configuration for the device-bound key for e.g. access control.
      *
@@ -34,5 +32,5 @@ data class CredentialConfiguration(
      *   or 0 to require authentication on every use.
      * - `userAuthenticationTypes`: the value is a number like in [UserAuthenticationType.Companion.encodeSet].
      */
-    val secureAreaConfiguration: ByteArray
+    val secureAreaConfiguration: ByteArray,
 )

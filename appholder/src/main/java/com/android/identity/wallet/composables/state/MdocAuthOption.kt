@@ -6,5 +6,5 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class MdocAuthOption(
     val isEnabled: Boolean = true,
-    val mDocAuthentication: MdocAuthStateOption = MdocAuthStateOption.ECDSA
+    val mDocAuthentication: MdocAuthStateOption = MdocAuthStateOption.ECDSA,
 ) : Parcelable

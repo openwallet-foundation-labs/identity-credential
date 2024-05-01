@@ -30,34 +30,44 @@ import com.android.identity.document.NameSpacedData.Companion.fromEncodedCbor
  * if it's added, changed, or removed.
  */
 class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : ApplicationData {
-
     private val data = mutableMapOf<String, ByteArray>()
 
-    override fun setData(key: String, value: ByteArray?): ApplicationData = apply {
-        if (value == null) {
-            data.remove(key)
-        } else {
-            data[key] = value
+    override fun setData(
+        key: String,
+        value: ByteArray?,
+    ): ApplicationData =
+        apply {
+            if (value == null) {
+                data.remove(key)
+            } else {
+                data[key] = value
+            }
+            onDataChanged(key)
         }
-        onDataChanged(key)
-    }
 
-    override fun setString(key: String, value: String): ApplicationData =
-        setData(key, Cbor.encode(value.toDataItem))
+    override fun setString(
+        key: String,
+        value: String,
+    ): ApplicationData = setData(key, Cbor.encode(value.toDataItem))
 
-    override fun setNumber(key: String, value: Long): ApplicationData =
-        setData(key, Cbor.encode(value.toDataItem))
+    override fun setNumber(
+        key: String,
+        value: Long,
+    ): ApplicationData = setData(key, Cbor.encode(value.toDataItem))
 
-    override fun setBoolean(key: String, value: Boolean): ApplicationData =
-        setData(key, Cbor.encode(value.toDataItem))
+    override fun setBoolean(
+        key: String,
+        value: Boolean,
+    ): ApplicationData = setData(key, Cbor.encode(value.toDataItem))
 
-    override fun setNameSpacedData(key: String, value: NameSpacedData): ApplicationData =
-        setData(key, value.encodeAsCbor())
+    override fun setNameSpacedData(
+        key: String,
+        value: NameSpacedData,
+    ): ApplicationData = setData(key, value.encodeAsCbor())
 
     override fun keyExists(key: String): Boolean = data[key] != null
 
-    override fun getData(key: String): ByteArray =
-        data[key] ?: throw IllegalArgumentException("Key '$key' is not present")
+    override fun getData(key: String): ByteArray = data[key] ?: throw IllegalArgumentException("Key '$key' is not present")
 
     override fun getString(key: String): String = Cbor.decode(getData(key)).asTstr
 
@@ -78,7 +88,6 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
             Cbor.encode(end().build())
         }
 
-
     companion object {
         /**
          * Returns a fully populated SimpleApplicationData from a CBOR-encoded
@@ -95,7 +104,7 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
         @JvmStatic
         fun decodeFromCbor(
             encodedApplicationData: ByteArray,
-            onDataChanged: (key: String) -> Unit
+            onDataChanged: (key: String) -> Unit,
         ): SimpleApplicationData {
             val appData = SimpleApplicationData(onDataChanged)
             val map = Cbor.decode(encodedApplicationData) as CborMap

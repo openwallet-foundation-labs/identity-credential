@@ -16,7 +16,6 @@
 package com.android.identity.document
 
 import com.android.identity.credential.Credential
-import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.util.Timestamp
 
 /**
@@ -62,21 +61,22 @@ object DocumentUtil {
         numAuthenticationCredentials: Int,
         maxUsesPerCredential: Int,
         minValidTimeMillis: Long,
-        dryRun: Boolean
+        dryRun: Boolean,
     ): Int {
         check(dryRun || createCredential != null)
         // First determine which of the existing credentials need a replacement...
         var numCredentialsNotNeedingReplacement = 0
         var numReplacementsGenerated = 0
-        for (authCredential in document.certifiedCredentials.filter { it.domain == domain}) {
+        for (authCredential in document.certifiedCredentials.filter { it.domain == domain }) {
             var credentialExceededUseCount = false
             var credentialBeyondExpirationDate = false
             if (authCredential.usageCount >= maxUsesPerCredential) {
                 credentialExceededUseCount = true
             }
-            val expirationDate = Timestamp.ofEpochMilli(
-                authCredential.validUntil.toEpochMilli() - minValidTimeMillis
-            )
+            val expirationDate =
+                Timestamp.ofEpochMilli(
+                    authCredential.validUntil.toEpochMilli() - minValidTimeMillis,
+                )
             if (now.toEpochMilli() > expirationDate.toEpochMilli()) {
                 credentialBeyondExpirationDate = true
             }
@@ -99,9 +99,11 @@ object DocumentUtil {
         }
 
         // It's possible we need to generate pending credentials that aren't replacements
-        val numNonReplacementsToGenerate = (numAuthenticationCredentials
-                - numCredentialsNotNeedingReplacement
-                - numExistingPendingCredentials)
+        val numNonReplacementsToGenerate = (
+            numAuthenticationCredentials -
+                numCredentialsNotNeedingReplacement -
+                numExistingPendingCredentials
+        )
         if (!dryRun) {
             if (numNonReplacementsToGenerate > 0) {
                 for (n in 0 until numNonReplacementsToGenerate) {

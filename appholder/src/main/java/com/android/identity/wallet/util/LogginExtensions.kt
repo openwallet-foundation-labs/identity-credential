@@ -2,7 +2,10 @@ package com.android.identity.wallet.util
 
 import android.util.Log
 
-fun Any.log(message: String, exception: Throwable? = null) {
+fun Any.log(
+    message: String,
+    exception: Throwable? = null,
+) {
     if (!PreferencesHelper.isDebugLoggingEnabled()) return
     val tag: String = tagValue()
     if (exception == null) {

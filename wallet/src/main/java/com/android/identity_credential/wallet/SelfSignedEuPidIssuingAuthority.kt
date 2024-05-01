@@ -11,10 +11,10 @@ import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.CredentialFormat
-import com.android.identity.issuance.RegistrationResponse
+import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
@@ -41,7 +41,7 @@ import kotlin.time.Duration.Companion.days
 
 class SelfSignedEuPidIssuingAuthority(
     application: WalletApplication,
-    storageEngine: StorageEngine
+    storageEngine: StorageEngine,
 ) : SelfSignedMdocIssuingAuthority(application, storageEngine) {
     companion object {
         private const val EUPID_NAMESPACE = EUPersonalID.EUPID_NAMESPACE
@@ -50,29 +50,28 @@ class SelfSignedEuPidIssuingAuthority(
 
     override val docType: String = EUPID_DOCTYPE
     override lateinit var configuration: IssuingAuthorityConfiguration
-    private val tosAssets: Map<String, ByteArray>;
+    private val tosAssets: Map<String, ByteArray>
 
     init {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
             application.applicationContext.resources,
-            R.drawable.utopia_pid_issuing_authority_logo
+            R.drawable.utopia_pid_issuing_authority_logo,
         ).compress(Bitmap.CompressFormat.PNG, 90, baos)
         val icon: ByteArray = baos.toByteArray()
-        configuration = IssuingAuthorityConfiguration(
-            identifier = "euPid_Utopia",
-            issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
-            issuingAuthorityLogo = icon,
-            description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
-            documentFormats = setOf(CredentialFormat.MDOC_MSO),
-            pendingDocumentInformation = createDocumentConfiguration(null)
-        )
+        configuration =
+            IssuingAuthorityConfiguration(
+                identifier = "euPid_Utopia",
+                issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
+                issuingAuthorityLogo = icon,
+                description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
+                documentFormats = setOf(CredentialFormat.MDOC_MSO),
+                pendingDocumentInformation = createDocumentConfiguration(null),
+            )
         tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
     }
 
-    override fun getProofingGraphRoot(
-        registrationResponse: RegistrationResponse
-    ): SimpleIssuingAuthorityProofingGraph.Node {
+    override fun getProofingGraphRoot(registrationResponse: RegistrationResponse): SimpleIssuingAuthorityProofingGraph.Node {
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
@@ -85,7 +84,7 @@ class SelfSignedEuPidIssuingAuthority(
                 id = "path",
                 message = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_or_derived),
                 assets = mapOf(),
-                acceptButtonText = resourceString(R.string.utopia_eu_pid_issuing_authority_continue)
+                acceptButtonText = resourceString(R.string.utopia_eu_pid_issuing_authority_continue),
             ) {
                 on(id = "hardcoded", text = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_option)) {
                 }
@@ -93,10 +92,13 @@ class SelfSignedEuPidIssuingAuthority(
                     icaoPassiveAuthentication("passive", listOf(1))
                 }
                 on(id = "id_card", text = resourceString(R.string.utopia_eu_pid_issuing_authority_id_option)) {
-                    question("can",
+                    question(
+                        "can",
                         resourceString(R.string.utopia_eu_pid_issuing_authority_enter_can),
-                        mapOf(), "",
-                        resourceString(R.string.utopia_eu_pid_issuing_authority_continue))
+                        mapOf(),
+                        "",
+                        resourceString(R.string.utopia_eu_pid_issuing_authority_continue),
+                    )
                     icaoTunnel("tunnel", listOf(1), false) {
                         whenChipAuthenticated {}
                         whenActiveAuthenticated {}
@@ -109,14 +111,17 @@ class SelfSignedEuPidIssuingAuthority(
                 resourceString(R.string.utopia_eu_pid_issuing_authority_application_finish),
                 mapOf(),
                 resourceString(R.string.utopia_eu_pid_issuing_authority_continue),
-                null
+                null,
             )
             requestNotificationPermission(
                 "notificationPermission",
                 permissionNotAvailableMessage = resourceString(R.string.permission_post_notifications_rationale_md),
                 grantPermissionButtonText = resourceString(R.string.permission_post_notifications_grant_permission_button_text),
-                continueWithoutPermissionButtonText = resourceString(R.string.permission_post_notifications_continue_without_permission_button_text),
-                assets = mapOf()
+                continueWithoutPermissionButtonText =
+                    resourceString(
+                        R.string.permission_post_notifications_continue_without_permission_button_text,
+                    ),
+                assets = mapOf(),
             )
         }
     }
@@ -141,9 +146,7 @@ class SelfSignedEuPidIssuingAuthority(
         return createDocumentConfiguration(collectedEvidence)
     }
 
-    override fun createCredentialConfiguration(
-        collectedEvidence: MutableMap<String, EvidenceResponse>
-    ): CredentialConfiguration {
+    override fun createCredentialConfiguration(collectedEvidence: MutableMap<String, EvidenceResponse>): CredentialConfiguration {
         val challenge = byteArrayOf(1, 2, 3)
         return CredentialConfiguration(
             challenge,
@@ -155,15 +158,16 @@ class SelfSignedEuPidIssuingAuthority(
                     .put("userAuthenticationRequired", true)
                     .put("userAuthenticationTimeoutMillis", 0L)
                     .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
-                    .end().build()
-            )
+                    .end().build(),
+            ),
         )
     }
 
     private fun createDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): DocumentConfiguration {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
-            application.applicationContext.resources, R.drawable.utopia_pid_card_art
+            application.applicationContext.resources,
+            R.drawable.utopia_pid_card_art,
         ).compress(Bitmap.CompressFormat.PNG, 90, baos)
         val cardArt: ByteArray = baos.toByteArray()
 
@@ -173,7 +177,7 @@ class SelfSignedEuPidIssuingAuthority(
                 cardArt,
                 EUPID_DOCTYPE,
                 NameSpacedData.Builder().build(),
-                false
+                false,
             )
         }
 
@@ -191,55 +195,72 @@ class SelfSignedEuPidIssuingAuthority(
         } else {
             val icaoPassiveData = collectedEvidence["passive"]
             val icaoTunnelData = collectedEvidence["tunnel"]
-            val mrtdData = if (icaoTunnelData is EvidenceResponseIcaoNfcTunnelResult)
-                MrtdNfcData(icaoTunnelData.dataGroups, icaoTunnelData.securityObject)
-            else if (icaoPassiveData is EvidenceResponseIcaoPassiveAuthentication)
-                MrtdNfcData(icaoPassiveData.dataGroups, icaoPassiveData.securityObject)
-            else
-                throw IllegalStateException("Should not happen")
+            val mrtdData =
+                if (icaoTunnelData is EvidenceResponseIcaoNfcTunnelResult) {
+                    MrtdNfcData(icaoTunnelData.dataGroups, icaoTunnelData.securityObject)
+                } else if (icaoPassiveData is EvidenceResponseIcaoPassiveAuthentication) {
+                    MrtdNfcData(icaoPassiveData.dataGroups, icaoPassiveData.securityObject)
+                } else {
+                    throw IllegalStateException("Should not happen")
+                }
             val decoder = MrtdNfcDataDecoder(application.cacheDir)
             val decoded = decoder.decode(mrtdData)
             val firstName = decoded.firstName
             val lastName = decoded.lastName
-            val sex = when (decoded.gender) {
-                "MALE" -> 1L
-                "FEMALE" -> 2L
-                else -> 0L
-            }
+            val sex =
+                when (decoded.gender) {
+                    "MALE" -> 1L
+                    "FEMALE" -> 2L
+                    else -> 0L
+                }
             val timeZone = TimeZone.currentSystemDefault()
-            val dateOfBirth = LocalDate.parse(input = decoded.dateOfBirth,
-                format = LocalDate.Format {
-                    // date of birth cannot be in future
-                    yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
-                    monthNumber()
-                    dayOfMonth()
-                })
+            val dateOfBirth =
+                LocalDate.parse(
+                    input = decoded.dateOfBirth,
+                    format =
+                        LocalDate.Format {
+                            // date of birth cannot be in future
+                            yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
+                            monthNumber()
+                            dayOfMonth()
+                        },
+                )
             val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
             // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
             val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
             val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
 
             // Make sure we set at least all the mandatory data elements
-            staticData = NameSpacedData.Builder()
-                .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
-                .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
-                .putEntry(EUPID_NAMESPACE, "birth_date",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate))
-                .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
-                .putEntry(EUPID_NAMESPACE, "issuance_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
-                .putEntry(EUPID_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
-                )
-                .putEntryString(EUPID_NAMESPACE, "issuing_authority",
-                    resourceString(R.string.utopia_eu_pid_issuing_authority_name))
-                .putEntryString(EUPID_NAMESPACE, "issuing_country",
-                    "UT")
-                .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
-                .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
-                .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
-                .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
-                .build()
+            staticData =
+                NameSpacedData.Builder()
+                    .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
+                    .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
+                    .putEntry(
+                        EUPID_NAMESPACE, "birth_date",
+                        Cbor.encode(dateOfBirth.toDataItemFullDate),
+                    )
+                    .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
+                    .putEntry(
+                        EUPID_NAMESPACE, "issuance_date",
+                        Cbor.encode(issueDate.toDataItemDateTimeString),
+                    )
+                    .putEntry(
+                        EUPID_NAMESPACE, "expiry_date",
+                        Cbor.encode(expiryDate.toDataItemDateTimeString),
+                    )
+                    .putEntryString(
+                        EUPID_NAMESPACE, "issuing_authority",
+                        resourceString(R.string.utopia_eu_pid_issuing_authority_name),
+                    )
+                    .putEntryString(
+                        EUPID_NAMESPACE, "issuing_country",
+                        "UT",
+                    )
+                    .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
+                    .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
+                    .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
+                    .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
+                    .build()
         }
 
         val firstName = staticData.getDataElementString(EUPID_NAMESPACE, "given_name")
@@ -248,20 +269,21 @@ class SelfSignedEuPidIssuingAuthority(
             cardArt,
             EUPID_DOCTYPE,
             staticData,
-            false
+            false,
         )
     }
 
     override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
         // The update consists of just slapping an extra 0 at the end of `administrative_number`
-        val newAdministrativeNumber = currentConfiguration.staticData
-            .getDataElementString(EUPID_NAMESPACE, "administrative_number") + "0"
+        val newAdministrativeNumber =
+            currentConfiguration.staticData
+                .getDataElementString(EUPID_NAMESPACE, "administrative_number") + "0"
 
         val builder = NameSpacedData.Builder(currentConfiguration.staticData)
         builder.putEntryString(
             EUPID_NAMESPACE,
             "administrative_number",
-            newAdministrativeNumber
+            newAdministrativeNumber,
         )
 
         return DocumentConfiguration(
@@ -269,7 +291,7 @@ class SelfSignedEuPidIssuingAuthority(
             cardArt = currentConfiguration.cardArt,
             mdocDocType = currentConfiguration.mdocDocType,
             staticData = builder.build(),
-            requireUserAuthenticationToViewDocument = false
+            requireUserAuthenticationToViewDocument = false,
         )
     }
 
@@ -281,7 +303,7 @@ class SelfSignedEuPidIssuingAuthority(
                     builder.putEntry(
                         namespaceName,
                         dataElementName,
-                        Cbor.encode(dataElement.attribute.sampleValue!!)
+                        Cbor.encode(dataElement.attribute.sampleValue!!),
                     )
                 }
             }

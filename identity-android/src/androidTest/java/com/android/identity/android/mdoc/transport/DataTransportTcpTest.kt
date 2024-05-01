@@ -30,16 +30,18 @@ class DataTransportTcpTest {
     @SmallTest
     fun connectAndListen() {
         val appContext = InstrumentationRegistry.getTargetContext()
-        val verifier = DataTransportTcp(
-            appContext,
-            DataTransport.Role.MDOC_READER,
-            DataTransportOptions.Builder().build()
-        )
-        val prover = DataTransportTcp(
-            appContext,
-            DataTransport.Role.MDOC,
-            DataTransportOptions.Builder().build()
-        )
+        val verifier =
+            DataTransportTcp(
+                appContext,
+                DataTransport.Role.MDOC_READER,
+                DataTransportOptions.Builder().build(),
+            )
+        val prover =
+            DataTransportTcp(
+                appContext,
+                DataTransport.Role.MDOC,
+                DataTransportOptions.Builder().build(),
+            )
         val messageSentByVerifier = "010203".fromHex
         val messageSentByProver = "0405".fromHex
         val messageReceivedByProver = arrayOf<ByteArray?>(null)
@@ -50,54 +52,62 @@ class DataTransportTcpTest {
         val verifierMessageReceivedCondVar = ConditionVariable()
         val verifierPeerConnectedCondVar = ConditionVariable()
         val executor: Executor = Executors.newSingleThreadExecutor()
-        prover.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {
-                proverPeerConnectedCondVar.open()
-            }
+        prover.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {}
 
-            override fun onDisconnected() {
-                proverPeerDisconnectedCondVar.open()
-            }
+                override fun onConnected() {
+                    proverPeerConnectedCondVar.open()
+                }
 
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+                override fun onDisconnected() {
+                    proverPeerDisconnectedCondVar.open()
+                }
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
 
-            override fun onMessageReceived() {
-                val data = prover.getMessage()
-                messageReceivedByProver[0] = data!!.clone()
-                proverMessageReceivedCondVar.open()
-            }
-        }, executor)
-        verifier.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {
-                verifierPeerConnectedCondVar.open()
-            }
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
 
-            override fun onDisconnected() {
-                Assert.fail()
-            }
+                override fun onMessageReceived() {
+                    val data = prover.getMessage()
+                    messageReceivedByProver[0] = data!!.clone()
+                    proverMessageReceivedCondVar.open()
+                }
+            },
+            executor,
+        )
+        verifier.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {}
 
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+                override fun onConnected() {
+                    verifierPeerConnectedCondVar.open()
+                }
 
-            override fun onError(error: Throwable) {
-                Assert.fail()
-            }
+                override fun onDisconnected() {
+                    Assert.fail()
+                }
 
-            override fun onMessageReceived() {
-                val data = verifier.getMessage()
-                messageReceivedByVerifier[0] = data!!.clone()
-                verifierMessageReceivedCondVar.open()
-            }
-        }, executor)
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
+
+                override fun onError(error: Throwable) {
+                    Assert.fail()
+                }
+
+                override fun onMessageReceived() {
+                    val data = verifier.getMessage()
+                    messageReceivedByVerifier[0] = data!!.clone()
+                    verifierMessageReceivedCondVar.open()
+                }
+            },
+            executor,
+        )
         prover.connect()
         verifier.setHostAndPort(prover.host, prover.port)
         verifier.connect()

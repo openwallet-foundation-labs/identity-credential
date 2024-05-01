@@ -13,7 +13,8 @@ enum class UserAuthenticationType(val flagValue: Long) {
     /**
      * Flag indicating that authentication is needed using the user's biometric.
      */
-    BIOMETRIC(1 shl 1);
+    BIOMETRIC(1 shl 1),
+    ;
 
     companion object {
         /**

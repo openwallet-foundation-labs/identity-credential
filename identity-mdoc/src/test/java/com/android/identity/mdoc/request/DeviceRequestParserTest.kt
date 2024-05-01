@@ -46,10 +46,11 @@ class DeviceRequestParserTest {
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
         val encodedSessionTranscript =
             Cbor.encode(Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor)
-        val parser = DeviceRequestParser(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
-            encodedSessionTranscript
-        )
+        val parser =
+            DeviceRequestParser(
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
+                encodedSessionTranscript,
+            )
         val request = parser.parse()
         Assert.assertEquals("1.0", request.version)
         val docRequests = request.docRequests
@@ -58,17 +59,17 @@ class DeviceRequestParserTest {
         Assert.assertEquals(MDL_DOCTYPE, dr.docType)
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex,
-            dr.itemsRequest
+            dr.itemsRequest,
         )
         val readerCertChain = dr.readerCertificateChain
         Assert.assertEquals(1, readerCertChain!!.certificates.size.toLong())
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex,
-            readerCertChain.certificates[0].encodedCertificate
+            readerCertChain.certificates[0].encodedCertificate,
         )
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_READER_AUTH.fromHex,
-            dr.readerAuth
+            dr.readerAuth,
         )
         Assert.assertTrue(dr.readerAuthenticated)
         Assert.assertArrayEquals(arrayOf(MDL_NAMESPACE), dr.namespaces.toTypedArray())
@@ -82,15 +83,18 @@ class DeviceRequestParserTest {
         try {
             dr.getEntryNames("ns-was-not-requested")
             throw AssertionError("Expected IllegalArgumentException")
-        } catch (_: IllegalArgumentException) {}
+        } catch (_: IllegalArgumentException) {
+        }
         try {
             dr.getIntentToRetain("ns-was-not-requested", "elem-was-not-requested")
             throw AssertionError("Expected IllegalArgumentException")
-        } catch (_: IllegalArgumentException) {}
+        } catch (_: IllegalArgumentException) {
+        }
         try {
             dr.getIntentToRetain(MDL_NAMESPACE, "elem-was-not-requested")
             throw AssertionError("Expected IllegalArgumentException")
-        } catch (_: IllegalArgumentException) {}
+        } catch (_: IllegalArgumentException) {
+        }
     }
 
     @Test
@@ -107,10 +111,11 @@ class DeviceRequestParserTest {
         val encodedDeviceRequest = TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex
         Assert.assertEquals(0x1f.toByte().toLong(), encodedDeviceRequest[655].toLong())
         encodedDeviceRequest[655] = 0x1e
-        val parser = DeviceRequestParser(
-            encodedDeviceRequest,
-            encodedSessionTranscript
-        )
+        val parser =
+            DeviceRequestParser(
+                encodedDeviceRequest,
+                encodedSessionTranscript,
+            )
         val request = parser.parse()
         Assert.assertEquals("1.0", request.version)
         val docRequests = request.docRequests
@@ -119,13 +124,13 @@ class DeviceRequestParserTest {
         Assert.assertEquals(MDL_DOCTYPE, dr.docType)
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex,
-            dr.itemsRequest
+            dr.itemsRequest,
         )
         val readerCertChain = dr.readerCertificateChain
         Assert.assertEquals(1, readerCertChain!!.certificates.size.toLong())
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex,
-            readerCertChain.certificates[0].encodedCertificate
+            readerCertChain.certificates[0].encodedCertificate,
         )
         Assert.assertFalse(dr.readerAuthenticated)
     }
@@ -140,41 +145,45 @@ class DeviceRequestParserTest {
         val readerKey = Crypto.createEcPrivateKey(curve)
         val trustPoint = Crypto.createEcPrivateKey(EcCurve.P256)
         val validFrom = Clock.System.now()
-        val validUntil = Instant.fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
-        )
-        val certificate = Crypto.createX509v3Certificate(
-            readerKey.publicKey,
-            trustPoint,
-            null,
-            Algorithm.ES256,
-            "42",
-            "CN=Some Reader Key",
-            "CN=Some Reader Authority",
-            validFrom,
-            validUntil, setOf(), listOf()
-        )
+        val validUntil =
+            Instant.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000,
+            )
+        val certificate =
+            Crypto.createX509v3Certificate(
+                readerKey.publicKey,
+                trustPoint,
+                null,
+                Algorithm.ES256,
+                "42",
+                "CN=Some Reader Key",
+                "CN=Some Reader Authority",
+                validFrom,
+                validUntil, setOf(), listOf(),
+            )
         val readerCertChain = CertificateChain(listOf(certificate))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)
-        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
-            .addDocumentRequest(
-                MDL_DOCTYPE,
-                mdlItemsToRequest,
-                mdlRequestInfo,
-                readerKey,
-                readerKey.curve.defaultSigningAlgorithm,
-                readerCertChain
-            )
-            .generate()
-        val deviceRequest = DeviceRequestParser(
-            encodedDeviceRequest,
-            encodedSessionTranscript
-        ).parse()
+        val encodedDeviceRequest =
+            DeviceRequestGenerator(encodedSessionTranscript)
+                .addDocumentRequest(
+                    MDL_DOCTYPE,
+                    mdlItemsToRequest,
+                    mdlRequestInfo,
+                    readerKey,
+                    readerKey.curve.defaultSigningAlgorithm,
+                    readerCertChain,
+                )
+                .generate()
+        val deviceRequest =
+            DeviceRequestParser(
+                encodedDeviceRequest,
+                encodedSessionTranscript,
+            ).parse()
         Assert.assertEquals("1.0", deviceRequest.version)
         val documentRequests = deviceRequest.docRequests
-        Assert.assertTrue(documentRequests.get(0).readerAuthenticated);
+        Assert.assertTrue(documentRequests.get(0).readerAuthenticated)
     }
 
     @Test
@@ -221,12 +230,12 @@ class DeviceRequestParserTest {
     fun testDeviceRequestParserReaderAuth_Ed448() {
         testDeviceRequestParserReaderAuthHelper(EcCurve.ED448)
     }
-    
+
     // TODO: Have a request signed by an unsupported curve and make sure DeviceRequestParser
     //   fails gracefully.. that is, should successfully parse the request message but the
     //   getReaderAuthenticated() method should return false.
     //
-    
+
     companion object {
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"

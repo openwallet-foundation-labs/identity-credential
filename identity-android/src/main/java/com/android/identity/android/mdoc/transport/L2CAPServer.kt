@@ -30,13 +30,12 @@ import java.util.concurrent.LinkedTransferQueue
 import java.util.concurrent.TimeUnit
 
 internal class L2CAPServer(val listener: Listener) {
-
     var inhibitCallbacks = false
     private var serverSocket: BluetoothServerSocket? = null
     private var socket: BluetoothSocket? = null
     private val writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
     var writingThread: Thread? = null
-    
+
     @RequiresApi(api = Build.VERSION_CODES.Q)
     fun start(bluetoothAdapter: BluetoothAdapter): OptionalInt {
         return try {
@@ -134,12 +133,13 @@ internal class L2CAPServer(val listener: Listener) {
         val pendingDataBaos = ByteArrayOutputStream()
 
         // Keep listening to the InputStream until an exception occurs.
-        val inputStream = try {
-            socket!!.inputStream
-        } catch (e: IOException) {
-            reportError(Error("Error on listening input stream from socket L2CAP", e))
-            return
-        }
+        val inputStream =
+            try {
+                socket!!.inputStream
+            } catch (e: IOException) {
+                reportError(Error("Error on listening input stream from socket L2CAP", e))
+                return
+            }
         while (true) {
             val buf = ByteArray(DataTransportBle.L2CAP_BUF_SIZE)
             try {
@@ -158,7 +158,7 @@ internal class L2CAPServer(val listener: Listener) {
                     pendingDataBaos.write(pendingData, endOffset, pendingData.size - endOffset)
                     reportMessageReceived(dataItemBytes)
                 } catch (e: Exception) {
-                    /* not enough data to decode item, do nothing */
+                    // not enough data to decode item, do nothing
                 }
             } catch (e: IOException) {
                 reportError(Error("Error on listening input stream from socket L2CAP", e))
@@ -197,8 +197,11 @@ internal class L2CAPServer(val listener: Listener) {
 
     internal interface Listener {
         fun onPeerConnected()
+
         fun onPeerDisconnected()
+
         fun onMessageReceived(data: ByteArray)
+
         fun onError(error: Throwable)
     }
 

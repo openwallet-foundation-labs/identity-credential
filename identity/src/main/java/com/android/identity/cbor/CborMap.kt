@@ -10,7 +10,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
  */
 class CborMap(
     val items: MutableMap<DataItem, DataItem>,
-    val indefiniteLength: Boolean = false
+    val indefiniteLength: Boolean = false,
 ) : DataItem(MajorType.MAP) {
     override fun encode(builder: ByteStringBuilder) {
         if (indefiniteLength) {
@@ -42,7 +42,10 @@ class CborMap(
             return MapBuilder(CborBuilder(dataItem), dataItem)
         }
 
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborMap> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, CborMap> {
             val lowBits = encodedCbor[offset].toInt().and(0x1f)
             if (lowBits == 31) {
                 // indefinite length
@@ -98,7 +101,7 @@ class CborMap(
     override fun hashCode(): Int {
         var result = 0
         for (item in items) {
-            result = 31*result + item.hashCode()
+            result = 31 * result + item.hashCode()
         }
         return result
     }
@@ -119,5 +122,4 @@ class CborMap(
         sb.append(")")
         return sb.toString()
     }
-
 }

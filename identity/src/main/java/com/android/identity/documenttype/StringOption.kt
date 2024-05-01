@@ -25,7 +25,7 @@ package com.android.identity.documenttype
  */
 data class StringOption(
     val value: String?,
-    val displayName: String
+    val displayName: String,
 ) {
     /**
      * Show only the [displayName] in the toString function.

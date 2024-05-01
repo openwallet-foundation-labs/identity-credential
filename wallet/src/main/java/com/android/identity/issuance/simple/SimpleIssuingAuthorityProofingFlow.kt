@@ -1,9 +1,9 @@
 package com.android.identity.issuance.simple
 
-import com.android.identity.issuance.evidence.EvidenceRequest
-import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
+import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.util.Logger
 import java.lang.IllegalStateException
@@ -12,7 +12,7 @@ class SimpleIssuingAuthorityProofingFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
     private val documentId: String,
     private var currentNode: SimpleIssuingAuthorityProofingGraph.Node?,
-    private val tunnelDriverFactory: (() -> SimpleIcaoNfcTunnelDriver)? = null
+    private val tunnelDriverFactory: (() -> SimpleIcaoNfcTunnelDriver)? = null,
 ) : ProofingFlow {
     private var pendingTunnelRequest: EvidenceRequestIcaoNfcTunnel? = null
     private var nfcTunnel: SimpleIcaoNfcTunnelDriver? = null
@@ -39,27 +39,28 @@ class SimpleIssuingAuthorityProofingFlow(
         if (evidenceResponse == null) {
             throw IllegalStateException("Evidence must be supplied")
         }
-        val evidence = if (evidenceResponse is EvidenceResponseIcaoNfcTunnel) {
-            if (nfcTunnel == null) {
-                nfcTunnel = tunnelDriverFactory!!()
-                val dataGroups = (currentNode as SimpleIssuingAuthorityProofingGraph.IcaoNfcTunnelNode).dataGroups
-                nfcTunnel!!.init(dataGroups, issuingAuthority.getMrtdAccessData(documentId))
-            }
-            val tunnel = nfcTunnel!!
-            // This is special case
-            val nextRequest = tunnel.handleNfcTunnelResponse(evidenceResponse)
-            if (nextRequest == null) {
-                // end if tunnel workflow; do not send to the client, instead save collected
-                // evidence and move on to the next node in the evidence collection graph.
-                nfcTunnel = null
-                tunnel.collectEvidence()
+        val evidence =
+            if (evidenceResponse is EvidenceResponseIcaoNfcTunnel) {
+                if (nfcTunnel == null) {
+                    nfcTunnel = tunnelDriverFactory!!()
+                    val dataGroups = (currentNode as SimpleIssuingAuthorityProofingGraph.IcaoNfcTunnelNode).dataGroups
+                    nfcTunnel!!.init(dataGroups, issuingAuthority.getMrtdAccessData(documentId))
+                }
+                val tunnel = nfcTunnel!!
+                // This is special case
+                val nextRequest = tunnel.handleNfcTunnelResponse(evidenceResponse)
+                if (nextRequest == null) {
+                    // end if tunnel workflow; do not send to the client, instead save collected
+                    // evidence and move on to the next node in the evidence collection graph.
+                    nfcTunnel = null
+                    tunnel.collectEvidence()
+                } else {
+                    this.pendingTunnelRequest = nextRequest
+                    return
+                }
             } else {
-                this.pendingTunnelRequest = nextRequest
-                return
+                evidenceResponse
             }
-        } else {
-            evidenceResponse
-        }
         val currentNode = this.currentNode ?: throw IllegalStateException("Evidence is not expected")
         issuingAuthority.addCollectedEvidence(documentId, currentNode.nodeId, evidence)
         this.currentNode = currentNode.selectFollowUp(evidence)
@@ -68,5 +69,4 @@ class SimpleIssuingAuthorityProofingFlow(
     override suspend fun completeProofing() {
         issuingAuthority.setProofingProcessing(documentId)
     }
-
 }

@@ -18,8 +18,6 @@ package com.android.identity.credential
 import com.android.identity.cbor.DataItem
 import com.android.identity.document.Document
 import kotlin.reflect.KClass
-import kotlin.reflect.full.companionObject
-import kotlin.reflect.full.declaredMemberFunctions
 
 /**
  * A class that aids in creation of credentials from serialized data.
@@ -43,8 +41,7 @@ class CredentialFactory {
      *
      * @param credentialClass the [Credential] class to add
      */
-    fun addCredentialImplementation(credentialClass: KClass<out Credential>) =
-        credentials.add(credentialClass)
+    fun addCredentialImplementation(credentialClass: KClass<out Credential>) = credentials.add(credentialClass)
 
     /**
      * Creates a [Credential] from serialized data.
@@ -53,16 +50,20 @@ class CredentialFactory {
      * @param dataItem The serialized credential
      * @return a credential instance
      */
-    fun createCredential(document: Document, dataItem: DataItem): Credential {
+    fun createCredential(
+        document: Document,
+        dataItem: DataItem,
+    ): Credential {
         val credentialType = dataItem["credentialType"].asTstr
-        val credClass = credentials.first { it.simpleName == credentialType}
+        val credClass = credentials.first { it.simpleName == credentialType }
 
         // Pick the constructor(document: Document, dataItem: DataItem) and invoke.
-        val constructor = credClass.constructors.first {
-            it.parameters.size == 2 &&
-            it.parameters[0].type.classifier == Document::class &&
-            it.parameters[1].type.classifier == DataItem::class
-        }
+        val constructor =
+            credClass.constructors.first {
+                it.parameters.size == 2 &&
+                    it.parameters[0].type.classifier == Document::class &&
+                    it.parameters[1].type.classifier == DataItem::class
+            }
         return constructor.call(document, dataItem)
     }
 }

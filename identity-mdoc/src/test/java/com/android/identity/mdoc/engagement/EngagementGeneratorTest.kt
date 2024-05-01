@@ -38,10 +38,11 @@ class EngagementGeneratorTest {
     @Test
     fun testNoConnectionMethodsOrOriginInfos() {
         val eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val eg = EngagementGenerator(
-            eSenderKey.publicKey,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_0
-        )
+        val eg =
+            EngagementGenerator(
+                eSenderKey.publicKey,
+                EngagementGenerator.ENGAGEMENT_VERSION_1_0,
+            )
         val encodedEngagement = eg.generate()
         val parser = EngagementParser(encodedEngagement)
         val engagement = parser.parse()
@@ -55,10 +56,11 @@ class EngagementGeneratorTest {
     @Throws(Exception::class)
     fun testWebsiteEngagement() {
         val eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val eg = EngagementGenerator(
-            eSenderKey.publicKey,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_1
-        )
+        val eg =
+            EngagementGenerator(
+                eSenderKey.publicKey,
+                EngagementGenerator.ENGAGEMENT_VERSION_1_1,
+            )
         val connectionMethods = mutableListOf<ConnectionMethod>()
         connectionMethods.add(ConnectionMethodHttp("http://www.example.com/verifier/123"))
         eg.addConnectionMethods(connectionMethods)
@@ -83,18 +85,19 @@ class EngagementGeneratorTest {
     fun testDeviceEngagementQrBleCentralClientMode() {
         val eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val uuid = UUID.randomUUID()
-        val eg = EngagementGenerator(
-            eSenderKey.publicKey,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_0
-        )
+        val eg =
+            EngagementGenerator(
+                eSenderKey.publicKey,
+                EngagementGenerator.ENGAGEMENT_VERSION_1_0,
+            )
         val connectionMethods = mutableListOf<ConnectionMethod>()
         connectionMethods.add(
             ConnectionMethodBle(
                 false,
                 true,
                 null,
-                uuid
-            )
+                uuid,
+            ),
         )
         eg.addConnectionMethods(connectionMethods)
         val encodedEngagement = eg.generate()

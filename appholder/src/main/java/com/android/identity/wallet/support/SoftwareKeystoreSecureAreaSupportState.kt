@@ -1,7 +1,7 @@
 package com.android.identity.wallet.support
 
-import com.android.identity.wallet.support.softwarekeystore.SoftwareAuthKeyCurveState
 import com.android.identity.wallet.composables.state.MdocAuthOption
+import com.android.identity.wallet.support.softwarekeystore.SoftwareAuthKeyCurveState
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
@@ -10,6 +10,4 @@ data class SoftwareKeystoreSecureAreaSupportState(
     val softwareAuthKeyCurveState: SoftwareAuthKeyCurveState = SoftwareAuthKeyCurveState(),
     val passphrase: String = "",
     val authKeyCurve: SoftwareAuthKeyCurveState = SoftwareAuthKeyCurveState(),
-) : SecureAreaSupportState {
-
-}
+) : SecureAreaSupportState

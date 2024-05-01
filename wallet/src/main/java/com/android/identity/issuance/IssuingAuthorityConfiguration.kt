@@ -11,19 +11,16 @@ data class IssuingAuthorityConfiguration(
      * Unique identifier for this object
      */
     val identifier: String,
-
     /**
      * Display name of the issuing authority suitable, e.g. "Utopia Registry of Identities"
      */
     val issuingAuthorityName: String,
-
     /**
      * Artwork for the issuing authority.
      *
      * This should be square, e.g. the width and height must be equal.
      */
     val issuingAuthorityLogo: ByteArray,
-
     /**
      * Description of the document offered by the issuer, e.g. "Utopia Driving License" or
      * "Utopia National Identification Card"
@@ -32,14 +29,12 @@ data class IssuingAuthorityConfiguration(
      * name to allow for disambiguation when multiple items are shown.
      */
     val description: String,
-
     /**
      * The document presentation formats available.
      */
     val documentFormats: Set<CredentialFormat>,
-
     /**
      * A [DocumentConfiguration] that can be used while proofing is pending for a document.
      */
-    val pendingDocumentInformation: DocumentConfiguration
+    val pendingDocumentInformation: DocumentConfiguration,
 )

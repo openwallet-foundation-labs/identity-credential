@@ -79,9 +79,10 @@ class AndroidStorageTest {
 
         // First try with a storage engine using encryption... we should not be able
         // to find the data in what is saved to disk.
-        var storage: StorageEngine = AndroidStorageEngine.Builder(context, storageDir)
-            .setUseEncryption(true)
-            .build()
+        var storage: StorageEngine =
+            AndroidStorageEngine.Builder(context, storageDir)
+                .setUseEncryption(true)
+                .build()
         storage.deleteAll()
         storage.put("foo", data)
         var targetFile = File(storageDir, PREFIX + URLEncoder.encode("foo", "UTF-8"))
@@ -89,9 +90,10 @@ class AndroidStorageTest {
         Assert.assertEquals(-1, (fileContents.toHex).indexOf(data.toHex).toLong())
 
         // Try again without encryption. The data should start at offset 4.
-        storage = AndroidStorageEngine.Builder(context, storageDir)
-            .setUseEncryption(false)
-            .build()
+        storage =
+            AndroidStorageEngine.Builder(context, storageDir)
+                .setUseEncryption(false)
+                .build()
         storage.deleteAll()
         storage.put("foo", data)
         targetFile = File(storageDir, PREFIX + URLEncoder.encode("foo", "UTF-8"))
@@ -110,9 +112,10 @@ class AndroidStorageTest {
             val value = n * 3 + n + n * n
             data[n] = (value and 0xff).toByte()
         }
-        val storage: StorageEngine = AndroidStorageEngine.Builder(context, storageDir)
-            .setUseEncryption(true)
-            .build()
+        val storage: StorageEngine =
+            AndroidStorageEngine.Builder(context, storageDir)
+                .setUseEncryption(true)
+                .build()
         storage.deleteAll()
         storage.put("foo", data)
         val retrievedData = storage["foo"]

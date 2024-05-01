@@ -85,14 +85,13 @@ import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.secure_area_test_app.ui.theme.IdentityCredentialTheme
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.X509v3Extension
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.secure_area_test_app.ui.theme.IdentityCredentialTheme
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
@@ -110,7 +109,7 @@ import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.days
 
 @OptIn(ExperimentalMaterial3Api::class)
-class MainActivity :  FragmentActivity() {
+class MainActivity : FragmentActivity() {
     companion object {
         private const val TAG = "MainActivity"
     }
@@ -144,33 +143,39 @@ class MainActivity :  FragmentActivity() {
                 .setSubject("CN=Software Attestation Root")
                 .setValidityPeriod(
                     now,
-                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
+                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000),
                 )
-                .build()
+                .build(),
         )
         val validFrom = Clock.System.now()
         val validUntil = validFrom + 100.days
         softwareAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
         softwareAttestationKeySignatureAlgorithm = Algorithm.ES256
         softwareAttestationKeyIssuer = "CN=Software Attestation Root"
-        softwareAttestationKeyCertification = CertificateChain(
-            listOf(Crypto.createX509v3Certificate(
-                softwareAttestationKey.publicKey,
-                softwareAttestationKey,
-                null,
-                Algorithm.ES256,
-                "1",
-                "CN=Software Attestation Root",
-                "CN=Software Attestation Root",
-                validFrom,
-                validUntil,
-                setOf(),
-                listOf()
-            ))
-        )
+        softwareAttestationKeyCertification =
+            CertificateChain(
+                listOf(
+                    Crypto.createX509v3Certificate(
+                        softwareAttestationKey.publicKey,
+                        softwareAttestationKey,
+                        null,
+                        Algorithm.ES256,
+                        "1",
+                        "CN=Software Attestation Root",
+                        "CN=Software Attestation Root",
+                        validFrom,
+                        validUntil,
+                        setOf(),
+                        listOf(),
+                    ),
+                ),
+            )
     }
 
-    private fun getFeatureVersionKeystore(appContext: Context, useStrongbox: Boolean): Int {
+    private fun getFeatureVersionKeystore(
+        appContext: Context,
+        useStrongbox: Boolean,
+    ): Int {
         var feature = PackageManager.FEATURE_HARDWARE_KEYSTORE
         if (useStrongbox) {
             feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE
@@ -214,15 +219,16 @@ class MainActivity :  FragmentActivity() {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
-        androidKeystoreStorage = AndroidStorageEngine.Builder(
-            applicationContext,
-            File(applicationContext.dataDir, "ic-testing")
-        ).build()
+        androidKeystoreStorage =
+            AndroidStorageEngine.Builder(
+                applicationContext,
+                File(applicationContext.dataDir, "ic-testing"),
+            ).build()
 
         androidKeystoreSecureArea =
             AndroidKeystoreSecureArea(
                 applicationContext,
-                androidKeystoreStorage
+                androidKeystoreStorage,
             )
         initSoftwareAttestationKey()
 
@@ -243,7 +249,7 @@ class MainActivity :  FragmentActivity() {
     data class swPassphraseTestConfiguration(
         val keyPurpose: KeyPurpose,
         val curve: EcCurve,
-        val description: String
+        val description: String,
     )
 
     @Preview
@@ -253,9 +259,8 @@ class MainActivity :  FragmentActivity() {
             // A surface container using the 'background' color from the theme
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            )
-            {
+                color = MaterialTheme.colorScheme.background,
+            ) {
                 val showCapabilitiesDialog = remember { mutableStateOf<AndroidKeystoreSecureArea.Capabilities?>(null) }
                 val showCertificateDialog = remember { mutableStateOf<CertificateChain?>(null) }
                 val swShowPassphraseDialog = remember { mutableStateOf<swPassphraseTestConfiguration?>(null) }
@@ -265,37 +270,42 @@ class MainActivity :  FragmentActivity() {
                         showCapabilitiesDialog.value!!,
                         onDismissRequest = {
                             showCapabilitiesDialog.value = null
-                        })
+                        },
+                    )
                 }
 
                 if (showCertificateDialog.value != null) {
-                    ShowCertificateDialog(showCertificateDialog.value!!,
+                    ShowCertificateDialog(
+                        showCertificateDialog.value!!,
                         onDismissRequest = {
                             showCertificateDialog.value = null
-                        })
+                        },
+                    )
                 }
 
                 if (swShowPassphraseDialog.value != null) {
                     ShowPassphraseDialog(
                         onDismissRequest = {
-                            swShowPassphraseDialog.value = null;
+                            swShowPassphraseDialog.value = null
                         },
                         onContinueButtonClicked = { passphraseEnteredByUser: String ->
                             val configuration = swShowPassphraseDialog.value!!
                             // Does a lot of I/O, cannot run on UI thread
-                            executorService.execute(kotlinx.coroutines.Runnable {
-                                if (Looper.myLooper() == null) {
-                                    Looper.prepare()
-                                }
-                                swTest(
-                                    configuration.keyPurpose,
-                                    configuration.curve,
-                                    "1111",
-                                    passphraseEnteredByUser
-                                )
-                            })
-                            swShowPassphraseDialog.value = null;
-                        }
+                            executorService.execute(
+                                kotlinx.coroutines.Runnable {
+                                    if (Looper.myLooper() == null) {
+                                        Looper.prepare()
+                                    }
+                                    swTest(
+                                        configuration.keyPurpose,
+                                        configuration.curve,
+                                        "1111",
+                                        passphraseEnteredByUser,
+                                    )
+                                },
+                            )
+                            swShowPassphraseDialog.value = null
+                        },
                     )
                 }
 
@@ -304,24 +314,25 @@ class MainActivity :  FragmentActivity() {
                         Text(
                             text = "Android Keystore Secure Area",
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
 
                     item {
                         TextButton(onClick = {
                             // Does a lot of I/O, cannot run on UI thread
-                            executorService.execute(kotlinx.coroutines.Runnable {
-                                if (Looper.myLooper() == null) {
-                                    Looper.prepare()
-                                }
-                                showCapabilitiesDialog.value = androidKeystoreCapabilities
-                            })
-                        })
-                        {
+                            executorService.execute(
+                                kotlinx.coroutines.Runnable {
+                                    if (Looper.myLooper() == null) {
+                                        Looper.prepare()
+                                    }
+                                    showCapabilitiesDialog.value = androidKeystoreCapabilities
+                                },
+                            )
+                        }) {
                             Text(
                                 text = "Versions and Capabilities",
-                                fontSize = 15.sp
+                                fontSize = 15.sp,
                             )
                         }
                     }
@@ -329,19 +340,20 @@ class MainActivity :  FragmentActivity() {
                     item {
                         TextButton(onClick = {
                             // Does a lot of I/O, cannot run on UI thread
-                            executorService.execute(kotlinx.coroutines.Runnable {
-                                if (Looper.myLooper() == null) {
-                                    Looper.prepare()
-                                }
-                                val attestation = aksAttestation(false)
-                                Logger.d(TAG, "attestation: " + attestation)
-                                showCertificateDialog.value = attestation
-                            })
-                        })
-                        {
+                            executorService.execute(
+                                kotlinx.coroutines.Runnable {
+                                    if (Looper.myLooper() == null) {
+                                        Looper.prepare()
+                                    }
+                                    val attestation = aksAttestation(false)
+                                    Logger.d(TAG, "attestation: " + attestation)
+                                    showCertificateDialog.value = attestation
+                                },
+                            )
+                        }) {
                             Text(
                                 text = "Attestation",
-                                fontSize = 15.sp
+                                fontSize = 15.sp,
                             )
                         }
                     }
@@ -349,29 +361,31 @@ class MainActivity :  FragmentActivity() {
                     item {
                         TextButton(onClick = {
                             // Does a lot of I/O, cannot run on UI thread
-                            executorService.execute(kotlinx.coroutines.Runnable {
-                                if (Looper.myLooper() == null) {
-                                    Looper.prepare()
-                                }
-                                val attestation = aksAttestation(true)
-                                Logger.d(TAG, "attestation: " + attestation)
-                                showCertificateDialog.value = attestation
-                            })
-                        })
-                        {
+                            executorService.execute(
+                                kotlinx.coroutines.Runnable {
+                                    if (Looper.myLooper() == null) {
+                                        Looper.prepare()
+                                    }
+                                    val attestation = aksAttestation(true)
+                                    Logger.d(TAG, "attestation: " + attestation)
+                                    showCertificateDialog.value = attestation
+                                },
+                            )
+                        }) {
                             Text(
                                 text = "StrongBox Attestation",
-                                fontSize = 15.sp
+                                fontSize = 15.sp,
                             )
                         }
                     }
 
                     for ((strongBox, strongBoxDesc) in arrayOf(
-                        Pair(false, ""), Pair(true, "StrongBox ")
+                        Pair(false, ""),
+                        Pair(true, "StrongBox "),
                     )) {
                         for ((keyPurpose, keyPurposeDesc) in arrayOf(
                             Pair(KeyPurpose.SIGN, "Signature"),
-                            Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
+                            Pair(KeyPurpose.AGREE_KEY, "Key Agreement"),
                         )) {
                             for ((curve, curveName, purposes) in arrayOf(
                                 Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
@@ -384,8 +398,11 @@ class MainActivity :  FragmentActivity() {
                                 }
 
                                 val AUTH_NONE = setOf<UserAuthenticationType>()
-                                val AUTH_LSKF_OR_BIOMETRIC = setOf(UserAuthenticationType.LSKF,
-                                    UserAuthenticationType.BIOMETRIC)
+                                val AUTH_LSKF_OR_BIOMETRIC =
+                                    setOf(
+                                        UserAuthenticationType.LSKF,
+                                        UserAuthenticationType.BIOMETRIC,
+                                    )
                                 val AUTH_LSKF_ONLY = setOf(UserAuthenticationType.LSKF)
                                 val AUTH_BIOMETRIC_ONLY = setOf(UserAuthenticationType.BIOMETRIC)
                                 for ((userAuthType, authTimeout, authDesc) in arrayOf(
@@ -405,25 +422,26 @@ class MainActivity :  FragmentActivity() {
                                     item {
                                         TextButton(onClick = {
                                             // Does a lot of I/O, cannot run on UI thread
-                                            executorService.execute(kotlinx.coroutines.Runnable {
-                                                if (Looper.myLooper() == null) {
-                                                    Looper.prepare()
-                                                }
-                                                aksTest(
-                                                    keyPurpose,
-                                                    curve,
-                                                    userAuthType != AUTH_NONE,
-                                                    if (authTimeout < 0L) 0L else authTimeout,
-                                                    userAuthType,
-                                                    biometricConfirmationRequired,
-                                                    strongBox
-                                                )
-                                            })
-                                        })
-                                        {
+                                            executorService.execute(
+                                                kotlinx.coroutines.Runnable {
+                                                    if (Looper.myLooper() == null) {
+                                                        Looper.prepare()
+                                                    }
+                                                    aksTest(
+                                                        keyPurpose,
+                                                        curve,
+                                                        userAuthType != AUTH_NONE,
+                                                        if (authTimeout < 0L) 0L else authTimeout,
+                                                        userAuthType,
+                                                        biometricConfirmationRequired,
+                                                        strongBox,
+                                                    )
+                                                },
+                                            )
+                                        }) {
                                             Text(
                                                 text = "$strongBoxDesc$curveName $keyPurposeDesc $authDesc",
-                                                fontSize = 15.sp
+                                                fontSize = 15.sp,
                                             )
                                         }
                                     }
@@ -436,33 +454,34 @@ class MainActivity :  FragmentActivity() {
                         Text(
                             text = "Software Secure Area",
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
 
                     item {
                         TextButton(onClick = {
                             // Does a lot of I/O, cannot run on UI thread
-                            executorService.execute(kotlinx.coroutines.Runnable {
-                                if (Looper.myLooper() == null) {
-                                    Looper.prepare()
-                                }
-                                val attestation = swAttestation()
-                                Logger.d(TAG, "attestation: " + attestation)
-                                showCertificateDialog.value = attestation
-                            })
-                        })
-                        {
+                            executorService.execute(
+                                kotlinx.coroutines.Runnable {
+                                    if (Looper.myLooper() == null) {
+                                        Looper.prepare()
+                                    }
+                                    val attestation = swAttestation()
+                                    Logger.d(TAG, "attestation: " + attestation)
+                                    showCertificateDialog.value = attestation
+                                },
+                            )
+                        }) {
                             Text(
                                 text = "Attestation",
-                                fontSize = 15.sp
+                                fontSize = 15.sp,
                             )
                         }
                     }
 
                     for ((keyPurpose, keyPurposeDesc) in arrayOf(
                         Pair(KeyPurpose.SIGN, "Signature"),
-                        Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
+                        Pair(KeyPurpose.AGREE_KEY, "Key Agreement"),
                     )) {
                         for ((curve, curveName, purposes) in arrayOf(
                             Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
@@ -488,42 +507,41 @@ class MainActivity :  FragmentActivity() {
                                 // For brevity, only do passphrase for first item (P-256 Signature)
                                 if (!(keyPurpose == KeyPurpose.SIGN && curve == EcCurve.P256)) {
                                     if (passphraseRequired) {
-                                        continue;
+                                        continue
                                     }
                                 }
 
                                 item {
                                     TextButton(onClick = {
-
                                         if (passphraseRequired) {
                                             swShowPassphraseDialog.value =
                                                 swPassphraseTestConfiguration(keyPurpose, curve, description)
                                         } else {
                                             // Does a lot of I/O, cannot run on UI thread
-                                            executorService.execute(kotlinx.coroutines.Runnable {
-                                                if (Looper.myLooper() == null) {
-                                                    Looper.prepare()
-                                                }
-                                                swTest(
-                                                    keyPurpose,
-                                                    curve,
-                                                    null,
-                                                    null
-                                                )
-                                            })
+                                            executorService.execute(
+                                                kotlinx.coroutines.Runnable {
+                                                    if (Looper.myLooper() == null) {
+                                                        Looper.prepare()
+                                                    }
+                                                    swTest(
+                                                        keyPurpose,
+                                                        curve,
+                                                        null,
+                                                        null,
+                                                    )
+                                                },
+                                            )
                                         }
-                                    })
-                                    {
+                                    }) {
                                         Text(
                                             text = "$curveName $keyPurposeDesc $description",
-                                            fontSize = 15.sp
+                                            fontSize = 15.sp,
                                         )
                                     }
                                 }
                             }
                         }
                     }
-
                 }
             }
         }
@@ -551,13 +569,16 @@ class MainActivity :  FragmentActivity() {
     }
 
     @Composable
-    fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
-                               onDismissRequest: () -> Unit) {
+    fun ShowCapabilitiesDialog(
+        capabilities: AndroidKeystoreSecureArea.Capabilities,
+        onDismissRequest: () -> Unit,
+    ) {
         Dialog(onDismissRequest = { onDismissRequest() }) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(520.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(520.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
                 Column(
@@ -569,57 +590,65 @@ class MainActivity :  FragmentActivity() {
                         text = "Versions and Capabilities",
                         modifier = Modifier.padding(16.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
                     Column(
-                        modifier = Modifier
-                            .size(400.dp)
-                            .verticalScroll(rememberScrollState())
+                        modifier =
+                            Modifier
+                                .size(400.dp)
+                                .verticalScroll(rememberScrollState()),
                     ) {
                         val apiLevel = Build.VERSION.SDK_INT
                         val firstApiLevel = getFirstApiLevel()
                         // Would be nice to show first API level but that's only available to tests.
                         Text(
-                            text = "API Level: ${apiLevel} (${getNameForApiLevel(apiLevel)})\n" +
-                                    "First API Level: ${firstApiLevel} (${getNameForApiLevel(firstApiLevel)})\n" +
+                            text =
+                                "API Level: $apiLevel (${getNameForApiLevel(apiLevel)})\n" +
+                                    "First API Level: $firstApiLevel (${getNameForApiLevel(firstApiLevel)})\n" +
                                     "TEE KeyMint version: ${keymintVersionTee}\n" +
-                                    "StrongBox KeyMint version: ${keymintVersionStrongBox}",
+                                    "StrongBox KeyMint version: $keymintVersionStrongBox",
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         val userAuthText =
-                            if (capabilities.multipleAuthenticationTypesSupported)
+                            if (capabilities.multipleAuthenticationTypesSupported) {
                                 "LSKF or Bio or LSKF+Bio"
-                            else "Only LSKF+Bio"
+                            } else {
+                                "Only LSKF+Bio"
+                            }
                         val secureLockScreenText =
-                            if (capabilities.secureLockScreenSetup)
+                            if (capabilities.secureLockScreenSetup) {
                                 "Enabled"
-                            else
+                            } else {
                                 "Not Enabled"
+                            }
                         Text(
-                            text = "User Auth: $userAuthText\n" +
+                            text =
+                                "User Auth: $userAuthText\n" +
                                     "Secure Lock Screen: $secureLockScreenText",
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "Attest Key support (TEE): ${capabilities.attestKeySupported}\n" +
+                            text =
+                                "Attest Key support (TEE): ${capabilities.attestKeySupported}\n" +
                                     "Key Agreement support (TEE): ${capabilities.keyAgreementSupported}\n" +
                                     "Curve 25519 support (TEE): ${capabilities.curve25519Supported}",
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "StrongBox Available: ${capabilities.strongBoxSupported}\n" +
+                            text =
+                                "StrongBox Available: ${capabilities.strongBoxSupported}\n" +
                                     "Attest Key support (StrongBox): ${capabilities.strongBoxAttestKeySupported}\n" +
                                     "Key Agreement support (StrongBox): ${capabilities.strongBoxKeyAgreementSupported}\n" +
                                     "Curve 25519 support (StrongBox): ${capabilities.strongBoxCurve25519Supported}",
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                     Row(
@@ -638,17 +667,20 @@ class MainActivity :  FragmentActivity() {
     }
 
     @Composable
-    fun ShowCertificateDialog(attestation: CertificateChain,
-                              onDismissRequest: () -> Unit) {
-        var certNumber by rememberSaveable() { mutableStateOf(0) }
+    fun ShowCertificateDialog(
+        attestation: CertificateChain,
+        onDismissRequest: () -> Unit,
+    ) {
+        var certNumber by rememberSaveable { mutableStateOf(0) }
         if (certNumber < 0 || certNumber >= attestation.certificates.size) {
             certNumber = 0
         }
         Dialog(onDismissRequest = { onDismissRequest() }) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(650.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(650.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
                 Column(
@@ -660,43 +692,48 @@ class MainActivity :  FragmentActivity() {
                         text = "Certificates",
                         modifier = Modifier.padding(16.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
-                    Row() {
+                    Row {
                         Text(
                             text = "Certificate ${certNumber + 1} of ${attestation.certificates.size}",
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                         IconButton(
                             enabled = (certNumber > 0),
                             onClick = {
                                 certNumber -= 1
-                            }) {
+                            },
+                        ) {
                             Icon(Icons.Filled.ArrowBack, "Back")
                         }
                         IconButton(
                             enabled = (certNumber < attestation.certificates.size - 1),
                             onClick = {
                                 certNumber += 1
-                            }) {
+                            },
+                        ) {
                             Icon(Icons.Filled.ArrowForward, "Forward")
                         }
                     }
                     Column(
-                        modifier = Modifier
-                            .size(470.dp)
-                            .verticalScroll(rememberScrollState())
+                        modifier =
+                            Modifier
+                                .size(470.dp)
+                                .verticalScroll(rememberScrollState()),
                     ) {
                         Text(
-                            text = styledX509CertificateText(
-                                attestation.certificates[certNumber].javaX509Certificate.toString()),
-                            //text = attestation[certNumber].toString(),
+                            text =
+                                styledX509CertificateText(
+                                    attestation.certificates[certNumber].javaX509Certificate.toString(),
+                                ),
+                            // text = attestation[certNumber].toString(),
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                     Row(
@@ -709,7 +746,6 @@ class MainActivity :  FragmentActivity() {
                             Text("Close")
                         }
                     }
-
                 }
             }
         }
@@ -728,7 +764,7 @@ class MainActivity :  FragmentActivity() {
                     withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                         append(line.subSequence(0, colonPos))
                     }
-                    append(line.subSequence(colonPos,line.length))
+                    append(line.subSequence(colonPos, line.length))
                 } else {
                     append(line)
                 }
@@ -748,10 +784,11 @@ class MainActivity :  FragmentActivity() {
         var showPassphrase by remember { mutableStateOf(value = false) }
         Dialog(onDismissRequest = { onDismissRequest() }) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(275.dp)
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(275.dp)
+                        .padding(16.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
                 Column(
@@ -762,14 +799,14 @@ class MainActivity :  FragmentActivity() {
                         text = "Enter passphrase to use key",
                         modifier = Modifier.padding(16.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
 
                     Text(
                         text = "The passphrase is '1111'.",
                         modifier = Modifier.padding(16.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
 
                     TextField(
@@ -777,35 +814,38 @@ class MainActivity :  FragmentActivity() {
                         maxLines = 3,
                         onValueChange = { passphraseTextField = it },
                         textStyle = MaterialTheme.typography.bodySmall,
-                        visualTransformation = if (showPassphrase) {
-                            VisualTransformation.None
-                        } else {
-                            PasswordVisualTransformation()
-                        },
+                        visualTransformation =
+                            if (showPassphrase) {
+                                VisualTransformation.None
+                            } else {
+                                PasswordVisualTransformation()
+                            },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
                             if (showPassphrase) {
                                 IconButton(onClick = { showPassphrase = false }) {
                                     Icon(
                                         imageVector = Icons.Filled.Visibility,
-                                        contentDescription = "hide_password"
+                                        contentDescription = "hide_password",
                                     )
                                 }
                             } else {
                                 IconButton(
-                                    onClick = { showPassphrase = true }) {
+                                    onClick = { showPassphrase = true },
+                                ) {
                                     Icon(
                                         imageVector = Icons.Filled.VisibilityOff,
-                                        contentDescription = "hide_password"
+                                        contentDescription = "hide_password",
                                     )
                                 }
                             }
-                        }
+                        },
                     )
 
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(
@@ -819,7 +859,6 @@ class MainActivity :  FragmentActivity() {
                             Text("Continue")
                         }
                     }
-
                 }
             }
         }
@@ -832,13 +871,16 @@ class MainActivity :  FragmentActivity() {
             "testKey",
             AndroidKeystoreCreateKeySettings.Builder("Challenge".toByteArray())
                 .setUserAuthenticationRequired(
-                    true, 10*1000,
-                    setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
+                    true,
+                    10 * 1000,
+                    setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC),
                 )
-                .setValidityPeriod(Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
+                .setValidityPeriod(
+                    Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()),
+                )
                 .setUseStrongBox(strongBox)
-                .build()
+                .build(),
         )
         return androidKeystoreSecureArea.getKeyInfo("testKey").attestation
     }
@@ -850,18 +892,20 @@ class MainActivity :  FragmentActivity() {
         authTimeoutMillis: Long,
         userAuthType: Set<UserAuthenticationType>,
         biometricConfirmationRequired: Boolean,
-        strongBox: Boolean) {
+        strongBox: Boolean,
+    ) {
         Logger.d(
             TAG,
-            "aksTest keyPurpose:$keyPurpose curve:$curve authRequired:$authRequired authTimeout:$authTimeoutMillis strongBox:$strongBox"
+            "aksTest keyPurpose:$keyPurpose curve:$curve authRequired:$authRequired authTimeout:$authTimeoutMillis strongBox:$strongBox",
         )
         try {
             aksTestUnguarded(keyPurpose, curve, authRequired, authTimeoutMillis, userAuthType, biometricConfirmationRequired, strongBox)
         } catch (e: Exception) {
-            e.printStackTrace();
+            e.printStackTrace()
             Toast.makeText(
-                applicationContext, "${e.message}",
-                Toast.LENGTH_SHORT
+                applicationContext,
+                "${e.message}",
+                Toast.LENGTH_SHORT,
             ).show()
         }
     }
@@ -873,16 +917,19 @@ class MainActivity :  FragmentActivity() {
         authTimeoutMillis: Long,
         userAuthType: Set<UserAuthenticationType>,
         biometricConfirmationRequired: Boolean,
-        strongBox: Boolean) {
-
+        strongBox: Boolean,
+    ) {
         androidKeystoreSecureArea.createKey(
             "testKey",
             AndroidKeystoreCreateKeySettings.Builder("Challenge".toByteArray())
                 .setKeyPurposes(setOf(keyPurpose))
                 .setUserAuthenticationRequired(
-                    authRequired, authTimeoutMillis, userAuthType)
+                    authRequired,
+                    authTimeoutMillis,
+                    userAuthType,
+                )
                 .setUseStrongBox(strongBox)
-                .build()
+                .build(),
         )
 
         if (keyPurpose == KeyPurpose.SIGN) {
@@ -890,20 +937,23 @@ class MainActivity :  FragmentActivity() {
             val dataToSign = "data".toByteArray()
             try {
                 val t0 = System.currentTimeMillis()
-                val derSignature = androidKeystoreSecureArea.sign(
-                    "testKey",
-                    signingAlgorithm,
-                    dataToSign,
-                    null)
+                val derSignature =
+                    androidKeystoreSecureArea.sign(
+                        "testKey",
+                        signingAlgorithm,
+                        dataToSign,
+                        null,
+                    )
                 val t1 = System.currentTimeMillis()
                 Logger.dHex(
                     TAG,
                     "Made signature with key without authentication",
-                    derSignature
+                    derSignature,
                 )
                 Toast.makeText(
-                    applicationContext, "Signed w/o authn (${t1 - t0} msec)",
-                    Toast.LENGTH_SHORT
+                    applicationContext,
+                    "Signed w/o authn (${t1 - t0} msec)",
+                    Toast.LENGTH_SHORT,
                 ).show()
             } catch (e: KeyLockedException) {
                 val unlockData = AndroidKeystoreKeyUnlockData("testKey")
@@ -916,20 +966,23 @@ class MainActivity :  FragmentActivity() {
                         Logger.d(TAG, "onAuthSuccess")
 
                         val t0 = System.currentTimeMillis()
-                        val derSignature = androidKeystoreSecureArea.sign(
-                            "testKey",
-                            signingAlgorithm,
-                            dataToSign,
-                            unlockData)
+                        val derSignature =
+                            androidKeystoreSecureArea.sign(
+                                "testKey",
+                                signingAlgorithm,
+                                dataToSign,
+                                unlockData,
+                            )
                         val t1 = System.currentTimeMillis()
                         Logger.dHex(
                             TAG,
                             "Made signature with key after authentication",
-                            derSignature
+                            derSignature,
                         )
                         Toast.makeText(
-                            applicationContext, "Signed after authn (${t1 - t0} msec)",
-                            Toast.LENGTH_SHORT
+                            applicationContext,
+                            "Signed after authn (${t1 - t0} msec)",
+                            Toast.LENGTH_SHORT,
                         ).show()
                     },
                     onAuthFailure = {
@@ -937,23 +990,30 @@ class MainActivity :  FragmentActivity() {
                     },
                     onDismissed = {
                         Logger.d(TAG, "onDismissed")
-                    })
+                    },
+                )
             }
         } else {
             val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
             try {
                 val t0 = System.currentTimeMillis()
-                val Zab = androidKeystoreSecureArea.keyAgreement(
-                    "testKey",
-                    otherKeyPairForEcdh.publicKey,
-                    null)
+                val Zab =
+                    androidKeystoreSecureArea.keyAgreement(
+                        "testKey",
+                        otherKeyPairForEcdh.publicKey,
+                        null,
+                    )
                 val t1 = System.currentTimeMillis()
                 Logger.dHex(
                     TAG,
                     "Calculated ECDH",
-                    Zab)
-                Toast.makeText(applicationContext, "ECDH w/o authn (${t1 - t0} msec)",
-                    Toast.LENGTH_SHORT).show()
+                    Zab,
+                )
+                Toast.makeText(
+                    applicationContext,
+                    "ECDH w/o authn (${t1 - t0} msec)",
+                    Toast.LENGTH_SHORT,
+                ).show()
             } catch (e: KeyLockedException) {
                 val unlockData = AndroidKeystoreKeyUnlockData("testKey")
                 doUserAuth(
@@ -964,26 +1024,32 @@ class MainActivity :  FragmentActivity() {
                     onAuthSuccees = {
                         Logger.d(TAG, "onAuthSuccess")
                         val t0 = System.currentTimeMillis()
-                        val Zab = androidKeystoreSecureArea.keyAgreement(
-                            "testKey",
-                            otherKeyPairForEcdh.publicKey,
-                            unlockData)
+                        val Zab =
+                            androidKeystoreSecureArea.keyAgreement(
+                                "testKey",
+                                otherKeyPairForEcdh.publicKey,
+                                unlockData,
+                            )
                         val t1 = System.currentTimeMillis()
                         Logger.dHex(
                             TAG,
                             "Calculated ECDH",
-                            Zab)
-                        Toast.makeText(applicationContext, "ECDH after authn (${t1 - t0} msec)",
-                            Toast.LENGTH_SHORT).show()
+                            Zab,
+                        )
+                        Toast.makeText(
+                            applicationContext,
+                            "ECDH after authn (${t1 - t0} msec)",
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     },
                     onAuthFailure = {
                         Logger.d(TAG, "onAuthFailure")
                     },
                     onDismissed = {
                         Logger.d(TAG, "onDismissed")
-                    })
+                    },
+                )
             }
-
         }
     }
 
@@ -995,13 +1061,17 @@ class MainActivity :  FragmentActivity() {
         softwareSecureArea.createKey(
             "testKey",
             SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
-                .setValidityPeriod(Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
-                .setAttestationKey(softwareAttestationKey,
+                .setValidityPeriod(
+                    Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()),
+                )
+                .setAttestationKey(
+                    softwareAttestationKey,
                     softwareAttestationKeySignatureAlgorithm,
                     softwareAttestationKeyIssuer,
-                    softwareAttestationKeyCertification)
-                .build()
+                    softwareAttestationKeyCertification,
+                )
+                .build(),
         )
         return softwareSecureArea.getKeyInfo("testKey").attestation
     }
@@ -1010,17 +1080,21 @@ class MainActivity :  FragmentActivity() {
         keyPurpose: KeyPurpose,
         curve: EcCurve,
         passphrase: String?,
-        passphraseEnteredByUser: String?) {
+        passphraseEnteredByUser: String?,
+    ) {
         Logger.d(
             TAG,
-            "swTest keyPurpose:$keyPurpose curve:$curve passphrase:$passphrase"
+            "swTest keyPurpose:$keyPurpose curve:$curve passphrase:$passphrase",
         )
         try {
             swTestUnguarded(keyPurpose, curve, passphrase, passphraseEnteredByUser)
         } catch (e: Exception) {
-            e.printStackTrace();
-            Toast.makeText(applicationContext, "${e.message}",
-                Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
+            Toast.makeText(
+                applicationContext,
+                "${e.message}",
+                Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 
@@ -1028,15 +1102,18 @@ class MainActivity :  FragmentActivity() {
         keyPurpose: KeyPurpose,
         curve: EcCurve,
         passphrase: String?,
-        passphraseEnteredByUser: String?) {
-
-        val builder = SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
-            .setEcCurve(curve)
-            .setKeyPurposes(setOf(keyPurpose))
-            .setAttestationKey(softwareAttestationKey,
-                softwareAttestationKeySignatureAlgorithm,
-                softwareAttestationKeyIssuer,
-                softwareAttestationKeyCertification)
+        passphraseEnteredByUser: String?,
+    ) {
+        val builder =
+            SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
+                .setEcCurve(curve)
+                .setKeyPurposes(setOf(keyPurpose))
+                .setAttestationKey(
+                    softwareAttestationKey,
+                    softwareAttestationKeySignatureAlgorithm,
+                    softwareAttestationKeyIssuer,
+                    softwareAttestationKeyCertification,
+                )
         if (passphrase != null) {
             builder.setPassphraseRequired(true, passphrase, null)
         }
@@ -1051,46 +1128,59 @@ class MainActivity :  FragmentActivity() {
             val signingAlgorithm = curve.defaultSigningAlgorithm
             try {
                 val t0 = System.currentTimeMillis()
-                val derSignature = softwareSecureArea.sign(
-                    "testKey",
-                    signingAlgorithm,
-                    "data".toByteArray(),
-                    unlockData)
+                val derSignature =
+                    softwareSecureArea.sign(
+                        "testKey",
+                        signingAlgorithm,
+                        "data".toByteArray(),
+                        unlockData,
+                    )
                 val t1 = System.currentTimeMillis()
                 Logger.dHex(
                     TAG,
                     "Made signature with key without authentication",
-                    derSignature
+                    derSignature,
                 )
-                Toast.makeText(applicationContext, "Signed w/o authn (${t1 - t0} msec)",
-                    Toast.LENGTH_SHORT).show()
-            } catch (e: KeyLockedException) {
-                e.printStackTrace();
                 Toast.makeText(
-                    applicationContext, "${e.message}",
-                    Toast.LENGTH_SHORT
+                    applicationContext,
+                    "Signed w/o authn (${t1 - t0} msec)",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } catch (e: KeyLockedException) {
+                e.printStackTrace()
+                Toast.makeText(
+                    applicationContext,
+                    "${e.message}",
+                    Toast.LENGTH_SHORT,
                 ).show()
             }
         } else {
             val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
             try {
                 val t0 = System.currentTimeMillis()
-                val Zab = softwareSecureArea.keyAgreement(
-                    "testKey",
-                    otherKeyPairForEcdh.publicKey,
-                    unlockData)
+                val Zab =
+                    softwareSecureArea.keyAgreement(
+                        "testKey",
+                        otherKeyPairForEcdh.publicKey,
+                        unlockData,
+                    )
                 val t1 = System.currentTimeMillis()
                 Logger.dHex(
                     TAG,
                     "Calculated ECDH without authentication",
-                    Zab)
-                Toast.makeText(applicationContext, "ECDH w/o authn (${t1 - t0} msec)",
-                    Toast.LENGTH_SHORT).show()
-            } catch (e: KeyLockedException) {
-                e.printStackTrace();
+                    Zab,
+                )
                 Toast.makeText(
-                    applicationContext, "${e.message}",
-                    Toast.LENGTH_SHORT
+                    applicationContext,
+                    "ECDH w/o authn (${t1 - t0} msec)",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } catch (e: KeyLockedException) {
+                e.printStackTrace()
+                Toast.makeText(
+                    applicationContext,
+                    "${e.message}",
+                    Toast.LENGTH_SHORT,
                 ).show()
             }
         }
@@ -1103,15 +1193,16 @@ class MainActivity :  FragmentActivity() {
         biometricConfirmationRequired: Boolean,
         onAuthSuccees: () -> Unit,
         onAuthFailure: () -> Unit,
-        onDismissed: () -> Unit
+        onDismissed: () -> Unit,
     ) {
         if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
-            throw IllegalStateException("Cannot be called from UI thread");
+            throw IllegalStateException("Cannot be called from UI thread")
         }
-        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Authentication required")
-            .setConfirmationRequired(biometricConfirmationRequired)
-            .setSubtitle(title)
+        val promptInfoBuilder =
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Authentication required")
+                .setConfirmationRequired(biometricConfirmationRequired)
+                .setSubtitle(title)
         if (forceLskf) {
             // TODO: this works only on Android 11 or later but for now this is fine
             //   as this is just a reference/test app and this path is only hit if
@@ -1119,9 +1210,10 @@ class MainActivity :  FragmentActivity() {
             //   fall back to using KeyGuard which will work on all Android versions.
             promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         } else {
-            val canUseBiometricAuth = BiometricManager
-                .from(applicationContext)
-                .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+            val canUseBiometricAuth =
+                BiometricManager
+                    .from(applicationContext)
+                    .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
             if (canUseBiometricAuth) {
                 promptInfoBuilder.setNegativeButtonText("Use LSKF")
             } else {
@@ -1136,79 +1228,88 @@ class MainActivity :  FragmentActivity() {
         runOnUiThread {
             val biometricPromptInfo = promptInfoBuilder.build()
             val activity = this as FragmentActivity
-            val biometricPrompt = BiometricPrompt(activity,
-                object : BiometricPrompt.AuthenticationCallback() {
+            val biometricPrompt =
+                BiometricPrompt(
+                    activity,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationError(
+                            errorCode: Int,
+                            errString: CharSequence,
+                        ) {
+                            super.onAuthenticationError(errorCode, errString)
+                            Logger.d(TAG, "onAuthenticationError $errorCode $errString")
+                            if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                                wasDismissed = true
+                                cv.open()
+                            } else if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                                val promptInfoBuilderLskf =
+                                    BiometricPrompt.PromptInfo.Builder()
+                                        .setTitle("Authentication required")
+                                        .setConfirmationRequired(biometricConfirmationRequired)
+                                        .setSubtitle(title)
+                                promptInfoBuilderLskf.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                val biometricPromptInfoLskf = promptInfoBuilderLskf.build()
+                                val biometricPromptLskf =
+                                    BiometricPrompt(
+                                        activity,
+                                        object : BiometricPrompt.AuthenticationCallback() {
+                                            override fun onAuthenticationError(
+                                                errorCode: Int,
+                                                errString: CharSequence,
+                                            ) {
+                                                super.onAuthenticationError(errorCode, errString)
+                                                Logger.d(TAG, "onAuthenticationError LSKF $errorCode $errString")
+                                                if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                                                    wasDismissed = true
+                                                    cv.open()
+                                                } else {
+                                                    wasFailure = true
+                                                    cv.open()
+                                                }
+                                            }
 
-                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        super.onAuthenticationError(errorCode, errString)
-                        Logger.d(TAG, "onAuthenticationError $errorCode $errString")
-                        if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
-                            wasDismissed = true
-                            cv.open()
-                        } else if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                            val promptInfoBuilderLskf = BiometricPrompt.PromptInfo.Builder()
-                                .setTitle("Authentication required")
-                                .setConfirmationRequired(biometricConfirmationRequired)
-                                .setSubtitle(title)
-                            promptInfoBuilderLskf.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                            val biometricPromptInfoLskf = promptInfoBuilderLskf.build()
-                            val biometricPromptLskf = BiometricPrompt(activity,
-                                object : BiometricPrompt.AuthenticationCallback() {
-                                    override fun onAuthenticationError(
-                                        errorCode: Int,
-                                        errString: CharSequence
-                                    ) {
-                                        super.onAuthenticationError(errorCode, errString)
-                                        Logger.d(TAG, "onAuthenticationError LSKF $errorCode $errString")
-                                        if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
-                                            wasDismissed = true
-                                            cv.open()
-                                        } else {
-                                            wasFailure = true
-                                            cv.open()
-                                        }
-                                    }
+                                            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                                super.onAuthenticationSucceeded(result)
+                                                Logger.d(TAG, "onAuthenticationSucceeded LSKF $result")
+                                                wasSuccess = true
+                                                cv.open()
+                                            }
 
-                                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                        super.onAuthenticationSucceeded(result)
-                                        Logger.d(TAG, "onAuthenticationSucceeded LSKF $result")
-                                        wasSuccess = true
-                                        cv.open()
-                                    }
-
-                                    override fun onAuthenticationFailed() {
-                                        super.onAuthenticationFailed()
-                                        Logger.d(TAG, "onAuthenticationFailed LSKF")
-                                    }
-                                }
-                            )
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                if (cryptoObject != null) {
-                                    biometricPromptLskf.authenticate(
-                                        biometricPromptInfoLskf, cryptoObject
+                                            override fun onAuthenticationFailed() {
+                                                super.onAuthenticationFailed()
+                                                Logger.d(TAG, "onAuthenticationFailed LSKF")
+                                            }
+                                        },
                                     )
-                                } else {
-                                    biometricPromptLskf.authenticate(biometricPromptInfoLskf)
-                                }
-                            }, 100)
-                        } else {
-                            wasFailure = true
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    if (cryptoObject != null) {
+                                        biometricPromptLskf.authenticate(
+                                            biometricPromptInfoLskf,
+                                            cryptoObject,
+                                        )
+                                    } else {
+                                        biometricPromptLskf.authenticate(biometricPromptInfoLskf)
+                                    }
+                                }, 100)
+                            } else {
+                                wasFailure = true
+                                cv.open()
+                            }
+                        }
+
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            super.onAuthenticationSucceeded(result)
+                            Logger.d(TAG, "onAuthenticationSucceeded $result")
+                            wasSuccess = true
                             cv.open()
                         }
-                    }
 
-                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        super.onAuthenticationSucceeded(result)
-                        Logger.d(TAG, "onAuthenticationSucceeded $result")
-                        wasSuccess = true
-                        cv.open()
-                    }
-
-                    override fun onAuthenticationFailed() {
-                        super.onAuthenticationFailed()
-                        Logger.d(TAG, "onAuthenticationFailed")
-                    }
-                })
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            Logger.d(TAG, "onAuthenticationFailed")
+                        }
+                    },
+                )
             Logger.d(TAG, "cryptoObject: " + cryptoObject)
             if (cryptoObject != null) {
                 biometricPrompt.authenticate(biometricPromptInfo, cryptoObject)
@@ -1220,15 +1321,12 @@ class MainActivity :  FragmentActivity() {
         if (wasSuccess) {
             Logger.d(TAG, "Reporting success")
             onAuthSuccees()
-        }
-        else if (wasFailure) {
+        } else if (wasFailure) {
             Logger.d(TAG, "Reporting failure")
             onAuthFailure()
-        }
-        else if (wasDismissed) {
+        } else if (wasDismissed) {
             Logger.d(TAG, "Reporting dismissed")
             onDismissed()
         }
     }
-
 }

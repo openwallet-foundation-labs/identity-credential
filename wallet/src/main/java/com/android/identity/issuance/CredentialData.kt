@@ -11,22 +11,18 @@ data class CredentialData(
      * The secure-area bound key that the credential is for.
      */
     val secureAreaBoundKey: EcPublicKey,
-
     /**
      * The credential is not valid until this point in time.
      */
     val validFrom: Instant,
-
     /**
      * The credential is not valid after this point in time.
      */
     val validUntil: Instant,
-
     /**
      * The format of the [data].
      */
     val format: CredentialFormat,
-
     /**
      * The data encoded in the format specified by [format].
      */

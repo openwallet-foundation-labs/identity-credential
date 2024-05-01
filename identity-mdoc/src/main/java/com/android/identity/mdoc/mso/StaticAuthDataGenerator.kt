@@ -66,7 +66,7 @@ import com.android.identity.cbor.RawCbor
  */
 class StaticAuthDataGenerator(
     private var digestIdMapping: Map<String, List<ByteArray>>,
-    private val encodedIssuerAuth: ByteArray
+    private val encodedIssuerAuth: ByteArray,
 ) {
     init {
         require(!digestIdMapping.isEmpty()) { "digestIDs must not be empty" }
@@ -92,7 +92,7 @@ class StaticAuthDataGenerator(
                     .put("digestIdMapping", digestIdMappingItem)
                     .put("issuerAuth", RawCbor(encodedIssuerAuth))
                     .end()
-                    .build()
+                    .build(),
             )
         }
 }

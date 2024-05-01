@@ -26,7 +26,7 @@ import com.android.identity.cbor.DataItem
  */
 class MdocDocumentType private constructor(
     val docType: String,
-    val namespaces: Map<String, MdocNamespace>
+    val namespaces: Map<String, MdocNamespace>,
 ) {
     /**
      * Builder class for class [MdocDocumentType].
@@ -36,7 +36,7 @@ class MdocDocumentType private constructor(
      */
     data class Builder(
         val docType: String,
-        val namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf()
+        val namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf(),
     ) {
         /**
          * Add a data element to a namespace in the mDoc Document Type.
@@ -67,14 +67,13 @@ class MdocDocumentType private constructor(
                 displayName,
                 description,
                 mandatory,
-                sampleValue
+                sampleValue,
             )
         }
 
         /**
          * Build the [MdocDocumentType].
          */
-        fun build() =
-            MdocDocumentType(docType, namespaces.map { Pair(it.key, it.value.build()) }.toMap())
+        fun build() = MdocDocumentType(docType, namespaces.map { Pair(it.key, it.value.build()) }.toMap())
     }
 }

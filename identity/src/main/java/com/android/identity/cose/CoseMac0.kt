@@ -19,7 +19,7 @@ data class CoseMac0(
     val protectedHeaders: Map<CoseLabel, DataItem>,
     val unprotectedHeaders: Map<CoseLabel, DataItem>,
     val tag: ByteArray,
-    val payload: ByteArray?
+    val payload: ByteArray?,
 ) {
     /**
      * Encodes the COSE_Mac0 as a CBOR data item.
@@ -82,5 +82,4 @@ data class CoseMac0(
             return CoseMac0(protectedHeaders, unprotectedHeaders, tag, payloadOrNil)
         }
     }
-
 }

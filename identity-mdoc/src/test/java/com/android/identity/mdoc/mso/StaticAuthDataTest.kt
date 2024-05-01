@@ -28,39 +28,43 @@ import org.junit.Test
 
 class StaticAuthDataTest {
     private fun createValidDigestIdMapping(): Map<String, List<ByteArray>> {
-        val issuerSignedItemMetadata = CborMap.builder()
-            .put("random", byteArrayOf(0x50, 0x51, 0x52))
-            .put("digestID", 42)
-            .put("elementIdentifier", "dataElementName")
-            .put("elementValue", Simple.NULL)
-            .end()
-            .build()
+        val issuerSignedItemMetadata =
+            CborMap.builder()
+                .put("random", byteArrayOf(0x50, 0x51, 0x52))
+                .put("digestID", 42)
+                .put("elementIdentifier", "dataElementName")
+                .put("elementValue", Simple.NULL)
+                .end()
+                .build()
         val isiMetadataBytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata)))
         val encodedIsiMetadataBytes = Cbor.encode(isiMetadataBytes)
-        val issuerSignedItemMetadata2 = CborMap.builder()
-            .put("digestID", 43)
-            .put("random", byteArrayOf(0x53, 0x54, 0x55))
-            .put("elementIdentifier", "dataElementName2")
-            .put("elementValue", Simple.NULL)
-            .end()
-            .build()
+        val issuerSignedItemMetadata2 =
+            CborMap.builder()
+                .put("digestID", 43)
+                .put("random", byteArrayOf(0x53, 0x54, 0x55))
+                .put("elementIdentifier", "dataElementName2")
+                .put("elementValue", Simple.NULL)
+                .end()
+                .build()
         val isiMetadata2Bytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata2)))
         val encodedIsiMetadata2Bytes = Cbor.encode(isiMetadata2Bytes)
-        val issuerSignedItemMetadata3 = CborMap.builder()
-            .put("digestID", 44)
-            .put("random", byteArrayOf(0x53, 0x54, 0x55))
-            .put("elementIdentifier", "portrait")
-            .put("elementValue", Cbor.encode(Bstr(byteArrayOf(0x20, 0x21, 0x22, 0x23))))
-            .end()
-            .build()
+        val issuerSignedItemMetadata3 =
+            CborMap.builder()
+                .put("digestID", 44)
+                .put("random", byteArrayOf(0x53, 0x54, 0x55))
+                .put("elementIdentifier", "portrait")
+                .put("elementValue", Cbor.encode(Bstr(byteArrayOf(0x20, 0x21, 0x22, 0x23))))
+                .end()
+                .build()
         val isiMetadata3Bytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata3)))
         val encodedIsiMetadata3Bytes = Cbor.encode(isiMetadata3Bytes)
         val issuerSignedMapping = mutableMapOf<String, List<ByteArray>>()
-        issuerSignedMapping["org.namespace"] = listOf(
-            encodedIsiMetadataBytes,
-            encodedIsiMetadata2Bytes,
-            encodedIsiMetadata3Bytes
-        )
+        issuerSignedMapping["org.namespace"] =
+            listOf(
+                encodedIsiMetadataBytes,
+                encodedIsiMetadata2Bytes,
+                encodedIsiMetadata3Bytes,
+            )
         return issuerSignedMapping
     }
 
@@ -72,7 +76,7 @@ class StaticAuthDataTest {
                 .add(Simple.NULL)
                 .add(byteArrayOf(0x01, 0x02))
                 .end()
-                .build()
+                .build(),
         )
     }
 
@@ -115,8 +119,8 @@ class StaticAuthDataTest {
 }""",
             Cbor.toDiagnostics(
                 staticAuthData,
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
 
         // Now check we can decode it
@@ -137,8 +141,8 @@ class StaticAuthDataTest {
 } >>)""",
             Cbor.toDiagnostics(
                 list[0],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """24(<< {
@@ -149,8 +153,8 @@ class StaticAuthDataTest {
 } >>)""",
             Cbor.toDiagnostics(
                 list[1],
-                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         val issuerAuth = decodedStaticAuthData.issuerAuth
         Assert.assertArrayEquals(encodedIssuerAuth, issuerAuth)
@@ -160,7 +164,7 @@ class StaticAuthDataTest {
     fun testStaticAuthDataExceptions() {
         Assert.assertThrows(
             "expect exception for empty digestIDMapping",
-            IllegalArgumentException::class.java
+            IllegalArgumentException::class.java,
         ) {
             StaticAuthDataGenerator(HashMap(), createValidIssuerAuth())
                 .generate()

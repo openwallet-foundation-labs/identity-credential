@@ -39,7 +39,8 @@ class ConnectionMethodTest {
     0: 4096,
     1: 32768
   }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
+]""",
+            Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
     }
 
@@ -47,12 +48,13 @@ class ConnectionMethodTest {
     fun testConnectionMethodBle() {
         val uuidPeripheral = UUID(0, 1)
         val uuidCentral = UUID(123456789, 987654321)
-        var cm = ConnectionMethodBle(
-            true,
-            true,
-            uuidPeripheral,
-            uuidCentral
-        )
+        var cm =
+            ConnectionMethodBle(
+                true,
+                true,
+                uuidPeripheral,
+                uuidCentral,
+            )
         val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
         Assert.assertNotNull(decoded)
         Assert.assertTrue(decoded!!.supportsPeripheralServerMode)
@@ -69,28 +71,31 @@ class ConnectionMethodTest {
     10: h'00000000000000000000000000000001',
     11: h'00000000075bcd15000000003ade68b1'
   }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
+]""",
+            Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
 
         // For use in NFC, the UUIDs have to be the same
         val uuidBoth = UUID(0, 2)
-        cm = ConnectionMethodBle(
-            true,
-            true,
-            uuidBoth,
-            uuidBoth
-        )
+        cm =
+            ConnectionMethodBle(
+                true,
+                true,
+                uuidBoth,
+                uuidBoth,
+            )
     }
 
     @Test
     fun testConnectionMethodBleOnlyCentralClient() {
         val uuid = UUID(123456789, 987654321)
-        val cm = ConnectionMethodBle(
-            false,
-            true,
-            null,
-            uuid
-        )
+        val cm =
+            ConnectionMethodBle(
+                false,
+                true,
+                null,
+                uuid,
+            )
         val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
         Assert.assertNotNull(decoded)
         Assert.assertFalse(decoded!!.supportsPeripheralServerMode)
@@ -106,19 +111,21 @@ class ConnectionMethodTest {
     1: true,
     11: h'00000000075bcd15000000003ade68b1'
   }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
+]""",
+            Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
     }
 
     @Test
     fun testConnectionMethodBleOnlyPeripheralServer() {
         val uuid = UUID(0, 1)
-        val cm = ConnectionMethodBle(
-            true,
-            false,
-            uuid,
-            null
-        )
+        val cm =
+            ConnectionMethodBle(
+                true,
+                false,
+                uuid,
+                null,
+            )
         val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
         Assert.assertNotNull(decoded)
         Assert.assertTrue(decoded!!.supportsPeripheralServerMode)
@@ -134,17 +141,20 @@ class ConnectionMethodTest {
     1: false,
     10: h'00000000000000000000000000000001'
   }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
+]""",
+            Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
     }
 
     @Test
     fun testConnectionMethodWifiAware() {
-        val cm = ConnectionMethodWifiAware(
-            "foobar",
-            OptionalLong.of(42),
-            OptionalLong.of(43), byteArrayOf(1, 2)
-        )
+        val cm =
+            ConnectionMethodWifiAware(
+                "foobar",
+                OptionalLong.of(42),
+                OptionalLong.of(43),
+                byteArrayOf(1, 2),
+            )
         val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodWifiAware?
         Assert.assertNotNull(decoded)
         Assert.assertEquals("foobar", decoded!!.passphraseInfoPassphrase)
@@ -161,7 +171,8 @@ class ConnectionMethodTest {
     1: 43,
     3: h'0102'
   }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
+]""",
+            Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
     }
 
@@ -178,24 +189,26 @@ class ConnectionMethodTest {
   {
     0: "https://www.example.com/mdocReader"
   }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
+]""",
+            Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
     }
 
     @Test
     fun testConnectionMethodDisambiguate() {
         var ble: ConnectionMethodBle
-        val disambiguated = ConnectionMethod.disambiguate(
-            Arrays.asList(
-                ConnectionMethodHttp("https://www.example.com/mdocReader"),
-                ConnectionMethodBle(
-                    true,
-                    true,
-                    UUID(0, 1),
-                    UUID(0, 2)
-                )
+        val disambiguated =
+            ConnectionMethod.disambiguate(
+                Arrays.asList(
+                    ConnectionMethodHttp("https://www.example.com/mdocReader"),
+                    ConnectionMethodBle(
+                        true,
+                        true,
+                        UUID(0, 1),
+                        UUID(0, 2),
+                    ),
+                ),
             )
-        )
         Assert.assertEquals(3, disambiguated.size.toLong())
         Assert.assertTrue(disambiguated[0] is ConnectionMethodHttp)
         Assert.assertTrue(disambiguated[1] is ConnectionMethodBle)
@@ -214,21 +227,22 @@ class ConnectionMethodTest {
 
     @Test
     fun testConnectionMethodCombineUuidNotSame() {
-        val disambiguated = Arrays.asList(
-            ConnectionMethodHttp("https://www.example.com/mdocReader"),
-            ConnectionMethodBle(
-                true,
-                false,
-                UUID(0, 1),
-                null
-            ),
-            ConnectionMethodBle(
-                false,
-                true,
-                null,
-                UUID(0, 2)
+        val disambiguated =
+            Arrays.asList(
+                ConnectionMethodHttp("https://www.example.com/mdocReader"),
+                ConnectionMethodBle(
+                    true,
+                    false,
+                    UUID(0, 1),
+                    null,
+                ),
+                ConnectionMethodBle(
+                    false,
+                    true,
+                    null,
+                    UUID(0, 2),
+                ),
             )
-        )
         try {
             val combined = ConnectionMethod.combine(disambiguated)
             Assert.fail()
@@ -240,21 +254,22 @@ class ConnectionMethodTest {
     @Test
     fun testConnectionMethodCombineUuid() {
         val uuid = UUID(0, 3)
-        val disambiguated = Arrays.asList(
-            ConnectionMethodHttp("https://www.example.com/mdocReader"),
-            ConnectionMethodBle(
-                true,
-                false,
-                uuid,
-                null
-            ),
-            ConnectionMethodBle(
-                false,
-                true,
-                null,
-                uuid
+        val disambiguated =
+            Arrays.asList(
+                ConnectionMethodHttp("https://www.example.com/mdocReader"),
+                ConnectionMethodBle(
+                    true,
+                    false,
+                    uuid,
+                    null,
+                ),
+                ConnectionMethodBle(
+                    false,
+                    true,
+                    null,
+                    uuid,
+                ),
             )
-        )
         val combined = ConnectionMethod.combine(disambiguated)
         Assert.assertEquals(2, combined.size.toLong())
         val ble = combined[1] as ConnectionMethodBle

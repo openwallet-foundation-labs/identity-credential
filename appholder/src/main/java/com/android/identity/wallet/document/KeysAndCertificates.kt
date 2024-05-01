@@ -16,8 +16,10 @@ import java.security.spec.X509EncodedKeySpec
 import java.util.*
 
 object KeysAndCertificates {
-
-    private fun getCertificate(context: Context, resourceId: Int): X509Certificate {
+    private fun getCertificate(
+        context: Context,
+        resourceId: Int,
+    ): X509Certificate {
         val certInputStream = context.resources.openRawResource(resourceId)
         val factory: CertificateFactory = CertificateFactory.getInstance("X509")
         return factory.generateCertificate(certInputStream) as X509Certificate
@@ -25,25 +27,32 @@ object KeysAndCertificates {
 
     private fun getKeyBytes(keyInputStream: InputStream): ByteArray {
         val keyBytes = keyInputStream.readBytes()
-        val publicKeyPEM = String(keyBytes, StandardCharsets.US_ASCII)
-            .replace("-----BEGIN PUBLIC KEY-----", "")
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("\r", "")
-            .replace("\n", "")
-            .replace("-----END PUBLIC KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
+        val publicKeyPEM =
+            String(keyBytes, StandardCharsets.US_ASCII)
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("\r", "")
+                .replace("\n", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
 
         return Base64.getDecoder().decode(publicKeyPEM)
     }
 
-    private fun getPrivateKey(context: Context, resourceId: Int): PrivateKey {
+    private fun getPrivateKey(
+        context: Context,
+        resourceId: Int,
+    ): PrivateKey {
         val keyBytes: ByteArray = getKeyBytes(context.resources.openRawResource(resourceId))
         val spec = PKCS8EncodedKeySpec(keyBytes)
         val kf = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
         return kf.generatePrivate(spec)
     }
 
-    private fun getPublicKey(context: Context, resourceId: Int): PublicKey {
+    private fun getPublicKey(
+        context: Context,
+        resourceId: Int,
+    ): PublicKey {
         val keyBytes: ByteArray = getKeyBytes(context.resources.openRawResource(resourceId))
         val spec = X509EncodedKeySpec(keyBytes)
         val kf = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
@@ -53,19 +62,19 @@ object KeysAndCertificates {
     fun getMdlDsKeyPair(context: Context) =
         KeyPair(
             getPublicKey(context, R.raw.google_mdl_ds_cert_iaca_2_pubkey),
-            getPrivateKey(context, R.raw.google_mdl_ds_cert_iaca_2_privkey)
+            getPrivateKey(context, R.raw.google_mdl_ds_cert_iaca_2_privkey),
         )
 
     fun getMekbDsKeyPair(context: Context) =
         KeyPair(
             getPublicKey(context, R.raw.google_mekb_ds_pubkey),
-            getPrivateKey(context, R.raw.google_mekb_ds_privkey)
+            getPrivateKey(context, R.raw.google_mekb_ds_privkey),
         )
 
     fun getMicovDsKeyPair(context: Context) =
         KeyPair(
             getPublicKey(context, R.raw.google_micov_ds_pubkey),
-            getPrivateKey(context, R.raw.google_micov_ds_privkey)
+            getPrivateKey(context, R.raw.google_micov_ds_privkey),
         )
 
     fun getMdlDsCertificate(context: Context) = getCertificate(context, R.raw.google_mdl_ds_cert_iaca_2)
@@ -102,5 +111,4 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.zetes_reader_ca_cer),
             getCertificate(context, R.raw.owf_identity_credential_reader_cert),
         )
-
 }

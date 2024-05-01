@@ -15,7 +15,6 @@ import com.android.identity.wallet.documentinfo.DocumentInfoViewModel
 import com.android.identity.wallet.theme.HolderAppTheme
 
 class DocumentDetailFragment : Fragment() {
-
     private val args: DocumentDetailFragmentArgs by navArgs()
     private val viewModel by viewModels<DocumentInfoViewModel> {
         val documentManager = DocumentManager.getInstance(requireContext())
@@ -23,8 +22,9 @@ class DocumentDetailFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
@@ -32,7 +32,7 @@ class DocumentDetailFragment : Fragment() {
                     DocumentInfoScreen(
                         viewModel = viewModel,
                         onNavigateUp = { findNavController().navigateUp() },
-                        onNavigateToDocumentDetails = { onShowData(args.documentName) }
+                        onNavigateToDocumentDetails = { onShowData(args.documentName) },
                     )
                 }
             }
@@ -41,8 +41,9 @@ class DocumentDetailFragment : Fragment() {
     }
 
     private fun onShowData(documentName: String) {
-        val direction = DocumentDetailFragmentDirections
-            .navigateToDocumentData(documentName)
+        val direction =
+            DocumentDetailFragmentDirections
+                .navigateToDocumentData(documentName)
         findNavController().navigate(direction)
     }
 }

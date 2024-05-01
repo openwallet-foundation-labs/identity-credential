@@ -15,39 +15,41 @@ class NfcTunnelScanner(private val provisioningViewModel: ProvisioningViewModel)
     override fun read(
         rawConnection: CardService,
         connection: PassportService?,
-        onStatus: (MrtdNfc.Status) -> Unit
+        onStatus: (MrtdNfc.Status) -> Unit,
     ) {
         provisioningViewModel.runIcaoNfcTunnel { request ->
             val command = CommandAPDU(request.message)
 
-            val rawCommand = if (request.passThrough) {
-                command // pass as is to the chip
-            } else {
-                val wrapper = connection?.wrapper
-                if (wrapper != null) {
-                    wrapper.wrap(command)
+            val rawCommand =
+                if (request.passThrough) {
+                    command // pass as is to the chip
                 } else {
-                    command
+                    val wrapper = connection?.wrapper
+                    if (wrapper != null) {
+                        wrapper.wrap(command)
+                    } else {
+                        command
+                    }
                 }
-            }
             onStatus(
                 if (request.requestType == EvidenceRequestIcaoNfcTunnelType.AUTHENTICATING) {
                     MrtdNfc.TunnelAuthenticating(request.progressPercent)
                 } else {
                     MrtdNfc.TunnelReading(request.progressPercent)
-                }
+                },
             )
             val rawResponse = rawConnection.transmit(rawCommand)
-            val response = if (request.passThrough) {
-                rawResponse // transmit as is into the tunnel
-            } else {
-                val wrapper = connection?.wrapper
-                if (wrapper != null) {
-                    wrapper.unwrap(rawResponse)
+            val response =
+                if (request.passThrough) {
+                    rawResponse // transmit as is into the tunnel
                 } else {
-                    rawResponse
+                    val wrapper = connection?.wrapper
+                    if (wrapper != null) {
+                        wrapper.unwrap(rawResponse)
+                    } else {
+                        rawResponse
+                    }
                 }
-            }
             EvidenceResponseIcaoNfcTunnel(response.bytes)
         }
     }

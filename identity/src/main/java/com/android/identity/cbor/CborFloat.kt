@@ -9,7 +9,6 @@ import kotlin.experimental.or
  * @param value the value.
  */
 class CborFloat(val value: Float) : DataItem(MajorType.SPECIAL) {
-
     override fun encode(builder: ByteStringBuilder) {
         builder.run {
             val majorTypeShifted = (majorType.type shl 5).toByte()
@@ -18,15 +17,18 @@ class CborFloat(val value: Float) : DataItem(MajorType.SPECIAL) {
             val raw = value.toRawBits()
             append((raw shr 24).and(0xff).toByte())
             append((raw shr 16).and(0xff).toByte())
-            append((raw shr  8).and(0xff).toByte())
-            append((raw shr  0).and(0xff).toByte())
+            append((raw shr 8).and(0xff).toByte())
+            append((raw shr 0).and(0xff).toByte())
         }
-
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborFloat> {
-            val raw = (encodedCbor[offset + 1].toInt().and(0xff) shl 24) +
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, CborFloat> {
+            val raw =
+                (encodedCbor[offset + 1].toInt().and(0xff) shl 24) +
                     (encodedCbor[offset + 2].toInt().and(0xff) shl 16) +
                     (encodedCbor[offset + 3].toInt().and(0xff) shl 8) +
                     encodedCbor[offset + 4].toInt().and(0xff)

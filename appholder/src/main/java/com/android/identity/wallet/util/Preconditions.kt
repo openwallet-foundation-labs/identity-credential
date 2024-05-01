@@ -5,7 +5,10 @@ package com.android.identity.wallet.util
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-inline fun <T : Any> requireValidProperty(value: T?, lazyMessage: () -> Any): T {
+inline fun <T : Any> requireValidProperty(
+    value: T?,
+    lazyMessage: () -> Any,
+): T {
     contract {
         returns() implies (value != null)
     }

@@ -1,5 +1,5 @@
 package com.android.identity.issuance.evidence
 
 data class EvidenceResponseMessage(
-    val acknowledged: Boolean
+    val acknowledged: Boolean,
 ) : EvidenceResponse()

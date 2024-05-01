@@ -21,9 +21,8 @@ class ConnectionMethodBle(
     val supportsPeripheralServerMode: Boolean,
     val supportsCentralClientMode: Boolean,
     val peripheralServerModeUuid: UUID?,
-    val centralClientModeUuid: UUID?
+    val centralClientModeUuid: UUID?,
 ) : ConnectionMethod() {
-
     /**
      * The L2CAP PSM, if set.
      *
@@ -31,13 +30,12 @@ class ConnectionMethodBle(
      */
     var peripheralServerModePsm = OptionalInt.empty()
 
-
     /**
      * The peripheral MAC address, if set.
      */
     var peripheralServerModeMacAddress: ByteArray? = null
         set(macAddress) {
-            require(macAddress == null || macAddress.size == 6) {                 
+            require(macAddress == null || macAddress.size == 6) {
                 "MAC address should be 6 bytes, got ${macAddress!!.size}"
             }
             field = macAddress
@@ -73,22 +71,27 @@ class ConnectionMethodBle(
         builder.put(OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, supportsPeripheralServerMode)
         builder.put(OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, supportsCentralClientMode)
         if (peripheralServerModeUuid != null) {
-            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
-                uuidToBytes(peripheralServerModeUuid))
+            builder.put(
+                OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
+                uuidToBytes(peripheralServerModeUuid),
+            )
         }
         if (centralClientModeUuid != null) {
             builder.put(
                 OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
-                uuidToBytes(centralClientModeUuid)
+                uuidToBytes(centralClientModeUuid),
             )
         }
         if (peripheralServerModePsm.isPresent) {
-            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM,
-                peripheralServerModePsm.asInt)
+            builder.put(
+                OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM,
+                peripheralServerModePsm.asInt,
+            )
         }
         if (peripheralServerModeMacAddress != null) {
-            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
-                peripheralServerModeMacAddress!!
+            builder.put(
+                OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
+                peripheralServerModeMacAddress!!,
             )
         }
         return encode(
@@ -97,7 +100,7 @@ class ConnectionMethodBle(
                 .add(METHOD_MAX_VERSION)
                 .add(builder.end().build())
                 .end()
-                .build()
+                .build(),
         )
     }
 
@@ -136,12 +139,13 @@ class ConnectionMethodBle(
             if (centralClientModeUuidDi != null) {
                 centralClientModeUuid = uuidFromBytes(centralClientModeUuidDi.asBstr)
             }
-            val cm = ConnectionMethodBle(
-                supportsPeripheralServerMode,
-                supportsCentralClientMode,
-                peripheralServerModeUuid,
-                centralClientModeUuid
-            )
+            val cm =
+                ConnectionMethodBle(
+                    supportsPeripheralServerMode,
+                    supportsCentralClientMode,
+                    peripheralServerModeUuid,
+                    centralClientModeUuid,
+                )
             val psm = map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM)
             if (psm != null) {
                 cm.peripheralServerModePsm = OptionalInt.of(psm.asNumber.toInt())
@@ -165,6 +169,5 @@ class ConnectionMethodBle(
             data.order(ByteOrder.BIG_ENDIAN)
             return UUID(data.getLong(0), data.getLong(8))
         }
-
     }
 }

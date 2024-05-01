@@ -36,7 +36,7 @@ abstract class DataTransportBle(
     context: Context,
     role: Role,
     @JvmField protected var connectionMethod: ConnectionMethodBle,
-    options: DataTransportOptions
+    options: DataTransportOptions,
 ) : DataTransport(context, role, options) {
     protected var serviceUuid: UUID? = null
     protected var connectionMethodToReturn: ConnectionMethodBle
@@ -51,12 +51,13 @@ abstract class DataTransportBle(
 
     init {
         // May be modified during start() to e.g. add the PSM...
-        connectionMethodToReturn = ConnectionMethodBle(
-            connectionMethod.supportsPeripheralServerMode,
-            connectionMethod.supportsCentralClientMode,
-            connectionMethod.peripheralServerModeUuid,
-            connectionMethod.centralClientModeUuid
-        )
+        connectionMethodToReturn =
+            ConnectionMethodBle(
+                connectionMethod.supportsPeripheralServerMode,
+                connectionMethod.supportsCentralClientMode,
+                connectionMethod.peripheralServerModeUuid,
+                connectionMethod.centralClientModeUuid,
+            )
         connectionMethodToReturn.peripheralServerModePsm = connectionMethod.peripheralServerModePsm
         connectionMethodToReturn.peripheralServerModeMacAddress = connectionMethod.peripheralServerModeMacAddress
     }
@@ -73,7 +74,7 @@ abstract class DataTransportBle(
         @JvmStatic
         fun fromNdefRecord(
             record: NdefRecord,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): ConnectionMethodBle? {
             var centralClient = false
             var peripheral = false
@@ -147,12 +148,13 @@ abstract class DataTransportBle(
 
             // Note that the UUID for both modes is the same if both peripheral and
             // central client mode is used!
-            val cm = ConnectionMethodBle(
-                peripheral,
-                centralClient,
-                if (peripheral) uuid else null,
-                if (centralClient) uuid else null
-            )
+            val cm =
+                ConnectionMethodBle(
+                    peripheral,
+                    centralClient,
+                    if (peripheral) uuid else null,
+                    if (centralClient) uuid else null,
+                )
             cm.peripheralServerModePsm = psm
             cm.peripheralServerModeMacAddress = macAddress
             return cm
@@ -162,7 +164,7 @@ abstract class DataTransportBle(
             context: Context,
             cm: ConnectionMethodBle,
             role: Role,
-            options: DataTransportOptions
+            options: DataTransportOptions,
         ): DataTransport {
             require(!(cm.supportsCentralClientMode && cm.supportsPeripheralServerMode)) {
                 "BLE connection method is ambiguous. Use disambiguate()"
@@ -185,7 +187,7 @@ abstract class DataTransportBle(
         fun toNdefRecord(
             cm: ConnectionMethodBle,
             auxiliaryReferences: List<String>,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): Pair<NdefRecord, ByteArray>? {
             // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
             //
@@ -203,22 +205,24 @@ abstract class DataTransportBle(
                 }
                 uuid = cm.centralClientModeUuid
             } else if (cm.supportsCentralClientMode) {
-                leRole = if (isForHandoverSelect) {
-                    // Only Central Role supported
-                    0x01
-                } else {
-                    // Only Peripheral Role supported
-                    0x00
-                }
+                leRole =
+                    if (isForHandoverSelect) {
+                        // Only Central Role supported
+                        0x01
+                    } else {
+                        // Only Peripheral Role supported
+                        0x00
+                    }
                 uuid = cm.centralClientModeUuid
             } else if (cm.supportsPeripheralServerMode) {
-                leRole = if (isForHandoverSelect) {
-                    // Only Peripheral Role supported
-                    0x00
-                } else {
-                    // Only Central Role supported
-                    0x01
-                }
+                leRole =
+                    if (isForHandoverSelect) {
+                        // Only Peripheral Role supported
+                        0x00
+                    } else {
+                        // Only Central Role supported
+                        0x01
+                    }
                 uuid = cm.peripheralServerModeUuid
             } else {
                 throw IllegalStateException("At least one of the BLE modes must be set")
@@ -269,9 +273,10 @@ abstract class DataTransportBle(
                 // TODO: need to actually allocate this number (0x77)
                 baos.write(0x05) // PSM: 4 bytes
                 baos.write(0x77)
-                val psmValue = ByteBuffer.allocate(4)
-                    .order(ByteOrder.LITTLE_ENDIAN)
-                    .putInt(psm.asInt)
+                val psmValue =
+                    ByteBuffer.allocate(4)
+                        .order(ByteOrder.LITTLE_ENDIAN)
+                        .putInt(psm.asInt)
                 try {
                     baos.write(psmValue.array())
                 } catch (e: IOException) {
@@ -279,12 +284,13 @@ abstract class DataTransportBle(
                 }
             }
             val oobData = baos.toByteArray()
-            val record = NdefRecord(
-                NdefRecord.TNF_MIME_MEDIA,
-                "application/vnd.bluetooth.le.oob".toByteArray(),
-                "0".toByteArray(),
-                oobData
-            )
+            val record =
+                NdefRecord(
+                    NdefRecord.TNF_MIME_MEDIA,
+                    "application/vnd.bluetooth.le.oob".toByteArray(),
+                    "0".toByteArray(),
+                    oobData,
+                )
 
             // From 7.1 Alternative Carrier Record
             //
@@ -312,19 +318,26 @@ abstract class DataTransportBle(
                 // of Android 13 with the effect being that the application only sees the first
                 // 512 bytes.
                 Logger.w(
-                    TAG, String.format(
-                        Locale.US, "MTU size is %d, using 512 as "
-                                + "characteristic value size", mtuSize
-                    )
+                    TAG,
+                    String.format(
+                        Locale.US,
+                        "MTU size is %d, using 512 as " +
+                            "characteristic value size",
+                        mtuSize,
+                    ),
                 )
                 characteristicValueSize = 512
             } else {
                 characteristicValueSize = mtuSize - 3
                 Logger.w(
-                    TAG, String.format(
-                        Locale.US, "MTU size is %d, using %d as "
-                                + "characteristic value size", mtuSize, characteristicValueSize
-                    )
+                    TAG,
+                    String.format(
+                        Locale.US,
+                        "MTU size is %d, using %d as " +
+                            "characteristic value size",
+                        mtuSize,
+                        characteristicValueSize,
+                    ),
                 )
             }
             return characteristicValueSize

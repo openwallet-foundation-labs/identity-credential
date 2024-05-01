@@ -13,7 +13,6 @@ import kotlinx.datetime.LocalDate
  * appear in that standard.
  */
 internal object SampleData {
-
     const val givenName = "Erika"
     const val familyName = "Mustermann"
     const val givenNameBirth = "Erika"
@@ -22,10 +21,10 @@ internal object SampleData {
     const val familyNameNationalCharacter = "Бабіак"
 
     val birthDate = LocalDate.parse("1971-09-01")
-    const val birthCountry = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val birthCountry = "UT" // Note: UT doesn't exist in ISO-3166-1 Alpha-2
     val issueDate = LocalDate.parse("2024-03-15")
     val expiryDate = LocalDate.parse("2028-09-01")
-    const val issuingCountry = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val issuingCountry = "UT" // Note: UT doesn't exist in ISO-3166-1 Alpha-2
     const val issuingAuthorityMdl = "Utopia Department of Motor Vehicles"
     const val issuingAuthorityEuPid = "Utopia Central Registry"
     const val documentNumber = "987654321"
@@ -52,16 +51,15 @@ internal object SampleData {
     const val ageOver65 = false
     const val ageOver68 = false
     const val issuingJurisdiction = "State of Utopia"
-    const val nationality = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val nationality = "UT" // Note: UT doesn't exist in ISO-3166-1 Alpha-2
     const val residentStreet = "Sample Street"
     const val residentHouseNumber = "123"
     const val residentPostalCode = "12345"
     const val residentCity = "Sample City"
     const val residentState = "Sample State"
-    const val residentCountry = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val residentCountry = "UT" // Note: UT doesn't exist in ISO-3166-1 Alpha-2
 
     // TODO
-    //val portrait
-    //val signatureUsualMark
-
+    // val portrait
+    // val signatureUsualMark
 }

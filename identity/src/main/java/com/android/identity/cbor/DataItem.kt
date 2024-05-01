@@ -1,9 +1,9 @@
 package com.android.identity.cbor
 
 import com.android.identity.cose.CoseKey
-import com.android.identity.cose.CoseSign1
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseMac0
+import com.android.identity.cose.CoseSign1
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import kotlinx.datetime.Instant
@@ -29,7 +29,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
  * @param majorType the CBOR major type of the data item.
  */
 sealed class DataItem(
-    val majorType: MajorType
+    val majorType: MajorType,
 ) {
     internal abstract fun encode(builder: ByteStringBuilder)
 
@@ -286,7 +286,10 @@ sealed class DataItem(
      * @return the [DataItem] for the given key or the default value.
      * @throws IllegalArgumentException if the data item isn't a [CborMap].
      */
-    fun getOrDefault(key: DataItem, defaultValue: DataItem): DataItem {
+    fun getOrDefault(
+        key: DataItem,
+        defaultValue: DataItem,
+    ): DataItem {
         require(this is CborMap)
         val value = items.get(key)
         if (value == null) {
@@ -303,7 +306,10 @@ sealed class DataItem(
      * @return the [DataItem] for the given key or the default value.
      * @throws IllegalArgumentException if the data item isn't a [CborMap].
      */
-    fun getOrDefault(key: String, defaultValue: DataItem): DataItem {
+    fun getOrDefault(
+        key: String,
+        defaultValue: DataItem,
+    ): DataItem {
         require(this is CborMap)
         val value = items.get(key.toDataItem)
         if (value == null) {
@@ -320,7 +326,10 @@ sealed class DataItem(
      * @return the [DataItem] for the given key or the default value.
      * @throws IllegalArgumentException if the data item isn't a [CborMap].
      */
-    fun getOrDefault(key: Long, defaultValue: DataItem): DataItem {
+    fun getOrDefault(
+        key: Long,
+        defaultValue: DataItem,
+    ): DataItem {
         require(this is CborMap)
         val value = items.get(key.toDataItem)
         if (value == null) {

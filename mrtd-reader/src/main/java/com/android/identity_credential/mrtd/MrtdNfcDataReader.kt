@@ -10,8 +10,11 @@ import kotlin.IllegalArgumentException
 private const val TAG = "MrtdNfcDataReader"
 
 class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdNfcData> {
-    override fun read(rawConnection: CardService, connection: PassportService?,
-                      onStatus: (MrtdNfc.Status) -> Unit): MrtdNfcData {
+    override fun read(
+        rawConnection: CardService,
+        connection: PassportService?,
+        onStatus: (MrtdNfc.Status) -> Unit,
+    ): MrtdNfcData {
         if (connection == null) {
             throw IllegalArgumentException("PassportService is null, card access was not performed")
         }
@@ -19,26 +22,28 @@ class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdN
         var groupsRead = 0
         mrtdLogI(TAG, "Examining DGs")
         // report 1% progress per group info read (as it does not come free)
-        val streams = dataGroups.associateBy({ dgIndex -> dgIndex }) {dgIndex ->
-            if (dgIndex < 1 || dgIndex > 16) {
-                throw IllegalArgumentException("Illegal data group: $dgIndex")
-            }
-            try {
-                val stream = connection.getInputStream(
-                    (PassportService.EF_DG1 + dgIndex - 1).toShort(),
-                    PassportService.DEFAULT_MAX_BLOCKSIZE
-                )
-                val length = stream.length
-                mrtdLogI(TAG, "DG$dgIndex length = $length")
-                totalLength += length
-                groupsRead++
-                mrtdLogI(TAG, "Progress: $groupsRead%")
-                onStatus(MrtdNfc.ReadingData(groupsRead))
-                stream
-            } catch (err: CardServiceException) {
-                null
-            }
-        }.filterValues { it != null }
+        val streams =
+            dataGroups.associateBy({ dgIndex -> dgIndex }) { dgIndex ->
+                if (dgIndex < 1 || dgIndex > 16) {
+                    throw IllegalArgumentException("Illegal data group: $dgIndex")
+                }
+                try {
+                    val stream =
+                        connection.getInputStream(
+                            (PassportService.EF_DG1 + dgIndex - 1).toShort(),
+                            PassportService.DEFAULT_MAX_BLOCKSIZE,
+                        )
+                    val length = stream.length
+                    mrtdLogI(TAG, "DG$dgIndex length = $length")
+                    totalLength += length
+                    groupsRead++
+                    mrtdLogI(TAG, "Progress: $groupsRead%")
+                    onStatus(MrtdNfc.ReadingData(groupsRead))
+                    stream
+                } catch (err: CardServiceException) {
+                    null
+                }
+            }.filterValues { it != null }
         mrtdLogI(TAG, "Examining SOD")
         val sodStream =
             connection.getInputStream(PassportService.EF_SOD, PassportService.DEFAULT_MAX_BLOCKSIZE)
@@ -53,12 +58,13 @@ class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdN
         mrtdLogI(TAG, "Reading SOD")
         val sod = readStream(0, totalLength, sodStream, onProgress)
         var bytesRead = sodLength
-        val dataGroupMap = streams.mapValues { entry ->
-            mrtdLogI(TAG, "Reading DG${entry.key}")
-            val bytes = readStream(bytesRead, totalLength, entry.value!!, onProgress)
-            bytesRead += entry.value!!.length
-            bytes
-        }
+        val dataGroupMap =
+            streams.mapValues { entry ->
+                mrtdLogI(TAG, "Reading DG${entry.key}")
+                val bytes = readStream(bytesRead, totalLength, entry.value!!, onProgress)
+                bytesRead += entry.value!!.length
+                bytes
+            }
         mrtdLogI(TAG, "Finished reading")
         return MrtdNfcData(dataGroupMap, sod)
     }
@@ -68,7 +74,7 @@ class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdN
             bytesReadInitial: Int,
             bytesTotal: Int,
             inputStream: InputStream,
-            onProgress: (Int) -> Unit
+            onProgress: (Int) -> Unit,
         ): ByteArray {
             val bytes = ByteArrayOutputStream()
             val buffer = ByteArray(1024)

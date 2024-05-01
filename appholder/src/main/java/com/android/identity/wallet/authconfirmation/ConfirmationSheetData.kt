@@ -7,11 +7,10 @@ import androidx.compose.runtime.Stable
 @Immutable
 data class ConfirmationSheetData(
     val documentName: String,
-    val elements: List<DocumentElement>
+    val elements: List<DocumentElement>,
 ) {
-
     data class DocumentElement(
         val displayName: String,
-        val requestedElement: RequestedElement
+        val requestedElement: RequestedElement,
     )
 }

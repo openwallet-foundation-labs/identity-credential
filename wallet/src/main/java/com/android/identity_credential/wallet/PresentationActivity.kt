@@ -43,11 +43,11 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
@@ -78,8 +78,11 @@ class PresentationActivity : FragmentActivity() {
         }
 
         fun startPresentation(
-            context: Context, transport: DataTransport, handover: ByteArray,
-            eDeviceKey: EcPrivateKey, deviceEngagement: ByteArray
+            context: Context,
+            transport: DataTransport,
+            handover: ByteArray,
+            eDeviceKey: EcPrivateKey,
+            deviceEngagement: ByteArray,
         ) {
             this.transport = transport
             this.handover = handover
@@ -95,8 +98,8 @@ class PresentationActivity : FragmentActivity() {
             val launchAppIntent = Intent(context, PresentationActivity::class.java)
             launchAppIntent.addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_NO_HISTORY or
-                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS,
             )
             context.startActivity(launchAppIntent)
         }
@@ -135,7 +138,7 @@ class PresentationActivity : FragmentActivity() {
             issuingAuthorityRepository = walletApp.issuingAuthorityRepository,
             trustManager = walletApp.trustManager,
             context = applicationContext,
-            onError = showErrorAndDismiss
+            onError = showErrorAndDismiss,
         )
     }
 
@@ -183,9 +186,10 @@ class PresentationActivity : FragmentActivity() {
             requireConfirmation = false,
             onCanceled = { finish() },
             onSuccess = { finishProcessingRequest(unlockData, credential) },
-            onError = {exception ->
+            onError = { exception ->
                 Logger.e(TAG, exception.toString())
-                finish() },
+                finish()
+            },
         )
     }
 
@@ -202,7 +206,7 @@ class PresentationActivity : FragmentActivity() {
                 keyUnlockData = keyUnlockData,
                 onFinishedProcessing = onFinishedProcessingRequest,
                 onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
-                credential = credential
+                credential = credential,
             )
         }
     }
@@ -219,7 +223,6 @@ class PresentationActivity : FragmentActivity() {
 
         setContent {
             IdentityCredentialTheme {
-
                 val stateDisplay = remember { mutableStateOf("Idle") }
                 val consentPromptData = remember { mutableStateOf<ConsentPromptData?>(null) }
 
@@ -246,14 +249,15 @@ class PresentationActivity : FragmentActivity() {
                             transferHelper?.startProcessingRequest(getDeviceRequest())
                                 ?.let { requestData ->
                                     // update UI state object 'consentPromptData' so we can show ConsentPrompt
-                                    consentPromptData.value = ConsentPromptData(
-                                        credentialId = requestData.document.name,
-                                        documentName = requestData.document.documentConfiguration.displayName,
-                                        credentialData = requestData.document.documentConfiguration.staticData,
-                                        documentRequest = requestData.documentRequest,
-                                        docType = requestData.docType,
-                                        verifier = requestData.trustPoint,
-                                    )
+                                    consentPromptData.value =
+                                        ConsentPromptData(
+                                            credentialId = requestData.document.name,
+                                            documentName = requestData.document.documentConfiguration.displayName,
+                                            credentialData = requestData.document.documentConfiguration.staticData,
+                                            documentRequest = requestData.documentRequest,
+                                            docType = requestData.docType,
+                                            verifier = requestData.trustPoint,
+                                        )
                                 }
                         }
 
@@ -268,26 +272,27 @@ class PresentationActivity : FragmentActivity() {
 
                 ScreenWithAppBar(title = "Presenting", navigationIcon = { }) {
                     Column(
-                        modifier = Modifier
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
                             text = "Sending mDL to reader.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             text = "TODO: finalize UI",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Divider()
                         Text(
                             text = "State: ${stateDisplay.value}",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Divider()
                         Button(onClick = { finish() }) {
@@ -306,7 +311,7 @@ class PresentationActivity : FragmentActivity() {
                             },
                             onCancel = { // user declined submitting data to requesting party
                                 finish() // close activity
-                            }
+                            },
                         )
                     }
                 }
@@ -333,7 +338,6 @@ class PresentationActivity : FragmentActivity() {
         DeviceRetrievalHelper.Builder(
             applicationContext,
             object : DeviceRetrievalHelper.Listener {
-
                 override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
                     Logger.i(TAG, "onEReaderKeyReceived")
                 }
@@ -357,10 +361,9 @@ class PresentationActivity : FragmentActivity() {
                     deviceRetrievalHelper = null
                     state.value = State.NOT_CONNECTED
                 }
-
             },
             ContextCompat.getMainExecutor(applicationContext),
-            eDeviceKey!!
+            eDeviceKey!!,
         )
             .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
             .build().apply {
@@ -368,7 +371,6 @@ class PresentationActivity : FragmentActivity() {
                 deviceRetrievalHelper = this
                 // return the instance
             }
-
 
     private fun disconnect() {
         Logger.i(TAG, "disconnect")

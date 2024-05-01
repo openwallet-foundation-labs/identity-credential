@@ -24,12 +24,13 @@ import java.util.Optional
 object CertificateGenerator {
     private const val CRITICAL = true
     private const val NOT_CRITICAL = false
+
     @JvmStatic
     @Throws(CertIOException::class, CertificateException::class, OperatorCreationException::class)
     fun generateCertificate(
         data: DataMaterial,
         certMaterial: CertificateMaterial,
-        keyMaterial: KeyMaterial
+        keyMaterial: KeyMaterial,
     ): X509Certificate {
         val issuerCert: Optional<X509Certificate> = keyMaterial.issuerCertificate
         val subjectDN = X500Name(data.subjectDN)
@@ -38,29 +39,31 @@ object CertificateGenerator {
         val issuerDN = X500Name(data.issuerDN)
         val contentSigner =
             JcaContentSignerBuilder(keyMaterial.signingAlgorithm).build(keyMaterial.signingKey)
-        val certBuilder = JcaX509v3CertificateBuilder(
-            issuerDN,
-            certMaterial.serialNumber,
-            certMaterial.startDate, certMaterial.endDate,
-            subjectDN,
-            keyMaterial.publicKey
-        )
-
+        val certBuilder =
+            JcaX509v3CertificateBuilder(
+                issuerDN,
+                certMaterial.serialNumber,
+                certMaterial.startDate,
+                certMaterial.endDate,
+                subjectDN,
+                keyMaterial.publicKey,
+            )
 
         // Extensions --------------------------
         val jcaX509ExtensionUtils = JcaX509ExtensionUtils()
         if (issuerCert.isPresent) {
             try {
                 // adds 3 more fields, not present in other cert
-                //				AuthorityKeyIdentifier authorityKeyIdentifier = jcaX509ExtensionUtils.createAuthorityKeyIdentifier(issuerCert.get());
+                // 				AuthorityKeyIdentifier authorityKeyIdentifier = jcaX509ExtensionUtils.createAuthorityKeyIdentifier(issuerCert.get());
                 val authorityKeyIdentifier =
                     jcaX509ExtensionUtils.createAuthorityKeyIdentifier(issuerCert.get().publicKey)
                 certBuilder.addExtension(
                     Extension.authorityKeyIdentifier,
                     NOT_CRITICAL,
-                    authorityKeyIdentifier
+                    authorityKeyIdentifier,
                 )
-            } catch (e: IOException) { // CertificateEncodingException |
+            } catch (e: IOException) {
+                // CertificateEncodingException |
                 throw RuntimeException(e)
             }
         }
@@ -73,12 +76,13 @@ object CertificateGenerator {
         // IssuerAlternativeName
         val issuerAlternativeName: Optional<String> = data.issuerAlternativeName
         if (issuerAlternativeName.isPresent) {
-            val issuerAltName = GeneralNames(
-                GeneralName(
-                    GeneralName.uniformResourceIdentifier,
-                    issuerAlternativeName.get()
+            val issuerAltName =
+                GeneralNames(
+                    GeneralName(
+                        GeneralName.uniformResourceIdentifier,
+                        issuerAlternativeName.get(),
+                    ),
                 )
-            )
             certBuilder.addExtension(Extension.issuerAlternativeName, NOT_CRITICAL, issuerAltName)
         }
 

@@ -12,16 +12,18 @@ import java.security.MessageDigest
 fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): CertificateItem {
     val subject = this.certificate.subjectX500Principal
     val issuer = this.certificate.issuerX500Principal
-    val sha255Fingerprint = hexWithSpaces(
-        MessageDigest.getInstance("SHA-256").digest(
-            this.certificate.encoded
+    val sha255Fingerprint =
+        hexWithSpaces(
+            MessageDigest.getInstance("SHA-256").digest(
+                this.certificate.encoded,
+            ),
         )
-    )
-    val sha1Fingerprint = hexWithSpaces(
-        MessageDigest.getInstance("SHA-1").digest(
-            this.certificate.encoded
+    val sha1Fingerprint =
+        hexWithSpaces(
+            MessageDigest.getInstance("SHA-1").digest(
+                this.certificate.encoded,
+            ),
         )
-    )
     val defaultValue = "<Not part of certificate>"
 
     return CertificateItem(
@@ -37,8 +39,8 @@ fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): Certific
         sha255Fingerprint = sha255Fingerprint,
         sha1Fingerprint = sha1Fingerprint,
         docTypes = docTypes,
-        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(this.certificate.getSubjectKeyIdentifier()) != null ,
-        trustPoint = this
+        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(this.certificate.getSubjectKeyIdentifier()) != null,
+        trustPoint = this,
     )
 }
 

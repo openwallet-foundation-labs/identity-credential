@@ -12,7 +12,8 @@ enum class KeyPurpose(val flagValue: Long) {
     /**
      * Purpose of key: key agreement.
      */
-    AGREE_KEY(1 shl 1);
+    AGREE_KEY(1 shl 1),
+    ;
 
     companion object {
         /**

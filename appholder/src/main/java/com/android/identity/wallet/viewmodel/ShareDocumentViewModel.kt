@@ -10,7 +10,6 @@ import com.android.identity.wallet.transfer.TransferManager
 import com.android.identity.wallet.util.TransferStatus
 
 class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
-
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     var deviceEngagementQr = ObservableField<View>()
     var message = ObservableField<String>()
@@ -20,7 +19,7 @@ class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun startPresentationReverseEngagement(
         reverseEngagementUri: String,
-        originInfos: List<OriginInfo>
+        originInfos: List<OriginInfo>,
     ) {
         if (!hasStarted) {
             transferManager.startPresentationReverseEngagement(reverseEngagementUri, originInfos)
@@ -31,7 +30,7 @@ class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun cancelPresentation() {
         transferManager.stopPresentation(
             sendSessionTerminationMessage = true,
-            useTransportSpecificSessionTermination = false
+            useTransportSpecificSessionTermination = false,
         )
         hasStarted = false
         message.set("Presentation canceled")

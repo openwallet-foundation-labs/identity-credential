@@ -33,7 +33,6 @@ import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.util.asFormattedDateTimeInCurrentTimezone
 
-
 private const val TAG = "CredentialInfoScreen"
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -41,7 +40,7 @@ private const val TAG = "CredentialInfoScreen"
 fun CredentialInfoScreen(
     documentId: String,
     documentModel: DocumentModel,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
 ) {
     val documentInfo = documentModel.getDocumentInfo(documentId)
     if (documentInfo == null) {
@@ -50,31 +49,27 @@ fun CredentialInfoScreen(
         return
     }
 
-
     Box(
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight(),
     ) {
-
         val pagerState = rememberPagerState(pageCount = { documentInfo.credentialInfos.size })
 
         ScreenWithAppBarAndBackButton(
             title = stringResource(R.string.credential_info_screen_title),
-            onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
+            onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
         ) {
-
             if (documentInfo.credentialInfos.size == 0) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
                         text = stringResource(R.string.credential_info_screen_no_credentials),
                         style = MaterialTheme.typography.titleLarge,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
-
             } else {
                 Column {
                     HorizontalPager(
@@ -88,12 +83,13 @@ fun CredentialInfoScreen(
 
         Row(
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .wrapContentHeight()
-                .fillMaxWidth()
-                .height(30.dp)
-                .padding(8.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .wrapContentHeight()
+                    .fillMaxWidth()
+                    .height(30.dp)
+                    .padding(8.dp),
         ) {
             repeat(pagerState.pageCount) { iteration ->
                 val color =
@@ -103,25 +99,26 @@ fun CredentialInfoScreen(
                         MaterialTheme.colorScheme.secondary
                     }
                 Box(
-                    modifier = Modifier
-                        .padding(2.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .size(8.dp)
+                    modifier =
+                        Modifier
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .size(8.dp),
                 )
             }
         }
-
     }
 }
 
-
 @Composable
-private fun CredentialInfo(credentialInfo: CredentialInfo,
-                           credentialIndex: Int,
-                           numCredentials: Int) {
+private fun CredentialInfo(
+    credentialInfo: CredentialInfo,
+    credentialIndex: Int,
+    numCredentials: Int,
+) {
     Column(Modifier.padding(8.dp)) {
-        KeyValuePairText("Credential Number ", "${credentialIndex + 1} of ${numCredentials}")
+        KeyValuePairText("Credential Number ", "${credentialIndex + 1} of $numCredentials")
         KeyValuePairText("Description", credentialInfo.description)
         for ((key, value) in credentialInfo.details) {
             KeyValuePairText(key, value)
@@ -130,8 +127,9 @@ private fun CredentialInfo(credentialInfo: CredentialInfo,
         KeyValuePairText("Signed At", credentialInfo.signedAt.asFormattedDateTimeInCurrentTimezone)
         KeyValuePairText("Valid From", credentialInfo.validFrom.asFormattedDateTimeInCurrentTimezone)
         KeyValuePairText("Valid Until", credentialInfo.validUntil.asFormattedDateTimeInCurrentTimezone)
-        KeyValuePairText("Expected Update",
-            credentialInfo?.expectedUpdate?.asFormattedDateTimeInCurrentTimezone ?: "Not Set"
+        KeyValuePairText(
+            "Expected Update",
+            credentialInfo?.expectedUpdate?.asFormattedDateTimeInCurrentTimezone ?: "Not Set",
         )
     }
 }

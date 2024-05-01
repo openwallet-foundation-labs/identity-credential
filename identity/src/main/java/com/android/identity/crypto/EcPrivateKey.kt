@@ -19,11 +19,9 @@ import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.text.StringBuilder
-
 
 /**
  * An EC private key.
@@ -35,7 +33,6 @@ sealed class EcPrivateKey(
     open val curve: EcCurve,
     open val d: ByteArray,
 ) {
-
     /**
      * Creates a [CoseKey] object for the key.
      *
@@ -75,18 +72,27 @@ sealed class EcPrivateKey(
          * @return a new [EcPrivateKey]
          */
         @OptIn(ExperimentalEncodingApi::class)
-        fun fromPem(pemEncoding: String, publicKey: EcPublicKey): EcPrivateKey {
-            val encoded = Base64.Mime.decode(pemEncoding
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .trim())
-            val kf = when (publicKey.curve) {
-                EcCurve.ED448,
-                EcCurve.ED25519 -> KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
-                EcCurve.X25519,
-                EcCurve.X448 -> KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
-                else -> KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
-            }
+        fun fromPem(
+            pemEncoding: String,
+            publicKey: EcPublicKey,
+        ): EcPrivateKey {
+            val encoded =
+                Base64.Mime.decode(
+                    pemEncoding
+                        .replace("-----BEGIN PRIVATE KEY-----", "")
+                        .replace("-----END PRIVATE KEY-----", "")
+                        .trim(),
+                )
+            val kf =
+                when (publicKey.curve) {
+                    EcCurve.ED448,
+                    EcCurve.ED25519,
+                    -> KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                    EcCurve.X25519,
+                    EcCurve.X448,
+                    -> KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                    else -> KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
+                }
             val spec = PKCS8EncodedKeySpec(encoded)
             val privateKeyJava = kf.generatePrivate(spec)
             return privateKeyJava.toEcPrivateKey(publicKey.javaPublicKey, publicKey.curve)
@@ -101,9 +107,10 @@ sealed class EcPrivateKey(
         fun fromCoseKey(coseKey: CoseKey): EcPrivateKey =
             when (coseKey.keyType) {
                 Cose.COSE_KEY_TYPE_EC2.toDataItem -> {
-                    val curve = EcCurve.fromInt(
-                        coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
-                    )
+                    val curve =
+                        EcCurve.fromInt(
+                            coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt(),
+                        )
                     val keySizeOctets = (curve.bitSize + 7) / 8
                     val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr
                     val y = coseKey.labels[Cose.COSE_KEY_PARAM_Y.toCoseLabel]!!.asBstr
@@ -114,9 +121,10 @@ sealed class EcPrivateKey(
                 }
 
                 Cose.COSE_KEY_TYPE_OKP.toDataItem -> {
-                    val curve = EcCurve.fromInt(
-                        coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
-                    )
+                    val curve =
+                        EcCurve.fromInt(
+                            coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt(),
+                        )
                     val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr
                     val d = coseKey.labels[Cose.COSE_KEY_PARAM_D.toCoseLabel]!!.asBstr
                     EcPrivateKeyOkp(curve, d, x)
@@ -131,7 +139,10 @@ sealed class EcPrivateKey(
 
 // TODO: move to identity-jvm library
 
-fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKey =
+fun PrivateKey.toEcPrivateKey(
+    publicKey: PublicKey,
+    curve: EcCurve,
+): EcPrivateKey =
     when (curve) {
         EcCurve.P256,
         EcCurve.P384,
@@ -139,7 +150,8 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
         EcCurve.BRAINPOOLP256R1,
         EcCurve.BRAINPOOLP320R1,
         EcCurve.BRAINPOOLP384R1,
-        EcCurve.BRAINPOOLP512R1 -> {
+        EcCurve.BRAINPOOLP512R1,
+        -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyDoubleCoordinate
             val priv = this as ECPrivateKey
             EcPrivateKeyDoubleCoordinate(curve, priv.d.toByteArray(), pub.x, pub.y)
@@ -148,7 +160,8 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
         EcCurve.ED25519,
         EcCurve.X25519,
         EcCurve.ED448,
-        EcCurve.X448 -> {
+        EcCurve.X448,
+        -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyOkp
             val privateKeyInfo = PrivateKeyInfo.getInstance(this.getEncoded())
             val encoded = privateKeyInfo.parsePrivateKey().toASN1Primitive().encoded
@@ -157,44 +170,46 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
     }
 
 val EcPrivateKey.javaPrivateKey: PrivateKey
-    get() = when (this.curve) {
-        EcCurve.P256,
-        EcCurve.P384,
-        EcCurve.P521,
-        EcCurve.BRAINPOOLP256R1,
-        EcCurve.BRAINPOOLP320R1,
-        EcCurve.BRAINPOOLP384R1,
-        EcCurve.BRAINPOOLP512R1 -> {
-            val keyFactory = KeyFactory.getInstance("EC")
-            keyFactory.generatePrivate(
-                ECPrivateKeySpec(
-                    BigIntegers.fromUnsignedByteArray(this.d),
-                    ECNamedCurveTable.getParameterSpec(this.curve.SECGName)
+    get() =
+        when (this.curve) {
+            EcCurve.P256,
+            EcCurve.P384,
+            EcCurve.P521,
+            EcCurve.BRAINPOOLP256R1,
+            EcCurve.BRAINPOOLP320R1,
+            EcCurve.BRAINPOOLP384R1,
+            EcCurve.BRAINPOOLP512R1,
+            -> {
+                val keyFactory = KeyFactory.getInstance("EC")
+                keyFactory.generatePrivate(
+                    ECPrivateKeySpec(
+                        BigIntegers.fromUnsignedByteArray(this.d),
+                        ECNamedCurveTable.getParameterSpec(this.curve.SECGName),
+                    ),
                 )
-            )
-        }
-
-        EcCurve.ED25519,
-        EcCurve.X25519,
-        EcCurve.ED448,
-        EcCurve.X448 -> {
-            val ids = when (this.curve) {
-                EcCurve.ED25519 -> Pair("Ed25519", EdECObjectIdentifiers.id_Ed25519)
-                EcCurve.X25519 -> Pair("X25519", EdECObjectIdentifiers.id_X25519)
-                EcCurve.ED448 -> Pair("Ed448", EdECObjectIdentifiers.id_Ed448)
-                EcCurve.X448 -> Pair("X448", EdECObjectIdentifiers.id_X448)
-                else -> throw IllegalStateException()
             }
-            val keyFactory = KeyFactory.getInstance(ids.first)
-            keyFactory.generatePrivate(
-                PKCS8EncodedKeySpec(
-                    PrivateKeyInfo(
-                        AlgorithmIdentifier(ids.second),
-                        DEROctetString(this.d)
-                    ).encoded
+
+            EcCurve.ED25519,
+            EcCurve.X25519,
+            EcCurve.ED448,
+            EcCurve.X448,
+            -> {
+                val ids =
+                    when (this.curve) {
+                        EcCurve.ED25519 -> Pair("Ed25519", EdECObjectIdentifiers.id_Ed25519)
+                        EcCurve.X25519 -> Pair("X25519", EdECObjectIdentifiers.id_X25519)
+                        EcCurve.ED448 -> Pair("Ed448", EdECObjectIdentifiers.id_Ed448)
+                        EcCurve.X448 -> Pair("X448", EdECObjectIdentifiers.id_X448)
+                        else -> throw IllegalStateException()
+                    }
+                val keyFactory = KeyFactory.getInstance(ids.first)
+                keyFactory.generatePrivate(
+                    PKCS8EncodedKeySpec(
+                        PrivateKeyInfo(
+                            AlgorithmIdentifier(ids.second),
+                            DEROctetString(this.d),
+                        ).encoded,
+                    ),
                 )
-            )
+            }
         }
-    }
-
-

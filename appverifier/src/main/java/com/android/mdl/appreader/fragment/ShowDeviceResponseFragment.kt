@@ -37,13 +37,11 @@ import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.logDebug
 import org.json.JSONObject
 import java.security.MessageDigest
-import java.security.interfaces.ECPublicKey
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class ShowDeviceResponseFragment : Fragment() {
-
     companion object {
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MICOV_DOCTYPE = "org.micov.1"
@@ -64,46 +62,52 @@ class ShowDeviceResponseFragment : Fragment() {
     private var signatureBytes: ByteArray? = null
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
-
         _binding = FragmentShowDeviceResponseBinding.inflate(inflater, container, false)
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
         return binding.root
-
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         val responseJson = JSONObject(args.bundle.getString("responseJson")!!)
         val nonce = args.bundle.getByteArray("nonce")!!
         val requestIdentityKeyPair = args.requestIdentityKeyPair
-        val requestIdentityKey = requestIdentityKeyPair.private.toEcPrivateKey(
-            requestIdentityKeyPair.public,
-            EcCurve.P256
-        )
+        val requestIdentityKey =
+            requestIdentityKeyPair.private.toEcPrivateKey(
+                requestIdentityKeyPair.public,
+                EcCurve.P256,
+            )
 
         val encryptedCredentialDocumentBase64 = responseJson.getString("token")!!
-        val encryptedCredentialDocument = Base64.decode(encryptedCredentialDocumentBase64, Base64.URL_SAFE or Base64.NO_WRAP )
+        val encryptedCredentialDocument = Base64.decode(encryptedCredentialDocumentBase64, Base64.URL_SAFE or Base64.NO_WRAP)
 
         val (cipherText, encapsulatedPublicKey) = CredmanUtil.parseCredentialDocument(encryptedCredentialDocument)
 
         val uncompressed = (requestIdentityKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
-        val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
-            nonce,
-            requireContext().packageName,
-            Crypto.digest(Algorithm.SHA256, uncompressed)
-        )
+        val encodedSessionTranscript =
+            CredmanUtil.generateAndroidSessionTranscript(
+                nonce,
+                requireContext().packageName,
+                Crypto.digest(Algorithm.SHA256, uncompressed),
+            )
 
-        val encodedDeviceResponse = Crypto.hpkeDecrypt(
-            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-            requestIdentityKey,
-            cipherText,
-            encodedSessionTranscript,
-            encapsulatedPublicKey)
+        val encodedDeviceResponse =
+            Crypto.hpkeDecrypt(
+                Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                requestIdentityKey,
+                cipherText,
+                encodedSessionTranscript,
+                encapsulatedPublicKey,
+            )
 
         val parser = DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript)
         val deviceResponse = parser.parse()
@@ -115,7 +119,7 @@ class ShowDeviceResponseFragment : Fragment() {
         portraitBytes?.let { pb ->
             logDebug("Showing portrait " + pb.size + " bytes")
             binding.ivPortrait.setImageBitmap(
-                BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size)
+                BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size),
             )
             binding.ivPortrait.visibility = View.VISIBLE
         }
@@ -123,18 +127,16 @@ class ShowDeviceResponseFragment : Fragment() {
         signatureBytes?.let { signature ->
             logDebug("Showing signature " + signature.size + " bytes")
             binding.ivSignature.setImageBitmap(
-                BitmapFactory.decodeByteArray(signatureBytes, 0, signature.size)
+                BitmapFactory.decodeByteArray(signatureBytes, 0, signature.size),
             )
             binding.ivSignature.visibility = View.VISIBLE
         }
 
         binding.btClose.setOnClickListener {
             findNavController().navigate(
-                ShowDeviceResponseFragmentDirections.toRequestOptions(false)
+                ShowDeviceResponseFragmentDirections.toRequestOptions(false),
             )
         }
-
-
     }
 
     private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
@@ -143,33 +145,39 @@ class ShowDeviceResponseFragment : Fragment() {
         for (doc in documents) {
             if (!checkPortraitPresenceIfRequired(doc)) {
                 // Warn if portrait isn't included in the response.
-                sb.append("<h3>WARNING: <font color=\"red\">No portrait image provided "
-                        + "for ${doc.docType}.</font></h3><br>")
-                sb.append("<i>This means it's not possible to verify the presenter is the authorized "
-                        + "holder. Be careful doing any business transactions or inquiries until "
-                        + "proper identification is confirmed.</i><br>")
+                sb.append(
+                    "<h3>WARNING: <font color=\"red\">No portrait image provided " +
+                        "for ${doc.docType}.</font></h3><br>",
+                )
+                sb.append(
+                    "<i>This means it's not possible to verify the presenter is the authorized " +
+                        "holder. Be careful doing any business transactions or inquiries until " +
+                        "proper identification is confirmed.</i><br>",
+                )
                 sb.append("<br>")
             }
         }
 
         sb.append("Number of documents returned: <b>${documents.size}</b><br>")
-        //sb.append("Address: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
+        // sb.append("Address: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
         sb.append("<br>")
         for (doc in documents) {
             // Get primary color from theme to use in the HTML formatted document.
-            val color = String.format(
-                "#%06X",
-                0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
-            )
+            val color =
+                String.format(
+                    "#%06X",
+                    0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data,
+                )
             sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
 
             var certChain = doc.issuerCertificateChain.javaX509Certificates
             val customValidators = CustomValidators.getByDocType(doc.docType)
-            val result = VerifierApp.trustManagerInstance.verify(
-                chain = certChain,
-                customValidators = customValidators
-            )
-            if (result.trustChain.any()){
+            val result =
+                VerifierApp.trustManagerInstance.verify(
+                    chain = certChain,
+                    customValidators = customValidators,
+                )
+            if (result.trustChain.any()) {
                 certChain = result.trustChain
             }
             if (!result.isTrusted) {
@@ -180,9 +188,10 @@ class ShowDeviceResponseFragment : Fragment() {
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
 
             var macOrSignatureString = "MAC"
-            if (doc.deviceSignedAuthenticatedViaSignature)
+            if (doc.deviceSignedAuthenticatedViaSignature) {
                 macOrSignatureString = "ECDSA"
-            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated (${macOrSignatureString})<br>")
+            }
+            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated ($macOrSignatureString)<br>")
 
             sb.append("<h6>MSO</h6>")
             val df = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -205,10 +214,11 @@ class ShowDeviceResponseFragment : Fragment() {
             // Just show the SHA-1 of DeviceKey since all we're interested in here is whether
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
-            val deviceKeySha1 = FormatUtil.encodeToString(
-                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.javaPublicKey.encoded)
-            )
-            sb.append("${getFormattedCheck(true)}SHA-1: ${deviceKeySha1}<br>")
+            val deviceKeySha1 =
+                FormatUtil.encodeToString(
+                    MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.javaPublicKey.encoded),
+                )
+            sb.append("${getFormattedCheck(true)}SHA-1: $deviceKeySha1<br>")
             // TODO: log DeviceKey's that we've seen and show warning if a DeviceKey is seen
             //  a second time. Also would want button in Settings page to clear the log.
 
@@ -251,7 +261,10 @@ class ShowDeviceResponseFragment : Fragment() {
         return sb.toString()
     }
 
-    private fun isPortraitApplicable(docType: String, namespace: String?): Boolean{
+    private fun isPortraitApplicable(
+        docType: String,
+        namespace: String?,
+    ): Boolean {
         val hasPortrait = docType == MDL_DOCTYPE
         val namespaceContainsPortrait = namespace == MDL_NAMESPACE
         return hasPortrait && namespaceContainsPortrait
@@ -260,7 +273,7 @@ class ShowDeviceResponseFragment : Fragment() {
     private fun isPortraitElement(
         docType: String,
         namespace: String?,
-        entryName: String?
+        entryName: String?,
     ): Boolean {
         val portraitApplicable = isPortraitApplicable(docType, namespace)
         return portraitApplicable && entryName == "portrait"
@@ -283,7 +296,9 @@ class ShowDeviceResponseFragment : Fragment() {
         return true
     }
 
-    private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {
+    private fun Resources.Theme.attr(
+        @AttrRes attribute: Int,
+    ): TypedValue {
         val typedValue = TypedValue()
         if (!resolveAttribute(attribute, typedValue, true)) {
             throw IllegalArgumentException("Failed to resolve attribute: $attribute")
@@ -291,18 +306,20 @@ class ShowDeviceResponseFragment : Fragment() {
         return typedValue
     }
 
-    private fun getFormattedCheck(authenticated: Boolean) = if (authenticated) {
-        "<font color=green>&#x2714;</font> "
-    } else {
-        "<font color=red>&#x274C;</font> "
-    }
-
-    private var callback = object : OnBackPressedCallback(true /* enabled by default */) {
-        override fun handleOnBackPressed() {
-            TransferManager.getInstance(requireContext()).disconnect()
-            findNavController().navigate(R.id.toRequestOptions)
+    private fun getFormattedCheck(authenticated: Boolean) =
+        if (authenticated) {
+            "<font color=green>&#x2714;</font> "
+        } else {
+            "<font color=red>&#x274C;</font> "
         }
-    }
+
+    private var callback =
+        object : OnBackPressedCallback(true /* enabled by default */) {
+            override fun handleOnBackPressed() {
+                TransferManager.getInstance(requireContext()).disconnect()
+                findNavController().navigate(R.id.toRequestOptions)
+            }
+        }
 
     override fun onDestroyView() {
         super.onDestroyView()

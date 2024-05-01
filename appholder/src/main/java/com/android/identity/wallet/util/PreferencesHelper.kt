@@ -34,59 +34,43 @@ object PreferencesHelper {
         if (!storageDir.exists()) {
             storageDir.mkdir()
         }
-        return storageDir;
+        return storageDir
     }
 
-    fun isBleDataRetrievalEnabled(): Boolean =
-        sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL, true)
+    fun isBleDataRetrievalEnabled(): Boolean = sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL, true)
 
-    fun setBleDataRetrievalEnabled(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL, enabled) }
+    fun setBleDataRetrievalEnabled(enabled: Boolean) = sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL, enabled) }
 
-    fun isBleDataRetrievalPeripheralModeEnabled(): Boolean =
-        sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false)
+    fun isBleDataRetrievalPeripheralModeEnabled(): Boolean = sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false)
 
     fun setBlePeripheralDataRetrievalMode(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, enabled) }
 
-    fun isBleL2capEnabled(): Boolean =
-        sharedPreferences.getBoolean(BLE_DATA_L2CAP, false)
+    fun isBleL2capEnabled(): Boolean = sharedPreferences.getBoolean(BLE_DATA_L2CAP, false)
 
-    fun setBleL2CAPEnabled(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(BLE_DATA_L2CAP, enabled) }
+    fun setBleL2CAPEnabled(enabled: Boolean) = sharedPreferences.edit { putBoolean(BLE_DATA_L2CAP, enabled) }
 
-    fun isBleClearCacheEnabled(): Boolean =
-        sharedPreferences.getBoolean(BLE_CLEAR_CACHE, false)
+    fun isBleClearCacheEnabled(): Boolean = sharedPreferences.getBoolean(BLE_CLEAR_CACHE, false)
 
-    fun setBleClearCacheEnabled(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(BLE_CLEAR_CACHE, enabled) }
+    fun setBleClearCacheEnabled(enabled: Boolean) = sharedPreferences.edit { putBoolean(BLE_CLEAR_CACHE, enabled) }
 
-    fun isWifiDataRetrievalEnabled(): Boolean =
-        sharedPreferences.getBoolean(WIFI_DATA_RETRIEVAL, false)
+    fun isWifiDataRetrievalEnabled(): Boolean = sharedPreferences.getBoolean(WIFI_DATA_RETRIEVAL, false)
 
-    fun setWifiDataRetrievalEnabled(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(WIFI_DATA_RETRIEVAL, enabled) }
+    fun setWifiDataRetrievalEnabled(enabled: Boolean) = sharedPreferences.edit { putBoolean(WIFI_DATA_RETRIEVAL, enabled) }
 
-    fun isNfcDataRetrievalEnabled(): Boolean =
-        sharedPreferences.getBoolean(NFC_DATA_RETRIEVAL, false)
+    fun isNfcDataRetrievalEnabled(): Boolean = sharedPreferences.getBoolean(NFC_DATA_RETRIEVAL, false)
 
-    fun setNfcDataRetrievalEnabled(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(NFC_DATA_RETRIEVAL, enabled) }
+    fun setNfcDataRetrievalEnabled(enabled: Boolean) = sharedPreferences.edit { putBoolean(NFC_DATA_RETRIEVAL, enabled) }
 
-    fun isConnectionAutoCloseEnabled(): Boolean =
-        sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
+    fun isConnectionAutoCloseEnabled(): Boolean = sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
 
-    fun setConnectionAutoCloseEnabled(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(CONNECTION_AUTO_CLOSE, enabled) }
+    fun setConnectionAutoCloseEnabled(enabled: Boolean) = sharedPreferences.edit { putBoolean(CONNECTION_AUTO_CLOSE, enabled) }
 
-    fun shouldUseStaticHandover(): Boolean =
-        sharedPreferences.getBoolean(STATIC_HANDOVER, false)
+    fun shouldUseStaticHandover(): Boolean = sharedPreferences.getBoolean(STATIC_HANDOVER, false)
 
-    fun setUseStaticHandover(enabled: Boolean) =
-        sharedPreferences.edit { putBoolean(STATIC_HANDOVER, enabled) }
+    fun setUseStaticHandover(enabled: Boolean) = sharedPreferences.edit { putBoolean(STATIC_HANDOVER, enabled) }
 
-    fun isDebugLoggingEnabled(): Boolean =
-        sharedPreferences.getBoolean(DEBUG_LOG, true)
+    fun isDebugLoggingEnabled(): Boolean = sharedPreferences.getBoolean(DEBUG_LOG, true)
 
     fun setDebugLoggingEnabled(enabled: Boolean) =
         sharedPreferences
@@ -97,8 +81,8 @@ object PreferencesHelper {
         EcCurve.fromInt(
             sharedPreferences.getInt(
                 EPHEMERAL_KEY_CURVE_OPTION,
-                EcCurve.P256.coseCurveIdentifier
-            )
+                EcCurve.P256.coseCurveIdentifier,
+            ),
         )
 
     fun setEphemeralKeyCurveOption(newValue: EcCurve) =

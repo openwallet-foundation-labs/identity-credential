@@ -26,7 +26,6 @@ import com.android.identity.cbor.DataItem
  * @param encodedStaticAuthData the bytes of `StaticAuthData` CBOR.
  */
 class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
-
     /**
      * Parses the StaticAuthData.
      *
@@ -36,9 +35,10 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
      * @exception IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): StaticAuthData = StaticAuthData().apply {
-        parse(encodedStaticAuthData)
-    }
+    fun parse(): StaticAuthData =
+        StaticAuthData().apply {
+            parse(encodedStaticAuthData)
+        }
 
     /**
      * An object used to represent data parsed from `StaticAuthData`
@@ -75,6 +75,5 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
                 issuerAuth = Cbor.encode(this["issuerAuth"])
                 parseDigestIdMapping(this["digestIdMapping"])
             }
-
     }
 }

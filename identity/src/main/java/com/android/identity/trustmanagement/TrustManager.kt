@@ -32,7 +32,6 @@ import java.security.cert.X509Certificate
  * root CA.
  */
 class TrustManager {
-
     private val certificates = mutableMapOf<String, TrustPoint>()
 
     /**
@@ -43,7 +42,7 @@ class TrustManager {
         var isTrusted: Boolean,
         var trustChain: List<X509Certificate> = listOf(),
         var trustPoints: List<TrustPoint> = listOf(),
-        var error: Throwable? = null
+        var error: Throwable? = null,
     )
 
     /**
@@ -55,7 +54,6 @@ class TrustManager {
                 certificates[key] = trustPoint
             }
         }
-
 
     /**
      * Get all the [TrustPoint]s in the [TrustManager].
@@ -88,7 +86,7 @@ class TrustManager {
      */
     fun verify(
         chain: List<X509Certificate>,
-        customValidators: List<PKIXCertPathChecker> = emptyList()
+        customValidators: List<PKIXCertPathChecker> = emptyList(),
     ): TrustResult =
         try {
             val trustPoints = getAllTrustPoints(chain)
@@ -98,7 +96,7 @@ class TrustManager {
                 TrustResult(
                     isTrusted = true,
                     trustPoints = trustPoints,
-                    trustChain = completeChain
+                    trustChain = completeChain,
                 )
             } catch (e: Throwable) {
                 // there are validation errors, but the trust chain could be built.
@@ -106,24 +104,24 @@ class TrustManager {
                     isTrusted = false,
                     trustPoints = trustPoints,
                     trustChain = completeChain,
-                    error = e
+                    error = e,
                 )
             }
         } catch (e: Throwable) {
             // no CA certificate could be found.
             TrustResult(
                 isTrusted = false,
-                error = e
+                error = e,
             )
         }
-
 
     private fun getAllTrustPoints(chain: List<X509Certificate>): List<TrustPoint> {
         val result = mutableListOf<TrustPoint>()
 
         // only an exception if not a single CA certificate is found
-        var caCertificate: TrustPoint? = findCaCertificate(chain)
-            ?: throw CertificateException("No trusted root certificate could not be found")
+        var caCertificate: TrustPoint? =
+            findCaCertificate(chain)
+                ?: throw CertificateException("No trusted root certificate could not be found")
         result.add(caCertificate!!)
         while (caCertificate != null && !TrustManagerUtil.isSelfSigned(caCertificate.certificate)) {
             caCertificate = findCaCertificate(listOf(caCertificate.certificate))
@@ -154,7 +152,7 @@ class TrustManager {
      */
     private fun validateCertificationTrustPath(
         certificationTrustPath: List<X509Certificate>,
-        customValidators: List<PKIXCertPathChecker>
+        customValidators: List<PKIXCertPathChecker>,
     ) {
         val certIterator = certificationTrustPath.iterator()
         val leafCertificate = certIterator.next()

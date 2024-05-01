@@ -33,9 +33,6 @@ import com.android.identity.cose.Cose.coseSign1Sign
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.CredentialFactory
-import com.android.identity.document.Document
-import com.android.identity.document.DocumentStore
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
@@ -44,6 +41,9 @@ import com.android.identity.crypto.Crypto.createX509v3Certificate
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
+import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -103,34 +103,36 @@ class DeviceRetrievalHelperTest {
     private lateinit var timeValidityEnd: Timestamp
     private lateinit var documentSignerKey: EcPrivateKey
     private lateinit var documentSignerCert: Certificate
-    
+
     @Before
     fun setUp() {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
-        
+
         storageEngine = EphemeralStorageEngine()
         secureAreaRepository = SecureAreaRepository()
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
         var credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(MdocCredential::class)
-        val documentStore = DocumentStore(
-            storageEngine,
-            secureAreaRepository,
-            credentialFactory
-        )
+        val documentStore =
+            DocumentStore(
+                storageEngine,
+                secureAreaRepository,
+                credentialFactory,
+            )
 
         // Create the document...
         document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
-        val nameSpacedData = NameSpacedData.Builder()
-            .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
-            .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
-            .putEntryBoolean(AAMVA_NAMESPACE, "real_id", true)
-            .build()
+        val nameSpacedData =
+            NameSpacedData.Builder()
+                .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
+                .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
+                .putEntryBoolean(AAMVA_NAMESPACE, "real_id", true)
+                .build()
         document.applicationData.setNameSpacedData("documentData", nameSpacedData)
 
         // Create a credential... make sure the credential used supports both
@@ -139,55 +141,61 @@ class DeviceRetrievalHelperTest {
         timeSigned = ofEpochMilli(nowMillis)
         timeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
         timeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        mdocCredential = MdocCredential(
-            document,
-            null,
-            CREDENTIAL_DOMAIN,
-            secureArea,
-            SoftwareCreateKeySettings.Builder(ByteArray(0))
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build(),
-            MDL_DOCTYPE
-        )
+        mdocCredential =
+            MdocCredential(
+                document,
+                null,
+                CREDENTIAL_DOMAIN,
+                secureArea,
+                SoftwareCreateKeySettings.Builder(ByteArray(0))
+                    .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+                    .build(),
+                MDL_DOCTYPE,
+            )
         Assert.assertFalse(mdocCredential.isCertified)
 
         // Generate an MSO and issuer-signed data for this credential.
-        val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
-            MDL_DOCTYPE,
-            mdocCredential.attestation.certificates[0].publicKey
-        )
-        msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
-        val issuerNameSpaces = generateIssuerNameSpaces(
-            nameSpacedData,
-            Random,
-            16,
-            null
-        )
-        for (nameSpaceName in issuerNameSpaces.keys) {
-            val digests = calculateDigestsForNameSpace(
-                nameSpaceName,
-                issuerNameSpaces,
-                Algorithm.SHA256
+        val msoGenerator =
+            MobileSecurityObjectGenerator(
+                "SHA-256",
+                MDL_DOCTYPE,
+                mdocCredential.attestation.certificates[0].publicKey,
             )
+        msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
+        val issuerNameSpaces =
+            generateIssuerNameSpaces(
+                nameSpacedData,
+                Random,
+                16,
+                null,
+            )
+        for (nameSpaceName in issuerNameSpaces.keys) {
+            val digests =
+                calculateDigestsForNameSpace(
+                    nameSpaceName,
+                    issuerNameSpaces,
+                    Algorithm.SHA256,
+                )
             msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
         }
         val validFrom = now()
-        val validUntil = fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
-        )
+        val validUntil =
+            fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000,
+            )
         documentSignerKey = createEcPrivateKey(EcCurve.P256)
-        documentSignerCert = createX509v3Certificate(
-            documentSignerKey.publicKey,
-            documentSignerKey,
-            null,
-            Algorithm.ES256,
-            "1",
-            "CN=State Of Utopia",
-            "CN=State Of Utopia",
-            validFrom,
-            validUntil, setOf(), listOf()
-        )
+        documentSignerCert =
+            createX509v3Certificate(
+                documentSignerKey.publicKey,
+                documentSignerKey,
+                null,
+                Algorithm.ES256,
+                "1",
+                "CN=State Of Utopia",
+                "CN=State Of Utopia",
+                validFrom,
+                validUntil, setOf(), listOf(),
+            )
         val mso = msoGenerator.generate()
         val taggedEncodedMso = encode(Tagged(24, Bstr(mso)))
 
@@ -195,37 +203,41 @@ class DeviceRetrievalHelperTest {
         //
         // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
         //
-        val protectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
-            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
-        )
-        val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
-            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(java.util.List.of(documentSignerCert)).toDataItem
-        )
-        val encodedIssuerAuth = encode(
-            coseSign1Sign(
-                documentSignerKey,
-                taggedEncodedMso,
-                true,
-                Algorithm.ES256,
-                protectedHeaders,
-                unprotectedHeaders
-            ).toDataItem
-        )
-        val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-            stripIssuerNameSpaces(issuerNameSpaces, null),
-            encodedIssuerAuth
-        ).generate()
+        val protectedHeaders =
+            java.util.Map.of<CoseLabel, DataItem>(
+                CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem,
+            )
+        val unprotectedHeaders =
+            java.util.Map.of<CoseLabel, DataItem>(
+                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                CertificateChain(java.util.List.of(documentSignerCert)).toDataItem,
+            )
+        val encodedIssuerAuth =
+            encode(
+                coseSign1Sign(
+                    documentSignerKey,
+                    taggedEncodedMso,
+                    true,
+                    Algorithm.ES256,
+                    protectedHeaders,
+                    unprotectedHeaders,
+                ).toDataItem,
+            )
+        val issuerProvidedAuthenticationData =
+            StaticAuthDataGenerator(
+                stripIssuerNameSpaces(issuerNameSpaces, null),
+                encodedIssuerAuth,
+            ).generate()
 
         // Now that we have issuer-provided authentication data we certify the credential.
         mdocCredential.certify(
             issuerProvidedAuthenticationData,
             timeValidityBegin,
-            timeValidityEnd
+            timeValidityEnd,
         )
     }
-    
+
     @Test
     fun testPresentation() {
         val context = InstrumentationRegistry.getTargetContext()
@@ -233,56 +245,63 @@ class DeviceRetrievalHelperTest {
         val condVarDeviceDisconnected = ConditionVariable()
 
         // TODO: use loopback instead of TCP transport
-        val proverTransport = DataTransportTcp(
-            context,
-            DataTransport.Role.MDOC,
-            DataTransportOptions.Builder().build()
-        )
-        val verifierTransport = DataTransportTcp(
-            context,
-            DataTransport.Role.MDOC_READER,
-            DataTransportOptions.Builder().build()
-        )
+        val proverTransport =
+            DataTransportTcp(
+                context,
+                DataTransport.Role.MDOC,
+                DataTransportOptions.Builder().build(),
+            )
+        val verifierTransport =
+            DataTransportTcp(
+                context,
+                DataTransport.Role.MDOC_READER,
+                DataTransportOptions.Builder().build(),
+            )
         val executor: Executor = Executors.newSingleThreadExecutor()
-        val qrHelperListener: QrEngagementHelper.Listener = object : QrEngagementHelper.Listener {
-            override fun onDeviceConnecting() {}
-            override fun onDeviceConnected(transport: DataTransport) {
-                condVarDeviceConnected.open()
-                Assert.assertEquals(proverTransport, transport)
-            }
+        val qrHelperListener: QrEngagementHelper.Listener =
+            object : QrEngagementHelper.Listener {
+                override fun onDeviceConnecting() {}
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
+                override fun onDeviceConnected(transport: DataTransport) {
+                    condVarDeviceConnected.open()
+                    Assert.assertEquals(proverTransport, transport)
+                }
+
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
             }
-        }
         val eDeviceKey = createEcPrivateKey(EcCurve.P256)
-        val qrHelper = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            DataTransportOptions.Builder().build(),
-            qrHelperListener,
-            executor
-        )
-            .setTransports(java.util.List.of(proverTransport))
-            .build()
+        val qrHelper =
+            QrEngagementHelper.Builder(
+                context,
+                eDeviceKey.publicKey,
+                DataTransportOptions.Builder().build(),
+                qrHelperListener,
+                executor,
+            )
+                .setTransports(java.util.List.of(proverTransport))
+                .build()
         val encodedDeviceEngagement = qrHelper.deviceEngagement
         val eReaderKey = createEcPrivateKey(EcCurve.P256)
         val encodedEReaderKeyPub =
             encode(eReaderKey.publicKey.toCoseKey(java.util.Map.of()).toDataItem)
-        val encodedSessionTranscript = encode(
-            CborArray.builder()
-                .addTaggedEncodedCbor(encodedDeviceEngagement)
-                .addTaggedEncodedCbor(encodedEReaderKeyPub)
-                .add(Simple.NULL)
-                .end()
-                .build()
-        )
-        val seReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
-            eReaderKey,
-            eDeviceKey.publicKey,
-            encodedSessionTranscript
-        )
+        val encodedSessionTranscript =
+            encode(
+                CborArray.builder()
+                    .addTaggedEncodedCbor(encodedDeviceEngagement)
+                    .addTaggedEncodedCbor(encodedEReaderKeyPub)
+                    .add(Simple.NULL)
+                    .end()
+                    .build(),
+            )
+        val seReader =
+            SessionEncryption(
+                SessionEncryption.Role.MDOC_READER,
+                eReaderKey,
+                eDeviceKey.publicKey,
+                encodedSessionTranscript,
+            )
         val mdlItemsToRequest: MutableMap<String, Map<String, Boolean>> = HashMap()
         val mdlNsItems: MutableMap<String, Boolean> = HashMap()
         mdlNsItems["family_name"] = true
@@ -291,150 +310,165 @@ class DeviceRetrievalHelperTest {
         val aamvaNsItems: MutableMap<String, Boolean> = HashMap()
         aamvaNsItems["real_id"] = false
         mdlItemsToRequest[AAMVA_NAMESPACE] = aamvaNsItems
-        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
-            .addDocumentRequest(
-                MDL_DOCTYPE,
-                mdlItemsToRequest,
-                null,
-                null,
-                Algorithm.UNSET,
-                null
-            )
-            .generate()
+        val encodedDeviceRequest =
+            DeviceRequestGenerator(encodedSessionTranscript)
+                .addDocumentRequest(
+                    MDL_DOCTYPE,
+                    mdlItemsToRequest,
+                    null,
+                    null,
+                    Algorithm.UNSET,
+                    null,
+                )
+                .generate()
         val sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest, null)
-        verifierTransport.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {}
-            override fun onDisconnected() {}
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+        verifierTransport.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {}
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
+                override fun onConnected() {}
 
-            override fun onMessageReceived() {
-                val data = verifierTransport.getMessage()
-                val (first, second) = seReader.decryptMessage(
-                    data!!
-                )
-                Assert.assertNull(second)
-                val dr = DeviceResponseParser(
-                    first!!,
-                    encodedSessionTranscript
-                )
-                    .setEphemeralReaderKey(eReaderKey)
-                    .parse()
-                Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
-                Assert.assertEquals("1.0", dr.version)
-                val documents: Collection<DeviceResponseParser.Document> = dr.documents
-                Assert.assertEquals(1, documents.size.toLong())
-                val d = documents.iterator().next()
-                Assert.assertEquals(MDL_DOCTYPE, d.docType)
-                Assert.assertEquals(0, d.deviceNamespaces.size.toLong())
-                Assert.assertEquals(2, d.issuerNamespaces.size.toLong())
-                Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size.toLong())
-                Assert.assertEquals(
-                    "Erika",
-                    d.getIssuerEntryString(MDL_NAMESPACE, "given_name")
-                )
-                Assert.assertEquals(
-                    "Mustermann",
-                    d.getIssuerEntryString(MDL_NAMESPACE, "family_name")
-                )
-                Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size.toLong())
-                Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"))
+                override fun onDisconnected() {}
 
-                // Send a close message (status 20 is "session termination")
-                verifierTransport.sendMessage(
-                    seReader.encryptMessage(
-                        null,
-                        Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
+
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
+
+                override fun onMessageReceived() {
+                    val data = verifierTransport.getMessage()
+                    val (first, second) =
+                        seReader.decryptMessage(
+                            data!!,
+                        )
+                    Assert.assertNull(second)
+                    val dr =
+                        DeviceResponseParser(
+                            first!!,
+                            encodedSessionTranscript,
+                        )
+                            .setEphemeralReaderKey(eReaderKey)
+                            .parse()
+                    Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
+                    Assert.assertEquals("1.0", dr.version)
+                    val documents: Collection<DeviceResponseParser.Document> = dr.documents
+                    Assert.assertEquals(1, documents.size.toLong())
+                    val d = documents.iterator().next()
+                    Assert.assertEquals(MDL_DOCTYPE, d.docType)
+                    Assert.assertEquals(0, d.deviceNamespaces.size.toLong())
+                    Assert.assertEquals(2, d.issuerNamespaces.size.toLong())
+                    Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size.toLong())
+                    Assert.assertEquals(
+                        "Erika",
+                        d.getIssuerEntryString(MDL_NAMESPACE, "given_name"),
                     )
-                )
-            }
-        }, executor)
+                    Assert.assertEquals(
+                        "Mustermann",
+                        d.getIssuerEntryString(MDL_NAMESPACE, "family_name"),
+                    )
+                    Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size.toLong())
+                    Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"))
+
+                    // Send a close message (status 20 is "session termination")
+                    verifierTransport.sendMessage(
+                        seReader.encryptMessage(
+                            null,
+                            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
+                        ),
+                    )
+                }
+            },
+            executor,
+        )
         verifierTransport.setHostAndPort(proverTransport.host, proverTransport.port)
         verifierTransport.connect()
         Assert.assertTrue(condVarDeviceConnected.block(5000))
         val presentation = arrayOf<DeviceRetrievalHelper?>(null)
-        val listener: DeviceRetrievalHelper.Listener = object : DeviceRetrievalHelper.Listener {
-            override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {}
-            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-                val parser = DeviceRequestParser(
-                    deviceRequestBytes,
-                    presentation[0]!!.sessionTranscript
-                )
-                val deviceRequest = parser.parse()
-                val docRequests: Collection<DocRequest> = deviceRequest.docRequests
-                Assert.assertEquals(1, docRequests.size.toLong())
-                val request = docRequests.iterator().next()
-                Assert.assertEquals(MDL_DOCTYPE, request.docType)
-                Assert.assertEquals(2, request.namespaces.size.toLong())
-                Assert.assertTrue(request.namespaces.contains(MDL_NAMESPACE))
-                Assert.assertTrue(request.namespaces.contains(AAMVA_NAMESPACE))
-                Assert.assertEquals(1, request.getEntryNames(AAMVA_NAMESPACE).size.toLong())
-                Assert.assertFalse(request.getIntentToRetain(AAMVA_NAMESPACE, "real_id"))
-                Assert.assertEquals(2, request.getEntryNames(MDL_NAMESPACE).size.toLong())
-                Assert.assertTrue(request.getIntentToRetain(MDL_NAMESPACE, "family_name"))
-                Assert.assertFalse(request.getIntentToRetain(MDL_NAMESPACE, "given_name"))
-                try {
-                    val generator = DeviceResponseGenerator(
-                        Constants.DEVICE_RESPONSE_STATUS_OK
-                    )
-                    val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
-                        .parse()
-                    val deviceSignedData = NameSpacedData.Builder().build()
-                    val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
-                        mergeIssuerNamesSpaces(
-                            generateDocumentRequest(request),
-                            document.applicationData.getNameSpacedData("documentData"),
-                            staticAuthData
+        val listener: DeviceRetrievalHelper.Listener =
+            object : DeviceRetrievalHelper.Listener {
+                override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {}
+
+                override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                    val parser =
+                        DeviceRequestParser(
+                            deviceRequestBytes,
+                            presentation[0]!!.sessionTranscript,
                         )
-                    generator.addDocument(
-                        DocumentGenerator(
-                            MDL_DOCTYPE,
-                            staticAuthData.issuerAuth,
-                            encodedSessionTranscript
-                        )
-                            .setIssuerNamespaces(mergedIssuerNamespaces)
-                            .setDeviceNamespacesSignature(
-                                deviceSignedData,
-                                mdocCredential.secureArea,
-                                mdocCredential.alias,
-                                null,
-                                Algorithm.ES256
+                    val deviceRequest = parser.parse()
+                    val docRequests: Collection<DocRequest> = deviceRequest.docRequests
+                    Assert.assertEquals(1, docRequests.size.toLong())
+                    val request = docRequests.iterator().next()
+                    Assert.assertEquals(MDL_DOCTYPE, request.docType)
+                    Assert.assertEquals(2, request.namespaces.size.toLong())
+                    Assert.assertTrue(request.namespaces.contains(MDL_NAMESPACE))
+                    Assert.assertTrue(request.namespaces.contains(AAMVA_NAMESPACE))
+                    Assert.assertEquals(1, request.getEntryNames(AAMVA_NAMESPACE).size.toLong())
+                    Assert.assertFalse(request.getIntentToRetain(AAMVA_NAMESPACE, "real_id"))
+                    Assert.assertEquals(2, request.getEntryNames(MDL_NAMESPACE).size.toLong())
+                    Assert.assertTrue(request.getIntentToRetain(MDL_NAMESPACE, "family_name"))
+                    Assert.assertFalse(request.getIntentToRetain(MDL_NAMESPACE, "given_name"))
+                    try {
+                        val generator =
+                            DeviceResponseGenerator(
+                                Constants.DEVICE_RESPONSE_STATUS_OK,
                             )
-                            .generate()
-                    )
-                    presentation[0]!!.sendDeviceResponse(generator.generate(), null)
-                } catch (e: KeyLockedException) {
-                    throw AssertionError(e)
+                        val staticAuthData =
+                            StaticAuthDataParser(mdocCredential.issuerProvidedData)
+                                .parse()
+                        val deviceSignedData = NameSpacedData.Builder().build()
+                        val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
+                            mergeIssuerNamesSpaces(
+                                generateDocumentRequest(request),
+                                document.applicationData.getNameSpacedData("documentData"),
+                                staticAuthData,
+                            )
+                        generator.addDocument(
+                            DocumentGenerator(
+                                MDL_DOCTYPE,
+                                staticAuthData.issuerAuth,
+                                encodedSessionTranscript,
+                            )
+                                .setIssuerNamespaces(mergedIssuerNamespaces)
+                                .setDeviceNamespacesSignature(
+                                    deviceSignedData,
+                                    mdocCredential.secureArea,
+                                    mdocCredential.alias,
+                                    null,
+                                    Algorithm.ES256,
+                                )
+                                .generate(),
+                        )
+                        presentation[0]!!.sendDeviceResponse(generator.generate(), null)
+                    } catch (e: KeyLockedException) {
+                        throw AssertionError(e)
+                    }
+                }
+
+                override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                    Assert.assertFalse(transportSpecificTermination)
+                    condVarDeviceDisconnected.open()
+                }
+
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
                 }
             }
-
-            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-                Assert.assertFalse(transportSpecificTermination)
-                condVarDeviceDisconnected.open()
-            }
-
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
-        }
-        presentation[0] = DeviceRetrievalHelper.Builder(
-            context,
-            listener,
-            context.mainExecutor,
-            eDeviceKey
-        )
-            .useForwardEngagement(
-                proverTransport,
-                qrHelper.deviceEngagement,
-                qrHelper.handover
+        presentation[0] =
+            DeviceRetrievalHelper.Builder(
+                context,
+                listener,
+                context.mainExecutor,
+                eDeviceKey,
             )
-            .build()
+                .useForwardEngagement(
+                    proverTransport,
+                    qrHelper.deviceEngagement,
+                    qrHelper.handover,
+                )
+                .build()
         verifierTransport.sendMessage(sessionEstablishment)
         Assert.assertTrue(condVarDeviceDisconnected.block(5000))
     }
@@ -449,116 +483,133 @@ class DeviceRetrievalHelperTest {
         val condVarOnError = ConditionVariable()
 
         // TODO: use loopback transport
-        val proverTransport = DataTransportTcp(
-            context,
-            DataTransport.Role.MDOC,
-            DataTransportOptions.Builder().build()
-        )
-        val verifierTransport = DataTransportTcp(
-            context,
-            DataTransport.Role.MDOC_READER,
-            DataTransportOptions.Builder().build()
-        )
-        val qrHelperListener: QrEngagementHelper.Listener = object : QrEngagementHelper.Listener {
-            override fun onDeviceConnecting() {}
-            override fun onDeviceConnected(transport: DataTransport) {
-                condVarDeviceConnected.open()
-                Assert.assertEquals(proverTransport, transport)
-            }
+        val proverTransport =
+            DataTransportTcp(
+                context,
+                DataTransport.Role.MDOC,
+                DataTransportOptions.Builder().build(),
+            )
+        val verifierTransport =
+            DataTransportTcp(
+                context,
+                DataTransport.Role.MDOC_READER,
+                DataTransportOptions.Builder().build(),
+            )
+        val qrHelperListener: QrEngagementHelper.Listener =
+            object : QrEngagementHelper.Listener {
+                override fun onDeviceConnecting() {}
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
+                override fun onDeviceConnected(transport: DataTransport) {
+                    condVarDeviceConnected.open()
+                    Assert.assertEquals(proverTransport, transport)
+                }
+
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
             }
-        }
         val eDeviceKey = createEcPrivateKey(EcCurve.P256)
-        val qrHelper = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            DataTransportOptions.Builder().build(),
-            qrHelperListener,
-            executor
-        )
-            .setTransports(java.util.List.of(proverTransport))
-            .build()
+        val qrHelper =
+            QrEngagementHelper.Builder(
+                context,
+                eDeviceKey.publicKey,
+                DataTransportOptions.Builder().build(),
+                qrHelperListener,
+                executor,
+            )
+                .setTransports(java.util.List.of(proverTransport))
+                .build()
         val encodedDeviceEngagement = qrHelper.deviceEngagement
         val eReaderKey = createEcPrivateKey(EcCurve.P256)
         val encodedEReaderKeyPub =
             encode(eReaderKey.publicKey.toCoseKey(java.util.Map.of()).toDataItem)
-        val encodedSessionTranscript = encode(
-            CborArray.builder()
-                .addTaggedEncodedCbor(encodedDeviceEngagement)
-                .addTaggedEncodedCbor(encodedEReaderKeyPub)
-                .add(Simple.NULL)
-                .end()
-                .build()
-        )
-        val seReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
-            eReaderKey,
-            eDeviceKey.publicKey,
-            encodedSessionTranscript
-        )
+        val encodedSessionTranscript =
+            encode(
+                CborArray.builder()
+                    .addTaggedEncodedCbor(encodedDeviceEngagement)
+                    .addTaggedEncodedCbor(encodedEReaderKeyPub)
+                    .add(Simple.NULL)
+                    .end()
+                    .build(),
+            )
+        val seReader =
+            SessionEncryption(
+                SessionEncryption.Role.MDOC_READER,
+                eReaderKey,
+                eDeviceKey.publicKey,
+                encodedSessionTranscript,
+            )
 
         // Just make an empty request since the verifier will disconnect immediately anyway.
         val mdlItemsToRequest: Map<String, Map<String, Boolean>> = HashMap()
-        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
-            .addDocumentRequest(
-                MDL_DOCTYPE,
-                mdlItemsToRequest,
-                null,
-                null,
-                Algorithm.UNSET,
-                null
-            )
-            .generate()
+        val encodedDeviceRequest =
+            DeviceRequestGenerator(encodedSessionTranscript)
+                .addDocumentRequest(
+                    MDL_DOCTYPE,
+                    mdlItemsToRequest,
+                    null,
+                    null,
+                    Algorithm.UNSET,
+                    null,
+                )
+                .generate()
         val sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest, null)
-        verifierTransport.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {}
-            override fun onDisconnected() {}
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+        verifierTransport.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {}
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
+                override fun onConnected() {}
 
-            override fun onMessageReceived() {
-                Assert.fail()
-            }
-        }, executor)
+                override fun onDisconnected() {}
+
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
+
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
+
+                override fun onMessageReceived() {
+                    Assert.fail()
+                }
+            },
+            executor,
+        )
         verifierTransport.setHostAndPort(proverTransport.host, proverTransport.port)
         verifierTransport.connect()
         Assert.assertTrue(condVarDeviceConnected.block(5000))
-        val listener: DeviceRetrievalHelper.Listener = object : DeviceRetrievalHelper.Listener {
-            override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {}
-            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-                // Don't respond yet.. simulate the holder taking infinity to respond.
-                // instead, we'll simply wait for the verifier to disconnect instead.
-                condVarDeviceRequestReceived.open()
-            }
+        val listener: DeviceRetrievalHelper.Listener =
+            object : DeviceRetrievalHelper.Listener {
+                override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {}
 
-            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-                Assert.fail()
-            }
+                override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                    // Don't respond yet.. simulate the holder taking infinity to respond.
+                    // instead, we'll simply wait for the verifier to disconnect instead.
+                    condVarDeviceRequestReceived.open()
+                }
 
-            override fun onError(error: Throwable) {
-                condVarOnError.open()
+                override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                    Assert.fail()
+                }
+
+                override fun onError(error: Throwable) {
+                    condVarOnError.open()
+                }
             }
-        }
-        val presentation = DeviceRetrievalHelper.Builder(
-            context,
-            listener,
-            context.mainExecutor,
-            eDeviceKey
-        )
-            .useForwardEngagement(
-                proverTransport,
-                qrHelper.deviceEngagement,
-                qrHelper.handover
+        val presentation =
+            DeviceRetrievalHelper.Builder(
+                context,
+                listener,
+                context.mainExecutor,
+                eDeviceKey,
             )
-            .build()
+                .useForwardEngagement(
+                    proverTransport,
+                    qrHelper.deviceEngagement,
+                    qrHelper.handover,
+                )
+                .build()
         verifierTransport.sendMessage(sessionEstablishment)
         Assert.assertTrue(condVarDeviceRequestReceived.block(5000))
         verifierTransport.close()

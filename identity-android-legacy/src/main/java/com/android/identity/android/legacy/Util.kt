@@ -99,12 +99,10 @@ import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-
 /**
  * Utility functions.
  */
 object Util {
-
     private const val TAG = "Util"
     private const val COSE_LABEL_ALG: Long = 1
     private const val COSE_LABEL_X5CHAIN: Long = 33 // temporary identifier
@@ -146,7 +144,11 @@ object Util {
     fun toHex(bytes: ByteArray): String = toHex(bytes, 0, bytes.size)
 
     @JvmStatic
-    fun toHex(bytes: ByteArray, from: Int, to: Int): String {
+    fun toHex(
+        bytes: ByteArray,
+        from: Int,
+        to: Int,
+    ): String {
         require(from >= 0 && to <= bytes.size && from <= to)
         val sb = StringBuilder()
         for (n in from until to) {
@@ -157,8 +159,7 @@ object Util {
     }
 
     @JvmStatic
-    fun base16(bytes: ByteArray): String =
-        toHex(bytes).uppercase()
+    fun base16(bytes: ByteArray): String = toHex(bytes).uppercase()
 
     @JvmStatic
     fun cborEncode(dataItem: DataItem): ByteArray {
@@ -174,24 +175,19 @@ object Util {
     }
 
     @JvmStatic
-    fun cborEncodeBoolean(value: Boolean): ByteArray =
-        cborEncode(CborBuilder().add(value).build().first())
+    fun cborEncodeBoolean(value: Boolean): ByteArray = cborEncode(CborBuilder().add(value).build().first())
 
     @JvmStatic
-    fun cborEncodeString(value: String): ByteArray =
-        cborEncode(CborBuilder().add(value).build().first())
+    fun cborEncodeString(value: String): ByteArray = cborEncode(CborBuilder().add(value).build().first())
 
     @JvmStatic
-    fun cborEncodeNumber(value: Long): ByteArray =
-        cborEncode(CborBuilder().add(value).build().first())
+    fun cborEncodeNumber(value: Long): ByteArray = cborEncode(CborBuilder().add(value).build().first())
 
     @JvmStatic
-    fun cborEncodeBytestring(value: ByteArray): ByteArray =
-        cborEncode(CborBuilder().add(value).build().first())
+    fun cborEncodeBytestring(value: ByteArray): ByteArray = cborEncode(CborBuilder().add(value).build().first())
 
     @JvmStatic
-    fun cborEncodeDateTime(timestamp: Timestamp): ByteArray =
-        cborEncode(cborBuildDateTime(timestamp))
+    fun cborEncodeDateTime(timestamp: Timestamp): ByteArray = cborEncode(cborBuildDateTime(timestamp))
 
     /**
      * Returns #6.0(tstr) where tstr is the ISO 8601 encoding of the given point in time.
@@ -210,11 +206,12 @@ object Util {
     @JvmStatic
     fun cborDecode(encodedBytes: ByteArray): DataItem {
         val bais = ByteArrayInputStream(encodedBytes)
-        val dataItems = try {
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw IllegalArgumentException("Error decoding CBOR", e)
-        }
+        val dataItems =
+            try {
+                CborDecoder(bais).decode()
+            } catch (e: CborException) {
+                throw IllegalArgumentException("Error decoding CBOR", e)
+            }
         require(dataItems.size == 1) {
             "Unexpected number of items, expected 1 got ${dataItems.size}"
         }
@@ -223,11 +220,12 @@ object Util {
 
     @JvmStatic
     fun cborDecodeBoolean(data: ByteArray): Boolean {
-        val simple: SimpleValue = try {
-            cborDecode(data) as SimpleValue
-        } catch (e: ClassCastException) {
-            throw IllegalArgumentException("Data given cannot be cast into a boolean.", e)
-        }
+        val simple: SimpleValue =
+            try {
+                cborDecode(data) as SimpleValue
+            } catch (e: ClassCastException) {
+                throw IllegalArgumentException("Data given cannot be cast into a boolean.", e)
+            }
         return simple.simpleValueType == SimpleValueType.TRUE
     }
 
@@ -248,8 +246,7 @@ object Util {
     }
 
     @JvmStatic
-    fun cborDecodeString(data: ByteArray): String =
-        checkedStringValue(cborDecode(data))
+    fun cborDecodeString(data: ByteArray): String = checkedStringValue(cborDecode(data))
 
     /**
      * Accepts a `DataItem`, attempts to cast it to a `UnicodeString`, then returns the
@@ -260,16 +257,13 @@ object Util {
     fun checkedStringValue(item: DataItem): String = item.castToUnicodeString().string
 
     @JvmStatic
-    fun cborDecodeLong(data: ByteArray): Long =
-        checkedLongValue(cborDecode(data))
+    fun cborDecodeLong(data: ByteArray): Long = checkedLongValue(cborDecode(data))
 
     @JvmStatic
-    fun cborDecodeByteString(data: ByteArray): ByteArray =
-        cborDecode(data).castToByteString().bytes
+    fun cborDecodeByteString(data: ByteArray): ByteArray = cborDecode(data).castToByteString().bytes
 
     @JvmStatic
-    fun cborDecodeDateTime(data: ByteArray): Timestamp =
-        cborDecodeDateTime(cborDecode(data))
+    fun cborDecodeDateTime(data: ByteArray): Timestamp = cborDecodeDateTime(cborDecode(data))
 
     @JvmStatic
     fun cborDecodeDateTime(di: DataItem): Timestamp {
@@ -285,11 +279,12 @@ object Util {
         }
         val df = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
         df.timeZone = parsedTz
-        val date = try {
-            df.parse(dateString)
-        } catch (e: ParseException) {
-            throw RuntimeException("Error parsing string", e)
-        }
+        val date =
+            try {
+                df.parse(dateString)
+            } catch (e: ParseException) {
+                throw RuntimeException("Error parsing string", e)
+            }
         return ofEpochMilli(date.time)
     }
 
@@ -301,7 +296,10 @@ object Util {
      *  * Also throws `IllegalArgumentException` if `value == null`.
      *
      */
-    fun <T : V?, V> castTo(clazz: Class<T>, value: V?): T =
+    fun <T : V?, V> castTo(
+        clazz: Class<T>,
+        value: V?,
+    ): T =
         if (value == null || !clazz.isAssignableFrom(value.javaClass)) {
             throw IllegalArgumentException("Expected type $clazz")
         } else {
@@ -318,9 +316,7 @@ object Util {
      * @return `true` if valid, `false` otherwise.
      */
     @JvmStatic
-    fun validateCertificateChain(
-        certificateChain: Collection<X509Certificate>
-    ): Boolean {
+    fun validateCertificateChain(certificateChain: Collection<X509Certificate>): Boolean {
         // First check that each certificate signs the previous one...
         var prevCertificate: X509Certificate? = null
         for (certificate in certificateChain) {
@@ -336,7 +332,8 @@ object Util {
                         is InvalidKeyException,
                         is NoSuchAlgorithmException,
                         is NoSuchProviderException,
-                        is SignatureException -> return false
+                        is SignatureException,
+                        -> return false
                     }
                 }
             } else {
@@ -370,14 +367,18 @@ object Util {
      */
     @JvmStatic
     fun computeHkdf(
-        macAlgorithm: String, ikm: ByteArray, salt: ByteArray?,
-        info: ByteArray?, size: Int
+        macAlgorithm: String,
+        ikm: ByteArray,
+        salt: ByteArray?,
+        info: ByteArray?,
+        size: Int,
     ): ByteArray {
-        val mac = try {
-            Mac.getInstance(macAlgorithm)
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("No such algorithm: $macAlgorithm", e)
-        }
+        val mac =
+            try {
+                Mac.getInstance(macAlgorithm)
+            } catch (e: NoSuchAlgorithmException) {
+                throw IllegalStateException("No such algorithm: $macAlgorithm", e)
+            }
         require(size <= 255 * mac.macLength) { "size too large" }
         return try {
             if (salt == null || salt.size == 0) {
@@ -417,7 +418,7 @@ object Util {
     private fun coseBuildToBeSigned(
         encodedProtectedHeaders: ByteArray,
         payload: ByteArray?,
-        detachedContent: ByteArray?
+        detachedContent: ByteArray?,
     ): ByteArray {
         val sigStructure = CborBuilder()
         val array: ArrayBuilder<CborBuilder> = sigStructure.addArray()
@@ -453,12 +454,16 @@ object Util {
      * concatenated together to form a byte string that is the resulting
      * signature.
      */
-    private fun signatureDerToCose(signature: ByteArray, keySize: Int): ByteArray? {
-        val asn1 = try {
-            ASN1InputStream(ByteArrayInputStream(signature)).readObject()
-        } catch (e: IOException) {
-            throw IllegalArgumentException("Error decoding DER signature", e)
-        }
+    private fun signatureDerToCose(
+        signature: ByteArray,
+        keySize: Int,
+    ): ByteArray? {
+        val asn1 =
+            try {
+                ASN1InputStream(ByteArrayInputStream(signature)).readObject()
+            } catch (e: IOException) {
+                throw IllegalArgumentException("Error decoding DER signature", e)
+            }
         val asn1Encodables: Array<ASN1Encodable> = castTo(ASN1Sequence::class.java, asn1).toArray()
         require(asn1Encodables.size == 2) { "Expected two items in sequence" }
         val r: BigInteger =
@@ -487,12 +492,16 @@ object Util {
     private fun signatureCoseToDer(signature: ByteArray): ByteArray {
         // r and s are always positive and may use all bits so use the constructor which
         // parses them as unsigned.
-        val r = BigInteger(
-            1, signature.copyOfRange(0, signature.size / 2)
-        )
-        val s = BigInteger(
-            1, signature.copyOfRange(signature.size / 2, signature.size)
-        )
+        val r =
+            BigInteger(
+                1,
+                signature.copyOfRange(0, signature.size / 2),
+            )
+        val s =
+            BigInteger(
+                1,
+                signature.copyOfRange(signature.size / 2, signature.size),
+            )
         val baos = ByteArrayOutputStream()
         try {
             val seq = DERSequenceGenerator(baos)
@@ -510,7 +519,7 @@ object Util {
         s: Signature,
         data: ByteArray?,
         detachedContent: ByteArray?,
-        certificateChain: Collection<X509Certificate>?
+        certificateChain: Collection<X509Certificate>?,
     ): DataItem {
         val dataLen = data?.size ?: 0
         val detachedContentLen = detachedContent?.size ?: 0
@@ -536,13 +545,14 @@ object Util {
         protectedHeadersMap.put(COSE_LABEL_ALG, alg)
         val protectedHeadersBytes = cborEncode(protectedHeaders.build().first())
         val toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent)
-        val coseSignature = try {
-            s.update(toBeSigned)
-            val derSignature = s.sign()
-            signatureDerToCose(derSignature, keySize)
-        } catch (e: SignatureException) {
-            throw IllegalStateException("Error signing data", e)
-        }
+        val coseSignature =
+            try {
+                s.update(toBeSigned)
+                val derSignature = s.sign()
+                signatureDerToCose(derSignature, keySize)
+            } catch (e: SignatureException) {
+                throw IllegalStateException("Error signing data", e)
+            }
         val builder = CborBuilder()
         val array: ArrayBuilder<CborBuilder> = builder.addArray()
         array.add(protectedHeadersBytes)
@@ -555,7 +565,7 @@ object Util {
                 } else {
                     val x5chainsArray: ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> =
                         unprotectedHeaders.putArray(
-                            COSE_LABEL_X5CHAIN
+                            COSE_LABEL_X5CHAIN,
                         )
                     for (cert in certificateChain) {
                         x5chainsArray.add(cert.encoded)
@@ -583,7 +593,7 @@ object Util {
         keyUnlockData: KeyUnlockData?,
         data: ByteArray?,
         detachedContent: ByteArray?,
-        certificateChain: Collection<X509Certificate>?
+        certificateChain: Collection<X509Certificate>?,
     ): DataItem {
         val dataLen = data?.size ?: 0
         val detachedContentLen = detachedContent?.size ?: 0
@@ -592,7 +602,7 @@ object Util {
         val protectedHeadersMap: MapBuilder<CborBuilder> = protectedHeaders.addMap()
         protectedHeadersMap.put(
             COSE_LABEL_ALG,
-            signatureAlgorithm.coseAlgorithmIdentifier.toLong()
+            signatureAlgorithm.coseAlgorithmIdentifier.toLong(),
         )
         val protectedHeadersBytes = cborEncode(protectedHeaders.build().first())
         val toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent)
@@ -611,7 +621,7 @@ object Util {
                 } else {
                     val x5chainsArray: ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> =
                         unprotectedHeaders.putArray(
-                            COSE_LABEL_X5CHAIN
+                            COSE_LABEL_X5CHAIN,
                         )
                     for (cert in certificateChain) {
                         x5chainsArray.add(cert.encoded)
@@ -643,17 +653,19 @@ object Util {
     @JvmStatic
     fun coseSign1Sign(
         key: PrivateKey,
-        algorithm: String, data: ByteArray?,
+        algorithm: String,
+        data: ByteArray?,
         additionalData: ByteArray?,
-        certificateChain: Collection<X509Certificate>?
-    ): DataItem = try {
-        val s = Signature.getInstance(algorithm)
-        s.initSign(key)
-        coseSign1Sign(s, data, additionalData, certificateChain)
-    } catch (e: Exception) {
-        // can be either NoSuchAlgorithmException, InvalidKeyException or for any exception
-        throw IllegalStateException("Caught exception", e)
-    }
+        certificateChain: Collection<X509Certificate>?,
+    ): DataItem =
+        try {
+            val s = Signature.getInstance(algorithm)
+            s.initSign(key)
+            coseSign1Sign(s, data, additionalData, certificateChain)
+        } catch (e: Exception) {
+            // can be either NoSuchAlgorithmException, InvalidKeyException or for any exception
+            throw IllegalStateException("Caught exception", e)
+        }
 
     /**
      * Currently only ECDSA signatures are supported.
@@ -664,7 +676,7 @@ object Util {
     fun coseSign1CheckSignature(
         coseSign1: DataItem,
         detachedContent: ByteArray?,
-        publicKey: PublicKey
+        publicKey: PublicKey,
     ): Boolean {
         require(coseSign1.majorType == MajorType.ARRAY) { "Data item is not an array" }
         val items = (coseSign1 as co.nstant.`in`.cbor.model.Array).dataItems
@@ -674,7 +686,9 @@ object Util {
         var payload = ByteArray(0)
         when (items[2].majorType) {
             MajorType.SPECIAL -> {
-                require((items[2] as Special).specialType == SpecialType.SIMPLE_VALUE) { "Item 2 (payload) is a special but not a simple value" }
+                require(
+                    (items[2] as Special).specialType == SpecialType.SIMPLE_VALUE,
+                ) { "Item 2 (payload) is a special but not a simple value" }
                 val simple: SimpleValue = items[2] as SimpleValue
                 require(simple.simpleValueType == SimpleValueType.NULL) { "Item 2 (payload) is a simple but not the value null" }
             }
@@ -696,19 +710,22 @@ object Util {
         require(!(dataLen > 0 && detachedContentLen > 0)) { "data and detachedContent cannot both be non-empty" }
         val protectedHeaders = cborDecode(encodedProtectedHeaders)
         val alg = cborMapExtractNumber(protectedHeaders, COSE_LABEL_ALG)
-        val signature = if (alg == COSE_ALG_ECDSA_256) {
-            "SHA256withECDSA"
-        } else if (alg == COSE_ALG_ECDSA_384) {
-            "SHA384withECDSA"
-        } else if (alg == COSE_ALG_ECDSA_512) {
-            "SHA512withECDSA"
-        } else {
-            throw IllegalArgumentException("Unsupported COSE alg $alg")
-        }
-        val toBeSigned = coseBuildToBeSigned(
-            encodedProtectedHeaders, payload,
-            detachedContent
-        )
+        val signature =
+            if (alg == COSE_ALG_ECDSA_256) {
+                "SHA256withECDSA"
+            } else if (alg == COSE_ALG_ECDSA_384) {
+                "SHA384withECDSA"
+            } else if (alg == COSE_ALG_ECDSA_512) {
+                "SHA512withECDSA"
+            } else {
+                throw IllegalArgumentException("Unsupported COSE alg $alg")
+            }
+        val toBeSigned =
+            coseBuildToBeSigned(
+                encodedProtectedHeaders,
+                payload,
+                detachedContent,
+            )
         return try {
             // Using the default provider here. If BounceyCastle is to be used it is up to client
             // to register that provider beforehand.
@@ -726,7 +743,7 @@ object Util {
     private fun coseBuildToBeMACed(
         encodedProtectedHeaders: ByteArray,
         payload: ByteArray,
-        detachedContent: ByteArray
+        detachedContent: ByteArray,
     ): ByteArray =
         CborBuilder().run {
             addArray().run {
@@ -755,7 +772,7 @@ object Util {
     fun coseMac0(
         key: SecretKey,
         data: ByteArray?,
-        detachedContent: ByteArray?
+        detachedContent: ByteArray?,
     ): DataItem {
         val dataLen = data?.size ?: 0
         val detachedContentLen = detachedContent?.size ?: 0
@@ -765,20 +782,22 @@ object Util {
         protectedHeadersMap.put(COSE_LABEL_ALG, COSE_ALG_HMAC_256_256)
         val protectedHeadersBytes = cborEncode(protectedHeaders.build().first())
         val toBeMACed = coseBuildToBeMACed(protectedHeadersBytes, data!!, detachedContent!!)
-        val mac: ByteArray = try {
-            val m = Mac.getInstance("HmacSHA256")
-            m.init(key)
-            m.update(toBeMACed)
-            m.doFinal()
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("Unexpected error", e)
-        } catch (e: InvalidKeyException) {
-            throw IllegalStateException("Unexpected error", e)
-        }
+        val mac: ByteArray =
+            try {
+                val m = Mac.getInstance("HmacSHA256")
+                m.init(key)
+                m.update(toBeMACed)
+                m.doFinal()
+            } catch (e: NoSuchAlgorithmException) {
+                throw IllegalStateException("Unexpected error", e)
+            } catch (e: InvalidKeyException) {
+                throw IllegalStateException("Unexpected error", e)
+            }
         val builder = CborBuilder()
         val array: ArrayBuilder<CborBuilder> = builder.addArray()
         array.add(protectedHeadersBytes)
-        /* MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = */array.addMap()
+        // MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders =
+        array.addMap()
         if (data.isEmpty()) {
             array.add(SimpleValue(SimpleValueType.NULL))
         } else {
@@ -800,7 +819,10 @@ object Util {
      * Brute-force but good enough since users will only pass relatively small amounts of data.
      */
     @JvmStatic
-    fun hasSubByteArray(haystack: ByteArray, needle: ByteArray): Boolean {
+    fun hasSubByteArray(
+        haystack: ByteArray,
+        needle: ByteArray,
+    ): Boolean {
         var n = 0
         while (needle.size + n <= haystack.size) {
             var found = true
@@ -842,7 +864,6 @@ object Util {
             setTag(CBOR_SEMANTIC_TAG_ENCODED_CBOR)
         }
 
-
     /**
      * For a #6.24(bstr), extracts the bytes.
      */
@@ -874,7 +895,9 @@ object Util {
         require(items.size >= 4) { "Expected at least four items in COSE_Sign1 array" }
         var payload = ByteArray(0)
         if (items[2].majorType == MajorType.SPECIAL) {
-            require((items[2] as Special).specialType == SpecialType.SIMPLE_VALUE) { "Item 2 (payload) is a special but not a simple value" }
+            require(
+                (items[2] as Special).specialType == SpecialType.SIMPLE_VALUE,
+            ) { "Item 2 (payload) is a special but not a simple value" }
             val simple: SimpleValue = items[2].castToSimpleValue()
             require(simple.simpleValueType == SimpleValueType.NULL) { "Item 2 (payload) is a simple but not the value null" }
         } else if (items[2].majorType == MajorType.BYTE_STRING) {
@@ -891,9 +914,7 @@ object Util {
      * Throws exception if the given bytes aren't valid COSE_Sign1.
      */
     @JvmStatic
-    fun coseSign1GetX5Chain(
-        coseSign1: DataItem
-    ): List<X509Certificate> {
+    fun coseSign1GetX5Chain(coseSign1: DataItem): List<X509Certificate> {
         val ret = mutableListOf<X509Certificate>()
         require(coseSign1.majorType == MajorType.ARRAY) { "Data item is not an array" }
         val items = coseSign1.castToArray().dataItems
@@ -927,13 +948,13 @@ object Util {
      */
     fun sec1EncodeFieldElementAsOctetString(
         octetStringSize: Int,
-        fieldValue: BigInteger?
+        fieldValue: BigInteger?,
     ): ByteArray = BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue)
 
     @JvmStatic
     fun cborBuildCoseKey(
         key: PublicKey,
-        curve: EcCurve
+        curve: EcCurve,
     ): DataItem =
         when (curve) {
             EcCurve.ED25519, EcCurve.ED448 -> {
@@ -997,81 +1018,105 @@ object Util {
     }
 
     @JvmStatic
-    fun cborMapHasKey(map: DataItem, key: String): Boolean =
-        map.castToMap()[key.toUnicodeString()] != null
+    fun cborMapHasKey(
+        map: DataItem,
+        key: String,
+    ): Boolean = map.castToMap()[key.toUnicodeString()] != null
 
     @JvmStatic
-    fun cborMapHasKey(map: DataItem, key: Long): Boolean =
-        map.castToMap()[key.toIntegerNumber()] != null
-
-
-    @JvmStatic
-    fun cborMapExtractNumber(map: DataItem, key: Long): Long =
-        checkedLongValue(map.castToMap()[key.toIntegerNumber()])
-
+    fun cborMapHasKey(
+        map: DataItem,
+        key: Long,
+    ): Boolean = map.castToMap()[key.toIntegerNumber()] != null
 
     @JvmStatic
-    fun cborMapExtractNumber(map: DataItem, key: String): Long =
-        checkedLongValue(map.castToMap()[key.toUnicodeString()])
+    fun cborMapExtractNumber(
+        map: DataItem,
+        key: Long,
+    ): Long = checkedLongValue(map.castToMap()[key.toIntegerNumber()])
 
     @JvmStatic
-    fun cborMapExtractString(map: DataItem, key: String): String =
-        checkedStringValue(map.castToMap()[key.toUnicodeString()])
+    fun cborMapExtractNumber(
+        map: DataItem,
+        key: String,
+    ): Long = checkedLongValue(map.castToMap()[key.toUnicodeString()])
 
     @JvmStatic
-    fun cborMapExtractString(map: DataItem, key: Long): String =
-        checkedStringValue(map.castToMap()[key.toIntegerNumber()])
+    fun cborMapExtractString(
+        map: DataItem,
+        key: String,
+    ): String = checkedStringValue(map.castToMap()[key.toUnicodeString()])
 
     @JvmStatic
-    fun cborMapExtractArray(map: DataItem, key: String): List<DataItem> =
-        map.castToMap()[key.toUnicodeString()].run { castToArray().dataItems }
+    fun cborMapExtractString(
+        map: DataItem,
+        key: Long,
+    ): String = checkedStringValue(map.castToMap()[key.toIntegerNumber()])
 
     @JvmStatic
-    fun cborMapExtractArray(map: DataItem, key: Long): List<DataItem> =
-        map.castToMap()[key.toIntegerNumber()].run { castToArray().dataItems }
+    fun cborMapExtractArray(
+        map: DataItem,
+        key: String,
+    ): List<DataItem> = map.castToMap()[key.toUnicodeString()].run { castToArray().dataItems }
 
     @JvmStatic
-    fun cborMapExtractMap(map: DataItem, key: String): DataItem =
-        map.castToMap()[key.toUnicodeString()].run { castToMap() }
+    fun cborMapExtractArray(
+        map: DataItem,
+        key: Long,
+    ): List<DataItem> = map.castToMap()[key.toIntegerNumber()].run { castToArray().dataItems }
 
     @JvmStatic
-    fun cborMapExtractMapStringKeys(map: DataItem): Collection<String> =
-        map.castToMap().keys.map { checkedStringValue(it) }
+    fun cborMapExtractMap(
+        map: DataItem,
+        key: String,
+    ): DataItem = map.castToMap()[key.toUnicodeString()].run { castToMap() }
 
     @JvmStatic
-    fun cborMapExtractMapNumberKeys(map: DataItem): Collection<Long> =
-        map.castToMap().keys.map { checkedLongValue(it) }
+    fun cborMapExtractMapStringKeys(map: DataItem): Collection<String> = map.castToMap().keys.map { checkedStringValue(it) }
 
     @JvmStatic
-    fun cborMapExtractByteString(map: DataItem, key: Long): ByteArray =
-        map.castToMap()[key.toIntegerNumber()].run { castToByteString().bytes }
+    fun cborMapExtractMapNumberKeys(map: DataItem): Collection<Long> = map.castToMap().keys.map { checkedLongValue(it) }
 
     @JvmStatic
-    fun cborMapExtractByteString(map: DataItem, key: String): ByteArray =
-        map.castToMap()[key.toUnicodeString()].run { castToByteString().bytes }
+    fun cborMapExtractByteString(
+        map: DataItem,
+        key: Long,
+    ): ByteArray = map.castToMap()[key.toIntegerNumber()].run { castToByteString().bytes }
 
     @JvmStatic
-    fun cborMapExtractBoolean(map: DataItem, key: String): Boolean =
-        map.castToMap()[key.toUnicodeString()].run { castToSimpleValue().simpleValueType == SimpleValueType.TRUE }
-
-
-    @JvmStatic
-    fun cborMapExtractBoolean(map: DataItem, key: Long): Boolean =
-        map.castToMap()[key.toIntegerNumber()].run { castToSimpleValue().simpleValueType == SimpleValueType.TRUE }
+    fun cborMapExtractByteString(
+        map: DataItem,
+        key: String,
+    ): ByteArray = map.castToMap()[key.toUnicodeString()].run { castToByteString().bytes }
 
     @JvmStatic
-    fun cborMapExtractDateTime(map: DataItem, key: String): Timestamp =
-        map.castToMap()[key.toUnicodeString()].run { cborDecodeDateTime(castToUnicodeString()) }
+    fun cborMapExtractBoolean(
+        map: DataItem,
+        key: String,
+    ): Boolean = map.castToMap()[key.toUnicodeString()].run { castToSimpleValue().simpleValueType == SimpleValueType.TRUE }
 
     @JvmStatic
-    fun cborMapExtract(map: DataItem, key: String): DataItem =
+    fun cborMapExtractBoolean(
+        map: DataItem,
+        key: Long,
+    ): Boolean = map.castToMap()[key.toIntegerNumber()].run { castToSimpleValue().simpleValueType == SimpleValueType.TRUE }
+
+    @JvmStatic
+    fun cborMapExtractDateTime(
+        map: DataItem,
+        key: String,
+    ): Timestamp = map.castToMap()[key.toUnicodeString()].run { cborDecodeDateTime(castToUnicodeString()) }
+
+    @JvmStatic
+    fun cborMapExtract(
+        map: DataItem,
+        key: String,
+    ): DataItem =
         map.castToMap()[key.toUnicodeString()]
             ?: throw IllegalArgumentException("Expected item for key $key")
 
-
     @JvmStatic
-    fun coseKeyGetCurve(coseKey: DataItem): EcCurve =
-        EcCurve.fromInt(cborMapExtractNumber(coseKey, COSE_KEY_PARAM_CRV).toInt())
+    fun coseKeyGetCurve(coseKey: DataItem): EcCurve = EcCurve.fromInt(cborMapExtractNumber(coseKey, COSE_KEY_PARAM_CRV).toInt())
 
     private fun coseKeyDecodeEc2(coseKey: DataItem): PublicKey {
         val crv: EcCurve =
@@ -1082,18 +1127,24 @@ object Util {
         val encodedY = cborMapExtractByteString(coseKey, COSE_KEY_PARAM_Y)
         if (encodedX.size != keySizeOctets) {
             w(
-                TAG, String.format(
-                    Locale.US, "Expected %d bytes for X in COSE_Key, found %d",
-                    keySizeOctets, encodedX.size
-                )
+                TAG,
+                String.format(
+                    Locale.US,
+                    "Expected %d bytes for X in COSE_Key, found %d",
+                    keySizeOctets,
+                    encodedX.size,
+                ),
             )
         }
         if (encodedY.size != keySizeOctets) {
             w(
-                TAG, String.format(
-                    Locale.US, "Expected %d bytes for Y in COSE_Key, found %d",
-                    keySizeOctets, encodedY.size
-                )
+                TAG,
+                String.format(
+                    Locale.US,
+                    "Expected %d bytes for Y in COSE_Key, found %d",
+                    keySizeOctets,
+                    encodedY.size,
+                ),
             )
         }
         val x = BigInteger(1, encodedX)
@@ -1102,12 +1153,12 @@ object Util {
             val params: AlgorithmParameters =
                 AlgorithmParameters.getInstance(
                     "EC",
-                    BouncyCastleProvider.PROVIDER_NAME
+                    BouncyCastleProvider.PROVIDER_NAME,
                 )
             params.init(ECGenParameterSpec(curveName))
             val ecParameters =
                 params.getParameterSpec(
-                    ECParameterSpec::class.java
+                    ECParameterSpec::class.java,
                 )
             val ecPoint = ECPoint(x, y)
             val keySpec =
@@ -1127,10 +1178,13 @@ object Util {
         val encodedX = cborMapExtractByteString(coseKey, COSE_KEY_PARAM_X)
         if (encodedX.size != keySizeOctets) {
             w(
-                TAG, String.format(
-                    Locale.US, "Expected %d bytes for X in COSE_Key, found %d",
-                    keySizeOctets, encodedX.size
-                )
+                TAG,
+                String.format(
+                    Locale.US,
+                    "Expected %d bytes for X in COSE_Key, found %d",
+                    keySizeOctets,
+                    encodedX.size,
+                ),
             )
         }
         return try {
@@ -1194,7 +1248,7 @@ object Util {
     fun calcEMacKeyForReader(
         authenticationPublicKey: PublicKey,
         ephemeralReaderPrivateKey: PrivateKey,
-        encodedSessionTranscript: ByteArray
+        encodedSessionTranscript: ByteArray,
     ): SecretKey =
         try {
             val ka = KeyAgreement.getInstance("ECDH")
@@ -1204,24 +1258,26 @@ object Util {
             val sessionTranscriptBytes =
                 cborEncode(
                     cborBuildTaggedByteString(
-                        encodedSessionTranscript
-                    )
+                        encodedSessionTranscript,
+                    ),
                 )
             val salt =
                 MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes)
 
             val infoChars = "EMacKey"
-            val info = infoChars.map { ch ->
-                ch.code.toByte()
-            }.toByteArray()
+            val info =
+                infoChars.map { ch ->
+                    ch.code.toByte()
+                }.toByteArray()
 
-            val derivedKey = computeHkdf(
-                "HmacSha256",
-                sharedSecret,
-                salt,
-                info,
-                32
-            )
+            val derivedKey =
+                computeHkdf(
+                    "HmacSha256",
+                    sharedSecret,
+                    salt,
+                    info,
+                    32,
+                )
             SecretKeySpec(derivedKey, "")
         } catch (e: Exception) {
             // including InvalidKeyException, NoSuchAlgorithmException
@@ -1239,11 +1295,12 @@ object Util {
     fun cborPrettyPrint(encodedBytes: ByteArray): String {
         val sb = StringBuilder()
         val bais = ByteArrayInputStream(encodedBytes)
-        val dataItems = try {
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw IllegalStateException(e)
-        }
+        val dataItems =
+            try {
+                CborDecoder(bais).decode()
+            } catch (e: CborException) {
+                throw IllegalStateException(e)
+            }
         var count = 0
         for (dataItem in dataItems) {
             if (count > 0) {
@@ -1267,8 +1324,9 @@ object Util {
     }
 
     private fun cborPrettyPrintDataItem(
-        sb: StringBuilder, indent: Int,
-        dataItem: DataItem
+        sb: StringBuilder,
+        indent: Int,
+        dataItem: DataItem,
     ) {
         val indentBuilder = StringBuilder()
         for (n in 0 until indent) {
@@ -1283,21 +1341,18 @@ object Util {
                 sb.append("<invalid>")
 
             MajorType.UNSIGNED_INTEGER -> {
-
                 // Major type 0: an unsigned integer.
                 val value = (dataItem as UnsignedInteger).value
                 sb.append(value)
             }
 
             MajorType.NEGATIVE_INTEGER -> {
-
                 // Major type 1: a negative integer.
                 val value: BigInteger = (dataItem as NegativeInteger).value
                 sb.append(value)
             }
 
             MajorType.BYTE_STRING -> {
-
                 // Major type 2: a byte string.
                 val value = (dataItem as ByteString).bytes
                 sb.append("[")
@@ -1313,7 +1368,6 @@ object Util {
             }
 
             MajorType.UNICODE_STRING -> {
-
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
                 val value = checkedStringValue(dataItem)
                 // TODO: escape ' in |value|
@@ -1321,7 +1375,6 @@ object Util {
             }
 
             MajorType.ARRAY -> {
-
                 // Major type 4: an array of data items.
                 val items = (dataItem as co.nstant.`in`.cbor.model.Array).dataItems
                 if (items.size == 0) {
@@ -1352,7 +1405,6 @@ object Util {
             }
 
             MajorType.MAP -> {
-
                 // Major type 5: a map of pairs of data items.
                 val keys = (dataItem as Map).keys
                 if (keys.isEmpty()) {
@@ -1375,7 +1427,7 @@ object Util {
             }
 
             MajorType.TAG -> throw IllegalStateException("Semantic tag data item not expected")
-            MajorType.SPECIAL ->                 // Major type 7: floating point numbers and simple data types that need no
+            MajorType.SPECIAL -> // Major type 7: floating point numbers and simple data types that need no
                 // content, as well as the "break" stop code.
                 if (dataItem is SimpleValue) {
                     when (dataItem.simpleValueType) {
@@ -1388,17 +1440,19 @@ object Util {
                         null -> {} // Java case
                     }
                 } else if (dataItem is DoublePrecisionFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
+                    val df =
+                        DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH),
+                        )
                     df.maximumFractionDigits = 340
                     sb.append(df.format(dataItem.value))
                 } else if (dataItem is AbstractFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
+                    val df =
+                        DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH),
+                        )
                     df.maximumFractionDigits = 340
                     sb.append(df.format(dataItem.value.toDouble()))
                 } else {
@@ -1417,11 +1471,12 @@ object Util {
     fun replaceLine(
         text: String,
         lineNumber: Int,
-        replacementLine: String
+        replacementLine: String,
     ): String {
         var ln = lineNumber
-        val lines = text.split("\n".toRegex()).dropLastWhile { it.isEmpty() }
-            .toTypedArray()
+        val lines =
+            text.split("\n".toRegex()).dropLastWhile { it.isEmpty() }
+                .toTypedArray()
         val numLines = lines.size
         if (ln < 0) {
             ln = numLines - -ln
@@ -1472,7 +1527,7 @@ object Util {
      * DataElement = tstr
      * IntentToRetain = bool
      * NameSpace = tstr
-    </pre> *
+     </pre> *
      *
      * @param entriesToRequest The entries to request, organized as a map of namespace
      * names with each value being a collection of data elements
@@ -1486,7 +1541,7 @@ object Util {
     @JvmStatic
     fun createItemsRequest(
         entriesToRequest: kotlin.collections.Map<String?, Collection<String?>>,
-        docType: String?
+        docType: String?,
     ): ByteArray {
         val builder = CborBuilder()
         val mapBuilder: MapBuilder<CborBuilder> = builder.addMap()
@@ -1553,7 +1608,7 @@ object Util {
     @JvmStatic
     fun issuerSignedItemSetValue(
         encodedIssuerSignedItem: ByteArray,
-        encodedElementValue: ByteArray
+        encodedElementValue: ByteArray,
     ): ByteArray {
         val issuerSignedItemElem = cborDecode(encodedIssuerSignedItem)
         val issuerSignedItem = issuerSignedItemElem.castToMap()
@@ -1569,9 +1624,10 @@ object Util {
         try {
             val params = AlgorithmParameters.getInstance("EC")
             params.init(ECGenParameterSpec("secp256r1"))
-            val ecParameters = params.getParameterSpec(
-                ECParameterSpec::class.java
-            )
+            val ecParameters =
+                params.getParameterSpec(
+                    ECParameterSpec::class.java,
+                )
             val privateKeySpec = ECPrivateKeySpec(s, ecParameters)
             val keyFactory = KeyFactory.getInstance("EC")
             keyFactory.generatePrivate(privateKeySpec)
@@ -1583,7 +1639,7 @@ object Util {
     @JvmStatic
     fun getPublicKeyFromIntegers(
         x: BigInteger,
-        y: BigInteger
+        y: BigInteger,
     ): PublicKey =
         try {
             val params =
@@ -1591,7 +1647,7 @@ object Util {
             params.init(ECGenParameterSpec("secp256r1"))
             val ecParameters =
                 params.getParameterSpec(
-                    ECParameterSpec::class.java
+                    ECParameterSpec::class.java,
                 )
             val ecPoint = ECPoint(x, y)
             val keySpec =
@@ -1607,7 +1663,10 @@ object Util {
     //
     @JvmStatic
     @Throws(IOException::class)
-    fun readBytes(inputStream: InputStream, numBytes: Int): ByteBuffer? {
+    fun readBytes(
+        inputStream: InputStream,
+        numBytes: Int,
+    ): ByteBuffer? {
         val data = ByteBuffer.allocate(numBytes)
         var offset = 0
         var numBytesRemaining = numBytes
@@ -1626,9 +1685,7 @@ object Util {
     // TODO: Maybe return List<DataItem> instead of reencoding.
     //
     @JvmStatic
-    fun extractDeviceRetrievalMethods(
-        encodedDeviceEngagement: ByteArray
-    ): List<ByteArray> {
+    fun extractDeviceRetrievalMethods(encodedDeviceEngagement: ByteArray): List<ByteArray> {
         val ret = mutableListOf<ByteArray>()
         val deviceEngagement = cborDecode(encodedDeviceEngagement)
         val methods = cborMapExtractArray(deviceEngagement, 2)
@@ -1647,7 +1704,7 @@ object Util {
     @JvmStatic
     fun signPublicKeyWithPrivateKey(
         keyToSignAlias: String,
-        keyToSignWithAlias: String
+        keyToSignWithAlias: String,
     ): X509Certificate {
         return try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
@@ -1683,9 +1740,13 @@ object Util {
              * We assume - and test for below - that the final length is always going to be in
              * this range. This is a sound assumption given we're using 256-bit EC keys.
              */
-            val sequence = byteArrayOf(
-                0x30, 0x82.toByte(), 0x00, 0x00
-            )
+            val sequence =
+                byteArrayOf(
+                    0x30,
+                    0x82.toByte(),
+                    0x00,
+                    0x00,
+                )
 
             /* The DER encoding for the ECDSA with SHA-256 signature algorithm:
              *
@@ -1693,20 +1754,21 @@ object Util {
              *      OBJECT IDENTIFIER 1.2.840.10045.4.3.2 ecdsaWithSHA256 (ANSI X9.62 ECDSA
              *      algorithm with SHA256)
              */
-            val signatureAlgorithm = byteArrayOf(
-                0x30,
-                0x0a,
-                0x06,
-                0x08,
-                0x2a,
-                0x86.toByte(),
-                0x48,
-                0xce.toByte(),
-                0x3d,
-                0x04,
-                0x03,
-                0x02
-            )
+            val signatureAlgorithm =
+                byteArrayOf(
+                    0x30,
+                    0x0a,
+                    0x06,
+                    0x08,
+                    0x2a,
+                    0x86.toByte(),
+                    0x48,
+                    0xce.toByte(),
+                    0x3d,
+                    0x04,
+                    0x03,
+                    0x02,
+                )
 
             /* The DER encoding for a BIT STRING with one element - the length is updated below.
              *
@@ -1717,10 +1779,12 @@ object Util {
             val bitStringForSignature = byteArrayOf(0x03, 0x00, 0x00)
 
             // Calculate sequence length and set it in |sequence|.
-            val sequenceLength = (tbsCertificate.size
-                    + signatureAlgorithm.size
-                    + bitStringForSignature.size
-                    + signatureValue.size)
+            val sequenceLength = (
+                tbsCertificate.size +
+                    signatureAlgorithm.size +
+                    bitStringForSignature.size +
+                    signatureValue.size
+            )
             check(!(sequenceLength < 128 || sequenceLength > 65535)) { "Unexpected sequenceLength $sequenceLength" }
             sequence[2] = (sequenceLength shr 8).toByte()
             sequence[3] = (sequenceLength and 0xff).toByte()
@@ -1728,8 +1792,10 @@ object Util {
             // Calculate signatureValue length and set it in |bitStringForSignature|.
             val signatureValueLength = signatureValue.size + 1
             check(signatureValueLength < 128) {
-                ("Unexpected signatureValueLength "
-                        + signatureValueLength)
+                (
+                    "Unexpected signatureValueLength " +
+                        signatureValueLength
+                )
             }
             bitStringForSignature[1] = signatureValueLength.toByte()
 
@@ -1780,26 +1846,28 @@ object Util {
             return null
         }
         val blobWithCoords = baos.toByteArray()
-        val encodedDeviceEngagementItem = cborBuildTaggedByteString(
-            cborEncode(
-                CborBuilder()
-                    .addArray()
-                    .add(blobWithCoords)
-                    .end()
-                    .build().first()
+        val encodedDeviceEngagementItem =
+            cborBuildTaggedByteString(
+                cborEncode(
+                    CborBuilder()
+                        .addArray()
+                        .add(blobWithCoords)
+                        .end()
+                        .build().first(),
+                ),
             )
-        )
         val encodedEReaderKeyItem =
             cborBuildTaggedByteString(cborEncodeString("doesn't matter"))
         baos = ByteArrayOutputStream()
         try {
             val handoverSelectBytes = byteArrayOf(0x01, 0x02, 0x03)
-            val handover: DataItem = CborBuilder()
-                .addArray()
-                .add(handoverSelectBytes)
-                .add(SimpleValue.NULL)
-                .end()
-                .build().first()
+            val handover: DataItem =
+                CborBuilder()
+                    .addArray()
+                    .add(handoverSelectBytes)
+                    .add(SimpleValue.NULL)
+                    .end()
+                    .build().first()
             CborEncoder(baos).encode(
                 CborBuilder()
                     .addArray()
@@ -1807,7 +1875,7 @@ object Util {
                     .add(encodedEReaderKeyItem)
                     .add(handover)
                     .end()
-                    .build()
+                    .build(),
             )
         } catch (e: CborException) {
             e.printStackTrace()
@@ -1830,14 +1898,17 @@ object Util {
     @JvmStatic
     fun cborGetLength(data: ByteArray?): Int {
         val bais = ByteArrayInputStream(data)
-        val dataItem = try {
-            CborDecoder(bais).decodeNext()
-        } catch (e: CborException) {
-            return -1
-        }
+        val dataItem =
+            try {
+                CborDecoder(bais).decodeNext()
+            } catch (e: CborException) {
+                return -1
+            }
         return if (dataItem == null) {
             -1
-        } else cborEncode(dataItem).size
+        } else {
+            cborEncode(dataItem).size
+        }
     }
 
     /**
@@ -1899,7 +1970,10 @@ object Util {
      * @return a positive number, negative number, or 0.
      */
     @JvmStatic
-    fun mdocVersionCompare(a: String, b: String): Int {
+    fun mdocVersionCompare(
+        a: String,
+        b: String,
+    ): Int {
         // TODO: this just lexicographically compares the strings as ISO 18013-5 doesn't currently
         //   define how to compare version strings.
         return a.compareTo(b)
@@ -1916,19 +1990,26 @@ object Util {
             // of Android 13 with the effect being that the application only sees the first
             // 512 bytes.
             w(
-                TAG, String.format(
-                    Locale.US, "MTU size is %d, using 512 as "
-                            + "characteristic value size", mtuSize
-                )
+                TAG,
+                String.format(
+                    Locale.US,
+                    "MTU size is %d, using 512 as " +
+                        "characteristic value size",
+                    mtuSize,
+                ),
             )
             characteristicValueSize = 512
         } else {
             characteristicValueSize = mtuSize - 3
             w(
-                TAG, String.format(
-                    Locale.US, "MTU size is %d, using %d as "
-                            + "characteristic value size", mtuSize, characteristicValueSize
-                )
+                TAG,
+                String.format(
+                    Locale.US,
+                    "MTU size is %d, using %d as " +
+                        "characteristic value size",
+                    mtuSize,
+                    characteristicValueSize,
+                ),
             )
         }
         return characteristicValueSize
@@ -1936,48 +2017,54 @@ object Util {
 
     @JvmStatic
     fun createEphemeralKeyPair(curve: EcCurve): KeyPair {
-        val stdName = when (curve) {
-            EcCurve.P256 -> "secp256r1"
-            EcCurve.P384 -> "secp384r1"
-            EcCurve.P521 -> "secp521r1"
-            EcCurve.BRAINPOOLP256R1 -> "brainpoolP256r1"
-            EcCurve.BRAINPOOLP320R1 -> "brainpoolP320r1"
-            EcCurve.BRAINPOOLP384R1 -> "brainpoolP384r1"
-            EcCurve.BRAINPOOLP512R1 -> "brainpoolP512r1"
-            EcCurve.X25519 -> "X25519"
-            EcCurve.ED25519 -> "Ed25519"
-            EcCurve.X448 -> "X448"
-            EcCurve.ED448 -> "Ed448"
-        }
+        val stdName =
+            when (curve) {
+                EcCurve.P256 -> "secp256r1"
+                EcCurve.P384 -> "secp384r1"
+                EcCurve.P521 -> "secp521r1"
+                EcCurve.BRAINPOOLP256R1 -> "brainpoolP256r1"
+                EcCurve.BRAINPOOLP320R1 -> "brainpoolP320r1"
+                EcCurve.BRAINPOOLP384R1 -> "brainpoolP384r1"
+                EcCurve.BRAINPOOLP512R1 -> "brainpoolP512r1"
+                EcCurve.X25519 -> "X25519"
+                EcCurve.ED25519 -> "Ed25519"
+                EcCurve.X448 -> "X448"
+                EcCurve.ED448 -> "Ed448"
+            }
         return try {
             val kpg: KeyPairGenerator
             if (stdName == "X25519") {
-                kpg = KeyPairGenerator.getInstance(
-                    "X25519",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg =
+                    KeyPairGenerator.getInstance(
+                        "X25519",
+                        BouncyCastleProvider.PROVIDER_NAME,
+                    )
                 kpg.initialize(XDHParameterSpec(XDHParameterSpec.X25519))
             } else if (stdName == "Ed25519") {
-                kpg = KeyPairGenerator.getInstance(
-                    "Ed25519",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg =
+                    KeyPairGenerator.getInstance(
+                        "Ed25519",
+                        BouncyCastleProvider.PROVIDER_NAME,
+                    )
             } else if (stdName == "X448") {
-                kpg = KeyPairGenerator.getInstance(
-                    "X448",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg =
+                    KeyPairGenerator.getInstance(
+                        "X448",
+                        BouncyCastleProvider.PROVIDER_NAME,
+                    )
                 kpg.initialize(XDHParameterSpec(XDHParameterSpec.X448))
             } else if (stdName == "Ed448") {
-                kpg = KeyPairGenerator.getInstance(
-                    "Ed448",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg =
+                    KeyPairGenerator.getInstance(
+                        "Ed448",
+                        BouncyCastleProvider.PROVIDER_NAME,
+                    )
             } else {
-                kpg = KeyPairGenerator.getInstance(
-                    "EC",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg =
+                    KeyPairGenerator.getInstance(
+                        "EC",
+                        BouncyCastleProvider.PROVIDER_NAME,
+                    )
                 kpg.initialize(ECGenParameterSpec(stdName))
             }
             kpg.generateKeyPair()
@@ -1993,14 +2080,19 @@ object Util {
 
     // DataItem casting helpers, "castTo_"
     private fun DataItem.castToMap() = castTo(Map::class.java, this)
+
     private fun DataItem.castToByteString() = castTo(ByteString::class.java, this)
+
     private fun DataItem.castToSimpleValue() = castTo(SimpleValue::class.java, this)
+
     private fun DataItem.castToNumber() = castTo(Number::class.java, this)
+
     private fun DataItem.castToUnicodeString() = castTo(UnicodeString::class.java, this)
+
     private fun DataItem.castToArray() = castTo(co.nstant.`in`.cbor.model.Array::class.java, this)
 
     // type converters "to_"
     private fun String.toUnicodeString() = UnicodeString(this)
-    private fun Long.toIntegerNumber() =
-        if (this >= 0) UnsignedInteger(this) else NegativeInteger(this)
+
+    private fun Long.toIntegerNumber() = if (this >= 0) UnsignedInteger(this) else NegativeInteger(this)
 }

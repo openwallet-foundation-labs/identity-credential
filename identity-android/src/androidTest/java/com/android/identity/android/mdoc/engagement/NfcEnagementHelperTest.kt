@@ -60,21 +60,27 @@ class NfcEnagementHelperTest {
         var helper: NfcEngagementHelper? = null
         val context = InstrumentationRegistry.getTargetContext()
         val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val listener: NfcEngagementHelper.Listener = object : NfcEngagementHelper.Listener {
-            override fun onTwoWayEngagementDetected() {}
-            override fun onHandoverSelectMessageSent() {}
-            override fun onDeviceConnecting() {}
-            override fun onDeviceConnected(transport: DataTransport) {}
-            override fun onError(error: Throwable) {}
-        }
+        val listener: NfcEngagementHelper.Listener =
+            object : NfcEngagementHelper.Listener {
+                override fun onTwoWayEngagementDetected() {}
+
+                override fun onHandoverSelectMessageSent() {}
+
+                override fun onDeviceConnecting() {}
+
+                override fun onDeviceConnected(transport: DataTransport) {}
+
+                override fun onError(error: Throwable) {}
+            }
         val executor: Executor = Executors.newSingleThreadExecutor()
-        val builder = NfcEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            DataTransportOptions.Builder().build(),
-            listener,
-            executor
-        )
+        val builder =
+            NfcEngagementHelper.Builder(
+                context,
+                eDeviceKey.publicKey,
+                DataTransportOptions.Builder().build(),
+                listener,
+                executor,
+            )
 
         // Include all ConnectionMethods that can exist in OOB data
         val connectionMethods: MutableList<ConnectionMethod> = ArrayList()
@@ -84,22 +90,22 @@ class NfcEnagementHelperTest {
                 true,
                 true,
                 bleUuid,
-                bleUuid
-            )
+                bleUuid,
+            ),
         )
         connectionMethods.add(
             ConnectionMethodNfc(
                 0xffff,
-                0xffff
-            )
+                0xffff,
+            ),
         )
         connectionMethods.add(
             ConnectionMethodWifiAware(
                 null,
                 OptionalLong.empty(),
                 OptionalLong.empty(),
-                null
-            )
+                null,
+            ),
         )
         builder.useStaticHandover(connectionMethods)
         helper = builder.build()
@@ -107,52 +113,60 @@ class NfcEnagementHelperTest {
 
         // Select Type 4 Tag NDEF app
         val ndefAppId = NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION
-        var responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduApplicationSelect(ndefAppId)
-        )
+        var responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduApplicationSelect(ndefAppId),
+            )
         Assert.assertNotNull(responseApdu)
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
         // Select CC file
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID),
+            )
         Assert.assertNotNull(responseApdu)
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
         // Get CC file
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduReadBinary(0, 15)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 15),
+            )
         Assert.assertNotNull(responseApdu)
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
         Assert.assertEquals("000f207fff7fff0406e1047fff00ff9000", responseApdu.toHex)
 
         // Select NDEF file
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID),
+            )
         Assert.assertNotNull(responseApdu)
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
         // Get length of Initial NDEF message
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduReadBinary(0, 2)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 2),
+            )
         Assert.assertNotNull(responseApdu)
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
         Assert.assertEquals(4, responseApdu.size.toLong())
         Assert.assertEquals(0x90, (responseApdu[2].toInt() and 0xff).toLong())
         Assert.assertEquals(0x00, (responseApdu[3].toInt() and 0xff).toLong())
-        val initialNdefMessageSize = ((responseApdu[0].toInt() and 0xff) * 0x0100
-                + (responseApdu[1].toInt() and 0xff))
+        val initialNdefMessageSize = (
+            (responseApdu[0].toInt() and 0xff) * 0x0100 +
+                (responseApdu[1].toInt() and 0xff)
+        )
 
         // Read Initial NDEF message
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduReadBinary(2, initialNdefMessageSize)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(2, initialNdefMessageSize),
+            )
         Assert.assertNotNull(responseApdu)
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -160,7 +174,7 @@ class NfcEnagementHelperTest {
         Assert.assertEquals(0x90, (responseApdu[initialNdefMessageSize].toInt() and 0xff).toLong())
         Assert.assertEquals(
             0x00,
-            (responseApdu[initialNdefMessageSize + 1].toInt() and 0xff).toLong()
+            (responseApdu[initialNdefMessageSize + 1].toInt() and 0xff).toLong(),
         )
         val initialNdefMessage = Arrays.copyOf(responseApdu, responseApdu.size - 2)
 
@@ -179,18 +193,19 @@ class NfcEnagementHelperTest {
         for (n in connectionMethods.indices) {
             Assert.assertEquals(
                 connectionMethods[n].toString(),
-                hs.connectionMethods[n].toString()
+                hs.connectionMethods[n].toString(),
             )
         }
 
         // Checks that the helper returns the correct DE and Handover
-        val expectedHandover = Cbor.encode(
-            CborArray.builder()
-                .add(initialNdefMessage) // Handover Select message
-                .add(Simple.NULL) // Handover Request message
-                .end()
-                .build()
-        )
+        val expectedHandover =
+            Cbor.encode(
+                CborArray.builder()
+                    .add(initialNdefMessage) // Handover Select message
+                    .add(Simple.NULL) // Handover Request message
+                    .end()
+                    .build(),
+            )
         Assert.assertArrayEquals(expectedHandover, helper.handover)
         Assert.assertArrayEquals(hs.encodedDeviceEngagement, helper.deviceEngagement)
         helper.close()
@@ -201,21 +216,27 @@ class NfcEnagementHelperTest {
         var helper: NfcEngagementHelper? = null
         val context = InstrumentationRegistry.getTargetContext()
         val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val listener: NfcEngagementHelper.Listener = object : NfcEngagementHelper.Listener {
-            override fun onTwoWayEngagementDetected() {}
-            override fun onHandoverSelectMessageSent() {}
-            override fun onDeviceConnecting() {}
-            override fun onDeviceConnected(transport: DataTransport) {}
-            override fun onError(error: Throwable) {}
-        }
+        val listener: NfcEngagementHelper.Listener =
+            object : NfcEngagementHelper.Listener {
+                override fun onTwoWayEngagementDetected() {}
+
+                override fun onHandoverSelectMessageSent() {}
+
+                override fun onDeviceConnecting() {}
+
+                override fun onDeviceConnected(transport: DataTransport) {}
+
+                override fun onError(error: Throwable) {}
+            }
         val executor: Executor = Executors.newSingleThreadExecutor()
-        val builder = NfcEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            DataTransportOptions.Builder().build(),
-            listener,
-            executor
-        )
+        val builder =
+            NfcEngagementHelper.Builder(
+                context,
+                eDeviceKey.publicKey,
+                DataTransportOptions.Builder().build(),
+                listener,
+                executor,
+            )
 
         // Include all ConnectionMethods that can exist in OOB data
         val connectionMethods: MutableList<ConnectionMethod> = ArrayList()
@@ -225,22 +246,22 @@ class NfcEnagementHelperTest {
                 true,
                 true,
                 bleUuid,
-                bleUuid
-            )
+                bleUuid,
+            ),
         )
         connectionMethods.add(
             ConnectionMethodNfc(
                 0xffff,
-                0xffff
-            )
+                0xffff,
+            ),
         )
         connectionMethods.add(
             ConnectionMethodWifiAware(
                 null,
                 OptionalLong.empty(),
                 OptionalLong.empty(),
-                null
-            )
+                null,
+            ),
         )
         builder.useNegotiatedHandover()
         helper = builder.build()
@@ -248,52 +269,60 @@ class NfcEnagementHelperTest {
 
         // Select Type 4 Tag NDEF app
         val ndefAppId = NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION
-        var responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduApplicationSelect(ndefAppId)
-        )
+        var responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduApplicationSelect(ndefAppId),
+            )
         Assert.assertNotNull(responseApdu)
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
         // Select CC file
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID),
+            )
         Assert.assertNotNull(responseApdu)
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
         // Get CC file
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduReadBinary(0, 15)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 15),
+            )
         Assert.assertNotNull(responseApdu)
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
         Assert.assertEquals("000f207fff7fff0406e1047fff00009000", responseApdu.toHex)
 
         // Select NDEF file
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID),
+            )
         Assert.assertNotNull(responseApdu)
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
         // Get length of Initial NDEF message
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduReadBinary(0, 2)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 2),
+            )
         Assert.assertNotNull(responseApdu)
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
         Assert.assertEquals(4, responseApdu.size.toLong())
         Assert.assertEquals(0x90, (responseApdu[2].toInt() and 0xff).toLong())
         Assert.assertEquals(0x00, (responseApdu[3].toInt() and 0xff).toLong())
-        val initialNdefMessageSize = ((responseApdu[0].toInt() and 0xff) * 0x0100
-                + (responseApdu[1].toInt() and 0xff))
+        val initialNdefMessageSize = (
+            (responseApdu[0].toInt() and 0xff) * 0x0100 +
+                (responseApdu[1].toInt() and 0xff)
+        )
 
         // Read Initial NDEF message
-        responseApdu = helper.nfcProcessCommandApdu(
-            NfcUtil.createApduReadBinary(2, initialNdefMessageSize)
-        )
+        responseApdu =
+            helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(2, initialNdefMessageSize),
+            )
         Assert.assertNotNull(responseApdu)
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -301,16 +330,17 @@ class NfcEnagementHelperTest {
         Assert.assertEquals(0x90, (responseApdu[initialNdefMessageSize].toInt() and 0xff).toLong())
         Assert.assertEquals(
             0x00,
-            (responseApdu[initialNdefMessageSize + 1].toInt() and 0xff).toLong()
+            (responseApdu[initialNdefMessageSize + 1].toInt() and 0xff).toLong(),
         )
         val initialNdefMessage = Arrays.copyOf(responseApdu, responseApdu.size - 2)
 
         // The Initial NDEF message should contain a Service Parameter record for the
         // urn:nfc:sn:handover service.
-        val handoverServiceRecord = NfcUtil.findServiceParameterRecordWithName(
-            initialNdefMessage,
-            "urn:nfc:sn:handover"
-        )
+        val handoverServiceRecord =
+            NfcUtil.findServiceParameterRecordWithName(
+                initialNdefMessage,
+                "urn:nfc:sn:handover",
+            )
         Assert.assertNotNull(handoverServiceRecord)
         val (tnepVersion, serviceNameUri, tnepCommunicationMode, tWaitMillis, nWait) =
             NfcUtil.parseServiceParameterRecord(handoverServiceRecord!!)
@@ -325,10 +355,11 @@ class NfcEnagementHelperTest {
         // Select the service, the resulting NDEF message is specified in
         // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
         // section 4.3 TNEP Status Message
-        val serviceSelectResponse = ndefTransact(
-            helper,
-            NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover")
-        )
+        val serviceSelectResponse =
+            ndefTransact(
+                helper,
+                NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"),
+            )
         val tnepStatusRecord = NfcUtil.findTnepStatusRecord(serviceSelectResponse)
         Assert.assertNotNull(tnepStatusRecord)
         val tnepStatusPayload = tnepStatusRecord!!.payload
@@ -337,19 +368,21 @@ class NfcEnagementHelperTest {
         Assert.assertEquals(0x00, tnepStatusPayload[0].toLong())
         var encodedReaderEngagement: ByteArray? = null
         if (useLargeRequestMessage) {
-            encodedReaderEngagement = Cbor.encode(
-                CborMap.builder()
-                    .put("stuff", ByteArray(512))
-                    .end()
-                    .build()
-            )
+            encodedReaderEngagement =
+                Cbor.encode(
+                    CborMap.builder()
+                        .put("stuff", ByteArray(512))
+                        .end()
+                        .build(),
+                )
         }
         // Now send Handover Request, the resulting NDEF message is Handover Response..
-        val hrMessage = NfcUtil.createNdefMessageHandoverRequest(
-            connectionMethods,
-            encodedReaderEngagement,
-            DataTransportOptions.Builder().build()
-        )
+        val hrMessage =
+            NfcUtil.createNdefMessageHandoverRequest(
+                connectionMethods,
+                encodedReaderEngagement,
+                DataTransportOptions.Builder().build(),
+            )
         if (useLargeRequestMessage) {
             Assert.assertTrue(hrMessage.size >= 256 - 2)
         } else {
@@ -377,13 +410,14 @@ class NfcEnagementHelperTest {
         Assert.assertEquals(cm.centralClientModeUuid, bleUuid)
 
         // Checks that the helper returns the correct DE and Handover
-        val expectedHandover = Cbor.encode(
-            CborArray.builder()
-                .add(hsMessage) // Handover Select message
-                .add(hrMessage) // Handover Request message
-                .end()
-                .build()
-        )
+        val expectedHandover =
+            Cbor.encode(
+                CborArray.builder()
+                    .add(hsMessage) // Handover Select message
+                    .add(hrMessage) // Handover Request message
+                    .end()
+                    .build(),
+            )
         Assert.assertArrayEquals(expectedHandover, helper.handover)
         Assert.assertArrayEquals(hs.encodedDeviceEngagement, helper.deviceEngagement)
         helper.close()
@@ -410,7 +444,10 @@ class NfcEnagementHelperTest {
     }
 
     companion object {
-        fun ndefTransact(helper: NfcEngagementHelper, ndefMessage: ByteArray): ByteArray {
+        fun ndefTransact(
+            helper: NfcEngagementHelper,
+            ndefMessage: ByteArray,
+        ): ByteArray {
             var responseApdu: ByteArray
             if (ndefMessage.size < 256 - 2) {
                 // Fits in a single UPDATE_BINARY command
@@ -418,16 +455,18 @@ class NfcEnagementHelperTest {
                 data[0] = (ndefMessage.size / 0x100 and 0xff).toByte()
                 data[1] = (ndefMessage.size and 0xff).toByte()
                 System.arraycopy(ndefMessage, 0, data, 2, ndefMessage.size)
-                responseApdu = helper.nfcProcessCommandApdu(
-                    NfcUtil.createApduUpdateBinary(0, data)
-                )
+                responseApdu =
+                    helper.nfcProcessCommandApdu(
+                        NfcUtil.createApduUpdateBinary(0, data),
+                    )
                 Assert.assertNotNull(responseApdu)
                 Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
             } else {
                 // First command is UPDATE_BINARY to reset length
-                responseApdu = helper.nfcProcessCommandApdu(
-                    NfcUtil.createApduUpdateBinary(0, byteArrayOf(0x00, 0x00))
-                )
+                responseApdu =
+                    helper.nfcProcessCommandApdu(
+                        NfcUtil.createApduUpdateBinary(0, byteArrayOf(0x00, 0x00)),
+                    )
                 Assert.assertNotNull(responseApdu)
                 Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
 
@@ -439,9 +478,10 @@ class NfcEnagementHelperTest {
                     val numBytesToWrite = Math.min(remaining, 255)
                     val bytesToWrite =
                         Arrays.copyOfRange(ndefMessage, offset, offset + numBytesToWrite)
-                    responseApdu = helper.nfcProcessCommandApdu(
-                        NfcUtil.createApduUpdateBinary(offset + 2, bytesToWrite)
-                    )
+                    responseApdu =
+                        helper.nfcProcessCommandApdu(
+                            NfcUtil.createApduUpdateBinary(offset + 2, bytesToWrite),
+                        )
                     Assert.assertNotNull(responseApdu)
                     Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
                     remaining -= numBytesToWrite
@@ -449,34 +489,40 @@ class NfcEnagementHelperTest {
                 }
 
                 // Final command is UPDATE_BINARY to write the length
-                val encodedLength = byteArrayOf(
-                    (ndefMessage.size / 0x100 and 0xff).toByte(),
-                    (ndefMessage.size and 0xff).toByte()
-                )
-                responseApdu = helper.nfcProcessCommandApdu(
-                    NfcUtil.createApduUpdateBinary(0, encodedLength)
-                )
+                val encodedLength =
+                    byteArrayOf(
+                        (ndefMessage.size / 0x100 and 0xff).toByte(),
+                        (ndefMessage.size and 0xff).toByte(),
+                    )
+                responseApdu =
+                    helper.nfcProcessCommandApdu(
+                        NfcUtil.createApduUpdateBinary(0, encodedLength),
+                    )
                 Assert.assertNotNull(responseApdu)
                 Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
             }
 
             // Finally, read the NDEF response message.. first get the length
-            responseApdu = helper.nfcProcessCommandApdu(
-                NfcUtil.createApduReadBinary(0, 2)
-            )
+            responseApdu =
+                helper.nfcProcessCommandApdu(
+                    NfcUtil.createApduReadBinary(0, 2),
+                )
             Assert.assertNotNull(responseApdu)
             // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
             // don't know the length.
             Assert.assertEquals(4, responseApdu.size.toLong())
             Assert.assertEquals(0x90, (responseApdu[2].toInt() and 0xff).toLong())
             Assert.assertEquals(0x00, (responseApdu[3].toInt() and 0xff).toLong())
-            val ndefMessageSize = ((responseApdu[0].toInt() and 0xff) * 0x0100
-                    + (responseApdu[1].toInt() and 0xff))
+            val ndefMessageSize = (
+                (responseApdu[0].toInt() and 0xff) * 0x0100 +
+                    (responseApdu[1].toInt() and 0xff)
+            )
 
             // Read NDEF message
-            responseApdu = helper.nfcProcessCommandApdu(
-                NfcUtil.createApduReadBinary(2, ndefMessageSize)
-            )
+            responseApdu =
+                helper.nfcProcessCommandApdu(
+                    NfcUtil.createApduReadBinary(2, ndefMessageSize),
+                )
             Assert.assertNotNull(responseApdu)
             // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
             // don't know the length.

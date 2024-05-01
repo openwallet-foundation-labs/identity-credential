@@ -28,14 +28,14 @@ import com.budiyev.android.codescanner.DecodeCallback
  * A simple [Fragment] subclass as the second destination in the navigation.
  */
 class DeviceEngagementFragment : Fragment() {
-
     private val args: DeviceEngagementFragmentArgs by navArgs()
 
-    private val appPermissions:List<String> get() {
-        val permissions = mutableListOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
+    private val appPermissions: List<String> get() {
+        val permissions =
+            mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            )
 
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
@@ -56,29 +56,32 @@ class DeviceEngagementFragment : Fragment() {
     private lateinit var transferManager: TransferManager
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
-
         _binding = FragmentDeviceEngagementBinding.inflate(inflater, container, false)
         transferManager = TransferManager.getInstance(requireContext())
         transferManager.initVerificationHelper()
         return binding.root
-
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         // QR Code Engagement
         mCodeScanner = CodeScanner(requireContext(), binding.csScanner)
-        mCodeScanner?.decodeCallback = DecodeCallback { result ->
-            requireActivity().runOnUiThread {
-                val qrText = result.text
-                logDebug("qrText: $qrText")
-                transferManager.setQrDeviceEngagement(qrText)
+        mCodeScanner?.decodeCallback =
+            DecodeCallback { result ->
+                requireActivity().runOnUiThread {
+                    val qrText = result.text
+                    logDebug("qrText: $qrText")
+                    transferManager.setQrDeviceEngagement(qrText)
+                }
             }
-        }
 
         binding.csScanner.setOnClickListener { mCodeScanner?.startPreview() }
 
@@ -92,8 +95,9 @@ class DeviceEngagementFragment : Fragment() {
                 TransferStatus.CONNECTED -> {
                     logDebug("Device connected")
                     Toast.makeText(
-                        requireContext(), "Error invalid callback connected",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error invalid callback connected",
+                        Toast.LENGTH_SHORT,
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
@@ -101,8 +105,9 @@ class DeviceEngagementFragment : Fragment() {
                 TransferStatus.RESPONSE -> {
                     logDebug("Device response received")
                     Toast.makeText(
-                        requireContext(), "Error invalid callback response",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error invalid callback response",
+                        Toast.LENGTH_SHORT,
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
@@ -110,8 +115,9 @@ class DeviceEngagementFragment : Fragment() {
                 TransferStatus.DISCONNECTED -> {
                     logDebug("Device disconnected")
                     Toast.makeText(
-                        requireContext(), "Device disconnected",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Device disconnected",
+                        Toast.LENGTH_SHORT,
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
@@ -120,8 +126,9 @@ class DeviceEngagementFragment : Fragment() {
                     // TODO: Pass and show the actual text of the exception here.
                     logDebug("Error received")
                     Toast.makeText(
-                        requireContext(), "Error connecting to holder",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error connecting to holder",
+                        Toast.LENGTH_SHORT,
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
@@ -152,7 +159,7 @@ class DeviceEngagementFragment : Fragment() {
         }
         transferManager.setNdefDeviceEngagement(
             NfcAdapter.getDefaultAdapter(requireContext()),
-            requireActivity()
+            requireActivity(),
         )
     }
 
@@ -161,16 +168,17 @@ class DeviceEngagementFragment : Fragment() {
     }
 
     private fun shouldRequestPermission() {
-        val permissionsNeeded = appPermissions.filter { permission ->
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    permission,
+                ) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(
-                permissionsNeeded.toTypedArray()
+                permissionsNeeded.toTypedArray(),
             )
         }
     }
@@ -180,7 +188,7 @@ class DeviceEngagementFragment : Fragment() {
         return appPermissions.none { permission ->
             ContextCompat.checkSelfPermission(
                 requireContext(),
-                permission
+                permission,
             ) != PackageManager.PERMISSION_GRANTED
         }
     }
@@ -209,14 +217,14 @@ class DeviceEngagementFragment : Fragment() {
         if (transferManager.availableMdocConnectionMethods?.size == 1) {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToTransfer(
-                    args.requestDocumentList
-                )
+                    args.requestDocumentList,
+                ),
             )
         } else {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToSelectTransport(
-                    args.requestDocumentList
-                )
+                    args.requestDocumentList,
+                ),
             )
         }
     }

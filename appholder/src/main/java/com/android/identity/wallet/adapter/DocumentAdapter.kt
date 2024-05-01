@@ -15,7 +15,6 @@
 */
 package com.android.identity.wallet.adapter
 
-
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,24 +32,30 @@ import com.android.identity.wallet.wallet.SelectDocumentFragmentDirections
  * Adapter for the [RecyclerView].
  */
 class DocumentAdapter : ListAdapter<DocumentInformation, RecyclerView.ViewHolder>(DocumentDiffCallback()) {
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int,
+    ): RecyclerView.ViewHolder {
         return DocumentViewHolder(
             ListItemDocumentBinding.inflate(
-                LayoutInflater.from(parent.context), parent, false
-            )
+                LayoutInflater.from(parent.context),
+                parent,
+                false,
+            ),
         )
     }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+    ) {
         val document = getItem(position)
         (holder as DocumentViewHolder).bind(document)
     }
 
     class DocumentViewHolder(
-        private val binding: ListItemDocumentBinding
+        private val binding: ListItemDocumentBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
-
         init {
             binding.setClickDetailListener {
                 binding.document?.let { doc ->
@@ -59,7 +64,10 @@ class DocumentAdapter : ListAdapter<DocumentInformation, RecyclerView.ViewHolder
             }
         }
 
-        private fun navigateToDetail(document: DocumentInformation, view: View) {
+        private fun navigateToDetail(
+            document: DocumentInformation,
+            view: View,
+        ) {
             val direction = SelectDocumentFragmentDirections.toDocumentDetail(document.docName)
             if (view.findNavController().currentDestination?.id == R.id.wallet) {
                 view.findNavController().navigate(direction)
@@ -88,12 +96,17 @@ class DocumentAdapter : ListAdapter<DocumentInformation, RecyclerView.ViewHolder
 }
 
 private class DocumentDiffCallback : DiffUtil.ItemCallback<DocumentInformation>() {
-
-    override fun areItemsTheSame(oldItem: DocumentInformation, newItem: DocumentInformation): Boolean {
+    override fun areItemsTheSame(
+        oldItem: DocumentInformation,
+        newItem: DocumentInformation,
+    ): Boolean {
         return oldItem.userVisibleName == newItem.userVisibleName
     }
 
-    override fun areContentsTheSame(oldItem: DocumentInformation, newItem: DocumentInformation): Boolean {
+    override fun areContentsTheSame(
+        oldItem: DocumentInformation,
+        newItem: DocumentInformation,
+    ): Boolean {
         return oldItem == newItem
     }
 }

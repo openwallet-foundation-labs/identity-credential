@@ -21,7 +21,6 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 object FormatUtil {
-
     // Helper function to convert a byteArray to HEX string
     fun encodeToString(bytes: ByteArray): String {
         val stringBuilder = StringBuilder(bytes.size * 2)
@@ -35,11 +34,12 @@ object FormatUtil {
         val newLine = "<br>"
         val stringBuilder = StringBuilder()
         val inputStream = ByteArrayInputStream(encodedBytes)
-        val dataItems = try {
-            CborDecoder(inputStream).decode()
-        } catch (e: CborException) {
-            throw IllegalStateException(e)
-        }
+        val dataItems =
+            try {
+                CborDecoder(inputStream).decode()
+            } catch (e: CborException) {
+                throw IllegalStateException(e)
+            }
         for ((count, dataItem) in dataItems.withIndex()) {
             if (count > 0) {
                 stringBuilder.append(",$newLine")
@@ -52,7 +52,7 @@ object FormatUtil {
     private fun cborPrettyPrintDataItem(
         stringBuilder: StringBuilder,
         indent: Int,
-        dataItem: DataItem
+        dataItem: DataItem,
     ) {
         val space = "&nbsp;"
         val newLine = "<br>"
@@ -65,7 +65,7 @@ object FormatUtil {
             stringBuilder.append(String.format("tag %d ", dataItem.tag.value))
         }
         when (dataItem.majorType) {
-            MajorType.INVALID ->                 // TODO: throw
+            MajorType.INVALID -> // TODO: throw
                 stringBuilder.append("**invalid**")
 
             MajorType.UNSIGNED_INTEGER -> {
@@ -101,7 +101,6 @@ object FormatUtil {
             }
 
             MajorType.ARRAY -> {
-
                 // Major type 4: an array of data items.
                 val items = (dataItem as Array).dataItems
                 if (items.size == 0) {
@@ -153,7 +152,7 @@ object FormatUtil {
             }
 
             MajorType.TAG -> throw IllegalStateException("Semantic tag data item not expected")
-            MajorType.SPECIAL ->                 // Major type 7: floating point numbers and simple data types that need no
+            MajorType.SPECIAL -> // Major type 7: floating point numbers and simple data types that need no
                 // content, as well as the "break" stop code.
                 if (dataItem is SimpleValue) {
                     when (dataItem.simpleValueType) {
@@ -165,17 +164,19 @@ object FormatUtil {
                         SimpleValueType.UNALLOCATED -> stringBuilder.append("unallocated")
                     }
                 } else if (dataItem is DoublePrecisionFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
+                    val df =
+                        DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH),
+                        )
                     df.maximumFractionDigits = 340
                     stringBuilder.append(df.format(dataItem.value))
                 } else if (dataItem is AbstractFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
+                    val df =
+                        DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH),
+                        )
                     df.maximumFractionDigits = 340
                     stringBuilder.append(df.format(dataItem.value))
                 } else {

@@ -89,9 +89,10 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
             val cms = mutableListOf<ConnectionMethod>()
             if (connectionMethodsArray != null) {
                 for (cmDataItem in (connectionMethodsArray as CborArray).items) {
-                    val connectionMethod = fromDeviceEngagement(
-                        Cbor.encode(cmDataItem)
-                    )
+                    val connectionMethod =
+                        fromDeviceEngagement(
+                            Cbor.encode(cmDataItem),
+                        )
                     if (connectionMethod != null) {
                         cms.add(connectionMethod)
                     }
@@ -116,10 +117,11 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
                 }
             } else {
                 if (map.hasKey(5)) {
-                    Logger.w(TAG,
-                        "Ignoring key 5 in Engagement as version is set to $version. "
-                                + "The mdoc application producing this DeviceEngagement is "
-                                + "not compliant to ISO/IEC 18013-5:2021."
+                    Logger.w(
+                        TAG,
+                        "Ignoring key 5 in Engagement as version is set to $version. " +
+                            "The mdoc application producing this DeviceEngagement is " +
+                            "not compliant to ISO/IEC 18013-5:2021.",
                     )
                 }
             }

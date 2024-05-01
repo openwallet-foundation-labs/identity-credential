@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import android.provider.Settings
 import android.util.Base64
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -35,8 +34,8 @@ import com.android.identity.crypto.javaPublicKey
 import com.android.identity.util.Logger
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
-import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
+import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.RequestingDocumentState
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
@@ -70,21 +69,23 @@ class RequestOptionsFragment() : Fragment() {
         return permissions
     }
 
-    private val permissionsLauncher = registerForActivityResult(RequestMultiplePermissions()) { permissions ->
-        permissions.entries.forEach { permission ->
-            logDebug("permissionsLauncher ${permission.key} = ${permission.value}")
-            if (!permission.value && !shouldShowRequestPermissionRationale(permission.key)) {
-                openSettings()
-                return@registerForActivityResult
+    private val permissionsLauncher =
+        registerForActivityResult(RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach { permission ->
+                logDebug("permissionsLauncher ${permission.key} = ${permission.value}")
+                if (!permission.value && !shouldShowRequestPermissionRationale(permission.key)) {
+                    openSettings()
+                    return@registerForActivityResult
+                }
             }
         }
-    }
 
     private lateinit var transferManager: TransferManager
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
@@ -96,8 +97,8 @@ class RequestOptionsFragment() : Fragment() {
                         onSelectionUpdated = createRequestViewModel::onRequestUpdate,
                         onRequestConfirm = { onRequestConfirmed(it.isCustomMdlRequest) },
                         onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) },
-                        onRequestPreviewProtocol = { onRequestViaCredman("preview", it)},
-                        onRequestOpenId4VPProtocol = { onRequestViaCredman("openid4vp", it)}
+                        onRequestPreviewProtocol = { onRequestViaCredman("preview", it) },
+                        onRequestOpenId4VPProtocol = { onRequestViaCredman("openid4vp", it) },
                     )
                 }
             }
@@ -107,7 +108,7 @@ class RequestOptionsFragment() : Fragment() {
     private fun buildPreviewProtocolRequestJson(
         requestDocument: RequestDocument,
         nonce: ByteArray,
-        readerPublicKey: EcPublicKey
+        readerPublicKey: EcPublicKey,
     ): String {
         val json = JSONObject()
         val nonceEncoded = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
@@ -115,16 +116,16 @@ class RequestOptionsFragment() : Fragment() {
             (readerPublicKey as EcPublicKeyDoubleCoordinate).let {
                 byteArrayOf(0x04) + it.x + it.y
             }
-        val publicKeyBytesEncoded = Base64.encodeToString(
-            publicKeyBytes,
-            Base64.NO_WRAP or Base64.URL_SAFE
-        )
-
+        val publicKeyBytesEncoded =
+            Base64.encodeToString(
+                publicKeyBytes,
+                Base64.NO_WRAP or Base64.URL_SAFE,
+            )
 
         val selector = JSONObject()
         requestDocument.docType
         selector.put("format", JSONArray().put("mdoc"))
-        selector.put( "doctype", requestDocument.docType)
+        selector.put("doctype", requestDocument.docType)
         val fields = JSONArray()
         val itemsToRequest = requestDocument.itemsToRequest
         itemsToRequest.forEach { (nameSpaceName, dataElementNamesToIntentToRetainMap) ->
@@ -144,8 +145,10 @@ class RequestOptionsFragment() : Fragment() {
         return json.toString()
     }
 
-    private fun onRequestViaCredman(protocol: String, state: RequestingDocumentState) {
-
+    private fun onRequestViaCredman(
+        protocol: String,
+        state: RequestingDocumentState,
+    ) {
         val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
 
         // Generate nonce
@@ -162,76 +165,86 @@ class RequestOptionsFragment() : Fragment() {
         val requestedDocuments = calcRequestDocumentList()
         val requestedDocument = requestedDocuments.getAll().get(0)
 
-
-        val request = when(protocol) {
-            "preview" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
-            "openid4vp" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
-            else -> ""
-        }
+        val request =
+            when (protocol) {
+                "preview" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
+                "openid4vp" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
+                else -> ""
+            }
 
         val digitalCredentialsRequest = JSONObject()
-        val provider =  JSONObject()
+        val provider = JSONObject()
         provider.put("protocol", protocol)
         provider.put("request", request)
         digitalCredentialsRequest.put("providers", JSONArray().put(provider))
 
-        val option = CredentialOption(
-            type = "com.credman.IdentityCredential",
-            credentialRetrievalData = Bundle(),
-            candidateQueryData = Bundle(),
-            requestMatcher = digitalCredentialsRequest.toString(),
-            requestType = "",
-            protocolType = "",
-        )
-        client.getCredential(GetCredentialRequest(
-            credentialOptions = listOf(option),
-            data = Bundle(),
-            origin = null,
-            resultReceiver = object: ResultReceiver(null) {
-                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
-                    super.onReceiveResult(resultCode, resultData)
-                    Logger.i(TAG, "Got a result $resultCode $resultData")
-                    try {
-                        val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
-                        val responseJson = String(response.credential.data.getByteArray("identityToken")!!)
-                        Logger.i(TAG, "Response JSON $responseJson")
+        val option =
+            CredentialOption(
+                type = "com.credman.IdentityCredential",
+                credentialRetrievalData = Bundle(),
+                candidateQueryData = Bundle(),
+                requestMatcher = digitalCredentialsRequest.toString(),
+                requestType = "",
+                protocolType = "",
+            )
+        client.getCredential(
+            GetCredentialRequest(
+                credentialOptions = listOf(option),
+                data = Bundle(),
+                origin = null,
+                resultReceiver =
+                    object : ResultReceiver(null) {
+                        override fun onReceiveResult(
+                            resultCode: Int,
+                            resultData: Bundle?,
+                        ) {
+                            super.onReceiveResult(resultCode, resultData)
+                            Logger.i(TAG, "Got a result $resultCode $resultData")
+                            try {
+                                val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
+                                val responseJson = String(response.credential.data.getByteArray("identityToken")!!)
+                                Logger.i(TAG, "Response JSON $responseJson")
 
-                        val bundle = Bundle()
-                        bundle.putString("responseJson", responseJson)
-                        bundle.putByteArray("nonce", nonce)
+                                val bundle = Bundle()
+                                bundle.putString("responseJson", responseJson)
+                                bundle.putByteArray("nonce", nonce)
 
-                        requireActivity().runOnUiThread {
-                            findNavController().navigate(RequestOptionsFragmentDirections
-                                .toShowDeviceResponse(
-                                    bundle,
-                                    KeyPair(
-                                        readerKey.publicKey.javaPublicKey,
-                                        readerKey.javaPrivateKey
+                                requireActivity().runOnUiThread {
+                                    findNavController().navigate(
+                                        RequestOptionsFragmentDirections
+                                            .toShowDeviceResponse(
+                                                bundle,
+                                                KeyPair(
+                                                    readerKey.publicKey.javaPublicKey,
+                                                    readerKey.javaPrivateKey,
+                                                ),
+                                            ),
                                     )
-                                )
-                            )
+                                }
+                            } catch (e: GetCredentialException) {
+                                Logger.e(TAG, "An error occurred", e)
+                                requireActivity().runOnUiThread {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Exception ${e.type} ${e.message}",
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                            }
                         }
-                    } catch (e: GetCredentialException) {
-                        Logger.e(TAG, "An error occurred", e)
-                        requireActivity().runOnUiThread {
-                            Toast.makeText(
-                                requireContext(),
-                                "Exception ${e.type} ${e.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-
-                }
-            }
-        )).addOnSuccessListener {result ->
+                    },
+            ),
+        ).addOnSuccessListener { result ->
             startIntentSenderForResult(result.pendingIntent.intentSender, 777, null, 0, 0, 0, null)
         }.addOnFailureListener {
             logError("Error with get-cred intent generation", it)
         }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         transferManager = TransferManager.getInstance(requireContext())
         if (!args.keepConnection) {
             // Always call to cancel any connection that could be on progress
@@ -252,32 +265,36 @@ class RequestOptionsFragment() : Fragment() {
                 TransferStatus.CONNECTED -> {
                     logDebug("Device connected")
                     Toast.makeText(
-                        requireContext(), "Error invalid callback connected",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error invalid callback connected",
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
 
                 TransferStatus.RESPONSE -> {
                     logDebug("Device response received")
                     Toast.makeText(
-                        requireContext(), "Error invalid callback response",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error invalid callback response",
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
 
                 TransferStatus.DISCONNECTED -> {
                     logDebug("Device disconnected")
                     Toast.makeText(
-                        requireContext(), "Device disconnected",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Device disconnected",
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
 
                 TransferStatus.ERROR -> {
                     logDebug("Error received")
                     Toast.makeText(
-                        requireContext(), "Error connecting to holder",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error connecting to holder",
+                        Toast.LENGTH_SHORT,
                     ).show()
                 }
 
@@ -288,11 +305,12 @@ class RequestOptionsFragment() : Fragment() {
 
     private fun onDeviceEngagementReceived() {
         val requestedDocuments = calcRequestDocumentList()
-        val destination = if (transferManager.availableMdocConnectionMethods?.size == 1) {
-            RequestOptionsFragmentDirections.toTransfer(requestedDocuments)
-        } else {
-            RequestOptionsFragmentDirections.toSelectTransport(requestedDocuments)
-        }
+        val destination =
+            if (transferManager.availableMdocConnectionMethods?.size == 1) {
+                RequestOptionsFragmentDirections.toTransfer(requestedDocuments)
+            } else {
+                RequestOptionsFragmentDirections.toSelectTransport(requestedDocuments)
+            }
         findNavController().navigate(destination)
     }
 
@@ -303,15 +321,16 @@ class RequestOptionsFragment() : Fragment() {
         if (adapter != null) {
             transferManager.setNdefDeviceEngagement(
                 adapter,
-                requireActivity()
+                requireActivity(),
             )
         }
     }
 
     private fun checkRequiredPermissions() {
-        val permissionsNeeded = appPermissions.filter { permission ->
-            checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED
+            }
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(permissionsNeeded.toTypedArray())
         }
@@ -333,25 +352,26 @@ class RequestOptionsFragment() : Fragment() {
 
     private fun navigateToQRCodeScan(isCustomMdlRequest: Boolean) {
         val documentList = calcRequestDocumentList()
-        val destination = if (isCustomMdlRequest) {
-            getCustomMdlDestination()
-        } else {
-            if (args.keepConnection) {
-                RequestOptionsFragmentDirections.toTransfer(documentList, true)
+        val destination =
+            if (isCustomMdlRequest) {
+                getCustomMdlDestination()
             } else {
-                RequestOptionsFragmentDirections.toScanDeviceEngagement(documentList)
+                if (args.keepConnection) {
+                    RequestOptionsFragmentDirections.toTransfer(documentList, true)
+                } else {
+                    RequestOptionsFragmentDirections.toScanDeviceEngagement(documentList)
+                }
             }
-        }
         findNavController().navigate(destination)
     }
 
-    private fun getCustomMdlDestination():NavDirections {
+    private fun getCustomMdlDestination(): NavDirections {
         val requestDocumentList = calcRequestDocumentList()
         val mdl = requestDocumentList.getAll().first { it.docType == RequestDocument.MDL_DOCTYPE }
         return RequestOptionsFragmentDirections.toRequestCustom(
             mdl,
             requestDocumentList,
-            args.keepConnection
+            args.keepConnection,
         )
     }
 

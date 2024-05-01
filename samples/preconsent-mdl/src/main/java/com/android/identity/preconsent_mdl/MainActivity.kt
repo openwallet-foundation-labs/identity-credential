@@ -62,11 +62,11 @@ import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -82,7 +82,6 @@ import java.nio.charset.StandardCharsets
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
-
     companion object {
         private val TAG = "MainActivity"
 
@@ -114,100 +113,119 @@ class MainActivity : ComponentActivity() {
         val portrait: ByteArray = baos.toByteArray()
 
         val now = Clock.System.now()
-        val expiryDate = Instant.fromEpochMilliseconds(
-            now.toEpochMilliseconds() + 5 * 365 * 24 * 3600 * 1000L)
+        val expiryDate =
+            Instant.fromEpochMilliseconds(
+                now.toEpochMilliseconds() + 5 * 365 * 24 * 3600 * 1000L,
+            )
 
-        val documentData = NameSpacedData.Builder()
-            .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
-            .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
-            .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
-            .putEntryNumber(MDL_NAMESPACE, "sex", 2)
-            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(now.toDataItemDateTimeString))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString))
-            .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
-            .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
-            .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
-            .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
-            .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
-            .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
-            .build()
+        val documentData =
+            NameSpacedData.Builder()
+                .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
+                .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
+                .putEntryNumber(MDL_NAMESPACE, "sex", 2)
+                .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(now.toDataItemDateTimeString))
+                .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString))
+                .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
+                .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
+                .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
+                .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
+                .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
+                .build()
         document.applicationData.setNameSpacedData("documentData", documentData)
         document.applicationData.setString("docType", MDL_DOCTYPE)
 
         // Create Credentials and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
-        val validUntil = Instant.fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 365 * 24 * 3600 * 1000L)
+        val validUntil =
+            Instant.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 365 * 24 * 3600 * 1000L,
+            )
 
         // Create three credentials and certify them
         for (n in 0..2) {
-            val pendingCredential = MdocCredential(
-                document,
-                null,
-                AUTH_KEY_DOMAIN,
-                transferHelper.androidKeystoreSecureArea,
-                CreateKeySettings("".toByteArray()),
-                MDL_DOCTYPE
-            )
+            val pendingCredential =
+                MdocCredential(
+                    document,
+                    null,
+                    AUTH_KEY_DOMAIN,
+                    transferHelper.androidKeystoreSecureArea,
+                    CreateKeySettings("".toByteArray()),
+                    MDL_DOCTYPE,
+                )
 
             // Generate an MSO and issuer-signed data for this credentials.
-            val msoGenerator = MobileSecurityObjectGenerator(
-                "SHA-256",
-                MDL_DOCTYPE,
-                pendingCredential.attestation.certificates[0].publicKey
-            )
+            val msoGenerator =
+                MobileSecurityObjectGenerator(
+                    "SHA-256",
+                    MDL_DOCTYPE,
+                    pendingCredential.attestation.certificates[0].publicKey,
+                )
             msoGenerator.setValidityInfo(
                 Timestamp.ofEpochMilli(timeSigned.toEpochMilliseconds()),
                 Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
                 Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()),
-                null)
-            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-                documentData,
-                Random.Default,
-                16,
-                null
+                null,
             )
-            for (nameSpaceName in issuerNameSpaces.keys) {
-                val digests = MdocUtil.calculateDigestsForNameSpace(
-                    nameSpaceName,
-                    issuerNameSpaces,
-                    Algorithm.SHA256
+            val issuerNameSpaces =
+                MdocUtil.generateIssuerNameSpaces(
+                    documentData,
+                    Random.Default,
+                    16,
+                    null,
                 )
+            for (nameSpaceName in issuerNameSpaces.keys) {
+                val digests =
+                    MdocUtil.calculateDigestsForNameSpace(
+                        nameSpaceName,
+                        issuerNameSpaces,
+                        Algorithm.SHA256,
+                    )
                 msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
             }
 
             ensureDocumentSigningKey()
             val mso = msoGenerator.generate()
             val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
-            val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
-            ))
-            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).toDataItem
-            ))
-            val encodedIssuerAuth = Cbor.encode(
-                Cose.coseSign1Sign(
-                    documentSigningKey,
-                    taggedEncodedMso,
-                    true,
-                    Algorithm.ES256,
-                    protectedHeaders,
-                    unprotectedHeaders
-                ).toDataItem
-            )
+            val protectedHeaders =
+                mapOf<CoseLabel, DataItem>(
+                    Pair(
+                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                        Algorithm.ES256.coseAlgorithmIdentifier.toDataItem,
+                    ),
+                )
+            val unprotectedHeaders =
+                mapOf<CoseLabel, DataItem>(
+                    Pair(
+                        CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                        CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).toDataItem,
+                    ),
+                )
+            val encodedIssuerAuth =
+                Cbor.encode(
+                    Cose.coseSign1Sign(
+                        documentSigningKey,
+                        taggedEncodedMso,
+                        true,
+                        Algorithm.ES256,
+                        protectedHeaders,
+                        unprotectedHeaders,
+                    ).toDataItem,
+                )
 
-            val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-                issuerNameSpaces,
-                encodedIssuerAuth
-            ).generate()
+            val issuerProvidedAuthenticationData =
+                StaticAuthDataGenerator(
+                    issuerNameSpaces,
+                    encodedIssuerAuth,
+                ).generate()
 
             pendingCredential.certify(
                 issuerProvidedAuthenticationData,
                 Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
-                Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()))
+                Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()),
+            )
         }
         Logger.d(TAG, "Created document with name ${document.name}")
     }
@@ -215,7 +233,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var documentSigningKey: EcPrivateKey
     private lateinit var documentSigningKeyCert: Certificate
 
-    private fun getRawResourceAsString(@RawRes resourceId: Int): String {
+    private fun getRawResourceAsString(
+        @RawRes resourceId: Int,
+    ): String {
         val inputStream = application.applicationContext.resources.openRawResource(resourceId)
         val bytes = inputStream.readBytes()
         return String(bytes, StandardCharsets.UTF_8)
@@ -227,11 +247,11 @@ class MainActivity : ComponentActivity() {
         }
 
         documentSigningKeyCert = Certificate.fromPem(getRawResourceAsString(R.raw.ds_certificate))
-        documentSigningKey = EcPrivateKey.fromPem(
-            getRawResourceAsString(R.raw.ds_private_key),
-            documentSigningKeyCert.publicKey
-        )
-
+        documentSigningKey =
+            EcPrivateKey.fromPem(
+                getRawResourceAsString(R.raw.ds_private_key),
+                documentSigningKeyCert.publicKey,
+            )
     }
 
     private val permissionsLauncher =
@@ -242,7 +262,7 @@ class MainActivity : ComponentActivity() {
                     Toast.makeText(
                         this,
                         "The ${it.key} permission is required for BLE",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_LONG,
                     ).show()
                     return@registerForActivityResult
                 }
@@ -255,7 +275,7 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.BLUETOOTH_ADVERTISE,
                 Manifest.permission.BLUETOOTH_SCAN,
                 Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.NEARBY_WIFI_DEVICES
+                Manifest.permission.NEARBY_WIFI_DEVICES,
             )
         } else {
             arrayOf(
@@ -269,16 +289,17 @@ class MainActivity : ComponentActivity() {
         transferHelper = TransferHelper.getInstance(applicationContext)
         provisionDocuments()
 
-        val permissionsNeeded = appPermissions.filter { permission ->
-            ContextCompat.checkSelfPermission(
-                applicationContext,
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    permission,
+                ) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(
-                permissionsNeeded.toTypedArray()
+                permissionsNeeded.toTypedArray(),
             )
         }
 
@@ -318,18 +339,18 @@ private fun MainScreen(context: Context) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-
         topBar = {
             CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                 title = {
                     Text(
                         "mDL Preconsent Sample",
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
                 scrollBehavior = scrollBehavior,
@@ -337,28 +358,31 @@ private fun MainScreen(context: Context) {
         },
     ) { innerPadding ->
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            color = MaterialTheme.colorScheme.background
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            color = MaterialTheme.colorScheme.background,
         ) {
             Column {
                 val scrollState = rememberScrollState()
                 Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier =
+                        Modifier
+                            .padding(16.dp)
+                            .verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Column {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
-                            text = "This app contains an mDL with Preconsent which " +
+                            text =
+                                "This app contains an mDL with Preconsent which " +
                                     "will be presented to any mdoc reader, without authentication " +
                                     "or consent. The main purpose of this application is " +
                                     "to evaluate performance.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
 
@@ -373,7 +397,7 @@ private fun MainScreen(context: Context) {
                             nfcStaticHandoverEnabled.value = checked
                             transferHelper.setNfcNegotiatedHandoverEnabled(!checked)
                             nfcNegotiatedHandoverEnabled.value = !checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "NFC Negotiated Handover",
@@ -385,7 +409,7 @@ private fun MainScreen(context: Context) {
                             nfcNegotiatedHandoverEnabled.value = checked
                             transferHelper.setNfcStaticHandoverEnabled(!checked)
                             nfcStaticHandoverEnabled.value = !checked
-                        }
+                        },
                     )
                     SettingSectionTitle(title = "Data Transfer Settings")
                     SettingToggle(
@@ -396,7 +420,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setBleCentralClientDataTransferEnabled(checked)
                             bleCentralClientDataTransferEnabled.value = checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "BLE mdoc peripheral server data retrieval",
@@ -406,7 +430,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setBlePeripheralServerDataTransferEnabled(checked)
                             blePeripheralServerDataTransferEnabled.value = checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "Wifi Aware data transfer",
@@ -416,7 +440,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setWifiAwareDataTransferEnabled(checked)
                             wifiAwareDataTransferEnabled.value = checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "NFC data transfer",
@@ -426,7 +450,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setNfcDataTransferEnabled(checked)
                             nfcDataTransferEnabled.value = checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "TCP data transfer (proprietary)",
@@ -436,7 +460,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setTcpDataTransferEnabled(checked)
                             tcpDataTransferEnabled.value = checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "UDP data transfer (proprietary)",
@@ -446,7 +470,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setUdpDataTransferEnabled(checked)
                             udpDataTransferEnabled.value = checked
-                        }
+                        },
                     )
                     SettingSectionTitle(title = "Options")
                     SettingToggle(
@@ -457,7 +481,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setL2CapEnabled(checked)
                             l2capEnabled.value = checked
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "Experimental conveyance of L2CAP PSM",
@@ -467,7 +491,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setExperimentalPsmEnabled(checked)
                             experimentalPsmEnabled.value = checked
-                        }
+                        },
                     )
                     SettingSectionTitle(title = "Logging")
                     SettingToggle(
@@ -479,7 +503,7 @@ private fun MainScreen(context: Context) {
                             transferHelper.setDebugEnabled(checked)
                             debugEnabled.value = checked
                             Logger.isDebugEnabled = checked
-                        }
+                        },
                     )
                 }
             }
@@ -490,14 +514,14 @@ private fun MainScreen(context: Context) {
 @Composable
 private fun SettingSectionTitle(
     modifier: Modifier = Modifier,
-    title: String
+    title: String,
 ) {
     Column(modifier = modifier) {
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -510,26 +534,26 @@ private fun SettingToggle(
     subtitleOff: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             val subtitle = if (isChecked) subtitleOn else subtitleOff
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         Switch(
             checked = isChecked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }

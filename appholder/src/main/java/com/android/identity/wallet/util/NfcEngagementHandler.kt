@@ -33,7 +33,6 @@ import com.android.identity.wallet.transfer.ConnectionSetup
 import com.android.identity.wallet.transfer.TransferManager
 
 class NfcEngagementHandler : HostApduService() {
-
     private lateinit var engagementHelper: NfcEngagementHelper
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
@@ -46,81 +45,83 @@ class NfcEngagementHandler : HostApduService() {
     private val eDeviceKey by lazy {
         Crypto.createEcPrivateKey(settings.getEphemeralKeyCurveOption())
     }
-    private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
-
-        override fun onTwoWayEngagementDetected() {
-            log("Engagement Listener: Two Way Engagement Detected.")
-        }
-
-        override fun onHandoverSelectMessageSent() {
-            log("Engagement Listener: Handover Select Message Sent.")
-        }
-
-        override fun onDeviceConnecting() {
-            log("Engagement Listener: Device Connecting. Launching Transfer Screen")
-            val pendingIntent = NavDeepLinkBuilder(applicationContext)
-                .setGraph(R.navigation.navigation_graph)
-                .setDestination(R.id.transferDocumentFragment)
-                .setComponentName(com.android.identity.wallet.MainActivity::class.java)
-                .createPendingIntent()
-            pendingIntent.send(applicationContext, 0, null)
-            transferManager.updateStatus(TransferStatus.CONNECTING)
-        }
-
-        override fun onDeviceConnected(transport: DataTransport) {
-            if (deviceRetrievalHelper != null) {
-                log("Engagement Listener: Device Connected -> ignored due to active presentation")
-                return
+    private val nfcEngagementListener =
+        object : NfcEngagementHelper.Listener {
+            override fun onTwoWayEngagementDetected() {
+                log("Engagement Listener: Two Way Engagement Detected.")
             }
 
-            log("Engagement Listener: Device Connected via NFC")
+            override fun onHandoverSelectMessageSent() {
+                log("Engagement Listener: Handover Select Message Sent.")
+            }
 
-            val builder = DeviceRetrievalHelper.Builder(
-                applicationContext,
-                presentationListener,
-                applicationContext.mainExecutor(),
-                eDeviceKey
-            )
-            builder.useForwardEngagement(
-                transport,
-                engagementHelper.deviceEngagement,
-                engagementHelper.handover
-            )
-            deviceRetrievalHelper = builder.build()
-            communication.deviceRetrievalHelper = deviceRetrievalHelper
-            engagementHelper.close()
-            transferManager.updateStatus(TransferStatus.CONNECTED)
+            override fun onDeviceConnecting() {
+                log("Engagement Listener: Device Connecting. Launching Transfer Screen")
+                val pendingIntent =
+                    NavDeepLinkBuilder(applicationContext)
+                        .setGraph(R.navigation.navigation_graph)
+                        .setDestination(R.id.transferDocumentFragment)
+                        .setComponentName(com.android.identity.wallet.MainActivity::class.java)
+                        .createPendingIntent()
+                pendingIntent.send(applicationContext, 0, null)
+                transferManager.updateStatus(TransferStatus.CONNECTING)
+            }
+
+            override fun onDeviceConnected(transport: DataTransport) {
+                if (deviceRetrievalHelper != null) {
+                    log("Engagement Listener: Device Connected -> ignored due to active presentation")
+                    return
+                }
+
+                log("Engagement Listener: Device Connected via NFC")
+
+                val builder =
+                    DeviceRetrievalHelper.Builder(
+                        applicationContext,
+                        presentationListener,
+                        applicationContext.mainExecutor(),
+                        eDeviceKey,
+                    )
+                builder.useForwardEngagement(
+                    transport,
+                    engagementHelper.deviceEngagement,
+                    engagementHelper.handover,
+                )
+                deviceRetrievalHelper = builder.build()
+                communication.deviceRetrievalHelper = deviceRetrievalHelper
+                engagementHelper.close()
+                transferManager.updateStatus(TransferStatus.CONNECTED)
+            }
+
+            override fun onError(error: Throwable) {
+                log("Engagement Listener: onError -> ${error.message}")
+                transferManager.updateStatus(TransferStatus.ERROR)
+                engagementHelper.close()
+            }
         }
 
-        override fun onError(error: Throwable) {
-            log("Engagement Listener: onError -> ${error.message}")
-            transferManager.updateStatus(TransferStatus.ERROR)
-            engagementHelper.close()
-        }
-    }
+    private val presentationListener =
+        object : DeviceRetrievalHelper.Listener {
+            override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
+                log("DeviceRetrievalHelper Listener (NFC): OnEReaderKeyReceived")
+            }
 
-    private val presentationListener = object : DeviceRetrievalHelper.Listener {
+            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                log("Presentation Listener: OnDeviceRequest")
+                communication.setDeviceRequest(deviceRequestBytes)
+                transferManager.updateStatus(TransferStatus.REQUEST)
+            }
 
-        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
-            log("DeviceRetrievalHelper Listener (NFC): OnEReaderKeyReceived")
-        }
+            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                log("Presentation Listener: onDeviceDisconnected")
+                transferManager.updateStatus(TransferStatus.DISCONNECTED)
+            }
 
-        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-            log("Presentation Listener: OnDeviceRequest")
-            communication.setDeviceRequest(deviceRequestBytes)
-            transferManager.updateStatus(TransferStatus.REQUEST)
+            override fun onError(error: Throwable) {
+                log("Presentation Listener: onError -> ${error.message}")
+                transferManager.updateStatus(TransferStatus.ERROR)
+            }
         }
-
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            log("Presentation Listener: onDeviceDisconnected")
-            transferManager.updateStatus(TransferStatus.DISCONNECTED)
-        }
-
-        override fun onError(error: Throwable) {
-            log("Presentation Listener: onError -> ${error.message}")
-            transferManager.updateStatus(TransferStatus.ERROR)
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -129,13 +130,14 @@ class NfcEngagementHandler : HostApduService() {
         transferManager = TransferManager.getInstance(applicationContext)
         transferManager.setCommunication(communication)
         val connectionSetup = ConnectionSetup(applicationContext)
-        val builder = NfcEngagementHelper.Builder(
-            applicationContext,
-            eDeviceKey.publicKey,
-            connectionSetup.getConnectionOptions(),
-            nfcEngagementListener,
-            applicationContext.mainExecutor()
-        )
+        val builder =
+            NfcEngagementHelper.Builder(
+                applicationContext,
+                eDeviceKey.publicKey,
+                connectionSetup.getConnectionOptions(),
+                nfcEngagementListener,
+                applicationContext.mainExecutor(),
+            )
         if (PreferencesHelper.shouldUseStaticHandover()) {
             builder.useStaticHandover(connectionSetup.getConnectionMethods())
         } else {
@@ -151,7 +153,10 @@ class NfcEngagementHandler : HostApduService() {
         applicationContext.startActivity(launchAppIntent)
     }
 
-    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
+    override fun processCommandApdu(
+        commandApdu: ByteArray,
+        extras: Bundle?,
+    ): ByteArray? {
         log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
         return engagementHelper.nfcProcessCommandApdu(commandApdu)
     }
@@ -180,4 +185,3 @@ class NfcEngagementHandler : HostApduService() {
         }, timeoutSeconds * 1000L)
     }
 }
-

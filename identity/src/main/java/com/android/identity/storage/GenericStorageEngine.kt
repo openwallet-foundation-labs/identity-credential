@@ -51,12 +51,17 @@ class GenericStorageEngine(private val storageDirectory: File) : StorageEngine {
             val file = getTargetFile(key)
             if (!Files.exists(file.toPath())) {
                 null
-            } else Files.readAllBytes(file.toPath())
+            } else {
+                Files.readAllBytes(file.toPath())
+            }
         } catch (e: IOException) {
             throw IllegalStateException("Unexpected exception", e)
         }
 
-    override fun put(key: String, data: ByteArray) {
+    override fun put(
+        key: String,
+        data: ByteArray,
+    ) {
         try {
             val file = getTargetFile(key)
             // TODO: do this atomically

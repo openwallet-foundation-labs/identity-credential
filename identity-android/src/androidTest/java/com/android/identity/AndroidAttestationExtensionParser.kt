@@ -32,7 +32,7 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
     enum class SecurityLevel {
         SOFTWARE,
         TRUSTED_ENVIRONMENT,
-        STRONG_BOX
+        STRONG_BOX,
     }
 
     var attestationVersion = 0
@@ -90,7 +90,9 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
 
     init {
         val attestationExtensionBytes = cert.getExtensionValue(KEY_DESCRIPTION_OID)
-        require(!(attestationExtensionBytes == null || attestationExtensionBytes.size == 0)) { "Couldn't find keystore attestation extension." }
+        require(
+            !(attestationExtensionBytes == null || attestationExtensionBytes.size == 0),
+        ) { "Couldn't find keystore attestation extension." }
         var seq: ASN1Sequence
         ASN1InputStream(attestationExtensionBytes).use { asn1InputStream ->
             // The extension contains one object, a sequence, in the
@@ -102,24 +104,28 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
             }
         }
         attestationVersion = getIntegerFromAsn1(seq.getObjectAt(ATTESTATION_VERSION_INDEX))
-        this.keymasterSecurityLevel = securityLevelToEnum(
-            getIntegerFromAsn1(
-                seq.getObjectAt(ATTESTATION_SECURITY_LEVEL_INDEX)
+        this.keymasterSecurityLevel =
+            securityLevelToEnum(
+                getIntegerFromAsn1(
+                    seq.getObjectAt(ATTESTATION_SECURITY_LEVEL_INDEX),
+                ),
             )
-        )
         keymasterVersion = getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_VERSION_INDEX))
-        this.keymasterSecurityLevel = securityLevelToEnum(
-            getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_SECURITY_LEVEL_INDEX))
-        )
+        this.keymasterSecurityLevel =
+            securityLevelToEnum(
+                getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_SECURITY_LEVEL_INDEX)),
+            )
         attestationChallenge =
             (seq.getObjectAt(ATTESTATION_CHALLENGE_INDEX) as ASN1OctetString).octets
         uniqueId = (seq.getObjectAt(UNIQUE_ID_INDEX) as ASN1OctetString).octets
-        softwareEnforcedAuthorizations = getAuthorizationMap(
-            (seq.getObjectAt(SW_ENFORCED_INDEX) as ASN1Sequence).toArray()
-        )
-        teeEnforcedAuthorizations = getAuthorizationMap(
-            (seq.getObjectAt(TEE_ENFORCED_INDEX) as ASN1Sequence).toArray()
-        )
+        softwareEnforcedAuthorizations =
+            getAuthorizationMap(
+                (seq.getObjectAt(SW_ENFORCED_INDEX) as ASN1Sequence).toArray(),
+            )
+        teeEnforcedAuthorizations =
+            getAuthorizationMap(
+                (seq.getObjectAt(TEE_ENFORCED_INDEX) as ASN1Sequence).toArray(),
+            )
     }
 
     companion object {
@@ -138,8 +144,10 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
         private const val KM_SECURITY_LEVEL_SOFTWARE = 0
         private const val KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT = 1
         private const val KM_SECURITY_LEVEL_STRONG_BOX = 2
+
         private fun findAuthorizationListEntry(
-            authorizationMap: Map<Int, ASN1Primitive?>, tag: Int
+            authorizationMap: Map<Int, ASN1Primitive?>,
+            tag: Int,
         ): ASN1Primitive? {
             return authorizationMap.getOrDefault(tag, null)
         }
@@ -149,7 +157,7 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
                 asn1Value.isTrue
             } else {
                 throw RuntimeException(
-                    "Boolean value expected; found " + asn1Value.javaClass.name + " instead."
+                    "Boolean value expected; found " + asn1Value.javaClass.name + " instead.",
                 )
             }
         }
@@ -161,7 +169,7 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
                 asn1Value.value.toInt()
             } else {
                 throw IllegalArgumentException(
-                    "Integer value expected; found " + asn1Value.javaClass.name + " instead."
+                    "Integer value expected; found " + asn1Value.javaClass.name + " instead.",
                 )
             }
         }
@@ -173,14 +181,12 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
                 asn1Value.value.toLong()
             } else {
                 throw IllegalArgumentException(
-                    "Integer value expected; found " + asn1Value.javaClass.name + " instead."
+                    "Integer value expected; found " + asn1Value.javaClass.name + " instead.",
                 )
             }
         }
 
-        private fun getAuthorizationMap(
-            authorizationList: Array<ASN1Encodable>
-        ): Map<Int, ASN1Primitive?> {
+        private fun getAuthorizationMap(authorizationList: Array<ASN1Encodable>): Map<Int, ASN1Primitive?> {
             val authorizationMap: MutableMap<Int, ASN1Primitive?> = HashMap()
             for (entry in authorizationList) {
                 val taggedEntry = entry as ASN1TaggedObject

@@ -42,7 +42,9 @@ fun ScreenWithAppBar(
     title: String,
     navigationIcon: @Composable () -> Unit,
     scrollable: Boolean = true,
-    actions: @Composable() (RowScope.() -> Unit) = {},
+    actions:
+        @Composable()
+        (RowScope.() -> Unit) = {},
     snackbarHost: @Composable () -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     body: @Composable ColumnScope.() -> Unit,
@@ -51,13 +53,16 @@ fun ScreenWithAppBar(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
                 title = {
                     Text(
-                        title, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = navigationIcon,
@@ -66,18 +71,19 @@ fun ScreenWithAppBar(
             )
         },
         snackbarHost = snackbarHost,
-        floatingActionButton = floatingActionButton
+        floatingActionButton = floatingActionButton,
     ) { innerPadding ->
-        var modifier = Modifier
-            .fillMaxHeight()
-            .padding(innerPadding)
+        var modifier =
+            Modifier
+                .fillMaxHeight()
+                .padding(innerPadding)
         if (scrollable) {
             modifier = modifier.verticalScroll(rememberScrollState())
         }
         Column(
             modifier = modifier,
             verticalArrangement = Arrangement.Center,
-            content = body
+            content = body,
         )
     }
 }
@@ -88,14 +94,16 @@ fun ScreenWithAppBarAndBackButton(
     title: String,
     onBackButtonClick: () -> Unit,
     scrollable: Boolean = true,
-    actions: @Composable() (RowScope.() -> Unit) = {},
+    actions:
+        @Composable()
+        (RowScope.() -> Unit) = {},
     body: @Composable ColumnScope.() -> Unit,
 ) {
     ScreenWithAppBar(title, navigationIcon = {
         IconButton(onClick = { onBackButtonClick() }) {
             Icon(
                 imageVector = Icons.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.accessibility_go_back_icon)
+                contentDescription = stringResource(R.string.accessibility_go_back_icon),
             )
         }
     }, scrollable = scrollable, actions = actions, body = body)
@@ -104,20 +112,21 @@ fun ScreenWithAppBarAndBackButton(
 @Composable
 fun KeyValuePairText(
     keyText: String,
-    valueText: String
+    valueText: String,
 ) {
     Column(
         Modifier
             .padding(8.dp)
-            .fillMaxWidth()) {
+            .fillMaxWidth(),
+    ) {
         Text(
             text = keyText,
             fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
         )
         Text(
             text = valueText,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }
@@ -125,26 +134,29 @@ fun KeyValuePairText(
 @Composable
 fun ColumnWithPortrait(
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Layout(
         modifier = modifier,
-        content = content
+        content = content,
     ) { measurables, constraints ->
         var height = 0
         var first = true
-        val placeables = measurables.map { measurable ->
-            val placeable = measurable.measure(constraints)
-            if (first) {
-                first = false
-            } else {
-                height += placeable.height
+        val placeables =
+            measurables.map { measurable ->
+                val placeable = measurable.measure(constraints)
+                if (first) {
+                    first = false
+                } else {
+                    height += placeable.height
+                }
+                placeable
             }
-            placeable
-        }
 
-        layout(constraints.maxWidth,
-            maxOf(constraints.minHeight, minOf(constraints.maxHeight, height))) {
+        layout(
+            constraints.maxWidth,
+            maxOf(constraints.minHeight, minOf(constraints.maxHeight, height)),
+        ) {
             var x = 0
             var y = 0
             var first = true
@@ -155,7 +167,7 @@ fun ColumnWithPortrait(
                 if (first) {
                     x = placeable.width
                     floatHeight = placeable.height
-                    first = false;
+                    first = false
                 } else {
                     y += placeable.height
                     if (y >= floatHeight) {
@@ -175,7 +187,7 @@ fun SettingToggle(
     subtitleOff: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
@@ -183,20 +195,19 @@ fun SettingToggle(
                 text = title,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             val subtitle = if (isChecked) subtitleOn else subtitleOff
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Switch(
             checked = isChecked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }
-

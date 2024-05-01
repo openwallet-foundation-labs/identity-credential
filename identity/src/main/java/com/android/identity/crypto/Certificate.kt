@@ -18,7 +18,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * @param encodedCertificate the bytes of the X.509 certificate.
  */
 data class Certificate(
-    val encodedCertificate: ByteArray
+    val encodedCertificate: ByteArray,
 ) {
     private lateinit var parsedPublicKey: EcPublicKey
 
@@ -75,7 +75,7 @@ data class Certificate(
         //
 
         val input = ASN1InputStream(tbsCertificate)
-        val seq = ASN1Sequence.getInstance(input.readObject());
+        val seq = ASN1Sequence.getInstance(input.readObject())
         val subjectPublicKeyInfo = seq.getObjectAt(6) as ASN1Sequence
         val algorithmIdentifier = subjectPublicKeyInfo.getObjectAt(0) as ASN1Sequence
         val algorithmOidString = (algorithmIdentifier.getObjectAt(0) as ASN1ObjectIdentifier).id
@@ -83,8 +83,11 @@ data class Certificate(
             when (algorithmOidString) {
                 // https://datatracker.ietf.org/doc/html/rfc5480#section-2.1.1
                 "1.2.840.10045.2.1" -> {
-                    val ecCurveString = (algorithmIdentifier.getObjectAt(1) as
-                            ASN1ObjectIdentifier).id
+                    val ecCurveString =
+                        (
+                            algorithmIdentifier.getObjectAt(1) as
+                                ASN1ObjectIdentifier
+                        ).id
                     when (ecCurveString) {
                         "1.2.840.10045.3.1.7" -> EcCurve.P256
                         "1.3.132.0.34" -> EcCurve.P384
@@ -152,10 +155,13 @@ data class Certificate(
          */
         @OptIn(ExperimentalEncodingApi::class)
         fun fromPem(pemEncoding: String): Certificate {
-            val encoded = Base64.Mime.decode(pemEncoding
-                .replace("-----BEGIN CERTIFICATE-----", "")
-                .replace("-----END CERTIFICATE-----", "")
-                .trim())
+            val encoded =
+                Base64.Mime.decode(
+                    pemEncoding
+                        .replace("-----BEGIN CERTIFICATE-----", "")
+                        .replace("-----END CERTIFICATE-----", "")
+                        .trim(),
+                )
             return Certificate(encoded)
         }
 

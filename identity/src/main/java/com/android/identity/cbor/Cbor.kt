@@ -1,8 +1,8 @@
 package com.android.identity.cbor
 
-import kotlin.math.pow
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.experimental.or
+import kotlin.math.pow
 
 /**
  * CBOR support routines.
@@ -16,13 +16,13 @@ object Cbor {
     internal fun encodeLength(
         builder: ByteStringBuilder,
         majorType: MajorType,
-        length: Int
+        length: Int,
     ) = encodeLength(builder, majorType, length.toULong())
 
     internal fun encodeLength(
         builder: ByteStringBuilder,
         majorType: MajorType,
-        length: ULong
+        length: ULong,
     ) {
         val majorTypeShifted = (majorType.type shl 5).toByte()
         builder.apply {
@@ -73,7 +73,10 @@ object Cbor {
     // throws IllegalArgumentException if not enough data or if additionalInformation
     // field is invalid
     //
-    internal fun decodeLength(encodedCbor: ByteArray, offset: Int): Pair<Int, ULong> {
+    internal fun decodeLength(
+        encodedCbor: ByteArray,
+        offset: Int,
+    ): Pair<Int, ULong> {
         val additionalInformation: Int
         try {
             additionalInformation = encodedCbor[offset].toInt().and(0x1f)
@@ -83,13 +86,15 @@ object Cbor {
             when (additionalInformation) {
                 24 -> return Pair(offset + 2, encodedCbor[offset + 1].toULong().and(0xffUL))
                 25 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 8) +
+                    val length =
+                        (encodedCbor[offset + 1].toULong().and(0xffUL) shl 8) +
                             encodedCbor[offset + 2].toULong().and(0xffUL)
                     return Pair(offset + 3, length)
                 }
 
                 26 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 24) +
+                    val length =
+                        (encodedCbor[offset + 1].toULong().and(0xffUL) shl 24) +
                             (encodedCbor[offset + 2].toULong().and(0xffUL) shl 16) +
                             (encodedCbor[offset + 3].toULong().and(0xffUL) shl 8) +
                             encodedCbor[offset + 4].toULong().and(0xffUL)
@@ -97,7 +102,8 @@ object Cbor {
                 }
 
                 27 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 56) +
+                    val length =
+                        (encodedCbor[offset + 1].toULong().and(0xffUL) shl 56) +
                             (encodedCbor[offset + 2].toULong().and(0xffUL) shl 48) +
                             (encodedCbor[offset + 3].toULong().and(0xffUL) shl 40) +
                             (encodedCbor[offset + 4].toULong().and(0xffUL) shl 32) +
@@ -109,14 +115,14 @@ object Cbor {
                 }
 
                 31 ->
-                    return Pair(offset + 1, 0UL)  // indefinite length
+                    return Pair(offset + 1, 0UL) // indefinite length
                 else -> {}
             }
         } catch (e: IndexOutOfBoundsException) {
             throw IllegalArgumentException("Out of data at offset $offset", e)
         }
         throw IllegalArgumentException(
-            "Illegal additional information value $additionalInformation at offset $offset"
+            "Illegal additional information value $additionalInformation at offset $offset",
         )
     }
 
@@ -126,9 +132,13 @@ object Cbor {
         val mant = raw and 0x3ff
         val sign = (raw and 0x8000) != 0
         val value: Float
-        if (exp == 0) value = mant * 2f.pow(-24)
-        else if (exp != 31) value = (mant + 1024) * 2f.pow(exp - 25)
-        else value = (if (mant == 0) Float.POSITIVE_INFINITY else Float.NaN)
+        if (exp == 0) {
+            value = mant * 2f.pow(-24)
+        } else if (exp != 31) {
+            value = (mant + 1024) * 2f.pow(exp - 25)
+        } else {
+            value = (if (mant == 0) Float.POSITIVE_INFINITY else Float.NaN)
+        }
         return if (sign) -value else value
     }
 
@@ -145,75 +155,80 @@ object Cbor {
      * @throws IllegalArgumentException if the data isn't valid CBOR.
      */
     @JvmStatic
-    fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, DataItem> {
+    fun decode(
+        encodedCbor: ByteArray,
+        offset: Int,
+    ): Pair<Int, DataItem> {
         try {
             val first = encodedCbor[offset]
             val majorType = MajorType.fromInt(first.toInt().and(0xff) ushr 5)
             val additionalInformation = first.toInt().and(0x1f)
-            val (newOffset, item) = when (majorType) {
-                MajorType.UNSIGNED_INTEGER -> {
-                    if (additionalInformation == 31) {
-                        throw IllegalArgumentException(
-                            "Additional information 31 not allowed for majorType 0"
-                        )
+            val (newOffset, item) =
+                when (majorType) {
+                    MajorType.UNSIGNED_INTEGER -> {
+                        if (additionalInformation == 31) {
+                            throw IllegalArgumentException(
+                                "Additional information 31 not allowed for majorType 0",
+                            )
+                        }
+                        Uint.decode(encodedCbor, offset)
                     }
-                    Uint.decode(encodedCbor, offset)
-                }
 
-                MajorType.NEGATIVE_INTEGER -> {
-                    if (additionalInformation == 31) {
-                        throw IllegalArgumentException(
-                            "Additional information 31 not allowed for majorType 1"
-                        )
+                    MajorType.NEGATIVE_INTEGER -> {
+                        if (additionalInformation == 31) {
+                            throw IllegalArgumentException(
+                                "Additional information 31 not allowed for majorType 1",
+                            )
+                        }
+                        Nint.decode(encodedCbor, offset)
                     }
-                    Nint.decode(encodedCbor, offset)
-                }
 
-                MajorType.BYTE_STRING -> {
-                    if (additionalInformation == 31) {
-                        IndefLengthBstr.decode(encodedCbor, offset)
-                    } else {
-                        Bstr.decode(encodedCbor, offset)
+                    MajorType.BYTE_STRING -> {
+                        if (additionalInformation == 31) {
+                            IndefLengthBstr.decode(encodedCbor, offset)
+                        } else {
+                            Bstr.decode(encodedCbor, offset)
+                        }
                     }
-                }
 
-                MajorType.UNICODE_STRING -> {
-                    if (additionalInformation == 31) {
-                        IndefLengthTstr.decode(encodedCbor, offset)
-                    } else {
-                        Tstr.decode(encodedCbor, offset)
+                    MajorType.UNICODE_STRING -> {
+                        if (additionalInformation == 31) {
+                            IndefLengthTstr.decode(encodedCbor, offset)
+                        } else {
+                            Tstr.decode(encodedCbor, offset)
+                        }
                     }
-                }
 
-                MajorType.ARRAY -> CborArray.decode(encodedCbor, offset)
-                MajorType.MAP -> CborMap.decode(encodedCbor, offset)
-                MajorType.TAG -> {
-                    if (additionalInformation == 31) {
-                        throw IllegalArgumentException(
-                            "Additional information 31 not allowed for majorType 6"
-                        )
+                    MajorType.ARRAY -> CborArray.decode(encodedCbor, offset)
+                    MajorType.MAP -> CborMap.decode(encodedCbor, offset)
+                    MajorType.TAG -> {
+                        if (additionalInformation == 31) {
+                            throw IllegalArgumentException(
+                                "Additional information 31 not allowed for majorType 6",
+                            )
+                        }
+                        Tagged.decode(encodedCbor, offset)
                     }
-                    Tagged.decode(encodedCbor, offset)
-                }
 
-                MajorType.SPECIAL -> {
-                    if (additionalInformation < 24) {
-                        Simple.decode(encodedCbor, offset)
-                    } else if (additionalInformation == 25) {
-                        val raw = (encodedCbor[offset + 1].toInt().and(0xff) shl 8) +
-                                encodedCbor[offset + 2].toInt().and(0xff)
-                        Pair(offset + 3, CborFloat(fromRawHalfFloat(raw)))
-                    } else if (additionalInformation == 26) {
-                        CborFloat.decode(encodedCbor, offset)
-                    } else if (additionalInformation == 27) {
-                        CborDouble.decode(encodedCbor, offset)
-                    } else if (additionalInformation == 31) {
-                        throw IllegalArgumentException("BREAK outside indefinite-length item")
-                    } else {
-                        Simple.decode(encodedCbor, offset)
+                    MajorType.SPECIAL -> {
+                        if (additionalInformation < 24) {
+                            Simple.decode(encodedCbor, offset)
+                        } else if (additionalInformation == 25) {
+                            val raw =
+                                (encodedCbor[offset + 1].toInt().and(0xff) shl 8) +
+                                    encodedCbor[offset + 2].toInt().and(0xff)
+                            Pair(offset + 3, CborFloat(fromRawHalfFloat(raw)))
+                        } else if (additionalInformation == 26) {
+                            CborFloat.decode(encodedCbor, offset)
+                        } else if (additionalInformation == 27) {
+                            CborDouble.decode(encodedCbor, offset)
+                        } else if (additionalInformation == 31) {
+                            throw IllegalArgumentException("BREAK outside indefinite-length item")
+                        } else {
+                            Simple.decode(encodedCbor, offset)
+                        }
                     }
                 }
-            }
             check(newOffset > offset)
             return Pair(newOffset, item)
         } catch (e: IndexOutOfBoundsException) {
@@ -237,7 +252,7 @@ object Cbor {
         val (newOffset, item) = decode(encodedCbor, 0)
         if (newOffset != encodedCbor.size) {
             throw IllegalArgumentException(
-                "${newOffset - encodedCbor.size} bytes leftover after decoding"
+                "${newOffset - encodedCbor.size} bytes leftover after decoding",
             )
         }
         return item
@@ -246,7 +261,7 @@ object Cbor {
     // Returns true iff all elements in |items| are not compound (e.g. an array or a map).
     private fun allDataItemsNonCompound(
         items: List<DataItem>,
-        options: Set<DiagnosticOption>
+        options: Set<DiagnosticOption>,
     ): Boolean {
         for (item in items) {
             if (options.contains(DiagnosticOption.EMBEDDED_CBOR) &&
@@ -264,7 +279,7 @@ object Cbor {
 
     private fun fitsInASingleLine(
         items: List<DataItem>,
-        options: Set<DiagnosticOption>
+        options: Set<DiagnosticOption>,
     ): Boolean =
         // For now just use this heuristic.
         allDataItemsNonCompound(items, options) && items.size < 8
@@ -274,18 +289,19 @@ object Cbor {
         indent: Int,
         item: DataItem,
         tagNumberOfParent: Long?,
-        options: Set<DiagnosticOption>
+        options: Set<DiagnosticOption>,
     ) {
         val pretty = options.contains(DiagnosticOption.PRETTY_PRINT)
-        val indentString = if (!pretty) {
-            ""
-        } else {
-            val indentBuilder = StringBuilder()
-            for (n in 0 until indent) {
-                indentBuilder.append(' ')
+        val indentString =
+            if (!pretty) {
+                ""
+            } else {
+                val indentBuilder = StringBuilder()
+                for (n in 0 until indent) {
+                    indentBuilder.append(' ')
+                }
+                indentBuilder.toString()
             }
-            indentBuilder.toString()
-        }
 
         if (item is RawCbor) {
             toDiagnostics(sb, indent, decode(item.encodedCbor), tagNumberOfParent, options)
@@ -367,9 +383,10 @@ object Cbor {
                             } else {
                                 sb.append(", \"")
                             }
-                            val escapedChunkValue = chunk
-                                .replace("\\", "\\\\")
-                                .replace("\"", "\\\"")
+                            val escapedChunkValue =
+                                chunk
+                                    .replace("\\", "\\\\")
+                                    .replace("\"", "\\\"")
                             sb.append("$escapedChunkValue\"")
                         }
                         sb.append(')')
@@ -377,9 +394,10 @@ object Cbor {
 
                     is Tstr -> {
                         val tstrValue = (item as Tstr).value
-                        val escapedTstrValue = item.value
-                            .replace("\\", "\\\\")
-                            .replace("\"", "\\\"")
+                        val escapedTstrValue =
+                            item.value
+                                .replace("\\", "\\\\")
+                                .replace("\"", "\\\"")
                         sb.append("\"$escapedTstrValue\"")
                     }
 
@@ -479,7 +497,6 @@ object Cbor {
                 }
             }
         }
-
     }
 
     /**
@@ -491,7 +508,7 @@ object Cbor {
     @JvmStatic
     fun toDiagnostics(
         item: DataItem,
-        options: Set<DiagnosticOption> = emptySet()
+        options: Set<DiagnosticOption> = emptySet(),
     ): String {
         val sb = StringBuilder()
         toDiagnostics(sb, 0, item, null, options)
@@ -507,11 +524,10 @@ object Cbor {
     @JvmStatic
     fun toDiagnostics(
         encodedItem: ByteArray,
-        options: Set<DiagnosticOption> = emptySet()
+        options: Set<DiagnosticOption> = emptySet(),
     ): String {
         val sb = StringBuilder()
         toDiagnostics(sb, 0, decode(encodedItem), null, options)
         return sb.toString()
     }
-
 }

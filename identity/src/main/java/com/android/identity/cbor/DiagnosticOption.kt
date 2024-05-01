@@ -18,5 +18,5 @@ enum class DiagnosticOption {
      * Prints "<length> bytes" or "indefinite-size byte-string" instead of the bytes in the byte
      * string.
      */
-    BSTR_PRINT_LENGTH
+    BSTR_PRINT_LENGTH,
 }

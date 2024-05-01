@@ -12,13 +12,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.identity.wallet.theme.HolderAppTheme
 
 @Composable
-fun LoadingIndicator(
-    modifier: Modifier = Modifier
-) {
+fun LoadingIndicator(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = .5f)),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = .5f)),
+        contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator()
     }

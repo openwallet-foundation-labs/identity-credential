@@ -12,7 +12,6 @@ import java.security.interfaces.ECPublicKey
 import java.security.spec.ECPoint
 import kotlin.math.min
 
-
 object FormatUtil {
     // Helper function to convert a byteArray to HEX string
     fun encodeToString(bytes: ByteArray): String {

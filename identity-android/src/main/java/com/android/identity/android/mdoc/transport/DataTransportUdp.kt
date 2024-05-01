@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit
 class DataTransportUdp(
     context: Context,
     role: Role,
-    options: DataTransportOptions
+    options: DataTransportOptions,
 ) : DataTransport(context, role, options) {
     var socket: DatagramSocket? = null
     var writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
@@ -60,29 +60,32 @@ class DataTransportUdp(
 
     private var destinationAddress: InetAddress? = null
     private var destinationPort = 0
+
     private fun connectAsMdoc() {
-        serverSocket = try {
-            DatagramSocket()
-        } catch (e: IOException) {
-            reportError(e)
-            return
-        }
+        serverSocket =
+            try {
+                DatagramSocket()
+            } catch (e: IOException) {
+                reportError(e)
+                return
+            }
         val port = serverSocket!!.localPort
-        val socketServerThread: Thread = object : Thread() {
-            override fun run() {
-                try {
-                    setupWritingThread(serverSocket!!)
-                    val e = processMessagesFromSocket(serverSocket!!, true)
-                    if (e != null) {
+        val socketServerThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    try {
+                        setupWritingThread(serverSocket!!)
+                        val e = processMessagesFromSocket(serverSocket!!, true)
+                        if (e != null) {
+                            reportError(e)
+                        } else {
+                            reportDisconnected()
+                        }
+                    } catch (e: Exception) {
                         reportError(e)
-                    } else {
-                        reportDisconnected()
                     }
-                } catch (e: Exception) {
-                    reportError(e)
                 }
             }
-        }
         socketServerThread.start()
         if (host == null || host!!.length == 0) {
             host = getWifiIpAddress(context)
@@ -98,7 +101,10 @@ class DataTransportUdp(
     //
     // Returns a Throwable if an error occurred, null if the peer disconnects.
     //
-    fun processMessagesFromSocket(socket: DatagramSocket, isMdoc: Boolean): Throwable? {
+    fun processMessagesFromSocket(
+        socket: DatagramSocket,
+        isMdoc: Boolean,
+    ): Throwable? {
         var errorToReport: Throwable? = null
         var numMessagesReceived = 0
         try {
@@ -121,37 +127,43 @@ class DataTransportUdp(
         return errorToReport
     }
 
-    fun setHostAndPort(host: String?, port: Int) {
+    fun setHostAndPort(
+        host: String?,
+        port: Int,
+    ) {
         this.host = host
         this.port = port
     }
 
     private fun connectAsMdocReader() {
-        destinationAddress = try {
-            InetAddress.getByName(host)
-        } catch (e: UnknownHostException) {
-            reportError(e)
-            return
-        }
+        destinationAddress =
+            try {
+                InetAddress.getByName(host)
+            } catch (e: UnknownHostException) {
+                reportError(e)
+                return
+            }
         destinationPort = port
-        socket = try {
-            DatagramSocket()
-        } catch (e: IOException) {
-            reportError(e)
-            return
-        }
-        val socketReaderThread: Thread = object : Thread() {
-            override fun run() {
-                reportConnected()
-                setupWritingThread(socket!!)
-                val e = processMessagesFromSocket(socket!!, false)
-                if (e != null) {
-                    reportError(e)
-                } else {
-                    reportDisconnected()
+        socket =
+            try {
+                DatagramSocket()
+            } catch (e: IOException) {
+                reportError(e)
+                return
+            }
+        val socketReaderThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    reportConnected()
+                    setupWritingThread(socket!!)
+                    val e = processMessagesFromSocket(socket!!, false)
+                    if (e != null) {
+                        reportError(e)
+                    } else {
+                        reportDisconnected()
+                    }
                 }
             }
-        }
         socketReaderThread.start()
     }
 
@@ -164,44 +176,46 @@ class DataTransportUdp(
     }
 
     fun setupWritingThread(socket: DatagramSocket) {
-        socketWriterThread = object : Thread() {
-            override fun run() {
-                while (true) {
-                    var messageToSend: ByteArray?
-                    try {
-                        messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
-                        if (messageToSend == null) {
+        socketWriterThread =
+            object : Thread() {
+                override fun run() {
+                    while (true) {
+                        var messageToSend: ByteArray?
+                        try {
+                            messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
+                            if (messageToSend == null) {
+                                continue
+                            }
+                            // An empty message is used to convey that the writing thread should be
+                            // shut down.
+                            if (messageToSend.size == 0) {
+                                Logger.d(TAG, "Empty message, shutting down writer")
+                                break
+                            }
+                        } catch (e: InterruptedException) {
                             continue
                         }
-                        // An empty message is used to convey that the writing thread should be
-                        // shut down.
-                        if (messageToSend.size == 0) {
-                            Logger.d(TAG, "Empty message, shutting down writer")
+                        Logger.iHex(
+                            TAG,
+                            "data to $destinationAddress port $destinationPort",
+                            messageToSend,
+                        )
+                        val packet =
+                            DatagramPacket(
+                                messageToSend,
+                                messageToSend.size,
+                                destinationAddress,
+                                destinationPort,
+                            )
+                        try {
+                            socket.send(packet)
+                        } catch (e: IOException) {
+                            reportError(e)
                             break
                         }
-                    } catch (e: InterruptedException) {
-                        continue
-                    }
-                    Logger.iHex(
-                        TAG,
-                        "data to $destinationAddress port $destinationPort",
-                        messageToSend
-                    )
-                    val packet = DatagramPacket(
-                        messageToSend,
-                        messageToSend.size,
-                        destinationAddress,
-                        destinationPort
-                    )
-                    try {
-                        socket.send(packet)
-                    } catch (e: IOException) {
-                        reportError(e)
-                        break
                     }
                 }
             }
-        }
         socketWriterThread!!.start()
     }
 
@@ -245,11 +259,13 @@ class DataTransportUdp(
 
         // The maximum message size we support.
         private const val MAX_MESSAGE_SIZE = 64 * 1024
+
         @Suppress("deprecation")
         private fun getWifiIpAddress(context: Context): String {
-            val wifiManager = context.getSystemService(
-                WifiManager::class.java
-            )
+            val wifiManager =
+                context.getSystemService(
+                    WifiManager::class.java,
+                )
             return Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
         }
 
@@ -257,7 +273,7 @@ class DataTransportUdp(
             context: Context,
             cm: ConnectionMethodUdp,
             role: Role,
-            options: DataTransportOptions
+            options: DataTransportOptions,
         ): DataTransport {
             val t = DataTransportUdp(context, role, options)
             t.setHostAndPort(cm.host, cm.port)
@@ -267,15 +283,16 @@ class DataTransportUdp(
         fun toNdefRecord(
             cm: ConnectionMethodUdp,
             auxiliaryReferences: List<String?>,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): Pair<NdefRecord, ByteArray> {
             val reference = "${ConnectionMethodUdp.METHOD_TYPE}".toByteArray()
-            val record = NdefRecord(
-                0x02.toShort(),  // type = RFC 2046 (MIME)
-                "application/vnd.android.ic.dmr".toByteArray(),
-                reference,
-                cm.toDeviceEngagement()
-            )
+            val record =
+                NdefRecord(
+                    0x02.toShort(), // type = RFC 2046 (MIME)
+                    "application/vnd.android.ic.dmr".toByteArray(),
+                    reference,
+                    cm.toDeviceEngagement(),
+                )
 
             // From 7.1 Alternative Carrier Record
             //

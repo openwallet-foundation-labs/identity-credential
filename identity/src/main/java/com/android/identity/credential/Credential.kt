@@ -93,7 +93,7 @@ open class Credential {
     constructor(
         document: Document,
         asReplacementFor: Credential?,
-        domain: String
+        domain: String,
     ) {
         check(asReplacementFor?.replacement == null) {
             "The given credential already has an existing pending credential intending to replace it"
@@ -131,15 +131,16 @@ open class Credential {
      */
     constructor(
         document: Document,
-        dataItem: DataItem
+        dataItem: DataItem,
     ) {
         val applicationDataDataItem = dataItem["applicationData"]
         check(applicationDataDataItem is Bstr) { "applicationData not found or not byte[]" }
         this.document = document
-        _applicationData = SimpleApplicationData
-            .decodeFromCbor(applicationDataDataItem.value) {
-                document.saveDocument()
-            }
+        _applicationData =
+            SimpleApplicationData
+                .decodeFromCbor(applicationDataDataItem.value) {
+                    document.saveDocument()
+                }
 
         identifier = dataItem["identifier"].asTstr
         domain = dataItem["domain"].asTstr
@@ -160,7 +161,6 @@ open class Credential {
         replacementForIdentifier = dataItem.getOrNull("replacementForAlias")?.asTstr
 
         credentialCounter = dataItem["credentialCounter"].asNumber
-
     }
 
     // Creates an alias which is guaranteed to be unique for all time (assuming the system clock
@@ -216,8 +216,9 @@ open class Credential {
      * @throws IllegalStateException if the credential is not yet certified.
      */
     val issuerProvidedData: ByteArray
-        get() = _issuerProvidedData
-            ?: throw IllegalStateException("This credential is not yet certified")
+        get() =
+            _issuerProvidedData
+                ?: throw IllegalStateException("This credential is not yet certified")
     private var _issuerProvidedData: ByteArray? = null
 
     /**
@@ -226,8 +227,9 @@ open class Credential {
      * @throws IllegalStateException if the credential is not yet certified.
      */
     val validFrom: Timestamp
-        get() = _validFrom
-            ?: throw IllegalStateException("This credential is not yet certified")
+        get() =
+            _validFrom
+                ?: throw IllegalStateException("This credential is not yet certified")
     private var _validFrom: Timestamp? = null
 
     /**
@@ -236,8 +238,9 @@ open class Credential {
      * @throws IllegalStateException if the credential is not yet certified.
      */
     val validUntil: Timestamp
-        get() = _validUntil
-            ?: throw IllegalStateException("This credential is not yet certified")
+        get() =
+            _validUntil
+                ?: throw IllegalStateException("This credential is not yet certified")
     private var _validUntil: Timestamp? = null
 
     /**
@@ -261,30 +264,34 @@ open class Credential {
      * The credential that will be replaced by this credential once it's been certified.
      */
     val replacementFor: Credential?
-        get() = document.certifiedCredentials.firstOrNull { it.identifier == replacementForIdentifier }
-            .also {
-                if (it == null && replacementForIdentifier != null) {
-                    Logger.w(
-                        TAG, "Credential with alias $replacementForIdentifier which " +
-                                "is intended to be replaced does not exist"
-                    )
+        get() =
+            document.certifiedCredentials.firstOrNull { it.identifier == replacementForIdentifier }
+                .also {
+                    if (it == null && replacementForIdentifier != null) {
+                        Logger.w(
+                            TAG,
+                            "Credential with alias $replacementForIdentifier which " +
+                                "is intended to be replaced does not exist",
+                        )
+                    }
                 }
-            }
 
     /**
      * The credential that will replace this credential once certified or `null` if no
      * credential is designated to replace this credential.
      */
     val replacement: Credential?
-        get() = document.pendingCredentials.firstOrNull { it.identifier == replacementIdentifier }
-            .also {
-                if (it == null && replacementIdentifier != null) {
-                    Logger.w(
-                        TAG, "Pending credential with identifier $replacementIdentifier which " +
-                                "is intended to replace this credential does not exist"
-                    )
+        get() =
+            document.pendingCredentials.firstOrNull { it.identifier == replacementIdentifier }
+                .also {
+                    if (it == null && replacementIdentifier != null) {
+                        Logger.w(
+                            TAG,
+                            "Pending credential with identifier $replacementIdentifier which " +
+                                "is intended to replace this credential does not exist",
+                        )
+                    }
                 }
-            }
 
     /**
      * Deletes the credential.
@@ -315,7 +322,7 @@ open class Credential {
     fun certify(
         issuerProvidedAuthenticationData: ByteArray,
         validFrom: Timestamp,
-        validUntil: Timestamp
+        validUntil: Timestamp,
     ) {
         check(!isCertified) { "Credential is already certified" }
         isCertified = true
@@ -345,7 +352,7 @@ open class Credential {
     fun toCbor(): DataItem {
         val builder = CborMap.builder()
         builder.put("identifier", identifier)
-            .put("credentialType", this::class.simpleName!!)  // used by CredentialFactory
+            .put("credentialType", this::class.simpleName!!) // used by CredentialFactory
             .put("domain", domain)
             .put("usageCount", usageCount.toLong())
             .put("isCertified", isCertified)

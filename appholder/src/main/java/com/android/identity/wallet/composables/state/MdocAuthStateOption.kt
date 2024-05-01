@@ -5,5 +5,6 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 enum class MdocAuthStateOption : Parcelable {
-    ECDSA, MAC
+    ECDSA,
+    MAC,
 }

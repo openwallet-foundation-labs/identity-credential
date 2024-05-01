@@ -1,16 +1,16 @@
 package com.android.identity_credential.wallet
 
-import com.android.identity.issuance.RegistrationResponse
-import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.CredentialRequest
+import com.android.identity.issuance.DocumentCondition
+import com.android.identity.issuance.RegistrationResponse
+import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
-import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
@@ -27,7 +27,7 @@ class SelfSignedMdlTest {
         Security.insertProviderAt(BouncyCastleProvider(), 1)
     }
 
-    private fun getProofingQuestions() : List<EvidenceRequest> {
+    private fun getProofingQuestions(): List<EvidenceRequest> {
         return listOf<EvidenceRequest>(
             EvidenceRequestMessage(
                 "Here's a long string with TOS",
@@ -49,163 +49,176 @@ class SelfSignedMdlTest {
             ),
             EvidenceRequestMessage(
                 "Your application is about to be sent the ID issuer for " +
-                        "verification. You will get notified when the " +
-                        "application is approved.",
+                    "verification. You will get notified when the " +
+                    "application is approved.",
                 mapOf(),
                 "Continue",
                 null,
-            )
+            ),
         )
     }
 
     @Test
-    fun happyPath() = runTest {
-        val storageEngine = EphemeralStorageEngine()
-        val secureArea = SoftwareSecureArea(storageEngine)
+    fun happyPath() =
+        runTest {
+            val storageEngine = EphemeralStorageEngine()
+            val secureArea = SoftwareSecureArea(storageEngine)
 
-        val ia = TestIssuingAuthority()
+            val ia = TestIssuingAuthority()
 
-        // Register credential...
-        val registerdocumentFlow = ia.register()
-        val credentialRegistrationConfiguration = registerdocumentFlow.getDocumentRegistrationConfiguration()
-        val credentialId = credentialRegistrationConfiguration.documentId
-        val registrationResponse = RegistrationResponse(true)
-        registerdocumentFlow.sendDocumentRegistrationResponse(registrationResponse)
+            // Register credential...
+            val registerdocumentFlow = ia.register()
+            val credentialRegistrationConfiguration = registerdocumentFlow.getDocumentRegistrationConfiguration()
+            val credentialId = credentialRegistrationConfiguration.documentId
+            val registrationResponse = RegistrationResponse(true)
+            registerdocumentFlow.sendDocumentRegistrationResponse(registrationResponse)
 
-        // Check we're now in the proofing state.
-        Assert.assertEquals(
-            DocumentCondition.PROOFING_REQUIRED,
-            ia.getState(credentialId).condition)
-
-        // Perform proofing
-        val proofingFlow = ia.proof(credentialId)
-
-        // First piece of evidence to return...
-        var evidenceToGet = proofingFlow.getEvidenceRequests()
-        Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestMessage)
-        Assert.assertEquals("Here's a long string with TOS", (evidenceToGet[0] as EvidenceRequestMessage).message)
-        proofingFlow.sendEvidence(EvidenceResponseMessage(true))
-
-        // Second piece of evidence to return...
-        evidenceToGet = proofingFlow.getEvidenceRequests()
-        Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestQuestionString)
-        Assert.assertEquals(
-            "What first name should be used for the mDL?",
-            (evidenceToGet[0] as EvidenceRequestQuestionString).message)
-        Assert.assertEquals(
-            "Erika",
-            (evidenceToGet[0] as EvidenceRequestQuestionString).defaultValue)
-        proofingFlow.sendEvidence(EvidenceResponseQuestionString("Max"))
-        Assert.assertEquals(
-            DocumentCondition.PROOFING_REQUIRED,
-            ia.getState(credentialId).condition)
-
-        // Third piece of evidence to return...
-        evidenceToGet = proofingFlow.getEvidenceRequests()
-        Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestQuestionMultipleChoice)
-        Assert.assertEquals(3,
-            (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.size)
-        proofingFlow.sendEvidence(
-            EvidenceResponseQuestionMultipleChoice(
-                (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next()
-        ))
-
-        // Fourth piece of evidence to return...
-        evidenceToGet = proofingFlow.getEvidenceRequests()
-        Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestMessage)
-        Assert.assertTrue((evidenceToGet[0] as EvidenceRequestMessage).message
-            .startsWith("Your application is about to be sent"))
-        proofingFlow.sendEvidence(EvidenceResponseMessage(true))
-
-        // Check there are no more pieces of evidence to return and it's now processing
-        // after we signal that proofing is complete
-        evidenceToGet = proofingFlow.getEvidenceRequests()
-        Assert.assertEquals(0, evidenceToGet.size)
-        proofingFlow.completeProofing()
-
-        Assert.assertEquals(
-            DocumentCondition.PROOFING_PROCESSING,
-            ia.getState(credentialId).condition)
-        // Processing is hard-coded to take three seconds
-        Thread.sleep(2100)
-        Assert.assertEquals(
-            DocumentCondition.PROOFING_PROCESSING,
-            ia.getState(credentialId).condition)
-        Thread.sleep(900)
-        Assert.assertEquals(
-            DocumentCondition.CONFIGURATION_AVAILABLE,
-            ia.getState(credentialId).condition)
-
-        // Check we can get the credential configuration
-        val configuration = ia.getDocumentConfiguration(credentialId)
-        Assert.assertEquals("Max's Driving License", configuration.displayName)
-        Assert.assertEquals(
-            DocumentCondition.READY,
-            ia.getState(credentialId).condition)
-
-        // Check we can get CPOs, first request them
-        val numMso = 5
-        val requestCpoFlow = ia.requestCredentials(credentialId)
-        val authKeyConfiguration = requestCpoFlow.getCredentialConfiguration()
-        val credentialRequests = mutableListOf<CredentialRequest>()
-        for (authKeyNumber in IntRange(0, numMso - 1)) {
-            val alias = "AuthKey_$authKeyNumber"
-            secureArea.createKey(alias, CreateKeySettings(authKeyConfiguration.challenge))
-            credentialRequests.add(
-                CredentialRequest(
-                    CredentialFormat.MDOC_MSO,
-                    secureArea.getKeyInfo(alias).attestation
-                )
+            // Check we're now in the proofing state.
+            Assert.assertEquals(
+                DocumentCondition.PROOFING_REQUIRED,
+                ia.getState(credentialId).condition,
             )
-        }
-        requestCpoFlow.sendCredentials(credentialRequests)
 
-        // documentInformation should now reflect that the CPOs are pending and not
-        // yet available..
-        ia.getState(credentialId).let {
-            Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(5, it.numPendingCredentials)
-            Assert.assertEquals(0, it.numAvailableCredentials)
-        }
-        Assert.assertEquals(0, ia.getCredentials(credentialId).size)
-        Thread.sleep(100)
-        // Still not available...
-        ia.getState(credentialId).let {
-            Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(5, it.numPendingCredentials)
-            Assert.assertEquals(0, it.numAvailableCredentials)
-        }
-        Assert.assertEquals(0, ia.getCredentials(credentialId).size)
-        // But it is available after 3 seconds
-        Thread.sleep(2900)
-        ia.getState(credentialId).let {
-            Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(0, it.numPendingCredentials)
-            Assert.assertEquals(5, it.numAvailableCredentials)
-        }
-        // Check we get 5 CPOs and that they match the keys we passed in..
-        ia.getCredentials(credentialId).let {
-            Assert.assertEquals(5, it.size)
-            for (n in IntRange(0, it.size - 1)) {
-                Assert.assertEquals(
-                    it[n].secureAreaBoundKey,
-                    credentialRequests[n]
-                        .secureAreaBoundKeyAttestation.certificates.first().publicKey
+            // Perform proofing
+            val proofingFlow = ia.proof(credentialId)
+
+            // First piece of evidence to return...
+            var evidenceToGet = proofingFlow.getEvidenceRequests()
+            Assert.assertEquals(1, evidenceToGet.size)
+            Assert.assertTrue(evidenceToGet[0] is EvidenceRequestMessage)
+            Assert.assertEquals("Here's a long string with TOS", (evidenceToGet[0] as EvidenceRequestMessage).message)
+            proofingFlow.sendEvidence(EvidenceResponseMessage(true))
+
+            // Second piece of evidence to return...
+            evidenceToGet = proofingFlow.getEvidenceRequests()
+            Assert.assertEquals(1, evidenceToGet.size)
+            Assert.assertTrue(evidenceToGet[0] is EvidenceRequestQuestionString)
+            Assert.assertEquals(
+                "What first name should be used for the mDL?",
+                (evidenceToGet[0] as EvidenceRequestQuestionString).message,
+            )
+            Assert.assertEquals(
+                "Erika",
+                (evidenceToGet[0] as EvidenceRequestQuestionString).defaultValue,
+            )
+            proofingFlow.sendEvidence(EvidenceResponseQuestionString("Max"))
+            Assert.assertEquals(
+                DocumentCondition.PROOFING_REQUIRED,
+                ia.getState(credentialId).condition,
+            )
+
+            // Third piece of evidence to return...
+            evidenceToGet = proofingFlow.getEvidenceRequests()
+            Assert.assertEquals(1, evidenceToGet.size)
+            Assert.assertTrue(evidenceToGet[0] is EvidenceRequestQuestionMultipleChoice)
+            Assert.assertEquals(
+                3,
+                (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.size,
+            )
+            proofingFlow.sendEvidence(
+                EvidenceResponseQuestionMultipleChoice(
+                    (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next(),
+                ),
+            )
+
+            // Fourth piece of evidence to return...
+            evidenceToGet = proofingFlow.getEvidenceRequests()
+            Assert.assertEquals(1, evidenceToGet.size)
+            Assert.assertTrue(evidenceToGet[0] is EvidenceRequestMessage)
+            Assert.assertTrue(
+                (evidenceToGet[0] as EvidenceRequestMessage).message
+                    .startsWith("Your application is about to be sent"),
+            )
+            proofingFlow.sendEvidence(EvidenceResponseMessage(true))
+
+            // Check there are no more pieces of evidence to return and it's now processing
+            // after we signal that proofing is complete
+            evidenceToGet = proofingFlow.getEvidenceRequests()
+            Assert.assertEquals(0, evidenceToGet.size)
+            proofingFlow.completeProofing()
+
+            Assert.assertEquals(
+                DocumentCondition.PROOFING_PROCESSING,
+                ia.getState(credentialId).condition,
+            )
+            // Processing is hard-coded to take three seconds
+            Thread.sleep(2100)
+            Assert.assertEquals(
+                DocumentCondition.PROOFING_PROCESSING,
+                ia.getState(credentialId).condition,
+            )
+            Thread.sleep(900)
+            Assert.assertEquals(
+                DocumentCondition.CONFIGURATION_AVAILABLE,
+                ia.getState(credentialId).condition,
+            )
+
+            // Check we can get the credential configuration
+            val configuration = ia.getDocumentConfiguration(credentialId)
+            Assert.assertEquals("Max's Driving License", configuration.displayName)
+            Assert.assertEquals(
+                DocumentCondition.READY,
+                ia.getState(credentialId).condition,
+            )
+
+            // Check we can get CPOs, first request them
+            val numMso = 5
+            val requestCpoFlow = ia.requestCredentials(credentialId)
+            val authKeyConfiguration = requestCpoFlow.getCredentialConfiguration()
+            val credentialRequests = mutableListOf<CredentialRequest>()
+            for (authKeyNumber in IntRange(0, numMso - 1)) {
+                val alias = "AuthKey_$authKeyNumber"
+                secureArea.createKey(alias, CreateKeySettings(authKeyConfiguration.challenge))
+                credentialRequests.add(
+                    CredentialRequest(
+                        CredentialFormat.MDOC_MSO,
+                        secureArea.getKeyInfo(alias).attestation,
+                    ),
                 )
             }
-        }
-        // Once we collected them, they are no longer available to be collected
-        // and nothing is pending
-        ia.getState(credentialId).let {
-            Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(0, it.numPendingCredentials)
-            Assert.assertEquals(0, it.numAvailableCredentials)
-        }
-        Assert.assertEquals(0, ia.getCredentials(credentialId).size)
-    }
+            requestCpoFlow.sendCredentials(credentialRequests)
 
+            // documentInformation should now reflect that the CPOs are pending and not
+            // yet available..
+            ia.getState(credentialId).let {
+                Assert.assertEquals(DocumentCondition.READY, it.condition)
+                Assert.assertEquals(5, it.numPendingCredentials)
+                Assert.assertEquals(0, it.numAvailableCredentials)
+            }
+            Assert.assertEquals(0, ia.getCredentials(credentialId).size)
+            Thread.sleep(100)
+            // Still not available...
+            ia.getState(credentialId).let {
+                Assert.assertEquals(DocumentCondition.READY, it.condition)
+                Assert.assertEquals(5, it.numPendingCredentials)
+                Assert.assertEquals(0, it.numAvailableCredentials)
+            }
+            Assert.assertEquals(0, ia.getCredentials(credentialId).size)
+            // But it is available after 3 seconds
+            Thread.sleep(2900)
+            ia.getState(credentialId).let {
+                Assert.assertEquals(DocumentCondition.READY, it.condition)
+                Assert.assertEquals(0, it.numPendingCredentials)
+                Assert.assertEquals(5, it.numAvailableCredentials)
+            }
+            // Check we get 5 CPOs and that they match the keys we passed in..
+            ia.getCredentials(credentialId).let {
+                Assert.assertEquals(5, it.size)
+                for (n in IntRange(0, it.size - 1)) {
+                    Assert.assertEquals(
+                        it[n].secureAreaBoundKey,
+                        credentialRequests[n]
+                            .secureAreaBoundKeyAttestation.certificates.first().publicKey,
+                    )
+                }
+            }
+            // Once we collected them, they are no longer available to be collected
+            // and nothing is pending
+            ia.getState(credentialId).let {
+                Assert.assertEquals(DocumentCondition.READY, it.condition)
+                Assert.assertEquals(0, it.numPendingCredentials)
+                Assert.assertEquals(0, it.numAvailableCredentials)
+            }
+            Assert.assertEquals(0, ia.getCredentials(credentialId).size)
+        }
 }

@@ -7,7 +7,6 @@ import com.android.identity.issuance.evidence.EvidenceResponse
  * A flow used for identifying and proofing an application.
  */
 interface ProofingFlow {
-
     /**
      * Called to get a set of evidence requests from the issuer.
      *

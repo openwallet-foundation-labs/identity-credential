@@ -8,12 +8,12 @@ import androidx.compose.ui.Modifier
 @Composable
 fun ValueLabel(
     modifier: Modifier = Modifier,
-    label: String
+    label: String,
 ) {
     Text(
         modifier = modifier,
         text = label,
         color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.labelMedium
+        style = MaterialTheme.typography.labelMedium,
     )
 }

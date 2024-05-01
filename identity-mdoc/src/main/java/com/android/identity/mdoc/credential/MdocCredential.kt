@@ -53,7 +53,7 @@ class MdocCredential : SecureAreaBoundCredential {
         domain: String,
         secureArea: SecureArea,
         createKeySettings: CreateKeySettings,
-        docType: String
+        docType: String,
     ) : super(document, asReplacementFor, domain, secureArea, createKeySettings) {
         this.docType = docType
         // Only the leaf constructor should add the credential to the document.

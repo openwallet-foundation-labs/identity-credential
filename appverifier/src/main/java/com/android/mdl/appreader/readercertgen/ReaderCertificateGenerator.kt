@@ -14,7 +14,6 @@ import java.security.InvalidAlgorithmParameterException
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.NoSuchAlgorithmException
-import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.Optional
@@ -49,46 +48,48 @@ object ReaderCertificateGenerator {
     }
 
     fun createReaderCertificate(
-        readerKey: EcPrivateKey, //dsKeyPair: KeyPair,
+        readerKey: EcPrivateKey, // dsKeyPair: KeyPair,
         readerRootCert: Certificate, // issuerCert: X509Certificate,
-        readerRootKey: EcPrivateKey // issuerPrivateKey: PrivateKey
+        readerRootKey: EcPrivateKey, // issuerPrivateKey: PrivateKey
     ): X509Certificate {
-        val data = DataMaterial(
-            subjectDN = "C=UT, CN=OWF Identity Credential mDoc Reader",
+        val data =
+            DataMaterial(
+                subjectDN = "C=UT, CN=OWF Identity Credential mDoc Reader",
+                // must match DN of issuer character-by-character
+                // TODO change for other generators
+                issuerDN = readerRootCert.javaX509Certificate.subjectX500Principal.name,
+                // reorders string, do not use
+                // return issuerCert.getSubjectX500Principal().getName();
+                // NOTE always interpreted as URL for now
+                issuerAlternativeName = Optional.of("https://www.google.com/"),
+            )
+        val certData =
+            CertificateMaterial(
+                // TODO change
+                serialNumber = BigInteger("476f6f676c655f546573745f44535f31", 16),
+                startDate = readerRootCert.javaX509Certificate.notBefore,
+                endDate = readerRootCert.javaX509Certificate.notAfter,
+                pathLengthConstraint = CertificateMaterial.PATHLENGTH_NOT_A_CA,
+                keyUsage = KeyUsage.digitalSignature,
+                // TODO change for reader cert
+                extendedKeyUsage = Optional.of("1.0.18013.5.1.6"),
+            )
 
-            // must match DN of issuer character-by-character
-            // TODO change for other generators
-            issuerDN = readerRootCert.javaX509Certificate.subjectX500Principal.name,
-            // reorders string, do not use
-            // return issuerCert.getSubjectX500Principal().getName();
+        val signingAlgorithm =
+            when (readerRootKey.curve.defaultSigningAlgorithm) {
+                Algorithm.ES256 -> "SHA256withECDSA"
+                Algorithm.ES384 -> "SHA384withECDSA"
+                Algorithm.ES512 -> "SHA512withECDSA"
+                else -> throw IllegalStateException("Unsupported algorithm for reader root")
+            }
 
-            // NOTE always interpreted as URL for now
-            issuerAlternativeName = Optional.of("https://www.google.com/")
-        )
-        val certData = CertificateMaterial(
-            // TODO change
-            serialNumber = BigInteger("476f6f676c655f546573745f44535f31", 16),
-            startDate = readerRootCert.javaX509Certificate.notBefore,
-            endDate = readerRootCert.javaX509Certificate.notAfter,
-            pathLengthConstraint = CertificateMaterial.PATHLENGTH_NOT_A_CA,
-            keyUsage = KeyUsage.digitalSignature,
-            // TODO change for reader cert
-            extendedKeyUsage = Optional.of("1.0.18013.5.1.6")
-        )
-
-        val signingAlgorithm = when (readerRootKey.curve.defaultSigningAlgorithm) {
-            Algorithm.ES256 -> "SHA256withECDSA"
-            Algorithm.ES384 -> "SHA384withECDSA"
-            Algorithm.ES512 -> "SHA512withECDSA"
-            else -> throw IllegalStateException("Unsupported algorithm for reader root")
-        }
-
-        val keyData = KeyMaterial(
-            publicKey = readerKey.publicKey.javaPublicKey,
-            signingAlgorithm = signingAlgorithm,
-            signingKey = readerRootKey.javaPrivateKey,
-            issuerCertificate = Optional.of(readerRootCert.javaX509Certificate)
-        )
+        val keyData =
+            KeyMaterial(
+                publicKey = readerKey.publicKey.javaPublicKey,
+                signingAlgorithm = signingAlgorithm,
+                signingKey = readerRootKey.javaPrivateKey,
+                issuerCertificate = Optional.of(readerRootCert.javaX509Certificate),
+            )
 
         // C.1.7.2
         return generateCertificate(data, certData, keyData)

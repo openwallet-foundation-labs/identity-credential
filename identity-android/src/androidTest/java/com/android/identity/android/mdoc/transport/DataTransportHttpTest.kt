@@ -26,49 +26,56 @@ import java.util.concurrent.Executors
 
 @Suppress("deprecation")
 class DataTransportHttpTest {
-
     // TODO: add tests for TLS support
     @Test
     fun uriParsing() {
         val appContext = InstrumentationRegistry.getTargetContext()
         val options = DataTransportOptions.Builder().build()
         var cm = ConnectionMethodHttp("http://www.example.com/mdlReader/session123")
-        var transport = DataTransport.fromConnectionMethod(
-            appContext, cm, DataTransport.Role.MDOC, options
-        ) as DataTransportHttp
+        var transport =
+            DataTransport.fromConnectionMethod(
+                appContext,
+                cm,
+                DataTransport.Role.MDOC,
+                options,
+            ) as DataTransportHttp
         Assert.assertEquals("www.example.com", transport.host)
         Assert.assertEquals("/mdlReader/session123", transport.path)
         Assert.assertEquals(80, transport.port.toLong())
         Assert.assertFalse(transport.useTls)
         cm = ConnectionMethodHttp("http://www.example2.com:1234/mdlVerifier/session456")
-        transport = DataTransport.fromConnectionMethod(
-            appContext, cm, DataTransport.Role.MDOC, options
-        ) as DataTransportHttp
+        transport =
+            DataTransport.fromConnectionMethod(
+                appContext, cm, DataTransport.Role.MDOC, options,
+            ) as DataTransportHttp
         Assert.assertEquals("www.example2.com", transport.host)
         Assert.assertEquals("/mdlVerifier/session456", transport.path)
         Assert.assertEquals(1234, transport.port.toLong())
         Assert.assertFalse(transport.useTls)
         cm = ConnectionMethodHttp("https://www.example3.net/mdocreader/s42")
-        transport = DataTransport.fromConnectionMethod(
-            appContext, cm, DataTransport.Role.MDOC, options
-        ) as DataTransportHttp
+        transport =
+            DataTransport.fromConnectionMethod(
+                appContext, cm, DataTransport.Role.MDOC, options,
+            ) as DataTransportHttp
         Assert.assertEquals("www.example3.net", transport.host)
         Assert.assertEquals("/mdocreader/s42", transport.path)
         Assert.assertEquals(443, transport.port.toLong())
         Assert.assertTrue(transport.useTls)
         cm = ConnectionMethodHttp("https://www.example.com:8080/mdocreader/s43")
-        transport = DataTransport.fromConnectionMethod(
-            appContext, cm, DataTransport.Role.MDOC, options
-        ) as DataTransportHttp
+        transport =
+            DataTransport.fromConnectionMethod(
+                appContext, cm, DataTransport.Role.MDOC, options,
+            ) as DataTransportHttp
         Assert.assertEquals("www.example.com", transport.host)
         Assert.assertEquals("/mdocreader/s43", transport.path)
         Assert.assertEquals(8080, transport.port.toLong())
         Assert.assertTrue(transport.useTls)
         cm = ConnectionMethodHttp("unsupported://www.example.com/mdocreader/s43")
         try {
-            transport = DataTransport.fromConnectionMethod(
-                appContext, cm, DataTransport.Role.MDOC, options
-            ) as DataTransportHttp
+            transport =
+                DataTransport.fromConnectionMethod(
+                    appContext, cm, DataTransport.Role.MDOC, options,
+                ) as DataTransportHttp
             Assert.fail()
         } catch (e: IllegalArgumentException) {
             // expected path
@@ -78,12 +85,13 @@ class DataTransportHttpTest {
     @Test
     fun connectAndListen() {
         val appContext = InstrumentationRegistry.getTargetContext()
-        val verifier = DataTransportHttp(
-            appContext,
-            DataTransport.Role.MDOC_READER,
-            null,
-            DataTransportOptions.Builder().build()
-        )
+        val verifier =
+            DataTransportHttp(
+                appContext,
+                DataTransport.Role.MDOC_READER,
+                null,
+                DataTransportOptions.Builder().build(),
+            )
         val messageSentByVerifier = "010203".fromHex
         val messageSentByProver = "0405".fromHex
         val messageReceivedByProver = arrayOf<ByteArray?>(null)
@@ -94,65 +102,73 @@ class DataTransportHttpTest {
         val verifierMessageReceivedCondVar = ConditionVariable()
         val verifierPeerConnectedCondVar = ConditionVariable()
         val executor: Executor = Executors.newSingleThreadExecutor()
-        verifier.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {
-                Assert.fail()
-            }
+        verifier.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {
+                    Assert.fail()
+                }
 
-            override fun onConnected() {
-                verifierPeerConnectedCondVar.open()
-            }
+                override fun onConnected() {
+                    verifierPeerConnectedCondVar.open()
+                }
 
-            override fun onDisconnected() {
-                Assert.fail()
-            }
+                override fun onDisconnected() {
+                    Assert.fail()
+                }
 
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
 
-            override fun onError(error: Throwable) {
-                Assert.fail()
-            }
+                override fun onError(error: Throwable) {
+                    Assert.fail()
+                }
 
-            override fun onMessageReceived() {
-                val data = verifier.getMessage()
-                messageReceivedByVerifier[0] = data!!.clone()
-                verifierMessageReceivedCondVar.open()
-            }
-        }, executor)
+                override fun onMessageReceived() {
+                    val data = verifier.getMessage()
+                    messageReceivedByVerifier[0] = data!!.clone()
+                    verifierMessageReceivedCondVar.open()
+                }
+            },
+            executor,
+        )
         verifier.connect()
         val verifierConnectionMethod = verifier.connectionMethodForTransport as ConnectionMethodHttp
-        val prover = DataTransportHttp(
-            appContext,
-            DataTransport.Role.MDOC,
-            verifierConnectionMethod,
-            DataTransportOptions.Builder().build()
+        val prover =
+            DataTransportHttp(
+                appContext,
+                DataTransport.Role.MDOC,
+                verifierConnectionMethod,
+                DataTransportOptions.Builder().build(),
+            )
+        prover.setListener(
+            object : DataTransport.Listener {
+                override fun onConnecting() {}
+
+                override fun onConnected() {
+                    proverPeerConnectedCondVar.open()
+                }
+
+                override fun onDisconnected() {
+                    proverPeerDisconnectedCondVar.open()
+                }
+
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
+
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
+
+                override fun onMessageReceived() {
+                    val data = prover.getMessage()
+                    messageReceivedByProver[0] = data!!.clone()
+                    proverMessageReceivedCondVar.open()
+                }
+            },
+            executor,
         )
-        prover.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {
-                proverPeerConnectedCondVar.open()
-            }
-
-            override fun onDisconnected() {
-                proverPeerDisconnectedCondVar.open()
-            }
-
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
-
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
-
-            override fun onMessageReceived() {
-                val data = prover.getMessage()
-                messageReceivedByProver[0] = data!!.clone()
-                proverMessageReceivedCondVar.open()
-            }
-        }, executor)
         prover.connect()
         Assert.assertTrue(proverPeerConnectedCondVar.block(5000))
         prover.sendMessage(messageSentByProver)

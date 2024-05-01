@@ -24,7 +24,6 @@ import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
 import com.google.android.material.tabs.TabLayoutMediator
 
 class SelectDocumentFragment : Fragment() {
-
     private var _binding: FragmentSelectDocumentBinding? = null
     private val binding get() = _binding!!
 
@@ -60,17 +59,19 @@ class SelectDocumentFragment : Fragment() {
                         Toast.makeText(
                             requireContext(),
                             R.string.toast_press_back_twice,
-                            Toast.LENGTH_SHORT
+                            Toast.LENGTH_SHORT,
                         ).show()
                     }
                     mBackPressed = System.currentTimeMillis()
                 }
-            })
+            },
+        )
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentSelectDocumentBinding.inflate(inflater)
         val adapter = DocumentAdapter()
@@ -81,23 +82,27 @@ class SelectDocumentFragment : Fragment() {
         val documentManager = DocumentManager.getInstance(requireContext())
         setupScreen(binding, adapter, documentManager.getDocuments().toMutableList())
 
-        val permissionsNeeded = appPermissions.filter { permission ->
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    permission,
+                ) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(
-                permissionsNeeded.toTypedArray()
+                permissionsNeeded.toTypedArray(),
             )
         }
 
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         viewModel.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.CONNECTED -> {
@@ -107,7 +112,7 @@ class SelectDocumentFragment : Fragment() {
                 TransferStatus.ERROR -> {
                     binding.tvNfcLabel.text = "Error on presentation!"
                 }
-                //Shall we update the top label of the screen for each state?
+                // Shall we update the top label of the screen for each state?
                 else -> {}
             }
         }
@@ -122,17 +127,18 @@ class SelectDocumentFragment : Fragment() {
         TabLayoutMediator(binding.tlPageIndicator, binding.vpDocuments) { _, _ -> }.attach()
         binding.vpDocuments.offscreenPageLimit = 1
         binding.vpDocuments.setPageTransformer(DocumentPageTransformer(requireContext()))
-        val itemDecoration = DocumentPagerItemDecoration(
-            requireContext(),
-            R.dimen.viewpager_current_item_horizontal_margin
-        )
+        val itemDecoration =
+            DocumentPagerItemDecoration(
+                requireContext(),
+                R.dimen.viewpager_current_item_horizontal_margin,
+            )
         binding.vpDocuments.addItemDecoration(itemDecoration)
     }
 
     private fun setupScreen(
         binding: FragmentSelectDocumentBinding,
         adapter: DocumentAdapter,
-        documentsList: MutableList<DocumentInformation>
+        documentsList: MutableList<DocumentInformation>,
     ) {
         if (documentsList.isEmpty()) {
             showEmptyView(binding)
@@ -179,7 +185,7 @@ class SelectDocumentFragment : Fragment() {
                     Toast.makeText(
                         activity,
                         "The ${it.key} permission is required for BLE",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_LONG,
                     ).show()
                     return@registerForActivityResult
                 }

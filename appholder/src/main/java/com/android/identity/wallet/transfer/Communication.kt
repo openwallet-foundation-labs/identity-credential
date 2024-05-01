@@ -2,17 +2,14 @@ package com.android.identity.wallet.transfer
 
 import android.annotation.SuppressLint
 import android.content.Context
-import com.android.identity.util.Constants
-import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
+import com.android.identity.mdoc.request.DeviceRequestParser
+import com.android.identity.util.Constants
 import com.android.identity.wallet.util.log
-import com.android.identity.wallet.util.mainExecutor
-import java.util.OptionalLong
 
 class Communication private constructor(
     private val context: Context,
 ) {
-
     private var request: DeviceRequest? = null
     var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
@@ -25,19 +22,22 @@ class Communication private constructor(
             deviceRetrievalHelper?.let { presentation ->
                 DeviceRequestParser(
                     requestBytes.value,
-                    presentation.sessionTranscript
+                    presentation.sessionTranscript,
                 ).run { parse() }
             } ?: throw IllegalStateException("Presentation not set")
         } ?: throw IllegalStateException("Request not received")
 
-
     fun getSessionTranscript(): ByteArray? = deviceRetrievalHelper?.sessionTranscript
 
-    fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
+    fun sendResponse(
+        deviceResponse: ByteArray,
+        closeAfterSending: Boolean,
+    ) {
         if (closeAfterSending) {
             deviceRetrievalHelper?.sendDeviceResponse(
                 deviceResponse,
-                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
+            )
             deviceRetrievalHelper?.disconnect()
         } else {
             deviceRetrievalHelper?.sendDeviceResponse(deviceResponse, null)
@@ -46,7 +46,7 @@ class Communication private constructor(
 
     fun stopPresentation(
         sendSessionTerminationMessage: Boolean,
-        useTransportSpecificSessionTermination: Boolean
+        useTransportSpecificSessionTermination: Boolean,
     ) {
         if (sendSessionTerminationMessage) {
             if (useTransportSpecificSessionTermination) {
@@ -54,7 +54,7 @@ class Communication private constructor(
             } else {
                 deviceRetrievalHelper?.sendDeviceResponse(
                     null,
-                    Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                    Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
                 )
             }
         }
@@ -70,7 +70,6 @@ class Communication private constructor(
         }
 
     companion object {
-
         @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: Communication? = null

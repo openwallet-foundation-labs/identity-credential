@@ -39,7 +39,7 @@ class QrEngagementHelper internal constructor(
     transports: List<DataTransport>?,
     options: DataTransportOptions,
     private val listener: Listener,
-    private val executor: Executor
+    private val executor: Executor,
 ) {
     private var inhibitCallbacks = false
     private var transports = mutableListOf<DataTransport>()
@@ -80,9 +80,13 @@ class QrEngagementHelper internal constructor(
             // if both BLE modes are available at the same time.
             val disambiguatedMethods = disambiguate(connectionMethods)
             for (cm in disambiguatedMethods) {
-                val transport = fromConnectionMethod(
-                    context, cm, DataTransport.Role.MDOC, options
-                )
+                val transport =
+                    fromConnectionMethod(
+                        context,
+                        cm,
+                        DataTransport.Role.MDOC,
+                        options,
+                    )
                 transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
                 this.transports.add(transport)
                 Logger.d(TAG, "Added transport for $cm")
@@ -94,36 +98,39 @@ class QrEngagementHelper internal constructor(
         // ThreadPoolExecutor.
         //
         for (transport in this.transports) {
-            transport.setListener(object : DataTransport.Listener {
-                override fun onConnecting() {
-                    Logger.d(TAG, "onConnecting for $transport")
-                    peerIsConnecting()
-                }
+            transport.setListener(
+                object : DataTransport.Listener {
+                    override fun onConnecting() {
+                        Logger.d(TAG, "onConnecting for $transport")
+                        peerIsConnecting()
+                    }
 
-                override fun onConnected() {
-                    Logger.d(TAG, "onConnected for $transport")
-                    peerHasConnected(transport)
-                }
+                    override fun onConnected() {
+                        Logger.d(TAG, "onConnected for $transport")
+                        peerHasConnected(transport)
+                    }
 
-                override fun onDisconnected() {
-                    Logger.d(TAG, "onDisconnected for $transport")
-                    transport.close()
-                }
+                    override fun onDisconnected() {
+                        Logger.d(TAG, "onDisconnected for $transport")
+                        transport.close()
+                    }
 
-                override fun onError(error: Throwable) {
-                    transport.close()
-                    reportError(error)
-                }
+                    override fun onError(error: Throwable) {
+                        transport.close()
+                        reportError(error)
+                    }
 
-                override fun onMessageReceived() {
-                    Logger.d(TAG, "onMessageReceived for $transport")
-                }
+                    override fun onMessageReceived() {
+                        Logger.d(TAG, "onMessageReceived for $transport")
+                    }
 
-                override fun onTransportSpecificSessionTermination() {
-                    Logger.d(TAG, "Received transport-specific session termination")
-                    transport.close()
-                }
-            }, executor)
+                    override fun onTransportSpecificSessionTermination() {
+                        Logger.d(TAG, "Received transport-specific session termination")
+                        transport.close()
+                    }
+                },
+                executor,
+            )
             Logger.d(TAG, "Connecting to transport $transport")
             transport.connect()
         }
@@ -171,10 +178,11 @@ class QrEngagementHelper internal constructor(
      */
     val deviceEngagementUriEncoded: String
         get() {
-            val base64EncodedDeviceEngagement = Base64.encodeToString(
-                deviceEngagement,
-                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
-            )
+            val base64EncodedDeviceEngagement =
+                Base64.encodeToString(
+                    deviceEngagement,
+                    Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
+                )
             return Uri
                 .Builder()
                 .scheme("mdoc")
@@ -283,6 +291,7 @@ class QrEngagementHelper internal constructor(
     /**
      * A builder for [QrEngagementHelper].
      */
+
     /**
      * Creates a new builder for [QrEngagementHelper].
      *
@@ -298,7 +307,7 @@ class QrEngagementHelper internal constructor(
         private val eDeviceKey: EcPublicKey,
         private val options: DataTransportOptions,
         private val listener: Listener,
-        private val executor: Executor
+        private val executor: Executor,
     ) {
         private var connectionMethods: List<ConnectionMethod>? = null
         private var transports: List<DataTransport>? = null
@@ -311,9 +320,10 @@ class QrEngagementHelper internal constructor(
          * @param connectionMethods a list of [ConnectionMethod] instances.
          * @return the builder.
          */
-        fun setConnectionMethods(connectionMethods: List<ConnectionMethod>) = apply {
-            this.connectionMethods = connectionMethods
-        }
+        fun setConnectionMethods(connectionMethods: List<ConnectionMethod>) =
+            apply {
+                this.connectionMethods = connectionMethods
+            }
 
         /**
          * Sets data transports to use.
@@ -321,9 +331,10 @@ class QrEngagementHelper internal constructor(
          * @param transports a list of [DataTransport] instances.
          * @return the builder.
          */
-        fun setTransports(transports: List<DataTransport>) = apply {
-            this.transports = transports
-        }
+        fun setTransports(transports: List<DataTransport>) =
+            apply {
+                this.transports = transports
+            }
 
         /**
          * Builds the [QrEngagementHelper] and starts listening for connections.
@@ -338,7 +349,7 @@ class QrEngagementHelper internal constructor(
                 transports,
                 options,
                 listener,
-                executor
+                executor,
             )
         }
     }

@@ -38,21 +38,23 @@ val Int.toDataItem: CborInt
  * Extension to get a [CborInt] data item for the value.
  */
 val Long.toDataItem: CborInt
-    get() = if (this >= 0) {
-        Uint(toULong())
-    } else {
-        Nint((-this).toULong())
-    }
+    get() =
+        if (this >= 0) {
+            Uint(toULong())
+        } else {
+            Nint((-this).toULong())
+        }
 
 /**
  * Extension to get a [Simple] data item for the value.
  */
 val Boolean.toDataItem: Simple
-    get() = if (this) {
-        Simple.TRUE
-    } else {
-        Simple.FALSE
-    }
+    get() =
+        if (this) {
+            Simple.TRUE
+        } else {
+            Simple.FALSE
+        }
 
 /**
  * Extension to get a [CborFloat] data item for the value.

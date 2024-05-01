@@ -29,7 +29,6 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 class DocumentDataReader(private val docType: String) {
-
     fun read(nameSpacedData: NameSpacedData): DocumentElements {
         val builder = StringBuilder()
         var portraitBytes: ByteArray? = null
@@ -67,28 +66,31 @@ class DocumentDataReader(private val docType: String) {
                 builder.append("</p><br>")
             }
         }
-        val portrait = portraitBytes?.let { bytes ->
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }
-        val signature = signatureBytes?.let { bytes ->
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }
-        val fingerprint = fingerprintBytes?.let { bytes ->
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }
+        val portrait =
+            portraitBytes?.let { bytes ->
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+        val signature =
+            signatureBytes?.let { bytes ->
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+        val fingerprint =
+            fingerprintBytes?.let { bytes ->
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
 
         return DocumentElements(
             text = builder.toString(),
             portrait = portrait,
             signature = signature,
-            fingerprint = fingerprint
+            fingerprint = fingerprint,
         )
     }
 
     private fun isPortraitElement(
         docType: String,
         namespace: String?,
-        entryName: String?
+        entryName: String?,
     ): Boolean {
         val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
         val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
@@ -99,11 +101,12 @@ class DocumentDataReader(private val docType: String) {
         val newLine = "<br>"
         val sb = java.lang.StringBuilder()
         val bais = ByteArrayInputStream(encodedBytes)
-        val dataItems = try {
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw java.lang.IllegalStateException(e)
-        }
+        val dataItems =
+            try {
+                CborDecoder(bais).decode()
+            } catch (e: CborException) {
+                throw java.lang.IllegalStateException(e)
+            }
         for ((count, dataItem) in dataItems.withIndex()) {
             if (count > 0) {
                 sb.append(",$newLine")
@@ -114,8 +117,9 @@ class DocumentDataReader(private val docType: String) {
     }
 
     private fun cborPrettyPrintDataItem(
-        sb: java.lang.StringBuilder, indent: Int,
-        dataItem: DataItem
+        sb: java.lang.StringBuilder,
+        indent: Int,
+        dataItem: DataItem,
     ) {
         val space = "&nbsp;"
         val newLine = "<br>"
@@ -128,7 +132,7 @@ class DocumentDataReader(private val docType: String) {
             sb.append(String.format("tag %d ", dataItem.tag.value))
         }
         when (dataItem.majorType) {
-            MajorType.INVALID ->                 // TODO: throw
+            MajorType.INVALID -> // TODO: throw
                 sb.append("**invalid**")
 
             MajorType.UNSIGNED_INTEGER -> {
@@ -164,7 +168,6 @@ class DocumentDataReader(private val docType: String) {
             }
 
             MajorType.ARRAY -> {
-
                 // Major type 4: an array of data items.
                 val items = (dataItem as Array).dataItems
                 if (items.size == 0) {
@@ -216,7 +219,7 @@ class DocumentDataReader(private val docType: String) {
             }
 
             MajorType.TAG -> throw java.lang.IllegalStateException("Semantic tag data item not expected")
-            MajorType.SPECIAL ->                 // Major type 7: floating point numbers and simple data types that need no
+            MajorType.SPECIAL -> // Major type 7: floating point numbers and simple data types that need no
                 // content, as well as the "break" stop code.
                 if (dataItem is SimpleValue) {
                     when (dataItem.simpleValueType) {
@@ -228,17 +231,19 @@ class DocumentDataReader(private val docType: String) {
                         SimpleValueType.UNALLOCATED -> sb.append("unallocated")
                     }
                 } else if (dataItem is DoublePrecisionFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
+                    val df =
+                        DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH),
+                        )
                     df.maximumFractionDigits = 340
                     sb.append(df.format(dataItem.value))
                 } else if (dataItem is AbstractFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
+                    val df =
+                        DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH),
+                        )
                     df.maximumFractionDigits = 340
                     sb.append(df.format(dataItem.value))
                 } else {

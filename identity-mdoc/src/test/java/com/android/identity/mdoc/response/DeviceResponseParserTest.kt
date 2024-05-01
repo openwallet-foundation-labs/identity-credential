@@ -41,7 +41,6 @@ class DeviceResponseParserTest {
     @Test
     @Throws(CertificateEncodingException::class)
     fun testDeviceResponseParserWithVectors() {
-
         // NOTE: This tests tests the MAC verification path of DeviceResponseParser, the
         // ECDSA verification path is tested in DeviceResponseGeneratorTest by virtue of
         // SUtil.getIdentityCredentialStore() defaulting to the Jetpack.
@@ -50,21 +49,24 @@ class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
-        val encodedSessionTranscript = Cbor.encode(
-            Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
-        )
-        val eReaderKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex
-        )
-        val dr = DeviceResponseParser(
-            encodedDeviceResponse,
-            encodedSessionTranscript
-        )
-            .setEphemeralReaderKey(eReaderKey)
-            .parse()
+        val encodedSessionTranscript =
+            Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor,
+            )
+        val eReaderKey: EcPrivateKey =
+            EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex,
+            )
+        val dr =
+            DeviceResponseParser(
+                encodedDeviceResponse,
+                encodedSessionTranscript,
+            )
+                .setEphemeralReaderKey(eReaderKey)
+                .parse()
         Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
         Assert.assertEquals("1.0", dr.version)
         val documents = dr.documents
@@ -81,11 +83,12 @@ class DeviceResponseParserTest {
         Assert.assertNull(d.validityInfoExpectedUpdate)
 
         // Check DeviceKey is correctly parsed
-        val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
-        )
+        val deviceKeyFromVector =
+            EcPublicKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex,
+            )
         Assert.assertEquals(deviceKeyFromVector, d.deviceKey)
 
         // Test example is using a MAC.
@@ -103,25 +106,25 @@ class DeviceResponseParserTest {
         Assert.assertEquals(6, d.getIssuerEntryNames(MDL_NAMESPACE).size.toLong())
         Assert.assertEquals(
             "Doe",
-            d.getIssuerEntryString(MDL_NAMESPACE, "family_name")
+            d.getIssuerEntryString(MDL_NAMESPACE, "family_name"),
         )
         Assert.assertEquals(
             "123456789",
-            d.getIssuerEntryString(MDL_NAMESPACE, "document_number")
+            d.getIssuerEntryString(MDL_NAMESPACE, "document_number"),
         )
         Assert.assertEquals(
             "1004(\"2019-10-20\")",
             Cbor.toDiagnostics(
                 d.getIssuerEntryData(MDL_NAMESPACE, "issue_date"),
-                setOf(DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             "1004(\"2024-10-20\")",
             Cbor.toDiagnostics(
                 d.getIssuerEntryData(MDL_NAMESPACE, "expiry_date"),
-                setOf(DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertEquals(
             """[
@@ -138,12 +141,12 @@ class DeviceResponseParserTest {
 ]""",
             Cbor.toDiagnostics(
                 d.getIssuerEntryData(MDL_NAMESPACE, "driving_privileges"),
-                setOf(DiagnosticOption.PRETTY_PRINT)
-            )
+                setOf(DiagnosticOption.PRETTY_PRINT),
+            ),
         )
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE_PORTRAIT_DATA.fromHex,
-            d.getIssuerEntryByteString(MDL_NAMESPACE, "portrait")
+            d.getIssuerEntryByteString(MDL_NAMESPACE, "portrait"),
         )
 
         // Check the issuer-signed items all validated (digest matches what's in MSO)
@@ -164,7 +167,7 @@ class DeviceResponseParserTest {
         Assert.assertEquals("C=US, CN=utopia iaca", issuerCert.issuerX500Principal.toString())
         Assert.assertArrayEquals(
             TestVectors.ISO_18013_5_ANNEX_D_DS_CERT.fromHex,
-            issuerCert.encoded
+            issuerCert.encoded,
         )
     }
 
@@ -182,21 +185,24 @@ class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
-        val encodedSessionTranscript = Cbor.encode(
-            Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
-        )
-        val eReaderKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex
-        )
-        val dr = DeviceResponseParser(
-            encodedDeviceResponse,
-            encodedSessionTranscript
-        )
-            .setEphemeralReaderKey(eReaderKey)
-            .parse()
+        val encodedSessionTranscript =
+            Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor,
+            )
+        val eReaderKey: EcPrivateKey =
+            EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex,
+            )
+        val dr =
+            DeviceResponseParser(
+                encodedDeviceResponse,
+                encodedSessionTranscript,
+            )
+                .setEphemeralReaderKey(eReaderKey)
+                .parse()
         Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
         Assert.assertEquals("1.0", dr.version)
         val documents = dr.documents
@@ -213,7 +219,7 @@ class DeviceResponseParserTest {
         //
         Assert.assertEquals(
             "Foe",
-            d.getIssuerEntryString(MDL_NAMESPACE, "family_name")
+            d.getIssuerEntryString(MDL_NAMESPACE, "family_name"),
         )
         Assert.assertFalse(d.getIssuerEntryDigestMatch(MDL_NAMESPACE, "family_name"))
         Assert.assertEquals(1, d.numIssuerEntryDigestMatchFailures.toLong())
@@ -231,21 +237,24 @@ class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
-        val encodedSessionTranscript = Cbor.encode(
-            Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
-        )
-        val eReaderKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex
-        )
-        val dr = DeviceResponseParser(
-            encodedDeviceResponse,
-            encodedSessionTranscript
-        )
-            .setEphemeralReaderKey(eReaderKey)
-            .parse()
+        val encodedSessionTranscript =
+            Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor,
+            )
+        val eReaderKey: EcPrivateKey =
+            EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex,
+            )
+        val dr =
+            DeviceResponseParser(
+                encodedDeviceResponse,
+                encodedSessionTranscript,
+            )
+                .setEphemeralReaderKey(eReaderKey)
+                .parse()
         Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
         Assert.assertEquals("1.0", dr.version)
         val documents = dr.documents
@@ -273,21 +282,24 @@ class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
-        val encodedSessionTranscript = Cbor.encode(
-            Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
-        )
-        val eReaderKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex
-        )
-        val dr = DeviceResponseParser(
-            encodedDeviceResponse,
-            encodedSessionTranscript
-        )
-            .setEphemeralReaderKey(eReaderKey)
-            .parse()
+        val encodedSessionTranscript =
+            Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor,
+            )
+        val eReaderKey: EcPrivateKey =
+            EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex,
+            )
+        val dr =
+            DeviceResponseParser(
+                encodedDeviceResponse,
+                encodedSessionTranscript,
+            )
+                .setEphemeralReaderKey(eReaderKey)
+                .parse()
         Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
         Assert.assertEquals("1.0", dr.version)
         val documents = dr.documents
@@ -309,7 +321,7 @@ class DeviceResponseParserTest {
         Assert.assertEquals(6, d.getIssuerEntryNames(MDL_NAMESPACE).size.toLong())
         Assert.assertEquals(
             "Doe",
-            d.getIssuerEntryString(MDL_NAMESPACE, "family_name")
+            d.getIssuerEntryString(MDL_NAMESPACE, "family_name"),
         )
 
         // DeviceSigned is fine.

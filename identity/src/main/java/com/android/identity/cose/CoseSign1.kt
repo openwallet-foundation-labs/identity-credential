@@ -19,7 +19,7 @@ data class CoseSign1(
     val protectedHeaders: Map<CoseLabel, DataItem>,
     val unprotectedHeaders: Map<CoseLabel, DataItem>,
     val signature: ByteArray,
-    val payload: ByteArray?
+    val payload: ByteArray?,
 ) {
     /**
      * Encodes the COSE_Sign1 as a CBOR data item.

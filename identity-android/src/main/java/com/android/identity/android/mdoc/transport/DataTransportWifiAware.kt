@@ -75,9 +75,8 @@ class DataTransportWifiAware(
     context: Context,
     role: Role,
     private val connectionMethod: ConnectionMethodWifiAware,
-    options: DataTransportOptions
+    options: DataTransportOptions,
 ) : DataTransport(context, role, options) {
-
     private var writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
     private var serviceName: String? = null
     private var session: WifiAwareSession? = null
@@ -92,6 +91,7 @@ class DataTransportWifiAware(
 
     @Suppress("unused")
     private var mCipherSuites = 0
+
     override fun setEDeviceKeyBytes(encodedEDeviceKeyBytes: ByteArray) {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes
 
@@ -107,10 +107,11 @@ class DataTransportWifiAware(
             ikm = mEncodedEDeviceKeyBytes
             info = "NANPassphrase".toByteArray()
             salt = byteArrayOf()
-            mPassphrase = Base64.encodeToString(
-                Crypto.hkdf(Algorithm.HMAC_SHA256, ikm!!, salt, info, 32),
-                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
-            )
+            mPassphrase =
+                Base64.encodeToString(
+                    Crypto.hkdf(Algorithm.HMAC_SHA256, ikm!!, salt, info, 32),
+                    Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
+                )
             Logger.d(TAG, String.format("Using calculated passphrase '$mPassphrase'"))
         } else {
             Logger.d(TAG, String.format("Using provided passphrase '$mPassphrase'"))
@@ -130,24 +131,33 @@ class DataTransportWifiAware(
                 override fun onAttached(session: WifiAwareSession) {
                     Logger.d(TAG, "onAttached: $session")
                     this@DataTransportWifiAware.session = session
-                    val config = PublishConfig.Builder()
-                        .setServiceName(serviceName!!)
-                        .build()
-                    this@DataTransportWifiAware.session!!.publish(config, object : DiscoverySessionCallback() {
-                        private var mPublishDiscoverySession: PublishDiscoverySession? = null
-                        override fun onPublishStarted(session: PublishDiscoverySession) {
-                            Logger.d(TAG, "onPublishStarted")
-                            mPublishDiscoverySession = session
-                        }
+                    val config =
+                        PublishConfig.Builder()
+                            .setServiceName(serviceName!!)
+                            .build()
+                    this@DataTransportWifiAware.session!!.publish(
+                        config,
+                        object : DiscoverySessionCallback() {
+                            private var mPublishDiscoverySession: PublishDiscoverySession? = null
 
-                        override fun onMessageReceived(peerHandle: PeerHandle, message: ByteArray) {
-                            Logger.dHex(TAG,"onMessageReceived: peer: $peerHandle", message)
-                            listenerOnMessageReceived(mPublishDiscoverySession, peerHandle)
-                        }
-                    }, null)
+                            override fun onPublishStarted(session: PublishDiscoverySession) {
+                                Logger.d(TAG, "onPublishStarted")
+                                mPublishDiscoverySession = session
+                            }
+
+                            override fun onMessageReceived(
+                                peerHandle: PeerHandle,
+                                message: ByteArray,
+                            ) {
+                                Logger.dHex(TAG, "onMessageReceived: peer: $peerHandle", message)
+                                listenerOnMessageReceived(mPublishDiscoverySession, peerHandle)
+                            }
+                        },
+                        null,
+                    )
                 }
             },
-            null
+            null,
         )
 
         // Passphrase is mandatory for NFC so we always set it...
@@ -156,9 +166,10 @@ class DataTransportWifiAware(
         val r: Random = SecureRandom()
         r.nextBytes(passphraseBytes)
         val passphraseInfoPassphrase = HexUtil.toHex(passphraseBytes, true)
-        val wm = context.getSystemService(
-            WifiManager::class.java
-        )
+        val wm =
+            context.getSystemService(
+                WifiManager::class.java,
+            )
         var supportedBandsBitmap = 0x04 // Bit 2: 2.4 GHz
         if (wm.is5GHzBandSupported) {
             supportedBandsBitmap = supportedBandsBitmap or 0x10 // Bit 4: 4.9 and 5 GHz
@@ -166,37 +177,44 @@ class DataTransportWifiAware(
         val bandInfoSupportedBands = byteArrayOf((supportedBandsBitmap and 0xff).toByte())
         val characteristics = wifiAwareManager!!.getCharacteristics()
         if (characteristics != null) {
-            mCipherSuites = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Api30Impl.getSupportedCipherSuites(characteristics)
-            } else {
-                // Pre-R, just assume that only NCS-SK-128 works.
-                Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128
-            }
+            mCipherSuites =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Api30Impl.getSupportedCipherSuites(characteristics)
+                } else {
+                    // Pre-R, just assume that only NCS-SK-128 works.
+                    Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128
+                }
         }
     }
 
-    fun listenerOnMessageReceived(session: PublishDiscoverySession?, peerHandle: PeerHandle?) {
+    fun listenerOnMessageReceived(
+        session: PublishDiscoverySession?,
+        peerHandle: PeerHandle?,
+    ) {
         reportConnecting()
-        listenerServerSocket = try {
-            ServerSocket(0)
-        } catch (e: IOException) {
-            reportError(e)
-            return
-        }
+        listenerServerSocket =
+            try {
+                ServerSocket(0)
+            } catch (e: IOException) {
+                reportError(e)
+                return
+            }
         val port = listenerServerSocket!!.localPort
         Logger.d(TAG, "Listener on port $port")
         listenOnServerSocket()
-        val networkSpecifier: NetworkSpecifier = WifiAwareNetworkSpecifier.Builder(
-            session!!,
-            peerHandle!!
-        )
-            .setPskPassphrase(mPassphrase!!)
-            .setPort(port)
-            .build()
-        val myNetworkRequest = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI_AWARE)
-            .setNetworkSpecifier(networkSpecifier)
-            .build()
+        val networkSpecifier: NetworkSpecifier =
+            WifiAwareNetworkSpecifier.Builder(
+                session!!,
+                peerHandle!!,
+            )
+                .setPskPassphrase(mPassphrase!!)
+                .setPort(port)
+                .build()
+        val myNetworkRequest =
+            NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI_AWARE)
+                .setNetworkSpecifier(networkSpecifier)
+                .build()
         val callback: ConnectivityManager.NetworkCallback =
             object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
@@ -205,7 +223,7 @@ class DataTransportWifiAware(
 
                 override fun onCapabilitiesChanged(
                     network: Network,
-                    networkCapabilities: NetworkCapabilities
+                    networkCapabilities: NetworkCapabilities,
                 ) {
                     Logger.d(TAG, "onCapabilitiesChanged $networkCapabilities")
                 }
@@ -214,37 +232,40 @@ class DataTransportWifiAware(
                     Logger.d(TAG, "onLost")
                 }
             }
-        val cm = context.getSystemService(
-            ConnectivityManager::class.java
-        )
+        val cm =
+            context.getSystemService(
+                ConnectivityManager::class.java,
+            )
         cm.requestNetwork(myNetworkRequest, callback)
         session.sendMessage(
             peerHandle,
             0,
-            "helloSub".toByteArray()
+            "helloSub".toByteArray(),
         )
     }
 
     private fun listenOnServerSocket() {
-        val socketServerThread: Thread = object : Thread() {
-            override fun run() {
-                try {
-                    // We only accept a single client with this server socket...
-                    //
-                    listenerSocket = listenerServerSocket!!.accept()
-                    val writingThread: Thread = object : Thread() {
-                        override fun run() {
-                            writeToSocket(true, listenerSocket)
-                        }
+        val socketServerThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    try {
+                        // We only accept a single client with this server socket...
+                        //
+                        listenerSocket = listenerServerSocket!!.accept()
+                        val writingThread: Thread =
+                            object : Thread() {
+                                override fun run() {
+                                    writeToSocket(true, listenerSocket)
+                                }
+                            }
+                        writingThread.start()
+                        reportConnected()
+                        readFromSocket(true, listenerSocket)
+                    } catch (e: IOException) {
+                        reportError(e)
                     }
-                    writingThread.start()
-                    reportConnected()
-                    readFromSocket(true, listenerSocket)
-                } catch (e: IOException) {
-                    reportError(e)
                 }
             }
-        }
         socketServerThread.start()
     }
 
@@ -253,9 +274,10 @@ class DataTransportWifiAware(
     }
 
     private fun connectAsMdocReader() {
-        wifiAwareManager = context.getSystemService(
-            WifiAwareManager::class.java
-        )
+        wifiAwareManager =
+            context.getSystemService(
+                WifiAwareManager::class.java,
+            )
         wifiAwareManager!!.attach(
             object : AttachCallback() {
                 override fun onAttachFailed() {
@@ -267,46 +289,64 @@ class DataTransportWifiAware(
                 override fun onAttached(session: WifiAwareSession) {
                     Logger.d(TAG, "onAttached: $session")
                     this@DataTransportWifiAware.session = session
-                    val config = SubscribeConfig.Builder()
-                        .setServiceName(serviceName!!)
-                        .build()
-                    this@DataTransportWifiAware.session!!.subscribe(config, object : DiscoverySessionCallback() {
-                        private var mSubscribeDiscoverySession: SubscribeDiscoverySession? = null
-                        override fun onMessageSendFailed(messageId: Int) {
-                            Logger.d(TAG, "onMessageSendFailed")
-                        }
+                    val config =
+                        SubscribeConfig.Builder()
+                            .setServiceName(serviceName!!)
+                            .build()
+                    this@DataTransportWifiAware.session!!.subscribe(
+                        config,
+                        object : DiscoverySessionCallback() {
+                            private var mSubscribeDiscoverySession: SubscribeDiscoverySession? = null
 
-                        override fun onMessageSendSucceeded(messageId: Int) {
-                            Logger.d(TAG, "onMessageSendSucceeded")
-                        }
+                            override fun onMessageSendFailed(messageId: Int) {
+                                Logger.d(TAG, "onMessageSendFailed")
+                            }
 
-                        override fun onSubscribeStarted(session: SubscribeDiscoverySession) {
-                            mSubscribeDiscoverySession = session
-                            Logger.d(TAG, "onSubscribeStarted")
-                        }
+                            override fun onMessageSendSucceeded(messageId: Int) {
+                                Logger.d(TAG, "onMessageSendSucceeded")
+                            }
 
-                        override fun onServiceDiscovered(
-                            peerHandle: PeerHandle,
-                            serviceSpecificInfo: ByteArray, matchFilter: List<ByteArray>
-                        ) {
-                            Logger.dHex(TAG, "onServiceDiscovered: peer: $peerHandle "
-                                        + " serviceSpecificInfo: ", serviceSpecificInfo)
-                            mSubscribeDiscoverySession!!.sendMessage(
-                                peerHandle,
-                                0,
-                                "helloPub".toByteArray()
-                            )
-                        }
+                            override fun onSubscribeStarted(session: SubscribeDiscoverySession) {
+                                mSubscribeDiscoverySession = session
+                                Logger.d(TAG, "onSubscribeStarted")
+                            }
 
-                        override fun onMessageReceived(peerHandle: PeerHandle, message: ByteArray) {
-                            Logger.dHex(TAG, "onMessageReceived: peer: $peerHandle"
-                                        + " message: ", message)
-                            initiatorOnMessageReceived(mSubscribeDiscoverySession, peerHandle)
-                        }
-                    }, null)
+                            override fun onServiceDiscovered(
+                                peerHandle: PeerHandle,
+                                serviceSpecificInfo: ByteArray,
+                                matchFilter: List<ByteArray>,
+                            ) {
+                                Logger.dHex(
+                                    TAG,
+                                    "onServiceDiscovered: peer: $peerHandle " +
+                                        " serviceSpecificInfo: ",
+                                    serviceSpecificInfo,
+                                )
+                                mSubscribeDiscoverySession!!.sendMessage(
+                                    peerHandle,
+                                    0,
+                                    "helloPub".toByteArray(),
+                                )
+                            }
+
+                            override fun onMessageReceived(
+                                peerHandle: PeerHandle,
+                                message: ByteArray,
+                            ) {
+                                Logger.dHex(
+                                    TAG,
+                                    "onMessageReceived: peer: $peerHandle" +
+                                        " message: ",
+                                    message,
+                                )
+                                initiatorOnMessageReceived(mSubscribeDiscoverySession, peerHandle)
+                            }
+                        },
+                        null,
+                    )
                 }
             },
-            null
+            null,
         )
     }
 
@@ -318,22 +358,28 @@ class DataTransportWifiAware(
         }
     }
 
-    fun initiatorOnMessageReceived(session: SubscribeDiscoverySession?, peerHandle: PeerHandle?) {
-        val networkSpecifier: NetworkSpecifier = WifiAwareNetworkSpecifier.Builder(
-            session!!,
-            peerHandle!!
-        )
-            .setPskPassphrase(mPassphrase!!)
-            .build()
-        val myNetworkRequest = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI_AWARE)
-            .setNetworkSpecifier(networkSpecifier)
-            .build()
+    fun initiatorOnMessageReceived(
+        session: SubscribeDiscoverySession?,
+        peerHandle: PeerHandle?,
+    ) {
+        val networkSpecifier: NetworkSpecifier =
+            WifiAwareNetworkSpecifier.Builder(
+                session!!,
+                peerHandle!!,
+            )
+                .setPskPassphrase(mPassphrase!!)
+                .build()
+        val myNetworkRequest =
+            NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI_AWARE)
+                .setNetworkSpecifier(networkSpecifier)
+                .build()
         val callback: ConnectivityManager.NetworkCallback =
             object : ConnectivityManager.NetworkCallback() {
                 private var mNetworkCapabilities: NetworkCapabilities? = null
                 private var mIsAvailable = false
                 private var mInitiatedConnection = false
+
                 override fun onAvailable(network: Network) {
                     Logger.d(TAG, "onAvailable sub")
                     mIsAvailable = true
@@ -348,7 +394,7 @@ class DataTransportWifiAware(
 
                 override fun onCapabilitiesChanged(
                     network: Network,
-                    networkCapabilities: NetworkCapabilities
+                    networkCapabilities: NetworkCapabilities,
                 ) {
                     Logger.d(TAG, "onCapabilitiesChanged sub $networkCapabilities")
                     mNetworkCapabilities = networkCapabilities
@@ -365,17 +411,21 @@ class DataTransportWifiAware(
                     Logger.d(TAG, "onLost sub")
                 }
             }
-        val cm = context.getSystemService(
-            ConnectivityManager::class.java
-        )
+        val cm =
+            context.getSystemService(
+                ConnectivityManager::class.java,
+            )
         cm.requestNetwork(myNetworkRequest, callback)
 
-        //session.sendMessage(peerHandle,
+        // session.sendMessage(peerHandle,
         //        0,
         //        "helloSub".getBytes(UTF_8));
     }
 
-    fun initiatorConnect(network: Network, networkCapabilities: NetworkCapabilities) {
+    fun initiatorConnect(
+        network: Network,
+        networkCapabilities: NetworkCapabilities,
+    ) {
         val peerAwareInfo = networkCapabilities.transportInfo as WifiAwareNetworkInfo?
         val peerIpv6 = peerAwareInfo!!.peerIpv6Addr
         val peerPort = peerAwareInfo.port
@@ -383,12 +433,13 @@ class DataTransportWifiAware(
         // peerIpv6.getHostAddress() returns something like "fe80::75:baff:fedd:ce16%aware_data0",
         // this is how we get rid of it...
         val strippedAddress: InetAddress
-        strippedAddress = try {
-            InetAddress.getByAddress(peerIpv6!!.address)
-        } catch (e: UnknownHostException) {
-            reportError(e)
-            return
-        }
+        strippedAddress =
+            try {
+                InetAddress.getByAddress(peerIpv6!!.address)
+            } catch (e: UnknownHostException) {
+                reportError(e)
+                return
+            }
 
         // TODO: it's not clear whether port should be included here, we include it for now...
         //
@@ -396,17 +447,19 @@ class DataTransportWifiAware(
         Logger.d(TAG, "Connecting to $mInitiatorIPv6HostString")
         try {
             initiatorSocket = network.socketFactory.createSocket(peerIpv6, peerPort)
-            val writingThread: Thread = object : Thread() {
-                override fun run() {
-                    writeToSocket(false, initiatorSocket)
+            val writingThread: Thread =
+                object : Thread() {
+                    override fun run() {
+                        writeToSocket(false, initiatorSocket)
+                    }
                 }
-            }
             writingThread.start()
-            val listenerThread: Thread = object : Thread() {
-                override fun run() {
-                    readFromSocket(false, initiatorSocket)
+            val listenerThread: Thread =
+                object : Thread() {
+                    override fun run() {
+                        readFromSocket(false, initiatorSocket)
+                    }
                 }
-            }
             listenerThread.start()
             reportConnected()
         } catch (e: IOException) {
@@ -458,14 +511,18 @@ class DataTransportWifiAware(
         writerQueue.add(data)
     }
 
-    fun writeToSocket(isListener: Boolean, socket: Socket?) {
+    fun writeToSocket(
+        isListener: Boolean,
+        socket: Socket?,
+    ) {
         val os: OutputStream
-        os = try {
-            socket!!.getOutputStream()
-        } catch (e: IOException) {
-            reportError(e)
-            return
-        }
+        os =
+            try {
+                socket!!.getOutputStream()
+            } catch (e: IOException) {
+                reportError(e)
+                return
+            }
         Logger.d(TAG, "Writing socket isListener=$isListener")
         while (socket.isConnected) {
             var messageToSend: ByteArray? = null
@@ -485,7 +542,7 @@ class DataTransportWifiAware(
 Content-Length: ${messageToSend.size}
 Content-Type: application/CBOR
 
-""".toByteArray()
+""".toByteArray(),
                     )
                 } else {
                     os.write(
@@ -494,7 +551,7 @@ Host: $mInitiatorIPv6HostString
 Content-Length: ${messageToSend.size}
 Content-Type: application/CBOR
 
-""".toByteArray()
+""".toByteArray(),
                     )
                 }
                 os.write(messageToSend)
@@ -508,16 +565,20 @@ Content-Type: application/CBOR
     }
 
     @Suppress("deprecation")
-    fun readFromSocket(isListener: Boolean, socket: Socket?) {
+    fun readFromSocket(
+        isListener: Boolean,
+        socket: Socket?,
+    ) {
         var inputStream: InputStream? = null
-        inputStream = try {
-            socket!!.getInputStream()
-        } catch (e: IOException) {
-            Logger.d(TAG, "Caught exception while getting inputstream isListener=$isListener")
-            e.printStackTrace()
-            reportError(e)
-            return
-        }
+        inputStream =
+            try {
+                socket!!.getInputStream()
+            } catch (e: IOException) {
+                Logger.d(TAG, "Caught exception while getting inputstream isListener=$isListener")
+                e.printStackTrace()
+                reportError(e)
+                return
+            }
         Logger.d(TAG, "Reading from socket isListener=$isListener")
         val dis = DataInputStream(inputStream)
         val keepGoing = true
@@ -537,13 +598,14 @@ Content-Type: application/CBOR
                 }
                 Logger.d(TAG, "read line '$line'")
                 if (line.lowercase().startsWith("content-length:")) {
-                    contentLength = try {
-                        line.substring(15).trim { it <= ' ' }.toInt()
-                    } catch (e: NumberFormatException) {
-                        Logger.w(TAG, "Error parsing Content-Length line '$line'")
-                        reportError(e)
-                        return
-                    }
+                    contentLength =
+                        try {
+                            line.substring(15).trim { it <= ' ' }.toInt()
+                        } catch (e: NumberFormatException) {
+                            Logger.w(TAG, "Error parsing Content-Length line '$line'")
+                            reportError(e)
+                            return
+                        }
                 }
                 if (line.length == 0) {
                     // End of headers...
@@ -557,7 +619,7 @@ Content-Type: application/CBOR
                     }
                     Logger.d(
                         TAG,
-                        "Going to read $contentLength bytes, isListener=$isListener"
+                        "Going to read $contentLength bytes, isListener=$isListener",
                     )
                     val data = ByteArray(contentLength)
                     dis.readFully(data)
@@ -594,10 +656,11 @@ Content-Type: application/CBOR
 
     companion object {
         private const val TAG = "DataTransportWifiAware"
+
         @JvmStatic
         fun fromNdefRecord(
             record: NdefRecord,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): ConnectionMethodWifiAware? {
             var passphraseInfoPassphrase: String? = null
             var bandInfoSupportedBands: ByteArray? = null
@@ -612,7 +675,7 @@ Content-Type: application/CBOR
                     // passphrase
                     val encodedPassphrase = ByteArray(len - 1)
                     payload[encodedPassphrase, 0, len - 1]
-                    passphraseInfoPassphrase = String(encodedPassphrase, )
+                    passphraseInfoPassphrase = String(encodedPassphrase)
                 } else if (type == 0x04 && len > 1) {
                     bandInfoSupportedBands = ByteArray(len - 1)
                     payload[bandInfoSupportedBands, 0, len - 1]
@@ -626,7 +689,7 @@ Content-Type: application/CBOR
                 passphraseInfoPassphrase,
                 channelInfoChannelNumber,
                 channelInfoOperatingClass,
-                bandInfoSupportedBands
+                bandInfoSupportedBands,
             )
         }
 
@@ -634,7 +697,7 @@ Content-Type: application/CBOR
             context: Context,
             cm: ConnectionMethodWifiAware,
             role: Role,
-            options: DataTransportOptions
+            options: DataTransportOptions,
         ): DataTransport {
             val t = DataTransportWifiAware(context, role, cm, options)
             if (cm.passphraseInfoPassphrase != null) {
@@ -647,7 +710,7 @@ Content-Type: application/CBOR
         fun toNdefRecord(
             cm: ConnectionMethodWifiAware,
             auxiliaryReferences: List<String>,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): Pair<NdefRecord, ByteArray>? {
             // The NdefRecord and its OOB data is defined in "Wi-Fi Aware Specification", table 142.
             //
@@ -686,9 +749,8 @@ Content-Type: application/CBOR
                 // Neighbor Awareness Networking Specification section 12."
                 //
                 if (cm.passphraseInfoPassphrase != null) {
-                    val encodedPassphrase = cm.passphraseInfoPassphrase!!.toByteArray(
-                        
-                    )
+                    val encodedPassphrase =
+                        cm.passphraseInfoPassphrase!!.toByteArray()
                     baos.write(1 + encodedPassphrase.size)
                     baos.write(0x03) // Data Type 0x03 - Pass-phrase Info
                     baos.write(encodedPassphrase)
@@ -715,12 +777,13 @@ Content-Type: application/CBOR
                 throw IllegalStateException(e)
             }
             val oobData = baos.toByteArray()
-            val record = NdefRecord(
-                NdefRecord.TNF_MIME_MEDIA,
-                "application/vnd.wfa.nan".toByteArray(),
-                "W".toByteArray(),
-                oobData
-            )
+            val record =
+                NdefRecord(
+                    NdefRecord.TNF_MIME_MEDIA,
+                    "application/vnd.wfa.nan".toByteArray(),
+                    "W".toByteArray(),
+                    oobData,
+                )
 
             // From 7.1 Alternative Carrier Record
             //

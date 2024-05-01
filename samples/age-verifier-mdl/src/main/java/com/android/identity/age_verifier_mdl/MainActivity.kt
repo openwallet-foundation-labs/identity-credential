@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
                     Toast.makeText(
                         this,
                         "The ${it.key} permission is required for BLE",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_LONG,
                     ).show()
                     return@registerForActivityResult
                 }
@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.BLUETOOTH_ADVERTISE,
                 Manifest.permission.BLUETOOTH_SCAN,
                 Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.NEARBY_WIFI_DEVICES
+                Manifest.permission.NEARBY_WIFI_DEVICES,
             )
         } else {
             arrayOf(
@@ -113,25 +113,27 @@ class MainActivity : ComponentActivity() {
         durationMillisScanning = transferHelper.getScanningDurationMillis()
         durationMillisRequestToResponse = transferHelper.getRequestToResponseDurationMillis()
         durationMillisTotal = durationMillisTapToEngagement +
-                durationMillisEngagementToRequest +
-                durationMillisRequestToResponse
+            durationMillisEngagementToRequest +
+            durationMillisRequestToResponse
 
-        engagementMethod = when (transferHelper.getEngagementMethod()) {
-            VerificationHelper.EngagementMethod.QR_CODE -> "QR Code"
-            VerificationHelper.EngagementMethod.NFC_STATIC_HANDOVER -> "NFC Static Handover"
-            VerificationHelper.EngagementMethod.NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
-            else -> "Unknown (${transferHelper.getEngagementMethod()})"
-        }
+        engagementMethod =
+            when (transferHelper.getEngagementMethod()) {
+                VerificationHelper.EngagementMethod.QR_CODE -> "QR Code"
+                VerificationHelper.EngagementMethod.NFC_STATIC_HANDOVER -> "NFC Static Handover"
+                VerificationHelper.EngagementMethod.NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
+                else -> "Unknown (${transferHelper.getEngagementMethod()})"
+            }
 
         connectionMethod = transferHelper.getConnectionMethod()
     }
 
     private fun parseResponse(deviceResponseBytes: ByteArray?) {
         resultSize = deviceResponseBytes!!.size
-        val parsedResponse = DeviceResponseParser(
-            deviceResponseBytes,
-            transferHelper.getSessionTranscript()
-        ).parse()
+        val parsedResponse =
+            DeviceResponseParser(
+                deviceResponseBytes,
+                transferHelper.getSessionTranscript(),
+            ).parse()
         if (parsedResponse.documents.isEmpty()) {
             Toast.makeText(applicationContext, "No documents returned", Toast.LENGTH_SHORT).show()
             transferHelper.close()
@@ -164,16 +166,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val permissionsNeeded = appPermissions.filter { permission ->
-            ContextCompat.checkSelfPermission(
-                applicationContext,
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    permission,
+                ) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(
-                permissionsNeeded.toTypedArray()
+                permissionsNeeded.toTypedArray(),
             )
         }
 
@@ -203,23 +206,24 @@ class MainActivity : ComponentActivity() {
                         TransferHelper.State.CONNECTED -> {
                             stateDisplay.value = "Connected"
                             Logger.i(TAG, "connected")
-                            val deviceRequestGenerator = DeviceRequestGenerator(
-                                transferHelper.getSessionTranscript()
-                            )
+                            val deviceRequestGenerator =
+                                DeviceRequestGenerator(
+                                    transferHelper.getSessionTranscript(),
+                                )
                             var request =
                                 if (transferHelper.getIncludePortraitInRequest()) {
                                     mapOf(
                                         Pair(
                                             MDL_NAMESPACE,
-                                            mapOf(Pair("portrait", false), Pair("age_over_21", false))
-                                        )
+                                            mapOf(Pair("portrait", false), Pair("age_over_21", false)),
+                                        ),
                                     )
                                 } else {
                                     mapOf(
                                         Pair(
                                             MDL_NAMESPACE,
-                                            mapOf(Pair("age_over_21", false))
-                                        )
+                                            mapOf(Pair("age_over_21", false)),
+                                        ),
                                     )
                                 }
                             deviceRequestGenerator.addDocumentRequest(
@@ -228,7 +232,7 @@ class MainActivity : ComponentActivity() {
                                 null,
                                 null,
                                 Algorithm.UNSET,
-                                null
+                                null,
                             )
                             transferHelper.sendRequest(deviceRequestGenerator.generate())
                         }
@@ -257,18 +261,18 @@ class MainActivity : ComponentActivity() {
                 val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
                 Scaffold(
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-
                     topBar = {
                         CenterAlignedTopAppBar(
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
+                            colors =
+                                TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
                             title = {
                                 Text(
                                     "mDL Age Verifier Sample",
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             },
                             scrollBehavior = scrollBehavior,
@@ -276,13 +280,13 @@ class MainActivity : ComponentActivity() {
                     },
                 ) { innerPadding ->
                     Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                        color = MaterialTheme.colorScheme.background
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding),
+                        color = MaterialTheme.colorScheme.background,
                     ) {
-                        NavHost(navController = navController, startDestination = "MainScreen")
-                        {
+                        NavHost(navController = navController, startDestination = "MainScreen") {
                             composable("MainScreen") {
                                 MainScreen(navController, stateDisplay)
                             }
@@ -297,7 +301,10 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun MainScreen(navController: NavController, stateDisplay: MutableState<String>) {
+    fun MainScreen(
+        navController: NavController,
+        stateDisplay: MutableState<String>,
+    ) {
         val includePortraitInRequest = remember { mutableStateOf(transferHelper.getIncludePortraitInRequest()) }
         val bleCentralClientDataTransferEnabled = remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
         val blePeripheralServerDataTransferEnabled = remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
@@ -316,20 +323,22 @@ class MainActivity : ComponentActivity() {
             Column {
                 val scrollState = rememberScrollState()
                 Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .verticalScroll(scrollState),
+                    modifier =
+                        Modifier
+                            .padding(16.dp)
+                            .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Column {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
-                            text = "This app is used to engage with an mDL via NFC and request " +
+                            text =
+                                "This app is used to engage with an mDL via NFC and request " +
                                     "a simple age attestation. The main purpose of this " +
                                     "application is to evaluate performance.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                     Column {
@@ -337,7 +346,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.size(200.dp),
                             painter = painterResource(id = R.drawable.ic_nfc),
                             contentDescription = "The NFC Logo",
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
                         )
                     }
                     Column {
@@ -345,7 +354,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(16.dp),
                             text = "Tap mDL to request age",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground
+                            color = MaterialTheme.colorScheme.onBackground,
                         )
                     }
                     Column {
@@ -353,7 +362,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(16.dp),
                             text = "State: ${stateDisplay.value}",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground
+                            color = MaterialTheme.colorScheme.onBackground,
                         )
                     }
                     if (!stateDisplay.value.equals("Idle")) {
@@ -361,7 +370,8 @@ class MainActivity : ComponentActivity() {
                             Button(
                                 onClick = {
                                     transferHelper.close()
-                                }) {
+                                },
+                            ) {
                                 Text("Cancel")
                             }
                         }
@@ -376,7 +386,7 @@ class MainActivity : ComponentActivity() {
                         onCheckedChange = { checked ->
                             transferHelper.setIncludePortraitInRequest(checked)
                             includePortraitInRequest.value = checked
-                        }
+                        },
                     )
                     SettingSectionTitle(title = "Data Retrieval (Negotiated Handover)")
                     SettingToggle(
@@ -388,7 +398,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setBleCentralClientDataTransferEnabled(checked)
                             bleCentralClientDataTransferEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "BLE mdoc peripheral server data retrieval",
@@ -399,7 +409,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setBlePeripheralServerDataTransferEnabled(checked)
                             blePeripheralServerDataTransferEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "Wifi Aware data transfer",
@@ -410,7 +420,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setWifiAwareDataTransferEnabled(checked)
                             wifiAwareDataTransferEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "NFC data transfer",
@@ -421,7 +431,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setNfcDataTransferEnabled(checked)
                             nfcDataTransferEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "TCP data transfer (proprietary)",
@@ -432,7 +442,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setTcpDataTransferEnabled(checked)
                             tcpDataTransferEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "UDP data transfer (proprietary)",
@@ -443,7 +453,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setUdpDataTransferEnabled(checked)
                             udpDataTransferEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingSectionTitle(title = "Options")
                     SettingToggle(
@@ -455,7 +465,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setL2CapEnabled(checked)
                             l2capEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingToggle(
                         title = "Experimental conveyance of L2CAP PSM",
@@ -466,7 +476,7 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setExperimentalPsmEnabled(checked)
                             experimentalPsmEnabled.value = checked
                             transferHelper.reinitializeVerificationHelper()
-                        }
+                        },
                     )
                     SettingSectionTitle(title = "Logging")
                     SettingToggle(
@@ -478,9 +488,8 @@ class MainActivity : ComponentActivity() {
                             transferHelper.setDebugEnabled(checked)
                             debugEnabled.value = checked
                             Logger.isDebugEnabled = checked
-                        }
+                        },
                     )
-
                 }
             }
         }
@@ -495,11 +504,12 @@ class MainActivity : ComponentActivity() {
             Column {
                 val scrollState = rememberScrollState()
                 Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .verticalScroll(scrollState),
+                    modifier =
+                        Modifier
+                            .padding(16.dp)
+                            .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     if (transactionError != null) {
                         Column { Text(text = "Error: ${transferHelper.error}") }
@@ -520,11 +530,12 @@ class MainActivity : ComponentActivity() {
                     Column { Text(text = "Engagement: $engagementMethod") }
                     Column { Text(text = "Connection: $connectionMethod") }
                     Divider()
-                    val scanningText = if (durationMillisScanning > 0) {
-                        "$durationMillisScanning ms"
-                    } else {
-                        "N/A"
-                    }
+                    val scanningText =
+                        if (durationMillisScanning > 0) {
+                            "$durationMillisScanning ms"
+                        } else {
+                            "N/A"
+                        }
                     Column { Text(text = "Tap to Engagement Received: $durationMillisTapToEngagement ms") }
                     Column { Text(text = "Engagement Received to Request Sent: $durationMillisEngagementToRequest ms") }
                     Column { Text(text = "Scanning: $scanningText") }
@@ -548,14 +559,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SettingSectionTitle(
     modifier: Modifier = Modifier,
-    title: String
+    title: String,
 ) {
     Column(modifier = modifier) {
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -568,26 +579,26 @@ private fun SettingToggle(
     subtitleOff: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             val subtitle = if (isChecked) subtitleOn else subtitleOff
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         Switch(
             checked = isChecked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }

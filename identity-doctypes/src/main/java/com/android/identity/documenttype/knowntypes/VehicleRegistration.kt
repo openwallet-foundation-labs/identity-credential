@@ -39,7 +39,7 @@ object VehicleRegistration {
                 "Vehicle Registration Information",
                 "This data element contains the common vehicle registration information, including UN/EU elements, A and H.",
                 true,
-                MVR_NAMESPACE
+                MVR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -47,7 +47,7 @@ object VehicleRegistration {
                 "Issue Date",
                 "Date when document was issued",
                 true,
-                MVR_NAMESPACE
+                MVR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -55,7 +55,7 @@ object VehicleRegistration {
                 "Vehicle Registration Holder Information ",
                 "This data element identifies the holder of the registration certificate",
                 true,
-                MVR_NAMESPACE
+                MVR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.ComplexType,
@@ -63,7 +63,7 @@ object VehicleRegistration {
                 "Basic Vehicle Information",
                 "This data element contains the basic vehicle information",
                 true,
-                MVR_NAMESPACE
+                MVR_NAMESPACE,
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -71,8 +71,8 @@ object VehicleRegistration {
                 "Vehicle Identification Number",
                 "Vehicle Identification Number defined by the vehicle manufacture",
                 true,
-                MVR_NAMESPACE
+                MVR_NAMESPACE,
             )
-        .build()
+            .build()
     }
 }

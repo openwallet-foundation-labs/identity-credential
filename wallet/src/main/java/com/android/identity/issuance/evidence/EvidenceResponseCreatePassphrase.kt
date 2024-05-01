@@ -1,5 +1,5 @@
 package com.android.identity.issuance.evidence
 
 data class EvidenceResponseCreatePassphrase(
-    val passphrase: String
+    val passphrase: String,
 ) : EvidenceResponse()

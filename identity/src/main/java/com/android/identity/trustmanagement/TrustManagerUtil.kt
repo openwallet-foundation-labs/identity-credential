@@ -33,7 +33,6 @@ import java.security.cert.X509Certificate
  * Object with utility functions for the TrustManager.
  */
 internal object TrustManagerUtil {
-
     private const val DIGITAL_SIGNATURE = 0
     private const val KEY_CERT_SIGN = 5
 
@@ -42,8 +41,9 @@ internal object TrustManagerUtil {
      * in hexadecimal format.
      */
     fun getSubjectKeyIdentifier(certificate: X509Certificate): String {
-        val extensionValue = certificate.getExtensionValue(Extension.subjectKeyIdentifier.id)
-            ?: return ""
+        val extensionValue =
+            certificate.getExtensionValue(Extension.subjectKeyIdentifier.id)
+                ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(octets)
         return subjectKeyIdentifier.keyIdentifier.toHex
@@ -54,8 +54,9 @@ internal object TrustManagerUtil {
      * in hexadecimal format.
      */
     fun getAuthorityKeyIdentifier(certificate: X509Certificate): String {
-        val extensionValue = certificate.getExtensionValue(Extension.authorityKeyIdentifier.id)
-            ?: return ""
+        val extensionValue =
+            certificate.getExtensionValue(Extension.authorityKeyIdentifier.id)
+                ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val authorityKeyIdentifier = AuthorityKeyIdentifier.getInstance(octets)
         return authorityKeyIdentifier.keyIdentifier.toHex
@@ -64,8 +65,7 @@ internal object TrustManagerUtil {
     /**
      * Check whether a certificate is self-signed
      */
-    fun isSelfSigned(certificate: X509Certificate): Boolean =
-        certificate.issuerX500Principal.name == certificate.subjectX500Principal.name
+    fun isSelfSigned(certificate: X509Certificate): Boolean = certificate.issuerX500Principal.name == certificate.subjectX500Principal.name
 
     /**
      * Check that the key usage is the creation of digital signatures.
@@ -92,9 +92,8 @@ internal object TrustManagerUtil {
      */
     fun executeCustomValidations(
         certificate: X509Certificate,
-        customValidations: List<PKIXCertPathChecker>
+        customValidations: List<PKIXCertPathChecker>,
     ) = customValidations.map { checker -> checker.check(certificate) }
-
 
     /**
      * Check that the key usage is to sign certificates.
@@ -109,7 +108,10 @@ internal object TrustManagerUtil {
      * Check that the issuer in [certificate] is equal to the subject in
      * [caCertificate].
      */
-    fun checkCaIsIssuer(certificate: X509Certificate, caCertificate: X509Certificate) {
+    fun checkCaIsIssuer(
+        certificate: X509Certificate,
+        caCertificate: X509Certificate,
+    ) {
         val issuerName = X500Name(certificate.issuerX500Principal.name)
         val nameCA = X500Name(caCertificate.subjectX500Principal.name)
         if (issuerName != nameCA) {
@@ -121,20 +123,22 @@ internal object TrustManagerUtil {
      * Verify the signature of the [certificate] with the public key of the
      * [caCertificate].
      */
-    fun verifySignature(certificate: X509Certificate, caCertificate: X509Certificate) =
+    fun verifySignature(
+        certificate: X509Certificate,
+        caCertificate: X509Certificate,
+    ) = try {
         try {
-            try {
-                certificate.verify(caCertificate.publicKey)
-            } catch (e: InvalidKeyException) {
-                verifySignatureBouncyCastle(certificate, caCertificate)
-            }
-        } catch (e: Exception) {
-            throw CertificateException(
-                "Certificate '${
-                    certificate.subjectX500Principal.name
-                }' could not be verified with the public key of CA certificate '${caCertificate.subjectX500Principal.name}'"
-            )
+            certificate.verify(caCertificate.publicKey)
+        } catch (e: InvalidKeyException) {
+            verifySignatureBouncyCastle(certificate, caCertificate)
         }
+    } catch (e: Exception) {
+        throw CertificateException(
+            "Certificate '${
+                certificate.subjectX500Principal.name
+            }' could not be verified with the public key of CA certificate '${caCertificate.subjectX500Principal.name}'",
+        )
+    }
 
     /**
      * If it is technically not possible to verify the signature,
@@ -142,22 +146,26 @@ internal object TrustManagerUtil {
      */
     private fun verifySignatureBouncyCastle(
         certificate: X509Certificate,
-        caCertificate: X509Certificate
+        caCertificate: X509Certificate,
     ) {
         // Try to decode certificate using BouncyCastleProvider.
         val factory = CertificateFactory.getInstance("X509", BouncyCastleProvider())
-        val certificateBouncyCastle = factory.generateCertificate(
-            ByteArrayInputStream(certificate.encoded)
-        ) as X509Certificate
-        val caCertificateBouncyCastle = factory.generateCertificate(
-            ByteArrayInputStream(caCertificate.encoded)
-        ) as X509Certificate
+        val certificateBouncyCastle =
+            factory.generateCertificate(
+                ByteArrayInputStream(certificate.encoded),
+            ) as X509Certificate
+        val caCertificateBouncyCastle =
+            factory.generateCertificate(
+                ByteArrayInputStream(caCertificate.encoded),
+            ) as X509Certificate
         certificateBouncyCastle.verify(caCertificateBouncyCastle.publicKey)
     }
 
     /**
      * Determine whether the certificate has certain key usage.
      */
-    private fun hasKeyUsage(certificate: X509Certificate, keyUsage: Int): Boolean =
-        certificate.keyUsage?.let { it[keyUsage] } ?: false
+    private fun hasKeyUsage(
+        certificate: X509Certificate,
+        keyUsage: Int,
+    ): Boolean = certificate.keyUsage?.let { it[keyUsage] } ?: false
 }

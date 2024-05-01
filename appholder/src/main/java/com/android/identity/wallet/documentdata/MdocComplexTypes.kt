@@ -4,12 +4,11 @@ import com.android.identity.documenttype.DocumentAttributeType
 
 class MdocComplexTypes private constructor(
     val docType: String,
-    val namespaces: List<MdocNamespaceComplexTypes>
+    val namespaces: List<MdocNamespaceComplexTypes>,
 ) {
-
     data class Builder(
         val docType: String,
-        val namespaces: MutableMap<String, MdocNamespaceComplexTypes.Builder> = mutableMapOf()
+        val namespaces: MutableMap<String, MdocNamespaceComplexTypes.Builder> = mutableMapOf(),
     ) {
         fun addDefinition(
             namespace: String,
@@ -17,7 +16,7 @@ class MdocComplexTypes private constructor(
             partOfArray: Boolean,
             identifier: String,
             displayName: String,
-            type: DocumentAttributeType
+            type: DocumentAttributeType,
         ) = apply {
             if (!namespaces.containsKey(namespace)) {
                 namespaces[namespace] = MdocNamespaceComplexTypes.Builder(namespace)

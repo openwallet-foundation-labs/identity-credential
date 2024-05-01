@@ -33,17 +33,19 @@ class TransferDocumentFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        val backPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                onDone()
+        val backPressedCallback =
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    onDone()
+                }
             }
-        }
         requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentTransferDocumentBinding.inflate(inflater)
         binding.fragment = this
@@ -51,7 +53,10 @@ class TransferDocumentFragment : Fragment() {
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         viewModel.getTransferStatus().observe(viewLifecycleOwner) { transferStatus ->
             when (transferStatus) {
                 TransferStatus.CONNECTED -> log("Connected")
@@ -65,7 +70,7 @@ class TransferDocumentFragment : Fragment() {
         viewModel.connectionClosedLiveData.observe(viewLifecycleOwner) {
             onCloseConnection(
                 sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = false
+                useTransportSpecificSessionTermination = false,
             )
         }
         viewModel.authConfirmationState.observe(viewLifecycleOwner) { cancelled ->
@@ -106,10 +111,11 @@ class TransferDocumentFragment : Fragment() {
                         reqDoc.readerCertificateChain!!.certificates.map { it.javaX509Certificate }
                             .toList()
                     val customValidators = CustomValidators.getByDocType(doc.docType)
-                    val result = HolderApp.trustManagerInstance.verify(
-                        chain = certChain,
-                        customValidators = customValidators
-                    )
+                    val result =
+                        HolderApp.trustManagerInstance.verify(
+                            chain = certChain,
+                            customValidators = customValidators,
+                        )
                     trusted = result.isTrusted
                     if (result.trustChain.any()) {
                         certChain = result.trustChain
@@ -130,14 +136,15 @@ class TransferDocumentFragment : Fragment() {
             }
             if (viewModel.getSelectedDocuments().isNotEmpty()) {
                 viewModel.createSelectedItemsList()
-                val direction = TransferDocumentFragmentDirections
-                    .navigateToConfirmation(commonName, trusted)
+                val direction =
+                    TransferDocumentFragmentDirections
+                        .navigateToConfirmation(commonName, trusted)
                 findNavController().navigate(direction)
             } else {
                 // Send response with 0 documents
                 viewModel.sendResponseForSelection(
                     onResultReady = {
-                    }
+                    },
                 )
             }
             // TODO: this is kind of a hack but we really need to move the sending of the
@@ -188,11 +195,11 @@ class TransferDocumentFragment : Fragment() {
 
     fun onCloseConnection(
         sendSessionTerminationMessage: Boolean,
-        useTransportSpecificSessionTermination: Boolean
+        useTransportSpecificSessionTermination: Boolean,
     ) {
         viewModel.cancelPresentation(
             sendSessionTerminationMessage,
-            useTransportSpecificSessionTermination
+            useTransportSpecificSessionTermination,
         )
         hideButtons()
     }
@@ -200,7 +207,7 @@ class TransferDocumentFragment : Fragment() {
     fun onDone() {
         onCloseConnection(
             sendSessionTerminationMessage = true,
-            useTransportSpecificSessionTermination = false
+            useTransportSpecificSessionTermination = false,
         )
         findNavController().navigateUp()
     }

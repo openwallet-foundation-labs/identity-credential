@@ -40,7 +40,7 @@ package com.android.identity.document
  * @param requestedDataElements A list of [DocumentRequest.DataElement] instances.
  */
 class DocumentRequest(
-    val requestedDataElements: List<DataElement>
+    val requestedDataElements: List<DataElement>,
 ) {
     /**
      * An abstraction of a piece of data to request.
@@ -54,6 +54,6 @@ class DocumentRequest(
         val nameSpaceName: String,
         val dataElementName: String,
         val intentToRetain: Boolean,
-        var doNotSend: Boolean = false
+        var doNotSend: Boolean = false,
     )
 }

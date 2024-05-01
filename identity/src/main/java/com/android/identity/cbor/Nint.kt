@@ -8,12 +8,13 @@ import kotlinx.io.bytestring.ByteStringBuilder
  * @param value the value, without the sign.
  */
 class Nint(val value: ULong) : CborInt(MajorType.NEGATIVE_INTEGER) {
-    override fun encode(builder: ByteStringBuilder) =
-        Cbor.encodeLength(builder, majorType, value - 1UL)
-
+    override fun encode(builder: ByteStringBuilder) = Cbor.encodeLength(builder, majorType, value - 1UL)
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Nint> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, Nint> {
             val (newOffset, value) = Cbor.decodeLength(encodedCbor, offset)
             return Pair(newOffset, Nint(value + 1UL))
         }
@@ -24,5 +25,4 @@ class Nint(val value: ULong) : CborInt(MajorType.NEGATIVE_INTEGER) {
     override fun hashCode(): Int = value.hashCode()
 
     override fun toString(): String = "Nint($value)"
-
 }

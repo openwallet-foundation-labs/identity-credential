@@ -23,7 +23,6 @@ import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
 
 class ReverseEngagementFragment : Fragment() {
-
     private var _binding: FragmentReverseEngagementBinding? = null
     private var codeScanner: CodeScanner? = null
 
@@ -31,36 +30,41 @@ class ReverseEngagementFragment : Fragment() {
     private val vm: ShareDocumentViewModel by viewModels()
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentReverseEngagementBinding.inflate(inflater)
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         binding.btCancel.setOnClickListener {
             findNavController().navigate(
-                ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToSelectDocumentFragment()
+                ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToSelectDocumentFragment(),
             )
         }
 
         codeScanner = CodeScanner(requireContext(), binding.csScanner)
-        codeScanner?.decodeCallback = DecodeCallback { result ->
-            requireActivity().runOnUiThread {
-                val qrText = result.text
-                log("qrText: $qrText")
-                val uri = Uri.parse(qrText)
-                if (uri.scheme.equals("mdoc")) {
-                    vm.startPresentationReverseEngagement(qrText, emptyList<OriginInfo>())
-                    findNavController().navigate(
-                        ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToTransferDocumentFragment()
-                    )
-                } else {
-                    logWarning("Ignoring QR code with scheme " + uri.scheme)
+        codeScanner?.decodeCallback =
+            DecodeCallback { result ->
+                requireActivity().runOnUiThread {
+                    val qrText = result.text
+                    log("qrText: $qrText")
+                    val uri = Uri.parse(qrText)
+                    if (uri.scheme.equals("mdoc")) {
+                        vm.startPresentationReverseEngagement(qrText, emptyList<OriginInfo>())
+                        findNavController().navigate(
+                            ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToTransferDocumentFragment(),
+                        )
+                    } else {
+                        logWarning("Ignoring QR code with scheme " + uri.scheme)
+                    }
                 }
             }
-        }
         binding.csScanner.setOnClickListener { codeScanner?.startPreview() }
     }
 
@@ -90,16 +94,17 @@ class ReverseEngagementFragment : Fragment() {
         get() = mutableListOf(Manifest.permission.CAMERA)
 
     private fun shouldRequestPermission() {
-        val permissionsNeeded = appPermissions.filter { permission ->
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    permission,
+                ) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(
-                permissionsNeeded.toTypedArray()
+                permissionsNeeded.toTypedArray(),
             )
         }
     }
@@ -109,7 +114,7 @@ class ReverseEngagementFragment : Fragment() {
         return appPermissions.none { permission ->
             ContextCompat.checkSelfPermission(
                 requireContext(),
-                permission
+                permission,
             ) != PackageManager.PERMISSION_GRANTED
         }
     }

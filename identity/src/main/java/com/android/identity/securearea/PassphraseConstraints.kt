@@ -15,7 +15,7 @@ import com.android.identity.cbor.annotation.CborSerializable
 data class PassphraseConstraints(
     val minLength: Int,
     val maxLength: Int,
-    val requireNumerical: Boolean
+    val requireNumerical: Boolean,
 ) {
     companion object {
         val NONE = PassphraseConstraints(0, Int.MAX_VALUE, false)

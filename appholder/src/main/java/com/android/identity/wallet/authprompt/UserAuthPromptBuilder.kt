@@ -10,7 +10,6 @@ import androidx.fragment.app.Fragment
 import com.android.identity.wallet.util.log
 
 class UserAuthPromptBuilder private constructor(private val fragment: Fragment) {
-
     private var title: String = ""
     private var subtitle: String = ""
     private var description: String = ""
@@ -20,70 +19,82 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
     private var onFailure: () -> Unit = {}
     private var onCancelled: () -> Unit = {}
 
-    private val biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {
+    private val biometricAuthCallback =
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationError(
+                errorCode: Int,
+                errString: CharSequence,
+            ) {
+                super.onAuthenticationError(errorCode, errString)
+                // reached max attempts to authenticate the user, or authentication dialog was cancelled
+                if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                    onCancelled.invoke()
+                } else {
+                    log("User authentication failed $errorCode - $errString")
+                    onFailure.invoke()
+                }
+            }
 
-        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-            super.onAuthenticationError(errorCode, errString)
-            // reached max attempts to authenticate the user, or authentication dialog was cancelled
-            if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                onCancelled.invoke()
-            } else {
-                log("User authentication failed $errorCode - $errString")
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                log("User authentication succeeded")
+                onSuccess.invoke()
+            }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                log("User authentication failed")
                 onFailure.invoke()
             }
         }
 
-        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-            super.onAuthenticationSucceeded(result)
-            log("User authentication succeeded")
-            onSuccess.invoke()
+    fun withTitle(title: String) =
+        apply {
+            this.title = title
         }
 
-        override fun onAuthenticationFailed() {
-            super.onAuthenticationFailed()
-            log("User authentication failed")
-            onFailure.invoke()
+    fun withSubtitle(subtitle: String) =
+        apply {
+            this.subtitle = subtitle
         }
-    }
 
-    fun withTitle(title: String) = apply {
-        this.title = title
-    }
+    fun withDescription(description: String) =
+        apply {
+            this.description = description
+        }
 
-    fun withSubtitle(subtitle: String) = apply {
-        this.subtitle = subtitle
-    }
+    fun withNegativeButton(negativeButton: String) =
+        apply {
+            this.negativeButton = negativeButton
+        }
 
-    fun withDescription(description: String) = apply {
-        this.description = description
-    }
+    fun setForceLskf(forceLskf: Boolean) =
+        apply {
+            this.forceLskf = forceLskf
+        }
 
-    fun withNegativeButton(negativeButton: String) = apply {
-        this.negativeButton = negativeButton
-    }
+    fun withSuccessCallback(onSuccess: () -> Unit) =
+        apply {
+            this.onSuccess = onSuccess
+        }
 
-    fun setForceLskf(forceLskf: Boolean) = apply {
-        this.forceLskf = forceLskf
-    }
+    fun withFailureCallback(onFailure: () -> Unit) =
+        apply {
+            this.onFailure = onFailure
+        }
 
-    fun withSuccessCallback(onSuccess: () -> Unit) = apply {
-        this.onSuccess = onSuccess
-    }
-
-    fun withFailureCallback(onFailure: () -> Unit) = apply {
-        this.onFailure = onFailure
-    }
-
-    fun withCancelledCallback(onCancelled: () -> Unit) = apply {
-        this.onCancelled = onCancelled
-    }
+    fun withCancelledCallback(onCancelled: () -> Unit) =
+        apply {
+            this.onCancelled = onCancelled
+        }
 
     fun build(): BiometricUserAuthPrompt {
-        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle(subtitle)
-            .setDescription(description)
-            .setConfirmationRequired(false)
+        val promptInfoBuilder =
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle(title)
+                .setSubtitle(subtitle)
+                .setDescription(description)
+                .setConfirmationRequired(false)
 
         if (forceLskf) {
             // TODO: this works only on Android 11 or later but for now this is fine
@@ -92,9 +103,10 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
             //   fall back to using KeyGuard which will work on all Android versions.
             promptInfoBuilder.setAllowedAuthenticators(DEVICE_CREDENTIAL)
         } else {
-            val canUseBiometricAuth = BiometricManager
-                .from(fragment.requireContext())
-                .canAuthenticate(BIOMETRIC_STRONG) == BIOMETRIC_SUCCESS
+            val canUseBiometricAuth =
+                BiometricManager
+                    .from(fragment.requireContext())
+                    .canAuthenticate(BIOMETRIC_STRONG) == BIOMETRIC_SUCCESS
             if (canUseBiometricAuth) {
                 promptInfoBuilder.setNegativeButtonText(negativeButton)
             } else {

@@ -2,13 +2,13 @@ package com.android.identity.wallet.selfsigned
 
 import android.os.Parcelable
 import com.android.identity.wallet.support.CurrentSecureArea
-import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.support.SecureAreaSupportState
+import com.android.identity.wallet.util.Field
 import kotlinx.parcelize.Parcelize
 
 data class SelfSignedDocumentData(
     val provisionInfo: ProvisionInfo,
-    val fields: List<Field>
+    val fields: List<Field>,
 )
 
 @Parcelize
@@ -21,5 +21,5 @@ data class ProvisionInfo(
     val validityInDays: Int,
     val minValidityInDays: Int,
     val numberMso: Int,
-    val maxUseMso: Int
+    val maxUseMso: Int,
 ) : Parcelable

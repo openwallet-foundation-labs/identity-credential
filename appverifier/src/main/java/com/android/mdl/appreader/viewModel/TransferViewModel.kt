@@ -8,7 +8,6 @@ import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 
 class TransferViewModel(val app: Application) : AndroidViewModel(app) {
-
     companion object {
         private const val LOG_TAG = "TransferViewModel"
     }

@@ -53,7 +53,7 @@ import kotlinx.coroutines.runBlocking
 class DocumentStore(
     private val storageEngine: StorageEngine,
     private val secureAreaRepository: SecureAreaRepository,
-    private val credentialFactory: CredentialFactory
+    private val credentialFactory: CredentialFactory,
 ) {
     // Use a cache so the same instance is returned by multiple lookupDocument() calls.
     private val documentCache = mutableMapOf<String, Document>()
@@ -78,13 +78,14 @@ class DocumentStore(
             emitOnDocumentDeleted(document)
             document.deleteDocument()
         }
-        val transientDocument = Document.create(
-            storageEngine,
-            secureAreaRepository,
-            name,
-            this,
-            credentialFactory
-        )
+        val transientDocument =
+            Document.create(
+                storageEngine,
+                secureAreaRepository,
+                name,
+                this,
+                credentialFactory,
+            )
         return transientDocument
     }
 
@@ -121,12 +122,13 @@ class DocumentStore(
      *
      * @return list of all the document names in the store.
      */
-    fun listDocuments(): List<String> = mutableListOf<String>().apply {
-        storageEngine.enumerate()
-            .filter { name -> name.startsWith(Document.DOCUMENT_PREFIX) }
-            .map { name -> name.substring(Document.DOCUMENT_PREFIX.length) }
-            .forEach { name -> add(name) }
-    }
+    fun listDocuments(): List<String> =
+        mutableListOf<String>().apply {
+            storageEngine.enumerate()
+                .filter { name -> name.startsWith(Document.DOCUMENT_PREFIX) }
+                .map { name -> name.substring(Document.DOCUMENT_PREFIX.length) }
+                .forEach { name -> add(name) }
+        }
 
     /**
      * Deletes a document.
@@ -160,7 +162,7 @@ class DocumentStore(
         /**
          * A document in the store was updated.
          */
-        DOCUMENT_UPDATED
+        DOCUMENT_UPDATED,
     }
 
     private val _eventFlow = MutableSharedFlow<Pair<EventType, Document>>()
@@ -171,7 +173,6 @@ class DocumentStore(
      */
     val eventFlow
         get() = _eventFlow.asSharedFlow()
-
 
     private fun emitOnDocumentAdded(document: Document) {
         runBlocking {

@@ -19,7 +19,6 @@ import com.android.identity.cbor.CborMap.Companion.builder
 import com.android.identity.cbor.DataItem
 
 class OriginInfoDomain(val url: String) : OriginInfo() {
-
     override fun encode(): DataItem =
         builder()
             .put("cat", CAT)
@@ -38,7 +37,7 @@ class OriginInfoDomain(val url: String) : OriginInfo() {
             val type = oiDataItem["type"].asNumber
             require(cat == 1L && type == 1L) {
                 "This CBOR object has the wrong category or type. Expected cat = $CAT, " +
-                        "type = $TYPE but got cat = $cat, type = $type"
+                    "type = $TYPE but got cat = $cat, type = $type"
             }
             val details = oiDataItem["details"]
             return OriginInfoDomain(details["domain"].asTstr)

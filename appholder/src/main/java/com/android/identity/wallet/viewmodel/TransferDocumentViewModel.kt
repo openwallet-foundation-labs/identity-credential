@@ -29,7 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
-
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
     private val signedElements = SignedElementsCollection()
@@ -52,11 +51,9 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         mutableConfirmationState.value = null
     }
 
-    fun getTransferStatus(): LiveData<TransferStatus> =
-        transferManager.getTransferStatus()
+    fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
-    fun getRequestedDocuments(): Collection<DeviceRequestParser.DocRequest> =
-        transferManager.documentRequests()
+    fun getRequestedDocuments(): Collection<DeviceRequestParser.DocRequest> = transferManager.documentRequests()
 
     fun getDocuments() = documentManager.getDocuments()
 
@@ -90,8 +87,8 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                         userReadableName = ownDocument.userVisibleName,
                         identityCredentialName = ownDocument.docName,
                         requestedElements = issuerSignedEntriesToRequest,
-                        requestedDocument = requestedDocument
-                    )
+                        requestedDocument = requestedDocument,
+                    ),
                 )
             } catch (e: NoSuchElementException) {
                 logWarning("No document for docType " + requestedDocument.docType)
@@ -103,7 +100,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun sendResponseForSelection(
         onResultReady: (result: AddDocumentToResponseResult) -> Unit,
         credential: MdocCredential? = null,
-        authKeyUnlockData: KeyUnlockData? = null
+        authKeyUnlockData: KeyUnlockData? = null,
     ) {
         val elementsToSend = signedElements.collect()
         val responseGenerator = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
@@ -111,23 +108,24 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
             elementsToSend.forEach { signedDocument ->
                 try {
                     val issuerSignedEntries = signedDocument.issuerSignedEntries()
-                    val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
-                        transferManager.addDocumentToResponse(
-                            signedDocument.identityCredentialName,
-                            signedDocument.documentType,
-                            issuerSignedEntries,
-                            responseGenerator,
-                            credential,
-                            authKeyUnlockData,
-                        )
-                    }
+                    val result =
+                        withContext(Dispatchers.IO) { // <- Offload from UI thread
+                            transferManager.addDocumentToResponse(
+                                signedDocument.identityCredentialName,
+                                signedDocument.documentType,
+                                issuerSignedEntries,
+                                responseGenerator,
+                                credential,
+                                authKeyUnlockData,
+                            )
+                        }
                     if (result !is AddDocumentToResponseResult.DocumentAdded) {
                         onResultReady(result)
                         return@forEach
                     }
                     transferManager.sendResponse(
                         responseGenerator.generate(),
-                        PreferencesHelper.isConnectionAutoCloseEnabled()
+                        PreferencesHelper.isConnectionAutoCloseEnabled(),
                     )
                     transferManager.setResponseServed()
                     val documentsCount = elementsToSend.count()
@@ -153,22 +151,21 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun cancelPresentation(
         sendSessionTerminationMessage: Boolean,
-        useTransportSpecificSessionTermination: Boolean
+        useTransportSpecificSessionTermination: Boolean,
     ) {
         transferManager.stopPresentation(
             sendSessionTerminationMessage,
-            useTransportSpecificSessionTermination
+            useTransportSpecificSessionTermination,
         )
     }
 
-    private fun requestedElementsFrom(
-        requestedDocument: DeviceRequestParser.DocRequest
-    ): ArrayList<RequestedElement> {
+    private fun requestedElementsFrom(requestedDocument: DeviceRequestParser.DocRequest): ArrayList<RequestedElement> {
         val result = arrayListOf<RequestedElement>()
         requestedDocument.namespaces.forEach { namespace ->
-            val elements = requestedDocument.getEntryNames(namespace).map { element ->
-                RequestedElement(namespace, element)
-            }
+            val elements =
+                requestedDocument.getEntryNames(namespace).map { element ->
+                    RequestedElement(namespace, element)
+                }
             result.addAll(elements)
         }
         return result

@@ -1,24 +1,24 @@
 package com.android.identity.wallet.transfer
 
 import android.content.Context
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
-import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.wallet.util.PreferencesHelper
 import java.util.ArrayList
 import java.util.OptionalLong
 import java.util.UUID
 
 class ConnectionSetup(
-    private val context: Context
+    private val context: Context,
 ) {
-
     fun getConnectionOptions(): DataTransportOptions {
-        val builder = DataTransportOptions.Builder()
-            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled())
-            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled())
+        val builder =
+            DataTransportOptions.Builder()
+                .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled())
+                .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled())
         return builder.build()
     }
 
@@ -30,8 +30,8 @@ class ConnectionSetup(
                     false,
                     true,
                     null,
-                    UUID.randomUUID()
-                )
+                    UUID.randomUUID(),
+                ),
             )
         }
         if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled()) {
@@ -40,8 +40,8 @@ class ConnectionSetup(
                     true,
                     false,
                     UUID.randomUUID(),
-                    null
-                )
+                    null,
+                ),
             )
         }
         if (PreferencesHelper.isWifiDataRetrievalEnabled()) {
@@ -51,8 +51,8 @@ class ConnectionSetup(
                     null,
                     empty,
                     empty,
-                    null
-                )
+                    null,
+                ),
             )
         }
         if (PreferencesHelper.isNfcDataRetrievalEnabled()) {
@@ -60,8 +60,8 @@ class ConnectionSetup(
             connectionMethods.add(
                 ConnectionMethodNfc(
                     0xffff,
-                    0x10000
-                )
+                    0x10000,
+                ),
             )
         }
         return connectionMethods

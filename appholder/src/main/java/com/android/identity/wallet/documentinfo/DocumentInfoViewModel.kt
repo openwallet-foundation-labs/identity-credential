@@ -21,9 +21,8 @@ import kotlinx.coroutines.withContext
 
 class DocumentInfoViewModel(
     private val documentManager: DocumentManager,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-
     private val args = DocumentDetailFragmentArgs.fromSavedStateHandle(savedStateHandle)
     private val _state = MutableStateFlow(DocumentInfoScreenState())
     val screenState: StateFlow<DocumentInfoScreenState> = _state.asStateFlow()
@@ -31,9 +30,10 @@ class DocumentInfoViewModel(
     fun loadDocument(documentName: String) {
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            val documentInfo = withContext(Dispatchers.IO) {
-                documentManager.getDocumentInformation(documentName)
-            }
+            val documentInfo =
+                withContext(Dispatchers.IO) {
+                    documentManager.getDocumentInformation(documentName)
+                }
             onDocumentInfoLoaded(documentInfo)
         }
     }
@@ -72,7 +72,7 @@ class DocumentInfoViewModel(
                     provisioningDate = documentInformation.dateProvisioned,
                     isSelfSigned = documentInformation.selfSigned,
                     lastTimeUsedDate = documentInformation.lastTimeUsed,
-                    authKeys = documentInformation.authKeys.asScreenStateKeys()
+                    authKeys = documentInformation.authKeys.asScreenStateKeys(),
                 )
             }
         }
@@ -90,7 +90,7 @@ class DocumentInfoViewModel(
                 keyPurposes = keyData.keyPurposes,
                 ecCurve = keyData.ecCurve,
                 isHardwareBacked = keyData.isHardwareBacked,
-                secureAreaDisplayName = keyData.secureAreaDisplayName
+                secureAreaDisplayName = keyData.secureAreaDisplayName,
             )
         }
     }

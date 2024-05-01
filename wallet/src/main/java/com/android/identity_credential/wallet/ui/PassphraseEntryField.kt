@@ -37,7 +37,6 @@ import com.android.identity.securearea.PassphraseConstraints
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
 /**
  * A composable for entering a passphrase or PIN.
  *
@@ -72,21 +71,22 @@ fun PassphraseEntryField(
                     val digit =
                         if (digitIndex == inputText.length - 1) {
                             if (obfuscateAll) {
-                                "\u2022"  // U+2022 Bullet
+                                "\u2022" // U+2022 Bullet
                             } else {
                                 inputText[digitIndex].toString()
                             }
                         } else if (digitIndex < inputText.length) {
-                            "\u2022"  // U+2022 Bullet
+                            "\u2022" // U+2022 Bullet
                         } else {
                             ""
                         }
                     Text(
                         text = digit,
-                        modifier = Modifier
-                            .width(48.dp)
-                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-                            .padding(2.dp),
+                        modifier =
+                            Modifier
+                                .width(48.dp)
+                                .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                                .padding(2.dp),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.headlineLarge,
                     )
@@ -102,9 +102,10 @@ fun PassphraseEntryField(
     ) {
         BasicTextField(
             value = inputText,
-            modifier = Modifier
-                .padding(8.dp)
-                .focusRequester(focusRequester),
+            modifier =
+                Modifier
+                    .padding(8.dp)
+                    .focusRequester(focusRequester),
             onValueChange = {
                 if (it.length > constraints.maxLength) {
                     return@BasicTextField
@@ -135,31 +136,34 @@ fun PassphraseEntryField(
             singleLine = true,
             textStyle = MaterialTheme.typography.headlineMedium,
             decorationBox = decorationBox,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = if (constraints.requireNumerical) KeyboardType.NumberPassword else KeyboardType.Password,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    onChanged(inputText, meetsRequirements, true)
-                }
-            ),
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = if (constraints.requireNumerical) KeyboardType.NumberPassword else KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+            keyboardActions =
+                KeyboardActions(
+                    onDone = {
+                        onChanged(inputText, meetsRequirements, true)
+                    },
+                ),
             visualTransformation = { text ->
                 val mask = '\u2022'
-                val result = if (text.isNotEmpty()) {
-                    if (obfuscateAll) {
-                        mask.toString().repeat(text.text.length)
+                val result =
+                    if (text.isNotEmpty()) {
+                        if (obfuscateAll) {
+                            mask.toString().repeat(text.text.length)
+                        } else {
+                            mask.toString().repeat(text.text.length - 1) + text.last()
+                        }
                     } else {
-                        mask.toString().repeat(text.text.length - 1) + text.last()
+                        ""
                     }
-                } else {
-                    ""
-                }
                 TransformedText(
                     AnnotatedString(result),
-                    OffsetMapping.Identity
+                    OffsetMapping.Identity,
                 )
-            }
+            },
         )
     }
 
@@ -167,22 +171,23 @@ fun PassphraseEntryField(
         Divider(
             color = Color.Blue,
             thickness = 2.dp,
-            modifier = Modifier.padding(start = 32.dp, end = 32.dp)
+            modifier = Modifier.padding(start = 32.dp, end = 32.dp),
         )
     }
 
     if (checkWeakPassphrase) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = hint,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.secondary,
             )
         }
     }
@@ -212,20 +217,23 @@ private fun calcHintAndMeetsRequirements(
 
     if (passphrase.length < constraints.minLength) {
         return Pair(
-            if (constraints.requireNumerical)
+            if (constraints.requireNumerical) {
                 "PIN must be at least ${constraints.minLength} digits"
-            else
-                "Passphrase must be at least ${constraints.minLength} characters",
-            false)
+            } else {
+                "Passphrase must be at least ${constraints.minLength} characters"
+            },
+            false,
+        )
     }
 
     if (isWeakPassphrase(passphrase)) {
         return Pair(
-            if (constraints.requireNumerical)
+            if (constraints.requireNumerical) {
                 "PIN is weak, please choose another"
-            else
-                "Passphrase is weak, please choose another",
-            false
+            } else {
+                "Passphrase is weak, please choose another"
+            },
+            false,
         )
     }
 
@@ -238,7 +246,7 @@ private fun isWeakPassphrase(passphrase: String): Boolean {
     }
 
     // Check all characters being the same
-    if (passphrase.all {it.equals(passphrase.first())}) {
+    if (passphrase.all { it.equals(passphrase.first()) }) {
         return true
     }
 

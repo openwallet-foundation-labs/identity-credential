@@ -56,89 +56,93 @@ fun ConfirmationSheet(
     sheetData: List<ConfirmationSheetData> = emptyList(),
     onElementToggled: (element: RequestedElement) -> Unit = { },
     onConfirm: () -> Unit = {},
-    onCancel: () -> Unit = {}
+    onCancel: () -> Unit = {},
 ) {
     Column(modifier = modifier) {
         BottomSheetHandle(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
         )
         if (isTrustedReader) {
             TrustedReaderCheck(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
             )
         }
         Text(
             text = title,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.4f)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.4f),
         ) {
             DocumentElements(sheetData, onElementToggled)
             if (isSendingInProgress) {
                 LoadingIndicator(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .padding(horizontal = 8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .padding(horizontal = 8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
                 )
             }
         }
         SheetActions(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             enabled = !isSendingInProgress,
             onCancel = onCancel,
-            onConfirm = onConfirm
+            onConfirm = onConfirm,
         )
     }
 }
 
 @Composable
-private fun BottomSheetHandle(
-    modifier: Modifier = Modifier,
-) {
+private fun BottomSheetHandle(modifier: Modifier = Modifier) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.Center) {
         Spacer(
-            modifier = Modifier
-                .size(64.dp, 4.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color.Gray)
+            modifier =
+                Modifier
+                    .size(64.dp, 4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Gray),
         )
     }
 }
 
 @Composable
-private fun TrustedReaderCheck(
-    modifier: Modifier = Modifier,
-) {
+private fun TrustedReaderCheck(modifier: Modifier = Modifier) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.Center) {
         Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .size(48.dp),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .size(48.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 modifier = Modifier.size(24.dp),
                 imageVector = Icons.Default.Check,
                 contentDescription = "",
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
         }
     }
@@ -147,18 +151,18 @@ private fun TrustedReaderCheck(
 @Composable
 private fun DocumentTitle(
     modifier: Modifier = Modifier,
-    document: ConfirmationSheetData
+    document: ConfirmationSheetData,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         Text(
             textAlign = TextAlign.Center,
             text = document.documentName,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
         )
     }
 }
@@ -168,24 +172,24 @@ private fun ChipsRow(
     modifier: Modifier = Modifier,
     left: DocumentElement,
     right: DocumentElement?,
-    onElementToggled: (element: RequestedElement) -> Unit
+    onElementToggled: (element: RequestedElement) -> Unit,
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         val chipModifier = if (right != null) Modifier.weight(1f) else Modifier
         ElementChip(
             modifier = chipModifier,
             documentElement = left,
-            onElementToggled = onElementToggled
+            onElementToggled = onElementToggled,
         )
         right?.let {
             Spacer(modifier = Modifier.width(8.dp))
             ElementChip(
                 modifier = chipModifier,
                 documentElement = right,
-                onElementToggled = onElementToggled
+                onElementToggled = onElementToggled,
             )
         }
     }
@@ -196,7 +200,7 @@ private fun ChipsRow(
 private fun ElementChip(
     modifier: Modifier = Modifier,
     documentElement: DocumentElement,
-    onElementToggled: (element: RequestedElement) -> Unit
+    onElementToggled: (element: RequestedElement) -> Unit,
 ) {
     var isChecked by remember { mutableStateOf(true) }
     FilterChip(
@@ -212,10 +216,10 @@ private fun ElementChip(
                 Icon(
                     imageVector = Icons.Filled.Done,
                     contentDescription = "",
-                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                    modifier = Modifier.size(FilterChipDefaults.IconSize),
                 )
             }
-        }
+        },
     )
 }
 
@@ -223,34 +227,40 @@ private fun ElementChip(
 @OptIn(ExperimentalFoundationApi::class)
 private fun DocumentElements(
     sheetData: List<ConfirmationSheetData>,
-    onElementToggled: (element: RequestedElement) -> Unit
+    onElementToggled: (element: RequestedElement) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.focusGroup()) {
         sheetData.forEach { document ->
             stickyHeader {
                 DocumentTitle(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp)
-                        .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    document = document
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                            .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    document = document,
                 )
             }
-            val grouped = document.elements.chunked(2).map { pair ->
-                if (pair.size == 1) Pair(pair.first(), null)
-                else Pair(pair.first(), pair.last())
-            }
+            val grouped =
+                document.elements.chunked(2).map { pair ->
+                    if (pair.size == 1) {
+                        Pair(pair.first(), null)
+                    } else {
+                        Pair(pair.first(), pair.last())
+                    }
+                }
             items(grouped.size) { index ->
                 val items = grouped[index]
                 ChipsRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                     left = items.first,
                     right = items.second,
-                    onElementToggled = onElementToggled
+                    onElementToggled = onElementToggled,
                 )
             }
         }
@@ -258,12 +268,10 @@ private fun DocumentElements(
 }
 
 @Composable
-private fun LoadingIndicator(
-    modifier: Modifier = Modifier
-) {
+private fun LoadingIndicator(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier,
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator()
     }
@@ -274,11 +282,11 @@ private fun SheetActions(
     modifier: Modifier = Modifier,
     enabled: Boolean,
     onCancel: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         Button(
             modifier = Modifier.weight(1f),
@@ -287,7 +295,7 @@ private fun SheetActions(
                 if (enabled) {
                     onCancel()
                 }
-            }
+            },
         ) {
             Text(text = stringResource(id = R.string.bt_cancel))
         }
@@ -299,7 +307,7 @@ private fun SheetActions(
                 if (enabled) {
                     onConfirm()
                 }
-            }
+            },
         ) {
             Text(text = stringResource(id = R.string.btn_send_data))
         }
@@ -313,7 +321,7 @@ private fun PreviewConfirmationSheet() {
     HolderAppTheme {
         ConfirmationSheet(
             modifier = Modifier.fillMaxSize(),
-            title = "Title"
+            title = "Title",
         )
     }
 }
@@ -326,7 +334,7 @@ private fun PreviewConfirmationSheetTrustedReader() {
         ConfirmationSheet(
             modifier = Modifier.fillMaxSize(),
             title = "Title",
-            isTrustedReader = true
+            isTrustedReader = true,
         )
     }
 }
@@ -340,12 +348,13 @@ private fun PreviewConfirmationSheetWithDocumentAndTrustedReader() {
             modifier = Modifier.fillMaxSize(),
             title = "Trusted verifier 'Google' is requesting the following information",
             isTrustedReader = true,
-            sheetData = listOf(
-                ConfirmationSheetData(
-                    documentName = "Driving Licence  |  mDL",
-                    elements = (1..11).map { DocumentElement("Property $it", RequestedElement("$it", "namespace")) }
-                )
-            )
+            sheetData =
+                listOf(
+                    ConfirmationSheetData(
+                        documentName = "Driving Licence  |  mDL",
+                        elements = (1..11).map { DocumentElement("Property $it", RequestedElement("$it", "namespace")) },
+                    ),
+                ),
         )
     }
 }
@@ -359,12 +368,13 @@ private fun PreviewConfirmationSendingProgress() {
             modifier = Modifier.fillMaxSize(),
             title = "Trusted verifier 'Google' is requesting the following information",
             isSendingInProgress = true,
-            sheetData = listOf(
-                ConfirmationSheetData(
-                    documentName = "Driving Licence  |  mDL",
-                    elements = (1..11).map { DocumentElement("Property $it", RequestedElement("$it", "namespace")) }
-                )
-            )
+            sheetData =
+                listOf(
+                    ConfirmationSheetData(
+                        documentName = "Driving Licence  |  mDL",
+                        elements = (1..11).map { DocumentElement("Property $it", RequestedElement("$it", "namespace")) },
+                    ),
+                ),
         )
     }
 }

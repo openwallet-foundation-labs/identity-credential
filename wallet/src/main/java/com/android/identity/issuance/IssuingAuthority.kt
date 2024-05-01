@@ -128,7 +128,6 @@ interface IssuingAuthority {
     suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,
-        notifyApplicationOfUpdate: Boolean
+        notifyApplicationOfUpdate: Boolean,
     )
-
 }

@@ -45,19 +45,19 @@ abstract class ConnectionMethod {
             val type = array[0].asNumber
             when (type) {
                 ConnectionMethodNfc.METHOD_TYPE -> return ConnectionMethodNfc.fromDeviceEngagementNfc(
-                    encodedDeviceRetrievalMethod
+                    encodedDeviceRetrievalMethod,
                 )
 
                 ConnectionMethodBle.METHOD_TYPE -> return ConnectionMethodBle.fromDeviceEngagementBle(
-                    encodedDeviceRetrievalMethod
+                    encodedDeviceRetrievalMethod,
                 )
 
                 ConnectionMethodWifiAware.METHOD_TYPE -> return ConnectionMethodWifiAware.fromDeviceEngagementWifiAware(
-                    encodedDeviceRetrievalMethod
+                    encodedDeviceRetrievalMethod,
                 )
 
                 ConnectionMethodHttp.METHOD_TYPE -> return ConnectionMethodHttp.fromDeviceEngagementHttp(
-                    encodedDeviceRetrievalMethod
+                    encodedDeviceRetrievalMethod,
                 )
             }
             Logger.w(TAG, "Unsupported ConnectionMethod type $type in DeviceEngagement")
@@ -130,8 +130,8 @@ abstract class ConnectionMethod {
                         supportsPeripheralServerMode,
                         supportsCentralClientMode,
                         if (supportsPeripheralServerMode) uuid else null,
-                        if (supportsCentralClientMode) uuid else null
-                    )
+                        if (supportsCentralClientMode) uuid else null,
+                    ),
                 )
             }
             return result
@@ -164,16 +164,16 @@ abstract class ConnectionMethod {
                                 false,
                                 true,
                                 null,
-                                cmBle.centralClientModeUuid
-                            )
+                                cmBle.centralClientModeUuid,
+                            ),
                         )
                         result.add(
                             ConnectionMethodBle(
                                 true,
                                 false,
                                 cmBle.peripheralServerModeUuid,
-                                null
-                            )
+                                null,
+                            ),
                         )
                         continue
                     }

@@ -11,14 +11,13 @@ import com.android.identity.cbor.annotation.CborMerge
 data class EvidenceResponseIcaoNfcTunnelResult(
     val advancedAuthenticationType: AdvancedAuthenticationType,
     @com.android.identity.cbor.annotation.CborMerge
-    val dataGroups: Map<Int, ByteArray>,  // data from the passport (DG1-DG15 indexed by 1-15)
-    val securityObject: ByteArray  // Card Security Object (SOD)
+    val dataGroups: Map<Int, ByteArray>, // data from the passport (DG1-DG15 indexed by 1-15)
+    val securityObject: ByteArray, // Card Security Object (SOD)
 ) : EvidenceResponse() {
-
     enum class AdvancedAuthenticationType {
         NONE,
         CHIP,
-        ACTIVE
+        ACTIVE,
     }
 
     override fun toString(): String {

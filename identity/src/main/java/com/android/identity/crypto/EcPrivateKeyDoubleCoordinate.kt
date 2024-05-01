@@ -17,9 +17,8 @@ data class EcPrivateKeyDoubleCoordinate(
     override val curve: EcCurve,
     override val d: ByteArray,
     val x: ByteArray,
-    val y: ByteArray
+    val y: ByteArray,
 ) : EcPrivateKey(curve, d) {
-
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
         return CoseKey(
             mapOf(
@@ -27,8 +26,8 @@ data class EcPrivateKeyDoubleCoordinate(
                 Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
                 Pair(Cose.COSE_KEY_PARAM_D.toCoseLabel, d.toDataItem),
                 Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem),
-                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem)
-            ) + additionalLabels
+                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem),
+            ) + additionalLabels,
         )
     }
 

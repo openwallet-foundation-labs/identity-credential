@@ -15,7 +15,7 @@ data class Field(
     val isArray: Boolean = false,
     val parentId: Int? = null,
     var stringOptions: List<StringOption>? = null,
-    var integerOptions: List<IntegerOption>? = null
+    var integerOptions: List<IntegerOption>? = null,
 ) {
     fun hasValue(): Boolean {
         return value != ""

@@ -85,7 +85,7 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
         encodedDeviceMac: ByteArray?,
         issuerNameSpaces: Map<String?, List<ByteArray?>>,
         errors: Map<String?, Map<String?, Long?>>?,
-        encodedIssuerAuth: ByteArray
+        encodedIssuerAuth: ByteArray,
     ) = apply {
         val insOuter = CborMap.builder()
         for ((ns, encodedIssuerSignedItemBytesList) in issuerNameSpaces) {
@@ -96,16 +96,17 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
                 insInner.end()
             }
         }
-        val issuerSigned = CborMap.builder()
-            .put("nameSpaces", insOuter.end().build())
-            .put("issuerAuth", RawCbor(encodedIssuerAuth))
-            .end()
-            .build()
+        val issuerSigned =
+            CborMap.builder()
+                .put("nameSpaces", insOuter.end().build())
+                .put("issuerAuth", RawCbor(encodedIssuerAuth))
+                .end()
+                .build()
         val deviceAuthType: String
         val deviceAuth: ByteArray?
         require(!(encodedDeviceSignature != null && encodedDeviceMac != null)) {
             "" +
-                    "Cannot specify both Signature and MAC"
+                "Cannot specify both Signature and MAC"
         }
         if (encodedDeviceSignature != null) {
             deviceAuthType = "deviceSignature"
@@ -116,13 +117,14 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
         } else {
             throw IllegalArgumentException("No authentication mechanism used")
         }
-        val deviceSigned = CborMap.builder()
-            .put("nameSpaces", Tagged(24, Bstr(encodedDeviceNamespaces)))
-            .putMap("deviceAuth")
-            .put(deviceAuthType, RawCbor(deviceAuth))
-            .end()
-            .end()
-            .build()
+        val deviceSigned =
+            CborMap.builder()
+                .put("nameSpaces", Tagged(24, Bstr(encodedDeviceNamespaces)))
+                .putMap("deviceAuth")
+                .put(deviceAuthType, RawCbor(deviceAuth))
+                .end()
+                .end()
+                .build()
         val mapBuilder = CborMap.builder()
         mapBuilder.put("docType", docType)
         mapBuilder.put("issuerSigned", issuerSigned)
@@ -149,9 +151,10 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      * 18013-5 section 8.3.2.1.2.2.
      * @return the generator.
      */
-    fun addDocument(encodedDocument: ByteArray) = apply {
-        mDocumentsBuilder.add(Cbor.decode(encodedDocument))
-    }
+    fun addDocument(encodedDocument: ByteArray) =
+        apply {
+            mDocumentsBuilder.add(Cbor.decode(encodedDocument))
+        }
 
     /**
      * Builds the `DeviceResponse` CBOR.

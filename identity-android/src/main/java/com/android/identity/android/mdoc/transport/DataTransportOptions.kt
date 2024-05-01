@@ -10,13 +10,11 @@ class DataTransportOptions internal constructor(
      * If true, L2CAP will be used if supported by the OS and remote mdoc.
      */
     val bleUseL2CAP: Boolean,
-
     /**
      * The preference to clear the BLE Service Cache before service discovery when
      * acting as a GATT Client.
      */
     val bleClearCache: Boolean,
-
     /**
      * Whether BLE L2CAP PSM is conveyed in engagement.
      *
@@ -42,9 +40,10 @@ class DataTransportOptions internal constructor(
          * @param value indicates if it should use L2CAP socket if available.
          * @return the builder.
          */
-        fun setBleUseL2CAP(value: Boolean) = apply {
-            bleUseL2CAP = value
-        }
+        fun setBleUseL2CAP(value: Boolean) =
+            apply {
+                bleUseL2CAP = value
+            }
 
         /**
          * Sets whether to clear the BLE Service Cache before service discovery when acting as
@@ -55,9 +54,10 @@ class DataTransportOptions internal constructor(
          * @param value indicates if the BLE Service Cache should be cleared.
          * @return the builder.
          */
-        fun setBleClearCache(value: Boolean) = apply {
-            bleClearCache = value
-        }
+        fun setBleClearCache(value: Boolean) =
+            apply {
+                bleClearCache = value
+            }
 
         /**
          * Sets whether the BLE L2CAP PSM is conveyed in the engagement.
@@ -70,9 +70,10 @@ class DataTransportOptions internal constructor(
          * @param value
          * @return the builder.
          */
-        fun setExperimentalBleL2CAPPsmInEngagement(value: Boolean) = apply {
-            experimentalBleL2CAPPsmInEngagement = value
-        }
+        fun setExperimentalBleL2CAPPsmInEngagement(value: Boolean) =
+            apply {
+                experimentalBleL2CAPPsmInEngagement = value
+            }
 
         /**
          * Builds the [DataTransportOptions].
@@ -83,7 +84,7 @@ class DataTransportOptions internal constructor(
             return DataTransportOptions(
                 bleUseL2CAP,
                 bleClearCache,
-                experimentalBleL2CAPPsmInEngagement
+                experimentalBleL2CAPPsmInEngagement,
             )
         }
     }

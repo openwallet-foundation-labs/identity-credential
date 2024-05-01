@@ -17,17 +17,16 @@ import kotlinx.io.bytestring.ByteStringBuilder
 data class EcPublicKeyDoubleCoordinate(
     override val curve: EcCurve,
     val x: ByteArray,
-    val y: ByteArray
+    val y: ByteArray,
 ) : EcPublicKey(curve) {
-
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey =
         CoseKey(
             mapOf(
                 Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_EC2.toDataItem),
                 Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
                 Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem),
-                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem)
-            ) + additionalLabels
+                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem),
+            ) + additionalLabels,
         )
 
     init {
@@ -35,11 +34,12 @@ data class EcPublicKeyDoubleCoordinate(
             EcCurve.ED25519,
             EcCurve.X25519,
             EcCurve.X448,
-            EcCurve.ED448 -> throw IllegalArgumentException("Unsupported curve $curve")
+            EcCurve.ED448,
+            -> throw IllegalArgumentException("Unsupported curve $curve")
             else -> {}
         }
-        check(x.size == (curve.bitSize + 7)/8)
-        check(y.size == (curve.bitSize + 7)/8)
+        check(x.size == (curve.bitSize + 7) / 8)
+        check(y.size == (curve.bitSize + 7) / 8)
     }
 
     /**
@@ -73,14 +73,15 @@ data class EcPublicKeyDoubleCoordinate(
          */
         fun fromUncompressedPointEncoding(
             curve: EcCurve,
-            encoded: ByteArray): EcPublicKeyDoubleCoordinate {
-            val coordinateSize = (curve.bitSize + 7)/8
-            check(encoded.size == 1 + 2*coordinateSize)
+            encoded: ByteArray,
+        ): EcPublicKeyDoubleCoordinate {
+            val coordinateSize = (curve.bitSize + 7) / 8
+            check(encoded.size == 1 + 2 * coordinateSize)
             require(encoded[0].toInt() == 0x04)
             return EcPublicKeyDoubleCoordinate(
                 curve,
                 encoded.sliceArray(IntRange(1, 1 + coordinateSize - 1)),
-                encoded.sliceArray(IntRange(1 + coordinateSize, encoded.size - 1))
+                encoded.sliceArray(IntRange(1 + coordinateSize, encoded.size - 1)),
             )
         }
     }

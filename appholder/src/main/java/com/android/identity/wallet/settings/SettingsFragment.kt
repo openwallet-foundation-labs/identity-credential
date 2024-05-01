@@ -14,13 +14,12 @@ import androidx.navigation.fragment.findNavController
 import com.android.identity.wallet.theme.HolderAppTheme
 
 class SettingsFragment : Fragment() {
-
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
@@ -39,18 +38,21 @@ class SettingsFragment : Fragment() {
                         onWiFiAwareChanged = settingsViewModel::onWiFiAwareChanged,
                         onNfcChanged = settingsViewModel::onNFCChanged,
                         onDebugChanged = settingsViewModel::onDebugLoggingChanged,
-                        onOpenCaCertificates = {openCaCertificates()},
+                        onOpenCaCertificates = { openCaCertificates() },
                     )
                 }
             }
         }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         settingsViewModel.loadSettings()
     }
 
-    private fun openCaCertificates(){
+    private fun openCaCertificates() {
         val destination = SettingsFragmentDirections.toCaCertificates()
         findNavController().navigate(destination)
     }

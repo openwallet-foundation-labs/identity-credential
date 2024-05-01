@@ -18,7 +18,6 @@ class QrCommunicationSetup(
     private val onDisconnected: (transportSpecificTermination: Boolean) -> Unit,
     private val onCommunicationError: (error: Throwable) -> Unit,
 ) {
-
     private val settings = PreferencesHelper.apply { initialize(context) }
     private val connectionSetup = ConnectionSetup(context)
     private val eDeviceKey = Crypto.createEcPrivateKey(settings.getEphemeralKeyCurveOption())
@@ -29,71 +28,74 @@ class QrCommunicationSetup(
     val deviceEngagementUriEncoded: String
         get() = qrEngagement.deviceEngagementUriEncoded
 
-    private val qrEngagementListener = object : QrEngagementHelper.Listener {
-
-        override fun onDeviceConnecting() {
-            log("QR Engagement: Device Connecting")
-            onConnecting()
-        }
-
-        override fun onDeviceConnected(transport: DataTransport) {
-            if (deviceRetrievalHelper != null) {
-                log("OnDeviceConnected for QR engagement -> ignoring due to active presentation")
-                return
+    private val qrEngagementListener =
+        object : QrEngagementHelper.Listener {
+            override fun onDeviceConnecting() {
+                log("QR Engagement: Device Connecting")
+                onConnecting()
             }
-            log("OnDeviceConnected via QR: qrEngagement=$qrEngagement")
-            val builder = DeviceRetrievalHelper.Builder(
-                context,
-                deviceRetrievalHelperListener,
-                context.mainExecutor(),
-                eDeviceKey
-            )
-            builder.useForwardEngagement(
-                transport,
-                qrEngagement.deviceEngagement,
-                qrEngagement.handover
-            )
-            deviceRetrievalHelper = builder.build()
-            qrEngagement.close()
-            onDeviceRetrievalHelperReady(requireNotNull(deviceRetrievalHelper))
+
+            override fun onDeviceConnected(transport: DataTransport) {
+                if (deviceRetrievalHelper != null) {
+                    log("OnDeviceConnected for QR engagement -> ignoring due to active presentation")
+                    return
+                }
+                log("OnDeviceConnected via QR: qrEngagement=$qrEngagement")
+                val builder =
+                    DeviceRetrievalHelper.Builder(
+                        context,
+                        deviceRetrievalHelperListener,
+                        context.mainExecutor(),
+                        eDeviceKey,
+                    )
+                builder.useForwardEngagement(
+                    transport,
+                    qrEngagement.deviceEngagement,
+                    qrEngagement.handover,
+                )
+                deviceRetrievalHelper = builder.build()
+                qrEngagement.close()
+                onDeviceRetrievalHelperReady(requireNotNull(deviceRetrievalHelper))
+            }
+
+            override fun onError(error: Throwable) {
+                log("QR onError: ${error.message}")
+                onCommunicationError(error)
+            }
         }
 
-        override fun onError(error: Throwable) {
-            log("QR onError: ${error.message}")
-            onCommunicationError(error)
-        }
-    }
+    private val deviceRetrievalHelperListener =
+        object : DeviceRetrievalHelper.Listener {
+            override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
+                log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
+            }
 
-    private val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
-        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
-            log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
-        }
+            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                log("DeviceRetrievalHelper Listener (QR): OnDeviceRequest")
+                onNewDeviceRequest(deviceRequestBytes)
+            }
 
-        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-            log("DeviceRetrievalHelper Listener (QR): OnDeviceRequest")
-            onNewDeviceRequest(deviceRequestBytes)
-        }
+            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                log("DeviceRetrievalHelper Listener (QR): onDeviceDisconnected")
+                onDisconnected(transportSpecificTermination)
+            }
 
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            log("DeviceRetrievalHelper Listener (QR): onDeviceDisconnected")
-            onDisconnected(transportSpecificTermination)
+            override fun onError(error: Throwable) {
+                log("DeviceRetrievalHelper Listener (QR): onError -> ${error.message}")
+                onCommunicationError(error)
+            }
         }
-
-        override fun onError(error: Throwable) {
-            log("DeviceRetrievalHelper Listener (QR): onError -> ${error.message}")
-            onCommunicationError(error)
-        }
-    }
 
     fun configure() {
-        qrEngagement = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            connectionSetup.getConnectionOptions(),
-            qrEngagementListener,
-            context.mainExecutor()
-        ).setConnectionMethods(connectionSetup.getConnectionMethods())
-            .build()
+        qrEngagement =
+            QrEngagementHelper.Builder(
+                context,
+                eDeviceKey.publicKey,
+                connectionSetup.getConnectionOptions(),
+                qrEngagementListener,
+                context.mainExecutor(),
+            ).setConnectionMethods(connectionSetup.getConnectionMethods())
+                .build()
     }
 
     fun close() {

@@ -11,5 +11,5 @@ package com.android.identity_credential.mrtd
 data class MrtdAccessDataMrz(
     val documentNumber: String,
     val dateOfBirth: String,
-    val dateOfExpiration: String
+    val dateOfExpiration: String,
 ) : MrtdAccessData()

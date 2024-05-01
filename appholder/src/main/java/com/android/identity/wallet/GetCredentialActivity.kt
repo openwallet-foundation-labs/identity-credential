@@ -10,12 +10,12 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.document.DocumentRequest
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -38,29 +38,34 @@ import org.json.JSONObject
 import java.util.StringTokenizer
 
 class GetCredentialActivity : FragmentActivity() {
-
-    fun addDeviceNamespaces(documentGenerator : DocumentGenerator,
-                            credential : MdocCredential,
-                            unlockData: KeyUnlockData?) {
+    fun addDeviceNamespaces(
+        documentGenerator: DocumentGenerator,
+        credential: MdocCredential,
+        unlockData: KeyUnlockData?,
+    ) {
         documentGenerator.setDeviceNamespacesSignature(
             NameSpacedData.Builder().build(),
             credential.secureArea,
             credential.alias,
             unlockData,
-            Algorithm.ES256)
+            Algorithm.ES256,
+        )
     }
 
-    fun doBiometricAuth(credential : MdocCredential,
-                        forceLskf : Boolean,
-                        onBiometricAuthCompleted: (unlockData: KeyUnlockData?) -> Unit) {
+    fun doBiometricAuth(
+        credential: MdocCredential,
+        forceLskf: Boolean,
+        onBiometricAuthCompleted: (unlockData: KeyUnlockData?) -> Unit,
+    ) {
         var title = "To share your credential we need to check that it's you."
         var unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
         var cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
 
-        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Authentication required")
-            .setSubtitle(title)
-            .setConfirmationRequired(false)
+        val promptInfoBuilder =
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Authentication required")
+                .setSubtitle(title)
+                .setConfirmationRequired(false)
         if (forceLskf) {
             // TODO: this works only on Android 11 or later but for now this is fine
             //   as this is just a reference/test app and this path is only hit if
@@ -68,9 +73,10 @@ class GetCredentialActivity : FragmentActivity() {
             //   fall back to using KeyGuard which will work on all Android versions.
             promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         } else {
-            val canUseBiometricAuth = BiometricManager
-                .from(applicationContext)
-                .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+            val canUseBiometricAuth =
+                BiometricManager
+                    .from(applicationContext)
+                    .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
             if (canUseBiometricAuth) {
                 promptInfoBuilder.setNegativeButtonText("Use PIN")
             } else {
@@ -79,32 +85,37 @@ class GetCredentialActivity : FragmentActivity() {
         }
 
         val biometricPromptInfo = promptInfoBuilder.build()
-        val biometricPrompt = BiometricPrompt(this,
-            object : BiometricPrompt.AuthenticationCallback() {
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                        Logger.d("TAG", "onAuthenticationError $errorCode $errString")
-                        // TODO: "Use LSKF"...  without this delay, the prompt won't work correctly
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            doBiometricAuth(credential, true, onBiometricAuthCompleted)
-                        }, 100)
+        val biometricPrompt =
+            BiometricPrompt(
+                this,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationError(
+                        errorCode: Int,
+                        errString: CharSequence,
+                    ) {
+                        super.onAuthenticationError(errorCode, errString)
+                        if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                            Logger.d("TAG", "onAuthenticationError $errorCode $errString")
+                            // TODO: "Use LSKF"...  without this delay, the prompt won't work correctly
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                doBiometricAuth(credential, true, onBiometricAuthCompleted)
+                            }, 100)
+                        }
                     }
-                }
 
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    Logger.d("TAG", "onAuthenticationSucceeded $result")
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        super.onAuthenticationSucceeded(result)
+                        Logger.d("TAG", "onAuthenticationSucceeded $result")
 
-                    onBiometricAuthCompleted(unlockData)
-                }
+                        onBiometricAuthCompleted(unlockData)
+                    }
 
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    Logger.d("TAG", "onAuthenticationFailed")
-                }
-            })
+                    override fun onAuthenticationFailed() {
+                        super.onAuthenticationFailed()
+                        Logger.d("TAG", "onAuthenticationFailed")
+                    }
+                },
+            )
 
         if (cryptoObject != null) {
             biometricPrompt.authenticate(biometricPromptInfo, cryptoObject)
@@ -117,7 +128,7 @@ class GetCredentialActivity : FragmentActivity() {
         credentialId: Int,
         dataElements: List<DocumentRequest.DataElement>,
         encodedSessionTranscript: ByteArray,
-        onComplete: (ByteArray) -> Unit
+        onComplete: (ByteArray) -> Unit,
     ) {
         val documentRequest = DocumentRequest(dataElements)
         val documentStore = ProvisioningUtil.getInstance(applicationContext).documentStore
@@ -125,21 +136,26 @@ class GetCredentialActivity : FragmentActivity() {
         val document = documentStore.lookupDocument(documentName)
         val nameSpacedData = document!!.applicationData.getNameSpacedData("documentData")
 
-        val credential = document.findCredential(
-            ProvisioningUtil.CREDENTIAL_DOMAIN,
-            Timestamp.now()
-        ) as MdocCredential? ?: throw IllegalStateException("No credential")
+        val credential =
+            document.findCredential(
+                ProvisioningUtil.CREDENTIAL_DOMAIN,
+                Timestamp.now(),
+            ) as MdocCredential? ?: throw IllegalStateException("No credential")
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            documentRequest, nameSpacedData, staticAuthData
-        )
+        val mergedIssuerNamespaces =
+            MdocUtil.mergeIssuerNamesSpaces(
+                documentRequest,
+                nameSpacedData,
+                staticAuthData,
+            )
 
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-        val documentGenerator = DocumentGenerator(
-            document.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
-            staticAuthData.issuerAuth,
-            encodedSessionTranscript
-        )
+        val documentGenerator =
+            DocumentGenerator(
+                document.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
+                staticAuthData.issuerAuth,
+                encodedSessionTranscript,
+            )
         documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
         try {
             addDeviceNamespaces(documentGenerator, credential, null)
@@ -163,13 +179,11 @@ class GetCredentialActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
-
-
             val cmrequest = extractGetCredentialRequest(intent)
             val credentialId = intent.getLongExtra(EXTRA_CREDENTIAL_ID, -1).toInt()
 
             // This call is currently broken, have to extract this info manually for now
-            //val callingAppInfo = extractCallingAppInfo(intent)
+            // val callingAppInfo = extractCallingAppInfo(intent)
             val callingPackageName =
                 intent.getStringExtra(IntentHelper.EXTRA_CALLING_PACKAGE_NAME)!!
             val callingOrigin = intent.getStringExtra(IntentHelper.EXTRA_ORIGIN)
@@ -199,10 +213,11 @@ class GetCredentialActivity : FragmentActivity() {
 
                 // Covert nonce and publicKey
                 val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-                val readerPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
-                    EcCurve.P256,
-                    Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-                )
+                val readerPublicKey =
+                    EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
+                        EcCurve.P256,
+                        Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE),
+                    )
 
                 // Match all the requested fields
                 val fields = selector.getJSONArray("fields")
@@ -216,34 +231,36 @@ class GetCredentialActivity : FragmentActivity() {
                         DocumentRequest.DataElement(
                             namespace,
                             name,
-                            intentToRetain
-                        )
+                            intentToRetain,
+                        ),
                     )
                 }
 
                 // Generate the Session Transcript
-                val encodedSessionTranscript = if (callingOrigin == null) {
-                    CredmanUtil.generateAndroidSessionTranscript(
-                        nonce,
-                        callingPackageName,
-                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
-                    )
-                } else {
-                    CredmanUtil.generateBrowserSessionTranscript(
-                        nonce,
-                        callingOrigin,
-                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
-                    )
-                }
+                val encodedSessionTranscript =
+                    if (callingOrigin == null) {
+                        CredmanUtil.generateAndroidSessionTranscript(
+                            nonce,
+                            callingPackageName,
+                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding),
+                        )
+                    } else {
+                        CredmanUtil.generateBrowserSessionTranscript(
+                            nonce,
+                            callingOrigin,
+                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding),
+                        )
+                    }
                 // Create ISO DeviceResponse
                 createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
                     // The Preview protocol HPKE encrypts the response.
-                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
-                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                        readerPublicKey,
-                        deviceResponse,
-                        encodedSessionTranscript
-                    )
+                    val (cipherText, encapsulatedPublicKey) =
+                        Crypto.hpkeEncrypt(
+                            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                            readerPublicKey,
+                            deviceResponse,
+                            encodedSessionTranscript,
+                        )
                     val encodedCredentialDocument =
                         CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
 
@@ -253,8 +270,8 @@ class GetCredentialActivity : FragmentActivity() {
                         "token",
                         Base64.encodeToString(
                             encodedCredentialDocument,
-                            Base64.NO_WRAP or Base64.URL_SAFE
-                        )
+                            Base64.NO_WRAP or Base64.URL_SAFE,
+                        ),
                     )
                     val response = responseJson.toString(2)
 
@@ -298,24 +315,25 @@ class GetCredentialActivity : FragmentActivity() {
                         DocumentRequest.DataElement(
                             namespace,
                             name,
-                            intentToRetain
-                        )
+                            intentToRetain,
+                        ),
                     )
                 }
                 // Generate the Session Transcript
-                val encodedSessionTranscript = if (callingOrigin == null) {
-                    CredmanUtil.generateAndroidSessionTranscript(
-                        nonce,
-                        callingPackageName,
-                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
-                    )
-                } else {
-                    CredmanUtil.generateBrowserSessionTranscript(
-                        nonce,
-                        callingOrigin,
-                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
-                    )
-                }
+                val encodedSessionTranscript =
+                    if (callingOrigin == null) {
+                        CredmanUtil.generateAndroidSessionTranscript(
+                            nonce,
+                            callingPackageName,
+                            Crypto.digest(Algorithm.SHA256, clientID.toByteArray()),
+                        )
+                    } else {
+                        CredmanUtil.generateBrowserSessionTranscript(
+                            nonce,
+                            callingOrigin,
+                            Crypto.digest(Algorithm.SHA256, clientID.toByteArray()),
+                        )
+                    }
                 // Create ISO DeviceResponse
                 createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
                     // Create the openid4vp respoinse
@@ -324,8 +342,8 @@ class GetCredentialActivity : FragmentActivity() {
                         "vp_token",
                         Base64.encodeToString(
                             deviceResponse,
-                            Base64.NO_WRAP or Base64.URL_SAFE
-                        )
+                            Base64.NO_WRAP or Base64.URL_SAFE,
+                        ),
                     )
                     val response = responseJson.toString(2)
 
@@ -339,7 +357,6 @@ class GetCredentialActivity : FragmentActivity() {
                 // Unknown protocol
                 throw IllegalArgumentException("Unknown protocol")
             }
-
         } catch (e: Exception) {
             log("Exception $e")
             val resultData = Intent()
@@ -355,5 +372,4 @@ class GetCredentialActivity : FragmentActivity() {
         val credentialResponse = com.google.android.gms.identitycredentials.Credential("type", bundle)
         return GetCredentialResponse(credentialResponse)
     }
-
 }

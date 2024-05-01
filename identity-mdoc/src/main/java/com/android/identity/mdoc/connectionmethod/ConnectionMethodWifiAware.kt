@@ -19,9 +19,8 @@ class ConnectionMethodWifiAware(
     val passphraseInfoPassphrase: String?,
     val channelInfoChannelNumber: OptionalLong,
     val channelInfoOperatingClass: OptionalLong,
-    val bandInfoSupportedBands: ByteArray?
-): ConnectionMethod() {
-
+    val bandInfoSupportedBands: ByteArray?,
+) : ConnectionMethod() {
     override fun toString(): String {
         val builder = StringBuilder("wifi_aware")
         if (passphraseInfoPassphrase != null) {
@@ -51,13 +50,13 @@ class ConnectionMethodWifiAware(
         if (channelInfoChannelNumber.isPresent) {
             builder.put(
                 OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER,
-                channelInfoChannelNumber.asLong
+                channelInfoChannelNumber.asLong,
             )
         }
         if (channelInfoOperatingClass.isPresent) {
             builder.put(
                 OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS,
-                channelInfoOperatingClass.asLong
+                channelInfoOperatingClass.asLong,
             )
         }
         if (bandInfoSupportedBands != null) {
@@ -68,7 +67,7 @@ class ConnectionMethodWifiAware(
                 .add(METHOD_TYPE)
                 .add(METHOD_MAX_VERSION)
                 .add(builder.end().build())
-                .end().build()
+                .end().build(),
         )
     }
 
@@ -79,6 +78,7 @@ class ConnectionMethodWifiAware(
         private const val OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS = 1L
         private const val OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER = 2L
         private const val OPTION_KEY_BAND_INFO_SUPPORTED_BANDS = 3L
+
         fun fromDeviceEngagementWifiAware(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodWifiAware? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
@@ -103,12 +103,12 @@ class ConnectionMethodWifiAware(
                 channelInfoOperatingClass = OptionalLong.of(cioc.asNumber)
             }
             val bandInfoSupportedBands =
-                    map.getOrNull(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS)?.asBstr
+                map.getOrNull(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS)?.asBstr
             return ConnectionMethodWifiAware(
                 passphraseInfoPassphrase,
                 channelInfoChannelNumber,
                 channelInfoOperatingClass,
-                bandInfoSupportedBands
+                bandInfoSupportedBands,
             )
         }
     }

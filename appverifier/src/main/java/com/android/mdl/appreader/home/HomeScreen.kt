@@ -57,86 +57,91 @@ fun HomeScreen(
 ) {
     Box(modifier = modifier) {
         NfcLabel(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center),
         )
         var dropDownOpened by remember { mutableStateOf(false) }
         Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(64.dp))
             Text(
                 text = "Documents to request",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(42.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { dropDownOpened = !dropDownOpened },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { dropDownOpened = !dropDownOpened },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val text = state.currentRequestSelection.ifBlank { "Tap to create request" }
                 MarqueeText(
-                    modifier = Modifier
-                        .padding(start = 12.dp)
-                        .weight(1f),
-                    value = text
+                    modifier =
+                        Modifier
+                            .padding(start = 12.dp)
+                            .weight(1f),
+                    value = text,
                 )
                 Icon(
                     modifier = Modifier.padding(end = 12.dp),
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
         }
         CreateRequestDropDown(
-            modifier = Modifier
-                .padding(top = 100.dp, start = 16.dp, end = 16.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp)),
+            modifier =
+                Modifier
+                    .padding(top = 100.dp, start = 16.dp, end = 16.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp)),
             selectionState = state,
             dropDownOpened = dropDownOpened,
             onSelectionUpdated = onSelectionUpdated,
             onConfirm = {
                 onRequestConfirm(it)
                 dropDownOpened = false
-            }
+            },
         )
         Column(
             modifier = Modifier.align(Alignment.BottomCenter),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Button(
-                modifier = Modifier
-                    .padding(8.dp),
-                onClick = { onRequestQRCodePreview(state) }
+                modifier =
+                    Modifier
+                        .padding(8.dp),
+                onClick = { onRequestQRCodePreview(state) },
             ) {
                 Text(text = "Scan QR Code")
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(5.dp)
+                modifier = Modifier.fillMaxWidth().padding(5.dp),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
+                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp),
                 ) {
                     Button(onClick = { onRequestPreviewProtocol(state) }) {
                         Text(textAlign = TextAlign.Center, text = "Request Credentials (Preview)")
                     }
                 }
                 Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
+                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp),
                 ) {
-                    Button(onClick = { onRequestOpenId4VPProtocol(state)}) {
+                    Button(onClick = { onRequestOpenId4VPProtocol(state) }) {
                         Text(textAlign = TextAlign.Center, text = "Request Credentials (OpenID4VP)")
                     }
                 }
@@ -146,24 +151,22 @@ fun HomeScreen(
 }
 
 @Composable
-private fun NfcLabel(
-    modifier: Modifier = Modifier,
-) {
+private fun NfcLabel(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             modifier = Modifier.padding(16.dp),
             text = "NFC ready to tap",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
         )
         Image(
             modifier = Modifier.size(200.dp),
             painter = painterResource(id = R.drawable.ic_nfc),
             contentDescription = null,
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
         )
     }
 }
@@ -171,18 +174,18 @@ private fun NfcLabel(
 @Composable
 private fun MarqueeText(
     modifier: Modifier = Modifier,
-    value: String
+    value: String,
 ) {
     val scrollState = rememberScrollState()
     var shouldAnimated by remember { mutableStateOf(true) }
     LaunchedEffect(key1 = shouldAnimated) {
         scrollState.animateScrollTo(
             value = scrollState.maxValue,
-            animationSpec = tween(5000, 200, easing = CubicBezierEasing(0f, 0f, 0f, 0f))
+            animationSpec = tween(5000, 200, easing = CubicBezierEasing(0f, 0f, 0f, 0f)),
         )
         scrollState.animateScrollTo(
             value = 0,
-            animationSpec = tween(5000, 200, easing = CubicBezierEasing(0f, 0f, 0f, 0f))
+            animationSpec = tween(5000, 200, easing = CubicBezierEasing(0f, 0f, 0f, 0f)),
         )
         shouldAnimated = !shouldAnimated
     }
@@ -192,7 +195,7 @@ private fun MarqueeText(
         maxLines = 1,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onBackground,
-        modifier = modifier.horizontalScroll(scrollState, false)
+        modifier = modifier.horizontalScroll(scrollState, false),
     )
 }
 
@@ -208,8 +211,7 @@ private fun HomeScreenPreview() {
             onRequestConfirm = {},
             onRequestQRCodePreview = {},
             onRequestPreviewProtocol = {},
-            onRequestOpenId4VPProtocol = {}
-
+            onRequestOpenId4VPProtocol = {},
         )
     }
 }

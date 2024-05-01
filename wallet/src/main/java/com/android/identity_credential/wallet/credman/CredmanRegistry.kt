@@ -16,17 +16,17 @@ import com.google.android.gms.identitycredentials.IdentityCredentialManager
 private const val TAG = "CredmanRegistry"
 
 object CredmanRegistry {
-
     private fun getDataElementDisplayName(
         documentTypeRepository: DocumentTypeRepository,
         docTypeName: String,
         nameSpaceName: String,
-        dataElementName: String
+        dataElementName: String,
     ): String {
         val credType = documentTypeRepository.getDocumentTypeForMdoc(docTypeName)
         if (credType != null) {
-            val mdocDataElement = credType.mdocDocumentType!!
-                .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
+            val mdocDataElement =
+                credType.mdocDocumentType!!
+                    .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
             if (mdocDataElement != null) {
                 return mdocDataElement.attribute.displayName
             }
@@ -37,12 +37,11 @@ object CredmanRegistry {
     fun registerCredentials(
         context: Context,
         documentStore: DocumentStore,
-        documentTypeRepository: DocumentTypeRepository
+        documentTypeRepository: DocumentTypeRepository,
     ) {
         var idCount = 0L
         val entries = mutableListOf<IdentityCredentialEntry>()
         for (documentId in documentStore.listDocuments()) {
-
             val document = documentStore.lookupDocument(documentId)
             if (document == null) {
                 continue
@@ -57,8 +56,8 @@ object CredmanRegistry {
                     name = "doctype",
                     value = credConf.mdocDocType,
                     displayName = "Document Type",
-                    displayValue = credConf.mdocDocType
-                )
+                    displayValue = credConf.mdocDocType,
+                ),
             )
 
             val nameSpacedData = credConf.staticData
@@ -67,43 +66,48 @@ object CredmanRegistry {
                     val fieldName = nameSpaceName + "." + dataElementName
                     val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
 
-                    val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
-                        ?.get(nameSpaceName)?.dataElements?.get(dataElementName)
-                    val valueString = mdocDataElement
-                        ?.renderValue(
-                            value = Cbor.decode(valueCbor),
-                            trueFalseStrings = Pair(
-                                context.resources.getString(R.string.document_details_boolean_false_value),
-                                context.resources.getString(R.string.document_details_boolean_true_value)
+                    val mdocDataElement =
+                        credentialType?.mdocDocumentType?.namespaces
+                            ?.get(nameSpaceName)?.dataElements?.get(dataElementName)
+                    val valueString =
+                        mdocDataElement
+                            ?.renderValue(
+                                value = Cbor.decode(valueCbor),
+                                trueFalseStrings =
+                                    Pair(
+                                        context.resources.getString(R.string.document_details_boolean_false_value),
+                                        context.resources.getString(R.string.document_details_boolean_true_value),
+                                    ),
                             )
-                        )
-                        ?: Cbor.toDiagnostics(valueCbor)
+                            ?: Cbor.toDiagnostics(valueCbor)
 
-                    val dataElementDisplayName = getDataElementDisplayName(
-                        documentTypeRepository,
-                        credConf.mdocDocType,
-                        nameSpaceName,
-                        dataElementName
-                    )
+                    val dataElementDisplayName =
+                        getDataElementDisplayName(
+                            documentTypeRepository,
+                            credConf.mdocDocType,
+                            nameSpaceName,
+                            dataElementName,
+                        )
                     fields.add(
                         IdentityCredentialField(
                             name = fieldName,
                             value = valueString,
                             displayName = dataElementDisplayName,
-                            displayValue = valueString
-                        )
+                            displayValue = valueString,
+                        ),
                     )
                 }
             }
 
             val options = BitmapFactory.Options()
             options.inMutable = true
-            val credBitmap = BitmapFactory.decodeByteArray(
-                credConf.cardArt,
-                0,
-                credConf.cardArt.size,
-                options
-            )
+            val credBitmap =
+                BitmapFactory.decodeByteArray(
+                    credConf.cardArt,
+                    0,
+                    credConf.cardArt.size,
+                    options,
+                )
 
             Logger.i(TAG, "Adding document ${credConf.displayName}")
             entries.add(
@@ -116,7 +120,7 @@ object CredmanRegistry {
                     fields = fields.toList(),
                     disclaimer = null,
                     warning = null,
-                )
+                ),
             )
         }
         val registry = IdentityCredentialRegistry(entries)
@@ -124,6 +128,5 @@ object CredmanRegistry {
         client.registerCredentials(registry.toRegistrationRequest(context))
             .addOnSuccessListener { Logger.i(TAG, "CredMan registry succeeded") }
             .addOnFailureListener { Logger.i(TAG, "CredMan registry failed $it") }
-
     }
 }

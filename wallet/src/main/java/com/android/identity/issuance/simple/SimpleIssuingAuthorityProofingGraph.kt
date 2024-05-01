@@ -37,8 +37,13 @@ class SimpleIssuingAuthorityProofingGraph {
     }
 
     /** Sends [EvidenceRequestMessage]. */
-    fun message(id: String, message: String, assets: Map<String, ByteArray>,
-                acceptButtonText: String, rejectButtonText: String?) {
+    fun message(
+        id: String,
+        message: String,
+        assets: Map<String, ByteArray>,
+        acceptButtonText: String,
+        rejectButtonText: String?,
+    ) {
         val evidenceRequest = EvidenceRequestMessage(message, assets, acceptButtonText, rejectButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
@@ -51,19 +56,31 @@ class SimpleIssuingAuthorityProofingGraph {
         grantPermissionButtonText: String,
         continueWithoutPermissionButtonText: String,
     ) {
-        val evidenceRequest = EvidenceRequestNotificationPermission(
-            permissionNotAvailableMessage,
-            assets,
-            grantPermissionButtonText,
-            continueWithoutPermissionButtonText)
+        val evidenceRequest =
+            EvidenceRequestNotificationPermission(
+                permissionNotAvailableMessage,
+                assets,
+                grantPermissionButtonText,
+                continueWithoutPermissionButtonText,
+            )
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 
     /** Sends [EvidenceRequestQuestionString]. */
-    fun question(id: String, message: String, assets: Map<String, ByteArray>,
-                 defaultValue: String, acceptButtonText: String) {
-        val evidenceRequest = EvidenceRequestQuestionString(message, assets,
-            defaultValue, acceptButtonText)
+    fun question(
+        id: String,
+        message: String,
+        assets: Map<String, ByteArray>,
+        defaultValue: String,
+        acceptButtonText: String,
+    ) {
+        val evidenceRequest =
+            EvidenceRequestQuestionString(
+                message,
+                assets,
+                defaultValue,
+                acceptButtonText,
+            )
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 
@@ -75,11 +92,13 @@ class SimpleIssuingAuthorityProofingGraph {
         assets: Map<String, ByteArray>,
         passphraseConstraints: PassphraseConstraints,
     ) {
-        val evidenceRequest = EvidenceRequestCreatePassphrase(
-            passphraseConstraints = passphraseConstraints,
-            message = message,
-            verifyMessage = verifyMessage,
-            assets = assets)
+        val evidenceRequest =
+            EvidenceRequestCreatePassphrase(
+                passphraseConstraints = passphraseConstraints,
+                message = message,
+                verifyMessage = verifyMessage,
+                assets = assets,
+            )
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 
@@ -88,23 +107,40 @@ class SimpleIssuingAuthorityProofingGraph {
      *
      * Branches can be configured using [Choices.on] calls.
      */
-    fun choice(id: String, message: String, assets: Map<String, ByteArray>,
-               acceptButtonText: String, initChoices: Choices.() -> Unit) {
+    fun choice(
+        id: String,
+        message: String,
+        assets: Map<String, ByteArray>,
+        acceptButtonText: String,
+        initChoices: Choices.() -> Unit,
+    ) {
         val choices = Choices()
         choices.initChoices()
-        val request = EvidenceRequestQuestionMultipleChoice(message, assets,
-            choices.choices, acceptButtonText)
+        val request =
+            EvidenceRequestQuestionMultipleChoice(
+                message,
+                assets,
+                choices.choices,
+                acceptButtonText,
+            )
         chain.add { followUp ->
-            MultipleChoiceNode(id, request, choices.graphs.mapValues { graph ->
-                graph.value.build(followUp)
-            })
+            MultipleChoiceNode(
+                id,
+                request,
+                choices.graphs.mapValues { graph ->
+                    graph.value.build(followUp)
+                },
+            )
         }
     }
 
     /**
      * Sends [EvidenceRequestIcaoPassiveAuthentication].
      */
-    fun icaoPassiveAuthentication(id: String, dataGroups: List<Int>) {
+    fun icaoPassiveAuthentication(
+        id: String,
+        dataGroups: List<Int>,
+    ) {
         val evidenceRequest = EvidenceRequestIcaoPassiveAuthentication(dataGroups)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
@@ -114,20 +150,30 @@ class SimpleIssuingAuthorityProofingGraph {
      *
      * Branches can be configured using [IcaoChoices] methods.
      */
-    fun icaoTunnel(id: String, dataGroups: List<Int>,
-                   basicAuthentication: Boolean,
-                   initChoices: IcaoChoices.() -> Unit) {
+    fun icaoTunnel(
+        id: String,
+        dataGroups: List<Int>,
+        basicAuthentication: Boolean,
+        initChoices: IcaoChoices.() -> Unit,
+    ) {
         chain.add { followUp ->
             val choices = IcaoChoices()
             choices.initChoices()
-            val map = setOf(choices.noAuthenticationGraph, choices.activeAuthenticationGraph,
-                choices.chipAuthenticationGraph).associateBy({graph -> graph}) { graph ->
+            val map =
+                setOf(
+                    choices.noAuthenticationGraph,
+                    choices.activeAuthenticationGraph,
+                    choices.chipAuthenticationGraph,
+                ).associateBy({ graph -> graph }) { graph ->
                     graph.build(followUp)
                 }
-            IcaoNfcTunnelNode(id, dataGroups, basicAuthentication,
+            IcaoNfcTunnelNode(
+                id,
+                dataGroups,
+                basicAuthentication,
                 successfulActiveAuthentication = map[choices.activeAuthenticationGraph]!!,
                 successfulChipAuthentication = map[choices.chipAuthenticationGraph]!!,
-                noAuthentication = map[choices.noAuthenticationGraph]!!
+                noAuthentication = map[choices.noAuthenticationGraph]!!,
             )
         }
     }
@@ -136,7 +182,11 @@ class SimpleIssuingAuthorityProofingGraph {
         val graphs = mutableMapOf<String, SimpleIssuingAuthorityProofingGraph>()
         val choices = mutableMapOf<String, String>()
 
-        fun on(id: String, text: String, init: SimpleIssuingAuthorityProofingGraph.() -> Unit) {
+        fun on(
+            id: String,
+            text: String,
+            init: SimpleIssuingAuthorityProofingGraph.() -> Unit,
+        ) {
             choices[id] = text
             val graph = SimpleIssuingAuthorityProofingGraph()
             graphs[id] = graph
@@ -192,37 +242,44 @@ class SimpleIssuingAuthorityProofingGraph {
     abstract class Node {
         abstract val nodeId: String
         abstract val requests: List<EvidenceRequest>
-        abstract val followUps: Iterable<Node>  // graph is finite and walkable
+        abstract val followUps: Iterable<Node> // graph is finite and walkable
+
         open fun selectFollowUp(response: EvidenceResponse): Node? {
             val iterator = followUps.iterator()
             if (iterator.hasNext()) {
                 val followUp = iterator.next()
                 if (iterator.hasNext()) {
                     throw IllegalStateException(
-                        "When there are multiple follow-ups, selectFollowUp must be implemented")
+                        "When there are multiple follow-ups, selectFollowUp must be implemented",
+                    )
                 }
-                return followUp;
+                return followUp
             }
-            return null;
+            return null
         }
     }
 
     class SimpleNode(
         override val nodeId: String,
         private val followUp: Node?,
-        private val request: EvidenceRequest): Node() {
-
+        private val request: EvidenceRequest,
+    ) : Node() {
         override val requests: List<EvidenceRequest>
             get() = listOf(request)
         override val followUps: Iterable<Node>
-            get() = if (followUp == null) { listOf<Node>() } else { listOf(followUp) }
+            get() =
+                if (followUp == null) {
+                    listOf<Node>()
+                } else {
+                    listOf(followUp)
+                }
     }
 
     class MultipleChoiceNode(
         override val nodeId: String,
         private val request: EvidenceRequestQuestionMultipleChoice,
-        private val followUpMap: Map<String, Node?>): Node() {
-
+        private val followUpMap: Map<String, Node?>,
+    ) : Node() {
         override val requests: List<EvidenceRequest>
             get() = listOf(request)
         override val followUps: Iterable<Node>
@@ -243,11 +300,18 @@ class SimpleIssuingAuthorityProofingGraph {
         private val basicAuthentication: Boolean,
         private val successfulChipAuthentication: Node,
         private val successfulActiveAuthentication: Node,
-        private val noAuthentication: Node): Node() {
-
+        private val noAuthentication: Node,
+    ) : Node() {
         override val requests: List<EvidenceRequest>
-            get() = listOf(EvidenceRequestIcaoNfcTunnel(EvidenceRequestIcaoNfcTunnelType.HANDSHAKE,
-                !basicAuthentication, 0, byteArrayOf()))
+            get() =
+                listOf(
+                    EvidenceRequestIcaoNfcTunnel(
+                        EvidenceRequestIcaoNfcTunnelType.HANDSHAKE,
+                        !basicAuthentication,
+                        0,
+                        byteArrayOf(),
+                    ),
+                )
         override val followUps: Iterable<Node>
             get() = setOf(successfulActiveAuthentication, successfulChipAuthentication, noAuthentication)
 

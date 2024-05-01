@@ -43,44 +43,48 @@ class NfcEngagementHandler : HostApduService() {
     private val eDeviceKey by lazy {
         Crypto.createEcPrivateKey(eDeviceKeyCurve)
     }
-    private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
+    private val nfcEngagementListener =
+        object : NfcEngagementHelper.Listener {
+            override fun onTwoWayEngagementDetected() {
+                Logger.i(TAG, "onTwoWayEngagementDetected")
+            }
 
-        override fun onTwoWayEngagementDetected() {
-            Logger.i(TAG, "onTwoWayEngagementDetected")
+            override fun onHandoverSelectMessageSent() {
+                Logger.i(TAG, "onHandoverSelectMessageSent")
+                // This is invoked _just_ before the NFC tag reader will do a READ_BINARY
+                // for the Handover Select message. Vibrate the device to indicate to the
+                // user they can start removing the device from the reader.
+                val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                val vibrationPattern = longArrayOf(0, 500, 50, 300)
+                val indexInPatternToRepeat = -1
+                vibrator.vibrate(vibrationPattern, indexInPatternToRepeat)
+            }
+
+            override fun onDeviceConnecting() {
+                Logger.i(TAG, "onDeviceConnecting")
+            }
+
+            override fun onDeviceConnected(transport: DataTransport) {
+                Logger.i(TAG, "onDeviceConnected")
+
+                PresentationActivity.startPresentation(
+                    applicationContext,
+                    transport,
+                    engagementHelper!!.handover,
+                    eDeviceKey,
+                    engagementHelper!!.deviceEngagement,
+                )
+
+                engagementHelper?.close()
+                engagementHelper = null
+            }
+
+            override fun onError(error: Throwable) {
+                Logger.i(TAG, "Engagement Listener: onError -> ${error.message}")
+                engagementHelper?.close()
+                engagementHelper = null
+            }
         }
-
-        override fun onHandoverSelectMessageSent() {
-            Logger.i(TAG, "onHandoverSelectMessageSent")
-            // This is invoked _just_ before the NFC tag reader will do a READ_BINARY
-            // for the Handover Select message. Vibrate the device to indicate to the
-            // user they can start removing the device from the reader.
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            val vibrationPattern = longArrayOf(0, 500, 50, 300)
-            val indexInPatternToRepeat = -1
-            vibrator.vibrate(vibrationPattern, indexInPatternToRepeat)
-        }
-
-        override fun onDeviceConnecting() {
-            Logger.i(TAG, "onDeviceConnecting")
-        }
-
-        override fun onDeviceConnected(transport: DataTransport) {
-            Logger.i(TAG, "onDeviceConnected")
-
-            PresentationActivity.startPresentation(applicationContext, transport,
-                engagementHelper!!.handover, eDeviceKey,
-                engagementHelper!!.deviceEngagement)
-
-            engagementHelper?.close()
-            engagementHelper = null
-        }
-
-        override fun onError(error: Throwable) {
-            Logger.i(TAG, "Engagement Listener: onError -> ${error.message}")
-            engagementHelper?.close()
-            engagementHelper = null
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -88,23 +92,27 @@ class NfcEngagementHandler : HostApduService() {
 
         val application: WalletApplication = application as WalletApplication
 
-        if (application.documentStore.listDocuments().size > 0
-            && !PresentationActivity.isPresentationActive()) {
-
+        if (application.documentStore.listDocuments().size > 0 &&
+            !PresentationActivity.isPresentationActive()
+        ) {
             val options = DataTransportOptions.Builder().build()
-            val builder = NfcEngagementHelper.Builder(
-                applicationContext,
-                eDeviceKey.publicKey,
-                options,
-                nfcEngagementListener,
-                ContextCompat.getMainExecutor(applicationContext)
-            )
+            val builder =
+                NfcEngagementHelper.Builder(
+                    applicationContext,
+                    eDeviceKey.publicKey,
+                    options,
+                    nfcEngagementListener,
+                    ContextCompat.getMainExecutor(applicationContext),
+                )
             builder.useNegotiatedHandover()
             engagementHelper = builder.build()
         }
     }
 
-    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
+    override fun processCommandApdu(
+        commandApdu: ByteArray,
+        extras: Bundle?,
+    ): ByteArray? {
         Logger.dHex(TAG, "processCommandApdu", commandApdu)
 
         // If we don't have the required BLE permissions, tell the reader "No thanks!"

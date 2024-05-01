@@ -24,7 +24,6 @@ import com.android.identity.cbor.Simple
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.mdoc.origininfo.OriginInfoDomain
 
 object CredmanUtil {
     private const val ANDROID_HANDOVER_V1 = "AndroidHandoverv1"
@@ -44,8 +43,9 @@ object CredmanUtil {
     // TODO: probably need to stuff some stuff into `EncryptionParameters` to bind to
     //  the session
     //
-    fun generateCredentialDocument(cipherText: ByteArray,
-                                   encapsulatedPublicKey: EcPublicKey
+    fun generateCredentialDocument(
+        cipherText: ByteArray,
+        encapsulatedPublicKey: EcPublicKey,
     ): ByteArray {
         encapsulatedPublicKey as EcPublicKeyDoubleCoordinate
         return Cbor.encode(
@@ -56,12 +56,11 @@ object CredmanUtil {
                 .end()
                 .put("cipherText", cipherText)
                 .end()
-                .build()
+                .build(),
         )
     }
 
-    fun parseCredentialDocument(encodedCredentialDocument: ByteArray
-    ): Pair<ByteArray, EcPublicKey> {
+    fun parseCredentialDocument(encodedCredentialDocument: ByteArray): Pair<ByteArray, EcPublicKey> {
         val map = Cbor.decode(encodedCredentialDocument)
         val version = map["version"].asTstr
         if (!version.equals(ANDROID_CREDENTIAL_DOCUMENT_VERSION)) {
@@ -90,7 +89,7 @@ object CredmanUtil {
     fun generateAndroidSessionTranscript(
         nonce: ByteArray,
         packageName: String,
-        requesterIdHash: ByteArray
+        requesterIdHash: ByteArray,
     ): ByteArray {
         return Cbor.encode(
             CborArray.builder()
@@ -103,7 +102,7 @@ object CredmanUtil {
                 .add(requesterIdHash)
                 .end()
                 .end()
-                .build()
+                .build(),
         )
     }
 
@@ -125,21 +124,22 @@ object CredmanUtil {
     fun generateBrowserSessionTranscript(
         nonce: ByteArray,
         origin: String,
-        requesterIdHash: ByteArray
+        requesterIdHash: ByteArray,
     ): ByteArray {
         // TODO: Instead of hand-rolling this, we should use OriginInfoDomain which
         //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
         //   calls for.
-        val originInfoBytes = Cbor.encode(
-            CborMap.builder()
-                .put("cat", 1)
-                .put("type", 1)
-                .putMap("details")
-                .put("baseUrl", origin)
-                .end()
-                .end()
-                .build()
-        )
+        val originInfoBytes =
+            Cbor.encode(
+                CborMap.builder()
+                    .put("cat", 1)
+                    .put("type", 1)
+                    .putMap("details")
+                    .put("baseUrl", origin)
+                    .end()
+                    .end()
+                    .build(),
+            )
         return Cbor.encode(
             CborArray.builder()
                 .add(Simple.NULL) // DeviceEngagementBytes
@@ -151,7 +151,7 @@ object CredmanUtil {
                 .add(requesterIdHash)
                 .end()
                 .end()
-                .build()
+                .build(),
         )
     }
 }

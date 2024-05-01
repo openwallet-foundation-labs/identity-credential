@@ -71,7 +71,10 @@ interface SecureArea {
      * @throws IllegalArgumentException if the underlying Secure Area Implementation
      * does not support the requested creation settings, for example the EC curve to use.
      */
-    fun createKey(alias: String, createKeySettings: CreateKeySettings)
+    fun createKey(
+        alias: String,
+        createKeySettings: CreateKeySettings,
+    )
 
     /**
      * Deletes a previously created key.
@@ -108,7 +111,7 @@ interface SecureArea {
         alias: String,
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
-        keyUnlockData: KeyUnlockData?
+        keyUnlockData: KeyUnlockData?,
     ): ByteArray
 
     /**
@@ -132,7 +135,7 @@ interface SecureArea {
     fun keyAgreement(
         alias: String,
         otherKey: EcPublicKey,
-        keyUnlockData: KeyUnlockData?
+        keyUnlockData: KeyUnlockData?,
     ): ByteArray
 
     /**

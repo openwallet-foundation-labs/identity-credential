@@ -45,7 +45,7 @@ import com.android.identity.util.toHex
  */
 class DeviceResponseParser(
     val encodedDeviceResponse: ByteArray,
-    val encodedSessionTranscript: ByteArray
+    val encodedSessionTranscript: ByteArray,
 ) {
     private var eReaderKey: EcPrivateKey? = null
 
@@ -59,9 +59,10 @@ class DeviceResponseParser(
      * @param eReaderKey the private part of the reader ephemeral key.
      * @return the `DeviceResponseParser`.
      */
-    fun setEphemeralReaderKey(eReaderKey: EcPrivateKey) = apply {
-        this.eReaderKey = eReaderKey
-    }
+    fun setEphemeralReaderKey(eReaderKey: EcPrivateKey) =
+        apply {
+            this.eReaderKey = eReaderKey
+        }
 
     /**
      * Parses the device response.
@@ -84,12 +85,11 @@ class DeviceResponseParser(
      * methods on this class.
      */
     fun parse(): DeviceResponse =
-    // mEReaderKey may be omitted if the response is using ECDSA instead of MAC
+        // mEReaderKey may be omitted if the response is using ECDSA instead of MAC
         // for device authentication.
         DeviceResponse().apply {
             parse(encodedDeviceResponse, encodedSessionTranscript, eReaderKey)
         }
-
 
     /**
      * An object used to represent data parsed from `DeviceResponse`
@@ -97,7 +97,6 @@ class DeviceResponseParser(
      * as specified in *ISO/IEC 18013-5* section 8.3 *Device Retrieval*.
      */
     class DeviceResponse {
-
         // backing field
         private val _documents = mutableListOf<Document>()
 
@@ -117,7 +116,7 @@ class DeviceResponseParser(
         private fun parseIssuerSigned(
             expectedDocType: String,
             issuerSigned: DataItem,
-            builder: Document.Builder
+            builder: Document.Builder,
         ): EcPublicKey {
             val issuerAuth = issuerSigned["issuerAuth"].asCoseSign1
 
@@ -126,20 +125,22 @@ class DeviceResponseParser(
             // protected headers...
             val issuerAuthorityCertChain =
                 issuerAuth.unprotectedHeaders[
-                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)
+                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
                 ]!!.asCertificateChain
-            val signatureAlgorithm = Algorithm.fromInt(
-                issuerAuth.protectedHeaders[
-                    CoseNumberLabel(Cose.COSE_LABEL_ALG)
-                ]!!.asNumber.toInt()
-            )
+            val signatureAlgorithm =
+                Algorithm.fromInt(
+                    issuerAuth.protectedHeaders[
+                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                    ]!!.asNumber.toInt(),
+                )
             val documentSigningKey = issuerAuthorityCertChain.certificates[0].publicKey
-            val issuerSignedAuthenticated = Cose.coseSign1Check(
-                documentSigningKey,
-                null,
-                issuerAuth,
-                signatureAlgorithm
-            )
+            val issuerSignedAuthenticated =
+                Cose.coseSign1Check(
+                    documentSigningKey,
+                    null,
+                    issuerAuth,
+                    signatureAlgorithm,
+                )
             val encodedMobileSecurityObject = Cbor.decode(issuerAuth.payload!!).asTagged.asBstr
             val parsedMso = MobileSecurityObjectParser(encodedMobileSecurityObject).parse()
 
@@ -155,13 +156,14 @@ class DeviceResponseParser(
                 builder.setValidityInfoExpectedUpdate(parsedMso.expectedUpdate!!)
             }
 
-            /* don't care about version for now */
-            val digestAlgorithm = when (parsedMso.digestAlgorithm) {
-                "SHA-256" -> Algorithm.SHA256
-                "SHA-384" -> Algorithm.SHA384
-                "SHA-512" -> Algorithm.SHA512
-                else -> throw IllegalStateException("Unexpected digest algorithm ${parsedMso.digestAlgorithm}")
-            }
+            // don't care about version for now
+            val digestAlgorithm =
+                when (parsedMso.digestAlgorithm) {
+                    "SHA-256" -> Algorithm.SHA256
+                    "SHA-384" -> Algorithm.SHA384
+                    "SHA-512" -> Algorithm.SHA512
+                    else -> throw IllegalStateException("Unexpected digest algorithm ${parsedMso.digestAlgorithm}")
+                }
             val msoDocType = parsedMso.docType
             require(msoDocType == expectedDocType) {
                 ("docType in MSO '$msoDocType' does not match docType from Document")
@@ -178,15 +180,16 @@ class DeviceResponseParser(
             if (nameSpaces != null) {
                 for (nameSpaceDataItem in nameSpaces.asMap.keys) {
                     val nameSpace = nameSpaceDataItem.asTstr
-                    val innerDigestMapping = digestMapping[nameSpace]
-                        ?: throw IllegalArgumentException(
-                            "No digestID MSO entry for namespace $nameSpace"
-                        )
+                    val innerDigestMapping =
+                        digestMapping[nameSpace]
+                            ?: throw IllegalArgumentException(
+                                "No digestID MSO entry for namespace $nameSpace",
+                            )
                     val elementsDataItem = nameSpaces[nameSpaceDataItem]
                     for (elem in elementsDataItem.asArray) {
                         require(
                             elem is Tagged && elem.tagNumber == 24L &&
-                                    elem.asTagged is Bstr
+                                elem.asTagged is Bstr,
                         ) { "issuerSignedItemBytes is not a tagged ByteString" }
 
                         // We need the encoded representation with the tag.
@@ -197,15 +200,17 @@ class DeviceResponseParser(
                         val elementName = issuerSignedItem["elementIdentifier"].asTstr
                         val elementValue = issuerSignedItem["elementValue"]
                         val digestId = issuerSignedItem["digestID"].asNumber
-                        val digest = innerDigestMapping[digestId]
-                            ?: throw IllegalArgumentException(
-                                "No digestID MSO entry for ID $digestId in namespace $nameSpace"
-                            )
+                        val digest =
+                            innerDigestMapping[digestId]
+                                ?: throw IllegalArgumentException(
+                                    "No digestID MSO entry for ID $digestId in namespace $nameSpace",
+                                )
                         val digestMatch = expectedDigest contentEquals digest
                         builder.addIssuerEntry(
-                            nameSpace, elementName,
+                            nameSpace,
+                            elementName,
                             Cbor.encode(elementValue),
-                            digestMatch
+                            digestMatch,
                         )
                     }
                 }
@@ -219,21 +224,23 @@ class DeviceResponseParser(
             encodedSessionTranscript: ByteArray,
             deviceKey: EcPublicKey,
             eReaderKey: EcPrivateKey?,
-            builder: Document.Builder
+            builder: Document.Builder,
         ) {
             val nameSpacesBytes = deviceSigned["nameSpaces"]
             val nameSpaces = nameSpacesBytes.asTaggedEncodedCbor
             val deviceAuth = deviceSigned["deviceAuth"]
-            val deviceAuthentication = CborArray.builder()
-                .add("DeviceAuthentication")
-                .add(RawCbor(encodedSessionTranscript))
-                .add(docType)
-                .add(nameSpacesBytes)
-                .end()
-                .build()
-            val deviceAuthenticationBytes = Cbor.encode(
-                Tagged(24, Bstr(Cbor.encode(deviceAuthentication)))
-            )
+            val deviceAuthentication =
+                CborArray.builder()
+                    .add("DeviceAuthentication")
+                    .add(RawCbor(encodedSessionTranscript))
+                    .add(docType)
+                    .add(nameSpacesBytes)
+                    .end()
+                    .build()
+            val deviceAuthenticationBytes =
+                Cbor.encode(
+                    Tagged(24, Bstr(Cbor.encode(deviceAuthentication))),
+                )
             val deviceSignedAuthenticated: Boolean
             val deviceSignature = deviceAuth.getOrNull("deviceSignature")
             if (deviceSignature != null) {
@@ -242,49 +249,54 @@ class DeviceResponseParser(
                 // 18013-5 clause "9.1.3.6 mdoc ECDSA / EdDSA Authentication" guarantees
                 // that alg is in the protected header
                 //
-                val signatureAlgorithm = Algorithm.fromInt(
-                    deviceSignatureCoseSign1.protectedHeaders[
-                        CoseNumberLabel(Cose.COSE_LABEL_ALG)
-                    ]!!.asNumber.toInt()
-                )
-                deviceSignedAuthenticated = Cose.coseSign1Check(
-                    deviceKey,
-                    deviceAuthenticationBytes,
-                    deviceSignatureCoseSign1,
-                    signatureAlgorithm
-                )
+                val signatureAlgorithm =
+                    Algorithm.fromInt(
+                        deviceSignatureCoseSign1.protectedHeaders[
+                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                        ]!!.asNumber.toInt(),
+                    )
+                deviceSignedAuthenticated =
+                    Cose.coseSign1Check(
+                        deviceKey,
+                        deviceAuthenticationBytes,
+                        deviceSignatureCoseSign1,
+                        signatureAlgorithm,
+                    )
                 builder.setDeviceSignedAuthenticatedViaSignature(true)
             } else {
-                val deviceMacDataItem = deviceAuth.getOrNull("deviceMac")
-                    ?: throw IllegalArgumentException(
-                        "Neither deviceSignature nor deviceMac in deviceAuth"
-                    )
+                val deviceMacDataItem =
+                    deviceAuth.getOrNull("deviceMac")
+                        ?: throw IllegalArgumentException(
+                            "Neither deviceSignature nor deviceMac in deviceAuth",
+                        )
                 val tagInResponse = deviceMacDataItem.asCoseMac0.tag
                 val sharedSecret = Crypto.keyAgreement(eReaderKey!!, deviceKey)
                 val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript)))
                 val salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes)
                 val info = "EMacKey".toByteArray()
                 val eMacKey = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
-                val expectedTag = Cose.coseMac0(
-                    Algorithm.HMAC_SHA256,
-                    eMacKey,
-                    deviceAuthenticationBytes,
-                    false,
-                    mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
-                        )
-                    ),
-                    mapOf()
-                ).tag
+                val expectedTag =
+                    Cose.coseMac0(
+                        Algorithm.HMAC_SHA256,
+                        eMacKey,
+                        deviceAuthenticationBytes,
+                        false,
+                        mapOf(
+                            Pair(
+                                CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem,
+                            ),
+                        ),
+                        mapOf(),
+                    ).tag
                 deviceSignedAuthenticated = expectedTag contentEquals tagInResponse
                 if (deviceSignedAuthenticated) {
                     Logger.d(TAG, "Verified DeviceSigned using MAC")
                 } else {
                     Logger.d(
-                        TAG, "Device MAC mismatch, got ${tagInResponse.toHex}"
-                                + " expected ${expectedTag.toHex}"
+                        TAG,
+                        "Device MAC mismatch, got ${tagInResponse.toHex}" +
+                            " expected ${expectedTag.toHex}",
                     )
                 }
             }
@@ -303,7 +315,7 @@ class DeviceResponseParser(
         internal fun parse(
             encodedDeviceResponse: ByteArray?,
             encodedSessionTranscript: ByteArray,
-            eReaderKey: EcPrivateKey?
+            eReaderKey: EcPrivateKey?,
         ) {
             val deviceResponse = Cbor.decode(encodedDeviceResponse!!)
             version = deviceResponse["version"].asTstr
@@ -323,7 +335,7 @@ class DeviceResponseParser(
                         encodedSessionTranscript,
                         deviceKey,
                         eReaderKey,
-                        builder
+                        builder,
                     )
                     _documents.add(builder.build())
                 }
@@ -374,7 +386,6 @@ class DeviceResponseParser(
 
         private var deviceData = mutableMapOf<String, MutableMap<String, EntryData>>()
         private var issuerData = mutableMapOf<String, MutableMap<String, EntryData>>()
-
 
         /**
          * The number of issuer entries for that didn't match the digest in the MSO.
@@ -453,8 +464,9 @@ class DeviceResponseParser(
          * @exception IllegalArgumentException if the given namespace isn't in the data.
          */
         fun getIssuerEntryNames(namespaceName: String): List<String> {
-            val innerMap = issuerData[namespaceName]
-                ?: throw IllegalArgumentException("Namespace not in data")
+            val innerMap =
+                issuerData[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace not in data")
             return innerMap.keys.toList()
         }
 
@@ -468,10 +480,11 @@ class DeviceResponseParser(
          */
         fun getIssuerEntryDigestMatch(
             namespaceName: String,
-            name: String
+            name: String,
         ): Boolean {
-            val innerMap = issuerData[namespaceName]
-                ?: throw IllegalArgumentException("Namespace not in data")
+            val innerMap =
+                issuerData[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace not in data")
             val entryData = innerMap[name]
             require(entryData != null) { "Entry not in data" }
             return entryData.digestMatch
@@ -488,10 +501,11 @@ class DeviceResponseParser(
          */
         fun getIssuerEntryData(
             namespaceName: String,
-            name: String
+            name: String,
         ): ByteArray {
-            val innerMap = issuerData[namespaceName]
-                ?: throw IllegalArgumentException("Namespace not in data")
+            val innerMap =
+                issuerData[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace not in data")
             val entryData = innerMap[name]
             require(entryData != null) { "Entry not in data" }
             return entryData.value
@@ -508,10 +522,11 @@ class DeviceResponseParser(
          */
         fun getIssuerEntryString(
             namespaceName: String,
-            name: String
-        ): String = getIssuerEntryData(namespaceName, name).let { value ->
-            Cbor.decode(value).asTstr
-        }
+            name: String,
+        ): String =
+            getIssuerEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asTstr
+            }
 
         /**
          * Like [getIssuerEntryData] but returns the CBOR decoded as a byte-string.
@@ -523,10 +538,11 @@ class DeviceResponseParser(
          */
         fun getIssuerEntryByteString(
             namespaceName: String,
-            name: String
-        ): ByteArray = getIssuerEntryData(namespaceName, name).let { value ->
-            Cbor.decode(value).asBstr
-        }
+            name: String,
+        ): ByteArray =
+            getIssuerEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asBstr
+            }
 
         /**
          * Like [getIssuerEntryData] but returns the CBOR decoded as a boolean.
@@ -536,7 +552,10 @@ class DeviceResponseParser(
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        fun getIssuerEntryBoolean(namespaceName: String, name: String): Boolean =
+        fun getIssuerEntryBoolean(
+            namespaceName: String,
+            name: String,
+        ): Boolean =
             getIssuerEntryData(namespaceName, name).let { value ->
                 Cbor.decode(value).asBoolean
             }
@@ -549,7 +568,10 @@ class DeviceResponseParser(
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        fun getIssuerEntryNumber(namespaceName: String, name: String): Long =
+        fun getIssuerEntryNumber(
+            namespaceName: String,
+            name: String,
+        ): Long =
             getIssuerEntryData(namespaceName, name).let { value ->
                 Cbor.decode(value).asNumber
             }
@@ -564,10 +586,11 @@ class DeviceResponseParser(
          */
         fun getIssuerEntryDateTime(
             namespaceName: String,
-            name: String
-        ): Timestamp = getIssuerEntryData(namespaceName, name).let { value ->
-            Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
-        }
+            name: String,
+        ): Timestamp =
+            getIssuerEntryData(namespaceName, name).let { value ->
+                Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
+            }
 
         /**
          * The names of namespaces with retrieved entries of the device-signed data.
@@ -585,8 +608,9 @@ class DeviceResponseParser(
          * @exception IllegalArgumentException if the given namespace isn't in the data.
          */
         fun getDeviceEntryNames(namespaceName: String): List<String> {
-            val innerMap = deviceData[namespaceName]
-                ?: throw IllegalArgumentException("Namespace not in data")
+            val innerMap =
+                deviceData[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace not in data")
             return innerMap.keys.toList()
         }
 
@@ -601,10 +625,11 @@ class DeviceResponseParser(
          */
         fun getDeviceEntryData(
             namespaceName: String,
-            name: String
+            name: String,
         ): ByteArray {
-            val innerMap = deviceData[namespaceName]
-                ?: throw IllegalArgumentException("Namespace not in data")
+            val innerMap =
+                deviceData[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace not in data")
             return innerMap[name]?.value
                 ?: throw IllegalArgumentException("Entry not in data")
         }
@@ -619,10 +644,11 @@ class DeviceResponseParser(
          */
         fun getDeviceEntryString(
             namespaceName: String,
-            name: String
-        ): String = getDeviceEntryData(namespaceName, name).let { value ->
-            Cbor.decode(value).asTstr
-        }
+            name: String,
+        ): String =
+            getDeviceEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asTstr
+            }
 
         /**
          * Like [getDeviceEntryData] but returns the CBOR decoded as a byte-string.
@@ -634,10 +660,11 @@ class DeviceResponseParser(
          */
         fun getDeviceEntryByteString(
             namespaceName: String,
-            name: String
-        ): ByteArray = getDeviceEntryData(namespaceName, name).let { value ->
-            Cbor.decode(value).asBstr
-        }
+            name: String,
+        ): ByteArray =
+            getDeviceEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asBstr
+            }
 
         /**
          * Like [getDeviceEntryData] but returns the CBOR decoded as a boolean.
@@ -649,10 +676,11 @@ class DeviceResponseParser(
          */
         fun getDeviceEntryBoolean(
             namespaceName: String,
-            name: String
-        ): Boolean = getDeviceEntryData(namespaceName, name).let { value ->
-            Cbor.decode(value).asBoolean
-        }
+            name: String,
+        ): Boolean =
+            getDeviceEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asBoolean
+            }
 
         /**
          * Like [getDeviceEntryData] but returns the CBOR decoded as a long.
@@ -662,7 +690,10 @@ class DeviceResponseParser(
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        fun getDeviceEntryNumber(namespaceName: String, name: String): Long =
+        fun getDeviceEntryNumber(
+            namespaceName: String,
+            name: String,
+        ): Long =
             getDeviceEntryData(namespaceName, name).let { value ->
                 Cbor.decode(value).asNumber
             }
@@ -677,30 +708,34 @@ class DeviceResponseParser(
          */
         fun getDeviceEntryDateTime(
             namespaceName: String,
-            name: String
+            name: String,
         ): Timestamp =
             getDeviceEntryData(namespaceName, name).let { value ->
                 Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
             }
 
         internal class Builder(docType: String) {
-            private val result: Document = Document().apply {
-                this.docType = docType
-            }
+            private val result: Document =
+                Document().apply {
+                    this.docType = docType
+                }
 
             fun addIssuerEntry(
-                namespaceName: String, name: String, value: ByteArray,
-                digestMatch: Boolean
+                namespaceName: String,
+                name: String,
+                value: ByteArray,
+                digestMatch: Boolean,
             ) = apply {
                 var innerMap = result.issuerData[namespaceName]
                 if (innerMap == null) {
                     innerMap = mutableMapOf()
                     result.issuerData[namespaceName] = innerMap
                 }
-                innerMap[name] = EntryData(
-                    value,
-                    digestMatch
-                )
+                innerMap[name] =
+                    EntryData(
+                        value,
+                        digestMatch,
+                    )
                 if (!digestMatch) {
                     result.numIssuerEntryDigestMatchFailures += 1
                 }
@@ -710,7 +745,11 @@ class DeviceResponseParser(
                 result.issuerCertificateChain = certificateChain
             }
 
-            fun addDeviceEntry(namespaceName: String, name: String, value: ByteArray) = apply {
+            fun addDeviceEntry(
+                namespaceName: String,
+                name: String,
+                value: ByteArray,
+            ) = apply {
                 var innerMap = result.deviceData[namespaceName]
                 if (innerMap == null) {
                     innerMap = LinkedHashMap()
@@ -719,37 +758,45 @@ class DeviceResponseParser(
                 innerMap[name] = EntryData(value, true)
             }
 
-            fun setDeviceSignedAuthenticated(deviceSignedAuthenticated: Boolean) = apply {
-                result.deviceSignedAuthenticated = deviceSignedAuthenticated
-            }
+            fun setDeviceSignedAuthenticated(deviceSignedAuthenticated: Boolean) =
+                apply {
+                    result.deviceSignedAuthenticated = deviceSignedAuthenticated
+                }
 
-            fun setIssuerSignedAuthenticated(issuerSignedAuthenticated: Boolean) = apply {
-                result.issuerSignedAuthenticated = issuerSignedAuthenticated
-            }
+            fun setIssuerSignedAuthenticated(issuerSignedAuthenticated: Boolean) =
+                apply {
+                    result.issuerSignedAuthenticated = issuerSignedAuthenticated
+                }
 
-            fun setValidityInfoSigned(value: Timestamp) = apply {
-                result.validityInfoSigned = value
-            }
+            fun setValidityInfoSigned(value: Timestamp) =
+                apply {
+                    result.validityInfoSigned = value
+                }
 
-            fun setValidityInfoValidFrom(value: Timestamp) = apply {
-                result.validityInfoValidFrom = value
-            }
+            fun setValidityInfoValidFrom(value: Timestamp) =
+                apply {
+                    result.validityInfoValidFrom = value
+                }
 
-            fun setValidityInfoValidUntil(value: Timestamp) = apply {
-                result.validityInfoValidUntil = value
-            }
+            fun setValidityInfoValidUntil(value: Timestamp) =
+                apply {
+                    result.validityInfoValidUntil = value
+                }
 
-            fun setValidityInfoExpectedUpdate(value: Timestamp) = apply {
-                result.validityInfoExpectedUpdate = value
-            }
+            fun setValidityInfoExpectedUpdate(value: Timestamp) =
+                apply {
+                    result.validityInfoExpectedUpdate = value
+                }
 
-            fun setDeviceKey(deviceKey: EcPublicKey) = apply {
-                result.deviceKey = deviceKey
-            }
+            fun setDeviceKey(deviceKey: EcPublicKey) =
+                apply {
+                    result.deviceKey = deviceKey
+                }
 
-            fun setDeviceSignedAuthenticatedViaSignature(value: Boolean) = apply {
-                result.deviceSignedAuthenticatedViaSignature = value
-            }
+            fun setDeviceSignedAuthenticatedViaSignature(value: Boolean) =
+                apply {
+                    result.deviceSignedAuthenticatedViaSignature = value
+                }
 
             fun build(): Document = result
         }

@@ -48,14 +48,15 @@ import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.example.simple_verifier.ui.theme.IdentityCredentialTheme
 
-
 class MainActivity : FragmentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             IdentityCredentialTheme {
-                VerifierApp(modifier = Modifier.fillMaxSize(), supportFragmentManager = supportFragmentManager) { enableReaderPermissions() }
+                VerifierApp(
+                    modifier = Modifier.fillMaxSize(),
+                    supportFragmentManager = supportFragmentManager,
+                ) { enableReaderPermissions() }
             }
         }
     }
@@ -66,11 +67,12 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private val appPermissions:List<String> get() {
-        val permissions = mutableListOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
+    private val appPermissions: List<String> get() {
+        val permissions =
+            mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            )
 
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
@@ -102,16 +104,17 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun shouldRequestPermission() {
-        val permissionsNeeded = appPermissions.filter { permission ->
-            ContextCompat.checkSelfPermission(
-                this.applicationContext,
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsNeeded =
+            appPermissions.filter { permission ->
+                ContextCompat.checkSelfPermission(
+                    this.applicationContext,
+                    permission,
+                ) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (permissionsNeeded.isNotEmpty()) {
             permissionsLauncher.launch(
-                permissionsNeeded.toTypedArray()
+                permissionsNeeded.toTypedArray(),
             )
         }
     }
@@ -121,7 +124,7 @@ class MainActivity : FragmentActivity() {
         return appPermissions.none { permission ->
             ContextCompat.checkSelfPermission(
                 this.applicationContext,
-                permission
+                permission,
             ) != PackageManager.PERMISSION_GRANTED
         }
     }
@@ -131,10 +134,14 @@ class MainActivity : FragmentActivity() {
 private fun VerifierApp(
     modifier: Modifier = Modifier,
     supportFragmentManager: FragmentManager,
-    enableReaderPermissions: () -> Unit
+    enableReaderPermissions: () -> Unit,
 ) {
     Surface(modifier) {
-        ToolboxScreen(modifier = modifier, supportFragmentManager = supportFragmentManager, enableReaderPermissions = enableReaderPermissions)
+        ToolboxScreen(
+            modifier = modifier,
+            supportFragmentManager = supportFragmentManager,
+            enableReaderPermissions = enableReaderPermissions,
+        )
     }
 }
 
@@ -143,47 +150,55 @@ private fun VerifierApp(
 private fun ToolboxScreen(
     modifier: Modifier = Modifier,
     supportFragmentManager: FragmentManager,
-    enableReaderPermissions: () -> Unit
+    enableReaderPermissions: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                colors = largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                ),
+                colors =
+                    largeTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
                 title = {
                     Text(
                         style = MaterialTheme.typography.headlineMedium,
                         text = "mDL Age Check Example",
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                }
+                },
             )
         },
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     ) { innerPadding ->
 
         Toolbox(
             onOver21BtnClicked = {
                 enableReaderPermissions()
-                val mdocReaderPrompt = MdocReaderPrompt(MdocReaderSettings.Builder()
-                    .setAgeVerificationType(AgeVerificationType.Over21)
-                    .build())
+                val mdocReaderPrompt =
+                    MdocReaderPrompt(
+                        MdocReaderSettings.Builder()
+                            .setAgeVerificationType(AgeVerificationType.Over21)
+                            .build(),
+                    )
                 mdocReaderPrompt.show(supportFragmentManager, null)
             },
             onOver18BtnClicked = {
                 enableReaderPermissions()
-                val mdocReaderPrompt = MdocReaderPrompt(MdocReaderSettings.Builder()
-                    .setAgeVerificationType(AgeVerificationType.Over18)
-                    .build())
+                val mdocReaderPrompt =
+                    MdocReaderPrompt(
+                        MdocReaderSettings.Builder()
+                            .setAgeVerificationType(AgeVerificationType.Over18)
+                            .build(),
+                    )
                 mdocReaderPrompt.show(supportFragmentManager, null)
             },
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(vertical = 20.dp)
-                .padding(horizontal = 20.dp)
-                .fillMaxWidth()
+            modifier =
+                Modifier
+                    .padding(innerPadding)
+                    .padding(vertical = 20.dp)
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth(),
         )
     }
 }
@@ -192,39 +207,41 @@ private fun ToolboxScreen(
 private fun Toolbox(
     onOver21BtnClicked: () -> Unit,
     onOver18BtnClicked: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.background(MaterialTheme.colorScheme.secondary)
+        modifier = modifier.background(MaterialTheme.colorScheme.secondary),
     ) {
         Text(
-            modifier = Modifier
-                .padding(vertical = 20.dp)
-                .fillMaxWidth(),
+            modifier =
+                Modifier
+                    .padding(vertical = 20.dp)
+                    .fillMaxWidth(),
             textAlign = TextAlign.Center,
             text = "Options",
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSecondary
+            color = MaterialTheme.colorScheme.onSecondary,
         )
         FilledTonalButton(
-            modifier = Modifier
-                .padding(horizontal = 10.dp)
-                .fillMaxWidth(),
-            onClick = onOver21BtnClicked
+            modifier =
+                Modifier
+                    .padding(horizontal = 10.dp)
+                    .fillMaxWidth(),
+            onClick = onOver21BtnClicked,
         ) {
             Text("Over 21?")
         }
         FilledTonalButton(
-            modifier = Modifier
-                .padding(horizontal = 10.dp)
-                .fillMaxWidth(),
-            onClick = onOver18BtnClicked
+            modifier =
+                Modifier
+                    .padding(horizontal = 10.dp)
+                    .fillMaxWidth(),
+            onClick = onOver18BtnClicked,
         ) {
             Text("Over 18?")
         }
     }
 }
-
 
 @Preview
 @Composable

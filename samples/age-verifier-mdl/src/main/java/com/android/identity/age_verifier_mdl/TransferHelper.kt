@@ -27,9 +27,8 @@ import java.util.UUID
 
 class TransferHelper private constructor(
     private var context: Context,
-    private var activity: Activity
+    private var activity: Activity,
 ) {
-
     companion object {
         private val TAG = "TransferHelper"
 
@@ -50,10 +49,12 @@ class TransferHelper private constructor(
         @Volatile
         private var instance: TransferHelper? = null
 
-        fun getInstance(context: Context, activity: Activity) =
-            instance ?: synchronized(this) {
-                instance ?: TransferHelper(context, activity).also { instance = it }
-            }
+        fun getInstance(
+            context: Context,
+            activity: Activity,
+        ) = instance ?: synchronized(this) {
+            instance ?: TransferHelper(context, activity).also { instance = it }
+        }
     }
 
     private var sharedPreferences: SharedPreferences
@@ -76,44 +77,45 @@ class TransferHelper private constructor(
         TRANSACTION_COMPLETE,
     }
 
-    private val listener = object : VerificationHelper.Listener {
-        override fun onReaderEngagementReady(readerEngagement: ByteArray) {
-            Logger.d(TAG, "onReaderEngagementReady")
-        }
+    private val listener =
+        object : VerificationHelper.Listener {
+            override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+                Logger.d(TAG, "onReaderEngagementReady")
+            }
 
-        override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
-            Logger.d(TAG, "onDeviceEngagementReceived")
-            connectionMethodUsed = connectionMethods.first()
-            verificationHelper!!.connect(connectionMethods.first())
-            state.value = State.CONNECTING
-        }
+            override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+                Logger.d(TAG, "onDeviceEngagementReceived")
+                connectionMethodUsed = connectionMethods.first()
+                verificationHelper!!.connect(connectionMethods.first())
+                state.value = State.CONNECTING
+            }
 
-        override fun onMoveIntoNfcField() {
-            Logger.d(TAG, "onMoveIntoNfcField")
-        }
+            override fun onMoveIntoNfcField() {
+                Logger.d(TAG, "onMoveIntoNfcField")
+            }
 
-        override fun onDeviceConnected() {
-            Logger.d(TAG, "onDeviceConnected")
-            state.value = State.CONNECTED
-        }
+            override fun onDeviceConnected() {
+                Logger.d(TAG, "onDeviceConnected")
+                state.value = State.CONNECTED
+            }
 
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            Logger.d(TAG, "onDeviceDisconnected, $transportSpecificTermination")
-            close()
-        }
+            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                Logger.d(TAG, "onDeviceDisconnected, $transportSpecificTermination")
+                close()
+            }
 
-        override fun onResponseReceived(deviceResponseBytes_: ByteArray) {
-            Logger.d(TAG, "onResponseReceived")
-            deviceResponseBytes = deviceResponseBytes_
-            state.value = State.TRANSACTION_COMPLETE
-        }
+            override fun onResponseReceived(deviceResponseBytes_: ByteArray) {
+                Logger.d(TAG, "onResponseReceived")
+                deviceResponseBytes = deviceResponseBytes_
+                state.value = State.TRANSACTION_COMPLETE
+            }
 
-        override fun onError(error_: Throwable) {
-            Logger.d(TAG, "onError $error")
-            error = error_
-            state.value = State.TRANSACTION_COMPLETE
+            override fun onError(error_: Throwable) {
+                Logger.d(TAG, "onError $error")
+                error = error_
+                state.value = State.TRANSACTION_COMPLETE
+            }
         }
-    }
 
     // Called when setings have changed
     fun reinitializeVerificationHelper() {
@@ -122,27 +124,34 @@ class TransferHelper private constructor(
 
     private fun initializeVerificationHelper() {
         val builder = VerificationHelper.Builder(context, listener, context.mainExecutor)
-        val options = DataTransportOptions.Builder()
-            .setBleUseL2CAP(getL2CapEnabled())
-            .setExperimentalBleL2CAPPsmInEngagement(getExperimentalPsmEnabled())
-            .build()
+        val options =
+            DataTransportOptions.Builder()
+                .setBleUseL2CAP(getL2CapEnabled())
+                .setExperimentalBleL2CAPPsmInEngagement(getExperimentalPsmEnabled())
+                .build()
         builder.setDataTransportOptions(options)
 
         val connectionMethods = mutableListOf<ConnectionMethod>()
         val bleUuid = UUID.randomUUID()
         if (getBleCentralClientDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
-                false,
-                true,
-                null,
-                bleUuid))
+            connectionMethods.add(
+                ConnectionMethodBle(
+                    false,
+                    true,
+                    null,
+                    bleUuid,
+                ),
+            )
         }
         if (getBlePeripheralServerDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
-                true,
-                false,
-                bleUuid,
-                null))
+            connectionMethods.add(
+                ConnectionMethodBle(
+                    true,
+                    false,
+                    bleUuid,
+                    null,
+                ),
+            )
         }
         if (getWifiAwareDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodWifiAware(null, OptionalLong.empty(), OptionalLong.empty(), null))
@@ -157,7 +166,6 @@ class TransferHelper private constructor(
             connectionMethods.add(ConnectionMethodUdp("", 0))
         }
         builder.setNegotiatedHandoverConnectionMethods(connectionMethods)
-
 
         verificationHelper?.disconnect()
         verificationHelper = builder.build()
@@ -177,7 +185,6 @@ class TransferHelper private constructor(
         state.value = State.REQUEST_SENT
     }
 
-
     fun getTapToEngagementDurationMillis(): Long {
         return verificationHelper!!.tapToEngagementDurationMillis
     }
@@ -194,7 +201,6 @@ class TransferHelper private constructor(
         return verificationHelper!!.scanningTimeMillis
     }
 
-
     fun getEngagementMethod(): VerificationHelper.EngagementMethod {
         return verificationHelper!!.engagementMethod
     }
@@ -203,7 +209,7 @@ class TransferHelper private constructor(
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         val storageDir = File(context.noBackupFilesDir, "identity")
         storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
+        androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine)
         state.value = State.IDLE
 
         initializeVerificationHelper()
@@ -217,9 +223,10 @@ class TransferHelper private constructor(
                 }
                 state.postValue(State.ENGAGING)
             },
-            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-            null)
+            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B +
+                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+            null,
+        )
     }
 
     fun getState(): LiveData<State> {
@@ -338,6 +345,4 @@ class TransferHelper private constructor(
             putBoolean(PREFERENCE_KEY_DEBUG_ENABLED, enabled)
         }
     }
-
-
 }

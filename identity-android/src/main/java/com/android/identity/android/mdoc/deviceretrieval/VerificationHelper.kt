@@ -22,7 +22,6 @@ import android.nfc.NdefRecord
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.util.Base64
-import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportBle
 import com.android.identity.android.mdoc.transport.DataTransportBleCentralClientMode
@@ -65,7 +64,7 @@ import java.util.concurrent.Executor
 class VerificationHelper internal constructor(
     private val context: Context,
     private val listener: Listener,
-    private val listenerExecutor: Executor
+    private val listenerExecutor: Executor,
 ) {
     private var negotiatedHandoverConnectionMethods: List<ConnectionMethod>? = null
     private var negotiatedHandoverListeningTransports = mutableListOf<DataTransport>()
@@ -122,9 +121,12 @@ class VerificationHelper internal constructor(
      * The amount of time from first NFC interaction until Engagement has been received.
      */
     val tapToEngagementDurationMillis: Long
-        get() = if (timestampNfcTap == 0L) {
-            0
-        } else timestampEngagementReceived - timestampNfcTap
+        get() =
+            if (timestampNfcTap == 0L) {
+                0
+            } else {
+                timestampEngagementReceived - timestampNfcTap
+            }
 
     /**
      * The amount of time from when Engagement has been received until the request was sent.
@@ -142,9 +144,12 @@ class VerificationHelper internal constructor(
      * The amount of time spent BLE scanning or 0 if no scanning occurred.
      */
     val scanningTimeMillis: Long
-        get() = if (dataTransport is DataTransportBle) {
-            (dataTransport as DataTransportBle).scanningTimeMillis
-        } else 0
+        get() =
+            if (dataTransport is DataTransportBle) {
+                (dataTransport as DataTransportBle).scanningTimeMillis
+            } else {
+                0
+            }
 
     private fun start() {
         if (reverseEngagementConnectionMethods != null) {
@@ -154,13 +159,15 @@ class VerificationHelper internal constructor(
             for (cm in negotiatedHandoverConnectionMethods!!) {
                 val t =
                     DataTransport.fromConnectionMethod(
-                        context, cm, DataTransport.Role.MDOC_READER,
-                        options!!
+                        context,
+                        cm,
+                        DataTransport.Role.MDOC_READER,
+                        options!!,
                     )
                 t.connect()
                 Logger.i(
                     TAG,
-                    "Warming up transport for negotiated handover: " + t.connectionMethodForTransport
+                    "Warming up transport for negotiated handover: " + t.connectionMethodForTransport,
                 )
                 negotiatedHandoverListeningTransports.add(t)
             }
@@ -172,13 +179,18 @@ class VerificationHelper internal constructor(
         reverseEngagementListeningTransports = mutableListOf()
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
-        val disambiguatedMethods = ConnectionMethod.disambiguate(
-            reverseEngagementConnectionMethods!!
-        )
-        for (cm in disambiguatedMethods) {
-            val transport = DataTransport.fromConnectionMethod(
-                context, cm, DataTransport.Role.MDOC_READER, options!!
+        val disambiguatedMethods =
+            ConnectionMethod.disambiguate(
+                reverseEngagementConnectionMethods!!,
             )
+        for (cm in disambiguatedMethods) {
+            val transport =
+                DataTransport.fromConnectionMethod(
+                    context,
+                    cm,
+                    DataTransport.Role.MDOC_READER,
+                    options!!,
+                )
             reverseEngagementListeningTransports!!.add(transport)
             // TODO: we may want to have the DataTransport actually give us a ConnectionMethod,
             //   for example consider the case where a HTTP-based transport uses a cloud-service
@@ -191,44 +203,48 @@ class VerificationHelper internal constructor(
         //
 
         // Calculate ReaderEngagement as we're setting up methods
-        readerEngagementGenerator = EngagementGenerator(
-            ephemeralKey!!.publicKey,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_1
-        )
+        readerEngagementGenerator =
+            EngagementGenerator(
+                ephemeralKey!!.publicKey,
+                EngagementGenerator.ENGAGEMENT_VERSION_1_1,
+            )
         connectionMethodsForReaderEngagement = mutableListOf()
         for (transport in reverseEngagementListeningTransports!!) {
-            transport.setListener(object : DataTransport.Listener {
-                override fun onConnecting() {
-                    Logger.d(TAG, "onConnecting for $transport")
-                    reverseEngagementPeerIsConnecting()
-                }
+            transport.setListener(
+                object : DataTransport.Listener {
+                    override fun onConnecting() {
+                        Logger.d(TAG, "onConnecting for $transport")
+                        reverseEngagementPeerIsConnecting()
+                    }
 
-                override fun onConnected() {
-                    Logger.d(TAG, "onConnected for $transport")
-                    reverseEngagementPeerHasConnected(transport)
-                }
+                    override fun onConnected() {
+                        Logger.d(TAG, "onConnected for $transport")
+                        reverseEngagementPeerHasConnected(transport)
+                    }
 
-                override fun onDisconnected() {
-                    Logger.d(TAG, "onDisconnected for $transport")
-                    transport.close()
-                }
+                    override fun onDisconnected() {
+                        Logger.d(TAG, "onDisconnected for $transport")
+                        transport.close()
+                    }
 
-                override fun onError(error: Throwable) {
-                    transport.close()
-                    reportError(error)
-                }
+                    override fun onError(error: Throwable) {
+                        transport.close()
+                        reportError(error)
+                    }
 
-                override fun onMessageReceived() {
-                    Logger.d(TAG, "onMessageReceived for $transport")
-                    handleOnMessageReceived()
-                }
+                    override fun onMessageReceived() {
+                        Logger.d(TAG, "onMessageReceived for $transport")
+                        handleOnMessageReceived()
+                    }
 
-                override fun onTransportSpecificSessionTermination() {
-                    Logger.d(TAG, "Received transport-specific session termination")
-                    transport.close()
-                    reportDeviceDisconnected(true)
-                }
-            }, listenerExecutor)
+                    override fun onTransportSpecificSessionTermination() {
+                        Logger.d(TAG, "Received transport-specific session termination")
+                        transport.close()
+                        reportDeviceDisconnected(true)
+                    }
+                },
+                listenerExecutor,
+            )
             Logger.d(TAG, "Connecting transport $transport")
             transport.connect()
             connectionMethodsForReaderEngagement!!.add(transport.connectionMethodForTransport)
@@ -241,7 +257,7 @@ class VerificationHelper internal constructor(
     }
 
     fun reverseEngagementPeerIsConnecting() {}
-    
+
     fun reverseEngagementPeerHasConnected(transport: DataTransport) {
         // stop listening on other transports
         //
@@ -298,18 +314,19 @@ class VerificationHelper internal constructor(
 
     private fun startNfcDataTransport() {
         // connect() may block, run in thread
-        val connectThread: Thread = object : Thread() {
-            override fun run() {
-                try {
-                    nfcIsoDep!!.connect()
-                    nfcIsoDep!!.timeout = 20 * 1000 // 20 seconds
-                } catch (e: IOException) {
-                    reportError(e)
-                    return
+        val connectThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    try {
+                        nfcIsoDep!!.connect()
+                        nfcIsoDep!!.timeout = 20 * 1000 // 20 seconds
+                    } catch (e: IOException) {
+                        reportError(e)
+                        return
+                    }
+                    listenerExecutor.execute { connectWithDataTransport(dataTransport, false) }
                 }
-                listenerExecutor.execute { connectWithDataTransport(dataTransport, false) }
             }
-        }
         connectThread.start()
     }
 
@@ -332,10 +349,11 @@ class VerificationHelper internal constructor(
         check(dataTransport == null) { "Cannot be called after connect()" }
         val uri = Uri.parse(qrDeviceEngagement)
         if (uri != null && uri.scheme != null && uri.scheme == "mdoc") {
-            val encodedDeviceEngagement = Base64.decode(
-                uri.encodedSchemeSpecificPart,
-                Base64.URL_SAFE or Base64.NO_PADDING
-            )
+            val encodedDeviceEngagement =
+                Base64.decode(
+                    uri.encodedSchemeSpecificPart,
+                    Base64.URL_SAFE or Base64.NO_PADDING,
+                )
             if (encodedDeviceEngagement != null) {
                 Logger.dCbor(TAG, "Device Engagement from QR code", encodedDeviceEngagement)
                 val handover = Simple.NULL
@@ -351,19 +369,26 @@ class VerificationHelper internal constructor(
         }
         reportError(
             IllegalArgumentException(
-                "Invalid QR Code device engagement text: $qrDeviceEngagement"
-            )
+                "Invalid QR Code device engagement text: $qrDeviceEngagement",
+            ),
         )
     }
 
-    private fun transceive(isoDep: IsoDep, apdu: ByteArray): ByteArray {
+    private fun transceive(
+        isoDep: IsoDep,
+        apdu: ByteArray,
+    ): ByteArray {
         Logger.dHex(TAG, "transceive: Sending APDU", apdu)
         val ret = isoDep.transceive(apdu)
         Logger.dHex(TAG, "transceive: Received APDU", ret)
         return ret
     }
 
-    private fun readBinary(isoDep: IsoDep, offset: Int, size: Int): ByteArray? {
+    private fun readBinary(
+        isoDep: IsoDep,
+        offset: Int,
+        size: Int,
+    ): ByteArray? {
         val apdu: ByteArray
         val ret: ByteArray
         apdu = NfcUtil.createApduReadBinary(offset, size)
@@ -375,7 +400,11 @@ class VerificationHelper internal constructor(
         return Arrays.copyOfRange(ret, 0, ret.size - 2)
     }
 
-    private fun ndefReadMessage(isoDep: IsoDep, tWaitMillis: Double, _nWait: Int): ByteArray? {
+    private fun ndefReadMessage(
+        isoDep: IsoDep,
+        tWaitMillis: Double,
+        _nWait: Int,
+    ): ByteArray? {
         var nWait = _nWait
         var apdu: ByteArray
         var ret: ByteArray
@@ -384,8 +413,12 @@ class VerificationHelper internal constructor(
             apdu = NfcUtil.createApduReadBinary(0x0000, 2)
             ret = transceive(isoDep, apdu)
             if (ret.size != 4 || ret[2] != 0x90.toByte() || ret[3] != 0x00.toByte()) {
-                Logger.eHex(TAG, "ndefReadMessage: Malformed response for first " +
-                            "READ_BINARY command for length, ret", ret)
+                Logger.eHex(
+                    TAG,
+                    "ndefReadMessage: Malformed response for first " +
+                        "READ_BINARY command for length, ret",
+                    ret,
+                )
                 return null
             }
             replyLen = (ret[0].toInt() and 0xff) * 256 + (ret[1].toInt() and 0xff)
@@ -399,7 +432,7 @@ class VerificationHelper internal constructor(
                 Logger.d(TAG, "ndefReadMessage: NDEF message with length 0 and $nWait time extensions left")
                 try {
                     val waitMillis = Math.ceil(tWaitMillis).toLong()
-                    Logger.d(TAG,"ndefReadMessage: Sleeping $waitMillis ms")
+                    Logger.d(TAG, "ndefReadMessage: Sleeping $waitMillis ms")
                     Thread.sleep(waitMillis)
                 } catch (e: InterruptedException) {
                     throw RuntimeException("Unexpected interrupt", e)
@@ -421,8 +454,10 @@ class VerificationHelper internal constructor(
 
     @Throws(IOException::class)
     private fun ndefTransact(
-        isoDep: IsoDep, ndefMessage: ByteArray,
-        tWaitMillis: Double, nWait: Int
+        isoDep: IsoDep,
+        ndefMessage: ByteArray,
+        tWaitMillis: Double,
+        nWait: Int,
     ): ByteArray? {
         var apdu: ByteArray
         var ret: ByteArray
@@ -484,10 +519,11 @@ class VerificationHelper internal constructor(
             }
 
             // Final command is UPDATE_BINARY to write the length
-            val encodedLength = byteArrayOf(
-                (ndefMessage.size / 0x100 and 0xff).toByte(),
-                (ndefMessage.size and 0xff).toByte()
-            )
+            val encodedLength =
+                byteArrayOf(
+                    (ndefMessage.size / 0x100 and 0xff).toByte(),
+                    (ndefMessage.size and 0xff).toByte(),
+                )
             apdu = NfcUtil.createApduUpdateBinary(0x0000, encodedLength)
             ret = transceive(isoDep, apdu)
             if (!ret.contentEquals(NfcUtil.STATUS_WORD_OK)) {
@@ -516,191 +552,208 @@ class VerificationHelper internal constructor(
             Logger.w(TAG, "Negotiated Handover will not work - no listening connections configured")
         }
         val isoDep = nfcIsoDep
-        val transceiverThread: Thread = object : Thread() {
-            override fun run() {
-                var ret: ByteArray?
-                var apdu: ByteArray
-                try {
-                    isoDep!!.connect()
-                    isoDep.timeout = 20 * 1000 // 20 seconds
-                    apdu =
-                        NfcUtil.createApduApplicationSelect(NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)
-                    ret = transceive(isoDep, apdu)
-                    if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-                        Logger.eHex(TAG, "NDEF application selection failed, ret", ret)
-                        throw IllegalStateException("NDEF application selection failed")
-                    }
-                    apdu = NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID)
-                    ret = transceive(isoDep, apdu)
-                    if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-                        Logger.eHex(TAG, "Error selecting capability file, ret", ret)
-                        throw IllegalStateException("Error selecting capability file")
-                    }
-
-                    // CC file is 15 bytes long
-                    val ccFile = readBinary(isoDep, 0, 15)
-                        ?: throw IllegalStateException("Error reading CC file")
-                    check(ccFile.size >= 15) {
-                        String.format(
-                            Locale.US, "CC file is %d bytes, expected 15",
-                            ccFile.size
-                        )
-                    }
-
-                    // TODO: look at mapping version in ccFile
-                    val ndefFileId =
-                        (ccFile[9].toInt() and 0xff) * 256 + (ccFile[10].toInt() and 0xff)
-                    Logger.d(TAG, String.format(Locale.US, "NDEF file id: 0x%04x", ndefFileId))
-                    apdu = NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID)
-                    ret = transceive(isoDep, apdu)
-                    if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-                        Logger.eHex(TAG, "Error selecting NDEF file, ret", ret)
-                        throw IllegalStateException("Error selecting NDEF file")
-                    }
-
-                    // First see if we should use negotiated handover..
-                    val initialNdefMessage = ndefReadMessage(isoDep, 1.0, 0)
-                    if (initialNdefMessage == null) {
-                        throw IllegalStateException("Error reading initial NDEF message")
-                    }
-                    val handoverServiceRecord =
-                        NfcUtil.findServiceParameterRecordWithName(
-                            initialNdefMessage,
-                            "urn:nfc:sn:handover"
-                        )
-                    if (handoverServiceRecord == null) {
-                        val elapsedTime = System.currentTimeMillis() - timeMillisBegin
-                        Logger.i(TAG,"Time spent in NFC static handover: $elapsedTime ms")
-                        Logger.d(TAG, "No urn:nfc:sn:handover record found - assuming NFC static handover")
-                        val hs = NfcUtil.parseHandoverSelectMessage(initialNdefMessage)
-                                ?: throw IllegalStateException("Error parsing Handover Select message")
-                        check(!hs.connectionMethods.isEmpty()) { "No connection methods in Handover Select" }
-                        if (Logger.isDebugEnabled) {
-                            for (cm in hs.connectionMethods) {
-                                Logger.d(TAG, "Connection method from static handover: $cm")
-                            }
+        val transceiverThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    var ret: ByteArray?
+                    var apdu: ByteArray
+                    try {
+                        isoDep!!.connect()
+                        isoDep.timeout = 20 * 1000 // 20 seconds
+                        apdu =
+                            NfcUtil.createApduApplicationSelect(NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)
+                        ret = transceive(isoDep, apdu)
+                        if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+                            Logger.eHex(TAG, "NDEF application selection failed, ret", ret)
+                            throw IllegalStateException("NDEF application selection failed")
                         }
-                        Logger.d(TAG, "Reporting Device Engagement through NFC")
-                        val readerHandover = CborArray.builder()
-                            .add(initialNdefMessage) // Handover Select message
-                            .add(Simple.NULL)        // Handover Request message
-                            .end()
-                            .build()
-                        setDeviceEngagement(
-                            hs.encodedDeviceEngagement,
-                            readerHandover,
-                            EngagementMethod.NFC_STATIC_HANDOVER
-                        )
-                        reportDeviceEngagementReceived(hs.connectionMethods)
-                        return
-                    }
-                    Logger.d(TAG, "Service Parameter for urn:nfc:sn:handover found - negotiated handover")
-                    val spr = NfcUtil.parseServiceParameterRecord(handoverServiceRecord)
-                    Logger.d(TAG, String.format(
-                            "tWait is %.1f ms, nWait is %d, maxNdefSize is %d",
-                            spr.tWaitMillis, spr.nWait, spr.maxNdefSize))
+                        apdu = NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID)
+                        ret = transceive(isoDep, apdu)
+                        if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+                            Logger.eHex(TAG, "Error selecting capability file, ret", ret)
+                            throw IllegalStateException("Error selecting capability file")
+                        }
 
-                    // Select the service, the resulting NDEF message is specified in
-                    // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
-                    // section 4.3 TNEP Status Message
-                    ret = ndefTransact(
-                        isoDep,
-                        NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"),
-                        spr.tWaitMillis, spr.nWait
-                    )
-                    checkNotNull(ret) { "Service selection: no response" }
-                    val tnepStatusRecord = NfcUtil.findTnepStatusRecord(ret)
-                        ?: throw IllegalArgumentException("Service selection: no TNEP status record")
-                    val tnepStatusPayload = tnepStatusRecord.payload
-                    require(!(tnepStatusPayload == null || tnepStatusPayload.size != 1)) {
-                        "Service selection: Malformed payload for TNEP status record"
-                    }
-                    val statusType = tnepStatusPayload[0].toInt() and 0x0ff
-                    // Status type is defined in 4.3.3 Status Type
-                    require(statusType == 0x00) {
-                        "Service selection: Unexpected status type $statusType"
-                    }
-
-                    // Now send Handover Request, the resulting NDEF message is Handover Response..
-                    //
-                    val hrConnectionMethods = mutableListOf<ConnectionMethod>()
-                    for (t in negotiatedHandoverListeningTransports) {
-                        hrConnectionMethods.add(t.connectionMethodForTransport)
-                    }
-                    val hrMessage: ByteArray = NfcUtil.createNdefMessageHandoverRequest(
-                        hrConnectionMethods,
-                        null,
-                        options
-                    ) // TODO: pass ReaderEngagement message
-                    Logger.dHex(TAG, "Handover Request sent", hrMessage)
-                    val hsMessage = ndefTransact(isoDep, hrMessage, spr.tWaitMillis, spr.nWait)
-                        ?: throw IllegalStateException("Handover Request failed")
-                    Logger.dHex(TAG, "Handover Select received", hsMessage)
-                    val elapsedTime = System.currentTimeMillis() - timeMillisBegin
-                    Logger.i(TAG, "Time spent in NFC negotiated handover: $elapsedTime ms")
-                    var encodedDeviceEngagement: ByteArray? = null
-                    var parsedCms = mutableListOf<ConnectionMethod>()
-                    val ndefHsMessage = NdefMessage(hsMessage)
-                    for (r in ndefHsMessage.records) {
-                        // DeviceEngagement record
-                        //
-                        if (r.tnf == NdefRecord.TNF_EXTERNAL_TYPE &&
-                            Arrays.equals(r.type, "iso.org:18013:deviceengagement".toByteArray())
-                            && Arrays.equals(r.id, "mdoc".toByteArray())
-                        ) {
-                            encodedDeviceEngagement = r.payload
-                            Logger.dCbor(TAG,
-                                "Device Engagement from NFC negotiated handover",
-                                encodedDeviceEngagement
+                        // CC file is 15 bytes long
+                        val ccFile =
+                            readBinary(isoDep, 0, 15)
+                                ?: throw IllegalStateException("Error reading CC file")
+                        check(ccFile.size >= 15) {
+                            String.format(
+                                Locale.US,
+                                "CC file is %d bytes, expected 15",
+                                ccFile.size,
                             )
-                        } else if (r.tnf == NdefRecord.TNF_MIME_MEDIA || r.tnf == NdefRecord.TNF_EXTERNAL_TYPE) {
-                            val cm = NfcUtil.fromNdefRecord(r, true)
-                            if (cm != null) {
-                                parsedCms.add(cm)
-                                Logger.d(TAG, "CM: $cm")
+                        }
+
+                        // TODO: look at mapping version in ccFile
+                        val ndefFileId =
+                            (ccFile[9].toInt() and 0xff) * 256 + (ccFile[10].toInt() and 0xff)
+                        Logger.d(TAG, String.format(Locale.US, "NDEF file id: 0x%04x", ndefFileId))
+                        apdu = NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID)
+                        ret = transceive(isoDep, apdu)
+                        if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+                            Logger.eHex(TAG, "Error selecting NDEF file, ret", ret)
+                            throw IllegalStateException("Error selecting NDEF file")
+                        }
+
+                        // First see if we should use negotiated handover..
+                        val initialNdefMessage = ndefReadMessage(isoDep, 1.0, 0)
+                        if (initialNdefMessage == null) {
+                            throw IllegalStateException("Error reading initial NDEF message")
+                        }
+                        val handoverServiceRecord =
+                            NfcUtil.findServiceParameterRecordWithName(
+                                initialNdefMessage,
+                                "urn:nfc:sn:handover",
+                            )
+                        if (handoverServiceRecord == null) {
+                            val elapsedTime = System.currentTimeMillis() - timeMillisBegin
+                            Logger.i(TAG, "Time spent in NFC static handover: $elapsedTime ms")
+                            Logger.d(TAG, "No urn:nfc:sn:handover record found - assuming NFC static handover")
+                            val hs =
+                                NfcUtil.parseHandoverSelectMessage(initialNdefMessage)
+                                    ?: throw IllegalStateException("Error parsing Handover Select message")
+                            check(!hs.connectionMethods.isEmpty()) { "No connection methods in Handover Select" }
+                            if (Logger.isDebugEnabled) {
+                                for (cm in hs.connectionMethods) {
+                                    Logger.d(TAG, "Connection method from static handover: $cm")
+                                }
+                            }
+                            Logger.d(TAG, "Reporting Device Engagement through NFC")
+                            val readerHandover =
+                                CborArray.builder()
+                                    .add(initialNdefMessage) // Handover Select message
+                                    .add(Simple.NULL) // Handover Request message
+                                    .end()
+                                    .build()
+                            setDeviceEngagement(
+                                hs.encodedDeviceEngagement,
+                                readerHandover,
+                                EngagementMethod.NFC_STATIC_HANDOVER,
+                            )
+                            reportDeviceEngagementReceived(hs.connectionMethods)
+                            return
+                        }
+                        Logger.d(TAG, "Service Parameter for urn:nfc:sn:handover found - negotiated handover")
+                        val spr = NfcUtil.parseServiceParameterRecord(handoverServiceRecord)
+                        Logger.d(
+                            TAG,
+                            String.format(
+                                "tWait is %.1f ms, nWait is %d, maxNdefSize is %d",
+                                spr.tWaitMillis,
+                                spr.nWait,
+                                spr.maxNdefSize,
+                            ),
+                        )
+
+                        // Select the service, the resulting NDEF message is specified in
+                        // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
+                        // section 4.3 TNEP Status Message
+                        ret =
+                            ndefTransact(
+                                isoDep,
+                                NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"),
+                                spr.tWaitMillis, spr.nWait,
+                            )
+                        checkNotNull(ret) { "Service selection: no response" }
+                        val tnepStatusRecord =
+                            NfcUtil.findTnepStatusRecord(ret)
+                                ?: throw IllegalArgumentException("Service selection: no TNEP status record")
+                        val tnepStatusPayload = tnepStatusRecord.payload
+                        require(!(tnepStatusPayload == null || tnepStatusPayload.size != 1)) {
+                            "Service selection: Malformed payload for TNEP status record"
+                        }
+                        val statusType = tnepStatusPayload[0].toInt() and 0x0ff
+                        // Status type is defined in 4.3.3 Status Type
+                        require(statusType == 0x00) {
+                            "Service selection: Unexpected status type $statusType"
+                        }
+
+                        // Now send Handover Request, the resulting NDEF message is Handover Response..
+                        //
+                        val hrConnectionMethods = mutableListOf<ConnectionMethod>()
+                        for (t in negotiatedHandoverListeningTransports) {
+                            hrConnectionMethods.add(t.connectionMethodForTransport)
+                        }
+                        val hrMessage: ByteArray =
+                            NfcUtil.createNdefMessageHandoverRequest(
+                                hrConnectionMethods,
+                                null,
+                                options,
+                            ) // TODO: pass ReaderEngagement message
+                        Logger.dHex(TAG, "Handover Request sent", hrMessage)
+                        val hsMessage =
+                            ndefTransact(isoDep, hrMessage, spr.tWaitMillis, spr.nWait)
+                                ?: throw IllegalStateException("Handover Request failed")
+                        Logger.dHex(TAG, "Handover Select received", hsMessage)
+                        val elapsedTime = System.currentTimeMillis() - timeMillisBegin
+                        Logger.i(TAG, "Time spent in NFC negotiated handover: $elapsedTime ms")
+                        var encodedDeviceEngagement: ByteArray? = null
+                        var parsedCms = mutableListOf<ConnectionMethod>()
+                        val ndefHsMessage = NdefMessage(hsMessage)
+                        for (r in ndefHsMessage.records) {
+                            // DeviceEngagement record
+                            //
+                            if (r.tnf == NdefRecord.TNF_EXTERNAL_TYPE &&
+                                Arrays.equals(r.type, "iso.org:18013:deviceengagement".toByteArray()) &&
+                                Arrays.equals(r.id, "mdoc".toByteArray())
+                            ) {
+                                encodedDeviceEngagement = r.payload
+                                Logger.dCbor(
+                                    TAG,
+                                    "Device Engagement from NFC negotiated handover",
+                                    encodedDeviceEngagement,
+                                )
+                            } else if (r.tnf == NdefRecord.TNF_MIME_MEDIA || r.tnf == NdefRecord.TNF_EXTERNAL_TYPE) {
+                                val cm = NfcUtil.fromNdefRecord(r, true)
+                                if (cm != null) {
+                                    parsedCms.add(cm)
+                                    Logger.d(TAG, "CM: $cm")
+                                }
                             }
                         }
-                    }
-                    checkNotNull(encodedDeviceEngagement) { "Device Engagement not found in HS message" }
-                    check(parsedCms.size >= 1) { "No Alternative Carriers in HS message" }
+                        checkNotNull(encodedDeviceEngagement) { "Device Engagement not found in HS message" }
+                        check(parsedCms.size >= 1) { "No Alternative Carriers in HS message" }
 
-                    // Now that we have DeviceEngagement, pass eDeviceKeyBytes to the transport
-                    // since it's needed for the Ident characteristic as per ISO/IEC 18013-5:2021
-                    // clause 8.3.3.1.1.3 Connection setup
-                    val engagement = EngagementParser(encodedDeviceEngagement).parse()
-                    for (t in negotiatedHandoverListeningTransports) {
-                        t.setEDeviceKeyBytes(engagement.eSenderKeyBytes)
-                    }
+                        // Now that we have DeviceEngagement, pass eDeviceKeyBytes to the transport
+                        // since it's needed for the Ident characteristic as per ISO/IEC 18013-5:2021
+                        // clause 8.3.3.1.1.3 Connection setup
+                        val engagement = EngagementParser(encodedDeviceEngagement).parse()
+                        for (t in negotiatedHandoverListeningTransports) {
+                            t.setEDeviceKeyBytes(engagement.eSenderKeyBytes)
+                        }
 
-                    // TODO: use selected CMs to pick from the list we offered... why would we
-                    //  have to do this? Because some mDL / wallets don't return the UUID in
-                    //  the HS message.
-                    //  For now just assume we only offered a single CM and the other side accepted.
-                    //
-                    parsedCms = hrConnectionMethods
-                    val handover = CborArray.builder()
-                        .add(hsMessage) // Handover Select message
-                        .add(hrMessage) // Handover Request message
-                        .end()
-                        .build()
-                    setDeviceEngagement(
-                        encodedDeviceEngagement,
-                        handover,
-                        EngagementMethod.NFC_NEGOTIATED_HANDOVER
-                    )
-                    reportDeviceEngagementReceived(parsedCms)
-                } catch (t: Throwable) {
-                    reportError(t)
+                        // TODO: use selected CMs to pick from the list we offered... why would we
+                        //  have to do this? Because some mDL / wallets don't return the UUID in
+                        //  the HS message.
+                        //  For now just assume we only offered a single CM and the other side accepted.
+                        //
+                        parsedCms = hrConnectionMethods
+                        val handover =
+                            CborArray.builder()
+                                .add(hsMessage) // Handover Select message
+                                .add(hrMessage) // Handover Request message
+                                .end()
+                                .build()
+                        setDeviceEngagement(
+                            encodedDeviceEngagement,
+                            handover,
+                            EngagementMethod.NFC_NEGOTIATED_HANDOVER,
+                        )
+                        reportDeviceEngagementReceived(parsedCms)
+                    } catch (t: Throwable) {
+                        reportError(t)
+                    }
                 }
             }
-        }
         transceiverThread.start()
     }
 
     private fun setDeviceEngagement(
         deviceEngagement: ByteArray,
         handover: DataItem,
-        engagementMethod: EngagementMethod
+        engagementMethod: EngagementMethod,
     ) {
         check(this.deviceEngagement == null) { "Device Engagement already set" }
         this.deviceEngagement = deviceEngagement
@@ -714,24 +767,27 @@ class VerificationHelper internal constructor(
         // can take a long time (hundreds of milliseconds) so use the precalculated key
         // to avoid delaying the transaction...
         ephemeralKey = Crypto.createEcPrivateKey(engagement.eSenderKey.curve)
-        val encodedEReaderKeyPub: ByteArray = Cbor.encode(
-            ephemeralKey!!.publicKey.toCoseKey().toDataItem
-        )
-        encodedSessionTranscript = Cbor.encode(
-            CborArray.builder()
-                .add(Tagged(24, Bstr(this.deviceEngagement!!)))
-                .add(Tagged(24, Bstr(encodedEReaderKeyPub)))
-                .add(handover)
-                .end()
-                .build()
-        )
+        val encodedEReaderKeyPub: ByteArray =
+            Cbor.encode(
+                ephemeralKey!!.publicKey.toCoseKey().toDataItem,
+            )
+        encodedSessionTranscript =
+            Cbor.encode(
+                CborArray.builder()
+                    .add(Tagged(24, Bstr(this.deviceEngagement!!)))
+                    .add(Tagged(24, Bstr(encodedEReaderKeyPub)))
+                    .add(handover)
+                    .end()
+                    .build(),
+            )
         Logger.dCbor(TAG, "SessionTranscript", encodedSessionTranscript!!)
-        sessionEncryptionReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
-            ephemeralKey!!,
-            eDeviceKey,
-            encodedSessionTranscript!!
-        )
+        sessionEncryptionReader =
+            SessionEncryption(
+                SessionEncryption.Role.MDOC_READER,
+                ephemeralKey!!,
+                eDeviceKey,
+                encodedSessionTranscript!!,
+            )
         if (readerEngagement != null) {
             // No need to include EReaderKey in first message...
             sessionEncryptionReader!!.setSendSessionEstablishment(false)
@@ -758,8 +814,11 @@ class VerificationHelper internal constructor(
                     t.close()
                 }
                 negotiatedHandoverListeningTransports.clear()
-                Logger.i(TAG, "Connecting to a warmed-up transport " +
-                        "${warmedUpTransport.connectionMethodForTransport}")
+                Logger.i(
+                    TAG,
+                    "Connecting to a warmed-up transport " +
+                        "${warmedUpTransport.connectionMethodForTransport}",
+                )
                 connectWithDataTransport(warmedUpTransport, true)
                 return
             }
@@ -774,14 +833,18 @@ class VerificationHelper internal constructor(
         Logger.i(TAG, "Connecting to transport $connectionMethod")
         connectWithDataTransport(
             DataTransport.fromConnectionMethod(
-                context, connectionMethod, DataTransport.Role.MDOC_READER, options!!),
-            false
+                context,
+                connectionMethod,
+                DataTransport.Role.MDOC_READER,
+                options!!,
+            ),
+            false,
         )
     }
 
     private fun connectWithDataTransport(
         transport: DataTransport?,
-        usingWarmedUpTransport: Boolean
+        usingWarmedUpTransport: Boolean,
     ) {
         dataTransport = transport
         if (dataTransport is DataTransportNfc) {
@@ -791,9 +854,11 @@ class VerificationHelper internal constructor(
                 // weird). In this case we just sit and wait until the tag (reader)
                 // is detected... once detected, this routine can just call connect()
                 // again.
-                Logger.i(TAG,
+                Logger.i(
+                    TAG,
                     "In connect() with NFC data transfer but no ISO dep has been set. " +
-                            "Assuming QR engagement, waiting for mdoc to move into field")
+                        "Assuming QR engagement, waiting for mdoc to move into field",
+                )
                 reportMoveIntoNfcField()
                 return
             }
@@ -801,9 +866,11 @@ class VerificationHelper internal constructor(
         } else if (dataTransport is DataTransportBle) {
             // Helpful warning
             if (options!!.bleClearCache && dataTransport is DataTransportBleCentralClientMode) {
-                Logger.i(TAG,
+                Logger.i(
+                    TAG,
                     "Ignoring bleClearCache flag since it only applies to " +
-                            "BLE mdoc peripheral server mode when acting as a reader")
+                        "BLE mdoc peripheral server mode when acting as a reader",
+                )
             }
         }
 
@@ -814,38 +881,39 @@ class VerificationHelper internal constructor(
         // If it turns out that we're going to access shared state we might need locking /
         // synchronization.
         //
-        val listener: DataTransport.Listener = object : DataTransport.Listener {
-            override fun onConnecting() {
-                Logger.d(TAG, "onConnecting for $dataTransport")
-            }
+        val listener: DataTransport.Listener =
+            object : DataTransport.Listener {
+                override fun onConnecting() {
+                    Logger.d(TAG, "onConnecting for $dataTransport")
+                }
 
-            override fun onConnected() {
-                Logger.d(TAG, "onConnected for $dataTransport")
-                reportDeviceConnected()
-            }
+                override fun onConnected() {
+                    Logger.d(TAG, "onConnected for $dataTransport")
+                    reportDeviceConnected()
+                }
 
-            override fun onDisconnected() {
-                Logger.d(TAG, "onDisconnected for $dataTransport")
-                dataTransport!!.close()
-                reportError(Error("Peer disconnected without proper session termination"))
-            }
+                override fun onDisconnected() {
+                    Logger.d(TAG, "onDisconnected for $dataTransport")
+                    dataTransport!!.close()
+                    reportError(Error("Peer disconnected without proper session termination"))
+                }
 
-            override fun onError(error: Throwable) {
-                Logger.d(TAG, "onError for $dataTransport: $error")
-                dataTransport!!.close()
-                reportError(error)
-            }
+                override fun onError(error: Throwable) {
+                    Logger.d(TAG, "onError for $dataTransport: $error")
+                    dataTransport!!.close()
+                    reportError(error)
+                }
 
-            override fun onMessageReceived() {
-                handleOnMessageReceived()
-            }
+                override fun onMessageReceived() {
+                    handleOnMessageReceived()
+                }
 
-            override fun onTransportSpecificSessionTermination() {
-                Logger.d(TAG, "Received onTransportSpecificSessionTermination")
-                dataTransport!!.close()
-                reportDeviceDisconnected(true)
+                override fun onTransportSpecificSessionTermination() {
+                    Logger.d(TAG, "Received onTransportSpecificSessionTermination")
+                    dataTransport!!.close()
+                    reportDeviceDisconnected(true)
+                }
             }
-        }
         dataTransport!!.setListener(listener, listenerExecutor)
 
         // It's entirely possible the other side already connected to us...
@@ -901,19 +969,20 @@ class VerificationHelper internal constructor(
         if (sessionEncryptionReader == null) {
             reportError(
                 IllegalStateException(
-                    "Message received but no session "
-                            + "establishment with the remote device."
-                )
+                    "Message received but no session " +
+                        "establishment with the remote device.",
+                ),
             )
             return
         }
-        val decryptedMessage = try {
-            sessionEncryptionReader!!.decryptMessage(data)
-        } catch (e: Exception) {
-            dataTransport!!.close()
-            reportError(Error("Error decrypting message from device", e))
-            return
-        }
+        val decryptedMessage =
+            try {
+                sessionEncryptionReader!!.decryptMessage(data)
+            } catch (e: Exception) {
+                dataTransport!!.close()
+                reportError(Error("Error decrypting message from device", e))
+                return
+            }
 
         // If there's data in the message, assume it's DeviceResponse (ISO 18013-5
         // currently does not define other kinds of messages).
@@ -948,12 +1017,13 @@ class VerificationHelper internal constructor(
 
     fun reportDeviceDisconnected(transportSpecificTermination: Boolean) {
         Logger.d(
-            TAG, "reportDeviceDisconnected: transportSpecificTermination: "
-                    + transportSpecificTermination
+            TAG,
+            "reportDeviceDisconnected: transportSpecificTermination: " +
+                transportSpecificTermination,
         )
         listenerExecutor.execute {
             listener.onDeviceDisconnected(
-                transportSpecificTermination
+                transportSpecificTermination,
             )
         }
     }
@@ -1033,9 +1103,11 @@ class VerificationHelper internal constructor(
                     dataTransport!!.sendTransportSpecificTerminationMessage()
                 } else {
                     Logger.d(TAG, "Sending generic session termination message")
-                    val sessionTermination = sessionEncryptionReader!!.encryptMessage(
-                        null, Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
-                    )
+                    val sessionTermination =
+                        sessionEncryptionReader!!.encryptMessage(
+                            null,
+                            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
+                        )
                     dataTransport!!.sendMessage(sessionTermination)
                 }
             } else {
@@ -1067,9 +1139,11 @@ class VerificationHelper internal constructor(
         checkNotNull(ephemeralKey) { "New object must be created" }
         checkNotNull(dataTransport) { "Not connected to a remote device" }
         Logger.dCbor(TAG, "DeviceRequest to send", deviceRequestBytes)
-        val message = sessionEncryptionReader!!.encryptMessage(
-            deviceRequestBytes, null
-        )
+        val message =
+            sessionEncryptionReader!!.encryptMessage(
+                deviceRequestBytes,
+                null,
+            )
         Logger.dCbor(TAG, "SessionData to send", message)
         dataTransport!!.sendMessage(message)
         timestampRequestSent = Timestamp.now().toEpochMilli()
@@ -1094,9 +1168,7 @@ class VerificationHelper internal constructor(
      * @param useTransportSpecificSessionTermination Whether to use transport-specific session
      * termination.
      */
-    fun setUseTransportSpecificSessionTermination(
-        useTransportSpecificSessionTermination: Boolean
-    ) {
+    fun setUseTransportSpecificSessionTermination(useTransportSpecificSessionTermination: Boolean) {
         this.useTransportSpecificSessionTermination = useTransportSpecificSessionTermination
     }
 
@@ -1110,9 +1182,12 @@ class VerificationHelper internal constructor(
          * @return `true` if transport specific termination is available, `false`
          * if not or if not connected.
          */
-        get() = if (dataTransport == null) {
-            false
-        } else dataTransport!!.supportsTransportSpecificTerminationMessage()
+        get() =
+            if (dataTransport == null) {
+                false
+            } else {
+                dataTransport!!.supportsTransportSpecificTerminationMessage()
+            }
 
     /**
      * Sets whether to send session termination message.
@@ -1128,12 +1203,9 @@ class VerificationHelper internal constructor(
      *
      * @param sendSessionTerminationMessage Whether to send session termination message.
      */
-    fun setSendSessionTerminationMessage(
-        sendSessionTerminationMessage: Boolean
-    ) {
+    fun setSendSessionTerminationMessage(sendSessionTerminationMessage: Boolean) {
         this.sendSessionTerminationMessage = sendSessionTerminationMessage
     }
-
 
     /**
      * Interface for listening to messages from the remote mdoc device.
@@ -1229,7 +1301,7 @@ class VerificationHelper internal constructor(
     class Builder(
         context: Context,
         listener: Listener,
-        executor: Executor
+        executor: Executor,
     ) {
         private val mHelper: VerificationHelper
 
@@ -1305,12 +1377,12 @@ class VerificationHelper internal constructor(
     companion object {
         private const val TAG = "VerificationHelper"
     }
-    
+
     enum class EngagementMethod {
         NOT_ENGAGED,
         QR_CODE,
         NFC_STATIC_HANDOVER,
         NFC_NEGOTIATED_HANDOVER,
-        REVERSE
+        REVERSE,
     }
 }

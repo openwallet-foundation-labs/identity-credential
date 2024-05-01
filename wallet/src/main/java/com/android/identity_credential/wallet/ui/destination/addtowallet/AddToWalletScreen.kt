@@ -38,17 +38,17 @@ fun AddToWalletScreen(
 ) {
     ScreenWithAppBarAndBackButton(
         title = stringResource(R.string.add_screen_title),
-        onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
+        onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             Text(
                 modifier = Modifier.padding(8.dp),
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
-                text = stringResource(R.string.add_screen_select_issuer)
+                text = stringResource(R.string.add_screen_select_issuer),
             )
         }
 
@@ -87,29 +87,31 @@ fun AddToWalletScreen(
                         settingsModel = settingsModel,
                     )
                     onNavigate(WalletDestination.ProvisionDocument.route)
-                }) {
+                },
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Image(
                         bitmap = issuerDisplayData.issuerLogo.asImageBitmap(),
-                        contentDescription = stringResource(
-                            R.string.accessibility_artwork_for,
-                            issuerDisplayData.configuration.issuingAuthorityName
-                        ),
-                        modifier = Modifier.height(48.dp).padding(4.dp)
+                        contentDescription =
+                            stringResource(
+                                R.string.accessibility_artwork_for,
+                                issuerDisplayData.configuration.issuingAuthorityName,
+                            ),
+                        modifier = Modifier.height(48.dp).padding(4.dp),
                     )
                     Column(
-                        modifier = Modifier.align(Alignment.CenterVertically)
+                        modifier = Modifier.align(Alignment.CenterVertically),
                     ) {
                         Text(
                             text = issuerDisplayData.configuration.description,
-                            style = MaterialTheme.typography.labelLarge
+                            style = MaterialTheme.typography.labelLarge,
                         )
                         Text(
                             text = issuerDisplayData.configuration.issuingAuthorityName,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = MaterialTheme.colorScheme.secondary,
                         )
                     }
                 }

@@ -50,10 +50,11 @@ fun SettingsScreen(
     Column(modifier = modifier) {
         val scrollState = rememberScrollState()
         Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier =
+                Modifier
+                    .padding(16.dp)
+                    .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SettingSectionTitle(title = "General")
             SettingToggle(
@@ -61,12 +62,12 @@ fun SettingsScreen(
                 subtitleOn = "Close connection after first response",
                 subtitleOff = "Don't close connection after first response",
                 isChecked = screenState.autoCloseEnabled,
-                onCheckedChange = onAutoCloseChanged
+                onCheckedChange = onAutoCloseChanged,
             )
             SettingsDropDown(
                 title = "Session Encryption Curve",
                 description = curveLabelFor(screenState.sessionEncryptionCurveOption.toEcCurve()),
-                onCurveChanged = onSessionEncryptionCurveChanged
+                onCurveChanged = onSessionEncryptionCurveChanged,
             )
             SettingSectionTitle(title = "NFC Engagement")
             SettingToggle(
@@ -74,7 +75,7 @@ fun SettingsScreen(
                 subtitleOn = "Use static handover",
                 subtitleOff = "Use negotiated handover",
                 isChecked = screenState.useStaticHandover,
-                onCheckedChange = onUseStaticHandoverChanged
+                onCheckedChange = onUseStaticHandoverChanged,
             )
             SettingSectionTitle(title = "Data retrieval options")
             SettingToggle(
@@ -83,7 +84,7 @@ fun SettingsScreen(
                 subtitleOff = "Don't use L2CAP",
                 isChecked = screenState.isL2CAPEnabled,
                 enabled = screenState.isBleEnabled(),
-                onCheckedChange = onUseL2CAPChanged
+                onCheckedChange = onUseL2CAPChanged,
             )
             SettingToggle(
                 title = "Clear BLE Service Cache",
@@ -91,7 +92,7 @@ fun SettingsScreen(
                 subtitleOff = "Don't clean the cache",
                 isChecked = screenState.isBleClearCacheEnabled,
                 enabled = screenState.isBleEnabled(),
-                onCheckedChange = onBLEServiceCacheChanged
+                onCheckedChange = onBLEServiceCacheChanged,
             )
             SettingSectionTitle(title = "Data retrieval methods")
             SettingToggle(
@@ -99,28 +100,28 @@ fun SettingsScreen(
                 subtitleOn = "BLE central client mode activated",
                 subtitleOff = "BLE central client mode deactivated",
                 isChecked = screenState.isBleDataRetrievalEnabled,
-                onCheckedChange = onBLEDataRetrievalModeChanged
+                onCheckedChange = onBLEDataRetrievalModeChanged,
             )
             SettingToggle(
                 title = "BLE peripheral server mode",
                 subtitleOn = "BLE peripheral server mode activated",
                 subtitleOff = "BLE peripheral server mode deactivated",
                 isChecked = screenState.isBlePeripheralModeEnabled,
-                onCheckedChange = onBLEPeripheralDataRetrievalModeChanged
+                onCheckedChange = onBLEPeripheralDataRetrievalModeChanged,
             )
             SettingToggle(
                 title = "Wifi Aware",
                 subtitleOn = "Wifi Aware transfer activated",
                 subtitleOff = "Wifi Aware transfer deactivated",
                 isChecked = screenState.wifiAwareEnabled,
-                onCheckedChange = onWiFiAwareChanged
+                onCheckedChange = onWiFiAwareChanged,
             )
             SettingToggle(
                 title = "NFC",
                 subtitleOn = "NFC transfer activated",
                 subtitleOff = "NFC transfer deactivated",
                 isChecked = screenState.nfcEnabled,
-                onCheckedChange = onNfcChanged
+                onCheckedChange = onNfcChanged,
             )
             SettingSectionTitle(title = "Debug logging options")
             SettingToggle(
@@ -128,16 +129,17 @@ fun SettingsScreen(
                 subtitleOn = "Debug logging activated",
                 subtitleOff = "Debug logging deactivated",
                 isChecked = screenState.debugEnabled,
-                onCheckedChange = onDebugChanged
+                onCheckedChange = onDebugChanged,
             )
             SettingSectionTitle(
-                title = "CA Certificates"
+                title = "CA Certificates",
             )
             SettingItem(
-                modifier = Modifier
-                    .clickable { onOpenCaCertificates() },
+                modifier =
+                    Modifier
+                        .clickable { onOpenCaCertificates() },
                 title = "Show CA Certificates",
-                subtitle = "Click here to show the CA Certificates"
+                subtitle = "Click here to show the CA Certificates",
             )
         }
     }
@@ -146,14 +148,14 @@ fun SettingsScreen(
 @Composable
 private fun SettingSectionTitle(
     modifier: Modifier = Modifier,
-    title: String
+    title: String,
 ) {
     Column(modifier = modifier) {
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -162,22 +164,22 @@ private fun SettingSectionTitle(
 private fun SettingItem(
     modifier: Modifier = Modifier,
     title: String,
-    subtitle: String
+    subtitle: String,
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -191,26 +193,26 @@ private fun SettingToggle(
     subtitleOff: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             val subtitle = if (isChecked) subtitleOn else subtitleOff
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         Switch(
             checked = isChecked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }
@@ -220,37 +222,37 @@ private fun SettingsDropDown(
     modifier: Modifier = Modifier,
     title: String,
     description: String,
-    onCurveChanged: (selection: SettingsScreenState.SessionEncryptionCurveOption) -> Unit
+    onCurveChanged: (selection: SettingsScreenState.SessionEncryptionCurveOption) -> Unit,
 ) {
     var dropDownExpanded by remember { mutableStateOf(false) }
     val expandDropDown = { dropDownExpanded = true }
     Row(
         modifier = modifier.clickable { expandDropDown() },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         IconButton(onClick = expandDropDown) {
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         val entries = SettingsScreenState.SessionEncryptionCurveOption.values().toList()
         DropdownMenu(
             expanded = dropDownExpanded,
-            onDismissRequest = { dropDownExpanded = false }
+            onDismissRequest = { dropDownExpanded = false },
         ) {
             for (entry in entries) {
                 DropdownMenuItem(
@@ -258,19 +260,18 @@ private fun SettingsDropDown(
                     text = {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
-                            text = curveLabelFor(curveOption = entry.toEcCurve())
+                            text = curveLabelFor(curveOption = entry.toEcCurve()),
                         )
                     },
                     onClick = {
                         onCurveChanged(entry)
                         dropDownExpanded = false
-                    }
+                    },
                 )
             }
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -290,7 +291,7 @@ private fun SettingsScreenPreview() {
             onWiFiAwareChanged = {},
             onNfcChanged = {},
             onDebugChanged = {},
-            onOpenCaCertificates = {}
+            onOpenCaCertificates = {},
         )
     }
 }

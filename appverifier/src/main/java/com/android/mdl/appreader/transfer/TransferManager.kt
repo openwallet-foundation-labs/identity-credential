@@ -9,25 +9,20 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
-import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
+import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaPublicKey
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.crypto.toEcPrivateKey
-import com.android.identity.crypto.toEcPublicKey
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.mdoc.request.DeviceRequestGenerator
+import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -37,9 +32,7 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyFactory
-import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
@@ -48,7 +41,6 @@ import java.util.*
 import java.util.concurrent.Executor
 
 class TransferManager private constructor(private val context: Context) {
-
     companion object {
         @SuppressLint("StaticFieldLeak")
         @Volatile
@@ -80,15 +72,17 @@ class TransferManager private constructor(private val context: Context) {
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
     fun initVerificationHelper() {
-        val builder = VerificationHelper.Builder(
-            context,
-            responseListener,
-            context.mainExecutor()
-        )
-        val options = DataTransportOptions.Builder()
-            .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
-            .setBleClearCache(userPreferences.isBleClearCacheEnabled())
-            .build()
+        val builder =
+            VerificationHelper.Builder(
+                context,
+                responseListener,
+                context.mainExecutor(),
+            )
+        val options =
+            DataTransportOptions.Builder()
+                .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
+                .setBleClearCache(userPreferences.isBleClearCacheEnabled())
+                .build()
 
         // TODO: read from settings - for now, just hardcode BLE central client mode
         //  as the only connection-method we over for Negotiated Handover...
@@ -100,8 +94,8 @@ class TransferManager private constructor(private val context: Context) {
                 false,
                 true,
                 null,
-                bleUuid
-            )
+                bleUuid,
+            ),
         )
         builder.setNegotiatedHandoverConnectionMethods(negotiatedHandoverConnectionMethods)
 
@@ -111,15 +105,17 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun initVerificationHelperReverseEngagement() {
-        val builder = VerificationHelper.Builder(
-            context,
-            responseListener,
-            context.mainExecutor()
-        )
-        val options = DataTransportOptions.Builder()
-            .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
-            .setBleClearCache(userPreferences.isBleClearCacheEnabled())
-            .build()
+        val builder =
+            VerificationHelper.Builder(
+                context,
+                responseListener,
+                context.mainExecutor(),
+            )
+        val options =
+            DataTransportOptions.Builder()
+                .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
+                .setBleClearCache(userPreferences.isBleClearCacheEnabled())
+                .build()
         builder.setDataTransportOptions(options)
         val methods = ArrayList<ConnectionMethod>()
         // Passing the empty URI in means that DataTransportHttp will use local IP as host
@@ -132,20 +128,23 @@ class TransferManager private constructor(private val context: Context) {
         usingReverseEngagement = true
     }
 
-    fun setQrDeviceEngagement(qrDeviceEngagement: String) =
-        verification?.setDeviceEngagementFromQrCode(qrDeviceEngagement)
+    fun setQrDeviceEngagement(qrDeviceEngagement: String) = verification?.setDeviceEngagementFromQrCode(qrDeviceEngagement)
 
-    fun setNdefDeviceEngagement(adapter: NfcAdapter, activity: Activity) =
-        adapter.enableReaderMode(
-            activity, readerModeListener,
-            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-            null
-        )
+    fun setNdefDeviceEngagement(
+        adapter: NfcAdapter,
+        activity: Activity,
+    ) = adapter.enableReaderMode(
+        activity,
+        readerModeListener,
+        NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B +
+            NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+        null,
+    )
 
-    private val readerModeListener = NfcAdapter.ReaderCallback { tag ->
-        verification?.nfcProcessOnTagDiscovered(tag)
-    }
+    private val readerModeListener =
+        NfcAdapter.ReaderCallback { tag ->
+            verification?.nfcProcessOnTagDiscovered(tag)
+        }
 
     fun setAvailableTransferMethods(availableMdocConnectionMethods: Collection<ConnectionMethod>) {
         this.availableMdocConnectionMethods = availableMdocConnectionMethods
@@ -157,14 +156,17 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun connect() {
-        if (hasStarted)
+        if (hasStarted) {
             throw IllegalStateException("Connection has already started. It is necessary to stop verification before starting a new one.")
+        }
 
-        if (verification == null)
+        if (verification == null) {
             throw IllegalStateException("It is necessary to start a new engagement.")
+        }
 
-        if (mdocConnectionMethod == null)
+        if (mdocConnectionMethod == null) {
             throw IllegalStateException("No mdoc connection method selected.")
+        }
 
         // Start connection
         verification?.let {
@@ -177,7 +179,7 @@ class TransferManager private constructor(private val context: Context) {
 
     fun stopVerification(
         sendSessionTerminationMessage: Boolean,
-        useTransportSpecificSessionTermination: Boolean
+        useTransportSpecificSessionTermination: Boolean,
     ) {
         verification?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
         try {
@@ -210,43 +212,44 @@ class TransferManager private constructor(private val context: Context) {
 
     var mediaPlayer: MediaPlayer? = MediaPlayer.create(context, R.raw.nfc_connected)
 
-    private val responseListener = object : VerificationHelper.Listener {
-        override fun onReaderEngagementReady(readerEngagement: ByteArray) {
-            this@TransferManager.readerEngagement = readerEngagement
-            transferStatusLd.value = TransferStatus.READER_ENGAGEMENT_READY
-        }
+    private val responseListener =
+        object : VerificationHelper.Listener {
+            override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+                this@TransferManager.readerEngagement = readerEngagement
+                transferStatusLd.value = TransferStatus.READER_ENGAGEMENT_READY
+            }
 
-        override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
-            // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
-            // if both BLE modes are available at the same time.
-            mediaPlayer = mediaPlayer ?: MediaPlayer.create(context, R.raw.nfc_connected)
-            mediaPlayer?.start()
-            setAvailableTransferMethods(ConnectionMethod.disambiguate(connectionMethods))
-            transferStatusLd.value = TransferStatus.ENGAGED
-        }
+            override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+                // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+                // if both BLE modes are available at the same time.
+                mediaPlayer = mediaPlayer ?: MediaPlayer.create(context, R.raw.nfc_connected)
+                mediaPlayer?.start()
+                setAvailableTransferMethods(ConnectionMethod.disambiguate(connectionMethods))
+                transferStatusLd.value = TransferStatus.ENGAGED
+            }
 
-        override fun onMoveIntoNfcField() {
-            transferStatusLd.value = TransferStatus.MOVE_INTO_NFC_FIELD
-        }
+            override fun onMoveIntoNfcField() {
+                transferStatusLd.value = TransferStatus.MOVE_INTO_NFC_FIELD
+            }
 
-        override fun onDeviceConnected() {
-            transferStatusLd.value = TransferStatus.CONNECTED
-        }
+            override fun onDeviceConnected() {
+                transferStatusLd.value = TransferStatus.CONNECTED
+            }
 
-        override fun onResponseReceived(deviceResponseBytes: ByteArray) {
-            responseBytes = deviceResponseBytes
-            transferStatusLd.value = TransferStatus.RESPONSE
-        }
+            override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+                responseBytes = deviceResponseBytes
+                transferStatusLd.value = TransferStatus.RESPONSE
+            }
 
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            transferStatusLd.value = TransferStatus.DISCONNECTED
-        }
+            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                transferStatusLd.value = TransferStatus.DISCONNECTED
+            }
 
-        override fun onError(error: Throwable) {
-            logError("onError: ${error.message}")
-            transferStatusLd.value = TransferStatus.ERROR
+            override fun onError(error: Throwable) {
+                logError("onError: ${error.message}")
+                transferStatusLd.value = TransferStatus.ERROR
+            }
         }
-    }
 
     private fun Context.mainExecutor(): Executor {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -257,13 +260,13 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun sendRequest(requestDocumentList: RequestDocumentList) {
-        if (verification == null)
+        if (verification == null) {
             throw IllegalStateException("It is necessary to start a new engagement.")
+        }
 
         verification?.let {
             var signature: Signature? = null
             var readerKeyCertificateChain: Collection<X509Certificate>? = null
-
 
 //            SupportedCurves.values().forEach { curve ->
 //                val keyPair =
@@ -279,18 +282,19 @@ class TransferManager private constructor(private val context: Context) {
             val curveName = authValues[userPreferences.getReaderAuthentication()]
             logDebug("Curve used: $curveName")
 
-            val curve: EcCurve? = when (curveName) {
-                SECP256R1.name -> EcCurve.P256
-                SECP384R1.name -> EcCurve.P384
-                SECP521R1.name -> EcCurve.P521
-                BRAINPOOLP256R1.name -> EcCurve.BRAINPOOLP256R1
-                // TODO: BRAINPOOLP320R1.name -> {}
-                BRAINPOOLP384R1.name -> EcCurve.BRAINPOOLP384R1
-                BRAINPOOLP512R1.name -> EcCurve.BRAINPOOLP512R1
-                ED25519.name -> EcCurve.ED25519
-                ED448.name -> EcCurve.ED448
-                else -> null
-            }
+            val curve: EcCurve? =
+                when (curveName) {
+                    SECP256R1.name -> EcCurve.P256
+                    SECP384R1.name -> EcCurve.P384
+                    SECP521R1.name -> EcCurve.P521
+                    BRAINPOOLP256R1.name -> EcCurve.BRAINPOOLP256R1
+                    // TODO: BRAINPOOLP320R1.name -> {}
+                    BRAINPOOLP384R1.name -> EcCurve.BRAINPOOLP384R1
+                    BRAINPOOLP512R1.name -> EcCurve.BRAINPOOLP512R1
+                    ED25519.name -> EcCurve.ED25519
+                    ED448.name -> EcCurve.ED448
+                    else -> null
+                }
 
             var readerKey: EcPrivateKey? = null
             var signatureAlgorithm = Algorithm.UNSET
@@ -304,12 +308,12 @@ class TransferManager private constructor(private val context: Context) {
                     ReaderCertificateGenerator.createReaderCertificate(
                         readerKey,
                         readerCaCert,
-                        readerCaPrivateKey
+                        readerCaPrivateKey,
                     )
-                readerCertificateChain = CertificateChain(
-                    listOf(Certificate(readerCertificate.encoded))
-                )
-
+                readerCertificateChain =
+                    CertificateChain(
+                        listOf(Certificate(readerCertificate.encoded)),
+                    )
             }
 
             val generator = DeviceRequestGenerator(it.sessionTranscript)
@@ -320,7 +324,7 @@ class TransferManager private constructor(private val context: Context) {
                     null,
                     readerKey,
                     signatureAlgorithm,
-                    readerCertificateChain
+                    readerCertificateChain,
                 )
             }
 
@@ -331,8 +335,9 @@ class TransferManager private constructor(private val context: Context) {
     private fun getReaderCAPrivateKey(): PrivateKey {
         // TODO: should get private key from KeysAndCertificates class instead of
         //  hard-coding it here.
-        val keyBytes: ByteArray = Base64.getDecoder()
-            .decode("ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDCI6BG/yRDzi307Rqq2Ndw5mYi2y4MR+n6IDqjl2Qw/Sdy8D5eCzp8mlcL/vCWnEq0=")
+        val keyBytes: ByteArray =
+            Base64.getDecoder()
+                .decode("ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDCI6BG/yRDzi307Rqq2Ndw5mYi2y4MR+n6IDqjl2Qw/Sdy8D5eCzp8mlcL/vCWnEq0=")
         val spec = PKCS8EncodedKeySpec(keyBytes)
         val kf = KeyFactory.getInstance("EC")
         return kf.generatePrivate(spec)
@@ -364,11 +369,9 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getBleScanningMillis(): Long = verification!!.scanningTimeMillis
 
-    fun getEngagementToRequestDurationMillis(): Long =
-        verification?.engagementToRequestDurationMillis ?: 0
+    fun getEngagementToRequestDurationMillis(): Long = verification?.engagementToRequestDurationMillis ?: 0
 
-    fun getRequestToResponseDurationMillis(): Long =
-        verification?.requestToResponseDurationMillis ?: 0
+    fun getRequestToResponseDurationMillis(): Long = verification?.requestToResponseDurationMillis ?: 0
 
     fun getEngagementMethod(): String =
         when (verification?.engagementMethod) {

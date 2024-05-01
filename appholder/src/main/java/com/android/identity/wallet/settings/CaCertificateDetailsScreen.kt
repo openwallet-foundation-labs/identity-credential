@@ -27,7 +27,7 @@ import java.util.Date
 @Composable
 fun CaCertificateDetailsScreen(
     certificateItem: CertificateItem?,
-    onDeleteCertificate: () -> Unit = {}
+    onDeleteCertificate: () -> Unit = {},
 ) {
     if (certificateItem == null) {
         Title(title = "No certificate provided")
@@ -36,56 +36,57 @@ fun CaCertificateDetailsScreen(
 
         Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
             Column(
-                modifier = Modifier
-                    .verticalScroll(scrollState)
-                    .weight(1f)
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .verticalScroll(scrollState)
+                        .weight(1f)
+                        .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Title(title = certificateItem.title)
                 Subtitle(title = "Issued to")
                 Line(
                     modifier = Modifier,
-                    text = "Common Name (CN) " + certificateItem.commonNameSubject
+                    text = "Common Name (CN) " + certificateItem.commonNameSubject,
                 )
                 Line(
                     modifier = Modifier,
-                    text = "Organisation (O) " + certificateItem.organisationSubject
+                    text = "Organisation (O) " + certificateItem.organisationSubject,
                 )
                 Line(
                     modifier = Modifier,
-                    text = "Organisational Unit (OU) " + certificateItem.organisationalUnitSubject
+                    text = "Organisational Unit (OU) " + certificateItem.organisationalUnitSubject,
                 )
                 Subtitle(title = "Issued by")
                 Line(
                     modifier = Modifier,
-                    text = "Common Name (CN) " + certificateItem.commonNameIssuer
+                    text = "Common Name (CN) " + certificateItem.commonNameIssuer,
                 )
                 Line(
                     modifier = Modifier,
-                    text = "Organisation (O) " + certificateItem.organisationIssuer
+                    text = "Organisation (O) " + certificateItem.organisationIssuer,
                 )
                 Line(
                     modifier = Modifier,
-                    text = "Organisational Unit (OU) " + certificateItem.organisationalUnitIssuer
+                    text = "Organisational Unit (OU) " + certificateItem.organisationalUnitIssuer,
                 )
                 Subtitle(title = "Fingerprints")
                 Line(modifier = Modifier, "SHA-256 fingerprint")
                 Line(modifier = Modifier.padding(16.dp), certificateItem.sha255Fingerprint)
                 Line(modifier = Modifier, "SHA-1 fingerprint")
                 Line(modifier = Modifier.padding(16.dp), certificateItem.sha1Fingerprint)
-                if (certificateItem.docTypes.isNotEmpty()){
+                if (certificateItem.docTypes.isNotEmpty()) {
                     Subtitle(title = "Supported mdoc types")
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         items(certificateItem.docTypes) { docType ->
                             Line(modifier = Modifier, text = docType)
@@ -108,7 +109,7 @@ fun Title(title: String) {
         modifier = Modifier.fillMaxWidth(),
         text = title,
         style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onSurface
+        color = MaterialTheme.colorScheme.onSurface,
     )
 }
 
@@ -118,17 +119,20 @@ fun Subtitle(title: String) {
         modifier = Modifier.fillMaxWidth(),
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface
+        color = MaterialTheme.colorScheme.onSurface,
     )
 }
 
 @Composable
-fun Line(modifier: Modifier, text: String) {
+fun Line(
+    modifier: Modifier,
+    text: String,
+) {
     Text(
         modifier = modifier.fillMaxWidth(),
         text = text,
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface
+        color = MaterialTheme.colorScheme.onSurface,
     )
 }
 
@@ -138,23 +142,24 @@ fun Line(modifier: Modifier, text: String) {
 private fun PreviewCaCertificatesScreen() {
     HolderAppTheme {
         CaCertificateDetailsScreen(
-            certificateItem = CertificateItem(
-                title = "Test 1",
-                commonNameSubject = "*.google.com",
-                organisationSubject = "<Not part of certificate>",
-                organisationalUnitSubject = "<Not part of certificate>",
-                commonNameIssuer = "GTS CA 1C3",
-                organisationIssuer = "Google Trust Services LLC",
-                organisationalUnitIssuer = "<Not part of certificate>",
-                notBefore = Date.from(LocalDateTime.now().minusDays(365).toInstant(ZoneOffset.UTC)),
-                notAfter = Date.from(LocalDateTime.now().plusDays(365).toInstant(ZoneOffset.UTC)),
-                sha255Fingerprint = "03 5C 31 E7 A9 F3 71 2B 27 1C 5A 8D 82 E5 6C 5B 92 BC FC 28 7F72D7 4A B6 9D 61 BF 53 EF 3E 67",
-                sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
-                docTypes = listOf("Doc type 1", "Doc type 2"),
-                supportsDelete = true,
-                trustPoint = null
-            ),
-            onDeleteCertificate = {}
+            certificateItem =
+                CertificateItem(
+                    title = "Test 1",
+                    commonNameSubject = "*.google.com",
+                    organisationSubject = "<Not part of certificate>",
+                    organisationalUnitSubject = "<Not part of certificate>",
+                    commonNameIssuer = "GTS CA 1C3",
+                    organisationIssuer = "Google Trust Services LLC",
+                    organisationalUnitIssuer = "<Not part of certificate>",
+                    notBefore = Date.from(LocalDateTime.now().minusDays(365).toInstant(ZoneOffset.UTC)),
+                    notAfter = Date.from(LocalDateTime.now().plusDays(365).toInstant(ZoneOffset.UTC)),
+                    sha255Fingerprint = "03 5C 31 E7 A9 F3 71 2B 27 1C 5A 8D 82 E5 6C 5B 92 BC FC 28 7F72D7 4A B6 9D 61 BF 53 EF 3E 67",
+                    sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
+                    docTypes = listOf("Doc type 1", "Doc type 2"),
+                    supportsDelete = true,
+                    trustPoint = null,
+                ),
+            onDeleteCertificate = {},
         )
     }
 }

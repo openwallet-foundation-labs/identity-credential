@@ -17,6 +17,5 @@ data class CertificateItem(
     val sha1Fingerprint: String,
     val docTypes: List<String>,
     val supportsDelete: Boolean,
-    val trustPoint: TrustPoint?
-) {
-}
+    val trustPoint: TrustPoint?,
+)

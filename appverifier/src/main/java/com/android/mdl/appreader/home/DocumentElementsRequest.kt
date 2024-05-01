@@ -8,5 +8,5 @@ import androidx.compose.runtime.Stable
 @Immutable
 data class DocumentElementsRequest(
     @StringRes val title: Int,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
 )

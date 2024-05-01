@@ -15,7 +15,7 @@ import java.security.spec.InvalidKeySpecException
  *
  * @param alias the alias of the key to unlock.
  */
-class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
+class AndroidKeystoreKeyUnlockData(val alias: String) : KeyUnlockData {
     internal var signature: Signature? = null
     internal var signatureAlgorithm: Algorithm? = null
     private var cryptoObjectForSigning: BiometricPrompt.CryptoObject? = null
@@ -42,15 +42,17 @@ class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
-            val entry = ks.getEntry(alias, null)
-                ?: throw IllegalArgumentException("No entry for alias")
+            val entry =
+                ks.getEntry(alias, null)
+                    ?: throw IllegalArgumentException("No entry for alias")
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
             try {
-                val keyInfo = factory.getKeySpec(
-                    privateKey,
-                    android.security.keystore.KeyInfo::class.java
-                )
+                val keyInfo =
+                    factory.getKeySpec(
+                        privateKey,
+                        android.security.keystore.KeyInfo::class.java,
+                    )
                 if (keyInfo.userAuthenticationValidityDurationSeconds > 0) {
                     // Key is not auth-per-op, no CryptoObject required.
                     return null
@@ -58,9 +60,10 @@ class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
             } catch (e: InvalidKeySpecException) {
                 throw IllegalStateException("Given key is not an Android Keystore key", e)
             }
-            signature = Signature.getInstance(
-                AndroidKeystoreSecureArea.getSignatureAlgorithmName(signatureAlgorithm)
-            )
+            signature =
+                Signature.getInstance(
+                    AndroidKeystoreSecureArea.getSignatureAlgorithmName(signatureAlgorithm),
+                )
             signature!!.initSign(privateKey)
             cryptoObjectForSigning = BiometricPrompt.CryptoObject(signature!!)
             this.signatureAlgorithm = signatureAlgorithm
@@ -90,15 +93,17 @@ class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
             try {
                 val ks = KeyStore.getInstance("AndroidKeyStore")
                 ks.load(null)
-                val entry = ks.getEntry(alias, null)
-                    ?: throw IllegalArgumentException("No entry for alias")
+                val entry =
+                    ks.getEntry(alias, null)
+                        ?: throw IllegalArgumentException("No entry for alias")
                 val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
                 val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
                 try {
-                    val keyInfo = factory.getKeySpec(
-                        privateKey,
-                        android.security.keystore.KeyInfo::class.java
-                    )
+                    val keyInfo =
+                        factory.getKeySpec(
+                            privateKey,
+                            android.security.keystore.KeyInfo::class.java,
+                        )
                     if (keyInfo.userAuthenticationValidityDurationSeconds > 0) {
                         // Key is not auth-per-op, no CryptoObject required.
                         return null

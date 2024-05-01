@@ -7,5 +7,5 @@ enum class TransferStatus {
     REQUEST,
     REQUEST_SERVED,
     DISCONNECTED,
-    ERROR
+    ERROR,
 }

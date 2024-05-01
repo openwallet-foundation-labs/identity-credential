@@ -10,7 +10,7 @@ import com.android.identity.cbor.CborMap
  *
  * @param uri the URI.
  */
-class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
+class ConnectionMethodHttp(val uri: String) : ConnectionMethod() {
     override fun toString(): String = "http:uri=$uri"
 
     override fun toDeviceEngagement(): ByteArray {
@@ -21,7 +21,7 @@ class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
                 .add(METHOD_TYPE)
                 .add(METHOD_MAX_VERSION)
                 .add(builder.end().build())
-                .end().build()
+                .end().build(),
         )
     }
 
@@ -29,6 +29,7 @@ class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
         const val METHOD_TYPE = 4L
         const val METHOD_MAX_VERSION = 1L
         private const val OPTION_KEY_URI = 0L
+
         fun fromDeviceEngagementHttp(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodHttp? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber

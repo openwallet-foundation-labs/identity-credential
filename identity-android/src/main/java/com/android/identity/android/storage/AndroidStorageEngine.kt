@@ -51,7 +51,7 @@ import javax.crypto.spec.GCMParameterSpec
 class AndroidStorageEngine internal constructor(
     private val context: Context,
     private val storageDirectory: File,
-    private val useEncryption: Boolean
+    private val useEncryption: Boolean,
 ) : StorageEngine {
     private fun getTargetFile(key: String): File {
         return try {
@@ -71,16 +71,19 @@ class AndroidStorageEngine internal constructor(
             if (entry != null) {
                 return (entry as KeyStore.SecretKeyEntry).secretKey
             }
-            val kg = KeyGenerator.getInstance(
-                KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore"
-            )
-            val builder = KeyGenParameterSpec.Builder(
-                keyAlias,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(128)
+            val kg =
+                KeyGenerator.getInstance(
+                    KeyProperties.KEY_ALGORITHM_AES,
+                    "AndroidKeyStore",
+                )
+            val builder =
+                KeyGenParameterSpec.Builder(
+                    keyAlias,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+                )
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setKeySize(128)
             kg.init(builder.build())
             kg.generateKey()
         } catch (e: Exception) {
@@ -108,7 +111,10 @@ class AndroidStorageEngine internal constructor(
         }
     }
 
-    override fun put(key: String, data: ByteArray) {
+    override fun put(
+        key: String,
+        data: ByteArray,
+    ) {
         // AtomicFile isn't thread-safe (!) so need to serialize access when writing data.
         synchronized(this) {
             val file = AtomicFile(getTargetFile(key))
@@ -176,11 +182,13 @@ class AndroidStorageEngine internal constructor(
      */
     class Builder(
         private val context: Context,
-        private val storageDirectory: File
+        private val storageDirectory: File,
     ) {
         private var useEncryption =
-            !((context.getSystemService(StorageManager::class.java) as StorageManager)
-                .isEncrypted(storageDirectory))
+            !(
+                (context.getSystemService(StorageManager::class.java) as StorageManager)
+                    .isEncrypted(storageDirectory)
+            )
 
         /**
          * Sets whether to encrypt the values stored on disk.
@@ -195,9 +203,10 @@ class AndroidStorageEngine internal constructor(
          * @param useEncryption whether to encrypt values.
          * @return the builder.
          */
-        fun setUseEncryption(useEncryption: Boolean) = apply {
-            this.useEncryption = useEncryption
-        }
+        fun setUseEncryption(useEncryption: Boolean) =
+            apply {
+                this.useEncryption = useEncryption
+            }
 
         /**
          * Builds the [AndroidStorageEngine].
@@ -226,9 +235,10 @@ class AndroidStorageEngine internal constructor(
         //  StoredData = [+ bstr]
         //
         const val CHUNKED_ENCRYPTED_MAX_CHUNK_SIZE = 16384
+
         private fun decrypt(
             secretKey: SecretKey,
-            encryptedData: ByteArray
+            encryptedData: ByteArray,
         ): ByteArray {
             val array = Cbor.decode(encryptedData).asArray
             return try {
@@ -250,7 +260,7 @@ class AndroidStorageEngine internal constructor(
 
         private fun encrypt(
             secretKey: SecretKey,
-            data: ByteArray
+            data: ByteArray,
         ): ByteArray {
             val builder = CborArray.builder()
             return try {
@@ -266,11 +276,12 @@ class AndroidStorageEngine internal constructor(
                     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
                     cipher.init(Cipher.ENCRYPT_MODE, secretKey)
                     // Produced cipherText includes auth tag
-                    val cipherTextForChunk = cipher.doFinal(
-                        data,
-                        offset,
-                        chunkSize
-                    )
+                    val cipherTextForChunk =
+                        cipher.doFinal(
+                            data,
+                            offset,
+                            chunkSize,
+                        )
                     val baos = ByteArrayOutputStream()
                     baos.write(cipher.iv)
                     baos.write(cipherTextForChunk)

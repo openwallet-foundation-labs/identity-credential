@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet
 
 import android.os.Looper
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,10 +10,10 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.documentIdentifier
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.DocumentExtensions.refreshState
-import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceResponse
@@ -25,7 +24,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class ProvisioningViewModel : ViewModel() {
-
     companion object {
         private const val TAG = "ProvisioningViewModel"
     }
@@ -76,9 +74,10 @@ class ProvisioningViewModel : ViewModel() {
                 val documentRegistrationConfiguration =
                     createDocumentKeyFlow.getDocumentRegistrationConfiguration()
                 val issuerDocumentIdentifier = documentRegistrationConfiguration.documentId
-                val response = RegistrationResponse(
-                    settingsModel.developerModeEnabled.value!!
-                )
+                val response =
+                    RegistrationResponse(
+                        settingsModel.developerModeEnabled.value!!,
+                    )
                 createDocumentKeyFlow.sendDocumentRegistrationResponse(response)
 
                 val documentIdentifier =
@@ -122,7 +121,7 @@ class ProvisioningViewModel : ViewModel() {
     fun provideEvidence(
         evidence: EvidenceResponse,
         issuingAuthorityRepository: IssuingAuthorityRepository,
-        documentStore: DocumentStore
+        documentStore: DocumentStore,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {

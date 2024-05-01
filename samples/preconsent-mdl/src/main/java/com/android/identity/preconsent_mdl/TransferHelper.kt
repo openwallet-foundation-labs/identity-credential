@@ -28,12 +28,12 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
-import com.android.identity.document.DocumentStore
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.document.DocumentStore
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
@@ -42,7 +42,6 @@ import com.android.identity.util.Timestamp
 import java.io.File
 
 class TransferHelper private constructor(private val context: Context) {
-
     companion object {
         private val TAG = "TransferHelper"
 
@@ -95,16 +94,16 @@ class TransferHelper private constructor(private val context: Context) {
         ENGAGEMENT_SENT,
         CONNECTED,
         REQUEST_AVAILABLE,
-        RESPONSE_SENT
+        RESPONSE_SENT,
     }
 
     init {
         val storageDir = File(context.noBackupFilesDir, "identity")
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        secureAreaRepository = SecureAreaRepository();
-        androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
-        secureAreaRepository.addImplementation(androidKeystoreSecureArea);
+        secureAreaRepository = SecureAreaRepository()
+        androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine)
+        secureAreaRepository.addImplementation(androidKeystoreSecureArea)
         credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(MdocCredential::class)
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
@@ -239,50 +238,51 @@ class TransferHelper private constructor(private val context: Context) {
         eDeviceKey: EcPrivateKey,
         transport: DataTransport,
         deviceEngagement: ByteArray,
-        handover: ByteArray
+        handover: ByteArray,
     ) {
         scanningDurationMillis = 0
-        deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
-            context,
-            object : DeviceRetrievalHelper.Listener {
-                override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
-                    Logger.i(TAG, "onEReaderKeyReceived")
-                }
+        deviceRetrievalHelper =
+            DeviceRetrievalHelper.Builder(
+                context,
+                object : DeviceRetrievalHelper.Listener {
+                    override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
+                        Logger.i(TAG, "onEReaderKeyReceived")
+                    }
 
-                override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-                    Logger.i(TAG, "onDeviceRequest")
-                    deviceRequest = deviceRequestBytes
-                    timestampRequestAvailable = Timestamp.now().toEpochMilli()
-                    scanningDurationMillis = deviceRetrievalHelper?.scanningTimeMillis ?: 0
-                    state.value = State.REQUEST_AVAILABLE
-                }
+                    override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                        Logger.i(TAG, "onDeviceRequest")
+                        deviceRequest = deviceRequestBytes
+                        timestampRequestAvailable = Timestamp.now().toEpochMilli()
+                        scanningDurationMillis = deviceRetrievalHelper?.scanningTimeMillis ?: 0
+                        state.value = State.REQUEST_AVAILABLE
+                    }
 
-                override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-                    Logger.i(TAG, "onDeviceDisconnected $transportSpecificTermination")
-                    deviceRetrievalHelper?.disconnect()
-                    deviceRetrievalHelper = null
-                    state.value = State.NOT_CONNECTED
-                }
+                    override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                        Logger.i(TAG, "onDeviceDisconnected $transportSpecificTermination")
+                        deviceRetrievalHelper?.disconnect()
+                        deviceRetrievalHelper = null
+                        state.value = State.NOT_CONNECTED
+                    }
 
-                override fun onError(error: Throwable) {
-                    Logger.i(TAG, "onError", error)
-                    deviceRetrievalHelper?.disconnect()
-                    deviceRetrievalHelper = null
-                    state.value = State.NOT_CONNECTED
-                }
-
-            },
-            context.mainExecutor,
-            eDeviceKey)
-            .useForwardEngagement(transport, deviceEngagement, handover)
-            .build()
+                    override fun onError(error: Throwable) {
+                        Logger.i(TAG, "onError", error)
+                        deviceRetrievalHelper?.disconnect()
+                        deviceRetrievalHelper = null
+                        state.value = State.NOT_CONNECTED
+                    }
+                },
+                context.mainExecutor,
+                eDeviceKey,
+            )
+                .useForwardEngagement(transport, deviceEngagement, handover)
+                .build()
         connectionMethod = transport.connectionMethodForTransport
         state.value = State.CONNECTED
     }
 
     fun getDeviceRequest(): ByteArray {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
-        check(deviceRequest != null) { "No request available "}
+        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
+        check(deviceRequest != null) { "No request available " }
         return deviceRequest as ByteArray
     }
 
@@ -291,10 +291,10 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun sendResponse(deviceResponseBytes: ByteArray) {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
+        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
         deviceRetrievalHelper!!.sendDeviceResponse(
             deviceResponseBytes,
-            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
         )
         timestampResponseSent = Timestamp.now().toEpochMilli()
         state.value = State.RESPONSE_SENT
@@ -309,7 +309,7 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun getEngagementSentToRequestAvailableDurationMillis(): Long {
-        return timestampRequestAvailable - timestampEngagementSent;
+        return timestampRequestAvailable - timestampEngagementSent
     }
 
     fun getRequestToResponseDurationMillis(): Long {
@@ -338,5 +338,4 @@ class TransferHelper private constructor(private val context: Context) {
         deviceRetrievalHelper = null
         state.value = State.NOT_CONNECTED
     }
-
 }

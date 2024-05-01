@@ -10,8 +10,8 @@ private val checksumWeights = arrayOf(7, 3, 1)
  */
 class MrtdMrzChecksumValidator(
     private val checksumRanges: List<Range>,
-    private val checksumDigitIndex: Int) {
-
+    private val checksumDigitIndex: Int,
+) {
     data class Range(val start: Int, val end: Int)
 
     fun validate(line: String): Boolean {
@@ -23,12 +23,13 @@ class MrtdMrzChecksumValidator(
         var i = 0
         for (range in checksumRanges) {
             for (index in range.start..range.end) {
-                val value = when (val character = line[index]) {
-                    in '0'..'9' -> character.code - '0'.code
-                    in 'A'..'Z' -> character.code - 'A'.code + 10
-                    '<' -> 0
-                    else -> return false
-                }
+                val value =
+                    when (val character = line[index]) {
+                        in '0'..'9' -> character.code - '0'.code
+                        in 'A'..'Z' -> character.code - 'A'.code + 10
+                        '<' -> 0
+                        else -> return false
+                    }
                 checksum += value * checksumWeights[i % checksumWeights.size]
                 i++
             }

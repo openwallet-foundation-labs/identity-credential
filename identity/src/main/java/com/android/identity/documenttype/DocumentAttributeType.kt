@@ -27,12 +27,20 @@ package com.android.identity.documenttype
  */
 sealed class DocumentAttributeType {
     object String : DocumentAttributeType()
+
     object Number : DocumentAttributeType()
+
     object Date : DocumentAttributeType()
+
     object DateTime : DocumentAttributeType()
+
     object Picture : DocumentAttributeType()
+
     object Boolean : DocumentAttributeType()
+
     object ComplexType : DocumentAttributeType()
+
     class StringOptions(val options: List<StringOption>) : DocumentAttributeType()
+
     class IntegerOptions(val options: List<IntegerOption>) : DocumentAttributeType()
 }

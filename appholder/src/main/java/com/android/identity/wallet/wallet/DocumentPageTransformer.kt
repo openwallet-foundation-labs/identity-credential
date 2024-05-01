@@ -12,7 +12,10 @@ class DocumentPageTransformer(context: Context) : ViewPager2.PageTransformer {
     private val currentItemHorizontalMarginPx = resources.getDimension(R.dimen.viewpager_current_item_horizontal_margin)
     private val pageTranslationX = nextItemVisiblePx + currentItemHorizontalMarginPx
 
-    override fun transformPage(page: View, position: Float) {
+    override fun transformPage(
+        page: View,
+        position: Float,
+    ) {
         page.translationX = -pageTranslationX * position
         page.scaleY = 1 - (0.25f * abs(position))
     }

@@ -14,46 +14,37 @@ class AndroidKeystoreCreateKeySettings private constructor(
     keyPurposes: Set<KeyPurpose>,
     ecCurve: EcCurve,
     attestationChallenge: ByteArray,
-
     /**
      * Gets whether user authentication is required.
      */
     val userAuthenticationRequired: Boolean,
-
     /**
      * The user authentication timeout, or 0 if authentication is required on every use.
      */
     val userAuthenticationTimeoutMillis: Long,
-
     /**
      * User authentication types for the key.
      *
      * @return a set of [UserAuthenticationType]
      */
     val userAuthenticationTypes: Set<UserAuthenticationType>,
-
     /**
      * Whether StrongBox is used.
      */
     val useStrongBox: Boolean,
-
     /**
      * The attest key alias, if any.
      */
     val attestKeyAlias: String?,
-
     /**
      * The point in time before which the key is not valid, if set.
      */
     val validFrom: Timestamp?,
-
     /**
      * The point in time after which the key is not valid, if set.
      */
-    val validUntil: Timestamp?
-
+    val validUntil: Timestamp?,
 ) : CreateKeySettings(attestationChallenge, keyPurposes, ecCurve) {
-
     /**
      * A builder for [CreateKeySettings].
      *
@@ -77,26 +68,27 @@ class AndroidKeystoreCreateKeySettings private constructor(
          * @param configuration configuration from a CBOR map.
          * @return the builder.
          */
-        fun applyConfiguration(configuration: DataItem) = apply {
-            var userAutenticationRequired = false
-            var userAuthenticationTimeoutMillis = 0L
-            var userAuthenticationTypes = setOf<UserAuthenticationType>()
-            for ((key, value) in configuration.asMap) {
-                when (key.asTstr) {
-                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
-                    "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
-                    "useStrongBox" -> setUseStrongBox(value.asBoolean)
-                    "userAuthenticationRequired" -> userAutenticationRequired = value.asBoolean
-                    "userAuthenticationTimeoutMillis" -> userAuthenticationTimeoutMillis = value.asNumber
-                    "userAuthenticationTypes" -> userAuthenticationTypes = UserAuthenticationType.decodeSet(value.asNumber)
+        fun applyConfiguration(configuration: DataItem) =
+            apply {
+                var userAutenticationRequired = false
+                var userAuthenticationTimeoutMillis = 0L
+                var userAuthenticationTypes = setOf<UserAuthenticationType>()
+                for ((key, value) in configuration.asMap) {
+                    when (key.asTstr) {
+                        "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
+                        "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
+                        "useStrongBox" -> setUseStrongBox(value.asBoolean)
+                        "userAuthenticationRequired" -> userAutenticationRequired = value.asBoolean
+                        "userAuthenticationTimeoutMillis" -> userAuthenticationTimeoutMillis = value.asNumber
+                        "userAuthenticationTypes" -> userAuthenticationTypes = UserAuthenticationType.decodeSet(value.asNumber)
+                    }
                 }
+                setUserAuthenticationRequired(
+                    userAutenticationRequired,
+                    userAuthenticationTimeoutMillis,
+                    userAuthenticationTypes,
+                )
             }
-            setUserAuthenticationRequired(
-                userAutenticationRequired,
-                userAuthenticationTimeoutMillis,
-                userAuthenticationTypes
-            )
-        }
 
         /**
          * Sets the key purpose.
@@ -147,16 +139,20 @@ class AndroidKeystoreCreateKeySettings private constructor(
         fun setUserAuthenticationRequired(
             required: Boolean,
             timeoutMillis: Long,
-            userAuthenticationTypes: Set<UserAuthenticationType>
+            userAuthenticationTypes: Set<UserAuthenticationType>,
         ): Builder {
             if (required) {
                 require(UserAuthenticationType.encodeSet(userAuthenticationTypes) != 0L) {
-                    "userAuthenticationType must be set when user authentication is required" }
+                    "userAuthenticationType must be set when user authentication is required"
+                }
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    require(UserAuthenticationType.encodeSet(userAuthenticationTypes) ==
+                    require(
+                        UserAuthenticationType.encodeSet(userAuthenticationTypes) ==
                             UserAuthenticationType.LSKF.flagValue or
-                            UserAuthenticationType.BIOMETRIC.flagValue) {
-                        "Only LSKF and Strong Biometric supported on this API level" }
+                            UserAuthenticationType.BIOMETRIC.flagValue,
+                    ) {
+                        "Only LSKF and Strong Biometric supported on this API level"
+                    }
                 }
             }
             userAuthenticationRequired = required
@@ -204,7 +200,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
          */
         fun setValidityPeriod(
             validFrom: Timestamp,
-            validUntil: Timestamp
+            validUntil: Timestamp,
         ): Builder {
             this.validFrom = validFrom
             this.validUntil = validUntil
@@ -227,7 +223,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
                 useStrongBox,
                 attestKeyAlias,
                 validFrom,
-                validUntil
+                validUntil,
             )
         }
     }

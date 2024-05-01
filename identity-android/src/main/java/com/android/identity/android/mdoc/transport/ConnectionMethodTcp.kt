@@ -6,7 +6,6 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 
 class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() {
-
     override fun toDeviceEngagement(): ByteArray {
         val mapBuilder = CborMap.builder()
         mapBuilder.put(OPTION_KEY_HOST, host)
@@ -17,7 +16,7 @@ class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() 
                 .add(METHOD_MAX_VERSION)
                 .add(mapBuilder.end().build())
                 .end()
-                .build()
+                .build(),
         )
     }
 
@@ -33,6 +32,7 @@ class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() 
 
         private const val OPTION_KEY_HOST = 0L
         private const val OPTION_KEY_PORT = 1L
+
         @JvmStatic
         fun fromDeviceEngagementTcp(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodTcp? {
             val array = Cbor.decode(encodedDeviceRetrievalMethod).asArray

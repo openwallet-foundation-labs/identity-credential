@@ -6,5 +6,5 @@ data class RequestedDocumentData(
     val userReadableName: String,
     val identityCredentialName: String,
     val requestedElements: ArrayList<RequestedElement>,
-    val requestedDocument: DeviceRequestParser.DocRequest
+    val requestedDocument: DeviceRequestParser.DocRequest,
 )

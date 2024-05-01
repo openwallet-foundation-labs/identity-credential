@@ -30,48 +30,51 @@ import java.util.concurrent.LinkedTransferQueue
 import java.util.concurrent.TimeUnit
 
 internal class L2CAPClient(private val context: Context, val listener: Listener) {
-    
     private var socket: BluetoothSocket? = null
     private val writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
     var writingThread: Thread? = null
     private var inhibitCallbacks = false
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
-    fun connect(bluetoothDevice: BluetoothDevice, psm: Int) {
-
+    fun connect(
+        bluetoothDevice: BluetoothDevice,
+        psm: Int,
+    ) {
         // As per https://developer.android.com/reference/android/bluetooth/BluetoothAdapter#cancelDiscovery()
         // we should cancel any ongoing discovery since it interfere with the connection process
-        val adapter = context.getSystemService(
-            BluetoothManager::class.java
-        ).adapter
+        val adapter =
+            context.getSystemService(
+                BluetoothManager::class.java,
+            ).adapter
         if (!adapter.cancelDiscovery()) {
             reportError(Error("Error canceling BluetoothDiscovery"))
             return
         }
         Logger.d(TAG, "Connecting to " + bluetoothDevice.address + " and PSM " + psm)
-        val connectThread: Thread = object : Thread() {
-            override fun run() {
-                try {
-                    socket = bluetoothDevice.createInsecureL2capChannel(psm)
-                    socket!!.connect()
-                } catch (e: IOException) {
-                    Logger.e(TAG, "Error connecting to L2CAP socket: " + e.message, e)
-                    reportError(Error("Error connecting to L2CAP socket: " + e.message, e))
-                    socket = null
-                    return
+        val connectThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    try {
+                        socket = bluetoothDevice.createInsecureL2capChannel(psm)
+                        socket!!.connect()
+                    } catch (e: IOException) {
+                        Logger.e(TAG, "Error connecting to L2CAP socket: " + e.message, e)
+                        reportError(Error("Error connecting to L2CAP socket: " + e.message, e))
+                        socket = null
+                        return
+                    }
+
+                    // Start writing thread
+                    writingThread = Thread { writeToSocket() }
+                    writingThread!!.start()
+
+                    // Let the app know we're connected.
+                    reportPeerConnected()
+
+                    // Reuse this thread for reading
+                    readFromSocket()
                 }
-
-                // Start writing thread
-                writingThread = Thread { writeToSocket() }
-                writingThread!!.start()
-
-                // Let the app know we're connected.
-                reportPeerConnected()
-
-                // Reuse this thread for reading
-                readFromSocket()
             }
-        }
         connectThread.start()
     }
 
@@ -124,12 +127,13 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
         val pendingDataBaos = ByteArrayOutputStream()
 
         // Keep listening to the InputStream until an exception occurs.
-        val inputStream = try {
-            socket!!.inputStream
-        } catch (e: IOException) {
-            reportError(Error("Error on listening input stream from socket L2CAP", e))
-            return
-        }
+        val inputStream =
+            try {
+                socket!!.inputStream
+            } catch (e: IOException) {
+                reportError(Error("Error on listening input stream from socket L2CAP", e))
+                return
+            }
         while (true) {
             val buf = ByteArray(DataTransportBle.L2CAP_BUF_SIZE)
             try {
@@ -147,7 +151,7 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
                     pendingDataBaos.write(pendingData, endOffset, pendingData.size - endOffset)
                     reportMessageReceived(dataItemBytes)
                 } catch (e: Exception) {
-                    /* not enough data to decode item, do nothing */
+                    // not enough data to decode item, do nothing
                 }
             } catch (e: IOException) {
                 reportError(Error("Error on listening input stream from socket L2CAP", e))
@@ -186,8 +190,11 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
 
     internal interface Listener {
         fun onPeerConnected()
+
         fun onPeerDisconnected()
+
         fun onMessageReceived(data: ByteArray)
+
         fun onError(error: Throwable)
     }
 

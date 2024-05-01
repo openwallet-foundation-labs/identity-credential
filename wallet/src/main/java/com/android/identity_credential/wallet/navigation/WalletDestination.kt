@@ -5,22 +5,23 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 
-
 sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
-
     // String representation of this Destination's route
     val route = routeEnum.routeName
     val routeWithArgs = routeEnum.routePathWithArguments
 
     // Screens with no arguments
     object Main : WalletDestination(Route.MAIN)
+
     object About : WalletDestination(Route.ABOUT)
+
     object Settings : WalletDestination(Route.SETTINGS)
+
     object AddToWallet : WalletDestination(Route.ADD_TO_WALLET)
+
     object ProvisionDocument : WalletDestination(Route.PROVISION_DOCUMENT)
 
     object QrEngagement : WalletDestination(Route.QR_ENGAGEMENT)
-
 
     // Screens with arguments
     object DocumentInfo : WalletDestination(Route.DOCUMENT_INFO) {
@@ -33,42 +34,39 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                 navArgument("documentId") {
                     type = NavType.StringType
                     nullable = false // and cannot be optional
-                }
+                },
             ),
             SECTION( // this argument is optional, sections like 'details' can be passed
                 navArgument("section") {
                     type = NavType.StringType
                     nullable = true
-                }
+                },
             ),
             CREDENTIALS( // this argument is optional, sections like 'credentials' can be passed
                 navArgument("section") {
                     type = NavType.StringType
                     nullable = true
-                }
+                },
             ),
             AUTH_REQUIRED( // this argument is optional, sections like 'details' can be passed
                 navArgument("auth_required") {
                     type = NavType.BoolType
                     defaultValue = false
-                }
+                },
             ),
 
             ;
 
             // easily extract any argument from `backStackEntry`
-            fun extractFromBackStackEntry(backStackEntry: NavBackStackEntry) =
-                backStackEntry.arguments?.getString(argument.name)
+            fun extractFromBackStackEntry(backStackEntry: NavBackStackEntry) = backStackEntry.arguments?.getString(argument.name)
 
-            fun extractBooleanFromBackStackEntry(backStackEntry: NavBackStackEntry) =
-                backStackEntry.arguments?.getBoolean(argument.name)
+            fun extractBooleanFromBackStackEntry(backStackEntry: NavBackStackEntry) = backStackEntry.arguments?.getBoolean(argument.name)
         }
 
         /**
          * Return a list of all arguments that can be optionally passed to this route
          */
-        override fun getArguments(): List<NamedNavArgument> =
-            Argument.values().map { it.argument }.toList()
+        override fun getArguments(): List<NamedNavArgument> = Argument.values().map { it.argument }.toList()
     }
 
     object PopBackStack : WalletDestination(Route.POP_BACK_STACK) {
@@ -77,21 +75,20 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                 navArgument("route") {
                     type = NavType.StringType
                     nullable = false // and cannot be optional
-                }
+                },
             ),
             INCLUSIVE( // also not optional
                 navArgument("inclusive") {
                     type = NavType.BoolType
-                }
+                },
             ),
 
             SAVE_STATE( // optional
                 navArgument("save_state") {
                     type = NavType.BoolType
                     defaultValue = false
-                }
-            )
-
+                },
+            ),
             ;
 
             /**
@@ -118,11 +115,10 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
         }
     }
 
-
     fun <T, V> getRouteWithArguments(
         // list of arguments were T is enum "Argument" of a sealed class defining acceptable arguments
         // and V is the value for the argument; it can be a list in which the default "joinToString()" provides the contents of the list
-        argumentList: List<Pair<T, V>>
+        argumentList: List<Pair<T, V>>,
     ): String {
         if (argumentList.isEmpty()) return route
 
@@ -138,27 +134,29 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                 } else {
                     argumentValue
                 }
-            val argName = when (this) {
-                is DocumentInfo -> {
-                    enumArgumentObj as DocumentInfo.Argument
-                    enumArgumentObj.argument.name
-                }
+            val argName =
+                when (this) {
+                    is DocumentInfo -> {
+                        enumArgumentObj as DocumentInfo.Argument
+                        enumArgumentObj.argument.name
+                    }
 
-                is PopBackStack -> {
-                    enumArgumentObj as PopBackStack.Argument
-                    enumArgumentObj.argument.name
-                }
+                    is PopBackStack -> {
+                        enumArgumentObj as PopBackStack.Argument
+                        enumArgumentObj.argument.name
+                    }
 
-                else -> {
-                    throw Exception("Error! Attempted to pass argument '$enumArgumentObj' to WalletDestination '$this' but the Argument object is not defined in 'getRouteWithArguments'")
+                    else -> {
+                        throw Exception(
+                            "Error! Attempted to pass argument '$enumArgumentObj' to WalletDestination '$this' but the Argument object is not defined in 'getRouteWithArguments'",
+                        )
+                    }
                 }
-            }
             ret += "$argName=$argVal&"
         }
         return ret
     }
 }
-
 
 abstract class DestinationArguments {
     open fun getArguments(): List<NamedNavArgument> = listOf()
@@ -173,8 +171,10 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     ABOUT("about"),
     SETTINGS("settings"),
     ADD_TO_WALLET("add_to_wallet"),
-    DOCUMENT_INFO("document_info",
-        "documentId={documentId}&section={section}&auth_required={auth_required}"),
+    DOCUMENT_INFO(
+        "document_info",
+        "documentId={documentId}&section={section}&auth_required={auth_required}",
+    ),
     PROVISION_DOCUMENT("provision_document"),
     QR_ENGAGEMENT("qr_engagement"),
 
@@ -186,4 +186,3 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     val routePathWithArguments: String
         get() = if (argumentsStr.isEmpty()) routeName else "$routeName?$argumentsStr"
 }
-

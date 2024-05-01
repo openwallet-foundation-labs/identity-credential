@@ -6,9 +6,7 @@ import com.android.identity.wallet.R
 import com.android.identity.wallet.composables.state.MdocAuthStateOption
 
 @Composable
-fun mdocAuthOptionLabelFor(
-    state: MdocAuthStateOption
-): String {
+fun mdocAuthOptionLabelFor(state: MdocAuthStateOption): String {
     return when (state) {
         MdocAuthStateOption.ECDSA ->
             stringResource(id = R.string.mdoc_auth_ecdsa)

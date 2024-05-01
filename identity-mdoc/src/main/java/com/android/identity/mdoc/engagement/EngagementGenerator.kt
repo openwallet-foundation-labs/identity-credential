@@ -33,7 +33,7 @@ import com.android.identity.mdoc.origininfo.OriginInfo
  */
 class EngagementGenerator(
     private val eSenderKey: EcPublicKey,
-    private val version: String
+    private val version: String,
 ) {
     private var deviceRetrievalMethodsArrayBuilder: ArrayBuilder<CborBuilder> = CborArray.builder()
     private var originInfoArrayBuilder: ArrayBuilder<CborBuilder> = CborArray.builder()
@@ -47,7 +47,8 @@ class EngagementGenerator(
     fun addConnectionMethods(connectionMethods: List<ConnectionMethod>): EngagementGenerator {
         for (connectionMethod in connectionMethods) {
             deviceRetrievalMethodsArrayBuilder.add(
-                Cbor.decode(connectionMethod.toDeviceEngagement()))
+                Cbor.decode(connectionMethod.toDeviceEngagement()),
+            )
         }
         return this
     }
@@ -72,10 +73,11 @@ class EngagementGenerator(
      */
     fun generate(): ByteArray {
         val encodedCoseKey = Cbor.encode(eSenderKey.toCoseKey(emptyMap()).toDataItem)
-        val security = CborArray.builder()
-            .add(1) // cipher suite
-            .addTaggedEncodedCbor(encodedCoseKey)
-            .end().build()
+        val security =
+            CborArray.builder()
+                .add(1) // cipher suite
+                .addTaggedEncodedCbor(encodedCoseKey)
+                .end().build()
         val mapBuilder = CborMap.builder()
         mapBuilder
             .put(0, version)

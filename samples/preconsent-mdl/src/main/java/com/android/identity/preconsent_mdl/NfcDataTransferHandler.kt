@@ -22,7 +22,6 @@ import com.android.identity.android.mdoc.transport.DataTransportNfc
 import com.android.identity.util.Logger
 
 class NfcDataTransferHandler : HostApduService() {
-
     companion object {
         private val TAG = "NfcDataTransferHandler"
     }
@@ -32,7 +31,10 @@ class NfcDataTransferHandler : HostApduService() {
         Logger.i(TAG, "onCreate")
     }
 
-    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
+    override fun processCommandApdu(
+        commandApdu: ByteArray,
+        extras: Bundle?,
+    ): ByteArray? {
         Logger.i(TAG, "processCommandApdu")
         return DataTransportNfc.processCommandApdu(this, commandApdu)
     }

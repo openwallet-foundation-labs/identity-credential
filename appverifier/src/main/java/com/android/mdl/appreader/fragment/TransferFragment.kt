@@ -21,7 +21,6 @@ import com.android.mdl.appreader.viewModel.TransferViewModel
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class TransferFragment : Fragment() {
-
     private val args: TransferFragmentArgs by navArgs()
     private var _binding: FragmentTransferBinding? = null
 
@@ -41,14 +40,18 @@ class TransferFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentTransferBinding.inflate(inflater, container, false)
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         try {
@@ -66,8 +69,9 @@ class TransferFragment : Fragment() {
         } catch (e: RuntimeException) {
             logError("Error starting connection: ${e.message}", e)
             Toast.makeText(
-                requireContext(), "Error starting connection: ${e.message}",
-                Toast.LENGTH_SHORT
+                requireContext(),
+                "Error starting connection: ${e.message}",
+                Toast.LENGTH_SHORT,
             ).show()
         }
 
@@ -93,8 +97,9 @@ class TransferFragment : Fragment() {
                 TransferStatus.ERROR -> {
                     // TODO: Pass and show the actual text of the exception here.
                     Toast.makeText(
-                        requireContext(), "Error connecting to holder",
-                        Toast.LENGTH_SHORT
+                        requireContext(),
+                        "Error connecting to holder",
+                        Toast.LENGTH_SHORT,
                     ).show()
                     findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
                 }

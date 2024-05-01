@@ -51,7 +51,7 @@ import java.util.concurrent.Executor
 abstract class DataTransport(
     protected val context: Context,
     val role: Role,
-    protected val options: DataTransportOptions
+    protected val options: DataTransportOptions,
 ) {
     /**
      * Enumeration for the two different sides of a transport.
@@ -61,7 +61,7 @@ abstract class DataTransport(
         MDOC,
 
         /** The role of acting as a mdoc reader. */
-        MDOC_READER
+        MDOC_READER,
     }
 
     var inhibitCallbacks = false
@@ -156,7 +156,10 @@ abstract class DataTransport(
      * @param executor a [Executor] to do the call in or `null` if `listener` is `null`.
      * @throws IllegalStateException if [Executor] is `null` for a non-`null` listener.
      */
-    fun setListener(listener: Listener?, executor: Executor?) {
+    fun setListener(
+        listener: Listener?,
+        executor: Executor?,
+    ) {
         check(!(listener != null && executor == null)) { "Passing null Executor for non-null Listener" }
         this.listener = listener
         listenerExecutor = executor
@@ -183,11 +186,13 @@ abstract class DataTransport(
         val listener = listener
         val executor = listenerExecutor
         if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onConnecting()
-                }
-            })
+            executor.execute(
+                Runnable {
+                    if (!inhibitCallbacks) {
+                        listener.onConnecting()
+                    }
+                },
+            )
         }
     }
 
@@ -196,11 +201,13 @@ abstract class DataTransport(
         val listener = listener
         val executor = listenerExecutor
         if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onConnected()
-                }
-            })
+            executor.execute(
+                Runnable {
+                    if (!inhibitCallbacks) {
+                        listener.onConnected()
+                    }
+                },
+            )
         }
     }
 
@@ -208,11 +215,13 @@ abstract class DataTransport(
         val listener = listener
         val executor = listenerExecutor
         if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onDisconnected()
-                }
-            })
+            executor.execute(
+                Runnable {
+                    if (!inhibitCallbacks) {
+                        listener.onDisconnected()
+                    }
+                },
+            )
         }
     }
 
@@ -221,11 +230,13 @@ abstract class DataTransport(
         val listener = listener
         val executor = listenerExecutor
         if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onMessageReceived()
-                }
-            })
+            executor.execute(
+                Runnable {
+                    if (!inhibitCallbacks) {
+                        listener.onMessageReceived()
+                    }
+                },
+            )
         }
     }
 
@@ -233,11 +244,13 @@ abstract class DataTransport(
         val listener = listener
         val executor = listenerExecutor
         if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onTransportSpecificSessionTermination()
-                }
-            })
+            executor.execute(
+                Runnable {
+                    if (!inhibitCallbacks) {
+                        listener.onTransportSpecificSessionTermination()
+                    }
+                },
+            )
         }
     }
 
@@ -245,11 +258,13 @@ abstract class DataTransport(
         val listener = listener
         val executor = listenerExecutor
         if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onError(error)
-                }
-            })
+            executor.execute(
+                Runnable {
+                    if (!inhibitCallbacks) {
+                        listener.onError(error)
+                    }
+                },
+            )
         }
     }
 
@@ -329,7 +344,7 @@ abstract class DataTransport(
             context: Context,
             connectionMethod: ConnectionMethod,
             role: Role,
-            options: DataTransportOptions
+            options: DataTransportOptions,
         ): DataTransport {
             // TODO: move this to DataTransportFactory
             return if (connectionMethod is ConnectionMethodBle) {
@@ -337,14 +352,14 @@ abstract class DataTransport(
                     context,
                     connectionMethod,
                     role,
-                    options
+                    options,
                 )
             } else if (connectionMethod is ConnectionMethodNfc) {
                 DataTransportNfc.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
-                    options
+                    options,
                 )
             } else if (connectionMethod is ConnectionMethodWifiAware) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -352,7 +367,7 @@ abstract class DataTransport(
                         context,
                         connectionMethod,
                         role,
-                        options
+                        options,
                     )
                 } else {
                     throw IllegalStateException("Wifi Aware is not supported")
@@ -362,21 +377,21 @@ abstract class DataTransport(
                     context,
                     connectionMethod,
                     role,
-                    options
+                    options,
                 )
             } else if (connectionMethod is ConnectionMethodTcp) {
                 DataTransportTcp.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
-                    options
+                    options,
                 )
             } else if (connectionMethod is ConnectionMethodUdp) {
                 DataTransportUdp.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
-                    options
+                    options,
                 )
             } else {
                 throw IllegalArgumentException("Unknown ConnectionMethod")

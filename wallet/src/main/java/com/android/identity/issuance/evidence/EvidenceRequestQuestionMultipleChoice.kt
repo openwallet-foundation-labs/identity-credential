@@ -8,9 +8,9 @@ package com.android.identity.issuance.evidence
  * [possibleValues] maps response ids to human-readable text for all possible response choices
  * [acceptButtonText] text to display on the button to accept a response and continue to the next screen
  */
-data class EvidenceRequestQuestionMultipleChoice (
+data class EvidenceRequestQuestionMultipleChoice(
     val message: String,
     val assets: Map<String, ByteArray>,
     val possibleValues: Map<String, String>,
-    val acceptButtonText: String
+    val acceptButtonText: String,
 ) : EvidenceRequest()

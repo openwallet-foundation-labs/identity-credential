@@ -17,7 +17,6 @@ package com.android.identity.storage
 
 import org.junit.Assert
 import org.junit.Test
-import java.io.IOException
 import java.nio.file.Files
 
 class GenericStorageTest {

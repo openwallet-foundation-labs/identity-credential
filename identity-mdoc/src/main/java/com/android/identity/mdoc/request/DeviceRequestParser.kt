@@ -35,7 +35,7 @@ import com.android.identity.crypto.CertificateChain
  */
 class DeviceRequestParser(
     private val encodedDeviceRequest: ByteArray,
-    private val encodedSessionTranscript: ByteArray
+    private val encodedSessionTranscript: ByteArray,
 ) {
     private var skipReaderAuthParseAndCheck = false
 
@@ -55,9 +55,10 @@ class DeviceRequestParser(
      * @param skipReaderAuthParseAndCheck a flag to skip force skip parsing the reader auth structure.
      * @return the `DeviceRequestParser`.
      */
-    fun setSkipReaderAuthParseAndCheck(skipReaderAuthParseAndCheck: Boolean) = apply {
-        this.skipReaderAuthParseAndCheck = skipReaderAuthParseAndCheck
-    }
+    fun setSkipReaderAuthParseAndCheck(skipReaderAuthParseAndCheck: Boolean) =
+        apply {
+            this.skipReaderAuthParseAndCheck = skipReaderAuthParseAndCheck
+        }
 
     /**
      * Parses the device request.
@@ -77,13 +78,14 @@ class DeviceRequestParser(
      * @throws IllegalStateException    if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): DeviceRequest = DeviceRequest().apply {
-        parse(
-            encodedDeviceRequest,
-            Cbor.decode(encodedSessionTranscript),
-            skipReaderAuthParseAndCheck
-        )
-    }
+    fun parse(): DeviceRequest =
+        DeviceRequest().apply {
+            parse(
+                encodedDeviceRequest,
+                Cbor.decode(encodedSessionTranscript),
+                skipReaderAuthParseAndCheck,
+            )
+        }
 
     /**
      * An object used to represent data parsed from `DeviceRequest`
@@ -107,7 +109,7 @@ class DeviceRequestParser(
         internal fun parse(
             encodedDeviceRequest: ByteArray,
             sessionTranscript: DataItem,
-            skipReaderAuthParseAndCheck: Boolean
+            skipReaderAuthParseAndCheck: Boolean,
         ) {
             val request = Cbor.decode(encodedDeviceRequest)
             version = request["version"].asTstr
@@ -126,29 +128,32 @@ class DeviceRequestParser(
                         val readerAuthCoseSign1 = readerAuth.asCoseSign1
                         val readerCertChainDataItem =
                             readerAuthCoseSign1.unprotectedHeaders[CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)]
-                        val signatureAlgorithm = Algorithm.fromInt(
-                            readerAuthCoseSign1.protectedHeaders[
-                                CoseNumberLabel(Cose.COSE_LABEL_ALG)
-                            ]!!.asNumber.toInt()
-                        )
+                        val signatureAlgorithm =
+                            Algorithm.fromInt(
+                                readerAuthCoseSign1.protectedHeaders[
+                                    CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                ]!!.asNumber.toInt(),
+                            )
                         readerCertChain = readerCertChainDataItem!!.asCertificateChain
                         val readerKey = readerCertChain!!.certificates[0].publicKey
-                        val encodedReaderAuthentication = Cbor.encode(
-                            CborArray.builder()
-                                .add("ReaderAuthentication")
-                                .add(sessionTranscript)
-                                .add(itemsRequestBytesDataItem)
-                                .end()
-                                .build()
-                        )
+                        val encodedReaderAuthentication =
+                            Cbor.encode(
+                                CborArray.builder()
+                                    .add("ReaderAuthentication")
+                                    .add(sessionTranscript)
+                                    .add(itemsRequestBytesDataItem)
+                                    .end()
+                                    .build(),
+                            )
                         val readerAuthenticationBytes =
                             Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
-                        readerAuthenticated = Cose.coseSign1Check(
-                            readerKey,
-                            readerAuthenticationBytes,
-                            readerAuthCoseSign1,
-                            signatureAlgorithm
-                        )
+                        readerAuthenticated =
+                            Cose.coseSign1Check(
+                                readerKey,
+                                readerAuthenticationBytes,
+                                readerAuthCoseSign1,
+                                signatureAlgorithm,
+                            )
                     }
                     val requestInfo: MutableMap<String, ByteArray> = HashMap()
                     itemsRequest.getOrNull("requestInfo")?.let { requestInfoDataItem ->
@@ -159,14 +164,15 @@ class DeviceRequestParser(
                         }
                     }
                     val docType = itemsRequest["docType"].asTstr
-                    val builder = DocRequest.Builder(
-                        docType,
-                        Cbor.encode(itemsRequest),
-                        requestInfo,
-                        encodedReaderAuth,
-                        readerCertChain,
-                        readerAuthenticated
-                    )
+                    val builder =
+                        DocRequest.Builder(
+                            docType,
+                            Cbor.encode(itemsRequest),
+                            requestInfo,
+                            encodedReaderAuth,
+                            readerCertChain,
+                            readerAuthenticated,
+                        )
 
                     // parse nameSpaces
                     val nameSpaces = itemsRequest["nameSpaces"]
@@ -176,7 +182,10 @@ class DeviceRequestParser(
             }
         }
 
-        private fun parseNamespaces(nameSpaces: DataItem, builder: DocRequest.Builder) {
+        private fun parseNamespaces(
+            nameSpaces: DataItem,
+            builder: DocRequest.Builder,
+        ) {
             for ((nameSpaceDataItem, itemsMap) in nameSpaces.asMap) {
                 val nameSpace = nameSpaceDataItem.asTstr
                 for ((itemKeyDataItem, itemValDataItem) in itemsMap.asMap) {
@@ -202,12 +211,10 @@ class DeviceRequestParser(
          * The document type (commonly referred to as `docType`) in the request.
          */
         val docType: String,
-
         /**
          * The bytes of the `ItemsRequest` CBOR.
          */
         val itemsRequest: ByteArray,
-
         /**
          * The requestInfo associated with the document request, if set.
          *
@@ -216,7 +223,6 @@ class DeviceRequestParser(
          * @return the request info map or the empty collection if not present in the request.
          */
         val requestInfo: Map<String, ByteArray>,
-
         /**
          * The bytes of the `ReaderAuth` CBOR.
          *
@@ -224,13 +230,11 @@ class DeviceRequestParser(
          * sign the document request.
          */
         val readerAuth: ByteArray?,
-
         /**
          * The certificate chain for the reader which signed the request or null if reader
          * authentication isn't used.
          */
         val readerCertificateChain: CertificateChain?,
-
         /**
          * Whether `ItemsRequest` was authenticated.
          *
@@ -242,11 +246,9 @@ class DeviceRequestParser(
          * examine the certificate chain presented by the reader to determine if they
          * trust any of the public keys in there.
          */
-        val readerAuthenticated: Boolean
+        val readerAuthenticated: Boolean,
     ) {
-
         internal val requestMap = mutableMapOf<String, MutableMap<String, Boolean>>()
-
 
         /**
          * Gets the names of namespaces that the reader requested.
@@ -262,8 +264,9 @@ class DeviceRequestParser(
          * @throws IllegalArgumentException if the given namespace wasn't requested.
          */
         fun getEntryNames(namespaceName: String): List<String> {
-            val innerMap = requestMap[namespaceName]
-                ?: throw IllegalArgumentException("Namespace wasn't requested")
+            val innerMap =
+                requestMap[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace wasn't requested")
             return innerMap.keys.toList()
         }
 
@@ -278,30 +281,37 @@ class DeviceRequestParser(
          */
         fun getIntentToRetain(
             namespaceName: String,
-            entryName: String
+            entryName: String,
         ): Boolean {
-            val innerMap = requestMap[namespaceName]
-                ?: throw IllegalArgumentException("Namespace wasn't requested")
+            val innerMap =
+                requestMap[namespaceName]
+                    ?: throw IllegalArgumentException("Namespace wasn't requested")
             return innerMap[entryName]
                 ?: throw IllegalArgumentException("Data element wasn't requested")
         }
 
         internal class Builder(
-            docType: String, encodedItemsRequest: ByteArray,
+            docType: String,
+            encodedItemsRequest: ByteArray,
             requestInfo: Map<String, ByteArray>,
             encodedReaderAuth: ByteArray?,
             readerCertChain: CertificateChain?,
-            readerAuthenticated: Boolean
+            readerAuthenticated: Boolean,
         ) {
-            private val result = DocRequest(
-                docType,
-                encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
-                readerAuthenticated
-            )
+            private val result =
+                DocRequest(
+                    docType,
+                    encodedItemsRequest,
+                    requestInfo,
+                    encodedReaderAuth,
+                    readerCertChain,
+                    readerAuthenticated,
+                )
+
             fun addEntry(
                 namespaceName: String,
                 entryName: String,
-                intentToRetain: Boolean
+                intentToRetain: Boolean,
             ) = apply {
                 var innerMap = result.requestMap[namespaceName]
                 if (innerMap == null) {

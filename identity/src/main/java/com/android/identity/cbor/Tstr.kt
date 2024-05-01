@@ -15,7 +15,10 @@ class Tstr(val value: String) : DataItem(MajorType.UNICODE_STRING) {
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Tstr> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, Tstr> {
             val (payloadBegin, length) = Cbor.decodeLength(encodedCbor, offset)
             val payloadEnd = payloadBegin + length.toInt()
             val slice = encodedCbor.sliceArray(IntRange(payloadBegin, payloadEnd - 1))

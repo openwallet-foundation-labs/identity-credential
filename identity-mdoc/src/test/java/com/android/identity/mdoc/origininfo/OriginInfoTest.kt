@@ -34,7 +34,7 @@ class OriginInfoTest {
     "domain": "https://foo.com/bar"
   }
 }""",
-            Cbor.toDiagnostics(info.encode(), setOf(DiagnosticOption.PRETTY_PRINT))
+            Cbor.toDiagnostics(info.encode(), setOf(DiagnosticOption.PRETTY_PRINT)),
         )
     }
 }

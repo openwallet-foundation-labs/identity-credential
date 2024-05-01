@@ -31,7 +31,10 @@ class Simple(val value: UInt) : DataItem(MajorType.SPECIAL) {
         /** The [Simple] value for UNDEFINED */
         val UNDEFINED = Simple(23U)
 
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Simple> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, Simple> {
             val (newOffset, value) = Cbor.decodeLength(encodedCbor, offset)
             if (newOffset - offset > 1 && value < 32UL) {
                 throw IllegalArgumentException("two-byte simple value must be >= 32")
@@ -44,12 +47,12 @@ class Simple(val value: UInt) : DataItem(MajorType.SPECIAL) {
 
     override fun hashCode(): Int = value.hashCode()
 
-    override fun toString() = when (this) {
+    override fun toString() =
+        when (this) {
             FALSE -> "Simple(FALSE)"
             TRUE -> "Simple(TRUE)"
             NULL -> "Simple(NULL)"
             UNDEFINED -> "Simple(UNDEFINED)"
             else -> "Simple($value)"
         }
-
 }

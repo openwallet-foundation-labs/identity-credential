@@ -64,7 +64,6 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          */
         const val DATE_TIME_NUMBER = 1L
 
-
         /**
          * Encoded CBOR data item.
          *
@@ -85,19 +84,19 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          */
         const val FULL_DATE_STRING = 1004L
 
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Tagged> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, Tagged> {
             val (itemOffset, tagNumber) = Cbor.decodeLength(encodedCbor, offset)
             val (newItemOffset, taggedItem) = Cbor.decode(encodedCbor, itemOffset)
             return Pair(newItemOffset, Tagged(tagNumber.toLong(), taggedItem))
         }
     }
 
+    override fun equals(other: Any?): Boolean = other is Tagged && tagNumber == other.tagNumber && taggedItem == other.taggedItem
 
-    override fun equals(other: Any?): Boolean =
-        other is Tagged && tagNumber == other.tagNumber && taggedItem == other.taggedItem
-
-    override fun hashCode(): Int = tagNumber.hashCode() + 31*taggedItem.hashCode()
+    override fun hashCode(): Int = tagNumber.hashCode() + 31 * taggedItem.hashCode()
 
     override fun toString(): String = "TaggedItem($tagNumber, $taggedItem)"
-
 }

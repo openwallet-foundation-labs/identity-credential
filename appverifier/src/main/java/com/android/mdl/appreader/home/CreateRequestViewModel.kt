@@ -10,9 +10,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 class CreateRequestViewModel : ViewModel() {
-
-
-
     private val mutableState = MutableStateFlow(RequestingDocumentState())
     val state: StateFlow<RequestingDocumentState> = mutableState
 
@@ -26,11 +23,12 @@ class CreateRequestViewModel : ViewModel() {
             state.value.olderThan21.title -> mutableState.update { it.copy(olderThan21 = updated) }
             state.value.mandatoryFields.title -> mutableState.update { it.copy(mandatoryFields = updated) }
             state.value.fullMdl.title -> mutableState.update { it.copy(fullMdl = updated) }
-            state.value.mdlForUsTransportation.title -> mutableState.update {
-                it.copy(
-                    mdlForUsTransportation = updated
-                )
-            }
+            state.value.mdlForUsTransportation.title ->
+                mutableState.update {
+                    it.copy(
+                        mdlForUsTransportation = updated,
+                    )
+                }
 
             state.value.custom.title -> mutableState.update { it.copy(custom = updated) }
             state.value.mVR.title -> mutableState.update { it.copy(mVR = updated) }
@@ -40,14 +38,15 @@ class CreateRequestViewModel : ViewModel() {
         }
     }
 
-    private fun resetMdlSelection(state: RequestingDocumentState) = state.copy(
-        olderThan18 = state.olderThan18.copy(isSelected = false),
-        olderThan21 = state.olderThan21.copy(isSelected = false),
-        mandatoryFields = state.mandatoryFields.copy(isSelected = false),
-        fullMdl = state.fullMdl.copy(isSelected = false),
-        mdlForUsTransportation = state.mdlForUsTransportation.copy(isSelected = false),
-        custom = state.custom.copy(isSelected = false),
-    )
+    private fun resetMdlSelection(state: RequestingDocumentState) =
+        state.copy(
+            olderThan18 = state.olderThan18.copy(isSelected = false),
+            olderThan21 = state.olderThan21.copy(isSelected = false),
+            mandatoryFields = state.mandatoryFields.copy(isSelected = false),
+            fullMdl = state.fullMdl.copy(isSelected = false),
+            mdlForUsTransportation = state.mdlForUsTransportation.copy(isSelected = false),
+            custom = state.custom.copy(isSelected = false),
+        )
 
     fun calculateRequestDocumentList(intentToRetain: Boolean): RequestDocumentList {
         val requestDocumentList = RequestDocumentList()
@@ -70,10 +69,10 @@ class CreateRequestViewModel : ViewModel() {
                                 "document_number",
                                 "issuing_authority",
                                 "DHS_compliance",
-                                "EDL_credential"
+                                "EDL_credential",
                             ).contains(el.attribute.identifier)
-                        }
-                    )
+                        },
+                    ),
                 )
             } else {
                 when {
@@ -86,10 +85,10 @@ class CreateRequestViewModel : ViewModel() {
                                 filterElement = { el ->
                                     listOf(
                                         "portrait",
-                                        "age_over_18"
+                                        "age_over_18",
                                     ).contains(el.attribute.identifier)
-                                }
-                            )
+                                },
+                            ),
                         )
 
                     uiState.olderThan21.isSelected ->
@@ -101,10 +100,10 @@ class CreateRequestViewModel : ViewModel() {
                                 filterElement = { el ->
                                     listOf(
                                         "portrait",
-                                        "age_over_21"
+                                        "age_over_21",
                                     ).contains(el.attribute.identifier)
-                                }
-                            )
+                                },
+                            ),
                         )
 
                     uiState.mandatoryFields.isSelected ->
@@ -112,16 +111,16 @@ class CreateRequestViewModel : ViewModel() {
                             getRequestDocument(
                                 RequestDocument.MDL_DOCTYPE,
                                 intentToRetain,
-                                filterElement = { el -> el.mandatory }
-                            )
+                                filterElement = { el -> el.mandatory },
+                            ),
                         )
 
                     uiState.fullMdl.isSelected || uiState.isCustomMdlRequest ->
                         requestDocumentList.addRequestDocument(
                             getRequestDocument(
                                 RequestDocument.MDL_DOCTYPE,
-                                intentToRetain
-                            )
+                                intentToRetain,
+                            ),
                         )
                 }
             }
@@ -131,8 +130,8 @@ class CreateRequestViewModel : ViewModel() {
             requestDocumentList.addRequestDocument(
                 getRequestDocument(
                     RequestDocument.MVR_DOCTYPE,
-                    intentToRetain
-                )
+                    intentToRetain,
+                ),
             )
         }
         if (uiState.micov.isSelected) {
@@ -140,21 +139,23 @@ class CreateRequestViewModel : ViewModel() {
                 getRequestDocument(
                     RequestDocument.MICOV_DOCTYPE,
                     intentToRetain,
-                    filterNamespace = { ns -> ns == RequestDocument.MICOV_ATT_NAMESPACE })
+                    filterNamespace = { ns -> ns == RequestDocument.MICOV_ATT_NAMESPACE },
+                ),
             )
             requestDocumentList.addRequestDocument(
                 getRequestDocument(
                     RequestDocument.MICOV_DOCTYPE,
                     intentToRetain,
-                    filterNamespace = { ns -> ns == RequestDocument.MICOV_VTR_NAMESPACE })
+                    filterNamespace = { ns -> ns == RequestDocument.MICOV_VTR_NAMESPACE },
+                ),
             )
         }
         if (uiState.euPid.isSelected) {
             requestDocumentList.addRequestDocument(
                 getRequestDocument(
                     RequestDocument.EU_PID_DOCTYPE,
-                    intentToRetain
-                )
+                    intentToRetain,
+                ),
             )
         }
         if (uiState.mdlWithLinkage.isSelected) {
@@ -166,10 +167,10 @@ class CreateRequestViewModel : ViewModel() {
                     filterElement = { el ->
                         listOf(
                             "portrait",
-                            "document_number"
+                            "document_number",
                         ).contains(el.attribute.identifier)
-                    }
-                )
+                    },
+                ),
             )
             requestDocumentList.addRequestDocument(
                 getRequestDocument(
@@ -178,23 +179,23 @@ class CreateRequestViewModel : ViewModel() {
                     filterElement = { el ->
                         listOf(
                             "pid_DL",
-                            "safeEntry_Leisure"
+                            "safeEntry_Leisure",
                         ).contains(el.attribute.identifier)
-                    }
-                )
+                    },
+                ),
             )
         }
         return requestDocumentList
     }
 
-
     private fun getRequestDocument(
         docType: String,
         intentToRetain: Boolean,
         filterNamespace: (String) -> Boolean = { _ -> true },
-        filterElement: (MdocDataElement) -> Boolean = { _ -> true }
+        filterElement: (MdocDataElement) -> Boolean = { _ -> true },
     ): RequestDocument {
-        val mdocDocumentType = VerifierApp.documentTypeRepositoryInstance
+        val mdocDocumentType =
+            VerifierApp.documentTypeRepositoryInstance
                 .getDocumentTypeForMdoc(docType)!!.mdocDocumentType!!
         return RequestDocument(
             docType,
@@ -204,9 +205,9 @@ class CreateRequestViewModel : ViewModel() {
                         it.namespace,
                         it.dataElements.values.filter { el -> filterElement(el) }
                             .map { el -> Pair(el.attribute.identifier, intentToRetain) }
-                            .toMap()
+                            .toMap(),
                     )
-                }.toMap()
+                }.toMap(),
         )
     }
 }

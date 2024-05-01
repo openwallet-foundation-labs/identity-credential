@@ -1,9 +1,8 @@
 package com.android.mdl.appreader
 
 import android.app.Application
-import com.android.identity.android.util.AndroidLogPrinter
-import com.android.identity.util.Logger
 import androidx.preference.PreferenceManager
+import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
@@ -13,6 +12,7 @@ import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
+import com.android.identity.util.Logger
 import com.android.mdl.appreader.settings.UserPreferences
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.color.DynamicColors
@@ -23,7 +23,6 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
 class VerifierApp : Application() {
-
     private val userPreferences by lazy {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         UserPreferences(sharedPreferences)
@@ -68,11 +67,11 @@ class VerifierApp : Application() {
     }
 
     companion object {
-
         private lateinit var userPreferencesInstance: UserPreferences
         lateinit var trustManagerInstance: TrustManager
         lateinit var certificateStorageEngineInstance: StorageEngine
         lateinit var documentTypeRepositoryInstance: DocumentTypeRepository
+
         fun isDebugLogEnabled(): Boolean {
             return userPreferencesInstance.isDebugLoggingEnabled()
         }

@@ -25,9 +25,7 @@ import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
-
 class CaCertificatesFragment : Fragment() {
-
     private val viewModel: CaCertificatesViewModel by activityViewModels {
         CaCertificatesViewModel.factory()
     }
@@ -38,11 +36,10 @@ class CaCertificatesFragment : Fragment() {
             viewModel.loadCertificates()
         }
 
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
@@ -56,7 +53,7 @@ class CaCertificatesFragment : Fragment() {
                             openDetails()
                         },
                         onImportCertificate = { fileDialog() },
-                        onPasteCertificate = { pasteCertificate() }
+                        onPasteCertificate = { pasteCertificate() },
                     )
                 }
             }
@@ -80,7 +77,7 @@ class CaCertificatesFragment : Fragment() {
                     VerifierApp.trustManagerInstance.addTrustPoint(TrustPoint(certificate))
                     VerifierApp.certificateStorageEngineInstance.put(
                         certificate.getSubjectKeyIdentifier(),
-                        certificate.encoded
+                        certificate.encoded,
                     )
                 }
             }
@@ -93,9 +90,9 @@ class CaCertificatesFragment : Fragment() {
         try {
             val clipboard =
                 activity?.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            if (!clipboard.hasPrimaryClip()
-                || clipboard.primaryClip?.itemCount == 0
-                || clipboard.primaryClip?.getItemAt(0)?.text == null
+            if (!clipboard.hasPrimaryClip() ||
+                clipboard.primaryClip?.itemCount == 0 ||
+                clipboard.primaryClip?.getItemAt(0)?.text == null
             ) {
                 showMessage("Nothing found to paste")
                 return
@@ -105,7 +102,7 @@ class CaCertificatesFragment : Fragment() {
             VerifierApp.trustManagerInstance.addTrustPoint(TrustPoint(certificate))
             VerifierApp.certificateStorageEngineInstance.put(
                 certificate.getSubjectKeyIdentifier(),
-                certificate.encoded
+                certificate.encoded,
             )
         } catch (e: Throwable) {
             showException(e)
@@ -115,20 +112,22 @@ class CaCertificatesFragment : Fragment() {
     }
 
     private fun showException(exception: Throwable) {
-        val message = when (exception) {
-            is FileAlreadyExistsException -> "The certificate is already in the mDoc Issuer Trust Store"
-            is CertificateException -> "The certificate could not be parsed correctly"
-            else -> exception.message
-        }
+        val message =
+            when (exception) {
+                is FileAlreadyExistsException -> "The certificate is already in the mDoc Issuer Trust Store"
+                is CertificateException -> "The certificate could not be parsed correctly"
+                else -> exception.message
+            }
         showMessage(message.toString())
     }
 
     private fun showMessage(message: String) {
-        val snackbar = Snackbar.make(
-            this.requireView(),
-            message,
-            Snackbar.LENGTH_LONG
-        )
+        val snackbar =
+            Snackbar.make(
+                this.requireView(),
+                message,
+                Snackbar.LENGTH_LONG,
+            )
         val snackTextView = snackbar.view.findViewById<View>(R.id.snackbar_text) as TextView
         snackTextView.maxLines = 4
         snackbar.show()

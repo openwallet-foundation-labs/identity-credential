@@ -43,15 +43,15 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
+import com.android.identity.crypto.Algorithm
 import com.android.identity.document.NameSpacedData
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
-import com.android.identity.crypto.Algorithm
-import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -81,12 +81,10 @@ class PresentationActivity : ComponentActivity() {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
 
-
         transferHelper = TransferHelper.getInstance(applicationContext)
 
         setContent {
             IdentityCredentialTheme {
-
                 var stateDisplay = remember { mutableStateOf("Idle") }
 
                 transferHelper.getState().observe(this as LifecycleOwner) { state ->
@@ -136,18 +134,18 @@ class PresentationActivity : ComponentActivity() {
                 val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
                 Scaffold(
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-
                     topBar = {
                         CenterAlignedTopAppBar(
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            ),
+                            colors =
+                                TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
                             title = {
                                 Text(
                                     "mDL Preconsent Presentation",
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             },
                             scrollBehavior = scrollBehavior,
@@ -155,83 +153,86 @@ class PresentationActivity : ComponentActivity() {
                     },
                 ) { innerPadding ->
                     Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding),
                         color = MaterialTheme.colorScheme.background,
                     ) {
-                        Column() {
+                        Column {
                             val scrollState = rememberScrollState()
                             Column(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .verticalScroll(scrollState),
+                                modifier =
+                                    Modifier
+                                        .padding(16.dp)
+                                        .verticalScroll(scrollState),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Column() {
+                                Column {
                                     Text(
                                         text = "Sending mDL to reader.",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
-                                Column() {
+                                Column {
                                     Text(
                                         text = "Engagement: $engagementString",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
-                                Column() {
+                                Column {
                                     Text(
                                         text = "Connection: $connectionMethodString",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
                                 Divider()
-                                Column() {
+                                Column {
                                     Text(
                                         text = "State: ${stateDisplay.value}",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
                                 }
                                 Divider()
                                 Column {
                                     Text(
                                         text = "Tap to Engagement Sent: $durationMillisTapToEngagement ms",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
                                 Column {
                                     Text(
                                         text = "Engagement Sent to Request Received: $durationMillisEngagementToRequest ms",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
-                                val scanningText = if (durationMillisScanning > 0) {
-                                    "$durationMillisScanning ms"
-                                } else {
-                                    "N/A"
-                                }
+                                val scanningText =
+                                    if (durationMillisScanning > 0) {
+                                        "$durationMillisScanning ms"
+                                    } else {
+                                        "N/A"
+                                    }
                                 Column {
                                     Text(
                                         text = "BLE Scanning: $scanningText",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
                                 Column {
                                     Text(
                                         text = "Request Received to Response Sent: $durationMillisRequestToResponse ms",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
                                 Column {
                                     Text(
                                         text = "Total transaction time: $durationMillisTotal ms",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
                                 Divider()
@@ -246,14 +247,14 @@ class PresentationActivity : ComponentActivity() {
                 }
             }
         }
-
     }
 
     private fun processRequest() {
-        val request = DeviceRequestParser(
-            transferHelper.getDeviceRequest(),
-            transferHelper.getSessionTranscript()
-        ).parse()
+        val request =
+            DeviceRequestParser(
+                transferHelper.getDeviceRequest(),
+                transferHelper.getSessionTranscript(),
+            ).parse()
         val docRequest = request.docRequests[0]
         val documentRequest = MdocUtil.generateDocumentRequest(docRequest!!)
         val now = Timestamp.now()
@@ -261,11 +262,12 @@ class PresentationActivity : ComponentActivity() {
         val credential = document.findCredential(MainActivity.AUTH_KEY_DOMAIN, now) as MdocCredential
 
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            documentRequest,
-            document.applicationData.getNameSpacedData("documentData"),
-            staticAuthData
-        )
+        val mergedIssuerNamespaces =
+            MdocUtil.mergeIssuerNamesSpaces(
+                documentRequest,
+                document.applicationData.getNameSpacedData("documentData"),
+                staticAuthData,
+            )
 
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
         deviceResponseGenerator.addDocument(
@@ -276,9 +278,9 @@ class PresentationActivity : ComponentActivity() {
                     credential.secureArea,
                     credential.alias,
                     null,
-                    Algorithm.ES256
+                    Algorithm.ES256,
                 )
-                .generate()
+                .generate(),
         )
         val encodedDeviceResponse = deviceResponseGenerator.generate()
         transferHelper.sendResponse(encodedDeviceResponse)

@@ -7,25 +7,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 class SettingsViewModel : ViewModel() {
-
     private val mutableSettingsState = MutableStateFlow(SettingsScreenState())
     val settingsState: StateFlow<SettingsScreenState> = mutableSettingsState
 
     fun loadSettings() {
-        val settingsState = SettingsScreenState(
-            autoCloseEnabled = PreferencesHelper.isConnectionAutoCloseEnabled(),
-            sessionEncryptionCurveOption = SettingsScreenState.SessionEncryptionCurveOption.fromEcCurve(
-                PreferencesHelper.getEphemeralKeyCurveOption()
-            ),
-            useStaticHandover = PreferencesHelper.shouldUseStaticHandover(),
-            isL2CAPEnabled = PreferencesHelper.isBleL2capEnabled(),
-            isBleClearCacheEnabled = PreferencesHelper.isBleClearCacheEnabled(),
-            isBleDataRetrievalEnabled = PreferencesHelper.isBleDataRetrievalEnabled(),
-            isBlePeripheralModeEnabled = PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(),
-            wifiAwareEnabled = PreferencesHelper.isWifiDataRetrievalEnabled(),
-            nfcEnabled = PreferencesHelper.isNfcDataRetrievalEnabled(),
-            debugEnabled = PreferencesHelper.isDebugLoggingEnabled()
-        )
+        val settingsState =
+            SettingsScreenState(
+                autoCloseEnabled = PreferencesHelper.isConnectionAutoCloseEnabled(),
+                sessionEncryptionCurveOption =
+                    SettingsScreenState.SessionEncryptionCurveOption.fromEcCurve(
+                        PreferencesHelper.getEphemeralKeyCurveOption(),
+                    ),
+                useStaticHandover = PreferencesHelper.shouldUseStaticHandover(),
+                isL2CAPEnabled = PreferencesHelper.isBleL2capEnabled(),
+                isBleClearCacheEnabled = PreferencesHelper.isBleClearCacheEnabled(),
+                isBleDataRetrievalEnabled = PreferencesHelper.isBleDataRetrievalEnabled(),
+                isBlePeripheralModeEnabled = PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(),
+                wifiAwareEnabled = PreferencesHelper.isWifiDataRetrievalEnabled(),
+                nfcEnabled = PreferencesHelper.isNfcDataRetrievalEnabled(),
+                debugEnabled = PreferencesHelper.isDebugLoggingEnabled(),
+            )
         mutableSettingsState.value = settingsState
     }
 
@@ -34,9 +35,7 @@ class SettingsViewModel : ViewModel() {
         mutableSettingsState.update { it.copy(autoCloseEnabled = newValue) }
     }
 
-    fun onEphemeralKeyCurveChanged(
-        sessionEncryptionCurveOption: SettingsScreenState.SessionEncryptionCurveOption
-    ) {
+    fun onEphemeralKeyCurveChanged(sessionEncryptionCurveOption: SettingsScreenState.SessionEncryptionCurveOption) {
         PreferencesHelper.setEphemeralKeyCurveOption(sessionEncryptionCurveOption.toEcCurve())
         mutableSettingsState.update { it.copy(sessionEncryptionCurveOption = sessionEncryptionCurveOption) }
     }
@@ -93,4 +92,3 @@ class SettingsViewModel : ViewModel() {
         mutableSettingsState.update { it.copy(debugEnabled = newValue) }
     }
 }
-

@@ -58,22 +58,22 @@ fun SettingsScreen(
         val scrollState = rememberScrollState()
         var showReaderAuthOptions by rememberSaveable { mutableStateOf(false) }
         Column(
-            modifier = Modifier
-                .padding(vertical = 16.dp)
-                .verticalScroll(scrollState),
+            modifier =
+                Modifier
+                    .padding(vertical = 16.dp)
+                    .verticalScroll(scrollState),
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-
                 SettingSectionTitle(title = "General")
                 SettingToggle(
                     title = "Auto close connection",
                     subtitleOn = "Close connection after first request",
                     subtitleOff = "Don't close connection automatically",
                     isChecked = screenState.isAutoCloseConnectionEnabled,
-                    onCheckedChange = onAutoCloseConnectionChanged
+                    onCheckedChange = onAutoCloseConnectionChanged,
                 )
                 SettingSectionTitle(title = "Data retrieval options")
                 SettingToggle(
@@ -81,53 +81,53 @@ fun SettingsScreen(
                     subtitleOn = "Use L2CAP",
                     subtitleOff = "Don't use L2CAP",
                     isChecked = screenState.isL2CAPEnabled,
-                    onCheckedChange = onUseL2CAPChanged
+                    onCheckedChange = onUseL2CAPChanged,
                 )
                 SettingToggle(
                     title = "Clear BLE Service Cache",
                     subtitleOn = "Clean the cache",
                     subtitleOff = "Don't clean the cache",
                     isChecked = screenState.isBleClearCacheEnabled,
-                    onCheckedChange = onBLEServiceCacheChanged
+                    onCheckedChange = onBLEServiceCacheChanged,
                 )
                 SettingSectionTitle(
                     title = "Data retrieval methods",
-                    subtitle = "Used for NFC negotiated handover and reverse engagement"
+                    subtitle = "Used for NFC negotiated handover and reverse engagement",
                 )
                 SettingToggle(
                     title = "HTTP",
                     subtitleOn = "HTTP transfer activated",
                     subtitleOff = "HTTP transfer deactivated",
                     isChecked = screenState.isHttpTransferEnabled,
-                    onCheckedChange = onHttpTransferChanged
+                    onCheckedChange = onHttpTransferChanged,
                 )
                 SettingToggle(
                     title = "BLE central client mode",
                     subtitleOn = "BLE central client mode activated",
                     subtitleOff = "BLE central client mode deactivated",
                     isChecked = screenState.isBleCentralClientModeEnabled,
-                    onCheckedChange = onBLECentralClientModeChanged
+                    onCheckedChange = onBLECentralClientModeChanged,
                 )
                 SettingToggle(
                     title = "BLE peripheral server mode",
                     subtitleOn = "BLE peripheral server mode activated",
                     subtitleOff = "BLE peripheral server mode deactivated",
                     isChecked = screenState.isBlePeripheralServerMode,
-                    onCheckedChange = onBLEPeripheralServerModeChanged
+                    onCheckedChange = onBLEPeripheralServerModeChanged,
                 )
                 SettingToggle(
                     title = "WiFi Aware",
                     subtitleOn = "WiFi Aware transfer activated",
                     subtitleOff = "WiFi Aware transfer deactivated",
                     isChecked = screenState.isWifiAwareEnabled,
-                    onCheckedChange = onWifiAwareTransferChanged
+                    onCheckedChange = onWifiAwareTransferChanged,
                 )
                 SettingToggle(
                     title = "NFC",
                     subtitleOn = "NFC transfer activated",
                     subtitleOff = "NFC transfer deactivated",
                     isChecked = screenState.isNfcTransferEnabled,
-                    onCheckedChange = onNfcTransferChanged
+                    onCheckedChange = onNfcTransferChanged,
                 )
                 SettingSectionTitle(title = "Debug Logging Options")
                 SettingToggle(
@@ -135,34 +135,36 @@ fun SettingsScreen(
                     subtitleOn = "Debug logging activated",
                     subtitleOff = "Debug logging deactivated",
                     isChecked = screenState.isDebugLoggingEnabled,
-                    onCheckedChange = onDebugLoggingChanged
+                    onCheckedChange = onDebugLoggingChanged,
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             SettingSectionTitle(
                 modifier = Modifier.padding(horizontal = 16.dp),
-                title = "Reader Authentication"
+                title = "Reader Authentication",
             )
             Spacer(modifier = Modifier.height(4.dp))
             SettingItem(
-                modifier = Modifier
-                    .clickable { showReaderAuthOptions = true }
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .clickable { showReaderAuthOptions = true }
+                        .padding(16.dp),
                 title = "Use Reader Authentication",
-                subtitle = readerAuthenticationFor(screenState.readerAuthentication)
+                subtitle = readerAuthenticationFor(screenState.readerAuthentication),
             )
             Spacer(modifier = Modifier.height(16.dp))
             SettingSectionTitle(
                 modifier = Modifier.padding(horizontal = 16.dp),
-                title = "CA Certificates"
+                title = "CA Certificates",
             )
             Spacer(modifier = Modifier.height(4.dp))
             SettingItem(
-                modifier = Modifier
-                    .clickable { onOpenCaCertificates() }
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .clickable { onOpenCaCertificates() }
+                        .padding(16.dp),
                 title = "Show CA Certificates",
-                subtitle = "Click here to show the CA Certificates"
+                subtitle = "Click here to show the CA Certificates",
             )
         }
         ReaderAuthenticationOptions(
@@ -173,7 +175,7 @@ fun SettingsScreen(
                 showReaderAuthOptions = false
                 onChangeReaderAuthentication(it)
             },
-            onDismiss = { showReaderAuthOptions = false }
+            onDismiss = { showReaderAuthOptions = false },
         )
     }
 }
@@ -184,7 +186,7 @@ private fun ReaderAuthenticationOptions(
     show: Boolean,
     currentlySelected: Int,
     onOptionSelected: (value: Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     if (show) {
         val listItems = stringArrayResource(id = R.array.readerAuthenticationNames)
@@ -203,7 +205,7 @@ private fun ReaderAuthenticationOptions(
                         LabeledRadioButton(
                             label = item,
                             isSelected = index == currentlySelected,
-                            onClick = { onOptionSelected(index) }
+                            onClick = { onOptionSelected(index) },
                         )
                     }
                 }
@@ -211,7 +213,7 @@ private fun ReaderAuthenticationOptions(
             title = {
                 Text(
                     text = "Use Reader Authentication",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
                 )
             },
         )
@@ -222,23 +224,24 @@ private fun ReaderAuthenticationOptions(
 private fun LabeledRadioButton(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .selectable(
-                selected = isSelected,
-                onClick = onClick,
-                role = Role.RadioButton
-            )
-            .padding(horizontal = 4.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .selectable(
+                    selected = isSelected,
+                    onClick = onClick,
+                    role = Role.RadioButton,
+                )
+                .padding(horizontal = 4.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(
             selected = isSelected,
-            onClick = null
+            onClick = null,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(text = label)
@@ -255,21 +258,21 @@ fun readerAuthenticationFor(readerAuthentication: Int): String {
 private fun SettingSectionTitle(
     modifier: Modifier = Modifier,
     title: String,
-    subtitle: String = ""
+    subtitle: String = "",
 ) {
     Column(modifier = modifier) {
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
         if (subtitle.isNotBlank()) {
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -279,22 +282,22 @@ private fun SettingSectionTitle(
 private fun SettingItem(
     modifier: Modifier = Modifier,
     title: String,
-    subtitle: String
+    subtitle: String,
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -308,26 +311,26 @@ private fun SettingToggle(
     subtitleOff: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             val subtitle = if (isChecked) subtitleOn else subtitleOff
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         Switch(
             checked = isChecked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }
@@ -350,7 +353,7 @@ private fun SettingsScreenPreview() {
             onNfcTransferChanged = {},
             onDebugLoggingChanged = {},
             onChangeReaderAuthentication = {},
-            onOpenCaCertificates = {}
+            onOpenCaCertificates = {},
         )
     }
 }

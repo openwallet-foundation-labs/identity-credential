@@ -19,7 +19,6 @@ import kotlin.math.min
  * @param tmpDir a folder for temporary files (PDF can be rendered only from a file).
  */
 class Jpeg2kConverter(private val tmpDir: File) {
-
     /** Parses JPEG2000 file and returns a Bitmap. */
     fun convertToBitmap(j2k: ByteArray): Bitmap {
         val pdf = convertToPdfData(j2k)
@@ -46,16 +45,25 @@ class Jpeg2kConverter(private val tmpDir: File) {
         val width: Int
         val height: Int
         val prefix = ByteArrayOutputStream()
-        if ((j2k[0].toInt() and 0xFF) == 0xFF && (j2k[1].toInt() and 0xFF) == 0x4F
-            && (j2k[2].toInt() and 0xFF) == 0xFF && (j2k[3].toInt() and 0xFF) == 0x51) {
+        if ((j2k[0].toInt() and 0xFF) == 0xFF && (j2k[1].toInt() and 0xFF) == 0x4F &&
+            (j2k[2].toInt() and 0xFF) == 0xFF && (j2k[3].toInt() and 0xFF) == 0x51
+        ) {
             width = readInt(j2k, 8)
             height = readInt(j2k, 12)
             // signature
-            prefix.write(byteArrayOf(0, 0, 0, 0x0C, 0x6A, 0x50, 0x20, 0x20, 0x0D, 0x0A,
-                (0x87).toByte(), 0x0A))
+            prefix.write(
+                byteArrayOf(
+                    0, 0, 0, 0x0C, 0x6A, 0x50, 0x20, 0x20, 0x0D, 0x0A,
+                    (0x87).toByte(), 0x0A,
+                ),
+            )
             // ftyp
-            prefix.write(byteArrayOf(0, 0, 0, 0x14, 0x66, 0x74, 0x79, 0x70, 0x6A, 0x70, 0x32, 0x20,
-                0, 0, 0, 0, 0x6A, 0x70, 0x32, 0x20))
+            prefix.write(
+                byteArrayOf(
+                    0, 0, 0, 0x14, 0x66, 0x74, 0x79, 0x70, 0x6A, 0x70, 0x32, 0x20,
+                    0, 0, 0, 0, 0x6A, 0x70, 0x32, 0x20,
+                ),
+            )
             // jp2h
             prefix.write(byteArrayOf(0, 0, 0, 0x2d, 0x6a, 0x70, 0x32, 0x68))
             // ihdr
@@ -136,7 +144,10 @@ class Jpeg2kConverter(private val tmpDir: File) {
         /**
          * Replacement for [BitmapFactory.decodeByteArray]
          */
-        fun decodeByteArray(context: Context, data: ByteArray): Bitmap? {
+        fun decodeByteArray(
+            context: Context,
+            data: ByteArray,
+        ): Bitmap? {
             val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
             if (bitmap != null) {
                 return bitmap
@@ -195,25 +206,36 @@ startxref
 """
     }
 
-    private fun putAscii(buffer: ByteArrayOutputStream, ascii: String) {
+    private fun putAscii(
+        buffer: ByteArrayOutputStream,
+        ascii: String,
+    ) {
         for (c in ascii) {
             buffer.write(c.code)
         }
     }
 
-    private fun putInt(buffer: ByteArrayOutputStream, v: Int) {
+    private fun putInt(
+        buffer: ByteArrayOutputStream,
+        v: Int,
+    ) {
         buffer.write(v ushr 24)
         buffer.write(v ushr 16)
         buffer.write(v ushr 8)
         buffer.write(v)
     }
 
-    private fun readInt(bytes: ByteArray, offset: Int): Int {
+    private fun readInt(
+        bytes: ByteArray,
+        offset: Int,
+    ): Int {
         return bytes[offset].toInt() and 0xFF shl 24 or (bytes[offset + 1].toInt() and 0xFF shl 16) or (bytes[offset + 2].toInt() and 0xFF shl 8) or (bytes[offset + 3].toInt() and 0xFF shl 0)
     }
 
     data class PDFData(
-        val bytes: ByteArray, val width: Int, val height: Int
+        val bytes: ByteArray,
+        val width: Int,
+        val height: Int,
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true

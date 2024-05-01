@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -25,8 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
@@ -37,14 +33,13 @@ import com.android.identity.wallet.composables.PreviewLightDark
 import com.android.identity.wallet.theme.HolderAppTheme
 
 class PassphrasePrompt : DialogFragment() {
-
     private val args by navArgs<PassphrasePromptArgs>()
     private val viewModel by activityViewModels<PassphrasePromptViewModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
@@ -54,7 +49,7 @@ class PassphrasePrompt : DialogFragment() {
                         onDone = { passphrase ->
                             viewModel.authorize(userPassphrase = passphrase)
                             findNavController().navigateUp()
-                        }
+                        },
                     )
                 }
             }
@@ -65,25 +60,26 @@ class PassphrasePrompt : DialogFragment() {
 @Composable
 private fun PassphrasePromptUI(
     showIncorrectPassword: Boolean,
-    onDone: (passphrase: String) -> Unit
+    onDone: (passphrase: String) -> Unit,
 ) {
     var value by remember { mutableStateOf("") }
     Card(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = stringResource(id = R.string.passphrase_prompt_title),
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             Text(
                 text = stringResource(id = R.string.passphrase_prompt_message),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.titleSmall,
             )
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -95,21 +91,23 @@ private fun PassphrasePromptUI(
                     Text(
                         text = stringResource(id = R.string.passphrase_prompt_hint),
                         style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = .5f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = .5f),
                     )
-                }
+                },
             )
             if (showIncorrectPassword) {
                 Text(
                     text = stringResource(id = R.string.passphrase_prompt_incorrect_passphrase),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
             TextButton(
-                modifier = Modifier
-                    .align(Alignment.End),
-                onClick = { onDone(value) }) {
+                modifier =
+                    Modifier
+                        .align(Alignment.End),
+                onClick = { onDone(value) },
+            ) {
                 Text(text = stringResource(id = R.string.bt_ok))
             }
         }
@@ -122,7 +120,7 @@ private fun PreviewPassphrasePrompt() {
     HolderAppTheme {
         PassphrasePromptUI(
             showIncorrectPassword = false,
-            onDone = {}
+            onDone = {},
         )
     }
 }
@@ -133,7 +131,7 @@ private fun PreviewPassphrasePromptWithIncorrectPassword() {
     HolderAppTheme {
         PassphrasePromptUI(
             showIncorrectPassword = true,
-            onDone = {}
+            onDone = {},
         )
     }
 }

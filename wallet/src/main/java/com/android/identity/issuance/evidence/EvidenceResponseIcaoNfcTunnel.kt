@@ -6,9 +6,8 @@ package com.android.identity.issuance.evidence
  * TODO: define the response to handshake message; in particular we may need to send PACE
  * key to support Terminal Authentication. For now handshake message is empty.
  */
-data class EvidenceResponseIcaoNfcTunnel(val response: ByteArray)
-    : EvidenceResponse() {
-
+data class EvidenceResponseIcaoNfcTunnel(val response: ByteArray) :
+    EvidenceResponse() {
     override fun toString(): String {
         return "EvidenceResponseIcaoNfcTunnel{length=${response.size}}"
     }

@@ -20,31 +20,34 @@ import com.android.identity.wallet.R
 fun SoftwareSetupContainer(
     modifier: Modifier = Modifier,
     passphrase: String,
-    onPassphraseChanged: (newValue: String) -> Unit
+    onPassphraseChanged: (newValue: String) -> Unit,
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         OutlinedContainerHorizontal(modifier = Modifier.fillMaxWidth()) {
             Box(contentAlignment = Alignment.CenterStart) {
                 BasicTextField(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                    textStyle = MaterialTheme.typography.labelMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                    ),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                    textStyle =
+                        MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
                     value = passphrase,
                     onValueChange = onPassphraseChanged,
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface)
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                 )
                 if (passphrase.isEmpty()) {
                     Text(
                         text = stringResource(id = R.string.keystore_software_passphrase_hint),
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f)
-                        ),
+                        style =
+                            MaterialTheme.typography.labelMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f),
+                            ),
                     )
                 }
             }

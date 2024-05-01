@@ -30,8 +30,7 @@ import java.security.Security
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
-class HolderApp: Application() {
-
+class HolderApp : Application() {
     private val documentTypeRepository by lazy {
         DocumentTypeRepository()
     }
@@ -71,13 +70,13 @@ class HolderApp: Application() {
     }
 
     companion object {
-
         lateinit var documentTypeRepositoryInstance: DocumentTypeRepository
         lateinit var trustManagerInstance: TrustManager
         lateinit var certificateStorageEngineInstance: StorageEngine
+
         fun createDocumentStore(
             context: Context,
-            secureAreaRepository: SecureAreaRepository
+            secureAreaRepository: SecureAreaRepository,
         ): DocumentStore {
             val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
             val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()

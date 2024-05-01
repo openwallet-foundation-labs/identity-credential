@@ -20,7 +20,7 @@ fun RichTextSnippet(
     primaryColor: Color = MaterialTheme.colorScheme.primary,
     linkColor: Color = MaterialTheme.colorScheme.secondary,
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
-    assets: Map<String, ByteArray>? = mapOf()  // no assets by default
+    assets: Map<String, ByteArray>? = mapOf(), // no assets by default
 ) {
     if (htmlDetector.matches(content)) {
         HtmlSnippetText(
@@ -31,7 +31,8 @@ fun RichTextSnippet(
             primaryColor = primaryColor,
             linkColor = linkColor,
             backgroundColor = backgroundColor,
-            assets = assets)
+            assets = assets,
+        )
     } else {
         MarkdownText(
             content = content,
@@ -41,6 +42,7 @@ fun RichTextSnippet(
             primaryColor = primaryColor,
             linkColor = linkColor,
             backgroundColor = backgroundColor,
-            assets = assets)
+            assets = assets,
+        )
     }
 }

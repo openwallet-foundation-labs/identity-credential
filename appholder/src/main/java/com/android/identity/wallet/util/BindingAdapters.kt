@@ -5,7 +5,6 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.databinding.BindingAdapter
 
-
 object BindingAdapters {
     /**
      * A Binding Adapter that is called whenever the value of the attribute `app:engagementView`
@@ -13,7 +12,10 @@ object BindingAdapters {
      */
     @BindingAdapter("app:engagementView")
     @JvmStatic
-    fun engagementView(view: LinearLayout, viewEngagement: View?) {
+    fun engagementView(
+        view: LinearLayout,
+        viewEngagement: View?,
+    ) {
         viewEngagement?.let {
             (viewEngagement.parent as? ViewGroup)?.removeView(viewEngagement)
             view.addView(it)

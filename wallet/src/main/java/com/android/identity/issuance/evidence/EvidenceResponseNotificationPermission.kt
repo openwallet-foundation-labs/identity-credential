@@ -1,5 +1,5 @@
 package com.android.identity.issuance.evidence
 
 data class EvidenceResponseNotificationPermission(
-    val permissionGranted: Boolean
+    val permissionGranted: Boolean,
 ) : EvidenceResponse()

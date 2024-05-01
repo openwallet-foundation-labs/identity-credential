@@ -63,38 +63,42 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
 
     override fun createKey(
         alias: String,
-        createKeySettings: com.android.identity.securearea.CreateKeySettings
+        createKeySettings: com.android.identity.securearea.CreateKeySettings,
     ) {
-        val settings = if (createKeySettings is SoftwareCreateKeySettings) {
-            createKeySettings
-        } else {
-            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            SoftwareCreateKeySettings.Builder(createKeySettings.attestationChallenge).build()
-        }
+        val settings =
+            if (createKeySettings is SoftwareCreateKeySettings) {
+                createKeySettings
+            } else {
+                // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
+                SoftwareCreateKeySettings.Builder(createKeySettings.attestationChallenge).build()
+            }
         try {
             val privateKey = Crypto.createEcPrivateKey(settings.ecCurve)
-            val mapBuilder = CborMap.builder().apply {
-                put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
-                put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
-                put("passphraseRequired", settings.passphraseRequired)
-            }
+            val mapBuilder =
+                CborMap.builder().apply {
+                    put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
+                    put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
+                    put("passphraseRequired", settings.passphraseRequired)
+                }
 
             if (!settings.passphraseRequired) {
                 mapBuilder.put("privateKey", privateKey.toCoseKey().toDataItem)
             } else {
                 val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem)
-                val secretKey = derivePrivateKeyEncryptionKey(
-                    encodedPublicKey,
-                    settings.passphrase!!
-                )
+                val secretKey =
+                    derivePrivateKeyEncryptionKey(
+                        encodedPublicKey,
+                        settings.passphrase!!,
+                    )
                 val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem)
                 val iv = Random.Default.nextBytes(12)
-                val encryptedPrivateKey = Crypto.encrypt(
-                    Algorithm.A128GCM,
-                    secretKey,
-                    iv,
-                    cleartextPrivateKey
-                )
+                val encryptedPrivateKey =
+                    Crypto.encrypt(
+                        Algorithm.A128GCM,
+                        secretKey,
+                        iv,
+                        cleartextPrivateKey,
+                    )
                 mapBuilder.apply {
                     put("encodedPublicKey", encodedPublicKey)
                     put("encryptedPrivateKey", encryptedPrivateKey)
@@ -119,36 +123,39 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                     "Self-signing not possible with curve ${privateKey.curve}, use an attestation key"
                 }
             }
-            val validFrom = settings.validFrom?.toEpochMilli()
-                ?.let { Instant.fromEpochMilliseconds(it) }
-                ?: Clock.System.now()
+            val validFrom =
+                settings.validFrom?.toEpochMilli()
+                    ?.let { Instant.fromEpochMilliseconds(it) }
+                    ?: Clock.System.now()
 
-            val validUntil = settings.validUntil?.toEpochMilli()
-                ?.let { Instant.fromEpochMilliseconds(it) }
-                ?: (validFrom + 365.days)
+            val validUntil =
+                settings.validUntil?.toEpochMilli()
+                    ?.let { Instant.fromEpochMilliseconds(it) }
+                    ?: (validFrom + 365.days)
 
-            val certificate = Crypto.createX509v3Certificate(
-                privateKey.publicKey,
-                certSigningKey,
-                null,
-                signatureAlgorithm,
-                "1",
-                subject,
-                issuer,
-                validFrom,
-                validUntil,
-                setOf(),
-                listOf(
-                    X509v3Extension(
-                        AttestationExtension.ATTESTATION_OID,
-                        false,
-                        AttestationExtension.encode(settings.attestationChallenge)
-                    )
+            val certificate =
+                Crypto.createX509v3Certificate(
+                    privateKey.publicKey,
+                    certSigningKey,
+                    null,
+                    signatureAlgorithm,
+                    "1",
+                    subject,
+                    issuer,
+                    validFrom,
+                    validUntil,
+                    setOf(),
+                    listOf(
+                        X509v3Extension(
+                            AttestationExtension.ATTESTATION_OID,
+                            false,
+                            AttestationExtension.encode(settings.attestationChallenge),
+                        ),
+                    ),
                 )
-            )
             val certs = mutableListOf(certificate)
             if (settings.attestationKeyCertification != null) {
-                settings.attestationKeyCertification.certificates.forEach() { cert ->
+                settings.attestationKeyCertification.certificates.forEach { cert ->
                     certs.add(cert)
                 }
             }
@@ -167,7 +174,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
 
     private fun derivePrivateKeyEncryptionKey(
         encodedPublicKey: ByteArray,
-        passphrase: String
+        passphrase: String,
     ): ByteArray {
         val info = "ICPrivateKeyEncryption1".toByteArray(StandardCharsets.UTF_8)
         return Crypto.hkdf(
@@ -175,7 +182,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             passphrase.toByteArray(),
             encodedPublicKey,
             info,
-            32
+            32,
         )
     }
 
@@ -190,35 +197,38 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
     private fun loadKey(
         prefix: String,
         alias: String,
-        keyUnlockData: KeyUnlockData?
+        keyUnlockData: KeyUnlockData?,
     ): KeyData {
         var passphrase: String? = null
         if (keyUnlockData != null) {
             val unlockData = keyUnlockData as SoftwareKeyUnlockData
             passphrase = unlockData.passphrase
         }
-        val data = storageEngine[prefix + alias]
-            ?: throw IllegalArgumentException("No key with given alias")
+        val data =
+            storageEngine[prefix + alias]
+                ?: throw IllegalArgumentException("No key with given alias")
         val map = Cbor.decode(data)
         val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
         val passphraseRequired = map["passphraseRequired"].asBoolean
-        val privateKeyCoseKey = if (passphraseRequired) {
-            if (passphrase == null) {
-                throw KeyLockedException("No passphrase provided")
+        val privateKeyCoseKey =
+            if (passphraseRequired) {
+                if (passphrase == null) {
+                    throw KeyLockedException("No passphrase provided")
+                }
+                val encodedPublicKey = map["encodedPublicKey"].asBstr
+                val encryptedPrivateKey = map["encryptedPrivateKey"].asBstr
+                val iv = map["encryptedPrivateKeyIv"].asBstr
+                val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, passphrase)
+                val encodedPrivateKey =
+                    try {
+                        Crypto.decrypt(Algorithm.A128GCM, secretKey, iv, encryptedPrivateKey)
+                    } catch (e: Exception) {
+                        throw KeyLockedException("Error decrypting private key - wrong passphrase?", e)
+                    }
+                Cbor.decode(encodedPrivateKey).asCoseKey
+            } else {
+                map["privateKey"].asCoseKey
             }
-            val encodedPublicKey = map["encodedPublicKey"].asBstr
-            val encryptedPrivateKey = map["encryptedPrivateKey"].asBstr
-            val iv = map["encryptedPrivateKeyIv"].asBstr
-            val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, passphrase)
-            val encodedPrivateKey = try {
-                Crypto.decrypt(Algorithm.A128GCM, secretKey, iv, encryptedPrivateKey)
-            } catch (e: Exception) {
-                throw KeyLockedException("Error decrypting private key - wrong passphrase?", e)
-            }
-            Cbor.decode(encodedPrivateKey).asCoseKey
-        } else {
-            map["privateKey"].asCoseKey
-        }
         return KeyData(keyPurposes, privateKeyCoseKey.ecPrivateKey)
     }
 
@@ -233,7 +243,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
     @Throws(KeyLockedException::class)
     fun getPrivateKey(
         alias: String,
-        keyUnlockData: KeyUnlockData?
+        keyUnlockData: KeyUnlockData?,
     ): EcPrivateKey = loadKey(PREFIX, alias, keyUnlockData).privateKey
 
     @Throws(KeyLockedException::class)
@@ -241,39 +251,43 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         alias: String,
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
-        keyUnlockData: KeyUnlockData?
-    ): ByteArray = loadKey(PREFIX, alias, keyUnlockData).run {
-        require(keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        Crypto.sign(privateKey, signatureAlgorithm, dataToSign)
-    }
+        keyUnlockData: KeyUnlockData?,
+    ): ByteArray =
+        loadKey(PREFIX, alias, keyUnlockData).run {
+            require(keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
+            Crypto.sign(privateKey, signatureAlgorithm, dataToSign)
+        }
 
     @Throws(KeyLockedException::class)
     override fun keyAgreement(
         alias: String,
         otherKey: EcPublicKey,
-        keyUnlockData: KeyUnlockData?
-    ): ByteArray = loadKey(PREFIX, alias, keyUnlockData).run {
-        require(keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
-        Crypto.keyAgreement(privateKey, otherKey)
-    }
+        keyUnlockData: KeyUnlockData?,
+    ): ByteArray =
+        loadKey(PREFIX, alias, keyUnlockData).run {
+            require(keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
+            Crypto.keyAgreement(privateKey, otherKey)
+        }
 
     override fun getKeyInfo(alias: String): SoftwareKeyInfo {
-        val data = storageEngine[PREFIX + alias]
-            ?: throw IllegalArgumentException("No key with given alias")
+        val data =
+            storageEngine[PREFIX + alias]
+                ?: throw IllegalArgumentException("No key with given alias")
         val map = Cbor.decode(data)
         val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val publicKey = map["publicKey"].asCoseKey.ecPublicKey
         val attestation = map["attestation"].asCertificateChain
-        val passphraseConstraints = map.getOrNull("passphraseConstraints")?.let {
-            PassphraseConstraints.fromDataItem(it)
-        }
+        val passphraseConstraints =
+            map.getOrNull("passphraseConstraints")?.let {
+                PassphraseConstraints.fromDataItem(it)
+            }
         return SoftwareKeyInfo(
             publicKey,
             attestation,
             keyPurposes,
             passphraseRequired,
-            passphraseConstraints
+            passphraseConstraints,
         )
     }
 

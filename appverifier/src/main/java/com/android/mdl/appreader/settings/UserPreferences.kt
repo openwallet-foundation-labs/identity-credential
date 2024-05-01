@@ -5,9 +5,8 @@ import androidx.core.content.edit
 import com.android.identity.util.Logger
 
 class UserPreferences(
-    private val preferences: SharedPreferences
+    private val preferences: SharedPreferences,
 ) {
-
     fun isAutoCloseConnectionEnabled(): Boolean {
         return preferences.getBoolean(AUTO_CLOSE_CONNECTION, false)
     }

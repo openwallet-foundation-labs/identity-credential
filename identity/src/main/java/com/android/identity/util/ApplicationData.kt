@@ -36,9 +36,12 @@ interface ApplicationData {
      *
      * @param key   the key for the data.
      * @param value the value or `null` to remove.
-     * @return      the modified [ApplicationData].
+     * @return the modified [ApplicationData].
      */
-    fun setData(key: String, value: ByteArray?): ApplicationData
+    fun setData(
+        key: String,
+        value: ByteArray?,
+    ): ApplicationData
 
     /**
      * Sets application specific data as a string.
@@ -47,9 +50,12 @@ interface ApplicationData {
      *
      * @param key   the key for the data.
      * @param value the value
-     * @return      the modified [ApplicationData].
+     * @return the modified [ApplicationData].
      */
-    fun setString(key: String, value: String): ApplicationData
+    fun setString(
+        key: String,
+        value: String,
+    ): ApplicationData
 
     /**
      * Sets application specific data as a `long`.
@@ -58,9 +64,12 @@ interface ApplicationData {
      *
      * @param key   the key for the data.
      * @param value the value.
-     * @return      the modified [ApplicationData].
+     * @return the modified [ApplicationData].
      */
-    fun setNumber(key: String, value: Long): ApplicationData
+    fun setNumber(
+        key: String,
+        value: Long,
+    ): ApplicationData
 
     /**
      * Sets application specific data as a boolean.
@@ -69,9 +78,12 @@ interface ApplicationData {
      *
      * @param key   the key for the data.
      * @param value the value.
-     * @return      the modified [ApplicationData].
+     * @return the modified [ApplicationData].
      */
-    fun setBoolean(key: String, value: Boolean): ApplicationData
+    fun setBoolean(
+        key: String,
+        value: Boolean,
+    ): ApplicationData
 
     /**
      * Sets application specific data as a [NameSpacedData].
@@ -81,15 +93,18 @@ interface ApplicationData {
      *
      * @param key   the key for the data.
      * @param value the value.
-     * @return      the modified [ApplicationData].
+     * @return the modified [ApplicationData].
      */
-    fun setNameSpacedData(key: String, value: NameSpacedData): ApplicationData
+    fun setNameSpacedData(
+        key: String,
+        value: NameSpacedData,
+    ): ApplicationData
 
     /**
      * Returns whether the [ApplicationData] has a value for the key provided.
      *
      * @param key the key for the data.
-     * @return    true if the key exists, false else.
+     * @return true if the key exists, false else.
      */
     fun keyExists(key: String): Boolean
 
@@ -98,7 +113,7 @@ interface ApplicationData {
      *
      * Gets data previously stored with [.setData].
      *
-     * @param  key the key for the data.
+     * @param key the key for the data.
      * @return the value.
      * @throws IllegalArgumentException if the data element does not exist.
      */
@@ -109,7 +124,7 @@ interface ApplicationData {
      *
      * Takes the data returned by [.getData] and decodes it as a CBOR string.
      *
-     * @param  key the key for the data.
+     * @param key the key for the data.
      * @return the value.
      * @throws IllegalArgumentException if the data element does not exist.
      * @throws IllegalArgumentException if the data isn't a CBOR encoded string.
@@ -121,7 +136,7 @@ interface ApplicationData {
      *
      * Takes the data returned by [.getData] and decodes it as a `long`.
      *
-     * @param  key the key for the data.
+     * @param key the key for the data.
      * @return the value.
      * @throws IllegalArgumentException if the data element does not exist.
      * @throws IllegalArgumentException if the data isn't a CBOR encoded `long`.
@@ -133,7 +148,7 @@ interface ApplicationData {
      *
      * Takes the data returned by [.getData] and decodes it as a `boolean`.
      *
-     * @param  key the key for the data.
+     * @param key the key for the data.
      * @return the value.
      * @throws IllegalArgumentException if the data element does not exist.
      * @throws IllegalArgumentException if the data isn't a CBOR encoded `boolean`.
@@ -146,7 +161,7 @@ interface ApplicationData {
      * Takes the data returned by [.getData] and decodes it as a
      * [NameSpacedData] using [NameSpacedData.fromEncodedCbor].
      *
-     * @param  key the key for the data.
+     * @param key the key for the data.
      * @return the value.
      * @throws IllegalArgumentException if the data element does not exist.
      * @throws IllegalArgumentException if the data isn't encoded as a [NameSpacedData].

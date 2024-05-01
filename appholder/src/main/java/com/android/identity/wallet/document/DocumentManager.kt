@@ -11,15 +11,15 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.document.Document
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.wallet.HolderApp
+import com.android.identity.wallet.R
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
-import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
-import com.android.identity.wallet.R
 import com.android.mdl.app.credman.IdentityCredentialEntry
 import com.android.mdl.app.credman.IdentityCredentialField
 import com.android.mdl.app.credman.IdentityCredentialRegistry
@@ -29,8 +29,8 @@ import java.util.Locale
 
 class DocumentManager private constructor(private val context: Context) {
     val client = IdentityCredentialManager.Companion.getClient(context)
-    companion object {
 
+    companion object {
         @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: DocumentManager? = null
@@ -56,13 +56,16 @@ class DocumentManager private constructor(private val context: Context) {
         return null
     }
 
-    fun getDataElementDisplayName(docTypeName : String,
-                                  nameSpaceName : String,
-                                  dataElementName : String): String {
+    fun getDataElementDisplayName(
+        docTypeName: String,
+        nameSpaceName: String,
+        dataElementName: String,
+    ): String {
         val credType = HolderApp.documentTypeRepositoryInstance.getDocumentTypeForMdoc(docTypeName)
         if (credType != null) {
-            val mdocDataElement = credType.mdocDocumentType!!
-                .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
+            val mdocDataElement =
+                credType.mdocDocumentType!!
+                    .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
             if (mdocDataElement != null) {
                 return mdocDataElement.attribute.displayName
             }
@@ -73,51 +76,56 @@ class DocumentManager private constructor(private val context: Context) {
     fun registerDocuments() {
         val documentStore = ProvisioningUtil.getInstance(context).documentStore
         var idCount = 0L
-        val entries = documentStore.listDocuments().map { documentId ->
-            val document = documentStore.lookupDocument(documentId)!!
-            val documentInformation = document.toDocumentInformation()!!
+        val entries =
+            documentStore.listDocuments().map { documentId ->
+                val document = documentStore.lookupDocument(documentId)!!
+                val documentInformation = document.toDocumentInformation()!!
 
-            val fields = mutableListOf<IdentityCredentialField>()
-            fields.add(IdentityCredentialField(
-                name = "doctype",
-                value = documentInformation.docType,
-                displayName = "Document Type",
-                displayValue = documentInformation.docType
-            ))
+                val fields = mutableListOf<IdentityCredentialField>()
+                fields.add(
+                    IdentityCredentialField(
+                        name = "doctype",
+                        value = documentInformation.docType,
+                        displayName = "Document Type",
+                        displayValue = documentInformation.docType,
+                    ),
+                )
 
-            val nameSpacedData = document.applicationData.getNameSpacedData("documentData")
-            nameSpacedData.nameSpaceNames.map {nameSpaceName ->
-                nameSpacedData.getDataElementNames(nameSpaceName).map {dataElementName ->
-                    val fieldName = nameSpaceName + "." + dataElementName
-                    val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
-                    var valueString = Cbor.toDiagnostics(valueCbor)
-                    // Workaround for Credman not supporting images yet
-                    if (dataElementName.equals("portrait") || dataElementName.equals("signature_usual_mark")) {
-                        valueString = String.format(Locale.US, "%d bytes", valueCbor.size)
+                val nameSpacedData = document.applicationData.getNameSpacedData("documentData")
+                nameSpacedData.nameSpaceNames.map { nameSpaceName ->
+                    nameSpacedData.getDataElementNames(nameSpaceName).map { dataElementName ->
+                        val fieldName = nameSpaceName + "." + dataElementName
+                        val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
+                        var valueString = Cbor.toDiagnostics(valueCbor)
+                        // Workaround for Credman not supporting images yet
+                        if (dataElementName.equals("portrait") || dataElementName.equals("signature_usual_mark")) {
+                            valueString = String.format(Locale.US, "%d bytes", valueCbor.size)
+                        }
+                        val dataElementDisplayName = getDataElementDisplayName(documentInformation.docType, nameSpaceName, dataElementName)
+                        fields.add(
+                            IdentityCredentialField(
+                                name = fieldName,
+                                value = valueString,
+                                displayName = dataElementDisplayName,
+                                displayValue = valueString,
+                            ),
+                        )
+                        log("Adding field $fieldName ('$dataElementDisplayName') with value '$valueString'")
                     }
-                    val dataElementDisplayName = getDataElementDisplayName(documentInformation.docType, nameSpaceName, dataElementName)
-                    fields.add(IdentityCredentialField(
-                        name = fieldName,
-                        value = valueString,
-                        displayName = dataElementDisplayName,
-                        displayValue = valueString
-                    ))
-                    log("Adding field $fieldName ('$dataElementDisplayName') with value '$valueString'")
                 }
-            }
 
-            log("Adding document ${documentInformation.userVisibleName}")
-            IdentityCredentialEntry(
-                id = idCount++,
-                format = "mdoc",
-                title = documentInformation.userVisibleName,
-                subtitle = context.getString(R.string.app_name),
-                icon = BitmapFactory.decodeResource(context.resources, R.drawable.driving_license_bg),
-                fields = fields.toList(),
-                disclaimer = null,
-                warning = null,
-            )
-        }
+                log("Adding document ${documentInformation.userVisibleName}")
+                IdentityCredentialEntry(
+                    id = idCount++,
+                    format = "mdoc",
+                    title = documentInformation.userVisibleName,
+                    subtitle = context.getString(R.string.app_name),
+                    icon = BitmapFactory.decodeResource(context.resources, R.drawable.driving_license_bg),
+                    fields = fields.toList(),
+                    disclaimer = null,
+                    warning = null,
+                )
+            }
         val registry = IdentityCredentialRegistry(entries)
         client.registerCredentials(registry.toRegistrationRequest(context))
             .addOnSuccessListener { log("CredMan registry succeeded") }
@@ -131,7 +139,6 @@ class DocumentManager private constructor(private val context: Context) {
             document.toDocumentInformation()
         }
     }
-
 
     fun deleteCredentialByName(documentName: String) {
         val document = getDocumentInformation(documentName)
@@ -156,7 +163,7 @@ class DocumentManager private constructor(private val context: Context) {
     private fun getUniqueDocumentName(
         documentData: SelfSignedDocumentData,
         docName: String = documentData.provisionInfo.docName,
-        count: Int = 1
+        count: Int = 1,
     ): String {
         val store = ProvisioningUtil.getInstance(context).documentStore
         store.listDocuments().forEach { name ->
@@ -178,7 +185,7 @@ class DocumentManager private constructor(private val context: Context) {
                     builder.putEntry(
                         field.namespace!!,
                         field.name,
-                        FormatUtil.cborEncode(date)
+                        FormatUtil.cborEncode(date),
                     )
                 }
 
@@ -186,7 +193,7 @@ class DocumentManager private constructor(private val context: Context) {
                     builder.putEntryNumber(
                         field.namespace!!,
                         field.name,
-                        field.getValueLong()
+                        field.getValueLong(),
                     )
                 }
 
@@ -194,7 +201,7 @@ class DocumentManager private constructor(private val context: Context) {
                     builder.putEntryBoolean(
                         field.namespace!!,
                         field.name,
-                        field.getValueBoolean()
+                        field.getValueBoolean(),
                     )
                 }
 
@@ -211,35 +218,34 @@ class DocumentManager private constructor(private val context: Context) {
                         builder.putEntryNumber(
                             field.namespace!!,
                             field.name,
-                            field.getValueLong()
+                            field.getValueLong(),
                         )
                     }
                 }
 
                 is DocumentAttributeType.ComplexType -> {
+                    val dataItem =
+                        when (field.isArray) {
+                            true -> {
+                                createArrayDataItem(field, documentData)
+                            }
 
-                    val dataItem = when (field.isArray) {
-                        true -> {
-                            createArrayDataItem(field, documentData)
+                            false -> {
+                                createMapDataItem(field, documentData)
+                            }
                         }
-
-                        false -> {
-                            createMapDataItem(field, documentData)
-                        }
-                    }
                     builder.putEntry(
                         field.namespace!!,
                         field.name,
-                        FormatUtil.cborEncode(dataItem)
+                        FormatUtil.cborEncode(dataItem),
                     )
                 }
 
                 else -> {
-
                     builder.putEntryString(
                         field.namespace!!,
                         field.name,
-                        field.getValueString()
+                        field.getValueString(),
                     )
                 }
             }
@@ -248,7 +254,10 @@ class DocumentManager private constructor(private val context: Context) {
             .provisionSelfSigned(builder.build(), documentData.provisionInfo)
     }
 
-    private fun createArrayDataItem(field: Field, documentData: SelfSignedDocumentData): DataItem {
+    private fun createArrayDataItem(
+        field: Field,
+        documentData: SelfSignedDocumentData,
+    ): DataItem {
         val childFields = documentData.fields.filter { it.parentId == field.id }
         val childDataItems = mutableListOf<DataItem>()
 
@@ -260,9 +269,10 @@ class DocumentManager private constructor(private val context: Context) {
                 createMapDataItem(
                     childFields.subList(
                         i * fieldsPerItem,
-                        (i + 1) * fieldsPerItem
-                    ), documentData
-                )
+                        (i + 1) * fieldsPerItem,
+                    ),
+                    documentData,
+                ),
             )
         }
 
@@ -273,15 +283,17 @@ class DocumentManager private constructor(private val context: Context) {
         return arrayBuilder.end().build()[0]
     }
 
-
-    private fun createMapDataItem(field: Field, documentData: SelfSignedDocumentData): DataItem {
+    private fun createMapDataItem(
+        field: Field,
+        documentData: SelfSignedDocumentData,
+    ): DataItem {
         val childFields = documentData.fields.filter { it.parentId == field.id }
         return createMapDataItem(childFields, documentData)
     }
 
     private fun createMapDataItem(
         fields: List<Field>,
-        documentData: SelfSignedDocumentData
+        documentData: SelfSignedDocumentData,
     ): DataItem {
         val mapBuilder = CborBuilder().addMap()
         for (field in fields) {
@@ -291,14 +303,14 @@ class DocumentManager private constructor(private val context: Context) {
                     date.setTag(1004)
                     mapBuilder.put(
                         UnicodeString(field.name),
-                        date
+                        date,
                     )
                 }
 
                 is DocumentAttributeType.Boolean -> {
                     mapBuilder.put(
                         field.name,
-                        field.getValueBoolean()
+                        field.getValueBoolean(),
                     )
                 }
 
@@ -311,25 +323,27 @@ class DocumentManager private constructor(private val context: Context) {
                 }
 
                 is DocumentAttributeType.IntegerOptions,
-                is DocumentAttributeType.Number -> {
+                is DocumentAttributeType.Number,
+                -> {
                     if (field.value != "") {
                         mapBuilder.put(
                             field.name,
-                            field.getValueLong()
+                            field.getValueLong(),
                         )
                     }
                 }
 
                 is DocumentAttributeType.ComplexType -> {
-                    val dataItem = when (field.isArray) {
-                        true -> {
-                            createArrayDataItem(field, documentData)
-                        }
+                    val dataItem =
+                        when (field.isArray) {
+                            true -> {
+                                createArrayDataItem(field, documentData)
+                            }
 
-                        false -> {
-                            createMapDataItem(field, documentData)
+                            false -> {
+                                createMapDataItem(field, documentData)
+                            }
                         }
-                    }
                     mapBuilder.put(UnicodeString(field.name), dataItem)
                 }
 

@@ -9,16 +9,16 @@ import androidx.compose.ui.Modifier
 fun TextDropDownRow(
     modifier: Modifier = Modifier,
     label: String,
-    onSelected: () -> Unit
+    onSelected: () -> Unit,
 ) {
     DropdownMenuItem(
         modifier = modifier,
         text = {
             ValueLabel(
                 modifier = Modifier.fillMaxWidth(),
-                label = label
+                label = label,
             )
         },
-        onClick = onSelected
+        onClick = onSelected,
     )
 }

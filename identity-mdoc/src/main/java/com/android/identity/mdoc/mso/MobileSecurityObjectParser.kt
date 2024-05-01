@@ -29,7 +29,7 @@ import com.android.identity.util.Timestamp
  * @param encodedMobileSecurityObject The bytes of `MobileSecurityObject`.
  */
 class MobileSecurityObjectParser(
-    private var encodedMobileSecurityObject: ByteArray
+    private var encodedMobileSecurityObject: ByteArray,
 ) {
     /**
      * Parses the mobile security object.
@@ -40,9 +40,10 @@ class MobileSecurityObjectParser(
      * @exception IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): MobileSecurityObject = MobileSecurityObject().apply {
-        parse(encodedMobileSecurityObject)
-    }
+    fun parse(): MobileSecurityObject =
+        MobileSecurityObject().apply {
+            parse(encodedMobileSecurityObject)
+        }
 
     /**
      * An object used to represent data parsed from `MobileSecurityObject`
@@ -117,7 +118,6 @@ class MobileSecurityObjectParser(
          */
         fun getDigestIDs(namespace: String): Map<Long, ByteArray>? = valueDigests[namespace]
 
-
         /**
          * Gets the `AuthorizedNameSpaces` portion of the `keyAuthorizations`
          * within `DeviceKeyInfo`. Is null if it does not exist in the MSO.
@@ -174,7 +174,6 @@ class MobileSecurityObjectParser(
                             }
                             _authorizedDataElements!![nameSpaceName] = dataElemList
                         }
-
                     }
                 }
             }
@@ -191,10 +190,11 @@ class MobileSecurityObjectParser(
         }
 
         private fun parseValidityInfo(validityInfo: DataItem) {
-            signed = Timestamp.ofEpochMilli(
-                validityInfo["signed"].asDateTimeString
-                    .toEpochMilliseconds()
-            )
+            signed =
+                Timestamp.ofEpochMilli(
+                    validityInfo["signed"].asDateTimeString
+                        .toEpochMilliseconds(),
+                )
             validFrom =
                 Timestamp.ofEpochMilli(validityInfo["validFrom"].asDateTimeString.toEpochMilliseconds())
             validUntil =
@@ -225,7 +225,7 @@ class MobileSecurityObjectParser(
                 mutableListOf("SHA-256", "SHA-384", "SHA-512")
             require(allowableDigestAlgorithms.contains(digestAlgorithm)) {
                 "Given digest algorithm '" + digestAlgorithm +
-                        "' one of " + allowableDigestAlgorithms
+                    "' one of " + allowableDigestAlgorithms
             }
             docType = mso["docType"].asTstr
             parseValueDigests(mso["valueDigests"])

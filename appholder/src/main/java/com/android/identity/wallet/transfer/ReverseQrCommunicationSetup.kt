@@ -20,46 +20,48 @@ class ReverseQrCommunicationSetup(
     private val onDisconnected: () -> Unit,
     private val onCommunicationError: (error: Throwable) -> Unit,
 ) {
-
     private val settings = PreferencesHelper.apply { initialize(context) }
     private val connectionSetup = ConnectionSetup(context)
     private val eDeviceKey = Crypto.createEcPrivateKey(settings.getEphemeralKeyCurveOption())
 
     private var presentation: DeviceRetrievalHelper? = null
 
-    private val presentationListener = object : DeviceRetrievalHelper.Listener {
-        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
-            log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
-        }
+    private val presentationListener =
+        object : DeviceRetrievalHelper.Listener {
+            override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
+                log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
+            }
 
-        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-            onNewRequest(deviceRequestBytes)
-        }
+            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                onNewRequest(deviceRequestBytes)
+            }
 
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            onDisconnected()
-        }
+            override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+                onDisconnected()
+            }
 
-        override fun onError(error: Throwable) {
-            onCommunicationError(error)
+            override fun onError(error: Throwable) {
+                onCommunicationError(error)
+            }
         }
-    }
 
     fun configure(
         reverseEngagementUri: String,
-        origins: List<OriginInfo>
+        origins: List<OriginInfo>,
     ) {
         val uri = Uri.parse(reverseEngagementUri)
         if (!uri.scheme.equals("mdoc")) {
             throw IllegalStateException("Only supports mdoc URIs")
         }
-        val encodedReaderEngagement = Base64.decode(
-            uri.encodedSchemeSpecificPart,
-            Base64.URL_SAFE or Base64.NO_PADDING
-        )
-        val engagement = EngagementParser(
-            encodedReaderEngagement
-        ).parse()
+        val encodedReaderEngagement =
+            Base64.decode(
+                uri.encodedSchemeSpecificPart,
+                Base64.URL_SAFE or Base64.NO_PADDING,
+            )
+        val engagement =
+            EngagementParser(
+                encodedReaderEngagement,
+            ).parse()
         if (engagement.connectionMethods.size == 0) {
             throw IllegalStateException("No connection methods in engagement")
         }
@@ -68,19 +70,21 @@ class ReverseQrCommunicationSetup(
         val connectionMethod = engagement.connectionMethods[0]
         log("Using connection method $connectionMethod")
 
-        val transport = DataTransport.fromConnectionMethod(
-            context,
-            connectionMethod,
-            DataTransport.Role.MDOC,
-            connectionSetup.getConnectionOptions()
-        )
+        val transport =
+            DataTransport.fromConnectionMethod(
+                context,
+                connectionMethod,
+                DataTransport.Role.MDOC,
+                connectionSetup.getConnectionOptions(),
+            )
 
-        val builder = DeviceRetrievalHelper.Builder(
-            context,
-            presentationListener,
-            context.mainExecutor(),
-            eDeviceKey
-        )
+        val builder =
+            DeviceRetrievalHelper.Builder(
+                context,
+                presentationListener,
+                context.mainExecutor(),
+                eDeviceKey,
+            )
         builder.useReverseEngagement(transport, encodedReaderEngagement, origins)
         presentation = builder.build()
         onPresentationReady(requireNotNull(presentation))

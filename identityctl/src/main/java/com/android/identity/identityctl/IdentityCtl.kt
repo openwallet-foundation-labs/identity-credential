@@ -23,12 +23,11 @@ import kotlin.random.Random
 
 @OptIn(ExperimentalEncodingApi::class)
 object IdentityCtl {
-
     fun getArg(
         args: Array<String>,
         argName: String,
-        defaultValue: String
-        ): String {
+        defaultValue: String,
+    ): String {
         val prefixedArgName = "--" + argName
         for (n in IntRange(0, args.size - 1)) {
             val arg = args[n]
@@ -43,9 +42,9 @@ object IdentityCtl {
 
     fun generateIaca(args: Array<String>) {
         val certificateOutputFilename =
-            getArg(args,"out_certificate","iaca_certificate.pem")
+            getArg(args, "out_certificate", "iaca_certificate.pem")
         val privateKeyOutputFilename =
-            getArg(args,"out_private_key","iaca_private_key.pem")
+            getArg(args, "out_private_key", "iaca_private_key.pem")
 
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
@@ -56,41 +55,49 @@ object IdentityCtl {
         //                         serialNumber is optional.
         //
         val subjectAndIssuer =
-            getArg(args,"subject_and_issuer",
-                "CN=OWF Identity Credential TEST IACA,C=UT")
+            getArg(
+                args,
+                "subject_and_issuer",
+                "CN=OWF Identity Credential TEST IACA,C=UT",
+            )
 
         // From 18013-5 Annex B: 3-5 years is recommended
         //                       Maximum of 20 years after “Not before” date
-        val validityInYears = getArg(args,"validity_in_years","5").toInt()
+        val validityInYears = getArg(args, "validity_in_years", "5").toInt()
         val now = Clock.System.now()
         val validFrom = now
         val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
 
-        val curveName = getArg(args,"curve","P384")
-        val curve = EcCurve.values().find { curve -> curve.name == curveName }
-            ?: throw IllegalArgumentException("No curve with name $curveName")
+        val curveName = getArg(args, "curve", "P384")
+        val curve =
+            EcCurve.values().find { curve -> curve.name == curveName }
+                ?: throw IllegalArgumentException("No curve with name $curveName")
 
         val iacaKey = Crypto.createEcPrivateKey(curve)
 
-        val issuerAltName = getArg(args,
-            "issuer_alt_name",
-            "https://github.com/openwallet-foundation-labs/identity-credential"
-        )
+        val issuerAltName =
+            getArg(
+                args,
+                "issuer_alt_name",
+                "https://github.com/openwallet-foundation-labs/identity-credential",
+            )
 
-        val crlUrl = getArg(
-            args,
-            "crl_url",
-            "https://github.com/openwallet-foundation-labs/identity-credential"
-        )
+        val crlUrl =
+            getArg(
+                args,
+                "crl_url",
+                "https://github.com/openwallet-foundation-labs/identity-credential",
+            )
 
-        val iacaCertificate = MdocUtil.generateIacaCertificate(
-            iacaKey,
-            subjectAndIssuer,
-            validFrom,
-            validUntil,
-            issuerAltName,
-            crlUrl
-        )
+        val iacaCertificate =
+            MdocUtil.generateIacaCertificate(
+                iacaKey,
+                subjectAndIssuer,
+                validFrom,
+                validUntil,
+                issuerAltName,
+                crlUrl,
+            )
 
         println("Generated self-signed IACA certificate and private key.")
 
@@ -109,45 +116,51 @@ object IdentityCtl {
 
     fun generateDs(args: Array<String>) {
         val iacaCertificateFilename =
-            getArg(args,"iaca_certificate","iaca_certificate.pem")
+            getArg(args, "iaca_certificate", "iaca_certificate.pem")
         val iacaPrivateKeyFilename =
-            getArg(args,"iaca_private_key","iaca_private_key.pem")
+            getArg(args, "iaca_private_key", "iaca_private_key.pem")
 
-        val iacaCert = Certificate.fromPem(
-            String(File(iacaCertificateFilename).readBytes(), StandardCharsets.US_ASCII))
+        val iacaCert =
+            Certificate.fromPem(
+                String(File(iacaCertificateFilename).readBytes(), StandardCharsets.US_ASCII),
+            )
 
-        val iacaPrivateKey = EcPrivateKey.fromPem(
-            String(File(iacaPrivateKeyFilename).readBytes(), StandardCharsets.US_ASCII),
-            iacaCert.publicKey)
+        val iacaPrivateKey =
+            EcPrivateKey.fromPem(
+                String(File(iacaPrivateKeyFilename).readBytes(), StandardCharsets.US_ASCII),
+                iacaCert.publicKey,
+            )
 
         val certificateOutputFilename =
-            getArg(args,"out_certificate","ds_certificate.pem")
+            getArg(args, "out_certificate", "ds_certificate.pem")
         val privateKeyOutputFilename =
-            getArg(args,"out_private_key","ds_private_key.pem")
+            getArg(args, "out_private_key", "ds_private_key.pem")
 
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
-        val subject = getArg(args,"subject", "CN=OWF Identity Credential TEST DS,C=UT")
+        val subject = getArg(args, "subject", "CN=OWF Identity Credential TEST DS,C=UT")
 
-        val validityInYears = getArg(args,"validity_in_years","1").toInt()
+        val validityInYears = getArg(args, "validity_in_years", "1").toInt()
         val now = Clock.System.now()
         val validFrom = now
         val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
 
-        val curveName = getArg(args,"curve","P256")
-        val curve = EcCurve.values().find { curve -> curve.name == curveName }
-            ?: throw IllegalArgumentException("No curve with name $curveName")
+        val curveName = getArg(args, "curve", "P256")
+        val curve =
+            EcCurve.values().find { curve -> curve.name == curveName }
+                ?: throw IllegalArgumentException("No curve with name $curveName")
 
         val dsKey = Crypto.createEcPrivateKey(curve)
 
-        val dsCertificate = MdocUtil.generateDsCertificate(
-            iacaCert,
-            iacaPrivateKey,
-            dsKey.publicKey,
-            subject,
-            validFrom,
-            validUntil
-        )
+        val dsCertificate =
+            MdocUtil.generateDsCertificate(
+                iacaCert,
+                iacaPrivateKey,
+                dsKey.publicKey,
+                subject,
+                validFrom,
+                validUntil,
+            )
 
         println("Generated DS certificate and private key.")
 
@@ -166,24 +179,28 @@ object IdentityCtl {
 
     fun generateReaderRoot(args: Array<String>) {
         val certificateOutputFilename =
-            getArg(args,"out_certificate","reader_root_certificate.pem")
+            getArg(args, "out_certificate", "reader_root_certificate.pem")
         val privateKeyOutputFilename =
-            getArg(args,"out_private_key","reader_root_private_key.pem")
+            getArg(args, "out_private_key", "reader_root_private_key.pem")
 
         val subjectAndIssuer =
-            getArg(args,"subject_and_issuer",
-                "CN=OWF Identity Credential TEST Reader CA,C=UT")
+            getArg(
+                args,
+                "subject_and_issuer",
+                "CN=OWF Identity Credential TEST Reader CA,C=UT",
+            )
 
         // From 18013-5 Annex B: 3-5 years is recommended
         //                       Maximum of 20 years after “Not before” date
-        val validityInYears = getArg(args,"validity_in_years","5").toInt()
+        val validityInYears = getArg(args, "validity_in_years", "5").toInt()
         val now = Clock.System.now()
         val validFrom = now
         val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
 
-        val curveName = getArg(args,"curve","P384")
-        val curve = EcCurve.values().find { curve -> curve.name == curveName }
-            ?: throw IllegalArgumentException("No curve with name $curveName")
+        val curveName = getArg(args, "curve", "P384")
+        val curve =
+            EcCurve.values().find { curve -> curve.name == curveName }
+                ?: throw IllegalArgumentException("No curve with name $curveName")
 
         val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
 
@@ -195,26 +212,27 @@ object IdentityCtl {
             X509v3Extension(
                 Extension.keyUsage.toString(),
                 true,
-                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded
-            )
+                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded,
+            ),
         )
 
-        val readerRootCertificate = Crypto.createX509v3Certificate(
-            readerRootKey.publicKey,
-            readerRootKey,
-            null,
-            curve.defaultSigningAlgorithm,
-            serial,
-            subjectAndIssuer,
-            subjectAndIssuer,
-            validFrom,
-            validUntil,
-            setOf(
-                CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER
-            ),
-            extensions
-        )
+        val readerRootCertificate =
+            Crypto.createX509v3Certificate(
+                readerRootKey.publicKey,
+                readerRootKey,
+                null,
+                curve.defaultSigningAlgorithm,
+                serial,
+                subjectAndIssuer,
+                subjectAndIssuer,
+                validFrom,
+                validUntil,
+                setOf(
+                    CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                    CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER,
+                ),
+                extensions,
+            )
 
         println("Generated self-signed reader root certificate and private key.")
 
@@ -230,7 +248,6 @@ object IdentityCtl {
         }
         println("- Wrote reader root certificate to $certificateOutputFilename")
     }
-
 
     fun usage(args: Array<String>) {
         println(
@@ -261,7 +278,8 @@ Generate an IACA certificate and corresponding private key:
         [--subject_and_issuer 'CN=Utopia TEST Reader CA,C=UT']
         [--validity_in_years 3]
         [--curve P384]
-""")
+""",
+        )
     }
 
     @JvmStatic
@@ -284,5 +302,4 @@ Generate an IACA certificate and corresponding private key:
             }
         }
     }
-
 }

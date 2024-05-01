@@ -41,7 +41,7 @@ class DataTransportNfc(
     context: Context,
     role: Role,
     private val connectionMethod: ConnectionMethodNfc,
-    options: DataTransportOptions
+    options: DataTransportOptions,
 ) : DataTransport(context, role, options) {
     var _isoDep: IsoDep? = null
 
@@ -76,54 +76,60 @@ class DataTransportNfc(
     }
 
     private fun setupListenerWritingThread() {
-        val transceiverThread: Thread = object : Thread() {
-            override fun run() {
-                while (listenerStillActive) {
-                    var messageToSend: ByteArray?
-                    messageToSend = try {
-                        writerQueue.poll(1000, TimeUnit.MILLISECONDS)
-                    } catch (e: InterruptedException) {
-                        continue
-                    }
-                    if (messageToSend == null) {
-                        continue
-                    }
-                    Logger.dHex(TAG, "Sending message", messageToSend)
-                    if (listenerLeReceived == -1) {
-                        reportError(Error("ListenerLeReceived not set"))
-                        return
-                    }
-
-                    // First message we send will be a response to the reader's
-                    // ENVELOPE command.. further messages will be in response
-                    // the GET RESPONSE commands. So we chop up this data in chunks
-                    // so it's easy to hand off responses...
-                    val chunks = ArrayList<ByteArray>()
-                    val data = encapsulateInDo53(messageToSend)
-                    var offset = 0
-                    val maxChunkSize = listenerLeReceived
-                    do {
-                        var size = data.size - offset
-                        if (size > maxChunkSize) {
-                            size = maxChunkSize
+        val transceiverThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    while (listenerStillActive) {
+                        var messageToSend: ByteArray?
+                        messageToSend =
+                            try {
+                                writerQueue.poll(1000, TimeUnit.MILLISECONDS)
+                            } catch (e: InterruptedException) {
+                                continue
+                            }
+                        if (messageToSend == null) {
+                            continue
                         }
-                        val chunk = ByteArray(size)
-                        System.arraycopy(data, offset, chunk, 0, size)
-                        chunks.add(chunk)
-                        offset += size
-                    } while (offset < data.size)
-                    Logger.d(TAG, "Have ${chunks.size} chunks..")
-                    listenerRemainingChunks = chunks
-                    listenerRemainingBytesAvailable = data.size
-                    listenerTotalChunks = chunks.size
-                    sendNextChunk()
+                        Logger.dHex(TAG, "Sending message", messageToSend)
+                        if (listenerLeReceived == -1) {
+                            reportError(Error("ListenerLeReceived not set"))
+                            return
+                        }
+
+                        // First message we send will be a response to the reader's
+                        // ENVELOPE command.. further messages will be in response
+                        // the GET RESPONSE commands. So we chop up this data in chunks
+                        // so it's easy to hand off responses...
+                        val chunks = ArrayList<ByteArray>()
+                        val data = encapsulateInDo53(messageToSend)
+                        var offset = 0
+                        val maxChunkSize = listenerLeReceived
+                        do {
+                            var size = data.size - offset
+                            if (size > maxChunkSize) {
+                                size = maxChunkSize
+                            }
+                            val chunk = ByteArray(size)
+                            System.arraycopy(data, offset, chunk, 0, size)
+                            chunks.add(chunk)
+                            offset += size
+                        } while (offset < data.size)
+                        Logger.d(TAG, "Have ${chunks.size} chunks..")
+                        listenerRemainingChunks = chunks
+                        listenerRemainingBytesAvailable = data.size
+                        listenerTotalChunks = chunks.size
+                        sendNextChunk()
+                    }
                 }
             }
-        }
         transceiverThread.start()
     }
 
-    private fun buildApduResponse(data: ByteArray, sw1: Int, sw2: Int): ByteArray {
+    private fun buildApduResponse(
+        data: ByteArray,
+        sw1: Int,
+        sw2: Int,
+    ): ByteArray {
         val baos = ByteArrayOutputStream()
         try {
             baos.write(data)
@@ -150,7 +156,7 @@ class DataTransportNfc(
 
     private fun nfcDataTransferProcessCommandApdu(
         hostApduService: HostApduService,
-        apdu: ByteArray
+        apdu: ByteArray,
     ): ByteArray? {
         var ret: ByteArray? = null
         this.hostApduService = hostApduService
@@ -161,14 +167,15 @@ class DataTransportNfc(
                 ret = handleSelectByAid(apdu)
             }
         } else {
-            ret = when (commandType) {
-                NfcUtil.COMMAND_TYPE_ENVELOPE -> handleEnvelope(apdu)
-                NfcUtil.COMMAND_TYPE_RESPONSE -> handleResponse()
-                else -> {
-                    Logger.w(TAG,"Unexpected APDU with commandType $commandType")
-                    NfcUtil.STATUS_WORD_INSTRUCTION_NOT_SUPPORTED
+            ret =
+                when (commandType) {
+                    NfcUtil.COMMAND_TYPE_ENVELOPE -> handleEnvelope(apdu)
+                    NfcUtil.COMMAND_TYPE_RESPONSE -> handleResponse()
+                    else -> {
+                        Logger.w(TAG, "Unexpected APDU with commandType $commandType")
+                        NfcUtil.STATUS_WORD_INSTRUCTION_NOT_SUPPORTED
+                    }
                 }
-            }
         }
         return ret
     }
@@ -218,7 +225,7 @@ class DataTransportNfc(
                  */
                 val numBytesRemaining = listenerRemainingBytesAvailable - listenerLeReceived
                 hostApduService!!.sendResponseApdu(
-                    buildApduResponse(chunk, 0x61, numBytesRemaining and 0xff)
+                    buildApduResponse(chunk, 0x61, numBytesRemaining and 0xff),
                 )
             } else {
                 /* If the number of available bytes > Le + 255, the mdoc shall include
@@ -256,13 +263,14 @@ class DataTransportNfc(
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
         }
         val le = apduGetLe(apdu)
-        numChunksReceived += try {
-            incomingMessage.write(data)
-            1
-        } catch (e: IOException) {
-            reportError(e)
-            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
-        }
+        numChunksReceived +=
+            try {
+                incomingMessage.write(data)
+                1
+            } catch (e: IOException) {
+                reportError(e)
+                return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
+            }
         if (moreChunksComing) {
             /* For all ENVELOPE commands in a chain except the last one, Le shall be absent, since
              * no data is expected in the response to these commands.
@@ -278,15 +286,19 @@ class DataTransportNfc(
          * of the response data field that is supported by both the mdoc and the mdoc reader.
          *
          *  We'll need this for later.
-         */if (listenerLeReceived != 0) {
+         */
+        if (listenerLeReceived != 0) {
             listenerLeReceived = le
         }
         val encapsulatedMessage = incomingMessage.toByteArray()
         Logger.d(
-            TAG, String.format(
-                Locale.US, "Received %d bytes in %d chunk(s)",
-                encapsulatedMessage.size, numChunksReceived
-            )
+            TAG,
+            String.format(
+                Locale.US,
+                "Received %d bytes in %d chunk(s)",
+                encapsulatedMessage.size,
+                numChunksReceived,
+            ),
         )
         incomingMessage.reset()
         numChunksReceived = 0
@@ -326,7 +338,9 @@ class DataTransportNfc(
         } else if (leNumBytes == 1) {
             return if (apdu[leOffset].toInt() == 0x00) {
                 0x100
-            } else apdu[leOffset].toInt() and 0xff
+            } else {
+                apdu[leOffset].toInt() and 0xff
+            }
         } else if (leNumBytes == 2) {
             if (!haveExtendedLc) {
                 Logger.w(TAG, "Don't have extended LC but leNumBytes is 2")
@@ -381,7 +395,8 @@ class DataTransportNfc(
         p1: Int,
         p2: Int,
         data: ByteArray?,
-        le: Int): ByteArray {
+        le: Int,
+    ): ByteArray {
         val baos = ByteArrayOutputStream()
         baos.write(cla)
         baos.write(ins)
@@ -511,147 +526,171 @@ class DataTransportNfc(
         val maxTransceiveLength = _isoDep!!.maxTransceiveLength
         Logger.d(TAG, "maxTransceiveLength: $maxTransceiveLength")
         Logger.d(TAG, "isExtendedLengthApduSupported: ${_isoDep!!.isExtendedLengthApduSupported}")
-        val transceiverThread: Thread = object : Thread() {
-            override fun run() {
-                try {
-                    // The passed in mIsoDep is supposed to already be connected, so we can start
-                    // sending APDUs right away...
-                    reportConnected()
-                    val selectCommand = buildApdu(
-                        0x00, 0xa4, 0x04, 0x00,
-                        NfcUtil.AID_FOR_MDL_DATA_TRANSFER, 0
-                    )
-                    Logger.dHex(TAG, "selectCommand", selectCommand)
-                    val selectResponse = _isoDep!!.transceive(selectCommand)
-                    Logger.dHex(TAG, "selectResponse", selectResponse)
-                    if (!Arrays.equals(selectResponse, NfcUtil.STATUS_WORD_OK)) {
-                        reportError(Error("Unexpected response to AID SELECT"))
-                        return
-                    }
-                    while (_isoDep!!.isConnected) {
-                        var messageToSend: ByteArray? = null
-                        try {
-                            messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
-                            if (messageToSend == null) {
-                                continue
-                            }
-                        } catch (e: InterruptedException) {
-                            continue
-                        }
-                        if (messageToSend.size == 0) {
-                            // This is an indication that we're disconnecting
-                            break
-                        }
-                        Logger.dHex(TAG, "Sending message", messageToSend)
-                        val data = encapsulateInDo53(messageToSend)
-
-                        // Less 7 for the APDU header and 3 for LE
-                        //
-                        val maxChunkSize = maxTransceiveLength - 10
-                        var offset = 0
-                        var lastEnvelopeResponse: ByteArray? = null
-                        do {
-                            val moreChunksComing = offset + maxChunkSize < data.size
-                            var size = data.size - offset
-                            if (size > maxChunkSize) {
-                                size = maxChunkSize
-                            }
-                            val chunk = ByteArray(size)
-                            System.arraycopy(data, offset, chunk, 0, size)
-                            var le = 0
-                            if (!moreChunksComing) {
-                                le = maxTransceiveLength
-                            }
-                            val envelopeCommand = buildApdu(
-                                if (moreChunksComing) 0x10 else 0x00,
-                                0xc3, 0x00, 0x00, chunk, le
+        val transceiverThread: Thread =
+            object : Thread() {
+                override fun run() {
+                    try {
+                        // The passed in mIsoDep is supposed to already be connected, so we can start
+                        // sending APDUs right away...
+                        reportConnected()
+                        val selectCommand =
+                            buildApdu(
+                                0x00,
+                                0xa4,
+                                0x04,
+                                0x00,
+                                NfcUtil.AID_FOR_MDL_DATA_TRANSFER,
+                                0,
                             )
-                            Logger.dHex(TAG, "envelopeCommand", envelopeCommand)
-                            val t0 = System.currentTimeMillis()
-                            val envelopeResponse = _isoDep!!.transceive(envelopeCommand)
-                            val t1 = System.currentTimeMillis()
-                            val durationSec = (t1 - t0) / 1000.0
-                            val bitsPerSec =
-                                ((envelopeCommand.size + envelopeResponse.size) * 8 / durationSec).toInt()
-                            Logger.d(TAG, String.format(
-                                    "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
-                                    durationSec,
-                                    envelopeCommand.size,
-                                    envelopeResponse.size,
-                                    bitsPerSec
-                                )
-                            )
-                            Logger.dHex(TAG, "Received", envelopeResponse)
-                            offset += size
-                            if (moreChunksComing) {
-                                // Don't care about response.
-                                Logger.dHex(TAG, "envResponse (more chunks coming)", envelopeResponse)
-                            } else {
-                                lastEnvelopeResponse = envelopeResponse
-                            }
-                        } while (offset < data.size)
-                        val erl = lastEnvelopeResponse!!.size
-                        if (erl < 2) {
-                            reportError(Error("APDU response smaller than expected"))
+                        Logger.dHex(TAG, "selectCommand", selectCommand)
+                        val selectResponse = _isoDep!!.transceive(selectCommand)
+                        Logger.dHex(TAG, "selectResponse", selectResponse)
+                        if (!Arrays.equals(selectResponse, NfcUtil.STATUS_WORD_OK)) {
+                            reportError(Error("Unexpected response to AID SELECT"))
                             return
                         }
-                        var encapsulatedMessage: ByteArray
-                        val status = ((lastEnvelopeResponse[erl - 2].toInt() and 0xff) * 0x100
-                                + (lastEnvelopeResponse[erl - 1].toInt() and 0xff))
-                        if (status == 0x9000) {
-                            // Woot, entire response fit in the response APDU
-                            //
-                            encapsulatedMessage = ByteArray(erl - 2)
-                            System.arraycopy(
-                                lastEnvelopeResponse, 0, encapsulatedMessage, 0,
-                                erl - 2
-                            )
-                        } else if (status and 0xff00 == 0x6100) {
-                            // More bytes are coming, have to use GET RESPONSE
-                            //
-                            val baos = ByteArrayOutputStream()
-                            baos.write(lastEnvelopeResponse, 0, erl - 2)
-                            var leForGetResponse = maxTransceiveLength - 10
-                            if (status and 0xff != 0) {
-                                leForGetResponse = status and 0xff
+                        while (_isoDep!!.isConnected) {
+                            var messageToSend: ByteArray? = null
+                            try {
+                                messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
+                                if (messageToSend == null) {
+                                    continue
+                                }
+                            } catch (e: InterruptedException) {
+                                continue
                             }
-                            while (true) {
-                                val grCommand = buildApdu(
-                                    0x00,
-                                    0xc0, 0x00, 0x00, null, leForGetResponse
-                                )
+                            if (messageToSend.size == 0) {
+                                // This is an indication that we're disconnecting
+                                break
+                            }
+                            Logger.dHex(TAG, "Sending message", messageToSend)
+                            val data = encapsulateInDo53(messageToSend)
+
+                            // Less 7 for the APDU header and 3 for LE
+                            //
+                            val maxChunkSize = maxTransceiveLength - 10
+                            var offset = 0
+                            var lastEnvelopeResponse: ByteArray? = null
+                            do {
+                                val moreChunksComing = offset + maxChunkSize < data.size
+                                var size = data.size - offset
+                                if (size > maxChunkSize) {
+                                    size = maxChunkSize
+                                }
+                                val chunk = ByteArray(size)
+                                System.arraycopy(data, offset, chunk, 0, size)
+                                var le = 0
+                                if (!moreChunksComing) {
+                                    le = maxTransceiveLength
+                                }
+                                val envelopeCommand =
+                                    buildApdu(
+                                        if (moreChunksComing) 0x10 else 0x00,
+                                        0xc3,
+                                        0x00,
+                                        0x00,
+                                        chunk,
+                                        le,
+                                    )
+                                Logger.dHex(TAG, "envelopeCommand", envelopeCommand)
                                 val t0 = System.currentTimeMillis()
-                                val grResponse = _isoDep!!.transceive(grCommand)
+                                val envelopeResponse = _isoDep!!.transceive(envelopeCommand)
                                 val t1 = System.currentTimeMillis()
                                 val durationSec = (t1 - t0) / 1000.0
                                 val bitsPerSec =
-                                    ((grCommand.size + grResponse.size) * 8 / durationSec).toInt()
+                                    ((envelopeCommand.size + envelopeResponse.size) * 8 / durationSec).toInt()
                                 Logger.d(
-                                    TAG, String.format(
+                                    TAG,
+                                    String.format(
                                         "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
                                         durationSec,
-                                        grCommand.size,
-                                        grResponse.size,
-                                        bitsPerSec
-                                    )
+                                        envelopeCommand.size,
+                                        envelopeResponse.size,
+                                        bitsPerSec,
+                                    ),
                                 )
-                                val grrl = grResponse.size
-                                if (grrl < 2) {
-                                    reportError(Error("GetResponse APDU response smaller than expected"))
-                                    return
+                                Logger.dHex(TAG, "Received", envelopeResponse)
+                                offset += size
+                                if (moreChunksComing) {
+                                    // Don't care about response.
+                                    Logger.dHex(TAG, "envResponse (more chunks coming)", envelopeResponse)
+                                } else {
+                                    lastEnvelopeResponse = envelopeResponse
                                 }
-                                val grrStatus =
-                                    (grResponse[grrl - 2].toInt() and 0xff) * 0x100 + (grResponse[grrl - 1].toInt() and 0xff)
-                                baos.write(grResponse, 0, grrl - 2)
+                            } while (offset < data.size)
+                            val erl = lastEnvelopeResponse!!.size
+                            if (erl < 2) {
+                                reportError(Error("APDU response smaller than expected"))
+                                return
+                            }
+                            var encapsulatedMessage: ByteArray
+                            val status = (
+                                (lastEnvelopeResponse[erl - 2].toInt() and 0xff) * 0x100 +
+                                    (lastEnvelopeResponse[erl - 1].toInt() and 0xff)
+                            )
+                            if (status == 0x9000) {
+                                // Woot, entire response fit in the response APDU
+                                //
+                                encapsulatedMessage = ByteArray(erl - 2)
+                                System.arraycopy(
+                                    lastEnvelopeResponse,
+                                    0,
+                                    encapsulatedMessage,
+                                    0,
+                                    erl - 2,
+                                )
+                            } else if (status and 0xff00 == 0x6100) {
+                                // More bytes are coming, have to use GET RESPONSE
+                                //
+                                val baos = ByteArrayOutputStream()
+                                baos.write(lastEnvelopeResponse, 0, erl - 2)
+                                var leForGetResponse = maxTransceiveLength - 10
+                                if (status and 0xff != 0) {
+                                    leForGetResponse = status and 0xff
+                                }
+                                while (true) {
+                                    val grCommand =
+                                        buildApdu(
+                                            0x00,
+                                            0xc0,
+                                            0x00,
+                                            0x00,
+                                            null,
+                                            leForGetResponse,
+                                        )
+                                    val t0 = System.currentTimeMillis()
+                                    val grResponse = _isoDep!!.transceive(grCommand)
+                                    val t1 = System.currentTimeMillis()
+                                    val durationSec = (t1 - t0) / 1000.0
+                                    val bitsPerSec =
+                                        ((grCommand.size + grResponse.size) * 8 / durationSec).toInt()
+                                    Logger.d(
+                                        TAG,
+                                        String.format(
+                                            "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
+                                            durationSec,
+                                            grCommand.size,
+                                            grResponse.size,
+                                            bitsPerSec,
+                                        ),
+                                    )
+                                    val grrl = grResponse.size
+                                    if (grrl < 2) {
+                                        reportError(Error("GetResponse APDU response smaller than expected"))
+                                        return
+                                    }
+                                    val grrStatus =
+                                        (grResponse[grrl - 2].toInt() and 0xff) * 0x100 + (grResponse[grrl - 1].toInt() and 0xff)
+                                    baos.write(grResponse, 0, grrl - 2)
 
-                                // TODO: add runaway check
-                                if (grrStatus == 0x9000) {
+                                    // TODO: add runaway check
+                                    if (grrStatus == 0x9000) {
                                     /* If Le ≥ the number of available bytes, the mdoc shall include
                                      * all available bytes in the response and set the status words
                                      * to ’90 00’.
                                      */
-                                    break
-                                } else if (grrStatus == 0x6100) {
+                                        break
+                                    } else if (grrStatus == 0x6100) {
                                     /* If the number of available bytes > Le + 255, the mdoc shall
                                      * include as many bytes in the response as indicated by Le and
                                      * shall set the status words to ’61 00’. The mdoc reader shall
@@ -659,8 +698,8 @@ class DataTransportNfc(
                                      * maximum length of the response data field that is supported
                                      * by both the mdoc and the mdoc reader.
                                      */
-                                    leForGetResponse = maxTransceiveLength - 10
-                                } else if (grrStatus and 0xff00 == 0x6100) {
+                                        leForGetResponse = maxTransceiveLength - 10
+                                    } else if (grrStatus and 0xff00 == 0x6100) {
                                     /* If Le < the number of available bytes ≤ Le + 255, the
                                      * mdoc shall include as many bytes in the response as
                                      * indicated by Le and shall set the status words to ’61 XX’,
@@ -668,31 +707,31 @@ class DataTransportNfc(
                                      * mdoc reader shall respond with a GET RESPONSE command where
                                      * Le is set to XX.
                                      */
-                                    leForGetResponse = grrStatus and 0xff
-                                } else {
-                                    reportError(Error("Expected GetResponse APDU status $status"))
+                                        leForGetResponse = grrStatus and 0xff
+                                    } else {
+                                        reportError(Error("Expected GetResponse APDU status $status"))
+                                    }
                                 }
+                                encapsulatedMessage = baos.toByteArray()
+                            } else {
+                                reportError(Error("Expected APDU status $status"))
+                                return
                             }
-                            encapsulatedMessage = baos.toByteArray()
-                        } else {
-                            reportError(Error("Expected APDU status $status"))
-                            return
+                            val message = extractFromDo53(encapsulatedMessage)
+                            if (message == null) {
+                                reportError(Error("Error extracting message from DO53 encoding"))
+                                return
+                            }
+                            reportMessageReceived(message)
                         }
-                        val message = extractFromDo53(encapsulatedMessage)
-                        if (message == null) {
-                            reportError(Error("Error extracting message from DO53 encoding"))
-                            return
-                        }
-                        reportMessageReceived(message)
+                        reportDisconnected()
+                    } catch (e: IOException) {
+                        reportError(e)
                     }
-                    reportDisconnected()
-                } catch (e: IOException) {
-                    reportError(e)
+                    Logger.d(TAG, "Ending transceiver thread")
+                    _isoDep = null
                 }
-                Logger.d(TAG, "Ending transceiver thread")
-                _isoDep = null
             }
-        }
         transceiverThread.start()
     }
 
@@ -722,11 +761,11 @@ class DataTransportNfc(
 
     companion object {
         private const val TAG = "DataTransportNfc"
-        
+
         @JvmStatic
         fun fromNdefRecord(
             record: NdefRecord,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): ConnectionMethodNfc? {
             val payload = ByteBuffer.wrap(record.payload).order(ByteOrder.LITTLE_ENDIAN)
             val version = payload.get().toInt()
@@ -766,11 +805,12 @@ class DataTransportNfc(
             }
             return ConnectionMethodNfc(
                 commandDataFieldMaxLength.toLong(),
-                responseDataFieldMaxLength.toLong()
+                responseDataFieldMaxLength.toLong(),
             )
         }
 
         private val activeTransports = mutableListOf<DataTransportNfc>()
+
         private fun addActiveConnection(transport: DataTransportNfc) {
             activeTransports.add(transport)
         }
@@ -792,7 +832,7 @@ class DataTransportNfc(
          */
         fun processCommandApdu(
             hostApduService: HostApduService,
-            apdu: ByteArray
+            apdu: ByteArray,
         ): ByteArray? {
             if (activeTransports.size == 0) {
                 Logger.w(TAG, "processCommandApdu: No active DataTransportNfc")
@@ -825,13 +865,17 @@ class DataTransportNfc(
             context: Context,
             cm: ConnectionMethodNfc,
             role: Role,
-            options: DataTransportOptions
+            options: DataTransportOptions,
         ): DataTransport {
             // TODO: set mCommandDataFieldMaxLength and mResponseDataFieldMaxLength
             return DataTransportNfc(context, role, cm, options)
         }
 
-        private fun encodeInt(dataType: Int, value: Int, baos: ByteArrayOutputStream) {
+        private fun encodeInt(
+            dataType: Int,
+            value: Int,
+            baos: ByteArrayOutputStream,
+        ) {
             if (value < 0x100) {
                 baos.write(0x02) // Length
                 baos.write(dataType)
@@ -853,7 +897,7 @@ class DataTransportNfc(
         fun toNdefRecord(
             cm: ConnectionMethodNfc,
             auxiliaryReferences: List<String>,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
         ): Pair<NdefRecord, ByteArray> {
             val carrierDataReference = "nfc".toByteArray()
 
@@ -865,12 +909,13 @@ class DataTransportNfc(
             encodeInt(0x01, cm.commandDataFieldMaxLength.toInt(), baos)
             encodeInt(0x02, cm.responseDataFieldMaxLength.toInt(), baos)
             val oobData = baos.toByteArray()
-            val record = NdefRecord(
-                NdefRecord.TNF_EXTERNAL_TYPE,
-                "iso.org:18013:nfc".toByteArray(),
-                carrierDataReference,
-                oobData
-            )
+            val record =
+                NdefRecord(
+                    NdefRecord.TNF_EXTERNAL_TYPE,
+                    "iso.org:18013:nfc".toByteArray(),
+                    carrierDataReference,
+                    oobData,
+                )
 
             // From 7.1 Alternative Carrier Record
             //

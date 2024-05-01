@@ -1,6 +1,5 @@
 package com.android.identity.cbor
 
-
 /**
  * CBOR major types.
  */
@@ -93,7 +92,8 @@ enum class MajorType(val type: Int) {
      *
      * Floating-point numbers and simple values, as well as the "break" stop code. See Section 3.3.
      */
-    SPECIAL(7);
+    SPECIAL(7),
+    ;
 
     companion object {
         /**
@@ -103,7 +103,7 @@ enum class MajorType(val type: Int) {
          * @return a [MajorType] for the given value.
          */
         fun fromInt(value: Int): MajorType {
-            return MajorType.values().find {it.type == value}
+            return MajorType.values().find { it.type == value }
                 ?: throw IllegalArgumentException("Unknown major type with value $value")
         }
     }

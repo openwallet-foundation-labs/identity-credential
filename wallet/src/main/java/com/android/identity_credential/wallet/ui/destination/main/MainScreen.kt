@@ -37,10 +37,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -103,7 +103,7 @@ fun MainScreen(
                             drawerState.close()
                             onNavigate(WalletDestination.AddToWallet.route)
                         }
-                    }
+                    },
                 )
                 NavigationDrawerItem(
                     icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = null) },
@@ -114,7 +114,7 @@ fun MainScreen(
                             drawerState.close()
                             onNavigate(WalletDestination.Settings.route)
                         }
-                    }
+                    },
                 )
                 NavigationDrawerItem(
                     icon = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
@@ -125,7 +125,7 @@ fun MainScreen(
                             drawerState.close()
                             onNavigate(WalletDestination.About.route)
                         }
-                    }
+                    },
                 )
             }
         },
@@ -137,7 +137,7 @@ fun MainScreen(
             documentModel = documentModel,
             scope = scope,
             drawerState = drawerState,
-            context = context
+            context = context,
         )
     }
 }
@@ -153,9 +153,10 @@ fun MainScreenContent(
     drawerState: DrawerState,
     context: Context,
 ) {
-    val hasProximityPresentationPermissions = rememberMultiplePermissionsState(
-        WalletApplication.MDOC_PROXIMITY_PERMISSIONS
-    )
+    val hasProximityPresentationPermissions =
+        rememberMultiplePermissionsState(
+            WalletApplication.MDOC_PROXIMITY_PERMISSIONS,
+        )
 
     var showProximityPresentationPermissionsMissing by remember { mutableStateOf(false) }
     if (showProximityPresentationPermissionsMissing) {
@@ -177,14 +178,13 @@ fun MainScreenContent(
                     onClick = {
                         showProximityPresentationPermissionsMissing = false
                         hasProximityPresentationPermissions.launchMultiplePermissionRequest()
-                    }
+                    },
                 ) {
                     Text(stringResource(R.string.proximity_permissions_qr_alert_dialog_confirm_button))
                 }
             },
         )
     }
-
 
     var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
     if (showDeviceLockNotSetupWarning) {
@@ -198,7 +198,7 @@ fun MainScreenContent(
             onDismissRequest = { showDeviceLockNotSetupWarning = false },
             confirmButton = {
                 TextButton(
-                    onClick = { showDeviceLockNotSetupWarning = false }
+                    onClick = { showDeviceLockNotSetupWarning = false },
                 ) {
                     Text(text = stringResource(R.string.qr_lskf_warning_dismiss_btn))
                 }
@@ -207,7 +207,8 @@ fun MainScreenContent(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    ScreenWithAppBar(title = stringResource(R.string.wallet_screen_title),
+    ScreenWithAppBar(
+        title = stringResource(R.string.wallet_screen_title),
         navigationIcon = {
             IconButton(
                 onClick = {
@@ -217,11 +218,11 @@ fun MainScreenContent(
                             if (isClosed) open() else close()
                         }
                     }
-                }
+                },
             ) {
                 Icon(
                     imageVector = Icons.Filled.Menu,
-                    contentDescription = stringResource(R.string.accessibility_menu_icon)
+                    contentDescription = stringResource(R.string.accessibility_menu_icon),
                 )
             }
         },
@@ -229,12 +230,14 @@ fun MainScreenContent(
     ) {
         if (!settingsModel.screenLockIsSetup.value!!) {
             LaunchedEffect(snackbarHostState) {
-                when (snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.no_screenlock_snackbar_text),
-                    actionLabel = context.getString(R.string.no_screenlock_snackbar_action_label),
-                    duration = SnackbarDuration.Indefinite,
-                    withDismissAction = false
-                )) {
+                when (
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.no_screenlock_snackbar_text),
+                        actionLabel = context.getString(R.string.no_screenlock_snackbar_action_label),
+                        duration = SnackbarDuration.Indefinite,
+                        withDismissAction = false,
+                    )
+                ) {
                     SnackbarResult.Dismissed -> {
                     }
                     SnackbarResult.ActionPerformed -> {
@@ -250,14 +253,17 @@ fun MainScreenContent(
             MainScreenNoDocumentsAvailable(onNavigate, context)
         } else {
             if (!hasProximityPresentationPermissions.allPermissionsGranted &&
-                !settingsModel.hideMissingProximityPermissionsWarning.value!!) {
+                !settingsModel.hideMissingProximityPermissionsWarning.value!!
+            ) {
                 LaunchedEffect(snackbarHostState) {
-                    when (snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.proximity_permissions_snackbar_text),
-                        actionLabel = context.getString(R.string.proximity_permissions_snackbar_action_label),
-                        duration = SnackbarDuration.Indefinite,
-                        withDismissAction = true
-                    )) {
+                    when (
+                        snackbarHostState.showSnackbar(
+                            message = context.getString(R.string.proximity_permissions_snackbar_text),
+                            actionLabel = context.getString(R.string.proximity_permissions_snackbar_action_label),
+                            duration = SnackbarDuration.Indefinite,
+                            withDismissAction = true,
+                        )
+                    ) {
                         SnackbarResult.Dismissed -> {
                             settingsModel.hideMissingProximityPermissionsWarning.value = true
                         }
@@ -272,10 +278,10 @@ fun MainScreenContent(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.nfc_icon),
@@ -284,7 +290,7 @@ fun MainScreenContent(
                     )
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = stringResource(R.string.wallet_screen_nfc_presentation_instructions)
+                        text = stringResource(R.string.wallet_screen_nfc_presentation_instructions),
                     )
                 }
             }
@@ -294,16 +300,17 @@ fun MainScreenContent(
             MainScreenDocumentPager(
                 onNavigate = onNavigate,
                 documentModel = documentModel,
-                settingsModel = settingsModel
+                settingsModel = settingsModel,
             )
 
             Spacer(modifier = Modifier.weight(0.5f))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.Center
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.Center,
             ) {
                 OutlinedButton(
                     onClick = {
@@ -322,11 +329,11 @@ fun MainScreenContent(
                     Icon(
                         painter = painterResource(id = R.drawable.qr_icon),
                         contentDescription = stringResource(R.string.wallet_screen_qr_icon_content_description),
-                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
                     Text(
-                        text = stringResource(R.string.wallet_screen_show_qr)
+                        text = stringResource(R.string.wallet_screen_show_qr),
                     )
                 }
             }
@@ -337,7 +344,7 @@ fun MainScreenContent(
 @Composable
 fun MainScreenNoDocumentsAvailable(
     onNavigate: (String) -> Unit,
-    context: Context
+    context: Context,
 ) {
     var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
     if (showDeviceLockNotSetupWarning) {
@@ -351,7 +358,7 @@ fun MainScreenNoDocumentsAvailable(
             onDismissRequest = { showDeviceLockNotSetupWarning = false },
             confirmButton = {
                 TextButton(
-                    onClick = { showDeviceLockNotSetupWarning = false }
+                    onClick = { showDeviceLockNotSetupWarning = false },
                 ) {
                     Text(text = stringResource(R.string.add_cred_lskf_warning_dismiss_btn))
                 }
@@ -361,20 +368,21 @@ fun MainScreenNoDocumentsAvailable(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         Text(
             modifier = Modifier.padding(8.dp),
             text = stringResource(R.string.wallet_screen_empty),
             style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
     }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.Center
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+        horizontalArrangement = Arrangement.Center,
     ) {
         Button(onClick = {
             if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
@@ -382,7 +390,6 @@ fun MainScreenNoDocumentsAvailable(
             } else {
                 onNavigate(WalletDestination.AddToWallet.route)
             }
-
         }) {
             Text(stringResource(R.string.wallet_screen_add))
         }
@@ -396,10 +403,11 @@ fun MainScreenDocumentPager(
     documentModel: DocumentModel,
     settingsModel: SettingsModel,
 ) {
-    val pagerState = rememberPagerState(
-        initialPage = documentModel.getCardIndex(settingsModel.focusedCardId.value!!) ?: 0,
-        pageCount = { documentModel.documentInfos.size }
-    )
+    val pagerState =
+        rememberPagerState(
+            initialPage = documentModel.getCardIndex(settingsModel.focusedCardId.value!!) ?: 0,
+            pageCount = { documentModel.documentInfos.size },
+        )
 
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
@@ -410,41 +418,43 @@ fun MainScreenDocumentPager(
     Column {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.height(200.dp)
+            modifier = Modifier.height(200.dp),
         ) { page ->
             val card = documentModel.documentInfos[page]
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Image(
                     bitmap = card.documentArtwork.asImageBitmap(),
                     contentDescription =
-                    stringResource(R.string.accessibility_artwork_for, card.name),
-                    modifier = Modifier.clickable(onClick = {
-                        onNavigate(
-                            WalletDestination.DocumentInfo
-                                .getRouteWithArguments(
-                                    listOf(
-                                        Pair(
-                                            WalletDestination.DocumentInfo.Argument.DOCUMENT_ID,
-                                            card.documentId
-                                        )
-                                    )
-                                )
-                        )
-                    })
+                        stringResource(R.string.accessibility_artwork_for, card.name),
+                    modifier =
+                        Modifier.clickable(onClick = {
+                            onNavigate(
+                                WalletDestination.DocumentInfo
+                                    .getRouteWithArguments(
+                                        listOf(
+                                            Pair(
+                                                WalletDestination.DocumentInfo.Argument.DOCUMENT_ID,
+                                                card.documentId,
+                                            ),
+                                        ),
+                                    ),
+                            )
+                        }),
                 )
             }
         }
 
         Row(
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .wrapContentHeight()
-                .fillMaxWidth()
-                .height(30.dp)
-                .padding(8.dp),
+            modifier =
+                Modifier
+                    .wrapContentHeight()
+                    .fillMaxWidth()
+                    .height(30.dp)
+                    .padding(8.dp),
         ) {
             repeat(pagerState.pageCount) { iteration ->
                 val color =
@@ -454,11 +464,12 @@ fun MainScreenDocumentPager(
                         MaterialTheme.colorScheme.secondary
                     }
                 Box(
-                    modifier = Modifier
-                        .padding(2.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .size(8.dp)
+                    modifier =
+                        Modifier
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .size(8.dp),
                 )
             }
         }

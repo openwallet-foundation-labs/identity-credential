@@ -22,20 +22,21 @@ fun OutlinedContainerHorizontal(
     modifier: Modifier = Modifier,
     outlineBorderWidth: Dp = 2.dp,
     outlineBrush: Brush? = null,
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
     val brush = outlineBrush ?: SolidColor(MaterialTheme.colorScheme.outline)
     Row(
-        modifier = modifier
-            .heightIn(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(outlineBorderWidth, brush, RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.inverseOnSurface),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            modifier
+                .heightIn(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(outlineBorderWidth, brush, RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.inverseOnSurface),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             content()
         }

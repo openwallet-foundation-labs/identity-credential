@@ -1,6 +1,5 @@
 package com.android.identity.issuance
 
-
 import com.android.identity.document.Document
 import java.lang.IllegalArgumentException
 
@@ -14,7 +13,9 @@ object DocumentExtensions {
     /** The identifier for the [IssuingAuthority] the credential belongs to */
     var Document.issuingAuthorityIdentifier: String
         get() = applicationData.getString("issuingAuthorityIdentifier")
-        set(value) { applicationData.setString("issuingAuthorityIdentifier", value) }
+        set(value) {
+            applicationData.setString("issuingAuthorityIdentifier", value)
+        }
 
     /**
      * The identifier for the credential, as assigned by the issuer
@@ -24,7 +25,9 @@ object DocumentExtensions {
      */
     var Document.documentIdentifier: String
         get() = applicationData.getString("credentialIdentifier")
-        set(value) { applicationData.setString("credentialIdentifier", value) }
+        set(value) {
+            applicationData.setString("credentialIdentifier", value)
+        }
 
     /**
      * The number of [DocumentConfiguration] objects downloaded from the issuer.
@@ -36,12 +39,16 @@ object DocumentExtensions {
             }
             return applicationData.getNumber("numDocumentConfigurationsDownloaded")
         }
-        set(value) { applicationData.setNumber("numDocumentConfigurationsDownloaded", value) }
+        set(value) {
+            applicationData.setNumber("numDocumentConfigurationsDownloaded", value)
+        }
 
     /** The [DocumentConfiguration] received from the issuer */
     var Document.documentConfiguration: DocumentConfiguration
         get() = DocumentConfiguration.fromCbor(applicationData.getData("credentialConfiguration"))
-        set(value) { applicationData.setData("credentialConfiguration", value.toCbor()) }
+        set(value) {
+            applicationData.setData("credentialConfiguration", value.toCbor())
+        }
 
     /**
      * The most recent [DocumentState] received from the issuer.
@@ -52,7 +59,9 @@ object DocumentExtensions {
      */
     var Document.state: DocumentState
         get() = DocumentState.fromCbor(applicationData.getData("credentialState"))
-        set(value) { applicationData.setData("credentialState", value.toCbor()) }
+        set(value) {
+            applicationData.setData("credentialState", value.toCbor())
+        }
 
     /**
      * Set to true if the credential was deleted on the issuer-side.
@@ -79,10 +88,10 @@ object DocumentExtensions {
      * @return true if the refresh succeeded, false if the credential is unknown.
      * @throws IllegalArgumentException if the issuer isn't know.
      */
-    suspend fun Document.refreshState(issuingAuthorityRepository: IssuingAuthorityRepository):
-            Boolean {
-        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
-            ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
+    suspend fun Document.refreshState(issuingAuthorityRepository: IssuingAuthorityRepository): Boolean {
+        val issuer =
+            issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
+                ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
         try {
             this.state = issuer.getState(documentIdentifier)
             return true

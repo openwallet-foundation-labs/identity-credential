@@ -49,7 +49,7 @@ internal class GattServer(
     var characteristicClient2ServerUuid: UUID,
     var characteristicServer2ClientUuid: UUID,
     var characteristicIdentUuid: UUID?,
-    var characteristicL2CAPUuid: UUID?
+    var characteristicL2CAPUuid: UUID?,
 ) : BluetoothGattServerCallback() {
     var psm = OptionalInt.empty()
         private set
@@ -86,56 +86,64 @@ internal class GattServer(
         if (encodedEDeviceKeyBytes != null) {
             setEDeviceKeyBytes(encodedEDeviceKeyBytes)
         }
-        gattServer = try {
-            bluetoothManager.openGattServer(context, this)
-        } catch (e: SecurityException) {
-            reportError(e)
-            return false
-        }
+        gattServer =
+            try {
+                bluetoothManager.openGattServer(context, this)
+            } catch (e: SecurityException) {
+                reportError(e)
+                return false
+            }
         if (gattServer == null) {
             return false
         }
-        val service = BluetoothGattService(
-            serviceUuid,
-            BluetoothGattService.SERVICE_TYPE_PRIMARY
-        )
+        val service =
+            BluetoothGattService(
+                serviceUuid,
+                BluetoothGattService.SERVICE_TYPE_PRIMARY,
+            )
         var c: BluetoothGattCharacteristic
         var d: BluetoothGattDescriptor
 
         // State
-        c = BluetoothGattCharacteristic(
-            characteristicStateUuid, BluetoothGattCharacteristic.PROPERTY_NOTIFY
+        c =
+            BluetoothGattCharacteristic(
+                characteristicStateUuid,
+                BluetoothGattCharacteristic.PROPERTY_NOTIFY
                     or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
-            BluetoothGattCharacteristic.PERMISSION_WRITE
-        )
-        d = BluetoothGattDescriptor(
-            clientCharacteristicConfigUuid,
-            BluetoothGattDescriptor.PERMISSION_WRITE
-        )
+                BluetoothGattCharacteristic.PERMISSION_WRITE,
+            )
+        d =
+            BluetoothGattDescriptor(
+                clientCharacteristicConfigUuid,
+                BluetoothGattDescriptor.PERMISSION_WRITE,
+            )
         d.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
         c.addDescriptor(d)
         service.addCharacteristic(c)
         characteristicState = c
 
         // Client2Server
-        c = BluetoothGattCharacteristic(
-            characteristicClient2ServerUuid,
-            BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
-            BluetoothGattCharacteristic.PERMISSION_WRITE
-        )
+        c =
+            BluetoothGattCharacteristic(
+                characteristicClient2ServerUuid,
+                BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+                BluetoothGattCharacteristic.PERMISSION_WRITE,
+            )
         service.addCharacteristic(c)
         characteristicClient2Server = c
 
         // Server2Client
-        c = BluetoothGattCharacteristic(
-            characteristicServer2ClientUuid,
-            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothGattCharacteristic.PERMISSION_WRITE
-        )
-        d = BluetoothGattDescriptor(
-            clientCharacteristicConfigUuid,
-            BluetoothGattDescriptor.PERMISSION_WRITE
-        )
+        c =
+            BluetoothGattCharacteristic(
+                characteristicServer2ClientUuid,
+                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_WRITE,
+            )
+        d =
+            BluetoothGattDescriptor(
+                clientCharacteristicConfigUuid,
+                BluetoothGattDescriptor.PERMISSION_WRITE,
+            )
         d.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
         c.addDescriptor(d)
         service.addCharacteristic(c)
@@ -143,11 +151,12 @@ internal class GattServer(
 
         // Ident
         if (characteristicIdentUuid != null) {
-            c = BluetoothGattCharacteristic(
-                characteristicIdentUuid,
-                BluetoothGattCharacteristic.PROPERTY_READ,
-                BluetoothGattCharacteristic.PERMISSION_READ
-            )
+            c =
+                BluetoothGattCharacteristic(
+                    characteristicIdentUuid,
+                    BluetoothGattCharacteristic.PROPERTY_READ,
+                    BluetoothGattCharacteristic.PERMISSION_READ,
+                )
             service.addCharacteristic(c)
             characteristicIdent = c
         }
@@ -158,23 +167,26 @@ internal class GattServer(
         Logger.i(TAG, "Is L2CAP supported: $usingL2CAP")
         if (usingL2CAP) {
             // Start L2CAP socket server
-            l2capServer = L2CAPServer(object : L2CAPServer.Listener {
-                override fun onPeerConnected() {
-                    reportPeerConnected()
-                }
+            l2capServer =
+                L2CAPServer(
+                    object : L2CAPServer.Listener {
+                        override fun onPeerConnected() {
+                            reportPeerConnected()
+                        }
 
-                override fun onPeerDisconnected() {
-                    reportPeerDisconnected()
-                }
+                        override fun onPeerDisconnected() {
+                            reportPeerDisconnected()
+                        }
 
-                override fun onMessageReceived(data: ByteArray) {
-                    reportMessageReceived(data)
-                }
+                        override fun onMessageReceived(data: ByteArray) {
+                            reportMessageReceived(data)
+                        }
 
-                override fun onError(error: Throwable) {
-                    reportError(error)
-                }
-            })
+                        override fun onError(error: Throwable) {
+                            reportError(error)
+                        }
+                    },
+                )
             psm = l2capServer!!.start(bluetoothManager.adapter)
             if (psm.isEmpty) {
                 Logger.w(TAG, "Error starting L2CAP server")
@@ -182,11 +194,12 @@ internal class GattServer(
                 usingL2CAP = false
             } else {
                 Logger.i(TAG, "Listening on L2CAP with PSM ${psm.asInt}")
-                c = BluetoothGattCharacteristic(
-                    characteristicL2CAPUuid,
-                    BluetoothGattCharacteristic.PROPERTY_READ,
-                    BluetoothGattCharacteristic.PERMISSION_READ
-                )
+                c =
+                    BluetoothGattCharacteristic(
+                        characteristicL2CAPUuid,
+                        BluetoothGattCharacteristic.PROPERTY_READ,
+                        BluetoothGattCharacteristic.PERMISSION_READ,
+                    )
                 service.addCharacteristic(c)
                 characteristicL2CAP = c
             }
@@ -213,12 +226,20 @@ internal class GattServer(
         }
     }
 
-    override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+    override fun onConnectionStateChange(
+        device: BluetoothDevice,
+        status: Int,
+        newState: Int,
+    ) {
         Logger.d(TAG, "onConnectionStateChange: ${device.address} $status + $newState")
         if (newState == BluetoothProfile.STATE_DISCONNECTED && currentConnection != null &&
-            device.address == currentConnection!!.address) {
-            Logger.d(TAG, "Device ${currentConnection!!.address} which we're currently " +
-                        "connected to, has disconnected")
+            device.address == currentConnection!!.address
+        ) {
+            Logger.d(
+                TAG,
+                "Device ${currentConnection!!.address} which we're currently " +
+                    "connected to, has disconnected",
+            )
             currentConnection = null
             reportPeerDisconnected()
         }
@@ -226,11 +247,16 @@ internal class GattServer(
 
     @SuppressLint("NewApi")
     override fun onCharacteristicReadRequest(
-        device: BluetoothDevice, requestId: Int, offset: Int,
-        characteristic: BluetoothGattCharacteristic
+        device: BluetoothDevice,
+        requestId: Int,
+        offset: Int,
+        characteristic: BluetoothGattCharacteristic,
     ) {
-        Logger.d(TAG, "onCharacteristicReadRequest: ${device.address} $requestId " +
-                "$offset ${characteristic.uuid}")
+        Logger.d(
+            TAG,
+            "onCharacteristicReadRequest: ${device.address} $requestId " +
+                "$offset ${characteristic.uuid}",
+        )
         if (characteristicIdentUuid != null && characteristic.uuid == characteristicIdentUuid) {
             try {
                 val ident = if (identValue != null) identValue!! else ByteArray(0)
@@ -239,7 +265,7 @@ internal class GattServer(
                     requestId,
                     BluetoothGatt.GATT_SUCCESS,
                     0,
-                    ident
+                    ident,
                 )
             } catch (e: SecurityException) {
                 reportError(e)
@@ -257,14 +283,14 @@ internal class GattServer(
                 requestId,
                 BluetoothGatt.GATT_SUCCESS,
                 0,
-                encodedPsmValue
+                encodedPsmValue,
             )
         } else {
             reportError(
                 Error(
-                    "Read on unexpected characteristic with UUID "
-                            + characteristic.uuid
-                )
+                    "Read on unexpected characteristic with UUID " +
+                        characteristic.uuid,
+                ),
             )
         }
     }
@@ -276,18 +302,24 @@ internal class GattServer(
         preparedWrite: Boolean,
         responseNeeded: Boolean,
         offset: Int,
-        value: ByteArray
+        value: ByteArray,
     ) {
         val charUuid = characteristic.uuid
-        Logger.d(TAG, "onCharacteristicWriteRequest: ${device.address} $requestId " +
-                "$offset ${characteristic.uuid} ${value.toHex}")
+        Logger.d(
+            TAG,
+            "onCharacteristicWriteRequest: ${device.address} $requestId " +
+                "$offset ${characteristic.uuid} ${value.toHex}",
+        )
 
         // If we are connected to a device, ignore write from any other device
         if (currentConnection != null &&
             device.address != currentConnection!!.address
         ) {
-            Logger.e(TAG, "Ignoring characteristic write request from ${device.address} " +
-                    "since we're already connected to ${currentConnection!!.address}")
+            Logger.e(
+                TAG,
+                "Ignoring characteristic write request from ${device.address} " +
+                    "since we're already connected to ${currentConnection!!.address}",
+            )
             return
         }
         if (charUuid == characteristicStateUuid && value.size == 1) {
@@ -295,12 +327,18 @@ internal class GattServer(
                 // Close server socket when the connection was done by state characteristic
                 stopL2CAPServer()
                 if (currentConnection != null) {
-                    Logger.e(TAG, "Ignoring connection attempt from ${device.address} " +
-                                "since we're already connected to ${currentConnection!!.address}")
+                    Logger.e(
+                        TAG,
+                        "Ignoring connection attempt from ${device.address} " +
+                            "since we're already connected to ${currentConnection!!.address}",
+                    )
                 } else {
                     currentConnection = device
-                    Logger.d(TAG, "Received connection (state 0x01 on State characteristic) "
-                                + "from ${currentConnection!!.address}")
+                    Logger.d(
+                        TAG,
+                        "Received connection (state 0x01 on State characteristic) " +
+                            "from ${currentConnection!!.address}",
+                    )
                 }
                 reportPeerConnected()
             } else if (value[0].toInt() == 0x02) {
@@ -321,8 +359,11 @@ internal class GattServer(
             }
             incomingMessage.write(value, 1, value.size - 1)
             val isLast = (value[0].toInt() == 0x00)
-            Logger.d(TAG, "Received chunk with ${value.size} bytes " +
-                    "(last=$isLast), incomingMessage.length=${incomingMessage.toByteArray().size}")
+            Logger.d(
+                TAG,
+                "Received chunk with ${value.size} bytes " +
+                    "(last=$isLast), incomingMessage.length=${incomingMessage.toByteArray().size}",
+            )
             if (value[0].toInt() == 0x00) {
                 // Last message.
                 val entireMessage = incomingMessage.toByteArray()
@@ -330,15 +371,19 @@ internal class GattServer(
                 reportMessageReceived(entireMessage)
             } else if (value[0].toInt() == 0x01) {
                 if (value.size != characteristicValueSize) {
-                    Logger.w(TAG,
+                    Logger.w(
+                        TAG,
                         "Client2Server received ${value.size} bytes which is not the " +
-                            "expected $characteristicValueSize bytes"
+                            "expected $characteristicValueSize bytes",
                     )
                     return
                 }
             } else {
-                reportError(Error(
-                    "Invalid first byte ${value[0]} in Client2Server data chunk, expected 0 or 1"))
+                reportError(
+                    Error(
+                        "Invalid first byte ${value[0]} in Client2Server data chunk, expected 0 or 1",
+                    ),
+                )
                 return
             }
             if (responseNeeded) {
@@ -348,15 +393,17 @@ internal class GattServer(
                         requestId,
                         BluetoothGatt.GATT_SUCCESS,
                         0,
-                        null
+                        null,
                     )
                 } catch (e: SecurityException) {
                     reportError(e)
                 }
             }
         } else {
-            reportError(Error(
-                "Write on unexpected characteristic with UUID ${characteristic.uuid}")
+            reportError(
+                Error(
+                    "Write on unexpected characteristic with UUID ${characteristic.uuid}",
+                ),
             )
         }
     }
@@ -371,24 +418,33 @@ internal class GattServer(
     }
 
     override fun onDescriptorReadRequest(
-        device: BluetoothDevice, requestId: Int, offset: Int,
-        descriptor: BluetoothGattDescriptor
+        device: BluetoothDevice,
+        requestId: Int,
+        offset: Int,
+        descriptor: BluetoothGattDescriptor,
     ) {
-        Logger.d(TAG, "onDescriptorReadRequest: ${device.address} " +
-                "${descriptor.characteristic.uuid} ${descriptor.characteristic.uuid} $offset")
-        /* Do nothing */
+        Logger.d(
+            TAG,
+            "onDescriptorReadRequest: ${device.address} " +
+                "${descriptor.characteristic.uuid} ${descriptor.characteristic.uuid} $offset",
+        )
+        // Do nothing
     }
 
     override fun onDescriptorWriteRequest(
-        device: BluetoothDevice, requestId: Int,
+        device: BluetoothDevice,
+        requestId: Int,
         descriptor: BluetoothGattDescriptor,
-        preparedWrite: Boolean, responseNeeded: Boolean,
-        offset: Int, value: ByteArray
+        preparedWrite: Boolean,
+        responseNeeded: Boolean,
+        offset: Int,
+        value: ByteArray,
     ) {
         if (Logger.isDebugEnabled) {
             Logger.d(
-                TAG, "onDescriptorWriteRequest: ${device.address}" +
-                        "${descriptor.characteristic.uuid} $offset ${value.toHex}"
+                TAG,
+                "onDescriptorWriteRequest: ${device.address}" +
+                    "${descriptor.characteristic.uuid} $offset ${value.toHex}",
             )
         }
         if (responseNeeded) {
@@ -398,7 +454,7 @@ internal class GattServer(
                     requestId,
                     BluetoothGatt.GATT_SUCCESS,
                     0,
-                    null
+                    null,
                 )
             } catch (e: SecurityException) {
                 reportError(e)
@@ -406,7 +462,10 @@ internal class GattServer(
         }
     }
 
-    override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
+    override fun onMtuChanged(
+        device: BluetoothDevice,
+        mtu: Int,
+    ) {
         negotiatedMtu = mtu
         Logger.d(TAG, "Negotiated MTU $mtu for $${device.address}")
     }
@@ -451,11 +510,12 @@ internal class GattServer(
         try {
             if (!gattServer!!.notifyCharacteristicChanged(
                     currentConnection,
-                    characteristicServer2Client, false
+                    characteristicServer2Client,
+                    false,
                 )
             ) {
                 reportError(
-                    Error("Error calling notifyCharacteristicsChanged on Server2Client")
+                    Error("Error calling notifyCharacteristicsChanged on Server2Client"),
                 )
                 return
             }
@@ -466,7 +526,10 @@ internal class GattServer(
         writeIsOutstanding = true
     }
 
-    override fun onNotificationSent(device: BluetoothDevice, status: Int) {
+    override fun onNotificationSent(
+        device: BluetoothDevice,
+        status: Int,
+    ) {
         Logger.d(TAG, "onNotificationSent $status for ${device.address}")
         if (status != BluetoothGatt.GATT_SUCCESS) {
             reportError(Error("Error in onNotificationSent status=$status"))
@@ -555,7 +618,8 @@ internal class GattServer(
         try {
             if (!gattServer!!.notifyCharacteristicChanged(
                     currentConnection,
-                    characteristicState, false
+                    characteristicState,
+                    false,
                 )
             ) {
                 reportError(Error("Error calling notifyCharacteristicsChanged on State"))
@@ -567,9 +631,13 @@ internal class GattServer(
 
     internal interface Listener {
         fun onPeerConnected()
+
         fun onPeerDisconnected()
+
         fun onMessageReceived(data: ByteArray)
+
         fun onTransportSpecificSessionTermination()
+
         fun onError(error: Throwable)
     }
 

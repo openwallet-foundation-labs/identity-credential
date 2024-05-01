@@ -12,7 +12,6 @@ import com.android.identity.wallet.databinding.FragmentShowDocumentDataBinding
 import com.android.identity.wallet.transfer.TransferManager
 
 class ShowDocumentDataFragment : Fragment() {
-
     private val arguments by navArgs<ShowDocumentDataFragmentArgs>()
     private var _binding: FragmentShowDocumentDataBinding? = null
     private val binding get() = _binding!!
@@ -31,7 +30,7 @@ class ShowDocumentDataFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentShowDocumentDataBinding.inflate(inflater, container, false)
         return binding.root
@@ -42,7 +41,10 @@ class ShowDocumentDataFragment : Fragment() {
         _binding = null
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         loadDocumentElements()
     }
 

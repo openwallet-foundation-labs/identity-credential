@@ -8,13 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun DropDownIndicator(
-    modifier: Modifier = Modifier
-) {
+fun DropDownIndicator(modifier: Modifier = Modifier) {
     Icon(
         modifier = modifier,
         imageVector = Icons.Default.ArrowDropDown,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurface
+        tint = MaterialTheme.colorScheme.onSurface,
     )
 }

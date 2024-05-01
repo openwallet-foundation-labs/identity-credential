@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 class PassphrasePromptViewModel : ViewModel() {
-
     private val _authorizationState =
         MutableStateFlow<PassphraseAuthResult>(PassphraseAuthResult.Idle)
     val authorizationState: StateFlow<PassphraseAuthResult> = _authorizationState

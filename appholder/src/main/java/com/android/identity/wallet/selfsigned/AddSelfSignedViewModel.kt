@@ -12,19 +12,21 @@ import kotlinx.coroutines.flow.StateFlow
 import java.lang.Integer.max
 
 class AddSelfSignedViewModel(
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-
-    val screenState: StateFlow<AddSelfSignedScreenState> = savedStateHandle.getState(
-        AddSelfSignedScreenState()
-    )
+    val screenState: StateFlow<AddSelfSignedScreenState> =
+        savedStateHandle.getState(
+            AddSelfSignedScreenState(),
+        )
 
     val documentItems: List<DocumentItem> =
         HolderApp.documentTypeRepositoryInstance.documentTypes.filter { it.mdocDocumentType != null }
             .map { DocumentItem(it.mdocDocumentType!!.docType, it.displayName) }
 
-
-    fun updateDocumentType(newValue: String, newName: String) {
+    fun updateDocumentType(
+        newValue: String,
+        newName: String,
+    ) {
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(documentType = newValue, documentName = newName)
         }
@@ -69,7 +71,6 @@ class AddSelfSignedViewModel(
             it.copy(minValidityInDays = newValue, validityInDays = validityDays)
         }
     }
-
 
     fun updateNumberOfMso(newValue: Int) {
         if (newValue <= 0) return

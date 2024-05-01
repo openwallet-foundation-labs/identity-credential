@@ -19,12 +19,12 @@ data class EvidenceRequestIcaoNfcTunnel(
     val requestType: EvidenceRequestIcaoNfcTunnelType,
     val passThrough: Boolean,
     val progressPercent: Int,
-    val message: ByteArray)
-    : EvidenceRequest() {
-
+    val message: ByteArray,
+) :
+    EvidenceRequest() {
     override fun toString(): String {
         return "EvidenceRequestIcaoNfcTunnel{type=$requestType, passThrough=$passThrough, " +
-                "progress=$progressPercent, length=${message.size}}"
+            "progress=$progressPercent, length=${message.size}}"
     }
 
     override fun equals(other: Any?): Boolean {

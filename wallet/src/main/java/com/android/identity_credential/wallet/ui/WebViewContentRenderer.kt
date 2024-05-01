@@ -52,50 +52,54 @@ abstract class WebViewContentRenderer {
         primaryColor: Color = MaterialTheme.colorScheme.primary,
         linkColor: Color = MaterialTheme.colorScheme.secondary,
         backgroundColor: Color = MaterialTheme.colorScheme.surface,
-        assets: Map<String, ByteArray>? = null
+        assets: Map<String, ByteArray>? = null,
     ) {
         var contentHeight = remember { mutableIntStateOf(0) }
-        var m = modifier;
+        var m = modifier
         if (contentHeight.intValue > 0) {
             m = m.height(contentHeight.intValue.dp)
         }
         Box(modifier = m) {
-            val bootstrapHtml = getBootstrapHtml(
-                createStyle(
-                    color = color,
-                    primaryColor = primaryColor,
-                    linkColor = linkColor,
-                    backgroundColor = backgroundColor
+            val bootstrapHtml =
+                getBootstrapHtml(
+                    createStyle(
+                        color = color,
+                        primaryColor = primaryColor,
+                        linkColor = linkColor,
+                        backgroundColor = backgroundColor,
+                    ),
                 )
-            )
             val client = ClientImpl(bootstrapHtml, assets)
             AndroidView(factory = { context ->
-                val webView = WebView(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-                    )
+                val webView =
+                    WebView(context).apply {
+                        layoutParams =
+                            ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
 
-                    setBackgroundColor(backgroundColor.toArgb())
+                        setBackgroundColor(backgroundColor.toArgb())
 
-                    settings.javaScriptEnabled = true
+                        settings.javaScriptEnabled = true
 
-                    webViewClient = client
-                }
+                        webViewClient = client
+                    }
 
                 val mainHandler = android.os.Handler(context.mainLooper)
 
-                val callback = object {
-                    @JavascriptInterface
-                    fun updateHeight(height: Float) {
-                        mainHandler.post {
-                            if (webView.isVerticalScrollBarEnabled) {
-                                contentHeight.intValue = 0
-                            } else {
-                                contentHeight.intValue = height.roundToInt()
-                           }
+                val callback =
+                    object {
+                        @JavascriptInterface
+                        fun updateHeight(height: Float) {
+                            mainHandler.post {
+                                if (webView.isVerticalScrollBarEnabled) {
+                                    contentHeight.intValue = 0
+                                } else {
+                                    contentHeight.intValue = height.roundToInt()
+                                }
+                            }
                         }
                     }
-                }
 
                 webView.loadUrl("https://local/")
                 webView.addJavascriptInterface(callback, "Callback")
@@ -111,20 +115,22 @@ abstract class WebViewContentRenderer {
                     webView.setOnTouchListener(scrollPreventionDragListener)
                 }
 
-                val cssStr = escape(
-                    createStyle(
-                        color = color,
-                        primaryColor = primaryColor,
-                        linkColor = linkColor,
-                        backgroundColor = backgroundColor
+                val cssStr =
+                    escape(
+                        createStyle(
+                            color = color,
+                            primaryColor = primaryColor,
+                            linkColor = linkColor,
+                            backgroundColor = backgroundColor,
+                        ),
                     )
-                )
 
-                val command = if (content.isNotEmpty()) {
-                    "render(\"${escape(content)}\", \"$cssStr\")"
-                } else {
-                    "renderResource(\"/${escape(asset)}\", \"$cssStr\")"
-                }
+                val command =
+                    if (content.isNotEmpty()) {
+                        "render(\"${escape(content)}\", \"$cssStr\")"
+                    } else {
+                        "renderResource(\"/${escape(asset)}\", \"$cssStr\")"
+                    }
                 if (client.loaded) {
                     webView.evaluateJavascript(command) {}
                 } else {
@@ -138,7 +144,10 @@ abstract class WebViewContentRenderer {
      * Creates CSS stylesheet that applies given colors to the rendered content (HTML).
      */
     protected abstract fun createStyle(
-        color: Color, primaryColor: Color, linkColor: Color, backgroundColor: Color
+        color: Color,
+        primaryColor: Color,
+        linkColor: Color,
+        backgroundColor: Color,
     ): String
 
     /**
@@ -152,19 +161,24 @@ abstract class WebViewContentRenderer {
 
     protected fun asWebColor(color: Color): String {
         val srgb = color.convert(ColorSpaces.Srgb)
-        return "#" + (srgb.red * 255).roundToInt().toString(16)
-            .padStart(2, '0') + (srgb.green * 255).roundToInt().toString(16)
-            .padStart(2, '0') + (srgb.blue * 255).roundToInt().toString(16).padStart(2, '0')
+        return "#" +
+            (srgb.red * 255).roundToInt().toString(16)
+                .padStart(2, '0') +
+            (srgb.green * 255).roundToInt().toString(16)
+                .padStart(2, '0') + (srgb.blue * 255).roundToInt().toString(16).padStart(2, '0')
     }
 
     internal class ClientImpl(
         val bootstrapHtml: String,
-        var assets: Map<String, ByteArray>?) : WebViewClient() {
-
+        var assets: Map<String, ByteArray>?,
+    ) : WebViewClient() {
         var loaded = false
         var deferredCommand = ""
 
-        override fun onPageFinished(webView: WebView, url: String) {
+        override fun onPageFinished(
+            webView: WebView,
+            url: String,
+        ) {
             webView.evaluateJavascript(renderResourceScript) {}
             if (deferredCommand.isNotEmpty()) {
                 webView.evaluateJavascript(deferredCommand) {}
@@ -174,7 +188,8 @@ abstract class WebViewContentRenderer {
         }
 
         override fun shouldOverrideUrlLoading(
-            webView: WebView, request: WebResourceRequest
+            webView: WebView,
+            request: WebResourceRequest,
         ): Boolean {
             val intent = Intent(Intent.ACTION_VIEW, request.url)
             webView.context.startActivity(intent)
@@ -182,40 +197,52 @@ abstract class WebViewContentRenderer {
         }
 
         override fun shouldInterceptRequest(
-            webView: WebView, request: WebResourceRequest
+            webView: WebView,
+            request: WebResourceRequest,
         ): WebResourceResponse {
             val context = webView.context
             val encodedPath = request.url.encodedPath
             return when (encodedPath) {
-                "/" -> WebResourceResponse(
-                    "text/html", "utf8", ByteArrayInputStream(bootstrapHtml.encodeToByteArray())
-                )
+                "/" ->
+                    WebResourceResponse(
+                        "text/html",
+                        "utf8",
+                        ByteArrayInputStream(bootstrapHtml.encodeToByteArray()),
+                    )
 
                 null -> resourceNotFound()
-                else -> try {
-                    val assets = this.assets
-                    val path = URLDecoder.decode(encodedPath, "UTF-8")
-                    val stream = if (path.endsWith(".js") || assets == null) {
-                        context.assets.open("webview$path")
-                    } else {
-                        // remove leading '/'
-                        val strippedPath = path.substring(1)
-                        val asset = assets[strippedPath] ?: throw FileNotFoundException()
-                        ByteArrayInputStream(asset)
+                else ->
+                    try {
+                        val assets = this.assets
+                        val path = URLDecoder.decode(encodedPath, "UTF-8")
+                        val stream =
+                            if (path.endsWith(".js") || assets == null) {
+                                context.assets.open("webview$path")
+                            } else {
+                                // remove leading '/'
+                                val strippedPath = path.substring(1)
+                                val asset = assets[strippedPath] ?: throw FileNotFoundException()
+                                ByteArrayInputStream(asset)
+                            }
+                        val mediaType = mediaTypeFromName(path)
+                        WebResourceResponse(mediaType, "", stream)
+                    } catch (err: FileNotFoundException) {
+                        resourceNotFound()
                     }
-                    val mediaType = mediaTypeFromName(path)
-                    WebResourceResponse(mediaType, "", stream)
-                } catch (err: FileNotFoundException) {
-                    resourceNotFound()
-                }
             }
         }
     }
 }
 
-private fun resourceNotFound() = WebResourceResponse(
-    "text/plain", "utf8", 404, "Resource not found", mapOf(), ByteArrayInputStream(byteArrayOf())
-)
+private fun resourceNotFound() =
+    WebResourceResponse(
+        "text/plain",
+        "utf8",
+        404,
+        "Resource not found",
+        mapOf(),
+        ByteArrayInputStream(byteArrayOf()),
+    )
 
 private fun mediaTypeFromName(path: String): String =
     when (path.substring(path.lastIndexOf('.') + 1).lowercase()) {
@@ -227,13 +254,13 @@ private fun mediaTypeFromName(path: String): String =
         else -> "application/octet-stream"
     }
 
-private fun escape(text: String) =
-    text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n")
+private fun escape(text: String) = text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n")
 
 private val scrollPreventionDragListener =
     View.OnTouchListener { v, event -> event.action == MotionEvent.ACTION_MOVE }
 
-private val renderResourceScript = """
+private val renderResourceScript =
+    """
     var req = null;
     function renderResource(path, style) {
         if (req) {

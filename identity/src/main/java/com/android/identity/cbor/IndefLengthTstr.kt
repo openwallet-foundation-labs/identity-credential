@@ -8,12 +8,10 @@ import kotlinx.io.bytestring.ByteStringBuilder
  * @param chunks the chunks in the string.
  */
 data class IndefLengthTstr(val chunks: List<String>) : DataItem(MajorType.UNICODE_STRING) {
-
     override fun encode(builder: ByteStringBuilder) {
-
         val majorTypeShifted = (majorType.type shl 5)
         builder.append((majorTypeShifted + 31).toByte())
-        chunks.forEach() {
+        chunks.forEach {
             val encodedStr = it.encodeToByteArray()
             Cbor.encodeLength(builder, majorType, encodedStr.size)
             builder.append(encodedStr)
@@ -22,7 +20,10 @@ data class IndefLengthTstr(val chunks: List<String>) : DataItem(MajorType.UNICOD
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, IndefLengthTstr> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, IndefLengthTstr> {
             val majorTypeShifted = (MajorType.UNICODE_STRING.type shl 5)
             val marker = (majorTypeShifted + 31).toByte()
             check(encodedCbor[offset] == marker)

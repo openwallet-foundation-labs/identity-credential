@@ -1,7 +1,6 @@
 package com.android.identity.wallet.authconfirmation
 
 class SignedElementsCollection {
-
     private val requestedDocuments = mutableMapOf<String, RequestedDocumentData>()
     private val signedElements = mutableListOf<RequestedElement>()
 

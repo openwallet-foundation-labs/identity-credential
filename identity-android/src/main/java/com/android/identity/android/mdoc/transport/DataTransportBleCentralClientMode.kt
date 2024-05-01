@@ -42,7 +42,7 @@ class DataTransportBleCentralClientMode(
     context: Context,
     role: Role,
     connectionMethod: ConnectionMethodBle,
-    options: DataTransportOptions
+    options: DataTransportOptions,
 ) : DataTransportBle(context, role, connectionMethod, options) {
     private var characteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6")
     private var characteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6")
@@ -69,50 +69,59 @@ class DataTransportBleCentralClientMode(
     // https://stackoverflow.com/a/38276808/4940838
     private var isConnecting = false
 
-    private var scanCallback: ScanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            Logger.d(TAG, "onScanCallback: callbackType=$callbackType result=$result")
-            // if we already scanned and connect to device we don't want to
-            // reconnect to another GattClient instance.
-            if (isConnecting) {
-                return
-            }
-            isConnecting = true
-            val device = result.device
-            scanningTimeMillis = System.currentTimeMillis() - timeScanningStartedMillis
-            Logger.i(TAG, "Scanned for $scanningTimeMillis milliseconds. "
-                        + "Connecting to device with address ${device.address}")
-            connectToDevice(device)
-            if (scanner != null) {
-                Logger.d(TAG, "Stopped scanning for UUID $serviceUuid")
-                try {
-                    scanner!!.stopScan(this)
-                } catch (e: SecurityException) {
-                    reportError(e)
+    private var scanCallback: ScanCallback =
+        object : ScanCallback() {
+            override fun onScanResult(
+                callbackType: Int,
+                result: ScanResult,
+            ) {
+                Logger.d(TAG, "onScanCallback: callbackType=$callbackType result=$result")
+                // if we already scanned and connect to device we don't want to
+                // reconnect to another GattClient instance.
+                if (isConnecting) {
                     return
                 }
-                scanner = null
+                isConnecting = true
+                val device = result.device
+                scanningTimeMillis = System.currentTimeMillis() - timeScanningStartedMillis
+                Logger.i(
+                    TAG,
+                    "Scanned for $scanningTimeMillis milliseconds. " +
+                        "Connecting to device with address ${device.address}",
+                )
+                connectToDevice(device)
+                if (scanner != null) {
+                    Logger.d(TAG, "Stopped scanning for UUID $serviceUuid")
+                    try {
+                        scanner!!.stopScan(this)
+                    } catch (e: SecurityException) {
+                        reportError(e)
+                        return
+                    }
+                    scanner = null
+                }
+            }
+
+            override fun onBatchScanResults(results: List<ScanResult>) {
+                Logger.w(TAG, "Ignoring unexpected onBatchScanResults")
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                reportError(Error("BLE scan failed with error code $errorCode"))
             }
         }
-
-        override fun onBatchScanResults(results: List<ScanResult>) {
-            Logger.w(TAG, "Ignoring unexpected onBatchScanResults")
-        }
-
-        override fun onScanFailed(errorCode: Int) {
-            reportError(Error("BLE scan failed with error code $errorCode"))
-        }
-    }
 
     /**
      * Callback to receive information about the advertisement process.
      */
-    private var advertiseCallback: AdvertiseCallback = object : AdvertiseCallback() {
-        override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {}
-        override fun onStartFailure(errorCode: Int) {
-            reportError(Error("BLE advertise failed with error code $errorCode"))
+    private var advertiseCallback: AdvertiseCallback =
+        object : AdvertiseCallback() {
+            override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {}
+
+            override fun onStartFailure(errorCode: Int) {
+                reportError(Error("BLE advertise failed with error code $errorCode"))
+            }
         }
-    }
 
     private var gattServer: GattServer? = null
     private var l2capClient: L2CAPClient? = null
@@ -135,62 +144,71 @@ class DataTransportBleCentralClientMode(
         if (options.bleUseL2CAP) {
             characteristicL2CAPUuid = characteristicL2CAPUuidMdocReader
         }
-        gattClient = GattClient(
-            context,
-            serviceUuid!!, encodedEDeviceKeyBytes,
-            characteristicStateUuid, characteristicClient2ServerUuid,
-            characteristicServer2ClientUuid, characteristicIdentUuid,
-            characteristicL2CAPUuid
-        )
-        gattClient!!.listener = object : GattClient.Listener {
-            override fun onPeerConnected() {
-                reportConnected()
-            }
-
-            override fun onPeerDisconnected() {
-                if (gattClient != null) {
-                    gattClient!!.listener = null
-                    gattClient!!.disconnect()
-                    gattClient = null
+        gattClient =
+            GattClient(
+                context,
+                serviceUuid!!, encodedEDeviceKeyBytes,
+                characteristicStateUuid, characteristicClient2ServerUuid,
+                characteristicServer2ClientUuid, characteristicIdentUuid,
+                characteristicL2CAPUuid,
+            )
+        gattClient!!.listener =
+            object : GattClient.Listener {
+                override fun onPeerConnected() {
+                    reportConnected()
                 }
-                reportDisconnected()
-            }
 
-            override fun onMessageReceived(data: ByteArray) {
-                reportMessageReceived(data)
-            }
+                override fun onPeerDisconnected() {
+                    if (gattClient != null) {
+                        gattClient!!.listener = null
+                        gattClient!!.disconnect()
+                        gattClient = null
+                    }
+                    reportDisconnected()
+                }
 
-            override fun onTransportSpecificSessionTermination() {
-                reportTransportSpecificSessionTermination()
-            }
+                override fun onMessageReceived(data: ByteArray) {
+                    reportMessageReceived(data)
+                }
 
-            override fun onError(error: Throwable) {
-                reportError(error)
+                override fun onTransportSpecificSessionTermination() {
+                    reportTransportSpecificSessionTermination()
+                }
+
+                override fun onError(error: Throwable) {
+                    reportError(error)
+                }
             }
-        }
         gattClient!!.clearCache = options.bleClearCache
         gattClient!!.connect(device)
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
-    private fun connectL2CAP(device: BluetoothDevice, psm: Int) {
-        l2capClient = L2CAPClient(context, object : L2CAPClient.Listener {
-            override fun onPeerConnected() {
-                reportConnected()
-            }
+    private fun connectL2CAP(
+        device: BluetoothDevice,
+        psm: Int,
+    ) {
+        l2capClient =
+            L2CAPClient(
+                context,
+                object : L2CAPClient.Listener {
+                    override fun onPeerConnected() {
+                        reportConnected()
+                    }
 
-            override fun onPeerDisconnected() {
-                reportDisconnected()
-            }
+                    override fun onPeerDisconnected() {
+                        reportDisconnected()
+                    }
 
-            override fun onMessageReceived(data: ByteArray) {
-                reportMessageReceived(data)
-            }
+                    override fun onMessageReceived(data: ByteArray) {
+                        reportMessageReceived(data)
+                    }
 
-            override fun onError(error: Throwable) {
-                reportError(error)
-            }
-        })
+                    override fun onError(error: Throwable) {
+                        reportError(error)
+                    }
+                },
+            )
         l2capClient!!.connect(device, psm)
     }
 
@@ -212,13 +230,15 @@ class DataTransportBleCentralClientMode(
         }
 
         // Start scanning...
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(serviceUuid))
-            .build()
-        val settings = ScanSettings.Builder()
-            .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build()
+        val filter =
+            ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid(serviceUuid))
+                .build()
+        val settings =
+            ScanSettings.Builder()
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build()
         Logger.d(TAG, "Started scanning for UUID $serviceUuid")
         timeScanningStartedMillis = System.currentTimeMillis()
         scanner = bluetoothAdapter.bluetoothLeScanner
@@ -232,54 +252,57 @@ class DataTransportBleCentralClientMode(
     }
 
     private fun connectAsMdocReader() {
-        val bluetoothManager = context.getSystemService(
-            BluetoothManager::class.java
-        )
+        val bluetoothManager =
+            context.getSystemService(
+                BluetoothManager::class.java,
+            )
         var characteristicL2CAPUuid: UUID? = null
         if (options.bleUseL2CAP) {
             characteristicL2CAPUuid = characteristicL2CAPUuidMdocReader
         }
-        gattServer = GattServer(
-            context, bluetoothManager, serviceUuid!!,
-            encodedEDeviceKeyBytes,
-            characteristicStateUuid, characteristicClient2ServerUuid,
-            characteristicServer2ClientUuid, characteristicIdentUuid,
-            characteristicL2CAPUuid
-        )
-        gattServer!!.listener = object : GattServer.Listener {
-            override fun onPeerConnected() {
-                Logger.i(TAG, "onPeerConnected")
-                reportConnected()
-                // No need to advertise anymore since we now have a client...
-                if (bluetoothLeAdvertiser != null) {
-                    Logger.d(TAG, "Stopping advertising UUID $serviceUuid")
-                    try {
-                        bluetoothLeAdvertiser!!.stopAdvertising(advertiseCallback)
-                    } catch (e: SecurityException) {
-                        reportError(e)
-                        return
+        gattServer =
+            GattServer(
+                context, bluetoothManager, serviceUuid!!,
+                encodedEDeviceKeyBytes,
+                characteristicStateUuid, characteristicClient2ServerUuid,
+                characteristicServer2ClientUuid, characteristicIdentUuid,
+                characteristicL2CAPUuid,
+            )
+        gattServer!!.listener =
+            object : GattServer.Listener {
+                override fun onPeerConnected() {
+                    Logger.i(TAG, "onPeerConnected")
+                    reportConnected()
+                    // No need to advertise anymore since we now have a client...
+                    if (bluetoothLeAdvertiser != null) {
+                        Logger.d(TAG, "Stopping advertising UUID $serviceUuid")
+                        try {
+                            bluetoothLeAdvertiser!!.stopAdvertising(advertiseCallback)
+                        } catch (e: SecurityException) {
+                            reportError(e)
+                            return
+                        }
+                        bluetoothLeAdvertiser = null
                     }
-                    bluetoothLeAdvertiser = null
+                }
+
+                override fun onPeerDisconnected() {
+                    reportDisconnected()
+                }
+
+                override fun onTransportSpecificSessionTermination() {
+                    Logger.d(TAG, "onTransportSpecificSessionTermination")
+                    reportTransportSpecificSessionTermination()
+                }
+
+                override fun onMessageReceived(data: ByteArray) {
+                    reportMessageReceived(data)
+                }
+
+                override fun onError(error: Throwable) {
+                    reportError(error)
                 }
             }
-
-            override fun onPeerDisconnected() {
-                reportDisconnected()
-            }
-
-            override fun onTransportSpecificSessionTermination() {
-                Logger.d(TAG, "onTransportSpecificSessionTermination")
-                reportTransportSpecificSessionTermination()
-            }
-
-            override fun onMessageReceived(data: ByteArray) {
-                reportMessageReceived(data)
-            }
-
-            override fun onError(error: Throwable) {
-                reportError(error)
-            }
-        }
         if (!gattServer!!.start()) {
             reportError(Error("Error starting Gatt Server"))
             gattServer!!.stop()
@@ -296,16 +319,18 @@ class DataTransportBleCentralClientMode(
             gattServer!!.stop()
             gattServer = null
         } else {
-            val settings = AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                .setConnectable(true)
-                .setTimeout(0)
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
-                .build()
-            val data = AdvertiseData.Builder()
-                .setIncludeTxPowerLevel(false)
-                .addServiceUuid(ParcelUuid(serviceUuid))
-                .build()
+            val settings =
+                AdvertiseSettings.Builder()
+                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                    .setConnectable(true)
+                    .setTimeout(0)
+                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
+                    .build()
+            val data =
+                AdvertiseData.Builder()
+                    .setIncludeTxPowerLevel(false)
+                    .addServiceUuid(ParcelUuid(serviceUuid))
+                    .build()
             Logger.d(TAG, "Started advertising UUID $serviceUuid")
             try {
                 bluetoothLeAdvertiser!!.startAdvertising(settings, data, advertiseCallback)

@@ -17,8 +17,8 @@ import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.origininfo.OriginInfoDomain
 import com.android.identity.util.Logger
 import com.android.identity.wallet.databinding.ActivityMainBinding
-import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.document.DocumentManager
+import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.util.logInfo
@@ -27,7 +27,6 @@ import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
 import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : AppCompatActivity() {
-
     private val viewModel: ShareDocumentViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
     private lateinit var pendingIntent: PendingIntent
@@ -56,9 +55,10 @@ class MainActivity : AppCompatActivity() {
         // Create a generic PendingIntent that will be deliver to this activity. The NFC stack
         // will fill in the intent with the details of the discovered tag before delivering to
         // this activity.
-        val intent = Intent(this, javaClass).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
+        val intent =
+            Intent(this, javaClass).apply {
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
         pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 
@@ -108,8 +108,8 @@ class MainActivity : AppCompatActivity() {
             logInfo("referrer: $mdocReferrerUri")
             originInfos.add(
                 OriginInfoDomain(
-                    mdocReferrerUri
-                )
+                    mdocReferrerUri,
+                ),
             )
         }
 

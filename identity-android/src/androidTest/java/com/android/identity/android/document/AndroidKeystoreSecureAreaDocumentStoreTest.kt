@@ -23,9 +23,9 @@ import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.credential.SecureAreaBoundCredential
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
-import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
@@ -62,36 +62,39 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
     @Test
     fun testBasic() {
         val documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
-        var document: Document? = documentStore.createDocument(
-            "testDocument"
-        )
+        var document: Document? =
+            documentStore.createDocument(
+                "testDocument",
+            )
         documentStore.addDocument(document!!)
         Assert.assertEquals("testDocument", document!!.name)
 
         // Create pending credential and check its attestation
         val authKeyChallenge = byteArrayOf(20, 21, 22)
-        val pendingCredential = SecureAreaBoundCredential(
-            document,
-            null,
-            CREDENTIAL_DOMAIN,
-            secureArea,
-            AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge)
-                .setUserAuthenticationRequired(
-                    true, (30 * 1000).toLong(),
-                    setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
-                )
-                .build(),
-        )
+        val pendingCredential =
+            SecureAreaBoundCredential(
+                document,
+                null,
+                CREDENTIAL_DOMAIN,
+                secureArea,
+                AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge)
+                    .setUserAuthenticationRequired(
+                        true,
+                        (30 * 1000).toLong(),
+                        setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC),
+                    )
+                    .build(),
+            )
         Assert.assertFalse(pendingCredential.isCertified)
         val parser =
             AndroidAttestationExtensionParser(pendingCredential.attestation.certificates[0].javaX509Certificate)
         Assert.assertArrayEquals(
             authKeyChallenge,
-            parser.attestationChallenge
+            parser.attestationChallenge,
         )
         Assert.assertEquals(
             AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,
-            parser.keymasterSecurityLevel
+            parser.keymasterSecurityLevel,
         )
 
         // Check we can load the document...
@@ -101,9 +104,10 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         Assert.assertNull(documentStore.lookupDocument("nonExistingDocument"))
 
         // Check creating a document with an existing name overwrites the existing one
-        document = documentStore.createDocument(
-            "testDocument"
-        )
+        document =
+            documentStore.createDocument(
+                "testDocument",
+            )
         documentStore.addDocument(document)
         Assert.assertEquals("testDocument", document.name)
         document = documentStore.lookupDocument("testDocument")

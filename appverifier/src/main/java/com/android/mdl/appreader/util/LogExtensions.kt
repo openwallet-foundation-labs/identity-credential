@@ -3,7 +3,10 @@ package com.android.mdl.appreader.util
 import android.util.Log
 import com.android.mdl.appreader.VerifierApp
 
-fun Any.logDebug(message: String, exception: Throwable? = null) {
+fun Any.logDebug(
+    message: String,
+    exception: Throwable? = null,
+) {
     if (!VerifierApp.isDebugLogEnabled()) return
     val tag: String = tagValue()
     if (exception == null) {
@@ -13,7 +16,10 @@ fun Any.logDebug(message: String, exception: Throwable? = null) {
     }
 }
 
-fun Any.logError(message: String, exception: Throwable? = null) {
+fun Any.logError(
+    message: String,
+    exception: Throwable? = null,
+) {
     if (!VerifierApp.isDebugLogEnabled()) return
     val tag: String = tagValue()
     if (exception == null) {

@@ -78,7 +78,7 @@ object Logger {
         level: Int,
         tag: String,
         msg: String,
-        throwable: Throwable?
+        throwable: Throwable?,
     ): String {
         val sb = StringBuilder()
         val timeStamp = SimpleDateFormat("yyyy-MM-dd HH.mm.ss.SSS", Locale.US).format(Date())
@@ -105,7 +105,7 @@ object Logger {
         level: Int,
         tag: String,
         msg: String,
-        throwable: Throwable?
+        throwable: Throwable?,
     ) {
         var logLine: String? = null
         if (logPrinter != null) {
@@ -134,112 +134,186 @@ object Logger {
     }
 
     @JvmStatic
-    fun d(tag: String, msg: String) {
+    fun d(
+        tag: String,
+        msg: String,
+    ) {
         if (isDebugEnabled) {
             println(LEVEL_D, tag, msg, null)
         }
     }
 
     @JvmStatic
-    fun d(tag: String, msg: String, throwable: Throwable) {
+    fun d(
+        tag: String,
+        msg: String,
+        throwable: Throwable,
+    ) {
         if (isDebugEnabled) {
             println(LEVEL_D, tag, msg, throwable)
         }
     }
 
     @JvmStatic
-    fun i(tag: String, msg: String) {
+    fun i(
+        tag: String,
+        msg: String,
+    ) {
         println(LEVEL_I, tag, msg, null)
     }
 
     @JvmStatic
-    fun i(tag: String, msg: String, throwable: Throwable) {
+    fun i(
+        tag: String,
+        msg: String,
+        throwable: Throwable,
+    ) {
         println(LEVEL_I, tag, msg, throwable)
     }
 
     @JvmStatic
-    fun w(tag: String, msg: String) {
+    fun w(
+        tag: String,
+        msg: String,
+    ) {
         println(LEVEL_W, tag, msg, null)
     }
 
     @JvmStatic
-    fun w(tag: String, msg: String, throwable: Throwable) {
+    fun w(
+        tag: String,
+        msg: String,
+        throwable: Throwable,
+    ) {
         println(LEVEL_W, tag, msg, throwable)
     }
 
     @JvmStatic
-    fun e(tag: String, msg: String) {
+    fun e(
+        tag: String,
+        msg: String,
+    ) {
         println(LEVEL_E, tag, msg, null)
     }
 
     @JvmStatic
-    fun e(tag: String, msg: String, throwable: Throwable) {
+    fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable,
+    ) {
         println(LEVEL_E, tag, msg, throwable)
     }
 
-    private fun hex(level: Int, tag: String, message: String, data: ByteArray) {
+    private fun hex(
+        level: Int,
+        tag: String,
+        message: String,
+        data: ByteArray,
+    ) {
         val sb = "$message: ${data.size} bytes of data: " + data.toHex
         println(level, tag, sb, null)
     }
 
     @JvmStatic
-    fun dHex(tag: String, message: String, data: ByteArray) {
+    fun dHex(
+        tag: String,
+        message: String,
+        data: ByteArray,
+    ) {
         if (isDebugEnabled) {
             hex(LEVEL_D, tag, message, data)
         }
     }
 
     @JvmStatic
-    fun iHex(tag: String, message: String, data: ByteArray) {
+    fun iHex(
+        tag: String,
+        message: String,
+        data: ByteArray,
+    ) {
         hex(LEVEL_I, tag, message, data)
     }
 
     @JvmStatic
-    fun wHex(tag: String, message: String, data: ByteArray) {
+    fun wHex(
+        tag: String,
+        message: String,
+        data: ByteArray,
+    ) {
         hex(LEVEL_W, tag, message, data)
     }
 
     @JvmStatic
-    fun eHex(tag: String, message: String, data: ByteArray) {
+    fun eHex(
+        tag: String,
+        message: String,
+        data: ByteArray,
+    ) {
         hex(LEVEL_E, tag, message, data)
     }
 
-    private fun cbor(level: Int, tag: String, message: String, encodedCbor: ByteArray) {
-        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex +
+    private fun cbor(
+        level: Int,
+        tag: String,
+        message: String,
+        encodedCbor: ByteArray,
+    ) {
+        val sb =
+            "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex +
                 "\n" +
                 "In diagnostic notation:\n" +
                 Cbor.toDiagnostics(
                     encodedCbor,
-                    setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+                    setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR),
                 )
         println(level, tag, sb, null)
     }
 
     @JvmStatic
-    fun dCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun dCbor(
+        tag: String,
+        message: String,
+        encodedCbor: ByteArray,
+    ) {
         if (isDebugEnabled) {
             cbor(LEVEL_D, tag, message, encodedCbor)
         }
     }
 
     @JvmStatic
-    fun iCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun iCbor(
+        tag: String,
+        message: String,
+        encodedCbor: ByteArray,
+    ) {
         cbor(LEVEL_I, tag, message, encodedCbor)
     }
 
     @JvmStatic
-    fun wCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun wCbor(
+        tag: String,
+        message: String,
+        encodedCbor: ByteArray,
+    ) {
         cbor(LEVEL_W, tag, message, encodedCbor)
     }
 
     @JvmStatic
-    fun eCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun eCbor(
+        tag: String,
+        message: String,
+        encodedCbor: ByteArray,
+    ) {
         cbor(LEVEL_E, tag, message, encodedCbor)
     }
 
     interface LogPrinter {
         fun printLn(
-            level: Int, tag: String, msg: String, throwable: Throwable?
+            level: Int,
+            tag: String,
+            msg: String,
+            throwable: Throwable?,
         )
     }
 }

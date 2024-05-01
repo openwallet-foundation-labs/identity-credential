@@ -8,5 +8,5 @@ enum class SupportedCurves {
     BRAINPOOLP384R1,
     BRAINPOOLP512R1,
     ED25519,
-    ED448
+    ED448,
 }

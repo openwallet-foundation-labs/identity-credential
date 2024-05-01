@@ -58,47 +58,51 @@ class DeviceRequestGeneratorTest {
         mvrItemsToRequest[MVR_NAMESPACE] = mvrNsItems
         val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val validFrom = Clock.System.now()
-        val validUntil = Instant.fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 30L * 24 * 60 * 60 * 1000
-        )
-        val readerCert = Crypto.createX509v3Certificate(
-            readerKey.publicKey,
-            readerKey,
-            null,
-            Algorithm.ES256,
-            "1",
-            "CN=Test Key",
-            "CN=Test Key",
-            validFrom,
-            validUntil, setOf(), listOf()
-        )
+        val validUntil =
+            Instant.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 30L * 24 * 60 * 60 * 1000,
+            )
+        val readerCert =
+            Crypto.createX509v3Certificate(
+                readerKey.publicKey,
+                readerKey,
+                null,
+                Algorithm.ES256,
+                "1",
+                "CN=Test Key",
+                "CN=Test Key",
+                validFrom,
+                validUntil, setOf(), listOf(),
+            )
         val readerCertChain = CertificateChain(listOf(readerCert))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)
-        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
-            .addDocumentRequest(
-                MDL_DOCTYPE,
-                mdlItemsToRequest,
-                mdlRequestInfo,
-                readerKey,
-                readerKey.curve.defaultSigningAlgorithm,
-                readerCertChain
+        val encodedDeviceRequest =
+            DeviceRequestGenerator(encodedSessionTranscript)
+                .addDocumentRequest(
+                    MDL_DOCTYPE,
+                    mdlItemsToRequest,
+                    mdlRequestInfo,
+                    readerKey,
+                    readerKey.curve.defaultSigningAlgorithm,
+                    readerCertChain,
+                )
+                .addDocumentRequest(
+                    MVR_DOCTYPE,
+                    mvrItemsToRequest,
+                    null,
+                    readerKey,
+                    readerKey.curve.defaultSigningAlgorithm,
+                    readerCertChain,
+                )
+                .generate()
+        val deviceRequest =
+            DeviceRequestParser(
+                encodedDeviceRequest,
+                encodedSessionTranscript,
             )
-            .addDocumentRequest(
-                MVR_DOCTYPE,
-                mvrItemsToRequest,
-                null,
-                readerKey,
-                readerKey.curve.defaultSigningAlgorithm,
-                readerCertChain
-            )
-            .generate()
-        val deviceRequest = DeviceRequestParser(
-            encodedDeviceRequest,
-            encodedSessionTranscript
-        )
-            .parse()
+                .parse()
         Assert.assertEquals("1.0", deviceRequest.version)
         val documentRequests = deviceRequest.docRequests
         Assert.assertEquals(2, documentRequests.size.toLong())
@@ -113,17 +117,20 @@ class DeviceRequestGeneratorTest {
         try {
             docRequest.getIntentToRetain(MDL_NAMESPACE, "non-existent")
             Assert.fail()
-        } catch (_: IllegalArgumentException) {}
+        } catch (_: IllegalArgumentException) {
+        }
         Assert.assertEquals(1, docRequest.getEntryNames(AAMVA_NAMESPACE).size.toLong())
         Assert.assertFalse(docRequest.getIntentToRetain(AAMVA_NAMESPACE, "real_id"))
         try {
             docRequest.getIntentToRetain("non-existent", "non-existent")
             Assert.fail()
-        } catch (_: IllegalArgumentException) {}
+        } catch (_: IllegalArgumentException) {
+        }
         try {
             docRequest.getEntryNames("non-existent")
             Assert.fail()
-        } catch (_: IllegalArgumentException) {}
+        } catch (_: IllegalArgumentException) {
+        }
         Assert.assertEquals(1, docRequest.readerCertificateChain!!.certificates.size.toLong())
         Assert.assertEquals(readerCertChain, docRequest.readerCertificateChain)
         val requestInfo = docRequest.requestInfo

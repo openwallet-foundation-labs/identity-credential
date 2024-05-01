@@ -5,13 +5,12 @@ import org.junit.Test
 import kotlin.random.Random
 
 class HexUtilTest {
-
     @Test
     fun toHex() {
         Assert.assertEquals("", HexUtil.toHex(byteArrayOf()))
         Assert.assertEquals(
             "00ff13ab0b",
-            HexUtil.toHex(byteArrayOf(0x00, 0xff.toByte(), 0x13, 0xAB.toByte(), 0x0B))
+            HexUtil.toHex(byteArrayOf(0x00, 0xff.toByte(), 0x13, 0xAB.toByte(), 0x0B)),
         )
     }
 
@@ -20,11 +19,11 @@ class HexUtilTest {
         Assert.assertArrayEquals(ByteArray(0), HexUtil.fromHex(""))
         Assert.assertArrayEquals(
             byteArrayOf(0x00, 0xFF.toByte(), 0x13, 0xAB.toByte(), 0x0B),
-            HexUtil.fromHex("00ff13ab0b")
+            HexUtil.fromHex("00ff13ab0b"),
         )
         Assert.assertArrayEquals(
             byteArrayOf(0x00, 0xFF.toByte(), 0x13, 0xAB.toByte(), 0x0B),
-            HexUtil.fromHex("00FF13AB0B")
+            HexUtil.fromHex("00FF13AB0B"),
         )
     }
 
@@ -48,12 +47,11 @@ class HexUtilTest {
     fun extensions() {
         Assert.assertArrayEquals(
             "deadbeef".fromHex,
-            byteArrayOf(0xde.toByte(), 0xad.toByte(), 0xbe.toByte(), 0xef.toByte())
+            byteArrayOf(0xde.toByte(), 0xad.toByte(), 0xbe.toByte(), 0xef.toByte()),
         )
         Assert.assertEquals(
             byteArrayOf(0xde.toByte(), 0xad.toByte(), 0xbe.toByte(), 0xef.toByte()).toHex,
-            "deadbeef"
+            "deadbeef",
         )
     }
-
 }

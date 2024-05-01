@@ -12,11 +12,11 @@ import androidx.compose.ui.unit.dp
 fun LabeledUserInput(
     modifier: Modifier = Modifier,
     label: String,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             ValueLabel(label = label)

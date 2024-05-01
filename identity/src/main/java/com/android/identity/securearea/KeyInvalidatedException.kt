@@ -26,7 +26,7 @@ class KeyInvalidatedException : Exception {
      */
     constructor(
         message: String,
-        cause: Exception
+        cause: Exception,
     ) : super(message, cause)
 
     /**

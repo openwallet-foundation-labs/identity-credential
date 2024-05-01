@@ -7,12 +7,15 @@ import java.nio.charset.Charset
 class EvidenceResponseTest {
     @Test
     fun cborSerialization_IcaoPassiveAuthentication() {
-        val orig = EvidenceResponseIcaoPassiveAuthentication(
-            mapOf(
-                3 to "three".toByteArray(Charset.forName("UTF-8")),
-                7 to "seven".toByteArray(Charset.forName("UTF-8")),
-                1 to "ace".toByteArray(Charset.forName("UTF-8"))),
-            byteArrayOf(3, 7, 1))
+        val orig =
+            EvidenceResponseIcaoPassiveAuthentication(
+                mapOf(
+                    3 to "three".toByteArray(Charset.forName("UTF-8")),
+                    7 to "seven".toByteArray(Charset.forName("UTF-8")),
+                    1 to "ace".toByteArray(Charset.forName("UTF-8")),
+                ),
+                byteArrayOf(3, 7, 1),
+            )
         val copy = EvidenceResponse.fromCbor(orig.toCbor())
         Assert.assertEquals(orig, copy)
     }
@@ -26,14 +29,16 @@ class EvidenceResponseTest {
 
     @Test
     fun cborSerialization_IcaoNfcTunnelResult() {
-        val orig = EvidenceResponseIcaoNfcTunnelResult(
-            EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.ACTIVE,
-            mapOf(
-                3 to "three".toByteArray(Charset.forName("UTF-8")),
-                7 to "seven".toByteArray(Charset.forName("UTF-8")),
-                1 to "ace".toByteArray(Charset.forName("UTF-8"))),
-            byteArrayOf(3, 7, 1)
-        )
+        val orig =
+            EvidenceResponseIcaoNfcTunnelResult(
+                EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.ACTIVE,
+                mapOf(
+                    3 to "three".toByteArray(Charset.forName("UTF-8")),
+                    7 to "seven".toByteArray(Charset.forName("UTF-8")),
+                    1 to "ace".toByteArray(Charset.forName("UTF-8")),
+                ),
+                byteArrayOf(3, 7, 1),
+            )
         val copy = EvidenceResponse.fromCbor(orig.toCbor())
         Assert.assertEquals(orig, copy)
     }

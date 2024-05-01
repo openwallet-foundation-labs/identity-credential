@@ -6,7 +6,10 @@ import androidx.databinding.BindingAdapter
 import java.util.*
 
 @BindingAdapter("displayDateTime")
-fun bindDisplayDateTime(view: TextView, calendar: Calendar?) {
+fun bindDisplayDateTime(
+    view: TextView,
+    calendar: Calendar?,
+) {
     calendar?.let {
         val df = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSXXX", Locale.getDefault())
         view.text = df.format(it.time)

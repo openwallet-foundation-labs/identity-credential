@@ -6,9 +6,7 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.wallet.R
 
 @Composable
-fun curveLabelFor(
-    curveOption: EcCurve
-): String {
+fun curveLabelFor(curveOption: EcCurve): String {
     return when (curveOption) {
         EcCurve.P256 -> stringResource(id = R.string.curve_p_256)
         EcCurve.P384 -> stringResource(id = R.string.curve_p_384)

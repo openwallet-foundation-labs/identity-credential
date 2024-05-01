@@ -43,7 +43,7 @@ class MobileSecurityObjectGeneratorTest {
             else -> throw AssertionError()
         }
     }
-    
+
     private fun generateISODigest(digestAlgorithm: String): Map<Long, ByteArray> {
         val alg = getDigestAlg(digestAlgorithm)
         val isoDigestIDs = mutableMapOf<Long, ByteArray>()
@@ -73,93 +73,100 @@ class MobileSecurityObjectGeneratorTest {
         return isoUSDigestIDs
     }
 
-    private fun checkISODigest(isoDigestIDs: Map<Long, ByteArray>?, digestAlgorithm: String) {
+    private fun checkISODigest(
+        isoDigestIDs: Map<Long, ByteArray>?,
+        digestAlgorithm: String,
+    ) {
         val alg = getDigestAlg(digestAlgorithm)
         Assert.assertEquals(
             setOf(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L),
-            isoDigestIDs!!.keys
+            isoDigestIDs!!.keys,
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "aardvark".toByteArray()),
-            isoDigestIDs[0L]
+            isoDigestIDs[0L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "alligator".toByteArray()),
-            isoDigestIDs[1L]
+            isoDigestIDs[1L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "baboon".toByteArray()),
-            isoDigestIDs[2L]
+            isoDigestIDs[2L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "butterfly".toByteArray()),
-            isoDigestIDs[3L]
+            isoDigestIDs[3L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "cat".toByteArray()),
-            isoDigestIDs[4L]
+            isoDigestIDs[4L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "cricket".toByteArray()),
-            isoDigestIDs[5L]
+            isoDigestIDs[5L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "dog".toByteArray()),
-            isoDigestIDs[6L]
+            isoDigestIDs[6L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "elephant".toByteArray()),
-            isoDigestIDs[7L]
+            isoDigestIDs[7L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "firefly".toByteArray()),
-            isoDigestIDs[8L]
+            isoDigestIDs[8L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "frog".toByteArray()),
-            isoDigestIDs[9L]
+            isoDigestIDs[9L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "gecko".toByteArray()),
-            isoDigestIDs[10L]
+            isoDigestIDs[10L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "hippo".toByteArray()),
-            isoDigestIDs[11L]
+            isoDigestIDs[11L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "iguana".toByteArray()),
-            isoDigestIDs[12L]
+            isoDigestIDs[12L],
         )
     }
 
-    private fun checkISOUSDigest(isoUSDigestIDs: Map<Long, ByteArray>?, digestAlgorithm: String) {
+    private fun checkISOUSDigest(
+        isoUSDigestIDs: Map<Long, ByteArray>?,
+        digestAlgorithm: String,
+    ) {
         val alg = getDigestAlg(digestAlgorithm)
         Assert.assertEquals(setOf(0L, 1L, 2L, 3L), isoUSDigestIDs!!.keys)
         Assert.assertArrayEquals(
             Crypto.digest(alg, "jaguar".toByteArray()),
-            isoUSDigestIDs[0L]
+            isoUSDigestIDs[0L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "jellyfish".toByteArray()),
-            isoUSDigestIDs[1L]
+            isoUSDigestIDs[1L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "koala".toByteArray()),
-            isoUSDigestIDs[2L]
+            isoUSDigestIDs[2L],
         )
         Assert.assertArrayEquals(
             Crypto.digest(alg, "lemur".toByteArray()),
-            isoUSDigestIDs[3L]
+            isoUSDigestIDs[3L],
         )
     }
 
     fun testFullMSO(digestAlgorithm: String) {
-        val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
-        )
+        val deviceKeyFromVector =
+            EcPublicKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex,
+            )
         val signedTimestamp = Timestamp.ofEpochMilli(1601559002000L)
         val validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L)
         val validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L)
@@ -169,31 +176,34 @@ class MobileSecurityObjectGeneratorTest {
         deviceKeyAuthorizedDataElements["b"] = listOf("4", "5", "k")
         val keyInfo: MutableMap<Long, ByteArray> = HashMap()
         keyInfo[10L] = "C985".fromHex
-        val encodedMSO = MobileSecurityObjectGenerator(
-            digestAlgorithm,
-            "org.iso.18013.5.1.mDL", deviceKeyFromVector
-        )
-            .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
-            .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
-            .setDeviceKeyAuthorizedNameSpaces(listOf("abc", "bcd"))
-            .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
-            .setDeviceKeyInfo(keyInfo)
-            .setValidityInfo(
-                signedTimestamp,
-                validFromTimestamp,
-                validUntilTimestamp,
-                expectedTimestamp
+        val encodedMSO =
+            MobileSecurityObjectGenerator(
+                digestAlgorithm,
+                "org.iso.18013.5.1.mDL",
+                deviceKeyFromVector,
             )
-            .generate()
-        val mso = MobileSecurityObjectParser(
-            encodedMSO
-        ).parse()
+                .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
+                .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
+                .setDeviceKeyAuthorizedNameSpaces(listOf("abc", "bcd"))
+                .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
+                .setDeviceKeyInfo(keyInfo)
+                .setValidityInfo(
+                    signedTimestamp,
+                    validFromTimestamp,
+                    validUntilTimestamp,
+                    expectedTimestamp,
+                )
+                .generate()
+        val mso =
+            MobileSecurityObjectParser(
+                encodedMSO,
+            ).parse()
         Assert.assertEquals("1.0", mso.version)
         Assert.assertEquals(digestAlgorithm, mso.digestAlgorithm)
         Assert.assertEquals("org.iso.18013.5.1.mDL", mso.docType)
         Assert.assertEquals(
             setOf("org.iso.18013.5.1", "org.iso.18013.5.1.US"),
-            mso.valueDigestNamespaces
+            mso.valueDigestNamespaces,
         )
         Assert.assertNull(mso.getDigestIDs("abc"))
         checkISODigest(mso.getDigestIDs("org.iso.18013.5.1"), digestAlgorithm)
@@ -204,7 +214,7 @@ class MobileSecurityObjectGeneratorTest {
         Assert.assertEquals(keyInfo.keys, mso.deviceKeyInfo!!.keys)
         Assert.assertEquals(
             keyInfo[10L]!!.toHex,
-            mso.deviceKeyInfo!![10L]!!.toHex
+            mso.deviceKeyInfo!![10L]!!.toHex,
         )
         Assert.assertEquals(signedTimestamp, mso.signed)
         Assert.assertEquals(validFromTimestamp, mso.validFrom)
@@ -214,30 +224,33 @@ class MobileSecurityObjectGeneratorTest {
 
     @Test
     fun testBasicMSO() {
-        val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
-        )
+        val deviceKeyFromVector =
+            EcPublicKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex,
+            )
         val signedTimestamp = Timestamp.ofEpochMilli(1601559002000L)
         val validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L)
         val validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L)
         val digestAlgorithm = "SHA-256"
-        val encodedMSO = MobileSecurityObjectGenerator(
-            digestAlgorithm,
-            "org.iso.18013.5.1.mDL", deviceKeyFromVector
-        )
-            .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
-            .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
-            .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
-            .generate()
+        val encodedMSO =
+            MobileSecurityObjectGenerator(
+                digestAlgorithm,
+                "org.iso.18013.5.1.mDL",
+                deviceKeyFromVector,
+            )
+                .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
+                .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
+                .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
+                .generate()
         val mso = MobileSecurityObjectParser(encodedMSO).parse()
         Assert.assertEquals("1.0", mso.version)
         Assert.assertEquals(digestAlgorithm, mso.digestAlgorithm)
         Assert.assertEquals("org.iso.18013.5.1.mDL", mso.docType)
         Assert.assertEquals(
             setOf("org.iso.18013.5.1", "org.iso.18013.5.1.US"),
-            mso.valueDigestNamespaces
+            mso.valueDigestNamespaces,
         )
         Assert.assertNull(mso.getDigestIDs("abc"))
         checkISODigest(mso.getDigestIDs("org.iso.18013.5.1"), digestAlgorithm)
@@ -269,49 +282,53 @@ class MobileSecurityObjectGeneratorTest {
 
     @Test
     fun testMSOExceptions() {
-        val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
-            EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
-        )
+        val deviceKeyFromVector =
+            EcPublicKeyDoubleCoordinate(
+                EcCurve.P256,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+                TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex,
+            )
         Assert.assertThrows(
             "expect exception for illegal digestAlgorithm",
-            IllegalArgumentException::class.java
+            IllegalArgumentException::class.java,
         ) {
             MobileSecurityObjectGenerator(
                 "SHA-257",
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector
+                "org.iso.18013.5.1.mDL",
+                deviceKeyFromVector,
             )
         }
         val digestAlgorithm = "SHA-256"
-        val msoGenerator = MobileSecurityObjectGenerator(
-            digestAlgorithm,
-            "org.iso.18013.5.1.mDL", deviceKeyFromVector
-        )
+        val msoGenerator =
+            MobileSecurityObjectGenerator(
+                digestAlgorithm,
+                "org.iso.18013.5.1.mDL",
+                deviceKeyFromVector,
+            )
         Assert.assertThrows(
             "expect exception for empty digestIDs",
-            IllegalArgumentException::class.java
+            IllegalArgumentException::class.java,
         ) { msoGenerator.addDigestIdsForNamespace("org.iso.18013.5.1", HashMap()) }
         Assert.assertThrows(
             "expect exception for validFrom < signed",
-            IllegalArgumentException::class.java
+            IllegalArgumentException::class.java,
         ) {
             msoGenerator.setValidityInfo(
                 Timestamp.ofEpochMilli(1601559002000L),
                 Timestamp.ofEpochMilli(1601559001000L),
                 Timestamp.ofEpochMilli(1633095002000L),
-                Timestamp.ofEpochMilli(1611093002000L)
+                Timestamp.ofEpochMilli(1611093002000L),
             )
         }
         Assert.assertThrows(
             "expect exception for validUntil <= validFrom",
-            IllegalArgumentException::class.java
+            IllegalArgumentException::class.java,
         ) {
             msoGenerator.setValidityInfo(
                 Timestamp.ofEpochMilli(1601559002000L),
                 Timestamp.ofEpochMilli(1601559002000L),
                 Timestamp.ofEpochMilli(1601559002000L),
-                Timestamp.ofEpochMilli(1611093002000L)
+                Timestamp.ofEpochMilli(1611093002000L),
             )
         }
         val deviceKeyAuthorizedDataElements: MutableMap<String, List<String>> = HashMap()
@@ -319,55 +336,57 @@ class MobileSecurityObjectGeneratorTest {
         deviceKeyAuthorizedDataElements["b"] = listOf("4", "5", "k")
         Assert.assertThrows(
             "expect exception for deviceKeyAuthorizedDataElements including " +
-                    "namespace in deviceKeyAuthorizedNameSpaces",
-            IllegalArgumentException::class.java
+                "namespace in deviceKeyAuthorizedNameSpaces",
+            IllegalArgumentException::class.java,
         ) {
             msoGenerator.setDeviceKeyAuthorizedNameSpaces(listOf("a", "bcd"))
                 .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
         }
         Assert.assertThrows(
             "expect exception for deviceKeyAuthorizedNameSpaces including " +
-                    "namespace in deviceKeyAuthorizedDataElements",
-            IllegalArgumentException::class.java
+                "namespace in deviceKeyAuthorizedDataElements",
+            IllegalArgumentException::class.java,
         ) {
             msoGenerator.setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
                 .setDeviceKeyAuthorizedNameSpaces(listOf("a", "bcd"))
         }
         Assert.assertThrows(
             "expect exception for msoGenerator which has not had " +
-                    "addDigestIdsForNamespace and setValidityInfo called before generating",
-            IllegalStateException::class.java
+                "addDigestIdsForNamespace and setValidityInfo called before generating",
+            IllegalStateException::class.java,
         ) { msoGenerator.generate() }
         Assert.assertThrows(
             "expect exception for msoGenerator which has not had " +
-                    "addDigestIdsForNamespace called before generating",
-            IllegalStateException::class.java
+                "addDigestIdsForNamespace called before generating",
+            IllegalStateException::class.java,
         ) {
             MobileSecurityObjectGenerator(
                 digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector
+                "org.iso.18013.5.1.mDL",
+                deviceKeyFromVector,
             )
                 .setValidityInfo(
                     Timestamp.ofEpochMilli(1601559002000L),
                     Timestamp.ofEpochMilli(1601559002000L),
                     Timestamp.ofEpochMilli(1633095002000L),
-                    Timestamp.ofEpochMilli(1611093002000L)
+                    Timestamp.ofEpochMilli(1611093002000L),
                 )
                 .generate()
         }
         Assert.assertThrows(
             "expect exception for msoGenerator which has not had " +
-                    "setValidityInfo called before generating",
-            IllegalStateException::class.java
+                "setValidityInfo called before generating",
+            IllegalStateException::class.java,
         ) {
             MobileSecurityObjectGenerator(
                 digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector
+                "org.iso.18013.5.1.mDL",
+                deviceKeyFromVector,
             )
                 .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                 .addDigestIdsForNamespace(
                     "org.iso.18013.5.1.US",
-                    generateISOUSDigest(digestAlgorithm)
+                    generateISOUSDigest(digestAlgorithm),
                 )
                 .generate()
         }

@@ -17,7 +17,10 @@ interface SimpleIcaoNfcTunnelDriver {
      * [EvidenceRequestIcaoNfcTunnelType.HANDSHAKE] with
      * [EvidenceRequestIcaoNfcTunnel.passThrough] set to true).
      */
-    fun init(dataGroups: List<Int>, accessData: MrtdAccessData?)
+    fun init(
+        dataGroups: List<Int>,
+        accessData: MrtdAccessData?,
+    )
 
     /**
      * Handle the response from the chip and produce the next command.
@@ -28,8 +31,7 @@ interface SimpleIcaoNfcTunnelDriver {
      *
      * When null is returned the tunnel is closed.
      */
-    suspend fun handleNfcTunnelResponse(
-        evidence: EvidenceResponseIcaoNfcTunnel): EvidenceRequestIcaoNfcTunnel?
+    suspend fun handleNfcTunnelResponse(evidence: EvidenceResponseIcaoNfcTunnel): EvidenceRequestIcaoNfcTunnel?
 
     /**
      * Collects all the data gathered by communicating through the tunnel as [EvidenceResponse]

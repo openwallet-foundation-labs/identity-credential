@@ -18,7 +18,6 @@ import com.android.identity.util.Timestamp
 import com.android.identity.wallet.selfsigned.OutlinedContainerVertical
 
 class SecureAreaSupportNull : SecureAreaSupport {
-
     private val state = SecureAreaSupportStateNull()
 
     @Composable
@@ -28,13 +27,14 @@ class SecureAreaSupportNull : SecureAreaSupport {
             onUiStateUpdated(compositionState)
         }
         OutlinedContainerVertical(
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 16.dp),
         ) {
             Text(
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                text = "The selected Secure Area lacks dedicated support so no additional options are available. " +
+                text =
+                    "The selected Secure Area lacks dedicated support so no additional options are available. " +
                         "Please add a SecureAreaSupport-derived class.",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -42,20 +42,19 @@ class SecureAreaSupportNull : SecureAreaSupport {
     override fun Fragment.unlockKey(
         credential: MdocCredential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
-        onUnlockFailure: (wasCancelled: Boolean) -> Unit
+        onUnlockFailure: (wasCancelled: Boolean) -> Unit,
     ) {
         throw IllegalStateException("No implementation")
     }
 
     override fun getSecureAreaSupportState(): SecureAreaSupportState = state
 
-    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray =
-        ByteArray(0)
+    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray = ByteArray(0)
 
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
         validFrom: Timestamp,
-        validUntil: Timestamp
+        validUntil: Timestamp,
     ): CreateKeySettings = CreateKeySettings(challenge)
 }

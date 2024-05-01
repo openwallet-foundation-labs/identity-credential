@@ -30,7 +30,7 @@ fun AndroidSetupContainer(
     onAuthTimeoutChanged: (authTimeout: Int) -> Unit,
     onLskfAuthChanged: (isOn: Boolean) -> Unit,
     onBiometricAuthChanged: (isOn: Boolean) -> Unit,
-    onStrongBoxChanged: (isOn: Boolean) -> Unit
+    onStrongBoxChanged: (isOn: Boolean) -> Unit,
 ) {
     Column(modifier = modifier) {
         OutlinedContainerVertical(modifier = Modifier.fillMaxWidth()) {
@@ -38,7 +38,7 @@ fun AndroidSetupContainer(
             val labelOff = stringResource(id = R.string.user_authentication_off)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 ValueLabel(
                     modifier = Modifier.weight(1f),
@@ -47,77 +47,80 @@ fun AndroidSetupContainer(
                 Switch(
                     modifier = Modifier.padding(start = 8.dp),
                     checked = isOn,
-                    onCheckedChange = onUserAuthenticationChanged
+                    onCheckedChange = onUserAuthenticationChanged,
                 )
             }
             AnimatedVisibility(
                 modifier = Modifier.fillMaxWidth(),
-                visible = isOn
+                visible = isOn,
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         ValueLabel(
                             modifier = Modifier.weight(1f),
-                            label = stringResource(id = R.string.keystore_android_user_auth_timeout)
+                            label = stringResource(id = R.string.keystore_android_user_auth_timeout),
                         )
                         NumberChanger(
                             number = timeoutSeconds,
                             onNumberChanged = onAuthTimeoutChanged,
-                            counterTextStyle = MaterialTheme.typography.titleLarge
+                            counterTextStyle = MaterialTheme.typography.titleLarge,
                         )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val alpha = if (lskfAuthTypeState.canBeModified) 1f else .5f
                         ValueLabel(
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(alpha),
-                            label = stringResource(id = R.string.user_auth_type_allow_lskf)
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .alpha(alpha),
+                            label = stringResource(id = R.string.user_auth_type_allow_lskf),
                         )
                         Checkbox(
                             checked = lskfAuthTypeState.isEnabled,
                             onCheckedChange = onLskfAuthChanged,
-                            enabled = lskfAuthTypeState.canBeModified
+                            enabled = lskfAuthTypeState.canBeModified,
                         )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val alpha = if (biometricAuthTypeState.canBeModified) 1f else .5f
                         ValueLabel(
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(alpha),
-                            label = stringResource(id = R.string.user_auth_type_allow_biometric)
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .alpha(alpha),
+                            label = stringResource(id = R.string.user_auth_type_allow_biometric),
                         )
                         Checkbox(
                             checked = biometricAuthTypeState.isEnabled,
                             onCheckedChange = onBiometricAuthChanged,
-                            enabled = biometricAuthTypeState.canBeModified
+                            enabled = biometricAuthTypeState.canBeModified,
                         )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val alpha = if (useStrongBox.canBeModified) 1f else .5f
                         ValueLabel(
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(alpha),
-                            label = stringResource(id = R.string.user_auth_use_strong_box)
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .alpha(alpha),
+                            label = stringResource(id = R.string.user_auth_use_strong_box),
                         )
                         Checkbox(
                             checked = useStrongBox.isEnabled,
                             onCheckedChange = onStrongBoxChanged,
-                            enabled = useStrongBox.canBeModified
+                            enabled = useStrongBox.canBeModified,
                         )
                     }
                 }
@@ -125,4 +128,3 @@ fun AndroidSetupContainer(
         }
     }
 }
-

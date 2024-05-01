@@ -8,9 +8,9 @@ package com.android.identity.issuance.evidence
  * [defaultValue] default (prefilled) value for the answer
  * [acceptButtonText] text to display on the button to accept a response and continue to the next screen
  */
-data class EvidenceRequestQuestionString (
+data class EvidenceRequestQuestionString(
     val message: String,
     val assets: Map<String, ByteArray>,
     val defaultValue: String,
-    val acceptButtonText: String
+    val acceptButtonText: String,
 ) : EvidenceRequest()

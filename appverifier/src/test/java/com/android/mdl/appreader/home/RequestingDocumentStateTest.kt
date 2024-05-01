@@ -5,7 +5,6 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
 class RequestingDocumentStateTest {
-
     private val requestingDocumentState = RequestingDocumentState()
     private val selected = DocumentElementsRequest(0, true)
 

@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
 class UserPreferencesTest {
-
     private val connectionAutoClose = true
     private val bleL2CapEnabled = true
     private val bleClearCacheEnabled = true
@@ -15,18 +14,19 @@ class UserPreferencesTest {
     private val nfcTransferEnabled = true
     private val debugLogEnabled = false
     private val authentication = 3
-    private val settingsScreenState = SettingsScreenState(
-        isAutoCloseConnectionEnabled = connectionAutoClose,
-        isL2CAPEnabled = bleL2CapEnabled,
-        isBleClearCacheEnabled = bleClearCacheEnabled,
-        isHttpTransferEnabled = httpTransferEnabled,
-        isBleCentralClientModeEnabled = bleCentralModeEnabled,
-        isBlePeripheralServerMode = blePeripheralModeEnabled,
-        isWifiAwareEnabled = wifiAwareEnabled,
-        isNfcTransferEnabled = nfcTransferEnabled,
-        isDebugLoggingEnabled = debugLogEnabled,
-        readerAuthentication = authentication
-    )
+    private val settingsScreenState =
+        SettingsScreenState(
+            isAutoCloseConnectionEnabled = connectionAutoClose,
+            isL2CAPEnabled = bleL2CapEnabled,
+            isBleClearCacheEnabled = bleClearCacheEnabled,
+            isHttpTransferEnabled = httpTransferEnabled,
+            isBleCentralClientModeEnabled = bleCentralModeEnabled,
+            isBlePeripheralServerMode = blePeripheralModeEnabled,
+            isWifiAwareEnabled = wifiAwareEnabled,
+            isNfcTransferEnabled = nfcTransferEnabled,
+            isDebugLoggingEnabled = debugLogEnabled,
+            readerAuthentication = authentication,
+        )
 
     private val userPreferences = UserPreferences(InMemorySharedPreferences())
 
@@ -70,9 +70,10 @@ class UserPreferencesTest {
 
     @Test
     fun updateHttpTransferPreference() {
-        val settingsViewModel = SettingsViewModel(userPreferences).apply {
-            onBleCentralClientModeUpdated(true)
-        }
+        val settingsViewModel =
+            SettingsViewModel(userPreferences).apply {
+                onBleCentralClientModeUpdated(true)
+            }
 
         settingsViewModel.onHttpTransferUpdated(httpTransferEnabled)
 
@@ -152,10 +153,11 @@ class UserPreferencesTest {
 
     @Test
     fun preventBleCentralClientModeToggleOffWhenOnlyRetrievalMethod() {
-        val settingsViewModel = SettingsViewModel(userPreferences).apply {
-            onBleCentralClientModeUpdated(true)
-            onHttpTransferUpdated(false)
-        }
+        val settingsViewModel =
+            SettingsViewModel(userPreferences).apply {
+                onBleCentralClientModeUpdated(true)
+                onHttpTransferUpdated(false)
+            }
 
         settingsViewModel.onBleCentralClientModeUpdated(false)
 
@@ -164,10 +166,11 @@ class UserPreferencesTest {
 
     @Test
     fun preventBlePeripheralClientModeToggleOffWhenOnlyRetrievalMethod() {
-        val settingsViewModel = SettingsViewModel(userPreferences).apply {
-            onBlePeripheralClientModeUpdated(true)
-            onHttpTransferUpdated(false)
-        }
+        val settingsViewModel =
+            SettingsViewModel(userPreferences).apply {
+                onBlePeripheralClientModeUpdated(true)
+                onHttpTransferUpdated(false)
+            }
 
         settingsViewModel.onBlePeripheralClientModeUpdated(false)
 
@@ -176,10 +179,11 @@ class UserPreferencesTest {
 
     @Test
     fun preventWifiAwareToggleOffWhenOnlyRetrievalMethod() {
-        val settingsViewModel = SettingsViewModel(userPreferences).apply {
-            onWifiAwareUpdated(true)
-            onHttpTransferUpdated(false)
-        }
+        val settingsViewModel =
+            SettingsViewModel(userPreferences).apply {
+                onWifiAwareUpdated(true)
+                onHttpTransferUpdated(false)
+            }
 
         settingsViewModel.onWifiAwareUpdated(false)
 
@@ -188,10 +192,11 @@ class UserPreferencesTest {
 
     @Test
     fun preventNfcToggleOffWhenOnlyRetrievalMethod() {
-        val settingsViewModel = SettingsViewModel(userPreferences).apply {
-            onNfcTransferUpdated(true)
-            onHttpTransferUpdated(false)
-        }
+        val settingsViewModel =
+            SettingsViewModel(userPreferences).apply {
+                onNfcTransferUpdated(true)
+                onHttpTransferUpdated(false)
+            }
 
         settingsViewModel.onNfcTransferUpdated(false)
 
@@ -200,18 +205,19 @@ class UserPreferencesTest {
 
     @Test
     fun readPreviouslyStoredPreferences() {
-        val settingsViewModel = SettingsViewModel(userPreferences).apply {
-            onAutoCloseConnectionUpdated(connectionAutoClose)
-            onBleL2capUpdated(bleL2CapEnabled)
-            onBleClearCacheUpdated(bleClearCacheEnabled)
-            onBleCentralClientModeUpdated(bleCentralModeEnabled)
-            onHttpTransferUpdated(httpTransferEnabled)
-            onBlePeripheralClientModeUpdated(blePeripheralModeEnabled)
-            onWifiAwareUpdated(wifiAwareEnabled)
-            onNfcTransferUpdated(nfcTransferEnabled)
-            onDebugLoggingUpdated(debugLogEnabled)
-            onReaderAuthenticationUpdated(authentication)
-        }
+        val settingsViewModel =
+            SettingsViewModel(userPreferences).apply {
+                onAutoCloseConnectionUpdated(connectionAutoClose)
+                onBleL2capUpdated(bleL2CapEnabled)
+                onBleClearCacheUpdated(bleClearCacheEnabled)
+                onBleCentralClientModeUpdated(bleCentralModeEnabled)
+                onHttpTransferUpdated(httpTransferEnabled)
+                onBlePeripheralClientModeUpdated(blePeripheralModeEnabled)
+                onWifiAwareUpdated(wifiAwareEnabled)
+                onNfcTransferUpdated(nfcTransferEnabled)
+                onDebugLoggingUpdated(debugLogEnabled)
+                onReaderAuthenticationUpdated(authentication)
+            }
 
         settingsViewModel.loadSettings()
 

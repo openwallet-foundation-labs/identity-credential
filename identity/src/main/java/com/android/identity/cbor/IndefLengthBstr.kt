@@ -19,7 +19,10 @@ data class IndefLengthBstr(val chunks: List<ByteArray>) : DataItem(MajorType.BYT
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, IndefLengthBstr> {
+        internal fun decode(
+            encodedCbor: ByteArray,
+            offset: Int,
+        ): Pair<Int, IndefLengthBstr> {
             val majorTypeShifted = (MajorType.BYTE_STRING.type shl 5)
             val marker = (majorTypeShifted + 31).toByte()
             check(encodedCbor[offset] == marker)

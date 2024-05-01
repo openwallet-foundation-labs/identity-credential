@@ -25,10 +25,10 @@ import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.document.NameSpacedData
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -42,11 +42,10 @@ import com.android.identity.securearea.SecureArea
  * @param encodedSessionTranscript bytes of `SessionTranscript` CBOR as per ISO/IEC 18013-5:2021
  * section 9.1.5.1.
  */
-class DocumentGenerator
-    (
+class DocumentGenerator(
     private val docType: String,
     private val encodedIssuerAuth: ByteArray,
-    private val encodedSessionTranscript: ByteArray
+    private val encodedSessionTranscript: ByteArray,
 ) {
     private var errors: Map<String, Map<String, Long>>? = null
     private var issuerNamespaces: Map<String, List<ByteArray>>? = null
@@ -61,9 +60,10 @@ class DocumentGenerator
      * @param errors the map described above.
      * @return the generator.
      */
-    fun setErrors(errors: Map<String, Map<String, Long>>): DocumentGenerator = apply {
-        this.errors = errors
-    }
+    fun setErrors(errors: Map<String, Map<String, Long>>): DocumentGenerator =
+        apply {
+            this.errors = errors
+        }
 
     /**
      * Sets issuer-signed data elements to return.
@@ -74,9 +74,10 @@ class DocumentGenerator
      * @param issuerNameSpaces a map from name spaces into a list of `IssuerSignedItemBytes`.
      * @return the generator.
      */
-    fun setIssuerNamespaces(issuerNameSpaces: Map<String, List<ByteArray>>?) = apply {
-        issuerNamespaces = issuerNameSpaces
-    }
+    fun setIssuerNamespaces(issuerNameSpaces: Map<String, List<ByteArray>>?) =
+        apply {
+            issuerNamespaces = issuerNameSpaces
+        }
 
     @Throws(KeyLockedException::class)
     private fun setDeviceNamespaces(
@@ -85,7 +86,7 @@ class DocumentGenerator
         keyAlias: String,
         keyUnlockData: KeyUnlockData?,
         signatureAlgorithm: Algorithm,
-        eReaderKey: EcPublicKey?
+        eReaderKey: EcPublicKey?,
     ) = apply {
         val mapBuilder = CborMap.builder()
         for (nameSpaceName in dataElements.nameSpaceNames) {
@@ -93,67 +94,71 @@ class DocumentGenerator
             for (dataElementName in dataElements.getDataElementNames(nameSpaceName)) {
                 nsBuilder.put(
                     dataElementName,
-                    RawCbor(dataElements.getDataElement(nameSpaceName, dataElementName))
+                    RawCbor(dataElements.getDataElement(nameSpaceName, dataElementName)),
                 )
             }
         }
         mapBuilder.end()
         val encodedDeviceNameSpaces = Cbor.encode(mapBuilder.end().build())
-        val deviceAuthentication = Cbor.encode(
-            CborArray.builder()
-                .add("DeviceAuthentication")
-                .add(RawCbor(encodedSessionTranscript))
-                .add(docType)
-                .addTaggedEncodedCbor(encodedDeviceNameSpaces)
-                .end()
-                .build()
-        )
+        val deviceAuthentication =
+            Cbor.encode(
+                CborArray.builder()
+                    .add("DeviceAuthentication")
+                    .add(RawCbor(encodedSessionTranscript))
+                    .add(docType)
+                    .addTaggedEncodedCbor(encodedDeviceNameSpaces)
+                    .end()
+                    .build(),
+            )
         val deviceAuthenticationBytes = Cbor.encode(Tagged(24, Bstr(deviceAuthentication)))
         var encodedDeviceSignature: ByteArray? = null
         var encodedDeviceMac: ByteArray? = null
         if (signatureAlgorithm !== Algorithm.UNSET) {
-            encodedDeviceSignature = Cbor.encode(
-                Cose.coseSign1Sign(
-                    secureArea,
-                    keyAlias,
-                    deviceAuthenticationBytes,
-                    false,
-                    signatureAlgorithm,
-                    mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
-                        )
-                    ),
-                    mapOf(),
-                    keyUnlockData
-                ).toDataItem
-            )
+            encodedDeviceSignature =
+                Cbor.encode(
+                    Cose.coseSign1Sign(
+                        secureArea,
+                        keyAlias,
+                        deviceAuthenticationBytes,
+                        false,
+                        signatureAlgorithm,
+                        mapOf(
+                            Pair(
+                                CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                signatureAlgorithm.coseAlgorithmIdentifier.toDataItem,
+                            ),
+                        ),
+                        mapOf(),
+                        keyUnlockData,
+                    ).toDataItem,
+                )
         } else {
-            val sharedSecret = secureArea.keyAgreement(
-                keyAlias,
-                eReaderKey!!,
-                keyUnlockData
-            )
+            val sharedSecret =
+                secureArea.keyAgreement(
+                    keyAlias,
+                    eReaderKey!!,
+                    keyUnlockData,
+                )
             val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript)))
             val salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes)
             val info = "EMacKey".toByteArray()
             val eMacKey = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
-            encodedDeviceMac = Cbor.encode(
-                Cose.coseMac0(
-                    Algorithm.HMAC_SHA256,
-                    eMacKey,
-                    deviceAuthenticationBytes,
-                    false,
-                    mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
-                        )
-                    ),
-                    mapOf()
-                ).toDataItem
-            )
+            encodedDeviceMac =
+                Cbor.encode(
+                    Cose.coseMac0(
+                        Algorithm.HMAC_SHA256,
+                        eMacKey,
+                        deviceAuthenticationBytes,
+                        false,
+                        mapOf(
+                            Pair(
+                                CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem,
+                            ),
+                        ),
+                        mapOf(),
+                    ).toDataItem,
+                )
         }
         val deviceAuthType: String
         val deviceAuthDataItem: DataItem
@@ -164,13 +169,14 @@ class DocumentGenerator
             deviceAuthType = "deviceMac"
             deviceAuthDataItem = Cbor.decode(encodedDeviceMac!!)
         }
-        deviceSigned = CborMap.builder()
-            .putTaggedEncodedCbor("nameSpaces", encodedDeviceNameSpaces)
-            .putMap("deviceAuth")
-            .put(deviceAuthType, deviceAuthDataItem)
-            .end()
-            .end()
-            .build()
+        deviceSigned =
+            CborMap.builder()
+                .putTaggedEncodedCbor("nameSpaces", encodedDeviceNameSpaces)
+                .putMap("deviceAuth")
+                .put(deviceAuthType, deviceAuthDataItem)
+                .end()
+                .end()
+                .build()
     }
 
     /**
@@ -193,7 +199,7 @@ class DocumentGenerator
         secureArea: SecureArea,
         keyAlias: String,
         keyUnlockData: KeyUnlockData?,
-        signatureAlgorithm: Algorithm
+        signatureAlgorithm: Algorithm,
     ) = apply {
         setDeviceNamespaces(
             dataElements,
@@ -201,7 +207,7 @@ class DocumentGenerator
             keyAlias,
             keyUnlockData,
             signatureAlgorithm,
-            null
+            null,
         )
     }
 
@@ -225,7 +231,7 @@ class DocumentGenerator
         secureArea: SecureArea,
         keyAlias: String,
         keyUnlockData: KeyUnlockData?,
-        eReaderKey: EcPublicKey
+        eReaderKey: EcPublicKey,
     ) = apply {
         setDeviceNamespaces(
             dataElements,
@@ -233,7 +239,7 @@ class DocumentGenerator
             keyAlias,
             keyUnlockData,
             Algorithm.UNSET,
-            eReaderKey
+            eReaderKey,
         )
     }
 
@@ -264,11 +270,12 @@ class DocumentGenerator
         }
         issuerSignedMapBuilder.put("issuerAuth", RawCbor(encodedIssuerAuth))
         val issuerSigned = issuerSignedMapBuilder.end().build()
-        val mapBuilder = CborMap.builder().apply {
-            put("docType", docType)
-            put("issuerSigned", issuerSigned)
-            put("deviceSigned", deviceSigned!!)
-        }
+        val mapBuilder =
+            CborMap.builder().apply {
+                put("docType", docType)
+                put("issuerSigned", issuerSigned)
+                put("deviceSigned", deviceSigned!!)
+            }
         errors?.let { errMap ->
             val errorsOuterMapBuilder = CborMap.builder()
             for ((namespaceName, innerMap) in errMap) {

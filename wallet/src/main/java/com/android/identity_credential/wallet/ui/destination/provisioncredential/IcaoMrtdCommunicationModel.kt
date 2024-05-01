@@ -10,9 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
-import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.MrtdAccessData
 import com.android.identity_credential.mrtd.MrtdMrzScanner
@@ -32,11 +29,11 @@ class IcaoMrtdCommunicationModel<ResultT>(
     private val navController: NavController,
     private val onResult: (ResultT) -> Unit,
     private val activity: ComponentActivity,
-    private val coroutineScope: CoroutineScope
+    private val coroutineScope: CoroutineScope,
 ) {
     enum class Route(val route: String) {
         CAMERA_SCAN("camera"),
-        NFC_SCAN("nfc")
+        NFC_SCAN("nfc"),
     }
 
     private var launched = false
@@ -89,22 +86,24 @@ class IcaoMrtdCommunicationModel<ResultT>(
 }
 
 @Composable
-fun <ResultT>rememberIcaoMrtdCommunicationModel(
+fun <ResultT> rememberIcaoMrtdCommunicationModel(
     reader: MrtdNfcReader<ResultT>,
     navController: NavController,
-    onResult: (ResultT) -> Unit
+    onResult: (ResultT) -> Unit,
 ): IcaoMrtdCommunicationModel<ResultT> {
     val activity = LocalContext.current.getActivity()!!
     val scope = rememberCoroutineScope()
-    val model = remember {
-        IcaoMrtdCommunicationModel(
-            reader,
-            mutableStateOf(MrtdNfc.Initial),
-            navController,
-            onResult,
-            activity,
-            scope
-        )}
+    val model =
+        remember {
+            IcaoMrtdCommunicationModel(
+                reader,
+                mutableStateOf(MrtdNfc.Initial),
+                navController,
+                onResult,
+                activity,
+                scope,
+            )
+        }
     SideEffect {
         model.maybeLaunchNfcScan()
     }

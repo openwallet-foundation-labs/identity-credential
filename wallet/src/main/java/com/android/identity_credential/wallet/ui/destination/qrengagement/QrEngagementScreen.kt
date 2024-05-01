@@ -45,19 +45,21 @@ fun QrEngagementScreen(
 
     val engagementState = qrEngagementViewModel.state
 
-    ScreenWithAppBar(title = stringResource(R.string.qr_title), navigationIcon = {
-        IconButton(
-            onClick = {
-                qrEngagementViewModel.stopQrConnection()
-                onNavigate(WalletDestination.PopBackStack.route)
+    ScreenWithAppBar(
+        title = stringResource(R.string.qr_title),
+        navigationIcon = {
+            IconButton(
+                onClick = {
+                    qrEngagementViewModel.stopQrConnection()
+                    onNavigate(WalletDestination.PopBackStack.route)
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.accessibility_go_back_icon),
+                )
             }
-        ) {
-            Icon(
-                imageVector = Icons.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.accessibility_go_back_icon)
-            )
-        }
-    }
+        },
     ) {
         when (engagementState) {
             QrEngagementViewModel.State.STARTING -> {
@@ -72,9 +74,8 @@ fun QrEngagementScreen(
                 val deviceEngagementUriEncoded = qrEngagementViewModel.qrCode
                 Column(
                     modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-
                     Text(text = stringResource(R.string.qr_instructions))
 
                     Spacer(modifier = Modifier.height(50.dp))
@@ -82,7 +83,7 @@ fun QrEngagementScreen(
                     Image(
                         bitmap = encodeQRCodeAsBitmap(deviceEngagementUriEncoded).asImageBitmap(),
                         contentDescription = stringResource(R.string.accessibility_qr_code),
-                        modifier = Modifier.fillMaxWidth(0.75f)
+                        modifier = Modifier.fillMaxWidth(0.75f),
                     )
                 }
             }
@@ -95,14 +96,14 @@ fun QrEngagementScreen(
                             listOf(
                                 Pair(
                                     WalletDestination.PopBackStack.Argument.ROUTE,
-                                    WalletDestination.Main.route
+                                    WalletDestination.Main.route,
                                 ),
                                 Pair(
                                     WalletDestination.PopBackStack.Argument.INCLUSIVE,
-                                    false
-                                )
-                            )
-                        )
+                                    false,
+                                ),
+                            ),
+                        ),
                 )
             }
 
@@ -122,14 +123,18 @@ fun QrEngagementScreen(
 
 private fun encodeQRCodeAsBitmap(str: String): Bitmap {
     val width = 800
-    val result: BitMatrix = try {
-        MultiFormatWriter().encode(
-            str,
-            BarcodeFormat.QR_CODE, width, width, null
-        )
-    } catch (e: WriterException) {
-        throw java.lang.IllegalArgumentException(e)
-    }
+    val result: BitMatrix =
+        try {
+            MultiFormatWriter().encode(
+                str,
+                BarcodeFormat.QR_CODE,
+                width,
+                width,
+                null,
+            )
+        } catch (e: WriterException) {
+            throw java.lang.IllegalArgumentException(e)
+        }
     val w = result.width
     val h = result.height
     val pixels = IntArray(w * h)
@@ -143,4 +148,3 @@ private fun encodeQRCodeAsBitmap(str: String): Bitmap {
     bitmap.setPixels(pixels, 0, width, 0, 0, w, h)
     return bitmap
 }
-

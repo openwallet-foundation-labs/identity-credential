@@ -10,12 +10,13 @@ import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Cbor
-import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.DocumentUtil
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.documentIdentifier
@@ -24,10 +25,9 @@ import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifi
 import com.android.identity.issuance.DocumentExtensions.numDocumentConfigurationsDownloaded
 import com.android.identity.issuance.DocumentExtensions.refreshState
 import com.android.identity.issuance.DocumentExtensions.state
-import com.android.identity.issuance.CredentialFormat
-import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.securearea.CreateKeySettings
@@ -63,7 +63,7 @@ class DocumentModel(
     private val issuingAuthorityRepository: IssuingAuthorityRepository,
     private val secureAreaRepository: SecureAreaRepository,
     private val documentTypeRepository: DocumentTypeRepository,
-    private val walletApplication: WalletApplication
+    private val walletApplication: WalletApplication,
 ) {
     companion object {
         private const val TAG = "DocumentModel"
@@ -114,20 +114,22 @@ class DocumentModel(
         }
         if (numCredentialsRefreshed >= 0) {
             val toastText =
-                if (numCredentialsRefreshed == 0)
+                if (numCredentialsRefreshed == 0) {
                     getStr(R.string.document_model_refresh_no_update_toast_text)
-                else String.format(
-                    context.resources.getQuantityString(
-                        R.plurals.refreshed_cred,
-                        numCredentialsRefreshed
-                    ),
-                    numCredentialsRefreshed
-                )
+                } else {
+                    String.format(
+                        context.resources.getQuantityString(
+                            R.plurals.refreshed_cred,
+                            numCredentialsRefreshed,
+                        ),
+                        numCredentialsRefreshed,
+                    )
+                }
             Handler(Looper.getMainLooper()).post {
                 Toast.makeText(
                     context,
                     toastText,
-                    Toast.LENGTH_SHORT
+                    Toast.LENGTH_SHORT,
                 ).show()
             }
         }
@@ -136,7 +138,7 @@ class DocumentModel(
     suspend fun developerModeRequestUpdate(
         documentInfo: DocumentInfo,
         requestRemoteDeletion: Boolean,
-        notifyApplicationOfUpdate: Boolean
+        notifyApplicationOfUpdate: Boolean,
     ) {
         val document = documentStore.lookupDocument(documentInfo.documentId)
         if (document == null) {
@@ -150,7 +152,7 @@ class DocumentModel(
         issuer.developerModeRequestUpdate(
             document.documentIdentifier,
             requestRemoteDeletion,
-            notifyApplicationOfUpdate
+            notifyApplicationOfUpdate,
         )
     }
 
@@ -171,28 +173,31 @@ class DocumentModel(
         val documentConfiguration = document.documentConfiguration
         val options = BitmapFactory.Options()
         options.inMutable = true
-        val documentBitmap = BitmapFactory.decodeByteArray(
-            documentConfiguration.cardArt,
-            0,
-            documentConfiguration.cardArt.size,
-            options
-        )
+        val documentBitmap =
+            BitmapFactory.decodeByteArray(
+                documentConfiguration.cardArt,
+                0,
+                documentConfiguration.cardArt.size,
+                options,
+            )
 
         val issuer =
             issuingAuthorityRepository.lookupIssuingAuthority(document.issuingAuthorityIdentifier)
         if (issuer == null) {
             Logger.w(
-                TAG, "Unknown issuer ${document.issuingAuthorityIdentifier} for " +
-                        "document ${document.name}"
+                TAG,
+                "Unknown issuer ${document.issuingAuthorityIdentifier} for " +
+                    "document ${document.name}",
             )
             return null
         }
-        val issuerLogo = BitmapFactory.decodeByteArray(
-            issuer.configuration.issuingAuthorityLogo,
-            0,
-            issuer.configuration.issuingAuthorityLogo.size,
-            options
-        )
+        val issuerLogo =
+            BitmapFactory.decodeByteArray(
+                issuer.configuration.issuingAuthorityLogo,
+                0,
+                issuer.configuration.issuingAuthorityLogo.size,
+                options,
+            )
 
         val data = document.renderDocumentDetails(context, documentTypeRepository)
 
@@ -202,28 +207,29 @@ class DocumentModel(
         }
 
         var attentionNeeded = false
-        val statusString = when (document.state.condition) {
-            DocumentCondition.PROOFING_REQUIRED -> getStr(R.string.document_model_status_proofing_required)
-            DocumentCondition.PROOFING_PROCESSING -> getStr(R.string.document_model_status_proofing_processing)
-            DocumentCondition.PROOFING_FAILED -> getStr(R.string.document_model_status_proofing_failed)
-            DocumentCondition.CONFIGURATION_AVAILABLE -> {
-                attentionNeeded = true
-                getStr(R.string.document_model_status_configuration_available)
-            }
-
-            DocumentCondition.READY -> {
-                // TODO: hmm, this can become stale as time progresses... maybe we need
-                //  a timer to refresh the model to reflect this.
-                if (!document.hasUsableCredential(Clock.System.now())) {
+        val statusString =
+            when (document.state.condition) {
+                DocumentCondition.PROOFING_REQUIRED -> getStr(R.string.document_model_status_proofing_required)
+                DocumentCondition.PROOFING_PROCESSING -> getStr(R.string.document_model_status_proofing_processing)
+                DocumentCondition.PROOFING_FAILED -> getStr(R.string.document_model_status_proofing_failed)
+                DocumentCondition.CONFIGURATION_AVAILABLE -> {
                     attentionNeeded = true
-                    getStr(R.string.document_model_status_no_usable_credential)
-                } else {
-                    getStr(R.string.document_model_status_ready)
+                    getStr(R.string.document_model_status_configuration_available)
                 }
-            }
 
-            DocumentCondition.DELETION_REQUESTED -> getStr(R.string.document_model_status_deletion_requested)
-        }
+                DocumentCondition.READY -> {
+                    // TODO: hmm, this can become stale as time progresses... maybe we need
+                    //  a timer to refresh the model to reflect this.
+                    if (!document.hasUsableCredential(Clock.System.now())) {
+                        attentionNeeded = true
+                        getStr(R.string.document_model_status_no_usable_credential)
+                    } else {
+                        getStr(R.string.document_model_status_ready)
+                    }
+                }
+
+                DocumentCondition.DELETION_REQUESTED -> getStr(R.string.document_model_status_deletion_requested)
+            }
 
         return DocumentInfo(
             documentId = document.name,
@@ -245,13 +251,11 @@ class DocumentModel(
     }
 
     private fun createCardInfoForCredential(mdocCredential: MdocCredential): CredentialInfo {
-
         val credentialData = StaticAuthDataParser(mdocCredential.issuerProvidedData).parse()
         val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
         val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
         val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
         val mso = MobileSecurityObjectParser(encodedMso).parse()
-
 
         val kvPairs = mutableMapOf<String, String>()
         kvPairs.put("Document Type", mso.docType)
@@ -273,7 +277,7 @@ class DocumentModel(
                             if (deviceKeyInfo.userAuthenticationTimeoutMillis > 0) {
                                 String.format(
                                     "Timeout %.1f Seconds",
-                                    deviceKeyInfo.userAuthenticationTimeoutMillis / 1000
+                                    deviceKeyInfo.userAuthenticationTimeoutMillis / 1000,
                                 )
                             } else {
                                 "Every use"
@@ -322,9 +326,7 @@ class DocumentModel(
             kvPairs.put("Device Key", "Invalidated")
         }
 
-
         kvPairs.put("Issuer Provided Data", "${mdocCredential.issuerProvidedData.size} bytes")
-
 
         return CredentialInfo(
             description = "ISO/IEC 18013-5:2021 mdoc MSO",
@@ -332,11 +334,12 @@ class DocumentModel(
             signedAt = Instant.fromEpochMilliseconds(mso.signed.toEpochMilli()),
             validFrom = Instant.fromEpochMilliseconds(mso.validFrom.toEpochMilli()),
             validUntil = Instant.fromEpochMilliseconds(mso.validUntil.toEpochMilli()),
-            expectedUpdate = mso.expectedUpdate?.let {
-                Instant.fromEpochMilliseconds(it.toEpochMilli())
-            },
+            expectedUpdate =
+                mso.expectedUpdate?.let {
+                    Instant.fromEpochMilliseconds(it.toEpochMilli())
+                },
             replacementPending = mdocCredential.replacement != null,
-            details = kvPairs
+            details = kvPairs,
         )
     }
 
@@ -369,12 +372,13 @@ class DocumentModel(
     private fun createIssuerDisplayData(issuingAuthority: IssuingAuthority): IssuerDisplayData {
         val options = BitmapFactory.Options()
         options.inMutable = true
-        val issuerLogoBitmap = BitmapFactory.decodeByteArray(
-            issuingAuthority.configuration.issuingAuthorityLogo,
-            0,
-            issuingAuthority.configuration.issuingAuthorityLogo.size,
-            options
-        )
+        val issuerLogoBitmap =
+            BitmapFactory.decodeByteArray(
+                issuingAuthority.configuration.issuingAuthorityLogo,
+                0,
+                issuingAuthority.configuration.issuingAuthorityLogo.size,
+                options,
+            )
 
         return IssuerDisplayData(
             configuration = issuingAuthority.configuration,
@@ -479,10 +483,11 @@ class DocumentModel(
 
         // If the LSKF is removed, make sure we delete all credentials with invalidated keys...
         //
-        settingsModel.screenLockIsSetup.observeForever() {
+        settingsModel.screenLockIsSetup.observeForever {
             Logger.i(
-                TAG, "screenLockIsSetup changed to " +
-                        "${settingsModel.screenLockIsSetup.value}"
+                TAG,
+                "screenLockIsSetup changed to " +
+                    "${settingsModel.screenLockIsSetup.value}",
             )
             for (documentId in documentStore.listDocuments()) {
                 val document = documentStore.lookupDocument(documentId)!!
@@ -542,12 +547,11 @@ class DocumentModel(
      * @return number of auth keys refreshed or -1 if the document was deleted
      * @throws IllegalArgumentException if the issuer isn't known.
      */
-    private suspend fun syncDocumentWithIssuer(
-        document: Document
-    ): Int {
+    private suspend fun syncDocumentWithIssuer(document: Document): Int {
         val iaId = document.issuingAuthorityIdentifier
-        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(iaId)
-            ?: throw IllegalArgumentException("No issuer with id $iaId")
+        val issuer =
+            issuingAuthorityRepository.lookupIssuingAuthority(iaId)
+                ?: throw IllegalArgumentException("No issuer with id $iaId")
 
         // TODO: this should all come from issuer configuration
         val numCreds = 3
@@ -560,32 +564,33 @@ class DocumentModel(
             walletApplication.postNotificationForDocument(
                 document,
                 walletApplication.applicationContext.getString(
-                    R.string.notifications_document_deleted_by_issuer
-                )
+                    R.string.notifications_document_deleted_by_issuer,
+                ),
             )
         }
 
         if (document.state.condition == DocumentCondition.CONFIGURATION_AVAILABLE) {
             document.certifiedCredentials.forEach { it.delete() }
             document.pendingCredentials.forEach { it.delete() }
-            document.documentConfiguration = issuer.getDocumentConfiguration(
-                document.documentIdentifier
-            )
+            document.documentConfiguration =
+                issuer.getDocumentConfiguration(
+                    document.documentIdentifier,
+                )
 
             // Notify the user that the document is either ready or an update has been downloaded.
             if (document.numDocumentConfigurationsDownloaded == 0L) {
                 walletApplication.postNotificationForDocument(
                     document,
                     walletApplication.applicationContext.getString(
-                        R.string.notifications_document_application_approved_and_ready_to_use
-                    )
+                        R.string.notifications_document_application_approved_and_ready_to_use,
+                    ),
                 )
             } else {
                 walletApplication.postNotificationForDocument(
                     document,
                     walletApplication.applicationContext.getString(
-                        R.string.notifications_document_update_from_issuer
-                    )
+                        R.string.notifications_document_update_from_issuer,
+                    ),
                 )
             }
             document.numDocumentConfigurationsDownloaded += 1
@@ -599,62 +604,67 @@ class DocumentModel(
         if (document.state.condition == DocumentCondition.READY) {
             val now = Timestamp.now()
             // First do a dry-run to see how many pending credentials will be created
-            val numPendingCredentialsToCreate = DocumentUtil.managedCredentialHelper(
-                document,
-                credDomain,
-                null,
-                now,
-                numCreds,
-                1,
-                minValidTimeMillis,
-                true
-            )
+            val numPendingCredentialsToCreate =
+                DocumentUtil.managedCredentialHelper(
+                    document,
+                    credDomain,
+                    null,
+                    now,
+                    numCreds,
+                    1,
+                    minValidTimeMillis,
+                    true,
+                )
             if (numPendingCredentialsToCreate > 0) {
                 val requestCpoFlow =
                     issuer.requestCredentials(document.documentIdentifier)
                 val credConfig = requestCpoFlow.getCredentialConfiguration()
 
-                val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
-                    ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
-                val authKeySettings: CreateKeySettings = when (secureArea) {
-                    is AndroidKeystoreSecureArea -> {
-                        AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
-                            .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
-                            .build()
-                    }
+                val secureArea =
+                    secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
+                        ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
+                val authKeySettings: CreateKeySettings =
+                    when (secureArea) {
+                        is AndroidKeystoreSecureArea -> {
+                            AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
+                                .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                                .build()
+                        }
 
-                    is SoftwareSecureArea -> {
-                        SoftwareCreateKeySettings.Builder(credConfig.challenge)
-                            .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
-                            .build()
-                    }
+                        is SoftwareSecureArea -> {
+                            SoftwareCreateKeySettings.Builder(credConfig.challenge)
+                                .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                                .build()
+                        }
 
-                    else -> throw IllegalStateException("Unexpected SecureArea $secureArea")
-                }
+                        else -> throw IllegalStateException("Unexpected SecureArea $secureArea")
+                    }
                 DocumentUtil.managedCredentialHelper(
                     document,
                     credDomain,
-                    {toBeReplaced -> MdocCredential(
-                        document,
-                        toBeReplaced,
-                        credDomain,
-                        secureArea,
-                        authKeySettings,
-                        docType
-                    )},
+                    { toBeReplaced ->
+                        MdocCredential(
+                            document,
+                            toBeReplaced,
+                            credDomain,
+                            secureArea,
+                            authKeySettings,
+                            docType,
+                        )
+                    },
                     now,
                     numCreds,
                     1,
                     minValidTimeMillis,
-                    false
+                    false,
                 )
                 val credentialRequests = mutableListOf<CredentialRequest>()
                 for (pendingMdocCredential in document.pendingCredentials) {
                     credentialRequests.add(
                         CredentialRequest(
                             CredentialFormat.MDOC_MSO,
-                            (pendingMdocCredential as MdocCredential).attestation
-                        )
+                            (pendingMdocCredential as MdocCredential).attestation,
+                        ),
                     )
                 }
                 requestCpoFlow.sendCredentials(credentialRequests)
@@ -667,10 +677,11 @@ class DocumentModel(
         var numCredentialsRefreshed = 0
         if (document.state.numAvailableCredentials > 0) {
             for (cpo in issuer.getCredentials(document.documentIdentifier)) {
-                val pendingMdocCredential = document.pendingCredentials.find {
-                    it.domain == WalletApplication.CREDENTIAL_DOMAIN &&
-                    (it as MdocCredential).attestation.certificates.first().publicKey.equals(cpo.secureAreaBoundKey)
-                }
+                val pendingMdocCredential =
+                    document.pendingCredentials.find {
+                        it.domain == WalletApplication.CREDENTIAL_DOMAIN &&
+                            (it as MdocCredential).attestation.certificates.first().publicKey.equals(cpo.secureAreaBoundKey)
+                    }
                 if (pendingMdocCredential == null) {
                     Logger.w(TAG, "No pending Credential for pubkey ${cpo.secureAreaBoundKey}")
                     continue
@@ -678,7 +689,7 @@ class DocumentModel(
                 pendingMdocCredential.certify(
                     cpo.data,
                     Timestamp.ofEpochMilli(cpo.validFrom.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(cpo.validUntil.toEpochMilliseconds())
+                    Timestamp.ofEpochMilli(cpo.validUntil.toEpochMilliseconds()),
                 )
                 numCredentialsRefreshed += 1
             }
@@ -693,19 +704,21 @@ class DocumentModel(
 private class TimedChunkFlow<T>(sourceFlow: Flow<T>, period: Duration) {
     private val chunkLock = ReentrantLock()
     private var chunk = mutableListOf<T>()
-    val resultFlow = flow {
-        sourceFlow.collect {
-            val localChunk = chunkLock.withLock {
-                chunk.add(it)
-                chunk
+    val resultFlow =
+        flow {
+            sourceFlow.collect {
+                val localChunk =
+                    chunkLock.withLock {
+                        chunk.add(it)
+                        chunk
+                    }
+                emit(localChunk)
             }
-            emit(localChunk)
+        }.sample(period).onEach {
+            chunkLock.withLock {
+                chunk = mutableListOf()
+            }
         }
-    }.sample(period).onEach {
-        chunkLock.withLock {
-            chunk = mutableListOf()
-        }
-    }
 }
 
 fun <T> Flow<T>.timedChunk(periodMs: Duration): Flow<List<T>> = TimedChunkFlow(this, periodMs).resultFlow

@@ -7,7 +7,7 @@ import com.android.identity.issuance.RequestCredentialsFlow
 class SimpleIssuingAuthorityRequestCredentialsFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
     private val documentId: String,
-    private val credentialConfiguration: CredentialConfiguration
+    private val credentialConfiguration: CredentialConfiguration,
 ) : RequestCredentialsFlow {
     override suspend fun getCredentialConfiguration(): CredentialConfiguration {
         return credentialConfiguration

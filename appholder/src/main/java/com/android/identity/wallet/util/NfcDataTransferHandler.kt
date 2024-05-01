@@ -22,7 +22,6 @@ import com.android.identity.android.mdoc.transport.DataTransportNfc
 import com.android.identity.wallet.transfer.TransferManager
 
 class NfcDataTransferHandler : HostApduService() {
-
     private lateinit var transferManager: TransferManager
 
     override fun onCreate() {
@@ -31,7 +30,10 @@ class NfcDataTransferHandler : HostApduService() {
         transferManager = TransferManager.getInstance(applicationContext)
     }
 
-    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
+    override fun processCommandApdu(
+        commandApdu: ByteArray,
+        extras: Bundle?,
+    ): ByteArray? {
         log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
         return DataTransportNfc.processCommandApdu(this, commandApdu)
     }

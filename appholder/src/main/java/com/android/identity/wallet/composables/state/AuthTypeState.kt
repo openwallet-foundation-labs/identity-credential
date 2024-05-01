@@ -6,5 +6,5 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class AuthTypeState(
     val isEnabled: Boolean = true,
-    val canBeModified: Boolean = false
+    val canBeModified: Boolean = false,
 ) : Parcelable

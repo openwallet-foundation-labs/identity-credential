@@ -40,8 +40,7 @@ class SecureAreaRepository {
      * @param identifier the identifier for the Secure Area.
      * @return the implementation or `null` if no implementation has been registered.
      */
-    fun getImplementation(identifier: String): SecureArea? =
-        privateImplementations.firstOrNull { it.identifier == identifier }
+    fun getImplementation(identifier: String): SecureArea? = privateImplementations.firstOrNull { it.identifier == identifier }
 
     /**
      * Adds a [SecureArea] to the repository.

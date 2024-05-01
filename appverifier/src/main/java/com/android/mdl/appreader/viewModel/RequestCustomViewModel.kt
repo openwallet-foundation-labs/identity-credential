@@ -18,10 +18,15 @@ class RequestCustomViewModel : ViewModel() {
         }
     }
 
-    fun isSelectedDataItem(namespace: String, identifier: String) =
-        selectedDataItems[namespace]?.any { it == identifier } ?: false
+    fun isSelectedDataItem(
+        namespace: String,
+        identifier: String,
+    ) = selectedDataItems[namespace]?.any { it == identifier } ?: false
 
-    fun dataItemSelected(namespace: String, identifier: String) {
+    fun dataItemSelected(
+        namespace: String,
+        identifier: String,
+    ) {
         if (isSelectedDataItem(namespace, identifier)) {
             selectedDataItems[namespace]?.remove(identifier)
         } else {
@@ -37,5 +42,4 @@ class RequestCustomViewModel : ViewModel() {
             Pair(ns.key, ns.value.map { el -> Pair(el, intentToRetain) }.toMap())
         }.toMap()
     }
-
 }

@@ -10,5 +10,5 @@ package com.android.identity.crypto
 data class X509v3Extension(
     val oid: String,
     val isCritical: Boolean,
-    val payload: ByteArray
+    val payload: ByteArray,
 )

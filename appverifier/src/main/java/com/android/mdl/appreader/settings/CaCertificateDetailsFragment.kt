@@ -20,14 +20,16 @@ class CaCertificateDetailsFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
                 val state by viewModel.currentCertificateItem.collectAsState()
                 ReaderAppTheme {
-                    CaCertificateDetailsScreen(certificateItem = state,
-                        onDeleteCertificate = { deleteCertificate() })
+                    CaCertificateDetailsScreen(
+                        certificateItem = state,
+                        onDeleteCertificate = { deleteCertificate() },
+                    )
                 }
             }
         }

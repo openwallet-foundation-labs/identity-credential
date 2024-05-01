@@ -15,7 +15,6 @@ import androidx.preference.PreferenceManager
 import com.android.mdl.appreader.theme.ReaderAppTheme
 
 class SettingsFragment : Fragment() {
-
     private val userPreferences by lazy {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
         UserPreferences(sharedPreferences)
@@ -27,7 +26,7 @@ class SettingsFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
@@ -47,14 +46,14 @@ class SettingsFragment : Fragment() {
                         onNfcTransferChanged = viewModel::onNfcTransferUpdated,
                         onDebugLoggingChanged = viewModel::onDebugLoggingUpdated,
                         onChangeReaderAuthentication = viewModel::onReaderAuthenticationUpdated,
-                        onOpenCaCertificates = {openCaCertificates()},
+                        onOpenCaCertificates = { openCaCertificates() },
                     )
                 }
             }
         }
     }
 
-    private fun openCaCertificates(){
+    private fun openCaCertificates() {
         val destination = SettingsFragmentDirections.toCaCertificates()
         findNavController().navigate(destination)
     }

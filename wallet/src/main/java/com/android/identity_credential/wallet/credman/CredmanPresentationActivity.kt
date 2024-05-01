@@ -24,14 +24,14 @@ import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.document.DocumentRequest
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -45,12 +45,10 @@ import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.showBiometricPrompt
-import org.json.JSONObject
-
 import com.google.android.gms.identitycredentials.GetCredentialResponse
 import com.google.android.gms.identitycredentials.IntentHelper
+import org.json.JSONObject
 import java.util.StringTokenizer
-
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
 class CredmanPresentationActivity : FragmentActivity() {
@@ -66,21 +64,22 @@ class CredmanPresentationActivity : FragmentActivity() {
     private fun addDeviceNamespaces(
         documentGenerator: DocumentGenerator,
         credential: MdocCredential,
-        unlockData: KeyUnlockData?
+        unlockData: KeyUnlockData?,
     ) {
         documentGenerator.setDeviceNamespacesSignature(
             NameSpacedData.Builder().build(),
             credential.secureArea,
             credential.alias,
             unlockData,
-            Algorithm.ES256)
+            Algorithm.ES256,
+        )
     }
 
     private fun createMDocDeviceResponse(
         credentialId: Int,
         dataElements: List<DocumentRequest.DataElement>,
         encodedSessionTranscript: ByteArray,
-        onComplete: (ByteArray) -> Unit
+        onComplete: (ByteArray) -> Unit,
     ) {
         val documentRequest = DocumentRequest(dataElements)
 
@@ -89,17 +88,21 @@ class CredmanPresentationActivity : FragmentActivity() {
         val document = credentialStore.lookupDocument(credentialName)
         val credConf = document!!.documentConfiguration
 
-        val credential = document.findCredential(
-            WalletApplication.CREDENTIAL_DOMAIN,
-            Timestamp.now()
-        ) as MdocCredential?
+        val credential =
+            document.findCredential(
+                WalletApplication.CREDENTIAL_DOMAIN,
+                Timestamp.now(),
+            ) as MdocCredential?
         if (credential == null) {
             throw IllegalStateException("No credential")
         }
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            documentRequest, credConf.staticData, staticAuthData
-        )
+        val mergedIssuerNamespaces =
+            MdocUtil.mergeIssuerNamesSpaces(
+                documentRequest,
+                credConf.staticData,
+                staticAuthData,
+            )
 
         val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
         val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
@@ -107,11 +110,12 @@ class CredmanPresentationActivity : FragmentActivity() {
         val mso = MobileSecurityObjectParser(encodedMso).parse()
 
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-        var documentGenerator = DocumentGenerator(
-            mso.docType,
-            staticAuthData.issuerAuth,
-            encodedSessionTranscript
-        )
+        var documentGenerator =
+            DocumentGenerator(
+                mso.docType,
+                staticAuthData.issuerAuth,
+                encodedSessionTranscript,
+            )
         documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
 
         try {
@@ -135,22 +139,19 @@ class CredmanPresentationActivity : FragmentActivity() {
                 onCanceled = {},
                 onError = {
                     Logger.i(TAG, "Biometric auth failed", e)
-                }
+                },
             )
         }
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
-
-
             val cmrequest = IntentHelper.extractGetCredentialRequest(intent)
             val credentialId = intent.getLongExtra(IntentHelper.EXTRA_CREDENTIAL_ID, -1).toInt()
 
             // This call is currently broken, have to extract this info manually for now
-            //val callingAppInfo = extractCallingAppInfo(intent)
+            // val callingAppInfo = extractCallingAppInfo(intent)
             val callingPackageName =
                 intent.getStringExtra(IntentHelper.EXTRA_CALLING_PACKAGE_NAME)!!
             val callingOrigin = intent.getStringExtra(IntentHelper.EXTRA_ORIGIN)
@@ -180,10 +181,11 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                 // Covert nonce and publicKey
                 val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-                val readerPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
-                    EcCurve.P256,
-                    Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-                )
+                val readerPublicKey =
+                    EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
+                        EcCurve.P256,
+                        Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE),
+                    )
 
                 // Match all the requested fields
                 val fields = selector.getJSONArray("fields")
@@ -197,34 +199,36 @@ class CredmanPresentationActivity : FragmentActivity() {
                         DocumentRequest.DataElement(
                             namespace,
                             name,
-                            intentToRetain
-                        )
+                            intentToRetain,
+                        ),
                     )
                 }
 
                 // Generate the Session Transcript
-                val encodedSessionTranscript = if (callingOrigin == null) {
-                    CredmanUtil.generateAndroidSessionTranscript(
-                        nonce,
-                        callingPackageName,
-                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
-                    )
-                } else {
-                    CredmanUtil.generateBrowserSessionTranscript(
-                        nonce,
-                        callingOrigin,
-                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
-                    )
-                }
+                val encodedSessionTranscript =
+                    if (callingOrigin == null) {
+                        CredmanUtil.generateAndroidSessionTranscript(
+                            nonce,
+                            callingPackageName,
+                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding),
+                        )
+                    } else {
+                        CredmanUtil.generateBrowserSessionTranscript(
+                            nonce,
+                            callingOrigin,
+                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding),
+                        )
+                    }
                 // Create ISO DeviceResponse
                 createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
                     // The Preview protocol HPKE encrypts the response.
-                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
-                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                        readerPublicKey,
-                        deviceResponse,
-                        encodedSessionTranscript
-                    )
+                    val (cipherText, encapsulatedPublicKey) =
+                        Crypto.hpkeEncrypt(
+                            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                            readerPublicKey,
+                            deviceResponse,
+                            encodedSessionTranscript,
+                        )
                     val encodedCredentialDocument =
                         CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
 
@@ -234,8 +238,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                         "token",
                         Base64.encodeToString(
                             encodedCredentialDocument,
-                            Base64.NO_WRAP or Base64.URL_SAFE
-                        )
+                            Base64.NO_WRAP or Base64.URL_SAFE,
+                        ),
                     )
                     val response = responseJson.toString(2)
 
@@ -243,7 +247,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val resultData = Intent()
                     IntentHelper.setGetCredentialResponse(
                         resultData,
-                        createGetCredentialResponse(response)
+                        createGetCredentialResponse(response),
                     )
                     setResult(RESULT_OK, resultData)
                     finish()
@@ -282,24 +286,25 @@ class CredmanPresentationActivity : FragmentActivity() {
                         DocumentRequest.DataElement(
                             namespace,
                             name,
-                            intentToRetain
-                        )
+                            intentToRetain,
+                        ),
                     )
                 }
                 // Generate the Session Transcript
-                val encodedSessionTranscript = if (callingOrigin == null) {
-                    CredmanUtil.generateAndroidSessionTranscript(
-                        nonce,
-                        callingPackageName,
-                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
-                    )
-                } else {
-                    CredmanUtil.generateBrowserSessionTranscript(
-                        nonce,
-                        callingOrigin,
-                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
-                    )
-                }
+                val encodedSessionTranscript =
+                    if (callingOrigin == null) {
+                        CredmanUtil.generateAndroidSessionTranscript(
+                            nonce,
+                            callingPackageName,
+                            Crypto.digest(Algorithm.SHA256, clientID.toByteArray()),
+                        )
+                    } else {
+                        CredmanUtil.generateBrowserSessionTranscript(
+                            nonce,
+                            callingOrigin,
+                            Crypto.digest(Algorithm.SHA256, clientID.toByteArray()),
+                        )
+                    }
                 // Create ISO DeviceResponse
                 createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
                     // Create the openid4vp respoinse
@@ -308,8 +313,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                         "vp_token",
                         Base64.encodeToString(
                             deviceResponse,
-                            Base64.NO_WRAP or Base64.URL_SAFE
-                        )
+                            Base64.NO_WRAP or Base64.URL_SAFE,
+                        ),
                     )
                     val response = responseJson.toString(2)
 
@@ -317,7 +322,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val resultData = Intent()
                     IntentHelper.setGetCredentialResponse(
                         resultData,
-                        createGetCredentialResponse(response)
+                        createGetCredentialResponse(response),
                     )
                     setResult(RESULT_OK, resultData)
                     finish()
@@ -326,7 +331,6 @@ class CredmanPresentationActivity : FragmentActivity() {
                 // Unknown protocol
                 throw IllegalArgumentException("Unknown protocol")
             }
-
         } catch (e: Exception) {
             Logger.i(TAG, "Exception $e")
             val resultData = Intent()

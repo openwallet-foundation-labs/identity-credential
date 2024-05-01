@@ -16,7 +16,6 @@ data class DocumentConfiguration(
      * Display-name for the credential e.g. "Erika's Driving License" or "Utopia Driving Licence"
      */
     val displayName: String,
-
     /**
      * Card-art for the credential.
      *
@@ -24,19 +23,15 @@ data class DocumentConfiguration(
      * see also ISO/IEC 7810 ID-1).
      */
     val cardArt: ByteArray,
-
     // TODO: we need to move mdocDocType and staticData to a per-credential-format map
-
     /**
      * The mdoc DocType for the credential.
      */
     val mdocDocType: String,
-
     /**
      * Static data in the credential.
      */
     val staticData: NameSpacedData,
-
     /**
      * If `true`, require that the user authenticates to view document information.
      *
@@ -53,10 +48,9 @@ data class DocumentConfiguration(
                 map["cardArt"].asBstr,
                 map["mdocDocType"].asTstr,
                 NameSpacedData.fromEncodedCbor(map["staticData"].asBstr),
-                map.getOrDefault("requireUserAuthenticationToViewDocument", Simple.FALSE).asBoolean
+                map.getOrDefault("requireUserAuthenticationToViewDocument", Simple.FALSE).asBoolean,
             )
         }
-
     }
 
     fun toCbor(): ByteArray {
@@ -68,6 +62,7 @@ data class DocumentConfiguration(
                 .put("staticData", staticData.encodeAsCbor())
                 .put("requireUserAuthenticationToViewDocument", requireUserAuthenticationToViewDocument)
                 .end()
-                .build())
+                .build(),
+        )
     }
 }

@@ -35,7 +35,7 @@ import com.android.identity.util.Timestamp
 class MobileSecurityObjectGenerator(
     digestAlgorithm: String,
     docType: String,
-    deviceKey: EcPublicKey
+    deviceKey: EcPublicKey,
 ) {
     private val mDigestAlgorithm: String
     private val mDocType: String
@@ -59,12 +59,13 @@ class MobileSecurityObjectGenerator(
         mDigestAlgorithm = digestAlgorithm
         mDocType = docType
         mDeviceKey = deviceKey
-        mDigestSize = when (digestAlgorithm) {
-            "SHA-256" -> 32
-            "SHA-384" -> 48
-            "SHA-512" -> 64
-            else -> -1
-        }
+        mDigestSize =
+            when (digestAlgorithm) {
+                "SHA-256" -> 32
+                "SHA-384" -> 48
+                "SHA-512" -> 64
+                else -> -1
+            }
     }
 
     /**
@@ -78,12 +79,12 @@ class MobileSecurityObjectGenerator(
      */
     fun addDigestIdsForNamespace(
         nameSpace: String,
-        digestIDs: Map<Long, ByteArray>
+        digestIDs: Map<Long, ByteArray>,
     ) = apply {
         require(!digestIDs.isEmpty()) { "digestIDs must not be empty" }
         digestEmpty = false
         val valueDigestsInner = mValueDigestsOuter.putMap(nameSpace)
-        for ((digestID,digest) in digestIDs) {
+        for ((digestID, digest) in digestIDs) {
             require(digest.size == mDigestSize) {
                 "digest is unexpected length: expected $mDigestSize, got ${digest.size}"
             }
@@ -103,25 +104,24 @@ class MobileSecurityObjectGenerator(
      * @return The `MobileSecurityObjectGenerator`.
      * @throws IllegalArgumentException if the authorizedNameSpaces does not meet the constraints.
      */
-    fun setDeviceKeyAuthorizedNameSpaces(
-        authorizedNameSpaces: List<String>
-    ) = apply {
+    fun setDeviceKeyAuthorizedNameSpaces(authorizedNameSpaces: List<String>) =
+        apply {
+            val namespaceSet =
+                mutableSetOf<String>().apply {
+                    addAll(mAuthorizedDataElements.keys)
+                    retainAll(authorizedNameSpaces)
+                }
 
-        val namespaceSet = mutableSetOf<String>().apply {
-            addAll(mAuthorizedDataElements.keys)
-            retainAll(authorizedNameSpaces)
-        }
-
-        // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
-        // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
-        // the AuthorizedDataElements map.
-        require(namespaceSet.isEmpty()) {
-            "authorizedNameSpaces includes a namespace already " +
+            // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
+            // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
+            // the AuthorizedDataElements map.
+            require(namespaceSet.isEmpty()) {
+                "authorizedNameSpaces includes a namespace already " +
                     "present in the mapping of authorized data elements provided."
+            }
+            mAuthorizedNameSpaces.clear()
+            mAuthorizedNameSpaces.addAll(authorizedNameSpaces)
         }
-        mAuthorizedNameSpaces.clear()
-        mAuthorizedNameSpaces.addAll(authorizedNameSpaces)
-    }
 
     /**
      * Populates the `AuthorizedDataElements` portion of the `keyAuthorizations`
@@ -134,25 +134,24 @@ class MobileSecurityObjectGenerator(
      * @return The `MobileSecurityObjectGenerator`.
      * @throws IllegalArgumentException if authorizedDataElements does not meet the constraints.
      */
-    fun setDeviceKeyAuthorizedDataElements(
-        authorizedDataElements: Map<String, List<String>>
-    ) = apply {
-        val namespaceSet = mutableSetOf<String>().apply {
-            addAll(authorizedDataElements.keys)
-            retainAll(mAuthorizedNameSpaces)
-        }
+    fun setDeviceKeyAuthorizedDataElements(authorizedDataElements: Map<String, List<String>>) =
+        apply {
+            val namespaceSet =
+                mutableSetOf<String>().apply {
+                    addAll(authorizedDataElements.keys)
+                    retainAll(mAuthorizedNameSpaces)
+                }
 
-
-        // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
-        // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
-        // the AuthorizedDataElements map.
-        require(namespaceSet.isEmpty()) {
-            "authorizedDataElements includes a namespace already " +
+            // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
+            // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
+            // the AuthorizedDataElements map.
+            require(namespaceSet.isEmpty()) {
+                "authorizedDataElements includes a namespace already " +
                     "present in the list of authorized name spaces provided."
+            }
+            mAuthorizedDataElements.clear()
+            mAuthorizedDataElements.putAll(authorizedDataElements)
         }
-        mAuthorizedDataElements.clear()
-        mAuthorizedDataElements.putAll(authorizedDataElements)
-    }
 
     /**
      * Provides extra info for the mdoc authentication public key as part of the
@@ -161,10 +160,11 @@ class MobileSecurityObjectGenerator(
      * @param keyInfo A mapping to represent additional key information.
      * @return The `MobileSecurityObjectGenerator`.
      */
-    fun setDeviceKeyInfo(keyInfo: Map<Long, ByteArray>) = apply {
-        mKeyInfo.clear()
-        mKeyInfo.putAll(keyInfo)
-    }
+    fun setDeviceKeyInfo(keyInfo: Map<Long, ByteArray>) =
+        apply {
+            mKeyInfo.clear()
+            mKeyInfo.putAll(keyInfo)
+        }
 
     /**
      * Sets the `ValidityInfo` structure which contains information related to the
@@ -183,8 +183,9 @@ class MobileSecurityObjectGenerator(
      */
     fun setValidityInfo(
         signed: Timestamp,
-        validFrom: Timestamp, validUntil: Timestamp,
-        expectedUpdate: Timestamp?
+        validFrom: Timestamp,
+        validUntil: Timestamp,
+        expectedUpdate: Timestamp?,
     ) = apply {
         // 18013-5 Section 9.1.2.4 says "The timestamp of validFrom shall be equal or later than
         // the signed element."
@@ -243,8 +244,9 @@ class MobileSecurityObjectGenerator(
             put("signed", mSigned!!.toEpochMilli().toDataItemDateTimeString)
             put("validFrom", mValidFrom!!.toEpochMilli().toDataItemDateTimeString)
             put("validUntil", mValidUntil!!.toEpochMilli().toDataItemDateTimeString)
-            if (mExpectedUpdate != null)
+            if (mExpectedUpdate != null) {
                 put("expectedUpdate", mExpectedUpdate!!.toEpochMilli().toDataItemDateTimeString)
+            }
             end()
         }
 

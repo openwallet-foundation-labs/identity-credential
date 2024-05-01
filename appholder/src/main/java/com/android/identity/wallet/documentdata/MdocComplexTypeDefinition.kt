@@ -7,5 +7,5 @@ data class MdocComplexTypeDefinition(
     val partOfArray: Boolean,
     val identifier: String,
     val displayName: String,
-    val type: DocumentAttributeType
+    val type: DocumentAttributeType,
 )

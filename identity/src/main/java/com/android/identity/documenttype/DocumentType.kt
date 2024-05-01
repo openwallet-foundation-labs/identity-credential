@@ -39,9 +39,8 @@ import com.android.identity.cbor.DataItem
 class DocumentType private constructor(
     val displayName: String,
     val mdocDocumentType: MdocDocumentType?,
-    val vcDocumentType: VcDocumentType?
+    val vcDocumentType: VcDocumentType?,
 ) {
-
     /**
      * Builder class for class [DocumentType]
      *
@@ -52,25 +51,27 @@ class DocumentType private constructor(
     data class Builder(
         val displayName: String,
         var mdocBuilder: MdocDocumentType.Builder? = null,
-        var vcBuilder: VcDocumentType.Builder? = null
+        var vcBuilder: VcDocumentType.Builder? = null,
     ) {
         /**
          * Initialize the [mdocBuilder].
          *
          * @param mdocDocType the DocType of the mDoc.
          */
-        fun addMdocDocumentType(mdocDocType: String) = apply {
-            mdocBuilder = MdocDocumentType.Builder(mdocDocType)
-        }
+        fun addMdocDocumentType(mdocDocType: String) =
+            apply {
+                mdocBuilder = MdocDocumentType.Builder(mdocDocType)
+            }
 
         /**
          * Initialize the [vcBuilder].
          *
          * @param vcType the type of the VC Document Type.
          */
-        fun addVcDocumentType(vcType: String) = apply {
-            vcBuilder = VcDocumentType.Builder(vcType)
-        }
+        fun addVcDocumentType(vcType: String) =
+            apply {
+                vcBuilder = VcDocumentType.Builder(vcType)
+            }
 
         /**
          * Add an attribute for both mDoc and VC, using the same identifier.
@@ -92,8 +93,15 @@ class DocumentType private constructor(
             mdocNamespace: String,
             sampleValue: DataItem? = null,
         ) = apply {
-            addMdocAttribute(type, identifier, displayName, description, mandatory,
-                mdocNamespace, sampleValue)
+            addMdocAttribute(
+                type,
+                identifier,
+                displayName,
+                description,
+                mandatory,
+                mdocNamespace,
+                sampleValue,
+            )
             addVcAttribute(type, identifier, displayName, description, sampleValue)
         }
 
@@ -117,7 +125,7 @@ class DocumentType private constructor(
             description: String,
             mandatory: Boolean,
             mdocNamespace: String,
-            sampleValue: DataItem? = null
+            sampleValue: DataItem? = null,
         ) = apply {
             addMdocAttribute(
                 type,
@@ -126,7 +134,7 @@ class DocumentType private constructor(
                 description,
                 mandatory,
                 mdocNamespace,
-                sampleValue
+                sampleValue,
             )
             addVcAttribute(type, vcIdentifier, displayName, description, sampleValue)
         }
@@ -149,7 +157,7 @@ class DocumentType private constructor(
             description: String,
             mandatory: Boolean,
             mdocNamespace: String,
-            sampleValue: DataItem? = null
+            sampleValue: DataItem? = null,
         ) = apply {
             mdocBuilder?.addDataElement(
                 mdocNamespace,
@@ -158,7 +166,7 @@ class DocumentType private constructor(
                 displayName,
                 description,
                 mandatory,
-                sampleValue
+                sampleValue,
             ) ?: throw Exception("The mDoc Document Type was not initialized")
         }
 
@@ -176,7 +184,7 @@ class DocumentType private constructor(
             identifier: String,
             displayName: String,
             description: String,
-            sampleValue: DataItem? = null
+            sampleValue: DataItem? = null,
         ) = apply {
             vcBuilder?.addClaim(type, identifier, displayName, description, sampleValue)
                 ?: throw Exception("The VC Document Type was not initialized")

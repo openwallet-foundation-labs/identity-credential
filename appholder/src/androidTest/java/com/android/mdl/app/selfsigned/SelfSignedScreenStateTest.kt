@@ -21,7 +21,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SelfSignedScreenStateTest {
-
     private val savedStateHandle = SavedStateHandle()
     private lateinit var repository: SecureAreaRepository
 
@@ -48,13 +47,13 @@ class SelfSignedScreenStateTest {
     @Test
     fun updateDocumentType() {
         val personalId = EUPersonalID.getDocumentType().mdocDocumentType?.docType!!
-        val name= EUPersonalID.getDocumentType().displayName
+        val name = EUPersonalID.getDocumentType().displayName
         val viewModel = AddSelfSignedViewModel(savedStateHandle)
 
         viewModel.updateDocumentType(personalId, name)
 
         assertThat(viewModel.screenState.value).isEqualTo(
-            AddSelfSignedScreenState(documentType = personalId, documentName = "EU Personal ID")
+            AddSelfSignedScreenState(documentType = personalId, documentName = "EU Personal ID"),
         )
     }
 
@@ -81,8 +80,8 @@ class SelfSignedScreenStateTest {
         assertThat(viewModel.screenState.value).isEqualTo(
             AddSelfSignedScreenState(
                 documentType = registration,
-                documentName = "Vehicle Registration"
-            )
+                documentName = "Vehicle Registration",
+            ),
         )
     }
 

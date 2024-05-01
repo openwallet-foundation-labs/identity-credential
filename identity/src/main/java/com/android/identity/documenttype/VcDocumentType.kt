@@ -23,15 +23,14 @@ import com.android.identity.cbor.DataItem
  */
 class VcDocumentType private constructor(
     val type: String,
-    val claims: Map<String, DocumentAttribute>
+    val claims: Map<String, DocumentAttribute>,
 ) {
-
     /**
      * Builder class for class [VcDocumentType].
      */
     data class Builder(
         val type: String,
-        val claims: MutableMap<String, DocumentAttribute> = mutableMapOf()
+        val claims: MutableMap<String, DocumentAttribute> = mutableMapOf(),
     ) {
         /**
          * Add a claim to the metadata of the VC Document Type.
@@ -47,11 +46,12 @@ class VcDocumentType private constructor(
             identifier: String,
             displayName: String,
             description: String,
-            sampleValue: DataItem? = null
+            sampleValue: DataItem? = null,
         ) = apply {
-            claims[identifier] = DocumentAttribute(
-                type, identifier, displayName, description, sampleValue
-            )
+            claims[identifier] =
+                DocumentAttribute(
+                    type, identifier, displayName, description, sampleValue,
+                )
         }
 
         /**

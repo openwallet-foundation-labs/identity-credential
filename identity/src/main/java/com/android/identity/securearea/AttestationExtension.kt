@@ -56,7 +56,7 @@ object AttestationExtension {
             CborMap.builder()
                 .put("challenge", challenge)
                 .end()
-                .build()
+                .build(),
         )
 
     /**

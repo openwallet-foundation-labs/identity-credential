@@ -14,5 +14,5 @@ annotation class CborSerializable(
      *
      * This parameter should be used on the leaf (data) class.
      */
-    val typeId: String = ""
+    val typeId: String = "",
 )

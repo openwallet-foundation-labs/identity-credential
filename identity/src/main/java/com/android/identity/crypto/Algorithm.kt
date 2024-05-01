@@ -71,5 +71,4 @@ enum class Algorithm(val coseAlgorithmIdentifier: Int) {
             Algorithm.values().find { it.coseAlgorithmIdentifier == coseAlgorithmIdentifier }
                 ?: throw IllegalArgumentException("No algorithm with COSE identifier $coseAlgorithmIdentifier")
     }
-
 }

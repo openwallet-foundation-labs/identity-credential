@@ -26,16 +26,16 @@ import androidx.work.WorkerParameters
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
-import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityRepository
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustManager
@@ -68,13 +68,12 @@ class WalletApplication : Application() {
                 listOf(
                     Manifest.permission.BLUETOOTH_ADVERTISE,
                     Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT
+                    Manifest.permission.BLUETOOTH_CONNECT,
                 )
             } else {
                 listOf(Manifest.permission.ACCESS_FINE_LOCATION)
             }
     }
-
 
     // immediate instantiations
     val trustManager = TrustManager()
@@ -135,33 +134,36 @@ class WalletApplication : Application() {
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
 
         // init IssuingAuthorityRepository
-        issuingAuthorityRepository = IssuingAuthorityRepository().apply {
-            add(SelfSignedMdlIssuingAuthority(this@WalletApplication, storageEngine))
-            add(SelfSignedEuPidIssuingAuthority(this@WalletApplication, storageEngine))
-        }
+        issuingAuthorityRepository =
+            IssuingAuthorityRepository().apply {
+                add(SelfSignedMdlIssuingAuthority(this@WalletApplication, storageEngine))
+                add(SelfSignedEuPidIssuingAuthority(this@WalletApplication, storageEngine))
+            }
 
         // init TrustManager
         trustManager.addTrustPoint(
             displayName = "OWF Identity Credential Reader",
             certificateResourceId = R.raw.owf_identity_credential_reader_cert,
-            displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
+            displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon,
         )
 
-        documentModel = DocumentModel(
-            applicationContext,
-            settingsModel,
-            documentStore,
-            issuingAuthorityRepository,
-            secureAreaRepository,
-            documentTypeRepository,
-            this
-        )
+        documentModel =
+            DocumentModel(
+                applicationContext,
+                settingsModel,
+                documentStore,
+                issuingAuthorityRepository,
+                secureAreaRepository,
+                documentTypeRepository,
+                this,
+            )
 
-        val notificationChannel = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            resources.getString(R.string.app_name),
-            NotificationManager.IMPORTANCE_HIGH
-        )
+        val notificationChannel =
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                resources.getString(R.string.app_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            )
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(notificationChannel)
 
@@ -170,23 +172,24 @@ class WalletApplication : Application() {
         //
         val workRequest =
             PeriodicWorkRequestBuilder<SyncCredentialWithIssuerWorker>(
-                1, TimeUnit.DAYS
+                1,
+                TimeUnit.DAYS,
             ).setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
             ).setInitialDelay(
-                Random.Default.nextInt(1, 24).hours.toJavaDuration()
+                Random.Default.nextInt(1, 24).hours.toJavaDuration(),
             ).build()
         WorkManager.getInstance(applicationContext)
             .enqueueUniquePeriodicWork(
                 "PeriodicSyncWithIssuers",
                 ExistingPeriodicWorkPolicy.KEEP,
-                workRequest
+                workRequest,
             )
     }
 
     class SyncCredentialWithIssuerWorker(
         context: Context,
-        params: WorkerParameters
+        params: WorkerParameters,
     ) : Worker(context, params) {
         override fun doWork(): Result {
             Logger.i(TAG, "Starting periodic syncing work")
@@ -211,51 +214,59 @@ class WalletApplication : Application() {
     fun TrustManager.addTrustPoint(
         displayName: String,
         certificateResourceId: Int,
-        displayIconResourceId: Int?
+        displayIconResourceId: Int?,
     ) = addTrustPoint(
         TrustPoint(
-            certificate = Certificate.fromPem(
-                String(
-                    resources.openRawResource(certificateResourceId).readBytes()
-                )
-            ).javaX509Certificate,
+            certificate =
+                Certificate.fromPem(
+                    String(
+                        resources.openRawResource(certificateResourceId).readBytes(),
+                    ),
+                ).javaX509Certificate,
             displayName = displayName,
-            displayIcon = displayIconResourceId?.let { iconId ->
-                ResourcesCompat.getDrawable(resources, iconId, null)?.toByteArray()
-            }
-        )
+            displayIcon =
+                displayIconResourceId?.let { iconId ->
+                    ResourcesCompat.getDrawable(resources, iconId, null)?.toByteArray()
+                },
+        ),
     )
 
     fun postNotificationForMissingMdocProximityPermissions() {
         // Go to main page, the user can request the permission there
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE)
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        val pendingIntent =
+            PendingIntent.getActivity(
+                applicationContext,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE,
+            )
 
-        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_name)
-            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
-            .setContentTitle(applicationContext.getString(R.string.proximity_permissions_nfc_notification_title))
-            .setContentText(applicationContext.getString(R.string.proximity_permissions_nfc_notification_content))
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        val builder =
+            NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_name)
+                .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+                .setContentTitle(applicationContext.getString(R.string.proximity_permissions_nfc_notification_title))
+                .setContentText(applicationContext.getString(R.string.proximity_permissions_nfc_notification_content))
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
 
         if (ActivityCompat.checkSelfPermission(
                 this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED) {
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             return
         }
 
         NotificationManagerCompat.from(applicationContext).notify(
             NOTIFICATION_ID_FOR_MISSING_PROXIMITY_PRESENTATION_PERMISSIONS,
-            builder.build())
+            builder.build(),
+        )
     }
 
     fun postNotificationForDocument(
@@ -263,32 +274,37 @@ class WalletApplication : Application() {
         message: String,
     ) {
         // TODO: include data so the user is brought to the info page for the document
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE)
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        val pendingIntent =
+            PendingIntent.getActivity(
+                applicationContext,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE,
+            )
 
         val cardArt = document.documentConfiguration.cardArt
         val bitmap = BitmapFactory.decodeByteArray(cardArt, 0, cardArt.size)
 
         val title = document.documentConfiguration.displayName
-        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_name)
-            .setLargeIcon(bitmap)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        val builder =
+            NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_name)
+                .setLargeIcon(bitmap)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
 
         if (ActivityCompat.checkSelfPermission(
                 this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED) {
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             return
         }
 
