@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+project_path=`pwd | xargs dirname`
+project_git_hooks_path=$project_path/.config/git-hooks/
+
+# ensure git uses this project's git hooks instead
+git config --local core.hooksPath `echo $project_git_hooks_path`
+
+echo -e "\n==== Finished installing the KTLint pre-commit Git hook ==== \n"
+echo "Current git hook path:"
+git config --local core.hooksPath
+
+echo -e "\nGit hooks of this project: \n(ls -la $project_git_hooks_path)\n"
+ls -la $project_git_hooks_path
+

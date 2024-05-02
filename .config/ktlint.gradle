@@ -1,0 +1,67 @@
+// KTLint gradle configuration
+
+allprojects {
+    // add ktlint plugin to all modules
+    apply plugin: libs.plugins.ktlint.get().pluginId
+
+    // provide compose-rules ruleset
+    dependencies {
+        ktlintRuleset libs.ktlint.compose.rules
+    }
+}
+
+ktlint {
+    ignoreFailures = true
+    reporters {
+        reporter "plain_group_by_file"
+    }
+
+// Tasks managing the .editorconfig file in all modules
+
+// Main ktlint .editorconfig source file that is copied (and renamed) onto every module
+    def editorconfigSourceFile = rootProject.file('.config/ktlint-editorconfig')
+
+// Loop through all valid sub-projects (that have a build.gradle rather than be a parent to more subprojects)
+    project.subprojects.each { subproject ->
+        // Define the task for generating the .editorconfig file (from ktlint-editorconfig) to all modules
+        subproject.task("ktlintGenerateEditorConfigForModule") {
+            println "==[Generating .editorconfig to subproject module '${subproject.name}']=="
+            // make sure we're in a real module (that has a build.gradle)
+            def buildGradleExists = subproject.file("build.gradle")
+            if (buildGradleExists.exists()) {
+                group = 'ktlint_prep'
+                description = "Generates KTLint .editorconfig file to module '${subproject.name}'"
+
+                inputs.property 'configFile', editorconfigSourceFile
+                outputs.file subproject.file('.editorconfig') // create a new .editorconfig file
+
+                // open a stream and reference the module's .editorconfig file
+                def editorConfigModuleFile = new File(subproject.file('.editorconfig').path)
+
+                doFirst {
+                    // copy the main source .editorconfig's contents to a module's folder
+                    editorConfigModuleFile.text = editorconfigSourceFile.text
+                }
+                println "Added .editorconfig to ${subproject.name}"
+            }
+        }
+    }
+
+// Task for removing .editorconfig file from all modules
+    project.subprojects.each { subproject ->
+        // define the task
+        subproject.task("ktlintRemoveEditorConfigFromModule") {
+            println "==[Removing .editorconfig from subproject modules '${subproject.name}']=="
+            group = 'ktlint_clean'
+            description = "If it exists, removes .editorconfig file from module '${subproject.name}'"
+
+            doFirst {
+                def editorconfig = subproject.file(".editorconfig")
+                if (editorconfig.exists()) {
+                    editorconfig.delete()
+                    println "Deleted .editorconfig from module '${subproject.name}'"
+                }
+            }
+        }
+    }
+}

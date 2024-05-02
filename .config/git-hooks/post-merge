@@ -1,0 +1,6 @@
+#!/bin/bash
+# script runs after doing a git merge - when there's a diff between local and remote branches
+
+echo "Distributing KTLint .editorconfig files to all modules"
+./gradlew ktlintRemoveEditorConfigFromModule
+./gradlew ktlintGenerateEditorConfigForModule

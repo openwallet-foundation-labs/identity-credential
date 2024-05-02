@@ -1,0 +1,8 @@
+#!/bin/bash
+# Run this script before doing a git commit
+
+echo "Running KTLint"
+# uncomment below when we are ready to fully using linting before commits.
+#./gradlew ktlintRemoveEditorConfigFromModule
+#./gradlew ktlintGenerateEditorConfigForModule
+#./gradlew ktlintFormat --continue

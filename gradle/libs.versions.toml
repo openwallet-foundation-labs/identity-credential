@@ -49,7 +49,9 @@
     org-jetbrains-kotlin-jvm = "1.8.20"
     accompanist-permissions = "0.34.0"
     ktlint = "12.1.0"
+    ktlint-compose-rules = "0.0.26"
     tink = "1.9.0"
+
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -133,6 +135,7 @@
     tink = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink"}
 
     ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
+    ktlint-compose-rules = { module = "com.twitter.compose.rules:ktlint", version.ref = "ktlint-compose-rules" }
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]

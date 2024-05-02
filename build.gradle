@@ -1,5 +1,3 @@
-
-
 buildscript {
     repositories {
         jcenter()      // Bintray's repository - a fast Maven Central mirror & more
@@ -24,10 +22,6 @@ plugins {
     alias libs.plugins.org.jetbrains.kotlin.jvm apply false
 }
 
-allprojects {
-    // add ktlint to all modules
-//    apply plugin: libs.plugins.ktlint.get().pluginId
-}
 
 version = 'YYYYMMDD'
 
@@ -36,3 +30,6 @@ tasks.dokkaHtmlMultiModule {
     // This has it output to the root directory. Default is to put it in build/dokka.
     // outputDirectory.set(file(version+"/documentation"))
 }
+
+// add KTLint to all subprojects/modules
+apply from: '.config/ktlint.gradle'

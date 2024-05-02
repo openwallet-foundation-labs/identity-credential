@@ -1,0 +1,13 @@
+# Source for .editorconfig lives in the root project path in .config/ktlint-editorconfig
+
+root = true
+
+[*.{kt,kts}]
+ktlint_function_naming_ignore_when_annotated_with=Composable
+ktlint_standard_function-naming = disabled
+ktlint_standard_package-name = disabled
+ktlint_standard_no-wildcard-imports = disabled
+ktlint_standard_filename = disabled
+ktlint_standard_comment-wrapping = disabled
+ktlint_standard_discouraged-comment-location = enabled
+ktlint_standard_max-line-length = disabled
