@@ -37,7 +37,7 @@ dependencies {
   testImplementation 'com.google.appengine:appengine-api-stubs:1.9.64'
   testImplementation 'com.google.appengine:appengine-tools-sdk:1.9.64'
   providedCompile 'javax.servlet:javax.servlet-api:4.0.1'
-  providedCompile 'com.google.appengine:appengine:+'
+  providedCompile 'com.google.appengine:appengine:1.9.98'
 }
 
 appengine {
@@ -49,8 +49,8 @@ appengine {
   }
 }
 
-java.sourceCompatibility = JavaVersion.VERSION_11
-java.targetCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_17
+java.targetCompatibility = JavaVersion.VERSION_17
 
 publishing {
   publications {
