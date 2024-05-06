@@ -16,7 +16,6 @@ import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
-import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -77,8 +76,8 @@ class SelfSignedMdlIssuingAuthority(
     override fun getProofingGraphRoot(
         registrationResponse: RegistrationResponse,
     ): SimpleIssuingAuthorityProofingGraph.Node {
-        val devAssets = mapOf("tools.svg" to resourceBytes(R.raw.tools))
-        val devNotice = "\n\n![Development Setting](tools.svg){style=height:1.5em;vertical-align:middle;margin-right:0.5em}" +
+        val devAssets = mapOf("experiment_icon.svg" to resourceBytes(R.raw.experiment_icon))
+        val devNotice = "\n\n![Development Setting](experiment_icon.svg){style=height:1.5em;vertical-align:middle;margin-right:0.5em}" +
                 " Development Mode setting"
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
