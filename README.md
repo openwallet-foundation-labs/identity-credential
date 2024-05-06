@@ -14,6 +14,9 @@ The project includes libraries written in Kotlin:
    in server-side environments.
 - `identity-mdoc` provides data structures and routines for working with
    mdoc credentials. This library can also be used in server-side-environments
+- `identity-sdjwt` provides data structures and routines for working with
+   [IETF SD-JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+   credentials. This library can also be used in server-side environments.
 - `identity-android` provides Android-specific extensions. It is designed to
    run on Android (API 24 or later) and will take advantage of
    Android-specific features including hardware-backed Keystore, NFC, Bluetooth

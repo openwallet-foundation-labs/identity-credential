@@ -61,7 +61,65 @@ enum class Algorithm(val coseAlgorithmIdentifier: Int) {
 
     ;
 
+    /**
+     * Converts the given algorithm to a corresponding value from the
+     * [JSON Web Signature and Encryption Algorithms](https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms)
+     * registry.
+     *
+     * @throws IllegalArgumentException if there is no corresponding value.
+     */
+    val jwseAlgorithmIdentifier: String
+        get() = coseToJwse[this] ?: throw IllegalArgumentException("No JWSE Algorithm for $this")
+
+    /**
+     * Converts the given algorithm to a corresponding value from the
+     * [Named Information Hash Algorithm Registry](https://www.iana.org/assignments/named-information/named-information.xhtml#hash-alg)
+     * registry.
+     *
+     * @throws IllegalArgumentException if there is no corresponding value.
+     */
+    val hashAlgorithmIdentifier: String
+        get() = coseToHash[this] ?: throw IllegalArgumentException("No hash algorithm identifier for $this")
+
     companion object {
+        private val coseToJwse = mapOf(
+            ES256 to "ES256",
+            ES384 to "ES384",
+            ES512 to "ES512",
+            EDDSA to "EdDSA",
+            HMAC_SHA256 to "HS256",
+            HMAC_SHA384 to "HS384",
+            HMAC_SHA512 to "HS512",
+            A128GCM to "A128GCM",
+            A192GCM to "A192GCM",
+            A256GCM to "A256GCM",
+        )
+
+        private val jwseToCose = mapOf(
+            "ES256" to ES256,
+            "ES384" to ES384,
+            "ES512" to ES512,
+            "EdDSA" to EDDSA,
+            "HS256" to HMAC_SHA256,
+            "HS384" to HMAC_SHA384,
+            "HS512" to HMAC_SHA512,
+            "A128GCM" to A128GCM,
+            "A192GCM" to A192GCM,
+            "A256GCM" to A256GCM,
+        )
+
+        private val coseToHash = mapOf(
+            SHA256 to "sha-256",
+            SHA384 to "sha-384",
+            SHA512 to "sha-512",
+        )
+
+        private val hashToCose = mapOf(
+            "sha-256" to SHA256,
+            "sha-384" to SHA384,
+            "sha-512" to SHA512,
+        )
+
         /**
          * Creates a [Algorithm] from an identifier.
          *
@@ -70,6 +128,28 @@ enum class Algorithm(val coseAlgorithmIdentifier: Int) {
         fun fromInt(coseAlgorithmIdentifier: Int): Algorithm =
             Algorithm.values().find { it.coseAlgorithmIdentifier == coseAlgorithmIdentifier }
                 ?: throw IllegalArgumentException("No algorithm with COSE identifier $coseAlgorithmIdentifier")
+
+        /**
+         * Creates an [Algorithm] with a value corresponding to the given value from the
+         * [JSON Web Signature and Encryption Algorithms](https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms)
+         * registry.
+         *
+         * @throws IllegalArgumentException if there is no corresponding value.
+         */
+        fun fromJwseAlgorithmIdentifier(jwseAlgorithmIdentifier: String): Algorithm =
+            jwseToCose[jwseAlgorithmIdentifier]
+                ?: throw IllegalArgumentException("No COSE Algorithm for $jwseAlgorithmIdentifier")
+
+        /**
+         * Creates an [Algorithm] with a value corresponding to the given value from the
+         * [Named Information Hash Algorithm Registry](https://www.iana.org/assignments/named-information/named-information.xhtml#hash-alg)
+         * registry.
+         *
+         * @throws IllegalArgumentException if there is no corresponding value.
+         */
+        fun fromHashAlgorithmIdentifier(hashAlgorithmIdentifier: String): Algorithm =
+            hashToCose[hashAlgorithmIdentifier]
+                ?: throw IllegalArgumentException("No hash algorithm for $hashAlgorithmIdentifier")
     }
 
 }
