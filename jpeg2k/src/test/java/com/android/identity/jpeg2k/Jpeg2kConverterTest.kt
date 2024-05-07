@@ -2,7 +2,7 @@ package com.android.identity.jpeg2k
 
 import org.junit.Test
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import java.io.File
 
 class Jpeg2kConverterTest {

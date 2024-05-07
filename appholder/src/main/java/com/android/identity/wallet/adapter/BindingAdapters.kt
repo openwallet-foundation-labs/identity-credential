@@ -3,7 +3,8 @@ package com.android.identity.wallet.adapter
 import android.icu.text.SimpleDateFormat
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
-import java.util.*
+import java.util.Calendar
+import java.util.Locale
 
 @BindingAdapter("displayDateTime")
 fun bindDisplayDateTime(view: TextView, calendar: Calendar?) {

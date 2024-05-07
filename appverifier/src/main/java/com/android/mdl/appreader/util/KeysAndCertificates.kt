@@ -13,7 +13,7 @@ import java.security.PrivateKey
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
-import java.util.*
+import java.util.Base64
 
 object KeysAndCertificates {
     private fun getKeyBytes(keyInputStream: InputStream): ByteArray {

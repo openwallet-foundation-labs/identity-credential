@@ -26,13 +26,16 @@ import com.android.identity.util.Timestamp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.DocumentDataReader
 import com.android.identity.wallet.documentdata.DocumentElements
-import com.android.identity.wallet.util.*
+import com.android.identity.wallet.util.ProvisioningUtil
+import com.android.identity.wallet.util.TransferStatus
+import com.android.identity.wallet.util.log
+import com.android.identity.wallet.util.logWarning
+import com.android.identity.wallet.util.requireValidProperty
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.*
 import kotlin.coroutines.resume
 
 class TransferManager private constructor(private val context: Context) {
