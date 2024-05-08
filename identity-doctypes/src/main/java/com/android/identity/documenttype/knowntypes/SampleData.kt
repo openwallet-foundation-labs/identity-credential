@@ -14,51 +14,51 @@ import kotlinx.datetime.LocalDate
  */
 internal object SampleData {
 
-    const val givenName = "Erika"
-    const val familyName = "Mustermann"
-    const val givenNameBirth = "Erika"
-    const val familyNameBirth = "Mustermann"
-    const val givenNamesNationalCharacter = "Ерика"
-    const val familyNameNationalCharacter = "Бабіак"
+    const val GIVEN_NAME = "Erika"
+    const val FAMILY_NAME = "Mustermann"
+    const val GIVEN_NAME_BIRTH = "Erika"
+    const val FAMILY_NAME_BIRTH = "Mustermann"
+    const val GIVEN_NAMES_NATIONAL_CHARACTER = "Ерика"
+    const val FAMILY_NAME_NATIONAL_CHARACTER = "Бабіак"
 
     val birthDate = LocalDate.parse("1971-09-01")
-    const val birthCountry = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val BIRTH_COUNTRY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
     val issueDate = LocalDate.parse("2024-03-15")
     val expiryDate = LocalDate.parse("2028-09-01")
-    const val issuingCountry = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
-    const val issuingAuthorityMdl = "Utopia Department of Motor Vehicles"
-    const val issuingAuthorityEuPid = "Utopia Central Registry"
-    const val documentNumber = "987654321"
+    const val ISSUING_COUNTRY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val ISSUING_AUTHORITY_MDL = "Utopia Department of Motor Vehicles"
+    const val ISSUING_AUTHORITY_EU_PID = "Utopia Central Registry"
+    const val DOCUMENT_NUMBER = "987654321"
 
-    const val unDistinguishingSign = "UTO"
-    const val administrativeNumber = "123456789"
-    const val sexIso5218 = 2
-    const val heightCm = 175
-    const val weightKg = 68
-    const val birthPlace = "Sample City"
-    const val birthState = "Sample State"
-    const val birthCity = "Sample City"
-    const val residentAddress = "Sample Street 123, 12345 Sample City, Sample State, Utopia"
+    const val UN_DISTINGUISHING_SIGN = "UTO"
+    const val ADMINISTRATIVE_NUMBER = "123456789"
+    const val SEX_ISO218 = 2
+    const val HEIGHT_CM = 175
+    const val WEIGHT_KG = 68
+    const val BIRTH_PLACE = "Sample City"
+    const val BIRTH_STATE = "Sample State"
+    const val BIRTH_CITY = "Sample City"
+    const val RESIDENT_ADDRESS = "Sample Street 123, 12345 Sample City, Sample State, Utopia"
     val portraitCaptureDate = LocalDate.parse("2020-03-14")
-    const val ageInYears = 53
-    const val ageBirthYear = 1971
-    const val ageOver13 = true
-    const val ageOver16 = true
-    const val ageOver18 = true
-    const val ageOver21 = true
-    const val ageOver25 = true
-    const val ageOver60 = false
-    const val ageOver62 = false
-    const val ageOver65 = false
-    const val ageOver68 = false
-    const val issuingJurisdiction = "State of Utopia"
-    const val nationality = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
-    const val residentStreet = "Sample Street"
-    const val residentHouseNumber = "123"
-    const val residentPostalCode = "12345"
-    const val residentCity = "Sample City"
-    const val residentState = "Sample State"
-    const val residentCountry = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val AGE_IN_YEARS = 53
+    const val AGE_BIRTH_YEAR = 1971
+    const val AGE_OVER_13 = true
+    const val AGE_OVER_16 = true
+    const val AGE_OVER_18 = true
+    const val AGE_OVER_21 = true
+    const val AGE_OVER_25 = true
+    const val AGE_OVER_60 = false
+    const val AGE_OVER_62 = false
+    const val AGE_OVER_65 = false
+    const val AGE_OVER_68 = false
+    const val ISSUING_JURISDICTION = "State of Utopia"
+    const val NATIONALITY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val RESIDENT_STREET = "Sample Street"
+    const val RESIDENT_HOUSE_NUMBER = "123"
+    const val RESIDENT_POSTAL_CODE = "12345"
+    const val RESIDENT_CITY = "Sample City"
+    const val RESIDENT_STATE = "Sample State"
+    const val RESIDENT_COUNTRY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
 
     // TODO
     //val portrait
