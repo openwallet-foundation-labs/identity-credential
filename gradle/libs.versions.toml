@@ -51,6 +51,7 @@
     accompanist-permissions = "0.34.0"
     ktlint = "12.1.0"
     tink = "1.13.0"
+    kotlin-test = "1.9.20"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -134,6 +135,8 @@
     tink = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink"}
 
     ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
+
+    kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin-test"}
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
