@@ -24,23 +24,23 @@ class CborSymbolProcessor(
 ) : SymbolProcessor {
 
     companion object {
-        const val annotationPackage = "com.android.identity.cbor.annotation"
-        const val annotationSerializable = "CborSerializable"
-        const val annotationMerge = "CborMerge"
-        const val bstrType = "com.android.identity.cbor.Bstr"
-        const val tstrType = "com.android.identity.cbor.Tstr"
-        const val cborMapType = "com.android.identity.cbor.CborMap"
-        const val cborArrayType = "com.android.identity.cbor.CborArray"
-        const val dataItemClass = "com.android.identity.cbor.DataItem"
-        const val toDataItemDateTimeStringFun = "com.android.identity.cbor.toDataItemDateTimeString"
-        const val toDataItemFullDateFun = "com.android.identity.cbor.toDataItemFullDate"
+        const val ANNOTATION_PACKAGE = "com.android.identity.cbor.annotation"
+        const val ANNOTATION_SERIALIZABLE = "CborSerializable"
+        const val ANNOTATION_MERGE = "CborMerge"
+        const val BSTR_TYPE = "com.android.identity.cbor.Bstr"
+        const val TSTR_TYPE = "com.android.identity.cbor.Tstr"
+        const val CBOR_MAP_TYPE = "com.android.identity.cbor.CborMap"
+        const val CBOR_ARRAY_TYPE = "com.android.identity.cbor.CborArray"
+        const val DATA_ITEM_CLASS = "com.android.identity.cbor.DataItem"
+        const val TO_DATAITEM_DATETIMESTRING_FUN = "com.android.identity.cbor.toDataItemDateTimeString"
+        const val TO_DATAITEM_FULLDATE_FUN = "com.android.identity.cbor.toDataItemFullDate"
     }
 
     /**
      * Processor main entry point.
      */
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        resolver.getSymbolsWithAnnotation("$annotationPackage.$annotationSerializable")
+        resolver.getSymbolsWithAnnotation("$ANNOTATION_PACKAGE.$ANNOTATION_SERIALIZABLE")
             .filterIsInstance<KSClassDeclaration>().forEach Declaration@{ clazz ->
                 for (supertype in clazz.superTypes) {
                     val superDeclaration = supertype.resolve().declaration
@@ -49,10 +49,10 @@ class CborSymbolProcessor(
                         superDeclaration.modifiers.contains(Modifier.SEALED)
                     ) {
                         val superAnnotation =
-                            findAnnotation(superDeclaration, annotationSerializable)
+                            findAnnotation(superDeclaration, ANNOTATION_SERIALIZABLE)
                         if (superAnnotation == null) {
                             logger.error(
-                                "Superclass is not marked with @$annotationSerializable",
+                                "Superclass is not marked with @$ANNOTATION_SERIALIZABLE",
                                 clazz
                             )
                         } else {
@@ -67,7 +67,7 @@ class CborSymbolProcessor(
                     processSuperclass(clazz, subclasses)
                     for (subclass in subclasses) {
                         // if annotated, it will be processed in another branch
-                        if (findAnnotation(subclass, annotationSerializable) == null) {
+                        if (findAnnotation(subclass, ANNOTATION_SERIALIZABLE) == null) {
                             processSubclass(subclass, clazz)
                         }
                     }
@@ -88,7 +88,7 @@ class CborSymbolProcessor(
         classDeclaration: KSClassDeclaration,
         superDeclaration: KSClassDeclaration
     ) {
-        val typeKey: String = getTypeKey(findAnnotation(superDeclaration, annotationSerializable))
+        val typeKey: String = getTypeKey(findAnnotation(superDeclaration, ANNOTATION_SERIALIZABLE))
         val typeId: String = getTypeId(superDeclaration, classDeclaration)
         processDataClass(classDeclaration, typeKey, typeId)
     }
@@ -101,10 +101,10 @@ class CborSymbolProcessor(
         val containingFile = classDeclaration.containingFile
         val packageName = classDeclaration.packageName.asString()
         val baseName = classDeclaration.simpleName.asString()
-        val annotation = findAnnotation(classDeclaration, annotationSerializable)
+        val annotation = findAnnotation(classDeclaration, ANNOTATION_SERIALIZABLE)
 
         with(CodeBuilder()) {
-            importQualifiedName(dataItemClass)
+            importQualifiedName(DATA_ITEM_CLASS)
             importQualifiedName(classDeclaration)
 
             generateSerialization(this, classDeclaration)
@@ -151,7 +151,7 @@ class CborSymbolProcessor(
         val packageName = classDeclaration.packageName.asString()
         val baseName = classDeclaration.simpleName.asString()
         with(CodeBuilder()) {
-            importQualifiedName(dataItemClass)
+            importQualifiedName(DATA_ITEM_CLASS)
             importQualifiedName(classDeclaration)
 
             generateSerialization(this, classDeclaration)
@@ -160,7 +160,7 @@ class CborSymbolProcessor(
 
             line("val $baseName.toDataItem: DataItem")
             block("get()") {
-                importQualifiedName(cborMapType)
+                importQualifiedName(CBOR_MAP_TYPE)
                 line("val builder = CborMap.builder()")
                 if (typeKey != null) {
                     line("builder.put(\"$typeKey\", \"$typeId\")")
@@ -176,11 +176,11 @@ class CborSymbolProcessor(
                         Pair("this.$name", null)
                     }
                     optionalBlock(condition) {
-                        if (findAnnotation(property, annotationMerge) != null) {
+                        if (findAnnotation(property, ANNOTATION_MERGE) != null) {
                             if (hadMergedMap) {
-                                logger.error("@$annotationMerge can be used only on a single field")
+                                logger.error("@$ANNOTATION_MERGE can be used only on a single field")
                             } else if (type.declaration.qualifiedName!!.asString() != "kotlin.collections.Map") {
-                                logger.error("@$annotationMerge requires field of type Map")
+                                logger.error("@$ANNOTATION_MERGE requires field of type Map")
                             } else {
                                 hadMergedMap = true
                                 addSerializedMapValues(
@@ -209,7 +209,7 @@ class CborSymbolProcessor(
                     val name = varName(fieldName)
                     constructorParameters.add(name)
                     val type = property.type.resolve()
-                    if (findAnnotation(property, annotationMerge) != null) {
+                    if (findAnnotation(property, ANNOTATION_MERGE) != null) {
                         if (type.declaration.qualifiedName!!.asString() == "kotlin.collections.Map") {
                             line("val $name = mutableMapOf<${typeArguments(this, type)}>()")
                             addDeserializedMapValues(this, name, dataItem, type, fieldNameSet)
@@ -285,7 +285,7 @@ class CborSymbolProcessor(
     }
 
     private fun getTypeId(superclass: KSClassDeclaration, subclass: KSClassDeclaration): String {
-        findAnnotation(subclass, annotationSerializable)?.arguments?.forEach { arg ->
+        findAnnotation(subclass, ANNOTATION_SERIALIZABLE)?.arguments?.forEach { arg ->
             when (arg.name?.asString()) {
                 "typeId" -> {
                     val field = arg.value.toString()
@@ -308,7 +308,7 @@ class CborSymbolProcessor(
     private fun findAnnotation(declaration: KSDeclaration, simpleName: String): KSAnnotation? {
         for (annotation in declaration.annotations) {
             if (annotation.shortName.asString() == simpleName &&
-                annotation.annotationType.resolve().declaration.packageName.asString() == annotationPackage
+                annotation.annotationType.resolve().declaration.packageName.asString() == ANNOTATION_PACKAGE
             ) {
                 return annotation
             }
@@ -348,7 +348,7 @@ class CborSymbolProcessor(
                 with(codeBuilder) {
                     val map = varName("map")
                     val mapBuilder = varName("mapBuilder")
-                    importQualifiedName(cborMapType)
+                    importQualifiedName(CBOR_MAP_TYPE)
                     line("val $mapBuilder = CborMap.builder()")
                     addSerializedMapValues(this, mapBuilder, code, type)
                     line("val $map: DataItem = $mapBuilder.end().build()")
@@ -359,7 +359,7 @@ class CborSymbolProcessor(
                 with(codeBuilder) {
                     val array = varName("array")
                     val arrayBuilder = varName("arrayBuilder")
-                    importQualifiedName(cborArrayType)
+                    importQualifiedName(CBOR_ARRAY_TYPE)
                     line("val $arrayBuilder = CborArray.builder()")
                     block("for (value in $code)") {
                         val value = serializeValue(
@@ -374,7 +374,7 @@ class CborSymbolProcessor(
 
             "kotlin.String" -> return code
             "kotlin.ByteArray" -> {
-                codeBuilder.importQualifiedName(bstrType)
+                codeBuilder.importQualifiedName(BSTR_TYPE)
                 return "Bstr($code)"
             }
 
@@ -382,23 +382,23 @@ class CborSymbolProcessor(
             "kotlin.Long", "kotlin.Float", "kotlin.Double", "kotlin.Boolean" -> return code
 
             "kotlinx.datetime.Instant" -> {
-                codeBuilder.importQualifiedName(toDataItemDateTimeStringFun)
+                codeBuilder.importQualifiedName(TO_DATAITEM_DATETIMESTRING_FUN)
                 return "$code.toDataItemDateTimeString"
             }
 
             "kotlinx.datetime.LocalDate" -> {
-                codeBuilder.importQualifiedName(toDataItemFullDateFun)
+                codeBuilder.importQualifiedName(TO_DATAITEM_FULLDATE_FUN)
                 return "$code.toDataItemFullDate"
             }
 
-            dataItemClass -> return code
+            DATA_ITEM_CLASS -> return code
             else -> return if (declaration is KSClassDeclaration &&
                 declaration.classKind == ClassKind.ENUM_CLASS
             ) {
                 "$code.name"
             } else {
                 codeBuilder.importQualifiedName(qualifiedName)
-                if (findAnnotation(declaration, annotationSerializable) != null) {
+                if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
                     codeBuilder.importFunctionName("toDataItem", declaration.packageName.asString())
                 }
                 "$code.toDataItem"
@@ -467,7 +467,7 @@ class CborSymbolProcessor(
             "kotlin.Boolean" -> return "$code.asBoolean"
             "kotlinx.datetime.Instant" -> "$code.asDateTimeString"
             "kotlinx.datetime.LocalDate" -> "$code.asDateString"
-            dataItemClass -> return code
+            DATA_ITEM_CLASS -> return code
             else -> return if (declaration is KSClassDeclaration &&
                 declaration.classKind == ClassKind.ENUM_CLASS
             ) {
@@ -475,7 +475,7 @@ class CborSymbolProcessor(
             } else {
                 codeBuilder.importQualifiedName(qualifiedName)
                 val deserializer = deserializerName(declaration as KSClassDeclaration, false)
-                if (findAnnotation(declaration, annotationSerializable) != null) {
+                if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
                     val shortName = deserializer.substring(deserializer.lastIndexOf(".") + 1)
                     codeBuilder.importFunctionName(shortName, declaration.packageName.asString())
                 }
@@ -492,7 +492,7 @@ class CborSymbolProcessor(
         val entry = codeBuilder.varName("entry")
         codeBuilder.block("for ($entry in $sourceCode.asMap.entries)") {
             if (fieldNameSet != null) {
-                importQualifiedName(tstrType)
+                importQualifiedName(TSTR_TYPE)
                 block("if ($entry.key is Tstr && $fieldNameSet.contains($entry.key.asTstr))") {
                     line("continue")
                 }
@@ -531,7 +531,7 @@ class CborSymbolProcessor(
             "kotlin.Float" -> "Float"
             "kotlin.Double" -> "Double"
             "kotlin.Boolean" -> "Boolean"
-            dataItemClass -> "DataItem"
+            DATA_ITEM_CLASS -> "DataItem"
             else -> {
                 codeBuilder.importQualifiedName(qualifiedName)
                 return type.declaration.simpleName.asString()

@@ -99,17 +99,17 @@ class Jpeg2kConverter(private val tmpDir: File) {
         val buffer = ByteArrayOutputStream()
         var i = 0
         var xrefOffset = -1
-        while (i < pdfTemplate.length) {
-            val c = pdfTemplate[i++]
+        while (i < PDF_TEMPLATE.length) {
+            val c = PDF_TEMPLATE[i++]
             if (c != '@') {
                 buffer.write(c.code)
                 continue
             }
-            if (pdfTemplate[i++] != '{') {
+            if (PDF_TEMPLATE[i++] != '{') {
                 throw IllegalStateException("Invalid template")
             }
-            val k = pdfTemplate.indexOf('}', i)
-            val name = pdfTemplate.substring(i, k)
+            val k = PDF_TEMPLATE.indexOf('}', i)
+            val name = PDF_TEMPLATE.substring(i, k)
             i = k + 1
             when (name) {
                 "width" -> putAscii(buffer, widthStr)
@@ -149,7 +149,7 @@ class Jpeg2kConverter(private val tmpDir: File) {
             }
         }
 
-        private const val pdfTemplate = """%PDF-1.5
+        private const val PDF_TEMPLATE = """%PDF-1.5
 1 0 obj
 << /Pages 2 0 R /Type /Catalog >>
 endobj
