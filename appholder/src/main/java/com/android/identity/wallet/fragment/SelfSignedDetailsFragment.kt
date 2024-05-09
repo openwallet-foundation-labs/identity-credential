@@ -22,7 +22,14 @@ import android.view.View.NOT_FOCUSABLE
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.Spinner
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.core.content.FileProvider
@@ -49,7 +56,7 @@ import com.android.identity.wallet.viewmodel.SelfSignedViewModel
 import com.google.android.material.datepicker.MaterialDatePicker
 import java.io.File
 import java.io.IOException
-import java.util.*
+import java.util.Date
 import kotlin.math.max
 import kotlin.math.min
 

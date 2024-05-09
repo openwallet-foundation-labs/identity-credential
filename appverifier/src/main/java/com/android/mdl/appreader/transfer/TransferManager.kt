@@ -31,7 +31,14 @@ import com.android.identity.crypto.toEcPublicKey
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
-import com.android.mdl.appreader.readercertgen.SupportedCurves.*
+import com.android.mdl.appreader.readercertgen.SupportedCurves.SECP256R1
+import com.android.mdl.appreader.readercertgen.SupportedCurves.SECP384R1
+import com.android.mdl.appreader.readercertgen.SupportedCurves.SECP521R1
+import com.android.mdl.appreader.readercertgen.SupportedCurves.BRAINPOOLP256R1
+import com.android.mdl.appreader.readercertgen.SupportedCurves.BRAINPOOLP384R1
+import com.android.mdl.appreader.readercertgen.SupportedCurves.BRAINPOOLP512R1
+import com.android.mdl.appreader.readercertgen.SupportedCurves.ED25519
+import com.android.mdl.appreader.readercertgen.SupportedCurves.ED448
 import com.android.mdl.appreader.settings.UserPreferences
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
@@ -44,7 +51,8 @@ import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
-import java.util.*
+import java.util.Base64
+import java.util.UUID
 import java.util.concurrent.Executor
 
 class TransferManager private constructor(private val context: Context) {
