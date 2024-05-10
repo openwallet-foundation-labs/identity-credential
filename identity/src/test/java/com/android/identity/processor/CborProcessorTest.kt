@@ -63,7 +63,7 @@ const val ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y =
 
 
 // TODO: add more tests once the CBOR annotation processor takes shape
-class ProcessorTests {
+class ProcessorTest {
     @Test
     fun roundtrip_simple() {
         val original = Container(
