@@ -184,7 +184,7 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
             val authorizationMap: MutableMap<Int, ASN1Primitive?> = HashMap()
             for (entry in authorizationList) {
                 val taggedEntry = entry as ASN1TaggedObject
-                authorizationMap[taggedEntry.tagNo] = taggedEntry.getObject()
+                authorizationMap[taggedEntry.tagNo] = taggedEntry.baseObject as ASN1Primitive
             }
             return authorizationMap
         }
