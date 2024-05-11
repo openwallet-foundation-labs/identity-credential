@@ -1,4 +1,4 @@
-package com.android.identity.cbor.processor
+package com.android.identity.processor
 
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
@@ -27,6 +27,7 @@ class CborSymbolProcessor(
         const val ANNOTATION_PACKAGE = "com.android.identity.cbor.annotation"
         const val ANNOTATION_SERIALIZABLE = "CborSerializable"
         const val ANNOTATION_MERGE = "CborMerge"
+        const val CBOR_TYPE = "com.android.identity.cbor.Cbor"
         const val BSTR_TYPE = "com.android.identity.cbor.Bstr"
         const val TSTR_TYPE = "com.android.identity.cbor.Tstr"
         const val CBOR_MAP_TYPE = "com.android.identity.cbor.CborMap"
@@ -34,6 +35,258 @@ class CborSymbolProcessor(
         const val DATA_ITEM_CLASS = "com.android.identity.cbor.DataItem"
         const val TO_DATAITEM_DATETIMESTRING_FUN = "com.android.identity.cbor.toDataItemDateTimeString"
         const val TO_DATAITEM_FULLDATE_FUN = "com.android.identity.cbor.toDataItemFullDate"
+        const val TO_DATAITEM_FUN = "com.android.identity.cbor.toDataItem"
+
+        fun deserializeValue(
+            codeBuilder: CodeBuilder,
+            code: String,
+            type: KSType
+        ): String {
+            val declaration = type.declaration
+            val qualifiedName = declaration.qualifiedName!!.asString()
+            return when (qualifiedName) {
+                "kotlin.collections.Map" ->
+                    with(codeBuilder) {
+                        val map = varName("map")
+                        line("val $map = mutableMapOf<${typeArguments(this, type)}>()")
+                        addDeserializedMapValues(this, map, code, type)
+                        map
+                    }
+
+                "kotlin.collections.List", "kotlin.collections.Set" ->
+                    with(codeBuilder) {
+                        val array = varName("array")
+                        val builder = if (qualifiedName == "kotlin.collections.Set") {
+                            "mutableSetOf"
+                        } else {
+                            "mutableListOf"
+                        }
+                        line("val $array = $builder<${typeArguments(this, type)}>()")
+                        block("for (value in $code.asArray)") {
+                            val value = deserializeValue(
+                                this, "value",
+                                type.arguments[0].type!!.resolve()
+                            )
+                            line("$array.add($value)")
+                        }
+                        array
+                    }
+
+                "kotlin.String" -> return "$code.asTstr"
+                "kotlin.ByteArray" -> return "$code.asBstr"
+                "kotlin.Long" -> return "$code.asNumber"
+                "kotlin.Int" -> return "$code.asNumber.toInt()"
+                "kotlin.Float" -> return "$code.asFloat"
+                "kotlin.Double" -> return "$code.asDouble"
+                "kotlin.Boolean" -> return "$code.asBoolean"
+                "kotlinx.datetime.Instant" -> "$code.asDateTimeString"
+                "kotlinx.datetime.LocalDate" -> "$code.asDateString"
+                DATA_ITEM_CLASS -> return code
+                else -> return if (declaration is KSClassDeclaration &&
+                    declaration.classKind == ClassKind.ENUM_CLASS
+                ) {
+                    "${typeRef(codeBuilder, type)}.valueOf($code.asTstr)"
+                } else {
+                    codeBuilder.importQualifiedName(qualifiedName)
+                    val deserializer = deserializerName(declaration as KSClassDeclaration, false)
+                    if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
+                        val shortName = deserializer.substring(deserializer.lastIndexOf(".") + 1)
+                        codeBuilder.importFunctionName(
+                            shortName,
+                            declaration.packageName.asString()
+                        )
+                    }
+                    "${deserializer}($code)"
+                }
+            }
+        }
+
+        private fun addDeserializedMapValues(
+            codeBuilder: CodeBuilder,
+            targetCode: String, sourceCode: String, targetType: KSType,
+            fieldNameSet: String? = null
+        ) {
+            val entry = codeBuilder.varName("entry")
+            codeBuilder.block("for ($entry in $sourceCode.asMap.entries)") {
+                if (fieldNameSet != null) {
+                    importQualifiedName(TSTR_TYPE)
+                    block("if ($entry.key is Tstr && $fieldNameSet.contains($entry.key.asTstr))") {
+                        line("continue")
+                    }
+                }
+                val key = deserializeValue(
+                    this, "$entry.key",
+                    targetType.arguments[0].type!!.resolve()
+                )
+                val value = deserializeValue(
+                    this, "$entry.value",
+                    targetType.arguments[1].type!!.resolve()
+                )
+                line("$targetCode.put($key, $value)")
+            }
+        }
+
+        private fun findAnnotation(declaration: KSDeclaration, simpleName: String): KSAnnotation? {
+            for (annotation in declaration.annotations) {
+                if (annotation.shortName.asString() == simpleName &&
+                    annotation.annotationType.resolve().declaration.packageName.asString() == ANNOTATION_PACKAGE
+                ) {
+                    return annotation
+                }
+            }
+            return null
+        }
+
+        private fun deserializerName(
+            classDeclaration: KSClassDeclaration, forDeclaration: Boolean): String {
+            val baseName = classDeclaration.simpleName.asString()
+            return if (hasCompanion(classDeclaration)) {
+                if (forDeclaration) {
+                    "${baseName}.Companion.fromDataItem"
+                } else {
+                    // for call
+                    "${baseName}.fromDataItem"
+                }
+            } else {
+                "${baseName}_fromDataItem"
+            }
+        }
+
+        private fun hasCompanion(declaration: KSClassDeclaration): Boolean {
+            return getCompanion(declaration) != null
+        }
+
+        fun getCompanion(declaration: KSClassDeclaration): KSClassDeclaration? {
+            return declaration.declarations.filterIsInstance<KSClassDeclaration>()
+                .firstOrNull { it.isCompanionObject }
+        }
+
+        fun serializeValue(
+            codeBuilder: CodeBuilder,
+            code: String,
+            type: KSType
+        ): String {
+            val declaration = type.declaration
+            val qualifiedName = declaration.qualifiedName!!.asString()
+            when (qualifiedName) {
+                "kotlin.collections.Map" ->
+                    with(codeBuilder) {
+                        val map = varName("map")
+                        val mapBuilder = varName("mapBuilder")
+                        importQualifiedName(CBOR_MAP_TYPE)
+                        line("val $mapBuilder = CborMap.builder()")
+                        addSerializedMapValues(this, mapBuilder, code, type)
+                        line("val $map: DataItem = $mapBuilder.end().build()")
+                        return map
+                    }
+
+                "kotlin.collections.List", "kotlin.collections.Set" ->
+                    with(codeBuilder) {
+                        val array = varName("array")
+                        val arrayBuilder = varName("arrayBuilder")
+                        importQualifiedName(CBOR_ARRAY_TYPE)
+                        line("val $arrayBuilder = CborArray.builder()")
+                        block("for (value in $code)") {
+                            val value = serializeValue(
+                                this, "value",
+                                type.arguments[0].type!!.resolve()
+                            )
+                            line("$arrayBuilder.add($value)")
+                        }
+                        line("val $array: DataItem = $arrayBuilder.end().build()")
+                        return array
+                    }
+
+                "kotlin.String" -> {
+                    codeBuilder.importQualifiedName(TSTR_TYPE)
+                    return "Tstr($code)"
+                }
+                "kotlin.ByteArray" -> {
+                    codeBuilder.importQualifiedName(BSTR_TYPE)
+                    return "Bstr($code)"
+                }
+
+                "kotlin.Int" -> {
+                    codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
+                    return "$code.toLong().toDataItem"
+                }
+
+                "kotlin.Long", "kotlin.Float", "kotlin.Double", "kotlin.Boolean" -> {
+                    codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
+                    return "$code.toDataItem"
+                }
+
+                "kotlinx.datetime.Instant" -> {
+                    codeBuilder.importQualifiedName(TO_DATAITEM_DATETIMESTRING_FUN)
+                    return "$code.toDataItemDateTimeString"
+                }
+
+                "kotlinx.datetime.LocalDate" -> {
+                    codeBuilder.importQualifiedName(TO_DATAITEM_FULLDATE_FUN)
+                    return "$code.toDataItemFullDate"
+                }
+
+                DATA_ITEM_CLASS -> return code
+                else -> return if (declaration is KSClassDeclaration &&
+                    declaration.classKind == ClassKind.ENUM_CLASS
+                ) {
+                    "$code.name"
+                } else {
+                    codeBuilder.importQualifiedName(qualifiedName)
+                    if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
+                        codeBuilder.importFunctionName("toDataItem", declaration.packageName.asString())
+                    }
+                    "$code.toDataItem"
+                }
+            }
+        }
+
+        private fun addSerializedMapValues(
+            codeBuilder: CodeBuilder,
+            targetCode: String, sourceCode: String, sourceType: KSType
+        ) {
+            codeBuilder.block("for (entry in $sourceCode.entries)") {
+                val key = serializeValue(
+                    this, "entry.key",
+                    sourceType.arguments[0].type!!.resolve()
+                )
+                val value = serializeValue(
+                    this, "entry.value",
+                    sourceType.arguments[1].type!!.resolve()
+                )
+                line("$targetCode.put($key, $value)")
+            }
+        }
+
+        private fun typeArguments(codeBuilder: CodeBuilder, type: KSType): String {
+            val str = StringBuilder()
+            for (arg in type.arguments) {
+                if (str.isNotEmpty()) {
+                    str.append(", ")
+                }
+                str.append(typeRef(codeBuilder, arg.type!!.resolve()))
+            }
+            return str.toString()
+        }
+
+        fun typeRef(codeBuilder: CodeBuilder, type: KSType): String {
+            return when (val qualifiedName = type.declaration.qualifiedName!!.asString()) {
+                "kotlin.collections.Map" -> "Map<${typeArguments(codeBuilder, type)}>"
+                "kotlin.collections.List" -> "List<${typeArguments(codeBuilder, type)}>"
+                "kotlin.String" -> "String"
+                "kotlin.ByteArray" -> "ByteArray"
+                "kotlin.Long" -> "Long"
+                "kotlin.Int" -> "Int"
+                "kotlin.Float" -> "Float"
+                "kotlin.Double" -> "Double"
+                "kotlin.Boolean" -> "Boolean"
+                DATA_ITEM_CLASS -> "DataItem"
+                else -> {
+                    codeBuilder.importQualifiedName(qualifiedName)
+                    return type.declaration.simpleName.asString()
+                }
+            }
+        }
     }
 
     /**
@@ -302,240 +555,6 @@ class CborSymbolProcessor(
             name
         } else {
             name.substring(superName.length)
-        }
-    }
-
-    private fun findAnnotation(declaration: KSDeclaration, simpleName: String): KSAnnotation? {
-        for (annotation in declaration.annotations) {
-            if (annotation.shortName.asString() == simpleName &&
-                annotation.annotationType.resolve().declaration.packageName.asString() == ANNOTATION_PACKAGE
-            ) {
-                return annotation
-            }
-        }
-        return null
-    }
-
-    private fun deserializerName(
-            classDeclaration: KSClassDeclaration, forDeclaration: Boolean): String {
-        val baseName = classDeclaration.simpleName.asString()
-        return if (hasCompanion(classDeclaration)) {
-            if (forDeclaration) {
-                "${baseName}.Companion.fromDataItem"
-            } else {
-                // for call
-                "${baseName}.fromDataItem"
-            }
-        } else {
-            "${baseName}_fromDataItem"
-        }
-    }
-
-    private fun hasCompanion(declaration: KSClassDeclaration): Boolean {
-        return declaration.declarations.filterIsInstance<KSClassDeclaration>()
-            .firstOrNull { it.isCompanionObject } != null
-    }
-
-    private fun serializeValue(
-        codeBuilder: CodeBuilder,
-        code: String,
-        type: KSType
-    ): String {
-        val declaration = type.declaration
-        val qualifiedName = declaration.qualifiedName!!.asString()
-        when (qualifiedName) {
-            "kotlin.collections.Map" ->
-                with(codeBuilder) {
-                    val map = varName("map")
-                    val mapBuilder = varName("mapBuilder")
-                    importQualifiedName(CBOR_MAP_TYPE)
-                    line("val $mapBuilder = CborMap.builder()")
-                    addSerializedMapValues(this, mapBuilder, code, type)
-                    line("val $map: DataItem = $mapBuilder.end().build()")
-                    return map
-                }
-
-            "kotlin.collections.List", "kotlin.collections.Set" ->
-                with(codeBuilder) {
-                    val array = varName("array")
-                    val arrayBuilder = varName("arrayBuilder")
-                    importQualifiedName(CBOR_ARRAY_TYPE)
-                    line("val $arrayBuilder = CborArray.builder()")
-                    block("for (value in $code)") {
-                        val value = serializeValue(
-                            this, "value",
-                            type.arguments[0].type!!.resolve()
-                        )
-                        line("$arrayBuilder.add($value)")
-                    }
-                    line("val $array: DataItem = $arrayBuilder.end().build()")
-                    return array
-                }
-
-            "kotlin.String" -> return code
-            "kotlin.ByteArray" -> {
-                codeBuilder.importQualifiedName(BSTR_TYPE)
-                return "Bstr($code)"
-            }
-
-            "kotlin.Int" -> return "$code.toLong()"
-            "kotlin.Long", "kotlin.Float", "kotlin.Double", "kotlin.Boolean" -> return code
-
-            "kotlinx.datetime.Instant" -> {
-                codeBuilder.importQualifiedName(TO_DATAITEM_DATETIMESTRING_FUN)
-                return "$code.toDataItemDateTimeString"
-            }
-
-            "kotlinx.datetime.LocalDate" -> {
-                codeBuilder.importQualifiedName(TO_DATAITEM_FULLDATE_FUN)
-                return "$code.toDataItemFullDate"
-            }
-
-            DATA_ITEM_CLASS -> return code
-            else -> return if (declaration is KSClassDeclaration &&
-                declaration.classKind == ClassKind.ENUM_CLASS
-            ) {
-                "$code.name"
-            } else {
-                codeBuilder.importQualifiedName(qualifiedName)
-                if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
-                    codeBuilder.importFunctionName("toDataItem", declaration.packageName.asString())
-                }
-                "$code.toDataItem"
-            }
-        }
-    }
-
-    private fun addSerializedMapValues(
-        codeBuilder: CodeBuilder,
-        targetCode: String, sourceCode: String, sourceType: KSType
-    ) {
-        codeBuilder.block("for (entry in $sourceCode.entries)") {
-            val key = serializeValue(
-                this, "entry.key",
-                sourceType.arguments[0].type!!.resolve()
-            )
-            val value = serializeValue(
-                this, "entry.value",
-                sourceType.arguments[1].type!!.resolve()
-            )
-            line("$targetCode.put($key, $value)")
-        }
-    }
-
-    private fun deserializeValue(
-        codeBuilder: CodeBuilder,
-        code: String,
-        type: KSType
-    ): String {
-        val declaration = type.declaration
-        val qualifiedName = declaration.qualifiedName!!.asString()
-        return when (qualifiedName) {
-            "kotlin.collections.Map" ->
-                with(codeBuilder) {
-                    val map = varName("map")
-                    line("val $map = mutableMapOf<${typeArguments(this, type)}>()")
-                    addDeserializedMapValues(this, map, code, type)
-                    map
-                }
-
-            "kotlin.collections.List", "kotlin.collections.Set" ->
-                with(codeBuilder) {
-                    val array = varName("array")
-                    val builder = if (qualifiedName == "kotlin.collections.Set") {
-                        "mutableSetOf"
-                    } else {
-                        "mutableListOf"
-                    }
-                    line("val $array = $builder<${typeArguments(this, type)}>()")
-                    block("for (value in $code.asArray)") {
-                        val value = deserializeValue(
-                            this, "value",
-                            type.arguments[0].type!!.resolve()
-                        )
-                        line("$array.add($value)")
-                    }
-                    array
-                }
-
-            "kotlin.String" -> return "$code.asTstr"
-            "kotlin.ByteArray" -> return "$code.asBstr"
-            "kotlin.Long" -> return "$code.asNumber"
-            "kotlin.Int" -> return "$code.asNumber.toInt()"
-            "kotlin.Float" -> return "$code.asFloat"
-            "kotlin.Double" -> return "$code.asDouble"
-            "kotlin.Boolean" -> return "$code.asBoolean"
-            "kotlinx.datetime.Instant" -> "$code.asDateTimeString"
-            "kotlinx.datetime.LocalDate" -> "$code.asDateString"
-            DATA_ITEM_CLASS -> return code
-            else -> return if (declaration is KSClassDeclaration &&
-                declaration.classKind == ClassKind.ENUM_CLASS
-            ) {
-                "${typeRef(codeBuilder, type)}.valueOf($code.asTstr)"
-            } else {
-                codeBuilder.importQualifiedName(qualifiedName)
-                val deserializer = deserializerName(declaration as KSClassDeclaration, false)
-                if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
-                    val shortName = deserializer.substring(deserializer.lastIndexOf(".") + 1)
-                    codeBuilder.importFunctionName(shortName, declaration.packageName.asString())
-                }
-                "${deserializer}($code)"
-            }
-        }
-    }
-
-    private fun addDeserializedMapValues(
-        codeBuilder: CodeBuilder,
-        targetCode: String, sourceCode: String, targetType: KSType,
-        fieldNameSet: String? = null
-    ) {
-        val entry = codeBuilder.varName("entry")
-        codeBuilder.block("for ($entry in $sourceCode.asMap.entries)") {
-            if (fieldNameSet != null) {
-                importQualifiedName(TSTR_TYPE)
-                block("if ($entry.key is Tstr && $fieldNameSet.contains($entry.key.asTstr))") {
-                    line("continue")
-                }
-            }
-            val key = deserializeValue(
-                this, "$entry.key",
-                targetType.arguments[0].type!!.resolve()
-            )
-            val value = deserializeValue(
-                this, "$entry.value",
-                targetType.arguments[1].type!!.resolve()
-            )
-            line("$targetCode.put($key, $value)")
-        }
-    }
-
-    private fun typeArguments(codeBuilder: CodeBuilder, type: KSType): String {
-        val str = StringBuilder()
-        for (arg in type.arguments) {
-            if (str.isNotEmpty()) {
-                str.append(", ")
-            }
-            str.append(typeRef(codeBuilder, arg.type!!.resolve()))
-        }
-        return str.toString()
-    }
-
-    private fun typeRef(codeBuilder: CodeBuilder, type: KSType): String {
-        return when (val qualifiedName = type.declaration.qualifiedName!!.asString()) {
-            "kotlin.collections.Map" -> "Map<${typeArguments(codeBuilder, type)}>"
-            "kotlin.collections.List" -> "List<${typeArguments(codeBuilder, type)}>"
-            "kotlin.String" -> "String"
-            "kotlin.ByteArray" -> "ByteArray"
-            "kotlin.Long" -> "Long"
-            "kotlin.Int" -> "Int"
-            "kotlin.Float" -> "Float"
-            "kotlin.Double" -> "Double"
-            "kotlin.Boolean" -> "Boolean"
-            DATA_ITEM_CLASS -> "DataItem"
-            else -> {
-                codeBuilder.importQualifiedName(qualifiedName)
-                return type.declaration.simpleName.asString()
-            }
         }
     }
 

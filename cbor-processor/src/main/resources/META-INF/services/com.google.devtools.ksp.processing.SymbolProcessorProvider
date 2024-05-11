@@ -1,1 +1,1 @@
-com.android.identity.cbor.processor.CborSymbolProcessorProvider
+com.android.identity.processor.MainProcessorProvider

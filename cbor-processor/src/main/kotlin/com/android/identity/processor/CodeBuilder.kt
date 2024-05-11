@@ -1,4 +1,4 @@
-package com.android.identity.cbor.processor
+package com.android.identity.processor
 
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
@@ -135,13 +135,18 @@ class CodeBuilder(
      */
     fun block(
         before: String, hasBlockAfter: Boolean = false, hasBlockBefore: Boolean = false,
+        lambdaParameters: String = "",
         lambda: CodeBuilder.() -> Unit
     ) {
         if (!hasBlockBefore) {
             startLine()
         }
         append(before)
-        append(" {")
+        if (lambdaParameters.isEmpty()) {
+            append(" {")
+        } else {
+            append(" { $lambdaParameters ->")
+        }
         endLine()
         withIndent(lambda)
         startLine()
@@ -154,7 +159,7 @@ class CodeBuilder(
      */
     fun optionalBlock(before: String?, lambda: CodeBuilder.() -> Unit) {
         if (before != null) {
-            block(before, hasBlockAfter = false, hasBlockBefore = false, lambda)
+            block(before, lambda = lambda)
         } else {
             lambda()
         }
