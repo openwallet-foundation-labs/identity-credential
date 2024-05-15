@@ -60,7 +60,8 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
     }
 
     override suspend fun handleNfcTunnelResponse(
-        evidence: EvidenceResponseIcaoNfcTunnel): EvidenceRequestIcaoNfcTunnel? {
+        evidence: EvidenceResponseIcaoNfcTunnel
+    ): EvidenceRequestIcaoNfcTunnel? {
         if (processingThread == null) {
             // Handshake response
             val thread = Thread {
@@ -270,8 +271,10 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
                     } else {
                         EvidenceRequestIcaoNfcTunnelType.READING
                     }
-                requestChannel.send(OptionalRequest(EvidenceRequestIcaoNfcTunnel(
-                    requestType, passThrough(), progressPercent, commandAPDU!!.bytes)))
+                requestChannel.send(OptionalRequest(
+                    EvidenceRequestIcaoNfcTunnel(
+                    requestType, passThrough(), progressPercent, commandAPDU!!.bytes)
+                ))
                 val evidenceResponse = responseChannel.receive()
                 ResponseAPDU(evidenceResponse.response)
             }

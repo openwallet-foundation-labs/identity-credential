@@ -658,6 +658,7 @@ class DocumentModel(
                     )
                 }
                 requestCpoFlow.sendCredentials(credentialRequests)
+                requestCpoFlow.complete()
                 if (!document.refreshState(issuingAuthorityRepository)) {
                     return -1
                 }

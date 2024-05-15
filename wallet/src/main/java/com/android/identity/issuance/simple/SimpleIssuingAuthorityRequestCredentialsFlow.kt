@@ -1,5 +1,6 @@
 package com.android.identity.issuance.simple
 
+import com.android.identity.cbor.DataItem
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.RequestCredentialsFlow
@@ -17,4 +18,14 @@ class SimpleIssuingAuthorityRequestCredentialsFlow(
         // TODO: should check attestations
         issuingAuthority.addCpoRequests(documentId, credentialRequests)
     }
+
+    override suspend fun complete() {
+        // noop
+    }
+
+    // Unused in client implementations
+    override val flowState: DataItem
+        get() {
+            throw UnsupportedOperationException("Unexpected call")
+        }
 }

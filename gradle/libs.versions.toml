@@ -1,5 +1,6 @@
 [versions]
     compile-sdk = "34"
+    javax-servlet-api = "4.0.1"
     kotlin-reflect = "1.9.23"
     min-sdk = "26"
     dokka = "1.9.20"
@@ -52,6 +53,7 @@
     ktlint = "12.1.0"
     tink = "1.13.0"
     kotlin-test = "1.9.20"
+    ktor = "2.3.10"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -137,6 +139,10 @@
     ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
 
     kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin-test"}
+
+    ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+    ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+    javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]

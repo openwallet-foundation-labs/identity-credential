@@ -1,13 +1,13 @@
 package com.android.identity.issuance.evidence
 
-import com.android.identity.issuance.IssuingAuthority
+import com.android.identity.issuance.IssuingAuthorityMain
 
 /**
  * Types of EvidenceRequestIcaoTunnel messages.
  */
 enum class EvidenceRequestIcaoNfcTunnelType {
     /**
-     * Requests client to establish the tunnel for NFC messages between the [IssuingAuthority] and
+     * Requests client to establish the tunnel for NFC messages between the [IssuingAuthorityMain] and
      * the chip in a MRTD (Machine-readable Travel Document, e.g. a passport).
      *
      * Does not carry any payload, [EvidenceRequestIcaoNfcTunnel.message] must be an empty array.

@@ -1,5 +1,6 @@
 package com.android.identity.issuance.simple
 
+import com.android.identity.cbor.DataItem
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.ProofingFlow
@@ -34,11 +35,8 @@ class SimpleIssuingAuthorityProofingFlow(
         return currentNode.requests
     }
 
-    override suspend fun sendEvidence(evidenceResponse: EvidenceResponse?) {
+    override suspend fun sendEvidence(evidenceResponse: EvidenceResponse) {
         Logger.d(TAG, "Receiving evidence $evidenceResponse")
-        if (evidenceResponse == null) {
-            throw IllegalStateException("Evidence must be supplied")
-        }
         val evidence = if (evidenceResponse is EvidenceResponseIcaoNfcTunnel) {
             if (nfcTunnel == null) {
                 nfcTunnel = tunnelDriverFactory!!()
@@ -65,8 +63,13 @@ class SimpleIssuingAuthorityProofingFlow(
         this.currentNode = currentNode.selectFollowUp(evidence)
     }
 
-    override suspend fun completeProofing() {
+    override suspend fun complete() {
         issuingAuthority.setProofingProcessing(documentId)
     }
 
+    // Unused in client implementations
+    override val flowState: DataItem
+        get() {
+            throw UnsupportedOperationException("Unexpected call")
+        }
 }

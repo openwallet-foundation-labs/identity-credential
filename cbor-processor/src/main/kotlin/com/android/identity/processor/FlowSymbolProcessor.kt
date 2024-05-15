@@ -325,7 +325,7 @@ class FlowSymbolProcessor(
                     line("flowComplete = true")
                 }
                 emptyLine()
-                block("fun checkFlowNotComplete()") {
+                block("private fun checkFlowNotComplete()") {
                     block("if (flowComplete)") {
                         line("throw IllegalStateException(\"flow is already complete\")")
                     }
@@ -360,18 +360,20 @@ class FlowSymbolProcessor(
             emptyLine()
             block("override suspend fun ${opDeclaration(this, op)}") {
                 line("checkFlowNotComplete()")
+                val parameters = op.parameters.map { parameter ->
+                    if (parameter.flowTypeInfo == null) {
+                        CborSymbolProcessor.serializeValue(
+                            this, parameter.name, parameter.type
+                        )
+                    } else {
+                        "${parameter.name}.flowState"
+                    }
+                }
                 line("val flowParameters = listOf<DataItem>(")
                 withIndent {
                     line("this.flowState,")
-                    op.parameters.forEach { parameter ->
-                        val serialization = if (parameter.flowTypeInfo == null) {
-                            CborSymbolProcessor.serializeValue(
-                                this, parameter.name, parameter.type
-                            )
-                        } else {
-                            "${parameter.name}.flowState"
-                        }
-                        line("$serialization,")
+                    parameters.forEach { parameter ->
+                        line("$parameter,")
                     }
                 }
                 line(")")

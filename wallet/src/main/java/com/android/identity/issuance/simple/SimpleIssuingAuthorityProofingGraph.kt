@@ -210,7 +210,8 @@ class SimpleIssuingAuthorityProofingGraph {
     class SimpleNode(
         override val nodeId: String,
         private val followUp: Node?,
-        private val request: EvidenceRequest): Node() {
+        private val request: EvidenceRequest
+    ): Node() {
 
         override val requests: List<EvidenceRequest>
             get() = listOf(request)
@@ -246,8 +247,11 @@ class SimpleIssuingAuthorityProofingGraph {
         private val noAuthentication: Node): Node() {
 
         override val requests: List<EvidenceRequest>
-            get() = listOf(EvidenceRequestIcaoNfcTunnel(EvidenceRequestIcaoNfcTunnelType.HANDSHAKE,
-                !basicAuthentication, 0, byteArrayOf()))
+            get() = listOf(
+                EvidenceRequestIcaoNfcTunnel(
+                    EvidenceRequestIcaoNfcTunnelType.HANDSHAKE,
+                !basicAuthentication, 0, byteArrayOf())
+            )
         override val followUps: Iterable<Node>
             get() = setOf(successfulActiveAuthentication, successfulChipAuthentication, noAuthentication)
 

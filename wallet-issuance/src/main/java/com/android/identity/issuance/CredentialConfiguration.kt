@@ -1,8 +1,11 @@
 package com.android.identity.issuance
 
+import com.android.identity.cbor.annotation.CborSerializable
+
 /**
  * The configuration to use when creating new credentials.
  */
+@CborSerializable
 data class CredentialConfiguration(
     /**
      * The challenge to use when creating the device-bound key.

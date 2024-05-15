@@ -4,9 +4,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
@@ -97,7 +101,7 @@ fun AddToWalletScreen(
                             R.string.accessibility_artwork_for,
                             issuerDisplayData.configuration.issuingAuthorityName
                         ),
-                        modifier = Modifier.height(48.dp).padding(4.dp)
+                        modifier = Modifier.size(48.dp).padding(4.dp)
                     )
                     Column(
                         modifier = Modifier.align(Alignment.CenterVertically)

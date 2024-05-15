@@ -1,11 +1,13 @@
 package com.android.identity.issuance
 
+import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.EcPublicKey
 import kotlinx.datetime.Instant
 
 /**
  * This data structure contains a data for a credential, minted by the issuer.
  */
+@CborSerializable
 data class CredentialData(
     /**
      * The secure-area bound key that the credential is for.

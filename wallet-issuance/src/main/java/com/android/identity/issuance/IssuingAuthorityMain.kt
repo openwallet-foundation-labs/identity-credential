@@ -1,22 +1,29 @@
 package com.android.identity.issuance
 
-import kotlinx.coroutines.flow.SharedFlow
+import com.android.identity.flow.FlowBaseInterface
+import com.android.identity.flow.annotation.FlowGetter
+import com.android.identity.flow.annotation.FlowInterface
+import com.android.identity.flow.annotation.FlowMethod
 
-/**
- * An interface representing an Issuing Authority.
- *
- * An [IssuingAuthority] instance represents a particular document type from a particular
- * issuer. If a single issuer has documents of different types, an [IssuingAuthority] instance
- * is needed for each type.
- *
- * Documents are identifier by an identifier - `documentId` - and each document may have
- * multiple credentials associated with it.
- */
-interface IssuingAuthority {
+// This interface mostly follows com.android.identity.issuance.IssuingAuthority in the wallet
+// app. As we move issuing authority functionality to the server, the client side will become
+// more of a set-up and caching class, rather than delegating to this one.
+//
+// TODO: down the road rename this to just IssuingAuthority, and rename today's IssuingAuthority to
+// IssuingAuthorityClient.
+//
+// TODO: figure out how we are going to handle notifications.
+@FlowInterface
+interface IssuingAuthorityMain : FlowBaseInterface {
     /**
      * Static information about the Issuing Authority.
+     *
+     * Queried from all issuing authorities at initialization time.
+     *
+     * TODO: this needs to be hooked on the client.
      */
-    val configuration: IssuingAuthorityConfiguration
+    @FlowGetter
+    suspend fun getConfiguration(): IssuingAuthorityConfiguration
 
     /**
      * Calls the issuer to start creating a document.
@@ -27,6 +34,7 @@ interface IssuingAuthority {
      *
      * @return a [RegistrationFlow] instance.
      */
+    @FlowMethod
     suspend fun register(): RegistrationFlow
 
     /**
@@ -34,14 +42,8 @@ interface IssuingAuthority {
      *
      * @throws UnknownDocumentException if the given `documentId` isn't valid.
      */
+    @FlowMethod
     suspend fun getState(documentId: String): DocumentState
-
-    /**
-     * A [SharedFlow] which can be used to listen for when a document has changed state
-     * on the issuer side. The first element in the pair is an [IssuingAuthority], the second
-     * element is the `documentId`.
-     */
-    val eventFlow: SharedFlow<Pair<IssuingAuthority, String>>
 
     /**
      * Calls the issuer to start proofing the applicant.
@@ -57,6 +59,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.PROOFING_REQUIRED].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun proof(documentId: String): ProofingFlow
 
     /**
@@ -68,6 +71,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in condition [DocumentCondition.CONFIGURATION_AVAILABLE].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration
 
     /**
@@ -85,6 +89,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun requestCredentials(documentId: String): RequestCredentialsFlow
 
     /**
@@ -97,6 +102,7 @@ interface IssuingAuthority {
      *
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun getCredentials(documentId: String): List<CredentialData>
 
     /**
@@ -125,6 +131,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,
