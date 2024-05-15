@@ -1,10 +1,12 @@
 package com.android.identity.issuance
 
+import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.CertificateChain
 
 /**
  * A request for the issuer to mint a credential
  */
+@CborSerializable
 data class CredentialRequest(
     /**
      * The requested credential presentation format.

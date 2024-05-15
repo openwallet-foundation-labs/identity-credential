@@ -29,7 +29,8 @@ interface SimpleIcaoNfcTunnelDriver {
      * When null is returned the tunnel is closed.
      */
     suspend fun handleNfcTunnelResponse(
-        evidence: EvidenceResponseIcaoNfcTunnel): EvidenceRequestIcaoNfcTunnel?
+        evidence: EvidenceResponseIcaoNfcTunnel
+    ): EvidenceRequestIcaoNfcTunnel?
 
     /**
      * Collects all the data gathered by communicating through the tunnel as [EvidenceResponse]

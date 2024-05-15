@@ -1,11 +1,14 @@
 package com.android.identity.issuance
 
+import com.android.identity.cbor.annotation.CborSerializable
+
 /**
  * Configuration data for the issuing authority.
  *
  * This data is static and available to the application before any documents are provisioned.
  * It can be used to present a menu of available documents to the user.
  */
+@CborSerializable
 data class IssuingAuthorityConfiguration(
     /**
      * Unique identifier for this object

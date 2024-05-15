@@ -138,6 +138,7 @@ class WalletApplication : Application() {
         issuingAuthorityRepository = IssuingAuthorityRepository().apply {
             add(SelfSignedMdlIssuingAuthority(this@WalletApplication, storageEngine))
             add(SelfSignedEuPidIssuingAuthority(this@WalletApplication, storageEngine))
+            add(RemoteIssuingAuthority())
         }
 
         // init TrustManager

@@ -45,7 +45,7 @@ class CborSymbolProcessor(
             val declaration = type.declaration
             val qualifiedName = declaration.qualifiedName!!.asString()
             return when (qualifiedName) {
-                "kotlin.collections.Map" ->
+                "kotlin.collections.Map", "kotlin.collections.MutableMap" ->
                     with(codeBuilder) {
                         val map = varName("map")
                         line("val $map = mutableMapOf<${typeArguments(this, type)}>()")
@@ -53,10 +53,11 @@ class CborSymbolProcessor(
                         map
                     }
 
-                "kotlin.collections.List", "kotlin.collections.Set" ->
+                "kotlin.collections.List", "kotlin.collections.MutableList",
+                "kotlin.collections.Set", "kotlin.collections.MutableSet" ->
                     with(codeBuilder) {
                         val array = varName("array")
-                        val builder = if (qualifiedName == "kotlin.collections.Set") {
+                        val builder = if (qualifiedName.endsWith("Set")) {
                             "mutableSetOf"
                         } else {
                             "mutableListOf"
@@ -169,7 +170,7 @@ class CborSymbolProcessor(
             val declaration = type.declaration
             val qualifiedName = declaration.qualifiedName!!.asString()
             when (qualifiedName) {
-                "kotlin.collections.Map" ->
+                "kotlin.collections.Map", "kotlin.collections.MutableMap" ->
                     with(codeBuilder) {
                         val map = varName("map")
                         val mapBuilder = varName("mapBuilder")
@@ -180,7 +181,8 @@ class CborSymbolProcessor(
                         return map
                     }
 
-                "kotlin.collections.List", "kotlin.collections.Set" ->
+                "kotlin.collections.List", "kotlin.collections.MutableList",
+                "kotlin.collections.Set", "kotlin.collections.MutableSet" ->
                     with(codeBuilder) {
                         val array = varName("array")
                         val arrayBuilder = varName("arrayBuilder")

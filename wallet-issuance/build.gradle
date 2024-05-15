@@ -1,0 +1,25 @@
+plugins {
+    id 'java-library'
+    alias libs.plugins.org.jetbrains.kotlin.jvm
+    alias libs.plugins.dokka
+    alias libs.plugins.ksp
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+dependencies {
+    implementation project(':cbor-processor')
+    implementation project(':identity')
+    implementation project(':identity-doctypes')
+    implementation project(':identity-mdoc')
+    implementation libs.kotlinx.datetime
+
+    ksp project(':cbor-processor')
+}

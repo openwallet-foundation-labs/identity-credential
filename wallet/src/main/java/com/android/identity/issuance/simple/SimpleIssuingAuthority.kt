@@ -247,13 +247,13 @@ abstract class SimpleIssuingAuthority(
     }
 
 
-    override fun register(): RegistrationFlow {
+    override suspend fun register(): RegistrationFlow {
         val now = Clock.System.now()
         val documentId = "Document_${now}_${Random.nextInt()}"
         return SimpleIssuingAuthorityRegistrationFlow(this, documentId)
     }
 
-    override fun proof(documentId: String): ProofingFlow {
+    override suspend fun proof(documentId: String): ProofingFlow {
         val issuerDocument = loadIssuerDocument(documentId)
         return SimpleIssuingAuthorityProofingFlow(
             this,
@@ -275,7 +275,7 @@ abstract class SimpleIssuingAuthority(
         return issuerDocument.documentConfiguration!!
     }
 
-    override fun requestCredentials(documentId: String): RequestCredentialsFlow {
+    override suspend fun requestCredentials(documentId: String): RequestCredentialsFlow {
         val issuerDocument = loadIssuerDocument(documentId)
         check(issuerDocument.state == DocumentCondition.READY)
 
@@ -295,13 +295,15 @@ abstract class SimpleIssuingAuthority(
         val pendingCPOs = mutableListOf<SimpleCredentialRequest>()
         for (cpoRequest in issuerDocument.simpleCredentialRequests) {
             if (now >= cpoRequest.deadline) {
-                availableCPOs.add(CredentialData(
+                availableCPOs.add(
+                    CredentialData(
                     cpoRequest.authenticationKey,
                     validFrom,
                     validUntil,
                     cpoRequest.format,
                     cpoRequest.data,
-                ))
+                )
+                )
             } else {
                 pendingCPOs.add(cpoRequest)
             }
@@ -346,7 +348,8 @@ abstract class SimpleIssuingAuthority(
     }
 
     fun addCollectedEvidence(
-        documentId: String, nodeId: String, evidenceResponse: EvidenceResponse) {
+        documentId: String, nodeId: String, evidenceResponse: EvidenceResponse
+    ) {
         val issuerDocument = loadIssuerDocument(documentId)
         issuerDocument.collectedEvidence[nodeId] = evidenceResponse
         saveIssuerDocument(documentId, issuerDocument)

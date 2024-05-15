@@ -1,8 +1,11 @@
 package com.android.identity.issuance
 
+import com.android.identity.cbor.annotation.CborSerializable
+
 /**
  * Issuer-specified configuration used when registering a new document.
  */
+@CborSerializable
 data class RegistrationConfiguration(
     /**
      * The identifier to be used in all future communications to refer

@@ -2,6 +2,7 @@ package com.android.identity.issuance
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.DataItem
 import kotlinx.datetime.Instant
 
 /**
@@ -36,24 +37,31 @@ data class DocumentState(
     ) {
     companion object {
         fun fromCbor(encodedData: ByteArray): DocumentState {
-            val map = Cbor.decode(encodedData)
+            return fromDataItem(Cbor.decode(encodedData))
+        }
+
+        fun fromDataItem(dataItem: DataItem): DocumentState {
             return DocumentState(
-                Instant.fromEpochMilliseconds(map["timestamp"].asNumber),
-                DocumentCondition.fromInt(map["condition"].asNumber.toInt()),
-                map["numPendingCredentials"].asNumber.toInt(),
-                map["numAvailableCredentials"].asNumber.toInt()
+                Instant.fromEpochMilliseconds(dataItem["timestamp"].asNumber),
+                DocumentCondition.fromInt(dataItem["condition"].asNumber.toInt()),
+                dataItem["numPendingCredentials"].asNumber.toInt(),
+                dataItem["numAvailableCredentials"].asNumber.toInt()
             )
         }
     }
 
     fun toCbor(): ByteArray {
-        return Cbor.encode(
-            CborMap.builder()
+        return Cbor.encode(toDataItem)
+    }
+
+    val toDataItem: DataItem
+        get() {
+            return CborMap.builder()
                 .put("timestamp", timestamp.toEpochMilliseconds())
                 .put("condition", condition.value)
                 .put("numPendingCredentials", numPendingCredentials)
                 .put("numAvailableCredentials", numAvailableCredentials)
                 .end()
-                .build())
-    }
+                .build()
+        }
 }

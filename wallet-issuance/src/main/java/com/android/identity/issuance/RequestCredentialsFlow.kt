@@ -1,9 +1,15 @@
 package com.android.identity.issuance
 
+import com.android.identity.flow.FlowBaseInterface
+import com.android.identity.flow.annotation.FlowGetter
+import com.android.identity.flow.annotation.FlowInterface
+import com.android.identity.flow.annotation.FlowMethod
+
 /**
  * A flow used to request new credentials.
  */
-interface RequestCredentialsFlow {
+@FlowInterface
+interface RequestCredentialsFlow : FlowBaseInterface {
 
     /**
      * Gets the configuration to use for credentials.
@@ -14,6 +20,7 @@ interface RequestCredentialsFlow {
      *
      * @return the [CredentialConfiguration] to use.
      */
+    @FlowMethod
     suspend fun getCredentialConfiguration(): CredentialConfiguration
 
     /**
@@ -27,5 +34,6 @@ interface RequestCredentialsFlow {
      *   request for a issuer data generation along with the format requested.
      * @throws IllegalArgumentException if the issuer rejects the one or more of the requests.
      */
+    @FlowMethod
     suspend fun sendCredentials(credentialRequests: List<CredentialRequest>)
 }

@@ -88,7 +88,8 @@ fun EvidenceRequestMessageView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        if (evidenceRequest.rejectButtonText != null) {
+        val rejectButtonText = evidenceRequest.rejectButtonText
+        if (rejectButtonText != null) {
             Button(
                 modifier = Modifier.padding(8.dp),
                 onClick = {
@@ -98,7 +99,7 @@ fun EvidenceRequestMessageView(
                         documentStore = documentStore
                     )
             }) {
-                Text(evidenceRequest.rejectButtonText)
+                Text(rejectButtonText)
             }
         }
         Button(

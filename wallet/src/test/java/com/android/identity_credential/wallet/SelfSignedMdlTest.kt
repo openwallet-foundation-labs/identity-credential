@@ -71,6 +71,7 @@ class SelfSignedMdlTest {
         val credentialId = credentialRegistrationConfiguration.documentId
         val registrationResponse = RegistrationResponse(true)
         registerdocumentFlow.sendDocumentRegistrationResponse(registrationResponse)
+        registerdocumentFlow.complete()
 
         // Check we're now in the proofing state.
         Assert.assertEquals(
@@ -111,7 +112,8 @@ class SelfSignedMdlTest {
         proofingFlow.sendEvidence(
             EvidenceResponseQuestionMultipleChoice(
                 (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next()
-        ))
+        )
+        )
 
         // Fourth piece of evidence to return...
         evidenceToGet = proofingFlow.getEvidenceRequests()
@@ -125,7 +127,7 @@ class SelfSignedMdlTest {
         // after we signal that proofing is complete
         evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(0, evidenceToGet.size)
-        proofingFlow.completeProofing()
+        proofingFlow.complete()
 
         Assert.assertEquals(
             DocumentCondition.PROOFING_PROCESSING,
@@ -163,6 +165,7 @@ class SelfSignedMdlTest {
             )
         }
         requestCpoFlow.sendCredentials(credentialRequests)
+        requestCpoFlow.complete()
 
         // documentInformation should now reflect that the CPOs are pending and not
         // yet available..

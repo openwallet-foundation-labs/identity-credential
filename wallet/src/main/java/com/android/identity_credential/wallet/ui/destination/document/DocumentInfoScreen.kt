@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -267,7 +268,7 @@ fun DocumentInfoScreen(
                 Image(
                     bitmap = documentInfo.documentArtwork.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.name),
-                    modifier = Modifier.height(200.dp)
+                    modifier = Modifier.height(200.dp).fillMaxSize()
                 )
             }
             Row(
@@ -300,7 +301,7 @@ fun DocumentInfoScreen(
                 Image(
                     bitmap = documentInfo.issuerLogo.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.issuerName),
-                    modifier = Modifier.height(150.dp)
+                    modifier = Modifier.height(150.dp).fillMaxSize()
                 )
             }
         }

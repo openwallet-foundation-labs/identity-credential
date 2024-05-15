@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet
 
 import android.os.Looper
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -80,6 +79,7 @@ class ProvisioningViewModel : ViewModel() {
                     settingsModel.developerModeEnabled.value!!
                 )
                 createDocumentKeyFlow.sendDocumentRegistrationResponse(response)
+                createDocumentKeyFlow.complete()
 
                 val documentIdentifier =
                     issuer.configuration.identifier + "_" + issuerDocumentIdentifier
@@ -102,7 +102,7 @@ class ProvisioningViewModel : ViewModel() {
                         it.refreshState(issuingAuthorityRepository)
                     }
                     documentStore.addDocument(document!!)
-                    proofingFlow!!.completeProofing()
+                    proofingFlow!!.complete()
                 } else {
                     nextEvidenceRequest.value = evidenceRequests!!.first()
                     state.value = State.EVIDENCE_REQUESTS_READY
@@ -138,7 +138,7 @@ class ProvisioningViewModel : ViewModel() {
                         it.refreshState(issuingAuthorityRepository)
                     }
                     documentStore.addDocument(document!!)
-                    proofingFlow!!.completeProofing()
+                    proofingFlow!!.complete()
                 } else {
                     nextEvidenceRequest.value = evidenceRequests!!.first()
                     state.value = State.EVIDENCE_REQUESTS_READY

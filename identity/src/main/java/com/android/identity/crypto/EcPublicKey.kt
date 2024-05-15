@@ -58,6 +58,11 @@ sealed class EcPublicKey(
         return sb.toString()
     }
 
+    val toDataItem: DataItem
+        get() {
+            return toCoseKey().toDataItem
+        }
+
     companion object {
         /**
          * Creates an [EcPublicKey] from a PEM encoded string.
@@ -118,6 +123,9 @@ sealed class EcPublicKey(
                 }
             }
 
+        fun fromDataItem(dataItem: DataItem): EcPublicKey {
+            return CoseKey.fromDataItem(dataItem).ecPublicKey
+        }
     }
 }
 

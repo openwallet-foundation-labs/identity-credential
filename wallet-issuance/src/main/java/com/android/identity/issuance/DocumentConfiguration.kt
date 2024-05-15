@@ -2,7 +2,9 @@ package com.android.identity.issuance
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Simple
+import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.document.NameSpacedData
 
 /**
@@ -47,27 +49,33 @@ data class DocumentConfiguration(
 ) {
     companion object {
         fun fromCbor(encodedData: ByteArray): DocumentConfiguration {
-            val map = Cbor.decode(encodedData)
-            return DocumentConfiguration(
-                map["name"].asTstr,
-                map["cardArt"].asBstr,
-                map["mdocDocType"].asTstr,
-                NameSpacedData.fromEncodedCbor(map["staticData"].asBstr),
-                map.getOrDefault("requireUserAuthenticationToViewDocument", Simple.FALSE).asBoolean
-            )
+            return fromDataItem(Cbor.decode(encodedData))
         }
 
+        fun fromDataItem(dataItem: DataItem): DocumentConfiguration {
+            return DocumentConfiguration(
+                dataItem["name"].asTstr,
+                dataItem["cardArt"].asBstr,
+                dataItem["mdocDocType"].asTstr,
+                NameSpacedData.fromEncodedCbor(dataItem["staticData"].asBstr),
+                dataItem.getOrDefault("requireUserAuthenticationToViewDocument", Simple.FALSE).asBoolean
+            )
+        }
     }
 
     fun toCbor(): ByteArray {
-        return Cbor.encode(
-            CborMap.builder()
-                .put("name", displayName)
-                .put("cardArt", cardArt)
-                .put("mdocDocType", mdocDocType)
-                .put("staticData", staticData.encodeAsCbor())
-                .put("requireUserAuthenticationToViewDocument", requireUserAuthenticationToViewDocument)
-                .end()
-                .build())
+        return Cbor.encode(toDataItem)
     }
+
+    val toDataItem: DataItem
+        get() {
+            return CborMap.builder()
+                    .put("name", displayName)
+                    .put("cardArt", cardArt)
+                    .put("mdocDocType", mdocDocType)
+                    .put("staticData", staticData.encodeAsCbor())
+                    .put("requireUserAuthenticationToViewDocument", requireUserAuthenticationToViewDocument)
+                    .end()
+                    .build()
+        }
 }

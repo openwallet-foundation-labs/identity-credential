@@ -1,9 +1,15 @@
 package com.android.identity.issuance
 
+import com.android.identity.flow.FlowBaseInterface
+import com.android.identity.flow.annotation.FlowGetter
+import com.android.identity.flow.annotation.FlowInterface
+import com.android.identity.flow.annotation.FlowMethod
+
 /**
  * A flow used to create a new document.
  */
-interface RegistrationFlow {
+@FlowInterface
+interface RegistrationFlow : FlowBaseInterface {
 
     /**
      * Gets the configuration for registering a document with the issuer.
@@ -14,6 +20,7 @@ interface RegistrationFlow {
      *
      * @return the [RegistrationConfiguration].
      */
+    @FlowMethod
     suspend fun getDocumentRegistrationConfiguration(): RegistrationConfiguration
 
     /**
@@ -24,5 +31,6 @@ interface RegistrationFlow {
      * @param response the response
      * @throws IllegalArgumentException if the issuer rejects the response.
      */
+    @FlowMethod
     suspend fun sendDocumentRegistrationResponse(response: RegistrationResponse)
 }

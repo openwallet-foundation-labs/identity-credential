@@ -64,6 +64,7 @@ dependencies {
     implementation project(':mrtd-reader')
     implementation project(':cbor-processor')
     implementation project(':jpeg2k')
+    implementation project(':wallet-issuance')
 
     ksp project(':cbor-processor')
 
@@ -85,6 +86,9 @@ dependencies {
     implementation libs.kotlinx.datetime
     implementation libs.accompanist.permissions
     implementation libs.androidx.work
+    implementation libs.ktor.client.core
+    implementation libs.ktor.client.cio
+    implementation libs.kotlinx.io.bytestring
     debugImplementation libs.compose.icons
 
     implementation libs.net.sf.scuba.scuba.sc.android
