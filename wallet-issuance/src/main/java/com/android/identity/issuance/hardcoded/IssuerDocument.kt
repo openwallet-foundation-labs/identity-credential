@@ -46,7 +46,7 @@ data class IssuerDocument(
 
             val documentConfiguration: DocumentConfiguration? =
                 map.getOrNull("documentConfiguration")?.let {
-                    DocumentConfiguration.fromCbor(it.asBstr)
+                    DocumentConfiguration.fromDataItem(it)
                 }
 
             return IssuerDocument(
@@ -77,7 +77,7 @@ data class IssuerDocument(
                 .put("collectedEvidence", ceMapBuilder.end().build())
                 .put("credentialRequests", credentialRequestsBuilder.end().build())
             if (documentConfiguration != null) {
-                mapBuilder.put("documentConfiguration", documentConfiguration!!.toCbor())
+                mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem)
             }
             return mapBuilder.end().build()
         }

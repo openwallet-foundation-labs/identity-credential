@@ -47,21 +47,25 @@ object CredmanRegistry {
             if (document == null) {
                 continue
             }
-            val credConf = document.documentConfiguration
+            val docConf = document.documentConfiguration
+            if (docConf.mdocConfiguration == null) {
+                return
+            }
+            val mdocConf = docConf.mdocConfiguration!!
 
-            val credentialType = documentTypeRepository.getDocumentTypeForMdoc(credConf.mdocDocType)
+            val credentialType = documentTypeRepository.getDocumentTypeForMdoc(mdocConf.docType)
 
             val fields = mutableListOf<IdentityCredentialField>()
             fields.add(
                 IdentityCredentialField(
                     name = "doctype",
-                    value = credConf.mdocDocType,
+                    value = mdocConf.docType,
                     displayName = "Document Type",
-                    displayValue = credConf.mdocDocType
+                    displayValue = mdocConf.docType
                 )
             )
 
-            val nameSpacedData = credConf.staticData
+            val nameSpacedData = mdocConf.staticData
             nameSpacedData.nameSpaceNames.map { nameSpaceName ->
                 nameSpacedData.getDataElementNames(nameSpaceName).map { dataElementName ->
                     val fieldName = nameSpaceName + "." + dataElementName
@@ -81,7 +85,7 @@ object CredmanRegistry {
 
                     val dataElementDisplayName = getDataElementDisplayName(
                         documentTypeRepository,
-                        credConf.mdocDocType,
+                        mdocConf.docType,
                         nameSpaceName,
                         dataElementName
                     )
@@ -99,18 +103,18 @@ object CredmanRegistry {
             val options = BitmapFactory.Options()
             options.inMutable = true
             val credBitmap = BitmapFactory.decodeByteArray(
-                credConf.cardArt,
+                docConf.cardArt,
                 0,
-                credConf.cardArt.size,
+                docConf.cardArt.size,
                 options
             )
 
-            Logger.i(TAG, "Adding document ${credConf.displayName}")
+            Logger.i(TAG, "Adding document ${docConf.displayName}")
             entries.add(
                 IdentityCredentialEntry(
                     id = idCount++,
                     format = "mdoc",
-                    title = credConf.displayName,
+                    title = docConf.displayName,
                     subtitle = context.getString(R.string.app_name),
                     icon = credBitmap,
                     fields = fields.toList(),

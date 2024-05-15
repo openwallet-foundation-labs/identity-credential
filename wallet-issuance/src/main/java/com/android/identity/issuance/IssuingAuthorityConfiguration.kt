@@ -37,12 +37,7 @@ data class IssuingAuthorityConfiguration(
     val description: String,
 
     /**
-     * The document presentation formats available.
-     */
-    val documentFormats: Set<CredentialFormat>,
-
-    /**
      * A [DocumentConfiguration] that can be used while proofing is pending for a document.
      */
-    val pendingDocumentInformation: DocumentConfiguration
+    val pendingDocumentInformation: DocumentConfiguration,
 )

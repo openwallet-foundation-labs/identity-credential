@@ -60,6 +60,7 @@ dependencies {
     implementation project(':identity')
     implementation project(':identity-doctypes')
     implementation project(':identity-mdoc')
+    implementation project(':identity-sdjwt')
     implementation project(':identity-android')
     implementation project(':mrtd-reader')
     implementation project(':cbor-processor')
@@ -89,6 +90,7 @@ dependencies {
     implementation libs.ktor.client.core
     implementation libs.ktor.client.cio
     implementation libs.kotlinx.io.bytestring
+    implementation libs.kotlinx.serialization
     debugImplementation libs.compose.icons
 
     implementation libs.net.sf.scuba.scuba.sc.android

@@ -10,6 +10,7 @@ import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.MdocDocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.jpeg2k.Jpeg2kConverter
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 
@@ -27,7 +28,6 @@ private const val TAG = "ViewDocumentData"
  * @param attributes key/value pairs with data in the document
  */
 data class DocumentDetails(
-    val typeName: String,
     val portrait: Bitmap?,
     val signatureOrUsualMark: Bitmap?,
     val attributes: Map<String, String>
@@ -101,15 +101,38 @@ fun Document.renderDocumentDetails(
     context: Context,
     documentTypeRepository: DocumentTypeRepository
 ): DocumentDetails {
+    // TODO: use DocumentConfiguration instead of pulling it out of a certified credential.
+
     if (certifiedCredentials.size == 0) {
-        return DocumentDetails("Unknown", null, null, mapOf())
+        return DocumentDetails(null, null, mapOf())
     }
-    val authKey = certifiedCredentials[0]
+    val credential = certifiedCredentials[0]
+
+    when (credential) {
+        is MdocCredential -> {
+            return renderDocumentDetailsForMdoc(context, documentTypeRepository, credential)
+        }
+        // TODO: add SD-JWT support
+        else -> {
+            return DocumentDetails(
+                null,
+                null,
+                mapOf()
+            )
+        }
+    }
+}
+
+private fun Document.renderDocumentDetailsForMdoc(
+    context: Context,
+    documentTypeRepository: DocumentTypeRepository,
+    credential: MdocCredential
+): DocumentDetails {
 
     var portrait: Bitmap? = null
     var signatureOrUsualMark: Bitmap? = null
 
-    val documentData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+    val documentData = StaticAuthDataParser(credential.issuerProvidedData).parse()
     val issuerAuthCoseSign1 = Cbor.decode(documentData.issuerAuth).asCoseSign1
     val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
     val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
@@ -136,6 +159,5 @@ fun Document.renderDocumentDetails(
         kvPairs += result.keysAndValues
     }
 
-    val typeName = documentType?.displayName ?: mso.docType
-    return DocumentDetails(typeName, portrait, signatureOrUsualMark, kvPairs)
+    return DocumentDetails(portrait, signatureOrUsualMark, kvPairs)
 }

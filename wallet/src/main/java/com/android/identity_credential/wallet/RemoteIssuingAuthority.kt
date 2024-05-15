@@ -48,14 +48,14 @@ class RemoteIssuingAuthority : IssuingAuthority {
             identifier = "mDL_Elbonia",
             issuingAuthorityName = "Elbonia DMV",
             issuingAuthorityLogo = dmv_issuing_authority_logo_png,
-            description = "Elbonia Driver's License",
-            documentFormats = setOf(CredentialFormat.MDOC_MSO),
+            description = "Elbonia Driving License",
             pendingDocumentInformation = DocumentConfiguration(
-                "Pending",
-                driving_license_card_art_png,
-                DrivingLicense.MDL_DOCTYPE,
-                NameSpacedData.Builder().build(),
-                true
+                displayName = "Pending",
+                typeDisplayName = "Driving License",
+                cardArt = driving_license_card_art_png,
+                requireUserAuthenticationToViewDocument = true,
+                mdocConfiguration = null,
+                sdJwtVcDocumentConfiguration = null,
             ))
 
         // Run the server locally on your dev coomputer and tunnel it to your phone

@@ -249,7 +249,7 @@ class PresentationActivity : FragmentActivity() {
                                     consentPromptData.value = ConsentPromptData(
                                         credentialId = requestData.document.name,
                                         documentName = requestData.document.documentConfiguration.displayName,
-                                        credentialData = requestData.document.documentConfiguration.staticData,
+                                        credentialData = requestData.document.documentConfiguration.mdocConfiguration!!.staticData,
                                         documentRequest = requestData.documentRequest,
                                         docType = requestData.docType,
                                         verifier = requestData.trustPoint,

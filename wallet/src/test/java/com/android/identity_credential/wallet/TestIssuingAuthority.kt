@@ -10,6 +10,7 @@ import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
@@ -32,17 +33,20 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
 
     init {
         configuration = IssuingAuthorityConfiguration(
-            "mDL_SelfSigned",
-            "Test IA",
-            byteArrayOf(1, 2, 3),
-            "mDL from Test IA",
-            setOf(CredentialFormat.MDOC_MSO),
-            DocumentConfiguration(
-                "mDL for Test IA (proofing pending)",
-                byteArrayOf(1, 2, 3),
-                "org.iso.18013.5.1.mDL",
-                NameSpacedData.Builder().build(),
-                false
+            identifier = "mDL_SelfSigned",
+            issuingAuthorityName = "Test IA",
+            issuingAuthorityLogo =  byteArrayOf(1, 2, 3),
+            description = "mDL from Test IA",
+            pendingDocumentInformation = DocumentConfiguration(
+                displayName = "mDL for Test IA (proofing pending)",
+                typeDisplayName = "Driving License",
+                cardArt = byteArrayOf(1, 2, 3),
+                requireUserAuthenticationToViewDocument = false,
+                mdocConfiguration = MdocDocumentConfiguration(
+                    "org.iso.18013.5.1.mDL",
+                    NameSpacedData.Builder().build(),
+                ),
+                sdJwtVcDocumentConfiguration = null,
             )
         )
 
@@ -103,11 +107,15 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
     override fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): DocumentConfiguration {
         val firstName = (collectedEvidence["name"] as EvidenceResponseQuestionString).answer
         return DocumentConfiguration(
-            "${firstName}'s Driving License",
-            byteArrayOf(1, 2, 3),
-            "org.iso.18013.5.1.mDL",
-            NameSpacedData.Builder().build(),
-            false
+            displayName = "${firstName}'s Driving License",
+            typeDisplayName = "Driving License",
+            cardArt = byteArrayOf(1, 2, 3),
+            requireUserAuthenticationToViewDocument = true,
+            mdocConfiguration = MdocDocumentConfiguration(
+                "org.iso.18013.5.1.mDL",
+                NameSpacedData.Builder().build(),
+            ),
+            sdJwtVcDocumentConfiguration = null,
         )
     }
 

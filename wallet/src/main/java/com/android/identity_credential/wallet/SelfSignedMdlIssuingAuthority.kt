@@ -16,6 +16,7 @@ import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -44,7 +45,7 @@ import kotlin.time.Duration.Companion.days
 class SelfSignedMdlIssuingAuthority(
     application: WalletApplication,
     storageEngine: StorageEngine
-) : SelfSignedMdocIssuingAuthority(application, storageEngine) {
+) : SelfSignedIssuingAuthority(application, storageEngine) {
 
     companion object {
         private const val MDL_DOCTYPE = DrivingLicense.MDL_DOCTYPE
@@ -67,7 +68,6 @@ class SelfSignedMdlIssuingAuthority(
             issuingAuthorityName = resourceString(R.string.utopia_mdl_issuing_authority_name),
             issuingAuthorityLogo = icon,
             description = resourceString(R.string.utopia_mdl_issuing_authority_description),
-            documentFormats = setOf(CredentialFormat.MDOC_MSO),
             pendingDocumentInformation = createDocumentConfiguration(null)
         )
         tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_dmv_issuing_authority_logo))
@@ -378,11 +378,12 @@ class SelfSignedMdlIssuingAuthority(
 
         if (collectedEvidence == null) {
             return DocumentConfiguration(
-                resourceString(R.string.utopia_mdl_issuing_authority_pending_document_title),
-                cardArt,
-                MDL_DOCTYPE,
-                NameSpacedData.Builder().build(),
-                true
+                displayName = resourceString(R.string.utopia_mdl_issuing_authority_pending_document_title),
+                typeDisplayName = "Driving License",
+                cardArt = cardArt,
+                requireUserAuthenticationToViewDocument = true,
+                mdocConfiguration = null,
+                sdJwtVcDocumentConfiguration = null,
             )
         }
 
@@ -468,25 +469,29 @@ class SelfSignedMdlIssuingAuthority(
 
         val firstName = staticData.getDataElementString(MDL_NAMESPACE, "given_name")
         return DocumentConfiguration(
-            resourceString(R.string.utopia_mdl_issuing_authority_document_title, firstName),
-            cardArt,
-            MDL_DOCTYPE,
-            staticData,
-            true
+            displayName = resourceString(R.string.utopia_mdl_issuing_authority_document_title, firstName),
+            typeDisplayName = "Driving License",
+            cardArt = cardArt,
+            requireUserAuthenticationToViewDocument = true,
+            mdocConfiguration = MdocDocumentConfiguration(
+                docType = MDL_DOCTYPE,
+                staticData = staticData,
+            ),
+            sdJwtVcDocumentConfiguration = null,
         )
     }
 
     override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
         // The update consists of just slapping an extra 0 at the end of `administrative_number`
         val newAdministrativeNumber = try {
-            currentConfiguration.staticData
+            currentConfiguration.mdocConfiguration!!.staticData
                 .getDataElementString(MDL_NAMESPACE, "administrative_number")
         } catch (e: Throwable) {
             ""
         } + "0"
 
 
-        val builder = NameSpacedData.Builder(currentConfiguration.staticData)
+        val builder = NameSpacedData.Builder(currentConfiguration.mdocConfiguration!!.staticData)
         builder.putEntryString(
             MDL_NAMESPACE,
             "administrative_number",
@@ -495,10 +500,14 @@ class SelfSignedMdlIssuingAuthority(
 
         return DocumentConfiguration(
             displayName = currentConfiguration.displayName,
+            typeDisplayName = "Driving License",
             cardArt = currentConfiguration.cardArt,
-            mdocDocType = currentConfiguration.mdocDocType,
-            staticData = builder.build(),
-            requireUserAuthenticationToViewDocument = false
+            requireUserAuthenticationToViewDocument = true,
+            mdocConfiguration = MdocDocumentConfiguration(
+                docType = currentConfiguration.mdocConfiguration!!.docType,
+                staticData = builder.build(),
+            ),
+            sdJwtVcDocumentConfiguration = null,
         )
     }
 

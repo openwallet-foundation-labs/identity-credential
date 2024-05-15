@@ -165,10 +165,10 @@ class TransferHelper(
     ) {
         val document = documentStore.lookupDocument(credentialId)!!
         val encodedDeviceResponse: ByteArray
-        val credentialConfiguration = document.documentConfiguration
+        val docConfiguration = document.documentConfiguration
         val now = Timestamp.now()
         val credentialToUse: MdocCredential = credential
-            ?: (document.findCredential(WalletApplication.CREDENTIAL_DOMAIN, now)
+            ?: (document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
                 ?: run {
                     onError(IllegalStateException("No valid credentials, please request more"))
                     return
@@ -182,7 +182,7 @@ class TransferHelper(
 
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             documentRequest,
-            credentialConfiguration.staticData,
+            docConfiguration.mdocConfiguration!!.staticData,
             staticAuthData
         )
 
@@ -283,13 +283,13 @@ class TransferHelper(
         // prefer the credential which is on-screen if possible
         val credentialIdFromPager: String? = settingsModel.focusedCardId.value
         if (credentialIdFromPager != null
-            && candocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docRequest)
+            && canDocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docRequest)
         ) {
             return credentialIdFromPager
         }
 
         return documentStore.listDocuments().firstOrNull { credentialId ->
-            candocumentSatisfyRequest(credentialId, credentialFormat, docRequest)
+            canDocumentSatisfyRequest(credentialId, credentialFormat, docRequest)
         }
     }
 
@@ -302,7 +302,7 @@ class TransferHelper(
      * @param docRequest the DocRequest, including the DocType
      * @return whether the specified credential id can satisfy the request
      */
-    private fun candocumentSatisfyRequest(
+    private fun canDocumentSatisfyRequest(
         credentialId: String,
         credentialFormat: CredentialFormat,
         docRequest: DeviceRequestParser.DocRequest
@@ -312,16 +312,13 @@ class TransferHelper(
         val issuer =
             issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
                 ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
-        val credentialFormats = issuer.configuration.documentFormats
-        if (!credentialFormats.contains(credentialFormat)) {
-            return false;
-        }
+        //if (!credentialFormats.contains(credentialFormat)) {
+        //    return false;
+        //}
 
-        val credConf = credential.documentConfiguration
-        if (credConf.mdocDocType != docRequest.docType) {
-            return false
+        if (credential.documentConfiguration.mdocConfiguration?.docType == docRequest.docType) {
+            return true
         }
-
-        return true
+        return false
     }
 }

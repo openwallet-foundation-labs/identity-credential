@@ -24,8 +24,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.CredentialInfo
+import com.android.identity_credential.wallet.DocumentInfo
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
@@ -80,7 +82,11 @@ fun CredentialInfoScreen(
                     HorizontalPager(
                         state = pagerState,
                     ) { page ->
-                        CredentialInfo(documentInfo.credentialInfos[page], page, documentInfo.credentialInfos.size)
+                        CredentialInfo(
+                            documentInfo.credentialInfos[page],
+                            page,
+                            documentInfo.credentialInfos.size
+                        )
                     }
                 }
             }
@@ -115,23 +121,25 @@ fun CredentialInfoScreen(
     }
 }
 
-
 @Composable
 private fun CredentialInfo(credentialInfo: CredentialInfo,
                            credentialIndex: Int,
                            numCredentials: Int) {
     Column(Modifier.padding(8.dp)) {
-        KeyValuePairText("Credential Number ", "${credentialIndex + 1} of ${numCredentials}")
+        KeyValuePairText("Credential Number", "${credentialIndex + 1} of ${numCredentials}")
         KeyValuePairText("Description", credentialInfo.description)
         for ((key, value) in credentialInfo.details) {
             KeyValuePairText(key, value)
         }
         KeyValuePairText("Usage Count", "${credentialInfo.usageCount}")
-        KeyValuePairText("Signed At", credentialInfo.signedAt.asFormattedDateTimeInCurrentTimezone)
-        KeyValuePairText("Valid From", credentialInfo.validFrom.asFormattedDateTimeInCurrentTimezone)
-        KeyValuePairText("Valid Until", credentialInfo.validUntil.asFormattedDateTimeInCurrentTimezone)
+        KeyValuePairText("Signed At",
+            credentialInfo.signedAt?.asFormattedDateTimeInCurrentTimezone ?: "Not Set")
+        KeyValuePairText("Valid From",
+            credentialInfo.validFrom?.asFormattedDateTimeInCurrentTimezone ?: "Not Set")
+        KeyValuePairText("Valid Until",
+            credentialInfo.validUntil?.asFormattedDateTimeInCurrentTimezone ?: "Not Set")
         KeyValuePairText("Expected Update",
-            credentialInfo?.expectedUpdate?.asFormattedDateTimeInCurrentTimezone ?: "Not Set"
+            credentialInfo.expectedUpdate?.asFormattedDateTimeInCurrentTimezone ?: "Not Set"
         )
     }
 }
