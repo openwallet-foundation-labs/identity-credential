@@ -1,5 +1,7 @@
 package com.android.identity.issuance
 
+import com.android.identity.cbor.annotation.CborSerializable
+
 /**
  * An enumeration of Credential Formats that an issuer may support.
  */
@@ -45,4 +47,14 @@ enum class CredentialFormat {
      * ```
      */
     MDOC_MSO,
+
+    /**
+     * SD-JWT Verifiable Credential according to [draft-ietf-oauth-sd-jwt-vc-03]
+     * (https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/).
+     *
+     * For this format, the [CredentialData.data] member contains the serialized format of the
+     * SD-JWT as defined in section 5 of [draft-ietf-oauth-selective-disclosure-jwt-08]
+     * (https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/).
+     */
+    SD_JWT_VC,
 }

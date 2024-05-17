@@ -24,6 +24,7 @@ import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
+import com.android.identity.credential.Credential
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
@@ -80,7 +81,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         credentialId: Int,
         dataElements: List<DocumentRequest.DataElement>,
         encodedSessionTranscript: ByteArray,
-        onComplete: (ByteArray) -> Unit
+        onComplete: (deviceResponse: ByteArray, credential: Credential) -> Unit
     ) {
         val documentRequest = DocumentRequest(dataElements)
 
@@ -90,7 +91,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         val credConf = document!!.documentConfiguration
 
         val credential = document.findCredential(
-            WalletApplication.CREDENTIAL_DOMAIN,
+            WalletApplication.CREDENTIAL_DOMAIN_MDOC,
             Timestamp.now()
         ) as MdocCredential?
         if (credential == null) {
@@ -98,7 +99,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         }
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            documentRequest, credConf.staticData, staticAuthData
+            documentRequest, credConf.mdocConfiguration!!.staticData, staticAuthData
         )
 
         val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
@@ -117,7 +118,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         try {
             addDeviceNamespaces(documentGenerator, credential, null)
             deviceResponseGenerator.addDocument(documentGenerator.generate())
-            onComplete(deviceResponseGenerator.generate())
+            onComplete(deviceResponseGenerator.generate(), credential)
         } catch (e: KeyLockedException) {
             val keyUnlockData = AndroidKeystoreKeyUnlockData(credential.alias)
             showBiometricPrompt(
@@ -130,7 +131,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                 onSuccess = {
                     addDeviceNamespaces(documentGenerator, credential, keyUnlockData)
                     deviceResponseGenerator.addDocument(documentGenerator.generate())
-                    onComplete(deviceResponseGenerator.generate())
+                    onComplete(deviceResponseGenerator.generate(), credential)
                 },
                 onCanceled = {},
                 onError = {
@@ -138,7 +139,6 @@ class CredmanPresentationActivity : FragmentActivity() {
                 }
             )
         }
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -217,37 +217,43 @@ class CredmanPresentationActivity : FragmentActivity() {
                     )
                 }
                 // Create ISO DeviceResponse
-                createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
-                    // The Preview protocol HPKE encrypts the response.
-                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
-                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                        readerPublicKey,
-                        deviceResponse,
-                        encodedSessionTranscript
-                    )
-                    val encodedCredentialDocument =
-                        CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
-
-                    // Create the preview response
-                    val responseJson = JSONObject()
-                    responseJson.put(
-                        "token",
-                        Base64.encodeToString(
-                            encodedCredentialDocument,
-                            Base64.NO_WRAP or Base64.URL_SAFE
+                createMDocDeviceResponse(
+                    credentialId,
+                    dataElements,
+                    encodedSessionTranscript,
+                    onComplete = { deviceResponse, credential ->
+                        credential.increaseUsageCount()
+                        // The Preview protocol HPKE encrypts the response.
+                        val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
+                            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                            readerPublicKey,
+                            deviceResponse,
+                            encodedSessionTranscript
                         )
-                    )
-                    val response = responseJson.toString(2)
+                        val encodedCredentialDocument =
+                            CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
 
-                    // Send result back to credman
-                    val resultData = Intent()
-                    IntentHelper.setGetCredentialResponse(
-                        resultData,
-                        createGetCredentialResponse(response)
-                    )
-                    setResult(RESULT_OK, resultData)
-                    finish()
-                }
+                        // Create the preview response
+                        val responseJson = JSONObject()
+                        responseJson.put(
+                            "token",
+                            Base64.encodeToString(
+                                encodedCredentialDocument,
+                                Base64.NO_WRAP or Base64.URL_SAFE
+                            )
+                        )
+                        val response = responseJson.toString(2)
+
+                        // Send result back to credman
+                        val resultData = Intent()
+                        IntentHelper.setGetCredentialResponse(
+                            resultData,
+                            createGetCredentialResponse(response)
+                        )
+                        setResult(RESULT_OK, resultData)
+                        finish()
+                    }
+                )
             } else if (protocol == "openid4vp") {
                 val openid4vpRequest = JSONObject(request)
                 val clientID = openid4vpRequest.getString("client_id")
@@ -301,27 +307,33 @@ class CredmanPresentationActivity : FragmentActivity() {
                     )
                 }
                 // Create ISO DeviceResponse
-                createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
-                    // Create the openid4vp respoinse
-                    val responseJson = JSONObject()
-                    responseJson.put(
-                        "vp_token",
-                        Base64.encodeToString(
-                            deviceResponse,
-                            Base64.NO_WRAP or Base64.URL_SAFE
+                createMDocDeviceResponse(
+                    credentialId,
+                    dataElements,
+                    encodedSessionTranscript,
+                    onComplete = { deviceResponse, credential ->
+                        credential.increaseUsageCount()
+                        // Create the openid4vp response
+                        val responseJson = JSONObject()
+                        responseJson.put(
+                            "vp_token",
+                            Base64.encodeToString(
+                                deviceResponse,
+                                Base64.NO_WRAP or Base64.URL_SAFE
+                            )
                         )
-                    )
-                    val response = responseJson.toString(2)
+                        val response = responseJson.toString(2)
 
-                    // Send result back to credman
-                    val resultData = Intent()
-                    IntentHelper.setGetCredentialResponse(
-                        resultData,
-                        createGetCredentialResponse(response)
-                    )
-                    setResult(RESULT_OK, resultData)
-                    finish()
-                }
+                        // Send result back to credman
+                        val resultData = Intent()
+                        IntentHelper.setGetCredentialResponse(
+                            resultData,
+                            createGetCredentialResponse(response)
+                        )
+                        setResult(RESULT_OK, resultData)
+                        finish()
+                    }
+                )
             } else {
                 // Unknown protocol
                 throw IllegalArgumentException("Unknown protocol")

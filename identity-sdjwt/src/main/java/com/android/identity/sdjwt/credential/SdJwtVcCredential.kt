@@ -10,21 +10,30 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 
 /**
- * A SD-JWT credential, according to [draft-ietf-oauth-selective-disclosure-jwt](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/).
+ * A SD-JWT VC credential, according to [draft-ietf-oauth-sd-jwt-vc-03]
+ * (https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/).
  */
-class SdJwtCredential : SecureAreaBoundCredential {
+class SdJwtVcCredential : SecureAreaBoundCredential {
     companion object {
-        private const val TAG = "SdJwtCredential"
+        private const val TAG = "SdJwtVcCredential"
     }
 
     /**
-     * Constructs a new [SdJwtCredential].
+     * The Verifiable Credential Type - or `vct` - as defined in section 3.2.2.1.1 of
+     * [draft-ietf-oauth-sd-jwt-vc-03]
+     * (https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
+     */
+    val vct: String
+
+    /**
+     * Constructs a new [SdJwtVcCredential].
      *
      * @param document the document to add the credential to.
      * @param asReplacementFor the credential this credential will replace, if not null
      * @param domain the domain of the credential
      * @param secureArea the secure area for the authentication key associated with this credential.
      * @param createKeySettings the settings used to create new credentials.
+     * @param vct the Verifiable Credential Type.
      */
     constructor(
         document: Document,
@@ -32,9 +41,11 @@ class SdJwtCredential : SecureAreaBoundCredential {
         domain: String,
         secureArea: SecureArea,
         createKeySettings: CreateKeySettings,
+        vct: String,
     ) : super(document, asReplacementFor, domain, secureArea, createKeySettings) {
+        this.vct = vct
         // Only the leaf constructor should add the credential to the document.
-        if (this::class == SdJwtCredential::class) {
+        if (this::class == SdJwtVcCredential::class) {
             addToDocument()
         }
     }
@@ -49,10 +60,12 @@ class SdJwtCredential : SecureAreaBoundCredential {
         document: Document,
         dataItem: DataItem,
     ) : super(document, dataItem) {
+        vct = dataItem["vct"].asTstr
     }
 
     override fun addSerializedData(builder: MapBuilder<CborBuilder>) {
         super.addSerializedData(builder)
+        builder.put("vct", vct)
     }
 
 }

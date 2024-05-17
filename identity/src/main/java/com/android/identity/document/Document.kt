@@ -276,6 +276,37 @@ class Document private constructor(
         return false
     }
 
+    data class UsableCredentialResult(
+        val numCredentials: Int,
+        val numCredentialsAvailable: Int
+    )
+
+    /**
+     * Returns whether an usable credential exists at a given point in time.
+     *
+     * @param at the point in time to check for.
+     * @returns `true` if an usable credential exists for the given time, `false` otherwise
+     */
+    fun countUsableCredentials(at: Instant = Clock.System.now()): UsableCredentialResult {
+        val credentials = certifiedCredentials
+        if (credentials.isEmpty()) {
+            return UsableCredentialResult(0, 0)
+        }
+        var numCredentials = 0
+        var numCredentialsAvailable = 0
+        for (credential in credentials) {
+            numCredentials++
+            val validFrom = Instant.fromEpochMilliseconds(credential.validFrom.toEpochMilli())
+            val validUntil = Instant.fromEpochMilliseconds(credential.validUntil.toEpochMilli())
+            if (at >= validFrom && at < validUntil) {
+                if (credential.usageCount == 0) {
+                    numCredentialsAvailable++
+                }
+            }
+        }
+        return UsableCredentialResult(numCredentials, numCredentialsAvailable)
+    }
+
     internal fun removeCredential(credential: Credential) {
         val listToModify = if (credential.isCertified) _certifiedCredentials
             else _pendingCredentials

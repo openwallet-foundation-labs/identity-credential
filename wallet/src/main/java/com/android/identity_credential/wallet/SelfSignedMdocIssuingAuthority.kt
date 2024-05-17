@@ -12,8 +12,10 @@ import android.graphics.Shader
 import androidx.annotation.RawRes
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborInt
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
@@ -30,16 +32,23 @@ import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.sdjwt.Issuer
+import com.android.identity.sdjwt.SdJwtVcGenerator
+import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import kotlin.math.ceil
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.days
 
 
-abstract class SelfSignedMdocIssuingAuthority(
+abstract class SelfSignedIssuingAuthority(
     val application: WalletApplication,
     storageEngine: StorageEngine
 ): SimpleIssuingAuthority(
@@ -51,13 +60,78 @@ abstract class SelfSignedMdocIssuingAuthority(
 
     abstract val docType: String
 
-    override fun createPresentationData(presentationFormat: CredentialFormat,
+    override fun createPresentationData(credentialFormat: CredentialFormat,
                                         documentConfiguration: DocumentConfiguration,
-                                        authenticationKey: EcPublicKey
+                                        deviceBoundKey: EcPublicKey
     ): ByteArray {
-        // Right now we only support mdoc
-        check(presentationFormat == CredentialFormat.MDOC_MSO)
+        when (credentialFormat) {
+            CredentialFormat.MDOC_MSO -> {
+                return createPresentationDataMdoc(
+                    documentConfiguration,
+                    deviceBoundKey
+                )
+            }
+            CredentialFormat.SD_JWT_VC -> {
+                return createPresentationDataSdJwt(
+                    documentConfiguration,
+                    deviceBoundKey
+                )
+            }
+        }
+    }
 
+    private fun createPresentationDataSdJwt(
+        documentConfiguration: DocumentConfiguration,
+        deviceBoundKey: EcPublicKey
+    ): ByteArray {
+
+        // For now, just use the mdoc data element names and only import tstr and numbers
+        //
+        val identityAttributes = buildJsonObject {
+            for (nsName in documentConfiguration.mdocConfiguration!!.staticData.nameSpaceNames) {
+                for (deName in documentConfiguration.mdocConfiguration!!.staticData.getDataElementNames(nsName)) {
+                    val value = Cbor.decode(
+                        documentConfiguration.mdocConfiguration!!.staticData.getDataElement(nsName, deName)
+                    )
+                    when (value) {
+                        is Tstr -> put(deName, value.asTstr)
+                        is CborInt -> put(deName, value.asNumber.toString())
+                        else -> {} /* do nothing */
+                    }
+                }
+            }
+        }
+
+        val sdJwtVcGenerator = SdJwtVcGenerator(
+            random = Random(42),
+            payload = identityAttributes,
+            docType = "PersonalIdentificationDocument",
+            issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
+        )
+
+        val now = Clock.System.now()
+
+        val timeSigned = now
+        val validFrom = now
+        val validUntil = validFrom + 30.days
+
+        sdJwtVcGenerator.publicKey = JsonWebKey(deviceBoundKey)
+        sdJwtVcGenerator.timeSigned = timeSigned
+        sdJwtVcGenerator.timeValidityBegin = validFrom
+        sdJwtVcGenerator.timeValidityEnd = validUntil
+
+        // Just use the mdoc Document Signing key for now
+        //
+        ensureDocumentSigningKey()
+        val sdJwt = sdJwtVcGenerator.generateSdJwt(documentSigningKey)
+
+        return sdJwt.toString().toByteArray()
+    }
+
+    private fun createPresentationDataMdoc(
+        documentConfiguration: DocumentConfiguration,
+        deviceBoundKey: EcPublicKey
+    ): ByteArray {
         val now = Timestamp.now()
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
@@ -69,12 +143,12 @@ abstract class SelfSignedMdocIssuingAuthority(
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             docType,
-            authenticationKey
+            deviceBoundKey
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
         val randomProvider = Random.Default
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            documentConfiguration.staticData,
+            documentConfiguration.mdocConfiguration!!.staticData,
             randomProvider,
             16,
             null

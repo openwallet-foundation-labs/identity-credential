@@ -36,6 +36,7 @@ import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityRepository
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustManager
@@ -58,7 +59,8 @@ class WalletApplication : Application() {
 
         private const val NOTIFICATION_ID_FOR_MISSING_PROXIMITY_PRESENTATION_PERMISSIONS = 42
 
-        const val CREDENTIAL_DOMAIN = "mdoc/MSO"
+        const val CREDENTIAL_DOMAIN_MDOC = "mdoc/MSO"
+        const val CREDENTIAL_DOMAIN_SD_JWT_VC = "SD-JWT"
 
         // The permissions needed to perform 18013-5 presentations. This only include the
         // BLE permissions because that's the only transport we currently support in the
@@ -130,6 +132,7 @@ class WalletApplication : Application() {
         // init credentialFactory
         credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(MdocCredential::class)
+        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class)
 
         // init documentStore
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)

@@ -9,11 +9,6 @@ import com.android.identity.crypto.CertificateChain
 @CborSerializable
 data class CredentialRequest(
     /**
-     * The requested credential presentation format.
-     */
-    val format: CredentialFormat,
-
-    /**
      * The attestation for the secure-area bound credential that was created and to be referenced
      * in the minted credential.
      */

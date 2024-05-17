@@ -152,16 +152,13 @@ class SelfSignedMdlTest {
         // Check we can get CPOs, first request them
         val numMso = 5
         val requestCpoFlow = ia.requestCredentials(credentialId)
-        val authKeyConfiguration = requestCpoFlow.getCredentialConfiguration()
+        val authKeyConfiguration = requestCpoFlow.getCredentialConfiguration(CredentialFormat.MDOC_MSO.toString())
         val credentialRequests = mutableListOf<CredentialRequest>()
         for (authKeyNumber in IntRange(0, numMso - 1)) {
             val alias = "AuthKey_$authKeyNumber"
             secureArea.createKey(alias, CreateKeySettings(authKeyConfiguration.challenge))
             credentialRequests.add(
-                CredentialRequest(
-                    CredentialFormat.MDOC_MSO,
-                    secureArea.getKeyInfo(alias).attestation
-                )
+                CredentialRequest(secureArea.getKeyInfo(alias).attestation)
             )
         }
         requestCpoFlow.sendCredentials(credentialRequests)

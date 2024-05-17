@@ -15,6 +15,8 @@ import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.MdocDocumentConfiguration
+import com.android.identity.issuance.SdJwtVcDocumentConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
@@ -42,7 +44,7 @@ import kotlin.time.Duration.Companion.days
 class SelfSignedEuPidIssuingAuthority(
     application: WalletApplication,
     storageEngine: StorageEngine
-) : SelfSignedMdocIssuingAuthority(application, storageEngine) {
+) : SelfSignedIssuingAuthority(application, storageEngine) {
     companion object {
         private const val EUPID_NAMESPACE = EUPersonalID.EUPID_NAMESPACE
         private const val EUPID_DOCTYPE = EUPersonalID.EUPID_DOCTYPE
@@ -64,7 +66,6 @@ class SelfSignedEuPidIssuingAuthority(
             issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
             issuingAuthorityLogo = icon,
             description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
-            documentFormats = setOf(CredentialFormat.MDOC_MSO),
             pendingDocumentInformation = createDocumentConfiguration(null)
         )
         tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
@@ -169,11 +170,12 @@ class SelfSignedEuPidIssuingAuthority(
 
         if (collectedEvidence == null) {
             return DocumentConfiguration(
-                resourceString(R.string.utopia_eu_pid_issuing_authority_pending_document_title),
-                cardArt,
-                EUPID_DOCTYPE,
-                NameSpacedData.Builder().build(),
-                false
+                displayName = resourceString(R.string.utopia_eu_pid_issuing_authority_pending_document_title),
+                typeDisplayName = "Personal Identification Document",
+                cardArt = cardArt,
+                requireUserAuthenticationToViewDocument = false,
+                mdocConfiguration = null,
+                sdJwtVcDocumentConfiguration = null,
             )
         }
 
@@ -244,20 +246,27 @@ class SelfSignedEuPidIssuingAuthority(
 
         val firstName = staticData.getDataElementString(EUPID_NAMESPACE, "given_name")
         return DocumentConfiguration(
-            resourceString(R.string.utopia_eu_pid_issuing_authority_document_title, firstName),
-            cardArt,
-            EUPID_DOCTYPE,
-            staticData,
-            false
+            displayName = resourceString(R.string.utopia_eu_pid_issuing_authority_document_title, firstName),
+            typeDisplayName = "Personal Identification Document",
+            cardArt = cardArt,
+            requireUserAuthenticationToViewDocument = false,
+            mdocConfiguration = MdocDocumentConfiguration(
+                docType = EUPID_DOCTYPE,
+                staticData = staticData
+            ),
+            sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
+                // TODO: the vct is TBD, just use this for now
+                vct = "PersonalIdentificationDocument"
+            ),
         )
     }
 
     override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
         // The update consists of just slapping an extra 0 at the end of `administrative_number`
-        val newAdministrativeNumber = currentConfiguration.staticData
+        val newAdministrativeNumber = currentConfiguration.mdocConfiguration!!.staticData
             .getDataElementString(EUPID_NAMESPACE, "administrative_number") + "0"
 
-        val builder = NameSpacedData.Builder(currentConfiguration.staticData)
+        val builder = NameSpacedData.Builder(currentConfiguration.mdocConfiguration!!.staticData)
         builder.putEntryString(
             EUPID_NAMESPACE,
             "administrative_number",
@@ -266,10 +275,17 @@ class SelfSignedEuPidIssuingAuthority(
 
         return DocumentConfiguration(
             displayName = currentConfiguration.displayName,
+            typeDisplayName = "Personal Identification Document",
             cardArt = currentConfiguration.cardArt,
-            mdocDocType = currentConfiguration.mdocDocType,
-            staticData = builder.build(),
-            requireUserAuthenticationToViewDocument = false
+            requireUserAuthenticationToViewDocument = false,
+            mdocConfiguration = MdocDocumentConfiguration(
+                docType = EUPID_DOCTYPE,
+                staticData = builder.build()
+            ),
+            sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
+                // TODO: the vct is TBD, just use this for now
+                vct = "PersonalIdentificationDocument"
+            ),
         )
     }
 

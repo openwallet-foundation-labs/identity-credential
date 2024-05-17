@@ -2,20 +2,19 @@ package com.android.identity_credential.wallet
 
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.os.Handler
-import android.os.Looper
-import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
+import com.android.identity.securearea.SecureArea
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Cbor
+import com.android.identity.credential.Credential
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.DocumentUtil
 import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.documentIdentifier
@@ -30,6 +29,9 @@ import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.SecureAreaRepository
@@ -41,6 +43,7 @@ import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.credman.CredmanRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -107,29 +110,10 @@ class DocumentModel(
             Logger.w(TAG, "No document with id ${documentInfo.documentId}")
             return
         }
-        val numCredentialsRefreshed = syncDocumentWithIssuer(document)
+        syncDocumentWithIssuer(document)
         if (document.isDeleted) {
             Logger.i(TAG, "Document ${document.name} was deleted, removing")
             documentStore.deleteDocument(document.name)
-        }
-        if (numCredentialsRefreshed >= 0) {
-            val toastText =
-                if (numCredentialsRefreshed == 0)
-                    getStr(R.string.document_model_refresh_no_update_toast_text)
-                else String.format(
-                    context.resources.getQuantityString(
-                        R.plurals.refreshed_cred,
-                        numCredentialsRefreshed
-                    ),
-                    numCredentialsRefreshed
-                )
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(
-                    context,
-                    toastText,
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
         }
     }
 
@@ -197,8 +181,18 @@ class DocumentModel(
         val data = document.renderDocumentDetails(context, documentTypeRepository)
 
         val keyInfos = mutableStateListOf<CredentialInfo>()
-        for (mdocCred in document.certifiedCredentials.filter { it.domain == WalletApplication.CREDENTIAL_DOMAIN }) {
-            keyInfos.add(createCardInfoForCredential(mdocCred as MdocCredential))
+        for (credential in document.certifiedCredentials) {
+            when (credential) {
+                is MdocCredential -> {
+                    keyInfos.add(createCardInfoForMdocCredential(credential))
+                }
+                is SdJwtVcCredential -> {
+                    keyInfos.add(createCardInfoForSdJwtVcCredential(credential))
+                }
+                else -> {
+                    Logger.w(TAG, "No CardInfo support for ${credential::class}")
+                }
+            }
         }
 
         var attentionNeeded = false
@@ -214,7 +208,8 @@ class DocumentModel(
             DocumentCondition.READY -> {
                 // TODO: hmm, this can become stale as time progresses... maybe we need
                 //  a timer to refresh the model to reflect this.
-                if (!document.hasUsableCredential(Clock.System.now())) {
+                val usableCredentials = document.countUsableCredentials(Clock.System.now())
+                if (usableCredentials.numCredentials == 0) {
                     attentionNeeded = true
                     getStr(R.string.document_model_status_no_usable_credential)
                 } else {
@@ -232,7 +227,7 @@ class DocumentModel(
             name = documentConfiguration.displayName,
             issuerName = issuer.configuration.issuingAuthorityName,
             issuerDocumentDescription = issuer.configuration.description,
-            typeName = data.typeName,
+            typeName = documentConfiguration.typeDisplayName,
             issuerLogo = issuerLogo,
             documentArtwork = documentBitmap,
             lastRefresh = document.state.timestamp,
@@ -244,25 +239,15 @@ class DocumentModel(
         )
     }
 
-    private fun createCardInfoForCredential(mdocCredential: MdocCredential): CredentialInfo {
-
-        val credentialData = StaticAuthDataParser(mdocCredential.issuerProvidedData).parse()
-        val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
-        val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
-        val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-        val mso = MobileSecurityObjectParser(encodedMso).parse()
-
-
-        val kvPairs = mutableMapOf<String, String>()
-        kvPairs.put("Document Type", mso.docType)
-        kvPairs.put("MSO Version", mso.version)
-        kvPairs.put("Issuer Data Digest Algorithm", mso.digestAlgorithm)
-
+    private fun addSecureAreaBoundCredentialInfo(
+        credential: SecureAreaBoundCredential,
+        kvPairs: MutableMap<String, String>
+    ) {
         try {
-            val deviceKeyInfo = mdocCredential.secureArea.getKeyInfo(mdocCredential.alias)
+            val deviceKeyInfo = credential.secureArea.getKeyInfo(credential.alias)
             kvPairs.put("Device Key Curve", deviceKeyInfo.publicKey.curve.name)
             kvPairs.put("Device Key Purposes", deviceKeyInfo.keyPurposes.toString())
-            kvPairs.put("Secure Area", mdocCredential.secureArea.displayName)
+            kvPairs.put("Secure Area", credential.secureArea.displayName)
 
             if (deviceKeyInfo is AndroidKeystoreKeyInfo) {
                 val userAuthString =
@@ -321,12 +306,28 @@ class DocumentModel(
         } catch (e: KeyInvalidatedException) {
             kvPairs.put("Device Key", "Invalidated")
         }
+    }
 
+    private fun createCardInfoForMdocCredential(mdocCredential: MdocCredential): CredentialInfo {
+
+        val credentialData = StaticAuthDataParser(mdocCredential.issuerProvidedData).parse()
+        val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
+        val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
+        val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
+        val mso = MobileSecurityObjectParser(encodedMso).parse()
+
+
+        val kvPairs = mutableMapOf<String, String>()
+        kvPairs.put("Document Type", mso.docType)
+        kvPairs.put("MSO Version", mso.version)
+        kvPairs.put("Issuer Data Digest Algorithm", mso.digestAlgorithm)
+
+        addSecureAreaBoundCredentialInfo(mdocCredential, kvPairs)
 
         kvPairs.put("Issuer Provided Data", "${mdocCredential.issuerProvidedData.size} bytes")
 
-
         return CredentialInfo(
+            format = CredentialFormat.MDOC_MSO,
             description = "ISO/IEC 18013-5:2021 mdoc MSO",
             usageCount = mdocCredential.usageCount,
             signedAt = Instant.fromEpochMilliseconds(mso.signed.toEpochMilli()),
@@ -339,6 +340,37 @@ class DocumentModel(
             details = kvPairs
         )
     }
+
+    private fun createCardInfoForSdJwtVcCredential(sdJwtVcCredential: SdJwtVcCredential): CredentialInfo {
+
+        val kvPairs = mutableMapOf<String, String>()
+
+        val sdJwt = SdJwtVerifiableCredential.fromString(
+            String(sdJwtVcCredential.issuerProvidedData, Charsets.US_ASCII)
+        )
+        val body = JwtBody.fromString(sdJwt.body)
+
+        kvPairs.put("Issuer", body.issuer)
+        kvPairs.put("Document Type", body.docType)
+        kvPairs.put("Digest Hash Algorithm", body.sdHashAlg.toString())
+
+        addSecureAreaBoundCredentialInfo(sdJwtVcCredential, kvPairs)
+
+        kvPairs.put("Issuer Provided Data", "${sdJwtVcCredential.issuerProvidedData.size} bytes")
+
+        return CredentialInfo(
+            format = CredentialFormat.SD_JWT_VC,
+            description = "IETF SD-JWT Verifiable Credential",
+            usageCount = sdJwtVcCredential.usageCount,
+            signedAt = body.timeSigned,
+            validFrom = body.timeValidityBegin,
+            validUntil = body.timeValidityEnd,
+            expectedUpdate = null,
+            replacementPending = sdJwtVcCredential.replacement != null,
+            details = kvPairs
+        )
+    }
+
 
     private fun addDocument(document: Document) {
         createCardForDocument(document)?.let { documentInfos.add(it) }
@@ -523,7 +555,7 @@ class DocumentModel(
 
     /**
      * This performs all the essential bits of housekeeping for a document, including
-     * requesting CPOs, checking for PII updates, and so on.
+     * requesting credentials, checking for PII updates, and so on.
      *
      * This will also post notifications to the user for key events, including
      * - when the document has been remote deleted
@@ -536,24 +568,16 @@ class DocumentModel(
      * is set up to use auth-backed Android Keystore keys but the device has no LSKF. So
      * the caller should always try and catch exceptions.
      *
-     * @param issuingAuthorityRepository a repository of issuing authorities.
-     * @param secureAreaRepository a repository of Secure Area implementations available.
-     * @param forceUpdate if true, throttling will be bypassed.
-     * @return number of auth keys refreshed or -1 if the document was deleted
      * @throws IllegalArgumentException if the issuer isn't known.
      */
     private suspend fun syncDocumentWithIssuer(
         document: Document
-    ): Int {
+    ) {
+        Logger.i(TAG, "syncDocumentWithIssuer ${document.name} ${document.documentIdentifier}")
+
         val iaId = document.issuingAuthorityIdentifier
         val issuer = issuingAuthorityRepository.lookupIssuingAuthority(iaId)
             ?: throw IllegalArgumentException("No issuer with id $iaId")
-
-        // TODO: this should all come from issuer configuration
-        val numCreds = 3
-        val minValidTimeMillis = 30 * 24 * 3600L
-        val credDomain = WalletApplication.CREDENTIAL_DOMAIN
-        val docType = DrivingLicense.MDL_DOCTYPE
 
         // OK, let's see if configuration is available
         if (!document.refreshState(issuingAuthorityRepository)) {
@@ -566,6 +590,8 @@ class DocumentModel(
         }
 
         if (document.state.condition == DocumentCondition.CONFIGURATION_AVAILABLE) {
+            // New configuration (= PII) is available, nuke all existing credentials
+            //
             document.certifiedCredentials.forEach { it.delete() }
             document.pendingCredentials.forEach { it.delete() }
             document.documentConfiguration = issuer.getDocumentConfiguration(
@@ -591,109 +617,167 @@ class DocumentModel(
             document.numDocumentConfigurationsDownloaded += 1
 
             if (!document.refreshState(issuingAuthorityRepository)) {
-                return -1
+                Logger.e(TAG, "Error refreshing state for document ${document.name}")
+                return
             }
         }
 
-        // Request new CPOs if needed
+        // Request new credentials if needed
         if (document.state.condition == DocumentCondition.READY) {
-            val now = Timestamp.now()
-            // First do a dry-run to see how many pending credentials will be created
-            val numPendingCredentialsToCreate = DocumentUtil.managedCredentialHelper(
-                document,
-                credDomain,
-                null,
-                now,
-                numCreds,
-                1,
-                minValidTimeMillis,
-                true
-            )
-            if (numPendingCredentialsToCreate > 0) {
-                val requestCpoFlow =
-                    issuer.requestCredentials(document.documentIdentifier)
-                val credConfig = requestCpoFlow.getCredentialConfiguration()
+            val docConf = document.documentConfiguration
 
-                val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
-                    ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
-                val authKeySettings: CreateKeySettings = when (secureArea) {
-                    is AndroidKeystoreSecureArea -> {
-                        AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
-                            .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
-                            .build()
-                    }
-
-                    is SoftwareSecureArea -> {
-                        SoftwareCreateKeySettings.Builder(credConfig.challenge)
-                            .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
-                            .build()
-                    }
-
-                    else -> throw IllegalStateException("Unexpected SecureArea $secureArea")
-                }
-                DocumentUtil.managedCredentialHelper(
+            if (docConf.mdocConfiguration != null) {
+                refreshCredentials(
+                    issuer,
                     document,
-                    credDomain,
-                    {toBeReplaced -> MdocCredential(
+                    WalletApplication.CREDENTIAL_DOMAIN_MDOC,
+                    CredentialFormat.MDOC_MSO
+                ) { credentialToReplace, credentialDomain, secureArea, createKeySettings ->
+                    MdocCredential(
                         document,
-                        toBeReplaced,
-                        credDomain,
+                        credentialToReplace,
+                        credentialDomain,
                         secureArea,
-                        authKeySettings,
-                        docType
-                    )},
-                    now,
-                    numCreds,
-                    1,
-                    minValidTimeMillis,
-                    false
-                )
-                val credentialRequests = mutableListOf<CredentialRequest>()
-                for (pendingMdocCredential in document.pendingCredentials) {
-                    credentialRequests.add(
-                        CredentialRequest(
-                            CredentialFormat.MDOC_MSO,
-                            (pendingMdocCredential as MdocCredential).attestation
-                        )
+                        createKeySettings,
+                        docConf.mdocConfiguration!!.docType,
                     )
                 }
-                requestCpoFlow.sendCredentials(credentialRequests)
-                requestCpoFlow.complete()
-                if (!document.refreshState(issuingAuthorityRepository)) {
-                    return -1
+            }
+
+            if (docConf.sdJwtVcDocumentConfiguration != null) {
+                refreshCredentials(
+                    issuer,
+                    document,
+                    WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC,
+                    CredentialFormat.SD_JWT_VC
+                ) { credentialToReplace, credentialDomain, secureArea, createKeySettings ->
+                    SdJwtVcCredential(
+                        document,
+                        credentialToReplace,
+                        credentialDomain,
+                        secureArea,
+                        createKeySettings,
+                        docConf.sdJwtVcDocumentConfiguration!!.vct,
+                    )
                 }
             }
+        }
+
+
+        if (!document.refreshState(issuingAuthorityRepository)) {
+            Logger.e(TAG, "Error refreshing state for document ${document.name} (after requesting" +
+                    " credentials)")
+            return
         }
 
         var numCredentialsRefreshed = 0
         if (document.state.numAvailableCredentials > 0) {
-            for (cpo in issuer.getCredentials(document.documentIdentifier)) {
-                val pendingMdocCredential = document.pendingCredentials.find {
-                    it.domain == WalletApplication.CREDENTIAL_DOMAIN &&
-                    (it as MdocCredential).attestation.certificates.first().publicKey.equals(cpo.secureAreaBoundKey)
+            for (credentialData in issuer.getCredentials(document.documentIdentifier)) {
+                val pendingCredential = document.pendingCredentials.find {
+                            (it as SecureAreaBoundCredential).attestation.certificates.first()
+                                .publicKey.equals(credentialData.secureAreaBoundKey)
                 }
-                if (pendingMdocCredential == null) {
-                    Logger.w(TAG, "No pending Credential for pubkey ${cpo.secureAreaBoundKey}")
+                if (pendingCredential == null) {
+                    Logger.w(TAG, "No pending Credential for pubkey ${credentialData.secureAreaBoundKey}")
                     continue
                 }
-                pendingMdocCredential.certify(
-                    cpo.data,
-                    Timestamp.ofEpochMilli(cpo.validFrom.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(cpo.validUntil.toEpochMilliseconds())
+                pendingCredential.certify(
+                    credentialData.data,
+                    Timestamp.ofEpochMilli(credentialData.validFrom.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(credentialData.validUntil.toEpochMilliseconds())
                 )
                 numCredentialsRefreshed += 1
             }
             if (!document.refreshState(issuingAuthorityRepository)) {
-                return -1
+                Logger.e(TAG, "Error refreshing state for document ${document.name} (after " +
+                        "credential download)")
             }
         }
-        return numCredentialsRefreshed
+    }
+
+    private suspend fun refreshCredentials(
+        issuer: IssuingAuthority,
+        document: Document,
+        credentialDomain: String,
+        credentialFormat: CredentialFormat,
+        createCredential: ((
+            credentialToReplace: Credential?,
+            credentialDomain: String,
+            secureArea: SecureArea,
+            createKeySettings: CreateKeySettings,
+                ) -> Credential)
+    ) {
+        // TODO: this should all come from issuer configuration
+        val numCreds = 3
+        val minValidTimeMillis = 30 * 24 * 3600L
+
+        val now = Timestamp.now()
+        // First do a dry-run to see how many pending credentials will be created
+        val numPendingCredentialsToCreate = DocumentUtil.managedCredentialHelper(
+            document,
+            credentialDomain,
+            null,
+            now,
+            numCreds,
+            1,
+            minValidTimeMillis,
+            true
+        )
+        if (numPendingCredentialsToCreate > 0) {
+            val requestCredentialsFlow = issuer.requestCredentials(document.documentIdentifier)
+            val credConfig = requestCredentialsFlow.getCredentialConfiguration(credentialFormat.toString())
+
+            val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
+                ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
+            val authKeySettings: CreateKeySettings = when (secureArea) {
+                is AndroidKeystoreSecureArea -> {
+                    AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
+                        .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                        .build()
+                }
+
+                is SoftwareSecureArea -> {
+                    SoftwareCreateKeySettings.Builder(credConfig.challenge)
+                        .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                        .build()
+                }
+
+                else -> throw IllegalStateException("Unexpected SecureArea $secureArea")
+            }
+            DocumentUtil.managedCredentialHelper(
+                document,
+                credentialDomain,
+                { credentialToReplace ->
+                    createCredential(
+                        credentialToReplace,
+                        credentialDomain,
+                        secureArea,
+                        authKeySettings,
+                    )
+                },
+                now,
+                numCreds,
+                1,
+                minValidTimeMillis,
+                false
+            )
+            val credentialRequests = mutableListOf<CredentialRequest>()
+            for (pendingCredential in document.pendingCredentials) {
+                credentialRequests.add(
+                    CredentialRequest(
+                        (pendingCredential as SecureAreaBoundCredential).attestation
+                    )
+                )
+            }
+            requestCredentialsFlow.sendCredentials(credentialRequests)
+        }
     }
 }
 
 private class TimedChunkFlow<T>(sourceFlow: Flow<T>, period: Duration) {
     private val chunkLock = ReentrantLock()
     private var chunk = mutableListOf<T>()
+    @OptIn(FlowPreview::class)
     val resultFlow = flow {
         sourceFlow.collect {
             val localChunk = chunkLock.withLock {

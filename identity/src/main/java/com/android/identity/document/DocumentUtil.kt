@@ -16,7 +16,6 @@
 package com.android.identity.document
 
 import com.android.identity.credential.Credential
-import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.util.Timestamp
 
 /**
@@ -47,7 +46,7 @@ object DocumentUtil {
      * @param createCredential a lambda for creating the credential which only takes in an optional
      * parameter for a replacement credential. This must not be null if dryRun is false.
      * @param now the time right now, used for determining which existing credentials to replace.
-     * @param numAuthenticationCredentials the number of credentials that should be kept.
+     * @param numCredentials the number of credentials that should be kept.
      * @param maxUsesPerCredential the maximum number of uses per credential.
      * @param minValidTimeMillis requests a replacement for a credential if it expires within this window.
      * @param dryRun don't actually create the credentials, just return how many would be created.
@@ -59,7 +58,7 @@ object DocumentUtil {
         domain: String,
         createCredential: ((credentialToReplace: Credential?) -> Credential)?,
         now: Timestamp,
-        numAuthenticationCredentials: Int,
+        numCredentials: Int,
         maxUsesPerCredential: Int,
         minValidTimeMillis: Long,
         dryRun: Boolean
@@ -99,7 +98,7 @@ object DocumentUtil {
         }
 
         // It's possible we need to generate pending credentials that aren't replacements
-        val numNonReplacementsToGenerate = (numAuthenticationCredentials
+        val numNonReplacementsToGenerate = (numCredentials
                 - numCredentialsNotNeedingReplacement
                 - numExistingPendingCredentials)
         if (!dryRun) {

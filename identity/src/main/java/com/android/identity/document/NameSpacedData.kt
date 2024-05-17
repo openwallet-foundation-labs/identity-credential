@@ -149,7 +149,7 @@ class NameSpacedData private constructor(
         dataElementName: String
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asBoolean
 
-    fun toCbor(): DataItem = CborMap.builder().run {
+    val toDataItem: DataItem = CborMap.builder().run {
         for (namespaceName in map.keys) {
             val innerMapBuilder = putMap(namespaceName)
             val namespace = map[namespaceName]!!
@@ -161,7 +161,7 @@ class NameSpacedData private constructor(
                 )
             }
         }
-        return end().build()
+        end().build()
     }
 
     /**
@@ -202,7 +202,7 @@ class NameSpacedData private constructor(
      *
      * @return the bytes of the encoding describe above.
      */
-    fun encodeAsCbor() = Cbor.encode(toCbor())
+    fun encodeAsCbor() = Cbor.encode(toDataItem)
 
     /**
      * A builder for [NameSpacedData].
@@ -315,9 +315,9 @@ class NameSpacedData private constructor(
          * [.encodeAsCbor].
          */
         @JvmStatic
-        fun fromEncodedCbor(encodedCbor: ByteArray) = fromCbor(Cbor.decode(encodedCbor))
+        fun fromEncodedCbor(encodedCbor: ByteArray) = fromDataItem(Cbor.decode(encodedCbor))
 
-        private fun fromCbor(mapDataItem: DataItem): NameSpacedData {
+        fun fromDataItem(mapDataItem: DataItem): NameSpacedData {
             val ret = mutableMapOf<String, MutableMap<String, ByteArray>>()
             require(mapDataItem is CborMap)
             for (nameSpaceNameItem in mapDataItem.items.keys) {

@@ -196,8 +196,8 @@ class DocumentStoreTest {
         // We check that NameSpacedData is preserved across loads by simply comparing the
         // encoded data.
         Assert.assertEquals(
-            document.applicationData.getNameSpacedData("documentData").toCbor(),
-            loadedDocument.applicationData.getNameSpacedData("documentData").toCbor()
+            document.applicationData.getNameSpacedData("documentData").toDataItem,
+            loadedDocument.applicationData.getNameSpacedData("documentData").toDataItem
         )
     }
 

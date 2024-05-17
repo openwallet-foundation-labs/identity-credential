@@ -25,8 +25,12 @@ import com.android.identity.issuance.toDataItem
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.MrtdAccessData
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -54,16 +58,23 @@ abstract class SimpleIssuingAuthority(
     abstract override val configuration: IssuingAuthorityConfiguration
 
     // This can be changed to simulate proofing and requesting CPOs being slow.
-    protected var delayForProofingAndIssuance: Duration = 0.seconds
+    protected var delayForProofingAndIssuance: Duration = 1.seconds
 
     private val _eventFlow = MutableSharedFlow<Pair<IssuingAuthority, String>>()
 
     override val eventFlow
         get() = _eventFlow.asSharedFlow()
 
-    private fun emitOnStateChanged(credentialId: String) {
-        runBlocking {
-            _eventFlow.emit(Pair(this@SimpleIssuingAuthority, credentialId))
+    private fun emitOnStateChanged(documentId: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(delayForProofingAndIssuance)
+            if (delayForProofingAndIssuance.isPositive()) {
+                Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing " +
+                "(after delaying for $delayForProofingAndIssuance)")
+            } else {
+                Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
+            }
+            _eventFlow.emit(Pair(this@SimpleIssuingAuthority, documentId))
         }
     }
 
@@ -159,7 +170,7 @@ abstract class SimpleIssuingAuthority(
 
                 val documentConfiguration: DocumentConfiguration? =
                     map.getOrNull("documentConfiguration")?.let {
-                        DocumentConfiguration.fromCbor(it.asBstr)
+                        DocumentConfiguration.fromDataItem(it)
                     }
 
                 return IssuerDocument(
@@ -188,7 +199,7 @@ abstract class SimpleIssuingAuthority(
                 .put("collectedEvidence", ceMapBuilder.end().build())
                 .put("credentialRequests", credentialRequestsBuilder.end().build())
             if (documentConfiguration != null) {
-                mapBuilder.put("documentConfiguration", documentConfiguration!!.toCbor())
+                mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem)
             }
             return Cbor.encode(mapBuilder.end().build())
         }
@@ -335,16 +346,7 @@ abstract class SimpleIssuingAuthority(
         issuerDocument.proofingDeadline = Clock.System.now() + delayForProofingAndIssuance
 
         saveIssuerDocument(documentId, issuerDocument)
-
-        if (delayForProofingAndIssuance == 0.seconds) {
-            Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
-            emitOnStateChanged(documentId)
-        } else {
-            Timer().schedule(timerTask {
-                Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
-                emitOnStateChanged(documentId)
-            }, delayForProofingAndIssuance.inWholeMilliseconds)
-        }
+        emitOnStateChanged(documentId)
     }
 
     fun addCollectedEvidence(
@@ -374,6 +376,7 @@ abstract class SimpleIssuingAuthority(
 
     fun addCpoRequests(
         documentId: String,
+        format: CredentialFormat,
         credentialRequests: List<CredentialRequest>
     ) {
         val now = Clock.System.now()
@@ -389,13 +392,13 @@ abstract class SimpleIssuingAuthority(
             }
             val authenticationKey = request.secureAreaBoundKeyAttestation.certificates.first().publicKey
             val presentationData = createPresentationData(
-                request.format,
+                format,
                 issuerDocument.documentConfiguration!!,
                 authenticationKey
             )
             val simpleCredentialRequest = SimpleCredentialRequest(
                 authenticationKey,
-                request.format,
+                format,
                 presentationData,
                 now + delayForProofingAndIssuance,
             )
@@ -403,15 +406,7 @@ abstract class SimpleIssuingAuthority(
         }
         saveIssuerDocument(documentId, issuerDocument)
 
-        if (delayForProofingAndIssuance == 0.seconds) {
-            Logger.i(TAG, "Emitting onStateChanged on $documentId for CpoRequest")
-            emitOnStateChanged(documentId)
-        } else {
-            Timer().schedule(timerTask {
-                Logger.i(TAG, "Emitting onStateChanged on $documentId for CpoRequest")
-                emitOnStateChanged(documentId)
-            }, delayForProofingAndIssuance.inWholeMilliseconds)
-        }
+        emitOnStateChanged(documentId)
     }
 
     override suspend fun developerModeRequestUpdate(

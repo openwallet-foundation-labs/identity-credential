@@ -35,6 +35,7 @@ import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.DocumentState
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthorityMain
+import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
@@ -62,13 +63,13 @@ private val configuration = IssuingAuthorityConfiguration(
     issuingAuthorityName = "Elbonia DMV",
     issuingAuthorityLogo = dmv_issuing_authority_logo_png,
     description = "Elbonia Driver's License",
-    documentFormats = setOf(CredentialFormat.MDOC_MSO),
     pendingDocumentInformation = DocumentConfiguration(
-        "Pending",
-        driving_license_card_art_png,
-        MDL_DOCTYPE,
-        NameSpacedData.Builder().build(),
-        true
+        displayName = "Pending",
+        typeDisplayName =  "Driving License",
+        cardArt = driving_license_card_art_png,
+        requireUserAuthenticationToViewDocument = true,
+        mdocConfiguration = null,
+        sdJwtVcDocumentConfiguration = null,
     )
 )
 
@@ -210,13 +211,12 @@ class IssuingAuthorityState(
             }
             val authenticationKey = request.secureAreaBoundKeyAttestation.certificates.first().publicKey
             val presentationData = createPresentationData(
-                request.format,
                 issuerDocument.documentConfiguration!!,
                 authenticationKey
             )
             val simpleCredentialRequest = SimpleCredentialRequest(
                 authenticationKey,
-                request.format,
+                CredentialFormat.MDOC_MSO,
                 presentationData,
                 now,
             )
@@ -263,13 +263,9 @@ class IssuingAuthorityState(
         // TODO: implement this
     }
 
-    private fun createPresentationData(presentationFormat: CredentialFormat,
-                                        documentConfiguration: DocumentConfiguration,
-                                        authenticationKey: EcPublicKey
+    private fun createPresentationData(documentConfiguration: DocumentConfiguration,
+                                       authenticationKey: EcPublicKey
     ): ByteArray {
-        // Right now we only support mdoc
-        check(presentationFormat == CredentialFormat.MDOC_MSO)
-
         val now = Timestamp.now()
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
@@ -286,7 +282,7 @@ class IssuingAuthorityState(
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
         val randomProvider = Random.Default
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            documentConfiguration.staticData,
+            documentConfiguration.mdocConfiguration!!.staticData,
             randomProvider,
             16,
             null
@@ -400,11 +396,15 @@ class IssuingAuthorityState(
             .putEntryNumber(AAMVA_NAMESPACE, "sex", 2L)
 
         return DocumentConfiguration(
-            "$firstName's driver's license",
-            driving_license_card_art_png,
-            MDL_DOCTYPE,
-            data.build(),
-            true
+            displayName = "$firstName's Driving License",
+            typeDisplayName = "Driving License",
+            cardArt = driving_license_card_art_png,
+            requireUserAuthenticationToViewDocument = true,
+            mdocConfiguration = MdocDocumentConfiguration(
+                docType = MDL_DOCTYPE,
+                staticData = data.build(),
+            ),
+            sdJwtVcDocumentConfiguration = null,
         )
     }
 
