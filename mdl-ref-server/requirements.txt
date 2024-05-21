@@ -10,7 +10,7 @@ pycparser==2.20
 pycryptodome==3.19.1
 pycryptodomex==3.10.1
 PyYAML==5.4.1
-requests==2.31.0
+requests==2.32.0
 shellescape==3.8.1
 tornado==6.3.3
 urllib3==1.26.18
