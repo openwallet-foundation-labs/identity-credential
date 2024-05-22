@@ -31,6 +31,13 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        }
+    }
 }
 
 dependencies {
