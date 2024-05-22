@@ -7,7 +7,7 @@ import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.FlowBaseInterface
-import com.android.identity.flow.handler.FlowEnvironment
+import com.android.identity.flow.environment.FlowEnvironment
 import com.android.identity.flow.handler.FlowHandlerLocal
 import com.android.identity.flow.handler.FlowHandlerRemote
 import kotlinx.coroutines.runBlocking

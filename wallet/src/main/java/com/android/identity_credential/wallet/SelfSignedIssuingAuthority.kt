@@ -1,5 +1,6 @@
 package com.android.identity_credential.wallet
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -50,12 +51,40 @@ import kotlin.time.Duration.Companion.days
 
 abstract class SelfSignedIssuingAuthority(
     val application: WalletApplication,
-    storageEngine: StorageEngine
+    storageEngine: StorageEngine,
+    emitOnStateChanged: suspend (documentId: String) -> Unit
 ): SimpleIssuingAuthority(
-    storageEngine
+    storageEngine,
+    emitOnStateChanged
 ) {
     companion object {
         private const val TAG = "SelfSignedMdlIssuingAuthority"
+
+        fun resourceString(context: Context, id: Int, vararg text: String): String {
+            return context.resources.getString(id, *text)
+        }
+
+        fun resourceBytes(context: Context, id: Int): ByteArray {
+            val stream = context.resources.openRawResource(id)
+            val bytes = stream.readBytes()
+            stream.close()
+            return bytes
+        }
+
+        fun jpegData(context: Context, resourceId: Int): ByteArray {
+            val baos = ByteArrayOutputStream()
+            BitmapFactory.decodeResource(context.resources, resourceId)
+                .compress(Bitmap.CompressFormat.JPEG, 90, baos)
+            return baos.toByteArray()
+        }
+
+        fun pngData(context: Context, resourceId: Int): ByteArray {
+            val baos = ByteArrayOutputStream()
+            BitmapFactory.decodeResource(context.resources, resourceId)
+                .compress(Bitmap.CompressFormat.PNG, 100, baos)
+            return baos.toByteArray()
+        }
+
     }
 
     abstract val docType: String
@@ -293,14 +322,10 @@ abstract class SelfSignedIssuingAuthority(
     }
 
     protected fun resourceString(id: Int, vararg text: String): String {
-        return application.applicationContext.resources.getString(id, *text)
+        return Companion.resourceString(application.applicationContext, id, *text)
     }
 
     protected fun resourceBytes(id: Int): ByteArray {
-        val stream = application.applicationContext.resources.openRawResource(id)
-        val bytes = stream.readBytes()
-        stream.close()
-        return bytes
+        return Companion.resourceBytes(application.applicationContext, id)
     }
-
 }

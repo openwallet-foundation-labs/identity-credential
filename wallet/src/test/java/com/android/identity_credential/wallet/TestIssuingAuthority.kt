@@ -20,12 +20,12 @@ import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity_credential.mrtd.MrtdAccessData
 import kotlin.time.Duration.Companion.seconds
 
-class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
+class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {}) {
     companion object {
         private const val TAG = "TestIssuingAuthority"
     }
 
-    override lateinit var configuration: IssuingAuthorityConfiguration
+    var configuration: IssuingAuthorityConfiguration
 
     override fun getMrtdAccessData(collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData? {
         return null

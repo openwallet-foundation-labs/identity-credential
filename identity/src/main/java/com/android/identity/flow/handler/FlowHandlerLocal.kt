@@ -6,9 +6,9 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MajorType
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
+import com.android.identity.flow.environment.FlowEnvironment
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
-import java.security.SecureRandom
 import kotlin.random.Random
 
 /**

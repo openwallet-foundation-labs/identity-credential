@@ -3,6 +3,7 @@ package com.android.identity.issuance.simple
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.RawCbor
 import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentConfiguration
@@ -11,7 +12,6 @@ import com.android.identity.issuance.CredentialData
 import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.DocumentState
 import com.android.identity.issuance.IssuingAuthority
-import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.RegistrationFlow
 import com.android.identity.issuance.RequestCredentialsFlow
@@ -27,16 +27,10 @@ import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.MrtdAccessData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.lang.UnsupportedOperationException
-import java.util.Timer
-import kotlin.concurrent.timerTask
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -49,34 +43,15 @@ import kotlin.time.Duration.Companion.seconds
  */
 abstract class SimpleIssuingAuthority(
     private val storageEngine: StorageEngine,
+    private val emitOnStateChanged: suspend (documentId: String) -> Unit
 ) : IssuingAuthority {
 
     companion object {
         private const val TAG = "SimpleIssuingAuthority"
     }
 
-    abstract override val configuration: IssuingAuthorityConfiguration
-
     // This can be changed to simulate proofing and requesting CPOs being slow.
     protected var delayForProofingAndIssuance: Duration = 1.seconds
-
-    private val _eventFlow = MutableSharedFlow<Pair<IssuingAuthority, String>>()
-
-    override val eventFlow
-        get() = _eventFlow.asSharedFlow()
-
-    private fun emitOnStateChanged(documentId: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            delay(delayForProofingAndIssuance)
-            if (delayForProofingAndIssuance.isPositive()) {
-                Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing " +
-                "(after delaying for $delayForProofingAndIssuance)")
-            } else {
-                Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
-            }
-            _eventFlow.emit(Pair(this@SimpleIssuingAuthority, documentId))
-        }
-    }
 
     open fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
         throw UnsupportedOperationException("Tunnel not supported")
@@ -346,7 +321,9 @@ abstract class SimpleIssuingAuthority(
         issuerDocument.proofingDeadline = Clock.System.now() + delayForProofingAndIssuance
 
         saveIssuerDocument(documentId, issuerDocument)
-        emitOnStateChanged(documentId)
+        CoroutineScope(Dispatchers.IO).launch {
+            emitOnStateChanged(documentId)
+        }
     }
 
     fun addCollectedEvidence(
@@ -406,7 +383,9 @@ abstract class SimpleIssuingAuthority(
         }
         saveIssuerDocument(documentId, issuerDocument)
 
-        emitOnStateChanged(documentId)
+        CoroutineScope(Dispatchers.IO).launch {
+            emitOnStateChanged(documentId)
+        }
     }
 
     override suspend fun developerModeRequestUpdate(
@@ -431,4 +410,14 @@ abstract class SimpleIssuingAuthority(
             emitOnStateChanged(documentId)
         }
     }
+
+    override suspend fun complete() {
+       // noop
+    }
+
+    // Unused in client implementations
+    override val flowState: DataItem
+        get() {
+            throw UnsupportedOperationException("Unexpected call")
+        }
 }

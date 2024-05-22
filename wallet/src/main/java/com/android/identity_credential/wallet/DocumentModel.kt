@@ -26,6 +26,7 @@ import com.android.identity.issuance.DocumentExtensions.state
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.IssuingAuthority
+import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -127,11 +128,12 @@ class DocumentModel(
             Logger.w(TAG, "No document with id ${documentInfo.documentId}")
             return
         }
-        val issuer =
+        issuingAuthorityRepository.waitUntilReady()
+        val issuerRecord =
             issuingAuthorityRepository.lookupIssuingAuthority(document.issuingAuthorityIdentifier)
                 ?: throw IllegalArgumentException("No issuer with id ${document.issuingAuthorityIdentifier}")
 
-        issuer.developerModeRequestUpdate(
+        issuerRecord.issuingAuthority.developerModeRequestUpdate(
             document.documentIdentifier,
             requestRemoteDeletion,
             notifyApplicationOfUpdate
@@ -394,22 +396,22 @@ class DocumentModel(
         createCardForDocument(document)?.let { documentInfos[cardIndex] = it }
     }
 
-    private fun addIssuer(issuingAuthority: IssuingAuthority) {
-        issuerDisplayData.add(createIssuerDisplayData(issuingAuthority))
+    private fun addIssuer(configuration: IssuingAuthorityConfiguration) {
+        issuerDisplayData.add(createIssuerDisplayData(configuration))
     }
 
-    private fun createIssuerDisplayData(issuingAuthority: IssuingAuthority): IssuerDisplayData {
+    private fun createIssuerDisplayData(configuration: IssuingAuthorityConfiguration): IssuerDisplayData {
         val options = BitmapFactory.Options()
         options.inMutable = true
         val issuerLogoBitmap = BitmapFactory.decodeByteArray(
-            issuingAuthority.configuration.issuingAuthorityLogo,
+            configuration.issuingAuthorityLogo,
             0,
-            issuingAuthority.configuration.issuingAuthorityLogo.size,
+            configuration.issuingAuthorityLogo.size,
             options
         )
 
         return IssuerDisplayData(
-            configuration = issuingAuthority.configuration,
+            configuration = configuration,
             issuerLogo = issuerLogoBitmap,
         )
     }
@@ -432,6 +434,7 @@ class DocumentModel(
             // model (addDocument, removeDocument, updateDocument) doesn't happen at
             // the same time...
             //
+            issuingAuthorityRepository.waitUntilReady()
             runBlocking {
                 documentStore.eventFlow
                     .onEach { (eventType, document) ->
@@ -477,6 +480,7 @@ class DocumentModel(
         // For every event, we  initiate a sequence of calls into the issuer to get the latest.
         //
         CoroutineScope(Dispatchers.IO).launch {
+            issuingAuthorityRepository.waitUntilReady()
             issuingAuthorityRepository.eventFlow.collect { (issuingAuthority, documentId) ->
                 // Find the local [Document] instance, if any
                 for (id in documentStore.listDocuments()) {
@@ -522,10 +526,15 @@ class DocumentModel(
             }
         }
 
+        // This is a hack to wait until all IssuerAuthority objects are created
+        runBlocking {
+            issuingAuthorityRepository.waitUntilReady()
+        }
+
         // Initial data population and export to Credman
         //
         for (issuer in issuingAuthorityRepository.getIssuingAuthorities()) {
-            addIssuer(issuer)
+            addIssuer(issuer.configuration)
         }
         for (documentId in documentStore.listDocuments()) {
             documentStore.lookupDocument(documentId)?.let {
@@ -576,7 +585,7 @@ class DocumentModel(
         Logger.i(TAG, "syncDocumentWithIssuer ${document.name} ${document.documentIdentifier}")
 
         val iaId = document.issuingAuthorityIdentifier
-        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(iaId)
+        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(iaId)?.issuingAuthority
             ?: throw IllegalArgumentException("No issuer with id $iaId")
 
         // OK, let's see if configuration is available
@@ -770,6 +779,7 @@ class DocumentModel(
                 )
             }
             requestCredentialsFlow.sendCredentials(credentialRequests)
+            requestCredentialsFlow.complete()  // noop for local, but important for server-side IA
         }
     }
 }
