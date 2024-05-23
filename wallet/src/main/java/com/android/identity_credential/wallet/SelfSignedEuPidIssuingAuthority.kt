@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.content.Context
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItemDateTimeString
@@ -12,7 +11,6 @@ import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
@@ -38,38 +36,43 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
-import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.days
 
 class SelfSignedEuPidIssuingAuthority(
     application: WalletApplication,
-    storageEngine: StorageEngine
-) : SelfSignedIssuingAuthority(application, storageEngine) {
+    storageEngine: StorageEngine,
+    emitOnStateChanged: suspend (documentId: String) -> Unit
+) : SelfSignedIssuingAuthority(
+    application,
+    storageEngine,
+    emitOnStateChanged
+) {
     companion object {
         private const val EUPID_NAMESPACE = EUPersonalID.EUPID_NAMESPACE
         private const val EUPID_DOCTYPE = EUPersonalID.EUPID_DOCTYPE
+
+        fun getConfiguration(context: Context): IssuingAuthorityConfiguration {
+            return IssuingAuthorityConfiguration(
+                identifier = "euPid_Utopia",
+                issuingAuthorityName = resourceString(context, R.string.utopia_eu_pid_issuing_authority_name),
+                issuingAuthorityLogo = pngData(context, R.drawable.utopia_pid_issuing_authority_logo),
+                description = resourceString(context, R.string.utopia_eu_pid_issuing_authority_description),
+                pendingDocumentInformation = DocumentConfiguration(
+                    displayName = resourceString(context, R.string.utopia_eu_pid_issuing_authority_pending_document_title),
+                    typeDisplayName = "Personal Identification Document",
+                    cardArt = pngData(context, R.drawable.utopia_pid_card_art),
+                    requireUserAuthenticationToViewDocument = false,
+                    mdocConfiguration = null,
+                    sdJwtVcDocumentConfiguration = null
+                )
+            )
+        }
     }
 
     override val docType: String = EUPID_DOCTYPE
-    override lateinit var configuration: IssuingAuthorityConfiguration
-    private val tosAssets: Map<String, ByteArray>;
 
-    init {
-        val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            application.applicationContext.resources,
-            R.drawable.utopia_pid_issuing_authority_logo
-        ).compress(Bitmap.CompressFormat.PNG, 90, baos)
-        val icon: ByteArray = baos.toByteArray()
-        configuration = IssuingAuthorityConfiguration(
-            identifier = "euPid_Utopia",
-            issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
-            issuingAuthorityLogo = icon,
-            description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
-            pendingDocumentInformation = createDocumentConfiguration(null)
-        )
-        tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
-    }
+    private val tosAssets: Map<String, ByteArray> =
+        mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
 
     override fun getProofingGraphRoot(
         registrationResponse: RegistrationResponse
@@ -162,11 +165,7 @@ class SelfSignedEuPidIssuingAuthority(
     }
 
     private fun createDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): DocumentConfiguration {
-        val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            application.applicationContext.resources, R.drawable.utopia_pid_card_art
-        ).compress(Bitmap.CompressFormat.PNG, 90, baos)
-        val cardArt: ByteArray = baos.toByteArray()
+        val cardArt: ByteArray = pngData(application.applicationContext, R.drawable.utopia_pid_card_art)
 
         if (collectedEvidence == null) {
             return DocumentConfiguration(

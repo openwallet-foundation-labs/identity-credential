@@ -33,7 +33,7 @@ class FlowSymbolProcessor(
         const val FLOW_HANDLER = "com.android.identity.flow.handler.FlowHandler"
         const val BASE_INTERFACE = "com.android.identity.flow.FlowBaseInterface"
         const val FLOW_HANDLER_LOCAL = "com.android.identity.flow.handler.FlowHandlerLocal"
-        const val FLOW_ENVIRONMENT = "com.android.identity.flow.handler.FlowEnvironment"
+        const val FLOW_ENVIRONMENT = "com.android.identity.flow.environment.FlowEnvironment"
 
         val stateSuffix = Regex("State$")
     }
@@ -51,7 +51,7 @@ class FlowSymbolProcessor(
 
     private fun processStateClass(stateClass: KSClassDeclaration) {
         val annotation = findAnnotation(stateClass, ANNOTATION_STATE)
-        val path = getStringArgument(annotation, "path", stateClass.simpleName.getShortName())
+        val path = getPathFromStateType(stateClass)
         val flowInterface = getClassArgument(annotation, "flowInterface")
         val flowInterfaceName = getFlowInterfaceName(stateClass, annotation)!!
         val joins = mutableMapOf<String, String>()  // interface to path
@@ -404,6 +404,20 @@ class FlowSymbolProcessor(
         }
     }
 
+    private fun getPathFromStateType(declaration: KSDeclaration): String {
+        val baseName = declaration.simpleName.asString()
+        val annotation = findAnnotation(declaration, ANNOTATION_STATE)
+        return getStringArgument(
+            annotation = annotation,
+            name = "path",
+            defaultValue = if (baseName.endsWith("State")) {
+                baseName.substring(0, baseName.length - 5)
+            } else {
+                baseName
+            }
+        )
+    }
+
     private fun getStateFlowTypeInfo(type: KSType?): FlowTypeInfo? {
         if (type == null) {
             return null
@@ -418,13 +432,13 @@ class FlowSymbolProcessor(
             annotation, "flowImplementationName", fullInterfaceName + "Impl"
         )
         val simpleImplName = fullImplName.substring(fullImplName.lastIndexOf('.') + 1)
-        val path = getStringArgument(annotation, "path", type.declaration.simpleName.asString())
+
         return FlowTypeInfo(
             fullInterfaceName,
             simpleInterfaceName,
             fullImplName,
             simpleImplName,
-            path
+            getPathFromStateType(type.declaration)
         )
     }
 

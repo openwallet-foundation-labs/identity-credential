@@ -1,6 +1,9 @@
 package com.android.identity.issuance
 
-import kotlinx.coroutines.flow.SharedFlow
+import com.android.identity.flow.FlowBaseInterface
+import com.android.identity.flow.annotation.FlowInterface
+import com.android.identity.flow.annotation.FlowMethod
+import org.intellij.lang.annotations.Flow
 
 /**
  * An interface representing an Issuing Authority.
@@ -12,12 +15,8 @@ import kotlinx.coroutines.flow.SharedFlow
  * Documents are identifier by an identifier - `documentId` - and each document may have
  * multiple credentials associated with it.
  */
-interface IssuingAuthority {
-    /**
-     * Static information about the Issuing Authority.
-     */
-    val configuration: IssuingAuthorityConfiguration
-
+@FlowInterface
+interface IssuingAuthority : FlowBaseInterface {
     /**
      * Calls the issuer to start creating a document.
      *
@@ -27,6 +26,7 @@ interface IssuingAuthority {
      *
      * @return a [RegistrationFlow] instance.
      */
+    @FlowMethod
     suspend fun register(): RegistrationFlow
 
     /**
@@ -34,14 +34,8 @@ interface IssuingAuthority {
      *
      * @throws UnknownDocumentException if the given `documentId` isn't valid.
      */
+    @FlowMethod
     suspend fun getState(documentId: String): DocumentState
-
-    /**
-     * A [SharedFlow] which can be used to listen for when a document has changed state
-     * on the issuer side. The first element in the pair is an [IssuingAuthority], the second
-     * element is the `documentId`.
-     */
-    val eventFlow: SharedFlow<Pair<IssuingAuthority, String>>
 
     /**
      * Calls the issuer to start proofing the applicant.
@@ -57,6 +51,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.PROOFING_REQUIRED].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun proof(documentId: String): ProofingFlow
 
     /**
@@ -68,6 +63,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in condition [DocumentCondition.CONFIGURATION_AVAILABLE].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration
 
     /**
@@ -85,6 +81,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun requestCredentials(documentId: String): RequestCredentialsFlow
 
     /**
@@ -97,6 +94,7 @@ interface IssuingAuthority {
      *
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun getCredentials(documentId: String): List<CredentialData>
 
     /**
@@ -125,6 +123,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
+    @FlowMethod
     suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,

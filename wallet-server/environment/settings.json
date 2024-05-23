@@ -1,0 +1,20 @@
+{
+  "message_key": "bgoBBmDy1dYj8y2fXV9DKg==",
+  "issuing_authority_list": ["utopia", "eldorado"],
+  "issuing_authorities": {
+    "utopia": {
+      "name": "Utopia DMV",
+      "logo": "utopia/logo.png",
+      "description": "Utopia Driver's License",
+      "card_art": "utopia/card_art.png",
+      "require_user_authentication_to_view_document": true
+    },
+    "eldorado": {
+      "name": "El Dorado DMV",
+      "logo": "eldorado/logo.png",
+      "description": "El Dorado Driver License",
+      "card_art": "eldorado/card_art.png",
+      "require_user_authentication_to_view_document": true
+    }
+  }
+}

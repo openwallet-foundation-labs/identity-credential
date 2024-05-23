@@ -34,9 +34,11 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.flow.handler.FlowHandlerRemote
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustManager
@@ -137,11 +139,44 @@ class WalletApplication : Application() {
         // init documentStore
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
 
+        val walletServerProvider = WalletServerProvider(this,
+            androidKeystoreSecureArea,
+            // Adjust it or proxy local server to device using adb 'adb reverse tcp:8080 tcp:8080'
+            // Alternatively use "dev:" to connect to the server code running in-app.
+            // TODO: expose this in a setting, will need to reconnect if the setting changes.
+            "http://localhost:8080/wallet-server"
+        )
+
         // init IssuingAuthorityRepository
-        issuingAuthorityRepository = IssuingAuthorityRepository().apply {
-            add(SelfSignedMdlIssuingAuthority(this@WalletApplication, storageEngine))
-            add(SelfSignedEuPidIssuingAuthority(this@WalletApplication, storageEngine))
-            add(RemoteIssuingAuthority())
+        issuingAuthorityRepository = IssuingAuthorityRepository() {
+            addIssuingAuthority(SelfSignedMdlIssuingAuthority.getConfiguration(
+                this@WalletApplication)
+            ) { emitOnStateChanged ->
+                SelfSignedMdlIssuingAuthority(
+                    this@WalletApplication,
+                    storageEngine,
+                    emitOnStateChanged)
+            }
+            addIssuingAuthority(SelfSignedEuPidIssuingAuthority.getConfiguration(
+                this@WalletApplication)
+            ) { emitOnStateChanged ->
+                SelfSignedEuPidIssuingAuthority(
+                    this@WalletApplication,
+                    storageEngine,
+                    emitOnStateChanged)
+            }
+
+            try {
+                val walletServer = walletServerProvider.getWalletServer()
+                for (config in walletServer.getIssuingAuthorityConfigurations()) {
+                    val issuingAuthority = walletServer.getIssuingAuthority(config.identifier)
+                    addIssuingAuthority(config) {
+                        issuingAuthority
+                    }
+                }
+            } catch (err: FlowHandlerRemote.ConnectionException) {
+                Logger.e(TAG, "Could not connect to the wallet server", err)
+            }
         }
 
         // init TrustManager

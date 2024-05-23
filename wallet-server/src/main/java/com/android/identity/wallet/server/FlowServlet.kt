@@ -1,18 +1,19 @@
 package com.android.identity.wallet.server
 
+import com.android.identity.flow.environment.Configuration
 import com.android.identity.flow.handler.FlowHandlerLocal
-import com.android.identity.issuance.hardcoded.IssuingAuthorityState
-import com.android.identity.issuance.hardcoded.ProofingState
-import com.android.identity.issuance.hardcoded.RegistrationState
-import com.android.identity.issuance.hardcoded.RequestCredentialsState
-import com.android.identity.issuance.hardcoded.register
+import com.android.identity.issuance.hardcoded.WalletServerState
 import kotlinx.coroutines.runBlocking
 import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.io.bytestring.ByteString
+import org.bouncycastle.asn1.cmp.Challenge.Rand
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.random.Random
 
 // To run this servlet for development, use this command:
 //
@@ -27,19 +28,25 @@ import java.security.Security
 class FlowServlet : HttpServlet() {
 
     companion object {
+        private val serverEnvironment = ServerEnvironment("environment")
+
         private val flowHandler = createHandler()
 
+        @OptIn(ExperimentalEncodingApi::class)
         private fun createHandler(): FlowHandlerLocal {
 
             Security.addProvider(BouncyCastleProvider())
 
             val flowHandler = FlowHandlerLocal.Builder()
-            IssuingAuthorityState.registerAll(flowHandler)
-            val secret = byteArrayOf(
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-            )
-            return flowHandler.build(secret)
+            WalletServerState.registerAll(flowHandler)
+            val configuration = serverEnvironment.getInterface(Configuration::class)!!
+            val messageEncryptionKey = configuration.getProperty("message_key")
+            val secretKey = if (messageEncryptionKey == null) {
+                Random.Default.nextBytes(16)
+            } else {
+                Base64.decode(messageEncryptionKey)
+            }
+            return flowHandler.build(secretKey, serverEnvironment)
         }
     }
 

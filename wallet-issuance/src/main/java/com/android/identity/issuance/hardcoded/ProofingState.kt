@@ -3,7 +3,7 @@ package com.android.identity.issuance.hardcoded
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.handler.FlowEnvironment
+import com.android.identity.flow.environment.FlowEnvironment
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString

@@ -33,6 +33,7 @@ class CborSymbolProcessor(
         const val CBOR_MAP_TYPE = "com.android.identity.cbor.CborMap"
         const val CBOR_ARRAY_TYPE = "com.android.identity.cbor.CborArray"
         const val DATA_ITEM_CLASS = "com.android.identity.cbor.DataItem"
+        const val BYTESTRING_TYPE = "kotlinx.io.bytestring.ByteString"
         const val TO_DATAITEM_DATETIMESTRING_FUN = "com.android.identity.cbor.toDataItemDateTimeString"
         const val TO_DATAITEM_FULLDATE_FUN = "com.android.identity.cbor.toDataItemFullDate"
         const val TO_DATAITEM_FUN = "com.android.identity.cbor.toDataItem"
@@ -75,6 +76,10 @@ class CborSymbolProcessor(
 
                 "kotlin.String" -> return "$code.asTstr"
                 "kotlin.ByteArray" -> return "$code.asBstr"
+                BYTESTRING_TYPE -> {
+                    codeBuilder.importQualifiedName(BYTESTRING_TYPE)
+                    return "ByteString($code.asBstr)"
+                }
                 "kotlin.Long" -> return "$code.asNumber"
                 "kotlin.Int" -> return "$code.asNumber.toInt()"
                 "kotlin.Float" -> return "$code.asFloat"
@@ -207,7 +212,10 @@ class CborSymbolProcessor(
                     codeBuilder.importQualifiedName(BSTR_TYPE)
                     return "Bstr($code)"
                 }
-
+                BYTESTRING_TYPE -> {
+                    codeBuilder.importQualifiedName(BSTR_TYPE)
+                    return "Bstr($code.toByteArray())"
+                }
                 "kotlin.Int" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
                     return "$code.toLong().toDataItem"
@@ -232,7 +240,8 @@ class CborSymbolProcessor(
                 else -> return if (declaration is KSClassDeclaration &&
                     declaration.classKind == ClassKind.ENUM_CLASS
                 ) {
-                    "$code.name"
+                    codeBuilder.importQualifiedName(TSTR_TYPE)
+                    "Tstr($code.name)"
                 } else {
                     codeBuilder.importQualifiedName(qualifiedName)
                     if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {

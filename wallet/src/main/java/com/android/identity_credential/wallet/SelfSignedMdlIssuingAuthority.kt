@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.content.Context
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
@@ -13,7 +12,6 @@ import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
@@ -44,34 +42,36 @@ import kotlin.time.Duration.Companion.days
 
 class SelfSignedMdlIssuingAuthority(
     application: WalletApplication,
-    storageEngine: StorageEngine
-) : SelfSignedIssuingAuthority(application, storageEngine) {
+    storageEngine: StorageEngine,
+    emitOnStateChanged: suspend (documentId: String) -> Unit
+) : SelfSignedIssuingAuthority(application, storageEngine, emitOnStateChanged) {
 
     companion object {
         private const val MDL_DOCTYPE = DrivingLicense.MDL_DOCTYPE
         private const val MDL_NAMESPACE = DrivingLicense.MDL_NAMESPACE
         private const val AAMVA_NAMESPACE = DrivingLicense.AAMVA_NAMESPACE
+
+        fun getConfiguration(context: Context): IssuingAuthorityConfiguration {
+            return IssuingAuthorityConfiguration(
+                identifier = "mDL_Utopia",
+                issuingAuthorityName = resourceString(context, R.string.utopia_mdl_issuing_authority_name),
+                issuingAuthorityLogo = pngData(context, R.drawable.utopia_dmv_issuing_authority_logo),
+                description = resourceString(context, R.string.utopia_mdl_issuing_authority_description),
+                pendingDocumentInformation = DocumentConfiguration(
+                    displayName = resourceString(context, R.string.utopia_mdl_issuing_authority_pending_document_title),
+                    typeDisplayName = "Personal Identification Document",
+                    cardArt = pngData(context, R.drawable.utopia_driving_license_card_art),
+                    requireUserAuthenticationToViewDocument = false,
+                    mdocConfiguration = null,
+                    sdJwtVcDocumentConfiguration = null
+                )
+            )
+        }
     }
 
     override val docType: String = MDL_DOCTYPE
-    override lateinit var configuration: IssuingAuthorityConfiguration
-    private val tosAssets: Map<String, ByteArray>;
-
-    init {
-        val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            application.applicationContext.resources, R.drawable.utopia_dmv_issuing_authority_logo
-        ).compress(Bitmap.CompressFormat.PNG, 90, baos)
-        val icon: ByteArray = baos.toByteArray()
-        configuration = IssuingAuthorityConfiguration(
-            identifier = "mDL_Utopia",
-            issuingAuthorityName = resourceString(R.string.utopia_mdl_issuing_authority_name),
-            issuingAuthorityLogo = icon,
-            description = resourceString(R.string.utopia_mdl_issuing_authority_description),
-            pendingDocumentInformation = createDocumentConfiguration(null)
-        )
-        tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_dmv_issuing_authority_logo))
-    }
+    private val tosAssets: Map<String, ByteArray> =
+        mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_dmv_issuing_authority_logo))
 
     override fun getProofingGraphRoot(
         registrationResponse: RegistrationResponse,
@@ -370,11 +370,7 @@ class SelfSignedMdlIssuingAuthority(
     }
 
     private fun createDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): DocumentConfiguration {
-        val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            application.applicationContext.resources, R.drawable.utopia_driving_license_card_art
-        ).compress(Bitmap.CompressFormat.PNG, 90, baos)
-        val cardArt: ByteArray = baos.toByteArray()
+        val cardArt = pngData(application.applicationContext, R.drawable.utopia_driving_license_card_art)
 
         if (collectedEvidence == null) {
             return DocumentConfiguration(

@@ -66,7 +66,9 @@ class ProvisioningViewModel : ViewModel() {
         issuerIdentifier: String,
         settingsModel: SettingsModel,
     ) {
-        issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuerIdentifier)!!
+        val issuerRecord = issuingAuthorityRepository.lookupIssuingAuthority(issuerIdentifier)!!
+        val configuration = issuerRecord.configuration
+        issuer = issuerRecord.issuingAuthority
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -82,12 +84,12 @@ class ProvisioningViewModel : ViewModel() {
                 createDocumentKeyFlow.complete()
 
                 val documentIdentifier =
-                    issuer.configuration.identifier + "_" + issuerDocumentIdentifier
+                    configuration.identifier + "_" + issuerDocumentIdentifier
                 document = documentStore.createDocument(documentIdentifier)
-                val pendingCredConf = issuer.configuration.pendingDocumentInformation
+                val pendingCredConf = configuration.pendingDocumentInformation
 
                 document!!.let {
-                    it.issuingAuthorityIdentifier = issuer.configuration.identifier
+                    it.issuingAuthorityIdentifier = configuration.identifier
                     it.documentIdentifier = issuerDocumentIdentifier
                     it.documentConfiguration = pendingCredConf
                     it.refreshState(issuingAuthorityRepository)

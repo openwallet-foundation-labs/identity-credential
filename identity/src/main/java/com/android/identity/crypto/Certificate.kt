@@ -132,6 +132,19 @@ data class Certificate(
             false
         }
 
+    /**
+     * Verifies that the certificate was signed with a public key from a given certificate.
+     *
+     * Note that this works with all types of signingCertificate, not just EC-based ones.
+     */
+    fun verify(signingCertificate: Certificate): Boolean =
+        try {
+            this.javaX509Certificate.verify(signingCertificate.javaX509Certificate.publicKey)
+            true
+        } catch (e: Exception) {
+            false
+        }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

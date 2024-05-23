@@ -84,7 +84,7 @@ object DocumentExtensions {
         val issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
             ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
         try {
-            this.state = issuer.getState(documentIdentifier)
+            this.state = issuer.issuingAuthority.getState(documentIdentifier)
             return true
         } catch (e: UnknownDocumentException) {
             applicationData.setBoolean("isDeleted", true)
