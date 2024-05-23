@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,21 +41,16 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.presentation.PromptCanceledException
 import com.android.identity_credential.wallet.presentation.TransferHelper
+import com.android.identity_credential.wallet.presentation.presentInPresentationActivity
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
-import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.launch
@@ -120,7 +116,6 @@ class PresentationActivity : FragmentActivity() {
 
     private var deviceRequest: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-    private var consentData: ConsentPromptData? = null
 
     // Transfer helper facilitates starting processing a presentation request and obtaining the
     // response bytes once processing has finished. This enables showing one or more dialogs to
@@ -162,49 +157,6 @@ class PresentationActivity : FragmentActivity() {
 
         // terminate PresentationActivity since "presentation is complete" (once response is sent)
         finish()
-    }
-
-    private fun onAuthenticationKeyLocked(credential: MdocCredential) {
-        val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
-        var userAuthenticationTypes = emptySet<UserAuthenticationType>()
-        if (keyInfo is AndroidKeystoreKeyInfo) {
-            userAuthenticationTypes = keyInfo.userAuthenticationTypes
-        }
-
-        val unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
-        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
-
-        showBiometricPrompt(
-            activity = this,
-            title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
-            subtitle = applicationContext.resources.getString(R.string.presentation_biometric_prompt_subtitle),
-            cryptoObject = cryptoObject,
-            userAuthenticationTypes = userAuthenticationTypes,
-            requireConfirmation = false,
-            onCanceled = { finish() },
-            onSuccess = { finishProcessingRequest(unlockData, credential) },
-            onError = {exception ->
-                Logger.e(TAG, exception.toString())
-                finish() },
-        )
-    }
-
-    private fun finishProcessingRequest(
-        keyUnlockData: KeyUnlockData? = null,
-        credential: MdocCredential? = null,
-    ) {
-        // finish processing the request on IO thread
-        lifecycleScope.launch {
-            transferHelper?.finishProcessingRequest(
-                requestedDocType = consentData!!.docType,
-                credentialId = consentData!!.credentialId,
-                documentRequest = consentData!!.documentRequest,
-                keyUnlockData = keyUnlockData,
-                onFinishedProcessing = onFinishedProcessingRequest,
-                onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
-                credential = credential
-            )
-        }
     }
 
     override fun onDestroy() {
@@ -296,18 +248,37 @@ class PresentationActivity : FragmentActivity() {
                     }
 
                     // when consent data is available, show consent prompt above activity's UI
-                    consentData = consentPromptData.value
-                    if (consentData != null) {
-                        ConsentPrompt(
-                            consentData = consentData!!,
-                            documentTypeRepository = walletApp.documentTypeRepository,
-                            onConfirm = { // user accepted to send requested credential data
-                                finishProcessingRequest()
-                            },
-                            onCancel = { // user declined submitting data to requesting party
-                                finish() // close activity
+                    consentPromptData.value?.let { consentData ->
+                        LaunchedEffect(key1 = "MDL_Presentation") {
+                            val presentationResult = presentInPresentationActivity(
+                                consentPromptData = consentData,
+                                documentTypeRepository = walletApp.documentTypeRepository,
+                                transferHelper = transferHelper!!
+                            )
+
+                            presentationResult.exception?.let { exception ->
+                                // log any thrown exception that's not "user canceled" exception
+                                if (exception !is PromptCanceledException) {
+                                    Logger.e(TAG, exception.toString())
+                                }
+                                finish()
+                            } ?:
+                            // exception is null, we should have response bytes
+                            run {
+                                presentationResult.responseBytes?.let { responseBytes ->
+                                    onFinishedProcessingRequest(responseBytes)
+                                } ?:
+                                // response bytes is null
+                                run {
+                                    Logger.e(
+                                        TAG,
+                                        "Expected non-null Response Bytes but null was returned"
+                                    )
+                                    finish()
+                                }
                             }
-                        )
+
+                        }
                     }
                 }
             }
