@@ -1,5 +1,9 @@
 {
-  "message_key": "bgoBBmDy1dYj8y2fXV9DKg==",
+  "android": {
+    "requireGmsAttestation": false,
+    "requireVerifiedBootGreen": false,
+    "requireAppSignatureCertificateDigests": []
+  },
   "issuing_authority_list": ["utopia", "eldorado"],
   "issuing_authorities": {
     "utopia": {

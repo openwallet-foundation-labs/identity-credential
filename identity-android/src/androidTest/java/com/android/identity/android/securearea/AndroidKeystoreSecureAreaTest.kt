@@ -24,7 +24,7 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.InstrumentationRegistry
-import com.android.identity.AndroidAttestationExtensionParser
+import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
@@ -702,13 +702,13 @@ class AndroidKeystoreSecureAreaTest {
         // tag 400: https://source.android.com/docs/security/features/keystore/tags#active_datetime
         Assert.assertEquals(
             validFrom.toEpochMilli(),
-            parser.getSoftwareAuthorizationLong(400).get()
+            parser.getSoftwareAuthorizationLong(400)
         )
 
         // tag 401: https://source.android.com/docs/security/features/keystore/tags#origination_expire_datetime
         Assert.assertEquals(
             validUntil.toEpochMilli(),
-            parser.getSoftwareAuthorizationLong(401).get()
+            parser.getSoftwareAuthorizationLong(401)
         )
     }
 

@@ -1,6 +1,6 @@
 package com.android.identity.wallet.server
 
-import com.android.identity.flow.environment.Configuration
+import com.android.identity.flow.environment.Storage
 import com.android.identity.flow.handler.FlowHandlerLocal
 import com.android.identity.issuance.hardcoded.WalletServerState
 import kotlinx.coroutines.runBlocking
@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.io.bytestring.ByteString
-import org.bouncycastle.asn1.cmp.Challenge.Rand
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 import kotlin.io.encoding.Base64
@@ -39,14 +38,22 @@ class FlowServlet : HttpServlet() {
 
             val flowHandler = FlowHandlerLocal.Builder()
             WalletServerState.registerAll(flowHandler)
-            val configuration = serverEnvironment.getInterface(Configuration::class)!!
-            val messageEncryptionKey = configuration.getProperty("message_key")
-            val secretKey = if (messageEncryptionKey == null) {
-                Random.Default.nextBytes(16)
-            } else {
-                Base64.decode(messageEncryptionKey)
+            val storage = serverEnvironment.getInterface(Storage::class)!!
+            val messageEncryptionKey = runBlocking {
+                val key = storage.get("RootState", "", "messageEncryptionKey")
+                if (key != null) {
+                    key.toByteArray()
+                } else {
+                    val newKey = Random.Default.nextBytes(16)
+                    storage.insert(
+                        "RootState",
+                        "",
+                        ByteString(newKey),
+                        "messageEncryptionKey")
+                    newKey
+                }
             }
-            return flowHandler.build(secretKey, serverEnvironment)
+            return flowHandler.build(messageEncryptionKey, serverEnvironment)
         }
     }
 
