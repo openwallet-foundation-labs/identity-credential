@@ -141,10 +141,19 @@ class WalletApplication : Application() {
 
         val walletServerProvider = WalletServerProvider(this,
             androidKeystoreSecureArea,
-            // Adjust it or proxy local server to device using adb 'adb reverse tcp:8080 tcp:8080'
+            // There are multiple options for the default here. For now we use
+            // http://10.0.2.2:8080/wallet-server which makes it work out of the
+            // box when using the emulator.
+            //
+            // The developer may adjust it to suit their environment. In the future the
+            // default will point to a publicly available instance of the wallet server.
+            //
+            // Another option is to use http://127.0.0.1:8080/wallet-server and then
+            // run 'adb reverse tcp:8080 tcp:8080' on the host to proxy through adb.
+            //
             // Alternatively use "dev:" to connect to the server code running in-app.
-            // TODO: expose this in a setting, will need to reconnect if the setting changes.
-            "http://localhost:8080/wallet-server"
+            //
+            "http://10.0.2.2:8080/wallet-server"
         )
 
         // init IssuingAuthorityRepository

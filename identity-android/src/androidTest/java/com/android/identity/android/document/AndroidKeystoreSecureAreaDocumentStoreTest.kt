@@ -16,7 +16,7 @@
 package com.android.identity.android.document
 
 import androidx.test.InstrumentationRegistry
-import com.android.identity.AndroidAttestationExtensionParser
+import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType

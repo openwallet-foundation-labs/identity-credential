@@ -7,6 +7,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
+import com.android.identity.flow.environment.Configuration
 import com.android.identity.flow.environment.Storage
 import com.android.identity.flow.environment.FlowEnvironment
 import com.android.identity.issuance.AuthenticationFlow
@@ -55,11 +56,20 @@ class AuthenticationState(
     @FlowMethod
     suspend fun authenticate(env: FlowEnvironment, auth: ClientAuthentication) {
         val chain = auth.certificateChain
+
+        val settings = env.getInterface(Configuration::class)!!
+
         if (chain != null) {
             if (this.publicKey != null) {
                 throw IllegalStateException("Client already registered")
             }
-            validateKeyAttestation(chain, this.clientId)
+            validateKeyAttestation(
+                chain,
+                this.clientId,
+                settings.getBool("android.requireGmsAttestation", true),
+                settings.getBool("android.requireVerifiedBootGreen", true),
+                settings.getStringList("android.requireAppSignatureCertificateDigests")
+            )
             this.publicKey = chain.certificates[0].publicKey
             val storage = env.getInterface(Storage::class)
             if (storage != null) {
