@@ -56,7 +56,7 @@ class SelfSignedEuPidIssuingAuthority(
                 identifier = "euPid_Utopia",
                 issuingAuthorityName = resourceString(context, R.string.utopia_eu_pid_issuing_authority_name),
                 issuingAuthorityLogo = pngData(context, R.drawable.utopia_pid_issuing_authority_logo),
-                description = resourceString(context, R.string.utopia_eu_pid_issuing_authority_description),
+                issuingAuthorityDescription = resourceString(context, R.string.utopia_eu_pid_issuing_authority_description),
                 pendingDocumentInformation = DocumentConfiguration(
                     displayName = resourceString(context, R.string.utopia_eu_pid_issuing_authority_pending_document_title),
                     typeDisplayName = "Personal Identification Document",
@@ -67,6 +67,10 @@ class SelfSignedEuPidIssuingAuthority(
                 )
             )
         }
+    }
+
+    override suspend fun getConfiguration(): IssuingAuthorityConfiguration {
+        return getConfiguration(application.applicationContext)
     }
 
     override val docType: String = EUPID_DOCTYPE

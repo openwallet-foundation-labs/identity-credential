@@ -9,6 +9,10 @@ import org.intellij.lang.annotations.Identifier
 
 @FlowInterface
 interface WalletServer: FlowBaseInterface {
+    /**
+     * No need to call on client-side if using a [WalletServer] obtained from a
+     * [WalletServerProvider].
+     */
     @FlowMethod
     suspend fun authenticate(): AuthenticationFlow
 

@@ -1,9 +1,15 @@
 package com.android.identity.issuance
 
 /**
- * An enumeration of possible conditions a credential can be in from the issuer's perspective.
+ * An enumeration of possible conditions a document can be in, from the issuer's perspective.
  */
 enum class DocumentCondition(val value: Int) {
+    /**
+     * The requested document doesn't exist.
+     *
+     * This can happen if a document is remote deleted.
+     */
+    NO_SUCH_DOCUMENT(0),
 
     /**
      * Proofing is required.

@@ -1,4 +1,5 @@
 {
+  "developerMode": false,
   "android": {
     "requireGmsAttestation": false,
     "requireVerifiedBootGreen": false,

@@ -4,6 +4,7 @@ import com.android.identity.flow.environment.Configuration
 import com.android.identity.flow.environment.Resources
 import com.android.identity.flow.environment.Storage
 import com.android.identity.flow.environment.FlowEnvironment
+import com.android.identity.flow.environment.Notifications
 import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
@@ -15,12 +16,14 @@ class ServerEnvironment(private val directory: String) : FlowEnvironment {
         configuration.getProperty("database.connection") ?: defaultDatabase(),
         configuration.getProperty("database.user") ?: "",
         configuration.getProperty("database.password") ?: "")
+    private val notifications = ServerNotifications()
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
         return clazz.cast(when(clazz) {
             Configuration::class -> configuration
             Resources::class -> resources
             Storage::class -> storage
+            Notifications::class -> notifications
             else -> return null
         })
     }

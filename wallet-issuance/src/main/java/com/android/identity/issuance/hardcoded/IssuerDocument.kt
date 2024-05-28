@@ -16,7 +16,6 @@ import kotlinx.datetime.Instant
 // The document as seen from the issuer's perspective
 data class IssuerDocument(
     val registrationResponse: RegistrationResponse,
-    var proofingDeadline: Instant,
     var state: DocumentCondition,
     var collectedEvidence: MutableMap<String, EvidenceResponse>,
     var documentConfiguration: DocumentConfiguration?,
@@ -51,7 +50,6 @@ data class IssuerDocument(
 
             return IssuerDocument(
                 registrationResponse,
-                Instant.fromEpochMilliseconds(map["proofingDeadline"].asNumber),
                 state,
                 collectedEvidence,
                 documentConfiguration,
@@ -72,7 +70,6 @@ data class IssuerDocument(
             }
             val mapBuilder = CborMap.builder()
                 .put("registrationResponse", registrationResponse.toDataItem)
-                .put("proofingDeadline", proofingDeadline.toEpochMilliseconds())
                 .put("state", state.ordinal.toLong())
                 .put("collectedEvidence", ceMapBuilder.end().build())
                 .put("credentialRequests", credentialRequestsBuilder.end().build())

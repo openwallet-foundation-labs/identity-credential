@@ -132,7 +132,6 @@ class PresentationActivity : FragmentActivity() {
         TransferHelper.Builder(
             settingsModel = walletApp.settingsModel,
             documentStore = walletApp.documentStore,
-            issuingAuthorityRepository = walletApp.issuingAuthorityRepository,
             trustManager = walletApp.trustManager,
             context = applicationContext,
             onError = showErrorAndDismiss

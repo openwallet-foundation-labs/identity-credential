@@ -10,7 +10,6 @@ data class SimpleCredentialRequest(
     val authenticationKey: EcPublicKey,
     val format: CredentialFormat,
     val data: ByteArray,
-    val deadline: Instant,
 ) {
 
     companion object {
@@ -20,7 +19,6 @@ data class SimpleCredentialRequest(
                 map["authenticationKey"].asCoseKey.ecPublicKey,
                 CredentialFormat.valueOf(map["format"].asTstr),
                 map["data"].asBstr,
-                Instant.fromEpochMilliseconds(map["deadline"].asNumber)
             )
         }
     }
@@ -31,7 +29,6 @@ data class SimpleCredentialRequest(
                 .put("authenticationKey", authenticationKey.toCoseKey().toDataItem)
                 .put("format", format.name)
                 .put("data", data)
-                .put("deadline", deadline.toEpochMilliseconds())
                 .end()
                 .build())
     }

@@ -6,20 +6,24 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
+import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.documentIdentifier
+import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.DocumentExtensions.refreshState
+import com.android.identity.issuance.DocumentExtensions.state
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthority
-import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
+import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -61,17 +65,18 @@ class ProvisioningViewModel : ViewModel() {
     val nextEvidenceRequest = mutableStateOf<EvidenceRequest?>(null)
 
     fun start(
-        issuingAuthorityRepository: IssuingAuthorityRepository,
+        walletServerProvider: WalletServerProvider,
         documentStore: DocumentStore,
         issuerIdentifier: String,
         settingsModel: SettingsModel,
     ) {
-        val issuerRecord = issuingAuthorityRepository.lookupIssuingAuthority(issuerIdentifier)!!
-        val configuration = issuerRecord.configuration
-        issuer = issuerRecord.issuingAuthority
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val walletServer = walletServerProvider.getWalletServer()
+                issuer = walletServer.getIssuingAuthority(issuerIdentifier)
+                val issuerConfiguration = issuer.getConfiguration()
+
                 state.value = State.CREDENTIAL_REGISTRATION
                 val createDocumentKeyFlow = this@ProvisioningViewModel.issuer.register()
                 val documentRegistrationConfiguration =
@@ -84,15 +89,16 @@ class ProvisioningViewModel : ViewModel() {
                 createDocumentKeyFlow.complete()
 
                 val documentIdentifier =
-                    configuration.identifier + "_" + issuerDocumentIdentifier
+                    issuerConfiguration.identifier + "_" + issuerDocumentIdentifier
                 document = documentStore.createDocument(documentIdentifier)
-                val pendingCredConf = configuration.pendingDocumentInformation
+                val pendingDocumentConfiguration = issuerConfiguration.pendingDocumentInformation
 
                 document!!.let {
-                    it.issuingAuthorityIdentifier = configuration.identifier
+                    it.issuingAuthorityIdentifier = issuerConfiguration.identifier
                     it.documentIdentifier = issuerDocumentIdentifier
-                    it.documentConfiguration = pendingCredConf
-                    it.refreshState(issuingAuthorityRepository)
+                    it.documentConfiguration = pendingDocumentConfiguration
+                    it.issuingAuthorityConfiguration = issuerConfiguration
+                    it.refreshState(walletServerProvider)
                 }
 
                 proofingFlow = issuer.proof(issuerDocumentIdentifier)
@@ -101,7 +107,7 @@ class ProvisioningViewModel : ViewModel() {
                 if (evidenceRequests!!.size == 0) {
                     state.value = State.PROOFING_COMPLETE
                     document!!.let {
-                        it.refreshState(issuingAuthorityRepository)
+                        it.refreshState(walletServerProvider)
                     }
                     documentStore.addDocument(document!!)
                     proofingFlow!!.complete()
@@ -123,7 +129,7 @@ class ProvisioningViewModel : ViewModel() {
 
     fun provideEvidence(
         evidence: EvidenceResponse,
-        issuingAuthorityRepository: IssuingAuthorityRepository,
+        walletServerProvider: WalletServerProvider,
         documentStore: DocumentStore
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -136,11 +142,10 @@ class ProvisioningViewModel : ViewModel() {
                 Logger.d(TAG, "ers1 ${evidenceRequests!!.size}")
                 if (evidenceRequests!!.size == 0) {
                     state.value = State.PROOFING_COMPLETE
-                    document!!.let {
-                        it.refreshState(issuingAuthorityRepository)
-                    }
+                    document!!.refreshState(walletServerProvider)
                     documentStore.addDocument(document!!)
                     proofingFlow!!.complete()
+                    document!!.refreshState(walletServerProvider)
                 } else {
                     nextEvidenceRequest.value = evidenceRequests!!.first()
                     state.value = State.EVIDENCE_REQUESTS_READY

@@ -98,6 +98,8 @@
 
     <!-- Add to Wallet screen -->
     <string name="add_screen_title">Add to Wallet</string>
+    <string name="add_screen_loading">Loading</string>
+    <string name="add_screen_loading_error">Error loading issuers</string>
     <string name="add_screen_select_issuer">Select the kind of document to add</string>
 
     <!-- DocumentInfoScreen -->
@@ -149,6 +151,7 @@
     <string name="credential_info_screen_no_credentials">No Credentials Available</string>
 
     <!-- DocumentModel -->
+    <string name="document_model_status_no_such_document">No such document</string>
     <string name="document_model_status_proofing_required">User proofing required</string>
     <string name="document_model_status_proofing_processing">Application is processing</string>
     <string name="document_model_status_proofing_failed">Application not approved</string>

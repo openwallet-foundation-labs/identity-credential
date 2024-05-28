@@ -19,7 +19,6 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.RegistrationResponse
-import com.android.identity.issuance.UnknownDocumentException
 import com.android.identity.issuance.fromDataItem
 import com.android.identity.issuance.toDataItem
 import com.android.identity.storage.StorageEngine
@@ -180,10 +179,15 @@ abstract class SimpleIssuingAuthority(
         }
     }
 
+    private fun issuerDocumentExists(documentId: String): Boolean {
+        val encoded = storageEngine.get(documentId)
+        return encoded != null
+    }
+
     private fun loadIssuerDocument(documentId: String): IssuerDocument {
         val encoded = storageEngine.get(documentId)
         if (encoded == null) {
-            throw UnknownDocumentException("Unknown documentId")
+            throw Error("Unknown documentId")
         }
         return IssuerDocument.fromCbor(encoded)
     }
@@ -198,6 +202,15 @@ abstract class SimpleIssuingAuthority(
 
     override suspend fun getState(documentId: String): DocumentState {
         val now = Clock.System.now()
+
+        if (!issuerDocumentExists(documentId)) {
+            return DocumentState(
+                now,
+                DocumentCondition.NO_SUCH_DOCUMENT,
+                0,
+                0,
+            )
+        }
 
         val issuerDocument = loadIssuerDocument(documentId)
 

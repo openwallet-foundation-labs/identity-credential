@@ -34,10 +34,12 @@ data class IssuingAuthorityConfiguration(
      * This can be used for display in a picker shown to the user. It must include the issuer's
      * name to allow for disambiguation when multiple items are shown.
      */
-    val description: String,
+    val issuingAuthorityDescription: String,
 
     /**
      * A [DocumentConfiguration] that can be used while proofing is pending for a document.
      */
     val pendingDocumentInformation: DocumentConfiguration,
-)
+) {
+    companion object
+}

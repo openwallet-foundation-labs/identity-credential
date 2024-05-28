@@ -37,7 +37,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.document.DocumentStore
-import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -48,7 +47,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
-import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity_credential.mrtd.MrtdNfc
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
@@ -71,7 +70,7 @@ private const val TAG = "EvidenceRequest"
 fun EvidenceRequestMessageView(
     evidenceRequest: EvidenceRequestMessage,
     provisioningViewModel: ProvisioningViewModel,
-    issuingAuthorityRepository: IssuingAuthorityRepository,
+    walletServerProvider: WalletServerProvider,
     documentStore: DocumentStore
 ) {
     Row(
@@ -95,7 +94,7 @@ fun EvidenceRequestMessageView(
                 onClick = {
                     provisioningViewModel.provideEvidence(
                         evidence = EvidenceResponseMessage(false),
-                        issuingAuthorityRepository = issuingAuthorityRepository,
+                        walletServerProvider = walletServerProvider,
                         documentStore = documentStore
                     )
             }) {
@@ -107,7 +106,7 @@ fun EvidenceRequestMessageView(
             onClick = {
                 provisioningViewModel.provideEvidence(
                     evidence = EvidenceResponseMessage(true),
-                    issuingAuthorityRepository = issuingAuthorityRepository,
+                    walletServerProvider = walletServerProvider,
                     documentStore = documentStore
                 )
         }) {
@@ -121,7 +120,7 @@ fun EvidenceRequestMessageView(
 fun EvidenceRequestNotificationPermissionView(
     evidenceRequest: EvidenceRequestNotificationPermission,
     provisioningViewModel: ProvisioningViewModel,
-    issuingAuthorityRepository: IssuingAuthorityRepository,
+    walletServerProvider: WalletServerProvider,
     documentStore: DocumentStore
 ) {
 
@@ -131,7 +130,7 @@ fun EvidenceRequestNotificationPermissionView(
         SideEffect {
             provisioningViewModel.provideEvidence(
                 evidence = EvidenceResponseNotificationPermission(true),
-                issuingAuthorityRepository = issuingAuthorityRepository,
+                walletServerProvider = walletServerProvider,
                 documentStore = documentStore
             )
         }
@@ -142,7 +141,7 @@ fun EvidenceRequestNotificationPermissionView(
     if (postNotificationsPermissionState.status.isGranted) {
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseNotificationPermission(true),
-            issuingAuthorityRepository = issuingAuthorityRepository,
+            walletServerProvider = walletServerProvider,
             documentStore = documentStore
         )
     } else {
@@ -171,7 +170,7 @@ fun EvidenceRequestNotificationPermissionView(
                     onClick = {
                         provisioningViewModel.provideEvidence(
                             evidence = EvidenceResponseNotificationPermission(false),
-                            issuingAuthorityRepository = issuingAuthorityRepository,
+                            walletServerProvider = walletServerProvider,
                             documentStore = documentStore
                         )
                     }) {
@@ -434,7 +433,7 @@ fun EvidenceRequestQuestionMultipleChoiceView(
 fun EvidenceRequestIcaoPassiveAuthenticationView(
     evidenceRequest: EvidenceRequestIcaoPassiveAuthentication,
     provisioningViewModel: ProvisioningViewModel,
-    issuingAuthorityRepository: IssuingAuthorityRepository,
+    walletServerProvider: WalletServerProvider,
     documentStore: DocumentStore,
     permissionTracker: PermissionTracker
 ) {
@@ -445,7 +444,7 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
     ) { nfcData ->
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod),
-            issuingAuthorityRepository = issuingAuthorityRepository,
+            walletServerProvider = walletServerProvider,
             documentStore = documentStore
         )
     }
