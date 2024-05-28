@@ -36,7 +36,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
             identifier = "mDL_SelfSigned",
             issuingAuthorityName = "Test IA",
             issuingAuthorityLogo =  byteArrayOf(1, 2, 3),
-            description = "mDL from Test IA",
+            issuingAuthorityDescription = "mDL from Test IA",
             pendingDocumentInformation = DocumentConfiguration(
                 displayName = "mDL for Test IA (proofing pending)",
                 typeDisplayName = "Driving License",
@@ -63,6 +63,10 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
 
     override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
         return configuration.pendingDocumentInformation
+    }
+
+    override suspend fun getConfiguration(): IssuingAuthorityConfiguration {
+        return configuration
     }
 
     override fun getProofingGraphRoot(

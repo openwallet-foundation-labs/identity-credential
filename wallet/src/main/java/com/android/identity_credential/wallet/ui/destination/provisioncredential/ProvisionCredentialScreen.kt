@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
-import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -28,6 +27,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
+import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
@@ -41,7 +41,7 @@ fun ProvisionDocumentScreen(
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
-    issuingAuthorityRepository: IssuingAuthorityRepository,
+    walletServerProvider: WalletServerProvider,
     documentStore: DocumentStore
 ) {
     ScreenWithAppBar(title = stringResource(R.string.provisioning_title), navigationIcon = {
@@ -95,7 +95,7 @@ fun ProvisionDocumentScreen(
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionString(inputString),
-                                    issuingAuthorityRepository = issuingAuthorityRepository,
+                                    walletServerProvider = walletServerProvider,
                                     documentStore = documentStore
                                 )
                             }
@@ -109,7 +109,7 @@ fun ProvisionDocumentScreen(
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseCreatePassphrase(inputString),
-                                    issuingAuthorityRepository = issuingAuthorityRepository,
+                                    walletServerProvider = walletServerProvider,
                                     documentStore = documentStore
                                 )
                             }
@@ -120,7 +120,7 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestMessageView(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            issuingAuthorityRepository = issuingAuthorityRepository,
+                            walletServerProvider = walletServerProvider,
                             documentStore = documentStore
                         )
                     }
@@ -129,7 +129,7 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestNotificationPermissionView(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            issuingAuthorityRepository = issuingAuthorityRepository,
+                            walletServerProvider = walletServerProvider,
                             documentStore = documentStore
                         )
                     }
@@ -140,7 +140,7 @@ fun ProvisionDocumentScreen(
                             onAccept = { selectedOption ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionMultipleChoice(selectedOption),
-                                    issuingAuthorityRepository = issuingAuthorityRepository,
+                                    walletServerProvider = walletServerProvider,
                                     documentStore = documentStore
                                 )
                             }
@@ -151,7 +151,7 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestIcaoPassiveAuthenticationView(
                             evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            issuingAuthorityRepository = issuingAuthorityRepository,
+                            walletServerProvider = walletServerProvider,
                             documentStore = documentStore,
                             permissionTracker = permissionTracker
                         )

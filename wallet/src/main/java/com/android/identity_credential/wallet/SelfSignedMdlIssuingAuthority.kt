@@ -37,7 +37,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
-import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.days
 
 class SelfSignedMdlIssuingAuthority(
@@ -56,7 +55,7 @@ class SelfSignedMdlIssuingAuthority(
                 identifier = "mDL_Utopia",
                 issuingAuthorityName = resourceString(context, R.string.utopia_mdl_issuing_authority_name),
                 issuingAuthorityLogo = pngData(context, R.drawable.utopia_dmv_issuing_authority_logo),
-                description = resourceString(context, R.string.utopia_mdl_issuing_authority_description),
+                issuingAuthorityDescription = resourceString(context, R.string.utopia_mdl_issuing_authority_description),
                 pendingDocumentInformation = DocumentConfiguration(
                     displayName = resourceString(context, R.string.utopia_mdl_issuing_authority_pending_document_title),
                     typeDisplayName = "Personal Identification Document",
@@ -67,6 +66,10 @@ class SelfSignedMdlIssuingAuthority(
                 )
             )
         }
+    }
+
+    override suspend fun getConfiguration(): IssuingAuthorityConfiguration {
+        return getConfiguration(application.applicationContext)
     }
 
     override val docType: String = MDL_DOCTYPE

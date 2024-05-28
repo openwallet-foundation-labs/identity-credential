@@ -122,11 +122,16 @@ fun DocumentInfoScreen(
                         showRequestUpdateDialog = false
 
                         coroutineScope.launch {
-                            documentModel.developerModeRequestUpdate(
-                                documentInfo,
-                                remoteDeletionCheckedState.value,
-                                notifyApplicationCheckedState.value
-                            )
+                            try {
+                                documentModel.developerModeRequestUpdate(
+                                    documentInfo,
+                                    remoteDeletionCheckedState.value,
+                                    notifyApplicationCheckedState.value
+                                )
+                            } catch (e: Exception) {
+                                showErrorMessage = "Unexpected exception: $e"
+                            }
+
                         }
                     }) {
                     Text(stringResource(R.string.document_info_screen_request_update_confirm_button))

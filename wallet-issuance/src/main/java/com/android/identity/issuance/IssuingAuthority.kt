@@ -30,9 +30,16 @@ interface IssuingAuthority : FlowBaseInterface {
     suspend fun register(): RegistrationFlow
 
     /**
+     * Performs a network call to get configuration for the Issuing Authority.
+     */
+    @FlowMethod
+    suspend fun getConfiguration(): IssuingAuthorityConfiguration
+
+    /**
      * Performs a network call to the Issuing Authority to get information about a document.
      *
-     * @throws UnknownDocumentException if the given `documentId` isn't valid.
+     * If the document was recently deleted the condition will be set to
+     * [DocumentCondition.NO_SUCH_DOCUMENT].
      */
     @FlowMethod
     suspend fun getState(documentId: String): DocumentState

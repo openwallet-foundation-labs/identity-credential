@@ -104,7 +104,7 @@ fun WalletNavigation(
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
                 documentStore = application.documentStore,
-                issuingAuthorityRepository = application.issuingAuthorityRepository,
+                walletServerProvider = application.walletServerProvider,
                 settingsModel = application.settingsModel,
             )
         }
@@ -160,7 +160,7 @@ fun WalletNavigation(
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
                 permissionTracker = permissionTracker,
-                issuingAuthorityRepository = application.issuingAuthorityRepository,
+                walletServerProvider = application.walletServerProvider,
                 documentStore = application.documentStore
             )
         }

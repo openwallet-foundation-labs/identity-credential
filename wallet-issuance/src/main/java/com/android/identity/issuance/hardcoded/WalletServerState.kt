@@ -34,7 +34,7 @@ class WalletServerState(
                 identifier = "utopia_dev",
                 issuingAuthorityName = "Utopia DMV (not configured)",
                 issuingAuthorityLogo = logo.toByteArray(),
-                description = "Utopia Driver's License",
+                issuingAuthorityDescription = "Utopia Driver's License",
                 pendingDocumentInformation = DocumentConfiguration(
                     displayName = "Pending",
                     typeDisplayName = "Driving License",
@@ -68,6 +68,36 @@ class WalletServerState(
         this.clientId = authenticationState.clientId
     }
 
+    private fun getIssuingAuthorityConfiguration(
+        env: FlowEnvironment,
+        id: String,
+    ): IssuingAuthorityConfiguration {
+        val configuration = env.getInterface(Configuration::class)!!
+        val resources = env.getInterface(Resources::class)!!
+        val prefix = "issuing_authorities.$id"
+        val logoPath = configuration.getProperty("$prefix.logo") ?: "default/logo.png"
+        val logo = resources.getRawResource(logoPath)!!
+        val artPath =
+            configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
+        val art = resources.getRawResource(artPath)!!
+        val requireUserAuthenticationToViewDocument =
+            configuration.getBool("$prefix.require_user_authentication_to_view_document", false)
+        return IssuingAuthorityConfiguration(
+            identifier = id,
+            issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Untitled",
+            issuingAuthorityLogo = logo.toByteArray(),
+            issuingAuthorityDescription = configuration.getProperty("$prefix.description") ?: "Unknown",
+            pendingDocumentInformation = DocumentConfiguration(
+                displayName = "Pending",
+                typeDisplayName = "Driving License",
+                cardArt = art.toByteArray(),
+                requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
+                mdocConfiguration = null,
+                sdJwtVcDocumentConfiguration = null
+            )
+        )
+    }
+
     @FlowMethod
     fun getIssuingAuthorityConfigurations(env: FlowEnvironment): List<IssuingAuthorityConfiguration> {
         check(clientId.isNotEmpty())
@@ -92,7 +122,7 @@ class WalletServerState(
                     identifier = id,
                     issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Untitled",
                     issuingAuthorityLogo = logo.toByteArray(),
-                    description = configuration.getProperty("$prefix.description") ?: "Unknown",
+                    issuingAuthorityDescription = configuration.getProperty("$prefix.description") ?: "Unknown",
                     pendingDocumentInformation = DocumentConfiguration(
                         displayName = "Pending",
                         typeDisplayName = "Driving License",
@@ -112,6 +142,10 @@ class WalletServerState(
         identifier: String
     ): IssuingAuthorityState {
         check(clientId.isNotEmpty())
-        return IssuingAuthorityState(clientId, identifier)
+        return IssuingAuthorityState(
+            clientId,
+            identifier,
+            getIssuingAuthorityConfiguration(env, identifier)
+        )
     }
 }

@@ -2,6 +2,8 @@ package com.android.identity.issuance
 
 
 import com.android.identity.document.Document
+import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
+import com.android.identity.issuance.remote.WalletServerProvider
 import java.lang.IllegalArgumentException
 
 /**
@@ -27,7 +29,7 @@ object DocumentExtensions {
         set(value) { applicationData.setString("credentialIdentifier", value) }
 
     /**
-     * The number of [DocumentConfiguration] objects downloaded from the issuer.
+     * The number of times a [DocumentConfiguration] has been downloaded from the issuer.
      */
     var Document.numDocumentConfigurationsDownloaded: Long
         get() {
@@ -38,10 +40,15 @@ object DocumentExtensions {
         }
         set(value) { applicationData.setNumber("numDocumentConfigurationsDownloaded", value) }
 
-    /** The [DocumentConfiguration] received from the issuer */
+    /** The most recent [DocumentConfiguration] received from the issuer */
     var Document.documentConfiguration: DocumentConfiguration
-        get() = DocumentConfiguration.fromCbor(applicationData.getData("credentialConfiguration"))
-        set(value) { applicationData.setData("credentialConfiguration", value.toCbor()) }
+        get() = DocumentConfiguration.fromCbor(applicationData.getData("documentConfiguration"))
+        set(value) { applicationData.setData("documentConfiguration", value.toCbor()) }
+
+    /** The most recent [IssuingAuthorityConfiguration] received from the issuer */
+    var Document.issuingAuthorityConfiguration: IssuingAuthorityConfiguration
+        get() = IssuingAuthorityConfiguration.fromCbor(applicationData.getData("issuingAuthorityConfiguration"))
+        set(value) { applicationData.setData("issuingAuthorityConfiguration", value.toCbor()) }
 
     /**
      * The most recent [DocumentState] received from the issuer.
@@ -55,40 +62,21 @@ object DocumentExtensions {
         set(value) { applicationData.setData("credentialState", value.toCbor()) }
 
     /**
-     * Set to true if the credential was deleted on the issuer-side.
-     */
-    val Document.isDeleted: Boolean
-        get() {
-            return try {
-                applicationData.getBoolean("isDeleted")
-            } catch (e: Throwable) {
-                false
-            }
-        }
-
-    /**
-     * Gets the credential state from the Issuer and updates the [.state] property with the value.
+     * Gets the document state from the Issuer and updates the [.state] property with the value.
      *
      * Unlike reading from the [.state] property, this performs network I/O to communicate
      * with the issuer.
      *
-     * If the credential doesn't exist (for example it could have been deleted recently) the
-     * [Document.isDeleted] property will be set to true and this method returns false.
+     * If the document doesn't exist (for example it could have been deleted recently) the
+     * condition in [Document.state] is set to [DocumentCondition.NO_SUCH_DOCUMENT].
      *
-     * @param issuingAuthorityRepository a repository of issuing authorities.
-     * @return true if the refresh succeeded, false if the credential is unknown.
-     * @throws IllegalArgumentException if the issuer isn't know.
+     * @param walletServerProvider the wallet server provider.
+     * @return true if the refresh succeeded, false if the document is unknown.
      */
-    suspend fun Document.refreshState(issuingAuthorityRepository: IssuingAuthorityRepository):
-            Boolean {
-        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
-            ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
-        try {
-            this.state = issuer.issuingAuthority.getState(documentIdentifier)
-            return true
-        } catch (e: UnknownDocumentException) {
-            applicationData.setBoolean("isDeleted", true)
-            return false
-        }
+    suspend fun Document.refreshState(walletServerProvider: WalletServerProvider): Boolean {
+        val walletServer = walletServerProvider.getWalletServer()
+        val issuer = walletServer.getIssuingAuthority(issuingAuthorityIdentifier)
+        this.state = issuer.getState(documentIdentifier)
+        return true
     }
 }

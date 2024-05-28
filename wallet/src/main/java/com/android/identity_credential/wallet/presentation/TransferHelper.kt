@@ -15,7 +15,6 @@ import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialFormat
-import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
@@ -45,7 +44,6 @@ import kotlin.coroutines.resume
 class TransferHelper(
     private val settingsModel: SettingsModel,
     private val documentStore: DocumentStore,
-    private val issuingAuthorityRepository: IssuingAuthorityRepository,
     private val trustManager: TrustManager,
     private val context: Context,
     private val deviceRetrievalHelper: DeviceRetrievalHelper,
@@ -61,7 +59,6 @@ class TransferHelper(
     class Builder(
         val settingsModel: SettingsModel,
         val documentStore: DocumentStore,
-        val issuingAuthorityRepository: IssuingAuthorityRepository,
         val trustManager: TrustManager,
         val context: Context,
         private var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
@@ -74,7 +71,6 @@ class TransferHelper(
         fun build() = TransferHelper(
             settingsModel = settingsModel,
             documentStore = documentStore,
-            issuingAuthorityRepository = issuingAuthorityRepository,
             trustManager = trustManager,
             context = context,
             deviceRetrievalHelper = deviceRetrievalHelper!!,
@@ -309,9 +305,6 @@ class TransferHelper(
     ): Boolean {
         val credential = documentStore.lookupDocument(credentialId)!!
         val issuingAuthorityIdentifier = credential.issuingAuthorityIdentifier
-        val issuer =
-            issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
-                ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
         //if (!credentialFormats.contains(credentialFormat)) {
         //    return false;
         //}
