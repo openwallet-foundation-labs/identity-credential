@@ -27,9 +27,9 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
 import com.android.identity.util.SimpleApplicationData
-import com.android.identity.util.Timestamp
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 /**
  * Base class for credentials.
@@ -148,8 +148,8 @@ open class Credential {
 
         if (isCertified) {
             _issuerProvidedData = dataItem["data"].asBstr
-            _validFrom = Timestamp.ofEpochMilli(dataItem["validFrom"].asNumber)
-            _validUntil = Timestamp.ofEpochMilli(dataItem["validUntil"].asNumber)
+            _validFrom = Instant.fromEpochMilliseconds(dataItem["validFrom"].asNumber)
+            _validUntil = Instant.fromEpochMilliseconds(dataItem["validUntil"].asNumber)
         } else {
             _issuerProvidedData = null
             _validFrom = null
@@ -225,20 +225,20 @@ open class Credential {
      *
      * @throws IllegalStateException if the credential is not yet certified.
      */
-    val validFrom: Timestamp
+    val validFrom: Instant
         get() = _validFrom
             ?: throw IllegalStateException("This credential is not yet certified")
-    private var _validFrom: Timestamp? = null
+    private var _validFrom: Instant? = null
 
     /**
      * The point in time the issuer-provided data is valid until.
      *
      * @throws IllegalStateException if the credential is not yet certified.
      */
-    val validUntil: Timestamp
+    val validUntil: Instant
         get() = _validUntil
             ?: throw IllegalStateException("This credential is not yet certified")
-    private var _validUntil: Timestamp? = null
+    private var _validUntil: Instant? = null
 
     /**
      * The credential counter.
@@ -314,8 +314,8 @@ open class Credential {
      */
     fun certify(
         issuerProvidedAuthenticationData: ByteArray,
-        validFrom: Timestamp,
-        validUntil: Timestamp
+        validFrom: Instant,
+        validUntil: Instant
     ) {
         check(!isCertified) { "Credential is already certified" }
         isCertified = true
@@ -361,8 +361,8 @@ open class Credential {
 
         if (isCertified) {
             builder.put("data", issuerProvidedData)
-                .put("validFrom", validFrom.toEpochMilli())
-                .put("validUntil", validUntil.toEpochMilli())
+                .put("validFrom", validFrom.toEpochMilliseconds())
+                .put("validUntil", validUntil.toEpochMilliseconds())
         }
 
         addSerializedData(builder)

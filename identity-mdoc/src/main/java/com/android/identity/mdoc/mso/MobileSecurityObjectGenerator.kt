@@ -20,7 +20,7 @@ import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Instant
 
 /**
  * Helper class for building `MobileSecurityObject` [CBOR](http://cbor.io/)
@@ -46,10 +46,10 @@ class MobileSecurityObjectGenerator(
     private val mAuthorizedNameSpaces: MutableList<String> = ArrayList()
     private val mAuthorizedDataElements: MutableMap<String, List<String>> = HashMap()
     private val mKeyInfo: MutableMap<Long, ByteArray> = HashMap()
-    private var mSigned: Timestamp? = null
-    private var mValidFrom: Timestamp? = null
-    private var mValidUntil: Timestamp? = null
-    private var mExpectedUpdate: Timestamp? = null
+    private var mSigned: Instant? = null
+    private var mValidFrom: Instant? = null
+    private var mValidUntil: Instant? = null
+    private var mExpectedUpdate: Instant? = null
 
     init {
         val allowableDigestAlgorithms = listOf("SHA-256", "SHA-384", "SHA-512")
@@ -182,19 +182,19 @@ class MobileSecurityObjectGenerator(
      * @throws IllegalArgumentException if the times are do not meet the constraints.
      */
     fun setValidityInfo(
-        signed: Timestamp,
-        validFrom: Timestamp, validUntil: Timestamp,
-        expectedUpdate: Timestamp?
+        signed: Instant,
+        validFrom: Instant, validUntil: Instant,
+        expectedUpdate: Instant?
     ) = apply {
         // 18013-5 Section 9.1.2.4 says "The timestamp of validFrom shall be equal or later than
         // the signed element."
-        require(validFrom.toEpochMilli() >= signed.toEpochMilli()) {
+        require(validFrom >= signed) {
             "The validFrom timestamp should be equal or later than the signed timestamp"
         }
 
         // 18013-5 Section 9.1.2.4 says "The validUntil element contains the timestamp after which the
         // MSO is no longer valid. The value of the timestamp shall be later than the validFrom element."
-        require(validUntil.toEpochMilli() > validFrom.toEpochMilli()) {
+        require(validUntil > validFrom) {
             "The validUntil timestamp should be later than the validFrom timestamp"
         }
         mSigned = signed
@@ -240,11 +240,11 @@ class MobileSecurityObjectGenerator(
 
     private fun generateValidityInfoBuilder(): CborBuilder =
         CborMap.builder().run {
-            put("signed", mSigned!!.toEpochMilli().toDataItemDateTimeString)
-            put("validFrom", mValidFrom!!.toEpochMilli().toDataItemDateTimeString)
-            put("validUntil", mValidUntil!!.toEpochMilli().toDataItemDateTimeString)
+            put("signed", mSigned!!.toEpochMilliseconds().toDataItemDateTimeString)
+            put("validFrom", mValidFrom!!.toEpochMilliseconds().toDataItemDateTimeString)
+            put("validUntil", mValidUntil!!.toEpochMilliseconds().toDataItemDateTimeString)
             if (mExpectedUpdate != null)
-                put("expectedUpdate", mExpectedUpdate!!.toEpochMilli().toDataItemDateTimeString)
+                put("expectedUpdate", mExpectedUpdate!!.toEpochMilliseconds().toDataItemDateTimeString)
             end()
         }
 

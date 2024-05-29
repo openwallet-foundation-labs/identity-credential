@@ -20,7 +20,6 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.mdoc.TestVectors
-import com.android.identity.util.Timestamp
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -28,6 +27,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import java.security.Security
+import kotlinx.datetime.Instant
 
 class MobileSecurityObjectGeneratorTest {
     @Before
@@ -160,10 +160,10 @@ class MobileSecurityObjectGeneratorTest {
             TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
             TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
         )
-        val signedTimestamp = Timestamp.ofEpochMilli(1601559002000L)
-        val validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L)
-        val validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L)
-        val expectedTimestamp = Timestamp.ofEpochMilli(1611093002000L)
+        val signedTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
+        val validFromTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
+        val validUntilTimestamp = Instant.fromEpochMilliseconds(1633095002000L)
+        val expectedTimestamp = Instant.fromEpochMilliseconds(1611093002000L)
         val deviceKeyAuthorizedDataElements: MutableMap<String, List<String>> = HashMap()
         deviceKeyAuthorizedDataElements["a"] = listOf("1", "2", "f")
         deviceKeyAuthorizedDataElements["b"] = listOf("4", "5", "k")
@@ -219,9 +219,9 @@ class MobileSecurityObjectGeneratorTest {
             TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
             TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
         )
-        val signedTimestamp = Timestamp.ofEpochMilli(1601559002000L)
-        val validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L)
-        val validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L)
+        val signedTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
+        val validFromTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
+        val validUntilTimestamp = Instant.fromEpochMilliseconds(1633095002000L)
         val digestAlgorithm = "SHA-256"
         val encodedMSO = MobileSecurityObjectGenerator(
             digestAlgorithm,
@@ -297,10 +297,10 @@ class MobileSecurityObjectGeneratorTest {
             IllegalArgumentException::class.java
         ) {
             msoGenerator.setValidityInfo(
-                Timestamp.ofEpochMilli(1601559002000L),
-                Timestamp.ofEpochMilli(1601559001000L),
-                Timestamp.ofEpochMilli(1633095002000L),
-                Timestamp.ofEpochMilli(1611093002000L)
+                Instant.fromEpochMilliseconds(1601559002000L),
+                Instant.fromEpochMilliseconds(1601559001000L),
+                Instant.fromEpochMilliseconds(1633095002000L),
+                Instant.fromEpochMilliseconds(1611093002000L)
             )
         }
         Assert.assertThrows(
@@ -308,10 +308,10 @@ class MobileSecurityObjectGeneratorTest {
             IllegalArgumentException::class.java
         ) {
             msoGenerator.setValidityInfo(
-                Timestamp.ofEpochMilli(1601559002000L),
-                Timestamp.ofEpochMilli(1601559002000L),
-                Timestamp.ofEpochMilli(1601559002000L),
-                Timestamp.ofEpochMilli(1611093002000L)
+                Instant.fromEpochMilliseconds(1601559002000L),
+                Instant.fromEpochMilliseconds(1601559002000L),
+                Instant.fromEpochMilliseconds(1601559002000L),
+                Instant.fromEpochMilliseconds(1611093002000L)
             )
         }
         val deviceKeyAuthorizedDataElements: MutableMap<String, List<String>> = HashMap()
@@ -348,10 +348,10 @@ class MobileSecurityObjectGeneratorTest {
                 "org.iso.18013.5.1.mDL", deviceKeyFromVector
             )
                 .setValidityInfo(
-                    Timestamp.ofEpochMilli(1601559002000L),
-                    Timestamp.ofEpochMilli(1601559002000L),
-                    Timestamp.ofEpochMilli(1633095002000L),
-                    Timestamp.ofEpochMilli(1611093002000L)
+                    Instant.fromEpochMilliseconds(1601559002000L),
+                    Instant.fromEpochMilliseconds(1601559002000L),
+                    Instant.fromEpochMilliseconds(1633095002000L),
+                    Instant.fromEpochMilliseconds(1611093002000L)
                 )
                 .generate()
         }

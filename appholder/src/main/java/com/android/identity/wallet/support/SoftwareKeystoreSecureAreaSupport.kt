@@ -33,7 +33,6 @@ import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.util.Timestamp
 import com.android.identity.wallet.authconfirmation.AuthConfirmationFragmentDirections
 import com.android.identity.wallet.authconfirmation.PassphraseAuthResult
 import com.android.identity.wallet.authconfirmation.PassphrasePromptViewModel
@@ -44,6 +43,7 @@ import com.android.identity.wallet.support.softwarekeystore.SoftwareAuthKeyCurve
 import com.android.identity.wallet.util.FormatUtil
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.time.Duration.Companion.days
 
 class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
@@ -134,7 +134,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
 
     private fun initSoftwareAttestationKey() {
         val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         secureArea.createKey(
             "SoftwareAttestationRoot",
             SoftwareCreateKeySettings.Builder("".toByteArray())
@@ -143,7 +143,8 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
                 .setSubject("CN=Software Attestation Root")
                 .setValidityPeriod(
                     now,
-                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
+                    Instant.fromEpochMilliseconds(
+                        Clock.System.now().toEpochMilliseconds() + 10L * 86400 * 365 * 1000)
                 )
                 .build()
         )
@@ -188,8 +189,8 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
-        validFrom: Timestamp,
-        validUntil: Timestamp
+        validFrom: Instant,
+        validUntil: Instant
     ): CreateKeySettings {
         if (!this::softwareAttestationKey.isInitialized) {
             initSoftwareAttestationKey()

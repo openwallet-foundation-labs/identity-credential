@@ -101,8 +101,8 @@ import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.Security
@@ -135,7 +135,7 @@ class MainActivity :  FragmentActivity() {
 
     private fun initSoftwareAttestationKey() {
         val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         secureArea.createKey(
             "SoftwareAttestationRoot",
             SoftwareCreateKeySettings.Builder("".toByteArray())
@@ -144,7 +144,7 @@ class MainActivity :  FragmentActivity() {
                 .setSubject("CN=Software Attestation Root")
                 .setValidityPeriod(
                     now,
-                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
+                    Instant.fromEpochMilliseconds(now.toEpochMilliseconds() + 10L * 86400 * 365 * 1000)
                 )
                 .build()
         )
@@ -835,8 +835,7 @@ class MainActivity :  FragmentActivity() {
                     true, 10*1000,
                     setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
                 )
-                .setValidityPeriod(Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
+                .setValidityPeriod(now, thirtyDaysFromNow)
                 .setUseStrongBox(strongBox)
                 .build()
         )
@@ -995,8 +994,8 @@ class MainActivity :  FragmentActivity() {
         softwareSecureArea.createKey(
             "testKey",
             SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
-                .setValidityPeriod(Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
+                .setValidityPeriod(Instant.fromEpochMilliseconds(now.toEpochMilliseconds()),
+                    Instant.fromEpochMilliseconds(thirtyDaysFromNow.toEpochMilliseconds()))
                 .setAttestationKey(softwareAttestationKey,
                     softwareAttestationKeySignatureAlgorithm,
                     softwareAttestationKeyIssuer,

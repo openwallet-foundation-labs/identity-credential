@@ -28,7 +28,6 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.util.Timestamp
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.KeysAndCertificates
@@ -37,11 +36,13 @@ import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
 import java.io.ByteArrayOutputStream
-import java.time.Instant
+import java.time.Instant as JavaInstant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.random.Random
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 class ProvisioningUtil private constructor(
     private val context: Context
@@ -92,8 +93,8 @@ class ProvisioningUtil private constructor(
     }
 
     fun trackUsageTimestamp(document: Document) {
-        val now = Timestamp.now()
-        document.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilli())
+        val now = Clock.System.now()
+        document.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilliseconds())
     }
 
     fun refreshCredentials(document: Document, docType: String) {
@@ -103,9 +104,10 @@ class ProvisioningUtil private constructor(
         val numCreds = document.applicationData.getNumber(NUM_CREDENTIALS)
         val validityInDays = document.applicationData.getNumber(VALIDITY_IN_DAYS).toInt()
 
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         val validFrom = now
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + validityInDays*86400*1000L)
+        val validUntil = Instant.fromEpochMilliseconds(
+            validFrom.toEpochMilliseconds() + validityInDays*86400*1000L)
 
         val secureArea = secureAreaRepository.getImplementation(secureAreaIdentifier)
             ?: throw IllegalStateException("No Secure Area with id ${secureAreaIdentifier} for document ${document.name}")
@@ -315,7 +317,7 @@ class ProvisioningUtil private constructor(
                 val lastTimeUsed = if (lastTimeUsedMillis == -1L) {
                     ""
                 } else {
-                    Timestamp.ofEpochMilli(lastTimeUsedMillis).formatted()
+                    Instant.fromEpochMilliseconds(lastTimeUsedMillis).formatted()
                 }
                 DocumentInformation(
                     userVisibleName = it.applicationData.getString(USER_VISIBLE_NAME),
@@ -331,9 +333,9 @@ class ProvisioningUtil private constructor(
             }
         }
 
-        private fun Timestamp.formatted(): String {
-            val instant = Instant.ofEpochMilli(this.toEpochMilli())
-            val dateTime = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault())
+        private fun Instant.formatted(): String {
+            val javaInstant = JavaInstant.ofEpochMilli(this.toEpochMilliseconds())
+            val dateTime = ZonedDateTime.ofInstant(javaInstant, ZoneId.systemDefault())
             return dateTimeFormatter.format(dateTime)
         }
     }

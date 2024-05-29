@@ -25,12 +25,12 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
-import com.android.identity.util.Timestamp
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import java.security.Security
+import kotlinx.datetime.Instant;
 
 class DocumentUtilTest {
     private lateinit var storageEngine: StorageEngine
@@ -80,7 +80,7 @@ class DocumentUtilTest {
                 secureArea,
                 authKeySettings
             )},
-            Timestamp.ofEpochMilli(100),
+            Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
             minValidTimeMillis,
@@ -96,8 +96,8 @@ class DocumentUtilTest {
             Assert.assertTrue(pak.applicationData.getBoolean(managedCredDomain))
             pak.certify(
                 byteArrayOf(0, count++.toByte()),
-                Timestamp.ofEpochMilli(100),
-                Timestamp.ofEpochMilli(200)
+                Instant.fromEpochMilliseconds(100),
+                Instant.fromEpochMilliseconds(200)
             )
         }
         // We should now have |numCreds| certified credentials and none pending
@@ -115,7 +115,7 @@ class DocumentUtilTest {
                 secureArea,
                 authKeySettings
             )},
-            Timestamp.ofEpochMilli(100),
+            Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
             minValidTimeMillis,
@@ -140,7 +140,7 @@ class DocumentUtilTest {
                 secureArea,
                 authKeySettings
             )},
-            Timestamp.ofEpochMilli(100),
+            Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
             minValidTimeMillis,
@@ -168,7 +168,7 @@ class DocumentUtilTest {
                 secureArea,
                 authKeySettings
             )},
-            Timestamp.ofEpochMilli(100),
+            Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
             minValidTimeMillis,
@@ -181,8 +181,8 @@ class DocumentUtilTest {
             Assert.assertEquals(managedCredDomain, pak.domain)
             pak.certify(
                 byteArrayOf(1, count++.toByte()),
-                Timestamp.ofEpochMilli(100),
-                Timestamp.ofEpochMilli(210)
+                Instant.fromEpochMilliseconds(100),
+                Instant.fromEpochMilliseconds(210)
             )
         }
         // We should now have |numCreds| certified credentials and none pending
@@ -220,7 +220,7 @@ class DocumentUtilTest {
                 secureArea,
                 authKeySettings
             )},
-            Timestamp.ofEpochMilli(195),
+            Instant.fromEpochMilliseconds(195),
             numCreds,
             maxUsesPerCred,
             minValidTimeMillis,
@@ -233,8 +233,8 @@ class DocumentUtilTest {
             Assert.assertEquals(managedCredDomain, pak.domain)
             pak.certify(
                 byteArrayOf(2, count++.toByte()),
-                Timestamp.ofEpochMilli(100),
-                Timestamp.ofEpochMilli(210)
+                Instant.fromEpochMilliseconds(100),
+                Instant.fromEpochMilliseconds(210)
             )
         }
         // We should now have |numCreds| certified credentials and none pending

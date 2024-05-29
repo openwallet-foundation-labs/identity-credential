@@ -25,7 +25,6 @@ import com.android.identity.storage.StorageEngine
 import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
 import com.android.identity.util.SimpleApplicationData
-import com.android.identity.util.Timestamp
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
@@ -142,7 +141,7 @@ class Document private constructor(
         if (!addedToStore) {
             return
         }
-        val t0 = Timestamp.now()
+        val t0 = Clock.System.now()
         val mapBuilder = CborMap.builder().apply {
             put("applicationData", _applicationData.encodeAsCbor())
             val pendingCredentialsArrayBuilder = putArray("pendingCredentials")
@@ -156,13 +155,13 @@ class Document private constructor(
             put("credentialCounter", credentialCounter)
         }
         storageEngine.put(DOCUMENT_PREFIX + name, Cbor.encode(mapBuilder.end().build()))
-        val t1 = Timestamp.now()
+        val t1 = Clock.System.now()
 
         // Saving a document is a costly affair (often more than 100ms) so log when we're doing
         // this so application developers are aware. This is to deter applications from storing
         // ephemeral data in the ApplicationData instances of the document and our associated
         // credentials.
-        val durationMillis = t1.toEpochMilli() - t0.toEpochMilli()
+        val durationMillis = t1.toEpochMilliseconds() - t0.toEpochMilliseconds()
         Logger.i(TAG, "Saved document '$name' to disk in $durationMillis msec")
         store.emitOnDocumentChanged(this)
     }
@@ -205,14 +204,14 @@ class Document private constructor(
      */
     fun findCredential(
         domain: String,
-        now: Timestamp?
+        now: Instant?
     ): Credential? {
         var candidate: Credential? = null
         _certifiedCredentials.filter {
             it.domain == domain && (
                     now != null
-                            && (now.toEpochMilli() >= it.validFrom.toEpochMilli())
-                            && (now.toEpochMilli() <= it.validUntil.toEpochMilli())
+                            && (now >= it.validFrom)
+                            && (now <= it.validUntil)
                     )
         }.forEach { credential ->
             // If we already have a candidate, prefer this one if its usage count is lower
@@ -256,7 +255,7 @@ class Document private constructor(
     }
 
     /**
-     * Returns whether an usable credential exists at a given point in time.
+     * Returns whether a usable credential exists at a given point in time.
      *
      * @param at the point in time to check for.
      * @returns `true` if an usable credential exists for the given time, `false` otherwise
@@ -267,9 +266,7 @@ class Document private constructor(
             return false
         }
         for (credential in credentials) {
-            val validFrom = Instant.fromEpochMilliseconds(credential.validFrom.toEpochMilli())
-            val validUntil = Instant.fromEpochMilliseconds(credential.validUntil.toEpochMilli())
-            if (at >= validFrom && at < validUntil) {
+            if (at >= credential.validFrom && at < credential.validUntil) {
                 return true
             }
         }
@@ -296,8 +293,8 @@ class Document private constructor(
         var numCredentialsAvailable = 0
         for (credential in credentials) {
             numCredentials++
-            val validFrom = Instant.fromEpochMilliseconds(credential.validFrom.toEpochMilli())
-            val validUntil = Instant.fromEpochMilliseconds(credential.validUntil.toEpochMilli())
+            val validFrom = credential.validFrom
+            val validUntil = credential.validUntil
             if (at >= validFrom && at < validUntil) {
                 if (credential.usageCount == 0) {
                     numCredentialsAvailable++

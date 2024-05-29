@@ -40,7 +40,6 @@ import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareKeyInfo
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.credman.CredmanRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -320,12 +319,10 @@ class DocumentModel(
             format = CredentialFormat.MDOC_MSO,
             description = "ISO/IEC 18013-5:2021 mdoc MSO",
             usageCount = mdocCredential.usageCount,
-            signedAt = Instant.fromEpochMilliseconds(mso.signed.toEpochMilli()),
-            validFrom = Instant.fromEpochMilliseconds(mso.validFrom.toEpochMilli()),
-            validUntil = Instant.fromEpochMilliseconds(mso.validUntil.toEpochMilli()),
-            expectedUpdate = mso.expectedUpdate?.let {
-                Instant.fromEpochMilliseconds(it.toEpochMilli())
-            },
+            signedAt = mso.signed,
+            validFrom = mso.validFrom,
+            validUntil = mso.validUntil,
+            expectedUpdate = mso.expectedUpdate,
             replacementPending = mdocCredential.replacement != null,
             details = kvPairs
         )
@@ -651,8 +648,8 @@ class DocumentModel(
                 }
                 pendingCredential.certify(
                     credentialData.data,
-                    Timestamp.ofEpochMilli(credentialData.validFrom.toEpochMilliseconds()),
-                    Timestamp.ofEpochMilli(credentialData.validUntil.toEpochMilliseconds())
+                    credentialData.validFrom,
+                    credentialData.validUntil
                 )
                 numCredentialsRefreshed += 1
             }
@@ -679,7 +676,7 @@ class DocumentModel(
         val numCreds = 3
         val minValidTimeMillis = 30 * 24 * 3600L
 
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         // First do a dry-run to see how many pending credentials will be created
         val numPendingCredentialsToCreate = DocumentUtil.managedCredentialHelper(
             document,

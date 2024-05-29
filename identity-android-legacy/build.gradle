@@ -47,15 +47,16 @@ dependencies {
     implementation libs.bouncy.castle.bcprov
     implementation(libs.bouncy.castle.bcpkix)
     implementation libs.volley
-    implementation libs.kotlinx.datetime
 
     testImplementation libs.androidx.test.espresso
     testImplementation libs.androidx.test.ext.junit
     testImplementation libs.bouncy.castle.bcprov
     testImplementation libs.bundles.unit.testing
+    testImplementation libs.kotlinx.datetime
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso
+    androidTestImplementation libs.kotlinx.datetime
 }
 
 tasks.withType(Test) {

@@ -9,7 +9,7 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.fromDataItem
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Instant;
 
 /**
  * Class used to indicate key creation settings for software-backed keys.
@@ -22,8 +22,8 @@ class SoftwareCreateKeySettings internal constructor(
     keyPurposes: Set<KeyPurpose>,
     attestationChallenge: ByteArray,
     val subject: String?,
-    val validFrom: Timestamp?,
-    val validUntil: Timestamp?,
+    val validFrom: Instant?,
+    val validUntil: Instant?,
     val attestationKey: EcPrivateKey?,
     val attestationKeySignatureAlgorithm: Algorithm?,
     val attestationKeyIssuer: String?,
@@ -47,8 +47,8 @@ class SoftwareCreateKeySettings internal constructor(
         private var passphrase: String? = null
         private var passphraseConstraints: PassphraseConstraints? = null
         private var subject: String? = null
-        private var validFrom: Timestamp? = null
-        private var validUntil: Timestamp? = null
+        private var validFrom: Instant? = null
+        private var validUntil: Instant? = null
         private var attestationKey: EcPrivateKey? = null
         private var attestationKeySignatureAlgorithm: Algorithm? = null
         private var attestationKeyIssuer: String? = null
@@ -169,7 +169,7 @@ class SoftwareCreateKeySettings internal constructor(
          * @param validUntil the point in time after which the key is not valid.
          * @return the builder.
          */
-        fun setValidityPeriod(validFrom: Timestamp, validUntil: Timestamp) = apply {
+        fun setValidityPeriod(validFrom: Instant, validUntil: Instant) = apply {
             this.validFrom = validFrom
             this.validUntil = validUntil
         }

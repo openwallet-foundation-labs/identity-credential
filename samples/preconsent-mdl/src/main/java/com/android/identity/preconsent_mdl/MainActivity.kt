@@ -74,7 +74,6 @@ import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.ByteArrayOutputStream
@@ -158,9 +157,9 @@ class MainActivity : ComponentActivity() {
                 pendingCredential.attestation.certificates[0].publicKey
             )
             msoGenerator.setValidityInfo(
-                Timestamp.ofEpochMilli(timeSigned.toEpochMilliseconds()),
-                Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
-                Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()),
+                timeSigned,
+                validFrom,
+                validUntil,
                 null)
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 documentData,
@@ -206,8 +205,8 @@ class MainActivity : ComponentActivity() {
 
             pendingCredential.certify(
                 issuerProvidedAuthenticationData,
-                Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
-                Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()))
+                validFrom,
+                validUntil)
         }
         Logger.d(TAG, "Created document with name ${document.name}")
     }

@@ -88,7 +88,7 @@ val Long.toDataItemDateTimeString: DataItem
  * point in time.
  */
 val String.toDataItemDateTimeString: DataItem
-    get() = this.toInstant().toDataItemDateTimeString
+    get() = Instant.parse(this).toDataItemDateTimeString
 
 /**
  * Extension to get a full-date data item as specified in RFC 8943.

@@ -33,7 +33,6 @@ import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.crypto.EcCurve;
-import com.android.identity.util.Timestamp;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,12 +47,12 @@ import java.text.SimpleDateFormat;
 
 // Java servlet imports
 import java.io.IOException;
-import java.util.OptionalLong;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import kotlinx.datetime.Instant;
 
 // imports for Datastore
 import com.google.appengine.api.datastore.Blob;
@@ -473,11 +472,11 @@ public class RequestServlet extends HttpServlet {
 
             arr.add("MSO");
             arr.add(ServletConsts.CHECKMARK + "Signed: "
-                + timestampToString(doc.getValidityInfoSigned()));
+                + instantToString(doc.getValidityInfoSigned()));
             arr.add(ServletConsts.CHECKMARK + "Signed: "
-                + timestampToString(doc.getValidityInfoValidFrom()));
+                + instantToString(doc.getValidityInfoValidFrom()));
             arr.add(ServletConsts.CHECKMARK + "Signed: "
-                + timestampToString(doc.getValidityInfoValidUntil()));
+                + instantToString(doc.getValidityInfoValidUntil()));
             arr.add(ServletConsts.CHECKMARK + "DeviceKey: "
                     + doc.getDeviceKey());
             List<String> issuerNamespaces = doc.getIssuerNamespaces();
@@ -576,11 +575,11 @@ public class RequestServlet extends HttpServlet {
     }
 
     /**
-     * @return String converted from a Timestamp object @param ts
+     * @return String converted from n Instant object @param ts
      */
-    private static String timestampToString(Timestamp ts) {
+    private static String instantToString(Instant instant) {
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        return df.format(new Date(ts.toEpochMilli()));
+        return df.format(new Date(instant.toEpochMilliseconds()));
     }
 
     /**

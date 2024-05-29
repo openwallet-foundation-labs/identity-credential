@@ -74,10 +74,10 @@ class DeviceResponseParserTest {
         // Check ValidityInfo is correctly parsed, these values are all from
         // ISO/IEC 18013-5 Annex D.4.1.2 mdoc response.
         // 2020-10-01T13:30:02Z == 1601559002000
-        Assert.assertEquals(1601559002000L, d.validityInfoSigned.toEpochMilli())
-        Assert.assertEquals(1601559002000L, d.validityInfoValidFrom.toEpochMilli())
+        Assert.assertEquals(1601559002000L, d.validityInfoSigned.toEpochMilliseconds())
+        Assert.assertEquals(1601559002000L, d.validityInfoValidFrom.toEpochMilliseconds())
         // 2021-10-01T13:30:02Z == 1601559002000
-        Assert.assertEquals(1633095002000L, d.validityInfoValidUntil.toEpochMilli())
+        Assert.assertEquals(1633095002000L, d.validityInfoValidUntil.toEpochMilliseconds())
         Assert.assertNull(d.validityInfoExpectedUpdate)
 
         // Check DeviceKey is correctly parsed

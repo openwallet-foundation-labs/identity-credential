@@ -32,8 +32,8 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import com.android.identity.util.toHex
+import kotlinx.datetime.Instant
 
 /**
  * Helper class for parsing the bytes of `DeviceResponse`
@@ -407,22 +407,22 @@ class DeviceResponseParser(
         /**
          * The `signed` date from the MSO.
          */
-        lateinit var validityInfoSigned: Timestamp
+        lateinit var validityInfoSigned: Instant
 
         /**
          * The `validFrom` date from the MSO.
          */
-        lateinit var validityInfoValidFrom: Timestamp
+        lateinit var validityInfoValidFrom: Instant
 
         /**
          * The `validUntil` date from the MSO.
          */
-        lateinit var validityInfoValidUntil: Timestamp
+        lateinit var validityInfoValidUntil: Instant
 
         /**
          * The `expectedUpdate` date from the MSO or null if not set.
          */
-        var validityInfoExpectedUpdate: Timestamp? = null
+        var validityInfoExpectedUpdate: Instant? = null
 
         /**
          * Returns the `DeviceKey` from the MSO.
@@ -555,7 +555,7 @@ class DeviceResponseParser(
             }
 
         /**
-         * Like [getIssuerEntryData] but returns the CBOR decoded as a [Timestamp].
+         * Like [getIssuerEntryData] but returns the CBOR decoded as an [Instant].
          *
          * @param namespaceName the name of the namespace to get a data element value from.
          * @param name the name of the data element in the given namespace.
@@ -565,8 +565,8 @@ class DeviceResponseParser(
         fun getIssuerEntryDateTime(
             namespaceName: String,
             name: String
-        ): Timestamp = getIssuerEntryData(namespaceName, name).let { value ->
-            Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
+        ): Instant = getIssuerEntryData(namespaceName, name).let { value ->
+            Cbor.decode(value).asDateTimeString
         }
 
         /**
@@ -668,7 +668,7 @@ class DeviceResponseParser(
             }
 
         /**
-         * Like [getDeviceEntryData] but returns the CBOR decoded as a [Timestamp].
+         * Like [getDeviceEntryData] but returns the CBOR decoded as an [Instant].
          *
          * @param namespaceName the name of the namespace to get a data element value from.
          * @param name the name of the data element in the given namespace.
@@ -678,9 +678,9 @@ class DeviceResponseParser(
         fun getDeviceEntryDateTime(
             namespaceName: String,
             name: String
-        ): Timestamp =
+        ): Instant =
             getDeviceEntryData(namespaceName, name).let { value ->
-                Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
+                Cbor.decode(value).asDateTimeString
             }
 
         internal class Builder(docType: String) {
@@ -727,19 +727,19 @@ class DeviceResponseParser(
                 result.issuerSignedAuthenticated = issuerSignedAuthenticated
             }
 
-            fun setValidityInfoSigned(value: Timestamp) = apply {
+            fun setValidityInfoSigned(value: Instant) = apply {
                 result.validityInfoSigned = value
             }
 
-            fun setValidityInfoValidFrom(value: Timestamp) = apply {
+            fun setValidityInfoValidFrom(value: Instant) = apply {
                 result.validityInfoValidFrom = value
             }
 
-            fun setValidityInfoValidUntil(value: Timestamp) = apply {
+            fun setValidityInfoValidUntil(value: Instant) = apply {
                 result.validityInfoValidUntil = value
             }
 
-            fun setValidityInfoExpectedUpdate(value: Timestamp) = apply {
+            fun setValidityInfoExpectedUpdate(value: Instant) = apply {
                 result.validityInfoExpectedUpdate = value
             }
 

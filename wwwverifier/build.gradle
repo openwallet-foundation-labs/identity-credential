@@ -31,6 +31,7 @@ dependencies {
   implementation platform('com.google.cloud:libraries-bom:26.22.0')
   implementation project(path: ':identity')
   implementation project(path: ':identity-mdoc')
+  implementation libs.kotlinx.datetime
   testImplementation 'junit:junit:4.12'
   testImplementation 'org.mockito:mockito-core:3.2.4'
   testImplementation 'com.google.appengine:appengine-testing:1.9.64'

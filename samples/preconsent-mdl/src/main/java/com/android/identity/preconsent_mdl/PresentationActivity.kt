@@ -54,7 +54,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Clock
 
 class PresentationActivity : ComponentActivity() {
     companion object {
@@ -256,7 +256,7 @@ class PresentationActivity : ComponentActivity() {
         ).parse()
         val docRequest = request.docRequests[0]
         val documentRequest = MdocUtil.generateDocumentRequest(docRequest!!)
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         val document = transferHelper.documentStore.lookupDocument(MainActivity.CREDENTIAL_ID)!!
         val credential = document.findCredential(MainActivity.AUTH_KEY_DOMAIN, now) as MdocCredential
 

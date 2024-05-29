@@ -36,7 +36,6 @@ import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.StorageEngine
-import com.android.identity.util.Timestamp.Companion.ofEpochMilli
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Assume
@@ -54,6 +53,7 @@ import java.security.NoSuchProviderException
 import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
+import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 
 class AndroidKeystoreSecureAreaTest {
     @Before
@@ -664,8 +664,8 @@ class AndroidKeystoreSecureAreaTest {
         validFromCalendar[2023, 5, 15, 0, 0] = 0
         val validUntilCalendar: Calendar = GregorianCalendar(TimeZone.getTimeZone("UTC"))
         validUntilCalendar[2024, 5, 15, 0, 0] = 0
-        val validFrom = ofEpochMilli(validFromCalendar.timeInMillis)
-        val validUntil = ofEpochMilli(validUntilCalendar.timeInMillis)
+        val validFrom = fromEpochMilliseconds(validFromCalendar.timeInMillis)
+        val validUntil = fromEpochMilliseconds(validUntilCalendar.timeInMillis)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
@@ -701,13 +701,13 @@ class AndroidKeystoreSecureAreaTest {
 
         // tag 400: https://source.android.com/docs/security/features/keystore/tags#active_datetime
         Assert.assertEquals(
-            validFrom.toEpochMilli(),
+            validFrom.toEpochMilliseconds(),
             parser.getSoftwareAuthorizationLong(400)
         )
 
         // tag 401: https://source.android.com/docs/security/features/keystore/tags#origination_expire_datetime
         Assert.assertEquals(
-            validUntil.toEpochMilli(),
+            validUntil.toEpochMilliseconds(),
             parser.getSoftwareAuthorizationLong(401)
         )
     }

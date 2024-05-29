@@ -19,7 +19,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Instant
 
 /**
  * Helper class for parsing the bytes of `MobileSecurityObject`
@@ -79,25 +79,25 @@ class MobileSecurityObjectParser(
          * The timestamp at which the MSO signature was created, as set in the
          * `MobileSecurityObject` CBOR.
          */
-        lateinit var signed: Timestamp
+        lateinit var signed: Instant
 
         /**
          * The timestamp before which the MSO is not yet valid, as set in the
          * `MobileSecurityObject` CBOR.
          */
-        lateinit var validFrom: Timestamp
+        lateinit var validFrom: Instant
 
         /**
          * The timestamp after which the MSO is no longer valid, as set in the
          * `MobileSecurityObject` CBOR.
          */
-        lateinit var validUntil: Timestamp
+        lateinit var validUntil: Instant
 
         /**
          * The timestamp at which the issuing authority infrastructure expects to re-sign the
          * MSO, if provided in the `MobileSecurityObject` CBOR, else null.
          */
-        var expectedUpdate: Timestamp? = null
+        var expectedUpdate: Instant? = null
 
         /**
          * The set of namespaces provided in the ValueDigests map within the
@@ -191,24 +191,27 @@ class MobileSecurityObjectParser(
         }
 
         private fun parseValidityInfo(validityInfo: DataItem) {
-            signed = Timestamp.ofEpochMilli(
+            signed = Instant.fromEpochMilliseconds(
                 validityInfo["signed"].asDateTimeString
                     .toEpochMilliseconds()
             )
             validFrom =
-                Timestamp.ofEpochMilli(validityInfo["validFrom"].asDateTimeString.toEpochMilliseconds())
+                Instant.fromEpochMilliseconds(
+                    validityInfo["validFrom"].asDateTimeString.toEpochMilliseconds())
             validUntil =
-                Timestamp.ofEpochMilli(validityInfo["validUntil"].asDateTimeString.toEpochMilliseconds())
+                Instant.fromEpochMilliseconds(
+                    validityInfo["validUntil"].asDateTimeString.toEpochMilliseconds())
             if (validityInfo.getOrNull("expectedUpdate") != null) {
                 expectedUpdate =
-                    Timestamp.ofEpochMilli(validityInfo["expectedUpdate"].asDateTimeString.toEpochMilliseconds())
+                    Instant.fromEpochMilliseconds(
+                        validityInfo["expectedUpdate"].asDateTimeString.toEpochMilliseconds())
             } else {
                 expectedUpdate = null
             }
-            require(validFrom.toEpochMilli() >= signed.toEpochMilli()) {
+            require(validFrom >= signed) {
                 "The validFrom timestamp should be equal or later than the signed timestamp"
             }
-            require(validUntil.toEpochMilli() > validFrom.toEpochMilli()) {
+            require(validUntil > validFrom) {
                 "The validUntil timestamp should be later than the validFrom timestamp"
             }
         }
