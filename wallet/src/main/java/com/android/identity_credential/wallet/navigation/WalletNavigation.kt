@@ -91,6 +91,7 @@ fun WalletNavigation(
         composable(WalletDestination.Settings.route) {
             SettingsScreen(
                 settingsModel = application.settingsModel,
+                documentStore = application.documentStore,
                 onNavigate = navigateTo
             )
         }

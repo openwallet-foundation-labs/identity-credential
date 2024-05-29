@@ -140,20 +140,10 @@ class WalletApplication : Application() {
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
 
         // init Wallet Server
-        walletServerProvider = WalletServerProvider(this,
+        walletServerProvider = WalletServerProvider(
+            this,
             androidKeystoreSecureArea,
-            // There are multiple options for the default here. For now we use
-            // dev: which makes it work out of the box on any device.
-            //
-            // Another option would be http://10.0.2.2:8080/wallet-server which makes
-            // it work out of the box when using the emulator.
-            //
-            // The developer may adjust it to suit their environment. In the future the
-            // default will point to a publicly available instance of the wallet server.
-            //
-            //
-            "dev:"
-            //"http://10.0.2.2:8080/wallet-server"
+            settingsModel
         )
 
         // init TrustManager

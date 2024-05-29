@@ -95,6 +95,24 @@
     <string name="settings_screen_log_to_file_clear_button">Clear log</string>
     <string name="settings_screen_log_to_file_share_button">Share log</string>
     <string name="settings_screen_log_to_file_chooser_title">Share Log</string>
+    <string name="settings_screen_wallet_server_title">Wallet Server</string>
+    <string name="settings_screen_wallet_server_built_in">Built-in Wallet Server (dev:)</string>
+    <string name="settings_screen_set_wallet_server_url_dialog_title">Wallet Server</string>
+    <string name="settings_screen_set_wallet_server_url_dialog_message">
+        This is a developer-focused setting for specifying the URL of the Wallet Server instance
+        the application should connect to.\n\nSome popular options are included in the links below.
+    </string>
+    <string name="settings_screen_set_wallet_server_url_dialog_confirm_button">Set</string>
+    <string name="settings_screen_set_wallet_server_url_dialog_dismiss_button">Cancel</string>
+    <string name="settings_screen_set_wallet_server_url_label">URL</string>
+    <string name="settings_screen_set_wallet_server_url_link_built_in">Built-in Wallet Server</string>
+    <string name="settings_screen_set_wallet_server_url_link_emulator">Emulator with Wallet Server running on developer host</string>
+    <string name="settings_screen_confirm_set_wallet_server_url_dialog_title">Confirm setting Wallet Server URL</string>
+    <string name="settings_screen_confirm_set_wallet_server_url_dialog_message">
+        All existing documents will be deleted if you change the Wallet Server URL.
+    </string>
+    <string name="settings_screen_confirm_set_wallet_server_url_dialog_confirm">Confirm</string>
+    <string name="settings_screen_confirm_set_wallet_server_url_dialog_dismiss">Cancel</string>
 
     <!-- Add to Wallet screen -->
     <string name="add_screen_title">Add to Wallet</string>

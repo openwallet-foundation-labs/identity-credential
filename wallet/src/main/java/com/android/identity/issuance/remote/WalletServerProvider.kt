@@ -16,9 +16,11 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.SettingsModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
@@ -31,7 +33,7 @@ import org.bouncycastle.asn1.ASN1OctetString
 class WalletServerProvider(
     private val context: Context,
     private val secureArea: SecureArea,
-    private val baseURL: String
+    private val settingsModel: SettingsModel
 ) {
     private var instance: WalletServer? = null
     private val instanceLock = Mutex()
@@ -50,13 +52,26 @@ class WalletServerProvider(
         }
     }
 
+    private val baseUrl: String
+        get() = settingsModel.walletServerUrl.value!!
+
+    init {
+        settingsModel.walletServerUrl.observeForever {
+            runBlocking {
+                instanceLock.withLock {
+                    instance = null
+                }
+            }
+        }
+    }
+
     private fun createFlowHandler(): FlowHandler {
-        return if (baseURL == "dev:") {
+        return if (baseUrl == "dev:") {
             val flowHandlerLocal = FlowHandlerLocal.Builder()
             WalletServerState.registerAll(flowHandlerLocal)
             flowHandlerLocal.build(noopCipher, LocalDevelopmentEnvironment(context, this))
         } else {
-            val httpClient = WalletHttpClient(baseURL)
+            val httpClient = WalletHttpClient(baseUrl)
             FlowHandlerRemote(httpClient)
         }
     }
@@ -78,9 +93,9 @@ class WalletServerProvider(
         instanceLock.withLock {
             if (instance == null) {
                 instance = getWalletServerUnlocked()
-                Logger.i(TAG, "Created new WalletServer instance (URL $baseURL)")
+                Logger.i(TAG, "Created new WalletServer instance (URL $baseUrl)")
             } else {
-                Logger.i(TAG, "Reusing existing WalletServer instance (URL $baseURL)")
+                Logger.i(TAG, "Reusing existing WalletServer instance (URL $baseUrl)")
             }
             return instance!!
         }
@@ -90,7 +105,7 @@ class WalletServerProvider(
         // "root" is the entry point for the server, see FlowState annotation on
         // com.android.identity.issuance.hardcoded.WalletServerState
         val walletServer = WalletServerImpl(createFlowHandler(), "root")
-        val alias = "ClientKey:$baseURL"
+        val alias = "ClientKey:$baseUrl"
         var keyInfo: KeyInfo? = null
         var challenge: ClientChallenge? = null
         val authentication = walletServer.authenticate();
