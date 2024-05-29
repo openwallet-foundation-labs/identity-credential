@@ -195,6 +195,9 @@ private fun SetWalletServerUrlDialog(
                 LinkText(stringResource(R.string.settings_screen_set_wallet_server_url_link_emulator)) {
                     url = "http://10.0.2.2:8080/wallet-server"
                 }
+                LinkText(stringResource(R.string.settings_screen_set_wallet_server_url_tunneled)) {
+                    url = "http://localhost:8080/wallet-server"
+                }
             }
         },
         confirmButton = {
