@@ -122,33 +122,37 @@ class DeviceRequestParser(
                     var encodedReaderAuth: ByteArray? = null
                     var readerAuthenticated = false
                     if (!skipReaderAuthParseAndCheck && readerAuth != null) {
-                        encodedReaderAuth = Cbor.encode(readerAuth)
-                        val readerAuthCoseSign1 = readerAuth.asCoseSign1
-                        val readerCertChainDataItem =
-                            readerAuthCoseSign1.unprotectedHeaders[CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)]
-                        val signatureAlgorithm = Algorithm.fromInt(
-                            readerAuthCoseSign1.protectedHeaders[
-                                CoseNumberLabel(Cose.COSE_LABEL_ALG)
-                            ]!!.asNumber.toInt()
-                        )
-                        readerCertChain = readerCertChainDataItem!!.asCertificateChain
-                        val readerKey = readerCertChain!!.certificates[0].publicKey
-                        val encodedReaderAuthentication = Cbor.encode(
-                            CborArray.builder()
-                                .add("ReaderAuthentication")
-                                .add(sessionTranscript)
-                                .add(itemsRequestBytesDataItem)
-                                .end()
-                                .build()
-                        )
-                        val readerAuthenticationBytes =
-                            Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
-                        readerAuthenticated = Cose.coseSign1Check(
-                            readerKey,
-                            readerAuthenticationBytes,
-                            readerAuthCoseSign1,
-                            signatureAlgorithm
-                        )
+                        try {
+                            encodedReaderAuth = Cbor.encode(readerAuth)
+                            val readerAuthCoseSign1 = readerAuth.asCoseSign1
+                            val readerCertChainDataItem =
+                                readerAuthCoseSign1.unprotectedHeaders[CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)]
+                            val signatureAlgorithm = Algorithm.fromInt(
+                                readerAuthCoseSign1.protectedHeaders[
+                                    CoseNumberLabel(Cose.COSE_LABEL_ALG)
+                                ]!!.asNumber.toInt()
+                            )
+                            readerCertChain = readerCertChainDataItem!!.asCertificateChain
+                            val readerKey = readerCertChain!!.certificates[0].publicKey
+                            val encodedReaderAuthentication = Cbor.encode(
+                                CborArray.builder()
+                                    .add("ReaderAuthentication")
+                                    .add(sessionTranscript)
+                                    .add(itemsRequestBytesDataItem)
+                                    .end()
+                                    .build()
+                            )
+                            val readerAuthenticationBytes =
+                                Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
+                            readerAuthenticated = Cose.coseSign1Check(
+                                readerKey,
+                                readerAuthenticationBytes,
+                                readerAuthCoseSign1,
+                                signatureAlgorithm
+                            )
+                        } catch (e: IllegalArgumentException) {
+                            // TODO log warning - treating reader as unverified
+                        }
                     }
                     val requestInfo: MutableMap<String, ByteArray> = HashMap()
                     itemsRequest.getOrNull("requestInfo")?.let { requestInfoDataItem ->
