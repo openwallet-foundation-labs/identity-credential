@@ -107,6 +107,7 @@
     <string name="settings_screen_set_wallet_server_url_label">URL</string>
     <string name="settings_screen_set_wallet_server_url_link_built_in">Built-in Wallet Server</string>
     <string name="settings_screen_set_wallet_server_url_link_emulator">Emulator with Wallet Server running on developer host</string>
+    <string name="settings_screen_set_wallet_server_url_tunneled">Wallet Server tunneled to device with \'adb reverse tcp:8080 tcp:8080\'</string>
     <string name="settings_screen_confirm_set_wallet_server_url_dialog_title">Confirm setting Wallet Server URL</string>
     <string name="settings_screen_confirm_set_wallet_server_url_dialog_message">
         All existing documents will be deleted if you change the Wallet Server URL.
