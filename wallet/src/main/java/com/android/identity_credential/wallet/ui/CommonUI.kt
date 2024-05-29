@@ -2,6 +2,7 @@
 
 package com.android.identity_credential.wallet.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -200,3 +201,31 @@ fun SettingToggle(
     }
 }
 
+@Composable
+fun SettingString(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    onClicked: () -> Unit,
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier.weight(1f)
+                .clickable {
+                    onClicked()
+                }
+        ) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
