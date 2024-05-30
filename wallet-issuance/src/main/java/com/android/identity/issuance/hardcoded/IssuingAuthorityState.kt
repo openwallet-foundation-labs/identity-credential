@@ -70,11 +70,58 @@ private const val AAMVA_NAMESPACE = DrivingLicense.AAMVA_NAMESPACE
 @CborSerializable
 class IssuingAuthorityState(
     val clientId: String = "",
-    val authorityId: String = "",
-    val configuration: IssuingAuthorityConfiguration? = null,
+    val authorityId: String = ""
 ) {
     companion object {
         const val TAG = "IssuingAuthorityState"
+
+        private val configurationCache = mutableMapOf<String, IssuingAuthorityConfiguration> ()
+
+        fun getConfiguration(env: FlowEnvironment, id: String): IssuingAuthorityConfiguration {
+            synchronized(configurationCache) {
+                val cached = configurationCache[id]
+                if (cached != null) {
+                    return cached
+                }
+            }
+            val configuration = loadConfiguration(env, id)
+            synchronized(configurationCache) {
+                configurationCache[id] = configuration
+            }
+            return configuration
+        }
+
+        // NB: loading IssuingAuthorityConfiguration is not cheap, use getConfiguration instead!
+        private fun loadConfiguration(
+            env: FlowEnvironment,
+            id: String
+        ): IssuingAuthorityConfiguration {
+            val configuration = env.getInterface(Configuration::class)!!
+            val resources = env.getInterface(Resources::class)!!
+            val prefix = "issuing_authorities.$id"
+            val logoPath = configuration.getProperty("$prefix.logo") ?: "default/logo.png"
+            val logo = resources.getRawResource(logoPath)!!
+            val artPath =
+                configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
+            val art = resources.getRawResource(artPath)!!
+            val requireUserAuthenticationToViewDocument =
+                configuration.getBool("$prefix.require_user_authentication_to_view_document", false)
+
+            return IssuingAuthorityConfiguration(
+                identifier = id,
+                issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Untitled",
+                issuingAuthorityLogo = logo.toByteArray(),
+                issuingAuthorityDescription = configuration.getProperty("$prefix.description") ?: "Unknown",
+                pendingDocumentInformation = DocumentConfiguration(
+                    displayName = "Pending",
+                    typeDisplayName = "Driving License",
+                    cardArt = art.toByteArray(),
+                    requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
+                    mdocConfiguration = null,
+                    sdJwtVcDocumentConfiguration = null
+                )
+            )
+        }
     }
 
     @FlowMethod
@@ -93,7 +140,7 @@ class IssuingAuthorityState(
 
     @FlowMethod
     suspend fun getConfiguration(env: FlowEnvironment): IssuingAuthorityConfiguration {
-        return configuration!!
+        return getConfiguration(env, authorityId)
     }
 
     @FlowJoin

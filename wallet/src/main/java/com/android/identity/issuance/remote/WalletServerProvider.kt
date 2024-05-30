@@ -1,6 +1,7 @@
 package com.android.identity.issuance.remote
 
 import android.content.Context
+import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.Algorithm
 import com.android.identity.flow.handler.FlowHandler
 import com.android.identity.flow.handler.FlowHandlerLocal
@@ -17,12 +18,14 @@ import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.SettingsModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.asn1.ASN1OctetString
 
@@ -69,7 +72,8 @@ class WalletServerProvider(
         return if (baseUrl == "dev:") {
             val flowHandlerLocal = FlowHandlerLocal.Builder()
             WalletServerState.registerAll(flowHandlerLocal)
-            flowHandlerLocal.build(noopCipher, LocalDevelopmentEnvironment(context, this))
+            WrapperFlowHandler(flowHandlerLocal.build(noopCipher,
+                LocalDevelopmentEnvironment(context, this)))
         } else {
             val httpClient = WalletHttpClient(baseUrl)
             FlowHandlerRemote(httpClient)
@@ -108,7 +112,7 @@ class WalletServerProvider(
         val alias = "ClientKey:$baseUrl"
         var keyInfo: KeyInfo? = null
         var challenge: ClientChallenge? = null
-        val authentication = walletServer.authenticate();
+        val authentication = walletServer.authenticate()
         try {
             keyInfo = secureArea.getKeyInfo(alias)
         } catch (ex: Exception) {
@@ -148,4 +152,44 @@ class WalletServerProvider(
         get() = _eventFlow.asSharedFlow()
 
     internal val _eventFlow = MutableSharedFlow<Pair<String, String>>()
+
+    /**
+     * Flow handler that delegates to a base, ensuring that the work is done in IO dispatchers
+     * and logging the calls.
+     */
+    internal class WrapperFlowHandler(private val base: FlowHandler): FlowHandler {
+        companion object {
+            const val TAG = "FlowRpc"
+        }
+
+        override suspend fun get(flow: String, method: String): DataItem {
+            Logger.i(TAG, "GET [${Thread.currentThread().name}] $flow/$method")
+            val start = System.nanoTime()
+            try {
+                return withContext(Dispatchers.IO) {
+                    base.get(flow, method)
+                }
+            } finally {
+                val duration = System.nanoTime() - start
+                Logger.i(TAG, "${durationText(duration)}[${Thread.currentThread().name}] $flow/$method")
+            }
+        }
+
+        override suspend fun post(flow: String, method: String, args: List<DataItem>): List<DataItem> {
+            Logger.i(TAG, "POST [${Thread.currentThread().name}] $flow/$method")
+            val start = System.nanoTime()
+            try {
+                return withContext(Dispatchers.IO) {
+                    base.post(flow, method, args)
+                }
+            } finally {
+                val duration = System.nanoTime() - start
+                Logger.i(TAG, "${durationText(duration)} [${Thread.currentThread().name}] $flow/$method")
+            }
+        }
+
+        private fun durationText(durationNano: Long): String {
+            return (durationNano/1000000).toString().padEnd(4, ' ')
+        }
+    }
 }
