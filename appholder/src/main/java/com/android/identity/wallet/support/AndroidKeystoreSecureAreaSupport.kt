@@ -27,7 +27,6 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.util.Timestamp
 import com.android.identity.wallet.R
 import com.android.identity.wallet.authprompt.UserAuthPromptBuilder
 import com.android.identity.wallet.composables.AndroidSetupContainer
@@ -37,6 +36,7 @@ import com.android.identity.wallet.support.androidkeystore.AndroidAuthKeyCurveOp
 import com.android.identity.wallet.support.androidkeystore.AndroidAuthKeyCurveState
 import com.android.identity.wallet.composables.state.AuthTypeState
 import com.android.identity.wallet.composables.state.MdocAuthOption
+import kotlinx.datetime.Instant
 
 class AndroidKeystoreSecureAreaSupport(
     private val capabilities: AndroidKeystoreSecureArea.Capabilities
@@ -202,8 +202,8 @@ class AndroidKeystoreSecureAreaSupport(
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
-        validFrom: Timestamp,
-        validUntil: Timestamp
+        validFrom: Instant,
+        validUntil: Instant
     ): CreateKeySettings {
         val map = Cbor.decode(encodedConfiguration)
         val curve = EcCurve.fromInt(map["curve"].asNumber.toInt())

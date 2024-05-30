@@ -10,7 +10,7 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Instant
 
 interface SecureAreaSupport {
 
@@ -60,8 +60,8 @@ interface SecureAreaSupport {
     fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
-        validFrom: Timestamp,
-        validUntil: Timestamp
+        validFrom: Instant,
+        validUntil: Instant
     ): CreateKeySettings
 
     companion object {

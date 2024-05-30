@@ -22,7 +22,6 @@ import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.util.Timestamp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.DocumentDataReader
 import com.android.identity.wallet.documentdata.DocumentElements
@@ -36,6 +35,7 @@ import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.datetime.Clock
 import kotlin.coroutines.resume
 
 class TransferManager private constructor(private val context: Context) {
@@ -190,7 +190,7 @@ class TransferManager private constructor(private val context: Context) {
         } else {
             credentialToUse = document.findCredential(
                 ProvisioningUtil.CREDENTIAL_DOMAIN,
-                Timestamp.now()
+                Clock.System.now()
             ) as MdocCredential?
                 ?: throw IllegalStateException("No credential available")
         }

@@ -189,15 +189,15 @@ class ShowDeviceResponseFragment : Fragment() {
             val calSigned = GregorianCalendar(TimeZone.getTimeZone("UTC"))
             val calValidFrom = GregorianCalendar(TimeZone.getTimeZone("UTC"))
             val calValidUntil = GregorianCalendar(TimeZone.getTimeZone("UTC"))
-            calSigned.timeInMillis = doc.validityInfoSigned.toEpochMilli()
-            calValidFrom.timeInMillis = doc.validityInfoValidFrom.toEpochMilli()
-            calValidUntil.timeInMillis = doc.validityInfoValidUntil.toEpochMilli()
+            calSigned.timeInMillis = doc.validityInfoSigned.toEpochMilliseconds()
+            calValidFrom.timeInMillis = doc.validityInfoValidFrom.toEpochMilliseconds()
+            calValidUntil.timeInMillis = doc.validityInfoValidUntil.toEpochMilliseconds()
             sb.append("${getFormattedCheck(true)}Signed: ${df.format(calSigned)}<br>")
             sb.append("${getFormattedCheck(true)}Valid From: ${df.format(calValidFrom)}<br>")
             sb.append("${getFormattedCheck(true)}Valid Until: ${df.format(calValidUntil)}<br>")
             if (doc.validityInfoExpectedUpdate != null) {
                 val calExpectedUpdate = GregorianCalendar(TimeZone.getTimeZone("UTC"))
-                calExpectedUpdate.timeInMillis = doc.validityInfoExpectedUpdate!!.toEpochMilli()
+                calExpectedUpdate.timeInMillis = doc.validityInfoExpectedUpdate!!.toEpochMilliseconds()
                 sb.append("${getFormattedCheck(true)}Expected Update: ${df.format(calExpectedUpdate)}<br>")
             }
             // TODO: show warning if MSO is valid for more than 30 days

@@ -25,7 +25,6 @@ import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.log
 import com.google.android.gms.identitycredentials.GetCredentialResponse
@@ -36,6 +35,7 @@ import com.google.android.gms.identitycredentials.IntentHelper.setGetCredentialE
 import com.google.android.gms.identitycredentials.IntentHelper.setGetCredentialResponse
 import org.json.JSONObject
 import java.util.StringTokenizer
+import kotlinx.datetime.Clock
 
 class GetCredentialActivity : FragmentActivity() {
 
@@ -127,7 +127,7 @@ class GetCredentialActivity : FragmentActivity() {
 
         val credential = document.findCredential(
             ProvisioningUtil.CREDENTIAL_DOMAIN,
-            Timestamp.now()
+            Clock.System.now()
         ) as MdocCredential? ?: throw IllegalStateException("No credential")
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(

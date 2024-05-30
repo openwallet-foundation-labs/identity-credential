@@ -42,7 +42,6 @@ import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.showBiometricPrompt
@@ -51,6 +50,7 @@ import org.json.JSONObject
 import com.google.android.gms.identitycredentials.GetCredentialResponse
 import com.google.android.gms.identitycredentials.IntentHelper
 import java.util.StringTokenizer
+import kotlinx.datetime.Clock
 
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
@@ -92,7 +92,7 @@ class CredmanPresentationActivity : FragmentActivity() {
 
         val credential = document.findCredential(
             WalletApplication.CREDENTIAL_DOMAIN_MDOC,
-            Timestamp.now()
+            Clock.System.now()
         ) as MdocCredential?
         if (credential == null) {
             throw IllegalStateException("No credential")

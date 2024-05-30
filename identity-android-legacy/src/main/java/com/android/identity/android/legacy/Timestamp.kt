@@ -13,10 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.identity.util
-
-import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.toDataItem
+package com.android.identity.android.legacy;
 
 /**
  * Represents a single instant in time. Ideally, we'd use `java.time.Instant`, but we cannot

@@ -38,15 +38,15 @@ import com.android.identity.sdjwt.SdJwtVcGenerator
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
-import kotlinx.datetime.Clock
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import kotlin.math.ceil
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
+import kotlinx.datetime.Instant
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 
 abstract class SelfSignedIssuingAuthority(
@@ -161,12 +161,12 @@ abstract class SelfSignedIssuingAuthority(
         documentConfiguration: DocumentConfiguration,
         deviceBoundKey: EcPublicKey
     ): ByteArray {
-        val now = Timestamp.now()
+        val now = Clock.System.now()
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365*24*3600*1000L)
+        val validUntil = Instant.fromEpochMilliseconds(validFrom.toEpochMilliseconds() + 365*24*3600*1000L)
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(

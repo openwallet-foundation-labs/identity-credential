@@ -4,7 +4,7 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Instant
 
 /**
  * Android Keystore specific class for information about a key.
@@ -46,10 +46,10 @@ class AndroidKeystoreKeyInfo internal constructor(
     /**
      * The point in time before which the key is not valid, if set.
      */
-    val validFrom: Timestamp?,
+    val validFrom: Instant?,
 
     /**
      * The point in time after which the key is not valid, if set.
      */
-    val validUntil: Timestamp?
+    val validUntil: Instant?
 ) : KeyInfo(publicKey, attestation, keyPurposes)

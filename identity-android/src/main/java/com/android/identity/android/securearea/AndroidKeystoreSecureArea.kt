@@ -41,8 +41,6 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.keyPurposeSet
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
-import com.android.identity.util.Timestamp.Companion.ofEpochMilli
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.InvalidAlgorithmParameterException
@@ -61,6 +59,7 @@ import java.security.spec.ECGenParameterSpec
 import java.security.spec.InvalidKeySpecException
 import java.sql.Date
 import javax.crypto.KeyAgreement
+import kotlinx.datetime.Instant
 
 /**
  * An implementation of [SecureArea] using Android Keystore.
@@ -244,8 +243,8 @@ class AndroidKeystoreSecureArea(
             }
             builder.setAttestationChallenge(aSettings.attestationChallenge)
             if (aSettings.validFrom != null) {
-                val notBefore = Date(aSettings.validFrom.toEpochMilli())
-                val notAfter = Date(aSettings.validUntil!!.toEpochMilli())
+                val notBefore = Date(aSettings.validFrom.toEpochMilliseconds())
+                val notAfter = Date(aSettings.validUntil!!.toEpochMilliseconds())
                 builder.setKeyValidityStart(notBefore)
                 builder.setCertificateNotBefore(notBefore)
                 builder.setKeyValidityEnd(notAfter)
@@ -517,15 +516,15 @@ class AndroidKeystoreSecureArea(
             val userAuthenticationTimeoutMillis = map["userAuthenticationTimeoutMillis"].asNumber
             val isStrongBoxBacked = map["useStrongBox"].asBoolean
             val attestKeyAlias = map.getOrNull("attestKeyAlias")?.asTstr
-            var validFrom: Timestamp? = null
-            var validUntil: Timestamp? = null
+            var validFrom: Instant? = null
+            var validUntil: Instant? = null
             if (keyInfo.keyValidityStart != null) {
-                validFrom = ofEpochMilli(
+                validFrom = Instant.fromEpochMilliseconds(
                     keyInfo.keyValidityStart!!.time
                 )
             }
             if (keyInfo.keyValidityForOriginationEnd != null) {
-                validUntil = ofEpochMilli(
+                validUntil = Instant.fromEpochMilliseconds(
                     keyInfo.keyValidityForOriginationEnd!!.time
                 )
             }

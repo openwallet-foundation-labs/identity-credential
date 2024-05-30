@@ -45,10 +45,9 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -294,12 +293,12 @@ class IssuingAuthorityState(
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
     ): ByteArray {
-        val now = Timestamp.now()
+        val now = Clock.System.now()
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365*24*3600*1000L)
+        val validUntil = Instant.fromEpochMilliseconds(validFrom.toEpochMilliseconds() + 365*24*3600*1000L)
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(

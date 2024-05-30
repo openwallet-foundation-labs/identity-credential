@@ -27,7 +27,6 @@ import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
@@ -35,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
+import kotlinx.datetime.Clock
 
 /**
  * Transfer Helper provides helper functions for starting to process a presentation request, as well
@@ -162,7 +162,7 @@ class TransferHelper(
         val document = documentStore.lookupDocument(credentialId)!!
         val encodedDeviceResponse: ByteArray
         val docConfiguration = document.documentConfiguration
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         val credentialToUse: MdocCredential = credential
             ?: (document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
                 ?: run {

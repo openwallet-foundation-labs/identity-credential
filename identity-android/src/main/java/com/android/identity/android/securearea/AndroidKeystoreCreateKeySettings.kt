@@ -5,7 +5,7 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Instant
 
 /**
  * Class for holding Android Keystore-specific settings related to key creation.
@@ -45,12 +45,12 @@ class AndroidKeystoreCreateKeySettings private constructor(
     /**
      * The point in time before which the key is not valid, if set.
      */
-    val validFrom: Timestamp?,
+    val validFrom: Instant?,
 
     /**
      * The point in time after which the key is not valid, if set.
      */
-    val validUntil: Timestamp?
+    val validUntil: Instant?
 
 ) : CreateKeySettings(attestationChallenge, keyPurposes, ecCurve) {
 
@@ -68,8 +68,8 @@ class AndroidKeystoreCreateKeySettings private constructor(
         private var userAuthenticationTypes = emptySet<UserAuthenticationType>()
         private var useStrongBox = false
         private var attestKeyAlias: String? = null
-        private var validFrom: Timestamp? = null
-        private var validUntil: Timestamp? = null
+        private var validFrom: Instant? = null
+        private var validUntil: Instant? = null
 
         /**
          * Apply settings from configuration object.
@@ -203,8 +203,8 @@ class AndroidKeystoreCreateKeySettings private constructor(
          * @return the builder.
          */
         fun setValidityPeriod(
-            validFrom: Timestamp,
-            validUntil: Timestamp
+            validFrom: Instant,
+            validUntil: Instant
         ): Builder {
             this.validFrom = validFrom
             this.validUntil = validUntil

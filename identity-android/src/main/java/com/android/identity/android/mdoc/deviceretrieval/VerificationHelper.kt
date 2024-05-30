@@ -44,7 +44,7 @@ import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.mdoc.sessionencryption.SessionEncryption
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
+import kotlinx.datetime.Clock
 import java.io.IOException
 import java.util.Arrays
 import java.util.Locale
@@ -270,7 +270,7 @@ class VerificationHelper internal constructor(
      */
     fun nfcProcessOnTagDiscovered(tag: Tag) {
         Logger.d(TAG, "Tag discovered!")
-        timestampNfcTap = Timestamp.now().toEpochMilli()
+        timestampNfcTap = Clock.System.now().toEpochMilliseconds()
 
         // Find IsoDep since we're skipping NDEF checks and doing everything ourselves via APDUs
         for (tech in tag.techList) {
@@ -705,7 +705,7 @@ class VerificationHelper internal constructor(
         check(this.deviceEngagement == null) { "Device Engagement already set" }
         this.deviceEngagement = deviceEngagement
         this.engagementMethod = engagementMethod
-        timestampEngagementReceived = Timestamp.now().toEpochMilli()
+        timestampEngagementReceived = Clock.System.now().toEpochMilliseconds()
         val engagementParser = EngagementParser(deviceEngagement)
         val engagement = engagementParser.parse()
         val eDeviceKey: EcPublicKey = engagement.eSenderKey
@@ -920,7 +920,7 @@ class VerificationHelper internal constructor(
         //
         if (decryptedMessage.first != null) {
             Logger.dCbor(TAG, "DeviceResponse received", decryptedMessage.first!!)
-            timestampResponseReceived = Timestamp.now().toEpochMilli()
+            timestampResponseReceived = Clock.System.now().toEpochMilliseconds()
             reportResponseReceived(decryptedMessage.first!!)
         } else {
             // No data, so status must be set...
@@ -1072,7 +1072,7 @@ class VerificationHelper internal constructor(
         )
         Logger.dCbor(TAG, "SessionData to send", message)
         dataTransport!!.sendMessage(message)
-        timestampRequestSent = Timestamp.now().toEpochMilli()
+        timestampRequestSent = Clock.System.now().toEpochMilliseconds()
     }
 
     /**

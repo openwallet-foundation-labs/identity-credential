@@ -48,7 +48,6 @@ import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
-import com.android.identity.util.Timestamp
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -66,9 +65,9 @@ class DeviceResponseGeneratorTest {
 
     private lateinit  var mdocCredential: MdocCredential
     private lateinit  var document: Document
-    private lateinit  var timeSigned: Timestamp
-    private lateinit  var timeValidityBegin: Timestamp
-    private lateinit  var timeValidityEnd: Timestamp
+    private lateinit  var timeSigned: Instant
+    private lateinit  var timeValidityBegin: Instant
+    private lateinit  var timeValidityEnd: Instant
     private lateinit  var documentSignerKey: EcPrivateKey
     private lateinit  var documentSignerCert: Certificate
     
@@ -120,9 +119,9 @@ class DeviceResponseGeneratorTest {
         // Create an authentication key... make sure the authKey used supports both
         // mdoc ECDSA and MAC authentication.
         val nowMillis = Clock.System.now().toEpochMilliseconds()
-        timeSigned = Timestamp.ofEpochMilli(nowMillis)
-        timeValidityBegin = Timestamp.ofEpochMilli(nowMillis + 3600 * 1000)
-        timeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000)
+        timeSigned = Instant.fromEpochMilliseconds(nowMillis)
+        timeValidityBegin = Instant.fromEpochMilliseconds(nowMillis + 3600 * 1000)
+        timeValidityEnd = Instant.fromEpochMilliseconds(nowMillis + 10 * 86400 * 1000)
         mdocCredential = MdocCredential(
             document,
             null,

@@ -119,11 +119,11 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                     "Self-signing not possible with curve ${privateKey.curve}, use an attestation key"
                 }
             }
-            val validFrom = settings.validFrom?.toEpochMilli()
+            val validFrom = settings.validFrom?.toEpochMilliseconds()
                 ?.let { Instant.fromEpochMilliseconds(it) }
                 ?: Clock.System.now()
 
-            val validUntil = settings.validUntil?.toEpochMilli()
+            val validUntil = settings.validUntil?.toEpochMilliseconds()
                 ?.let { Instant.fromEpochMilliseconds(it) }
                 ?: (validFrom + 365.days)
 

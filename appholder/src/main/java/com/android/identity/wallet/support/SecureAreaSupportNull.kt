@@ -14,8 +14,8 @@ import androidx.fragment.app.Fragment
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.util.Timestamp
 import com.android.identity.wallet.selfsigned.OutlinedContainerVertical
+import kotlinx.datetime.Instant
 
 class SecureAreaSupportNull : SecureAreaSupport {
 
@@ -55,7 +55,7 @@ class SecureAreaSupportNull : SecureAreaSupport {
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
-        validFrom: Timestamp,
-        validUntil: Timestamp
+        validFrom: Instant,
+        validUntil: Instant
     ): CreateKeySettings = CreateKeySettings(challenge)
 }

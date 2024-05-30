@@ -16,7 +16,8 @@
 package com.android.identity.document
 
 import com.android.identity.credential.Credential
-import com.android.identity.util.Timestamp
+import com.android.identity.credential.SecureAreaBoundCredential
+import kotlinx.datetime.Instant;
 
 /**
  * A set of utilities and helpers for working with documents.
@@ -57,7 +58,7 @@ object DocumentUtil {
         document: Document,
         domain: String,
         createCredential: ((credentialToReplace: Credential?) -> Credential)?,
-        now: Timestamp,
+        now: Instant,
         numCredentials: Int,
         maxUsesPerCredential: Int,
         minValidTimeMillis: Long,
@@ -73,10 +74,10 @@ object DocumentUtil {
             if (authCredential.usageCount >= maxUsesPerCredential) {
                 credentialExceededUseCount = true
             }
-            val expirationDate = Timestamp.ofEpochMilli(
-                authCredential.validUntil.toEpochMilli() - minValidTimeMillis
+            val expirationDate = Instant.fromEpochMilliseconds(
+                authCredential.validUntil.toEpochMilliseconds() - minValidTimeMillis
             )
-            if (now.toEpochMilli() > expirationDate.toEpochMilli()) {
+            if (now > expirationDate) {
                 credentialBeyondExpirationDate = true
             }
             if (credentialExceededUseCount || credentialBeyondExpirationDate) {

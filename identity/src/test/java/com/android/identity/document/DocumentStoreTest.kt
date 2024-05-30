@@ -26,12 +26,12 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
-import com.android.identity.util.Timestamp
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Instant;
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -210,11 +210,11 @@ class DocumentStoreTest {
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
-        val timeBeforeValidity = Timestamp.ofEpochMilli(40)
-        val timeValidityBegin = Timestamp.ofEpochMilli(50)
-        val timeDuringValidity = Timestamp.ofEpochMilli(100)
-        val timeValidityEnd = Timestamp.ofEpochMilli(150)
-        val timeAfterValidity = Timestamp.ofEpochMilli(200)
+        val timeBeforeValidity = Instant.fromEpochMilliseconds(40)
+        val timeValidityBegin = Instant.fromEpochMilliseconds(50)
+        val timeDuringValidity = Instant.fromEpochMilliseconds(100)
+        val timeValidityEnd = Instant.fromEpochMilliseconds(150)
+        val timeAfterValidity = Instant.fromEpochMilliseconds(200)
 
         // By default, we don't have any credentials nor any pending credentials.
         Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
@@ -365,8 +365,8 @@ class DocumentStoreTest {
     @Test
     fun testCredentialPersistence() {
         var n: Int
-        val timeValidityBegin = Timestamp.ofEpochMilli(50)
-        val timeValidityEnd = Timestamp.ofEpochMilli(150)
+        val timeValidityBegin = Instant.fromEpochMilliseconds(50)
+        val timeValidityEnd = Instant.fromEpochMilliseconds(150)
         val documentStore = DocumentStore(
             storageEngine,
             secureAreaRepository,
@@ -397,8 +397,8 @@ class DocumentStoreTest {
             // the data and validity times vary for each credential...
             credential.certify(
                 byteArrayOf(1, 2, n.toByte()),
-                Timestamp.ofEpochMilli(timeValidityBegin.toEpochMilli() + n),
-                Timestamp.ofEpochMilli(timeValidityEnd.toEpochMilli() + 2 * n)
+                Instant.fromEpochMilliseconds(timeValidityBegin.toEpochMilliseconds() + n),
+                Instant.fromEpochMilliseconds(timeValidityEnd.toEpochMilliseconds() + 2 * n)
             )
             for (m in 0 until n) {
                 credential.increaseUsageCount()
@@ -478,11 +478,11 @@ class DocumentStoreTest {
         // The validity periods are carefully set so the MSOs for 17 are have validUntil set to
         // to the holders birthday and the MSOs for 18 are set so validFrom starts at the birthday.
         //
-        val timeValidityBegin = Timestamp.ofEpochMilli(50)
-        val timeOfUseBeforeBirthday = Timestamp.ofEpochMilli(80)
-        val timeOfBirthday = Timestamp.ofEpochMilli(100)
-        val timeOfUseAfterBirthday = Timestamp.ofEpochMilli(120)
-        val timeValidityEnd = Timestamp.ofEpochMilli(150)
+        val timeValidityBegin = Instant.fromEpochMilliseconds(50)
+        val timeOfUseBeforeBirthday = Instant.fromEpochMilliseconds(80)
+        val timeOfBirthday = Instant.fromEpochMilliseconds(100)
+        val timeOfUseAfterBirthday = Instant.fromEpochMilliseconds(120)
+        val timeValidityEnd = Instant.fromEpochMilliseconds(150)
 
         // Create and certify ten credentials. Put age_in_years as the issuer provided data so we can
         // check it below.
@@ -655,8 +655,8 @@ class DocumentStoreTest {
             Assert.assertThrows(IllegalArgumentException::class.java) { pendingAppData.getString("non-existent") }
             credential.certify(
                 byteArrayOf(0, n.toByte()),
-                Timestamp.ofEpochMilli(100),
-                Timestamp.ofEpochMilli(200)
+                Instant.fromEpochMilliseconds(100),
+                Instant.fromEpochMilliseconds(200)
             )
             val appData = credential.applicationData
             Assert.assertEquals(value, appData.getString("foo"))
@@ -698,8 +698,8 @@ class DocumentStoreTest {
             )
             pendingCredential.certify(
                 byteArrayOf(0, n.toByte()),
-                Timestamp.ofEpochMilli(100),
-                Timestamp.ofEpochMilli(200)
+                Instant.fromEpochMilliseconds(100),
+                Instant.fromEpochMilliseconds(200)
             )
         }
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())
@@ -720,8 +720,8 @@ class DocumentStoreTest {
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
         pendingCredential.certify(
             byteArrayOf(1, 0),
-            Timestamp.ofEpochMilli(100),
-            Timestamp.ofEpochMilli(200)
+            Instant.fromEpochMilliseconds(100),
+            Instant.fromEpochMilliseconds(200)
         )
         // ... now it should be gone.
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())

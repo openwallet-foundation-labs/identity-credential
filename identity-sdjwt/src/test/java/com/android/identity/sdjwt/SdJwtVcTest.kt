@@ -16,7 +16,6 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.util.Timestamp
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.boolean
@@ -155,9 +154,8 @@ class SdJwtVcTest {
 
         credential.certify(
             sdJwt.toString().toByteArray(),
-            Timestamp.ofEpochMilli(timeValidityBegin.toEpochMilliseconds()),
-            Timestamp.ofEpochMilli(timeValidityEnd.toEpochMilliseconds())
-        )
+            timeValidityBegin,
+            timeValidityEnd)
     }
 
     @OptIn(ExperimentalEncodingApi::class)

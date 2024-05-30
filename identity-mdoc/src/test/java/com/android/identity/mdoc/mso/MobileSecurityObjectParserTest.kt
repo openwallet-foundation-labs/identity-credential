@@ -19,11 +19,11 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.mdoc.TestVectors
-import com.android.identity.util.Timestamp
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
 import org.junit.Assert
 import org.junit.Test
+import kotlinx.datetime.Instant
 
 class MobileSecurityObjectParserTest {
     @Test
@@ -132,9 +132,9 @@ class MobileSecurityObjectParserTest {
         Assert.assertNull(mso.deviceKeyAuthorizedNameSpaces)
         Assert.assertNull(mso.deviceKeyAuthorizedDataElements)
         Assert.assertNull(mso.deviceKeyInfo)
-        Assert.assertEquals(Timestamp.ofEpochMilli(1601559002000L), mso.signed)
-        Assert.assertEquals(Timestamp.ofEpochMilli(1601559002000L), mso.validFrom)
-        Assert.assertEquals(Timestamp.ofEpochMilli(1633095002000L), mso.validUntil)
+        Assert.assertEquals(Instant.fromEpochMilliseconds(1601559002000L), mso.signed)
+        Assert.assertEquals(Instant.fromEpochMilliseconds(1601559002000L), mso.validFrom)
+        Assert.assertEquals(Instant.fromEpochMilliseconds(1633095002000L), mso.validUntil)
         Assert.assertNull(mso.expectedUpdate)
     }
 }

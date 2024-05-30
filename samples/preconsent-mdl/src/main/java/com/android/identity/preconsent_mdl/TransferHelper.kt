@@ -38,8 +38,8 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
 import java.io.File
+import kotlinx.datetime.Clock
 
 class TransferHelper private constructor(private val context: Context) {
 
@@ -226,12 +226,12 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun setEngagementSent() {
-        timestampEngagementSent = Timestamp.now().toEpochMilli()
+        timestampEngagementSent = Clock.System.now().toEpochMilliseconds()
         state.value = State.ENGAGEMENT_SENT
     }
 
     fun setEngaging() {
-        timestampTap = Timestamp.now().toEpochMilli()
+        timestampTap = Clock.System.now().toEpochMilliseconds()
         state.value = State.ENGAGING
     }
 
@@ -252,7 +252,7 @@ class TransferHelper private constructor(private val context: Context) {
                 override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
                     Logger.i(TAG, "onDeviceRequest")
                     deviceRequest = deviceRequestBytes
-                    timestampRequestAvailable = Timestamp.now().toEpochMilli()
+                    timestampRequestAvailable = Clock.System.now().toEpochMilliseconds()
                     scanningDurationMillis = deviceRetrievalHelper?.scanningTimeMillis ?: 0
                     state.value = State.REQUEST_AVAILABLE
                 }
@@ -296,7 +296,7 @@ class TransferHelper private constructor(private val context: Context) {
             deviceResponseBytes,
             Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
         )
-        timestampResponseSent = Timestamp.now().toEpochMilli()
+        timestampResponseSent = Clock.System.now().toEpochMilliseconds()
         state.value = State.RESPONSE_SENT
     }
 

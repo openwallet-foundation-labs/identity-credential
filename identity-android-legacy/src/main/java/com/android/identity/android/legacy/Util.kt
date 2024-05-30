@@ -42,8 +42,6 @@ import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger.w
-import com.android.identity.util.Timestamp
-import com.android.identity.util.Timestamp.Companion.ofEpochMilli
 import org.bouncycastle.asn1.ASN1Encodable
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1Integer
@@ -290,7 +288,7 @@ object Util {
         } catch (e: ParseException) {
             throw RuntimeException("Error parsing string", e)
         }
-        return ofEpochMilli(date.time)
+        return Timestamp.ofEpochMilli(date.time)
     }
 
     /**
