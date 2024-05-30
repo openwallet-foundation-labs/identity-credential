@@ -68,36 +68,6 @@ class WalletServerState(
         this.clientId = authenticationState.clientId
     }
 
-    private fun getIssuingAuthorityConfiguration(
-        env: FlowEnvironment,
-        id: String,
-    ): IssuingAuthorityConfiguration {
-        val configuration = env.getInterface(Configuration::class)!!
-        val resources = env.getInterface(Resources::class)!!
-        val prefix = "issuing_authorities.$id"
-        val logoPath = configuration.getProperty("$prefix.logo") ?: "default/logo.png"
-        val logo = resources.getRawResource(logoPath)!!
-        val artPath =
-            configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
-        val art = resources.getRawResource(artPath)!!
-        val requireUserAuthenticationToViewDocument =
-            configuration.getBool("$prefix.require_user_authentication_to_view_document", false)
-        return IssuingAuthorityConfiguration(
-            identifier = id,
-            issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Untitled",
-            issuingAuthorityLogo = logo.toByteArray(),
-            issuingAuthorityDescription = configuration.getProperty("$prefix.description") ?: "Unknown",
-            pendingDocumentInformation = DocumentConfiguration(
-                displayName = "Pending",
-                typeDisplayName = "Driving License",
-                cardArt = art.toByteArray(),
-                requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
-                mdocConfiguration = null,
-                sdJwtVcDocumentConfiguration = null
-            )
-        )
-    }
-
     @FlowMethod
     fun getIssuingAuthorityConfigurations(env: FlowEnvironment): List<IssuingAuthorityConfiguration> {
         check(clientId.isNotEmpty())
@@ -107,45 +77,15 @@ class WalletServerState(
             return listOf(devConfig(env))
         } else {
             val list = Json.parseToJsonElement(listStr).jsonArray
-            val resources = env.getInterface(Resources::class)!!
             return list.map { idElem ->
-                val id = idElem.jsonPrimitive.content
-                val prefix = "issuing_authorities.$id"
-                val logoPath = configuration.getProperty("$prefix.logo") ?: "default/logo.png"
-                val logo = resources.getRawResource(logoPath)!!
-                val artPath =
-                    configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
-                val art = resources.getRawResource(artPath)!!
-                val requireUserAuthenticationToViewDocument =
-                    configuration.getProperty("$prefix.require_user_authentication_to_view_document") != "false"
-                IssuingAuthorityConfiguration(
-                    identifier = id,
-                    issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Untitled",
-                    issuingAuthorityLogo = logo.toByteArray(),
-                    issuingAuthorityDescription = configuration.getProperty("$prefix.description") ?: "Unknown",
-                    pendingDocumentInformation = DocumentConfiguration(
-                        displayName = "Pending",
-                        typeDisplayName = "Driving License",
-                        cardArt = art.toByteArray(),
-                        requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
-                        mdocConfiguration = null,
-                        sdJwtVcDocumentConfiguration = null
-                    )
-                )
+                IssuingAuthorityState.getConfiguration(env, idElem.jsonPrimitive.content)
             }
         }
     }
 
     @FlowMethod
-    suspend fun getIssuingAuthority(
-        env: FlowEnvironment,
-        identifier: String
-    ): IssuingAuthorityState {
+    fun getIssuingAuthority(env: FlowEnvironment, identifier: String): IssuingAuthorityState {
         check(clientId.isNotEmpty())
-        return IssuingAuthorityState(
-            clientId,
-            identifier,
-            getIssuingAuthorityConfiguration(env, identifier)
-        )
+        return IssuingAuthorityState(clientId, identifier)
     }
 }
