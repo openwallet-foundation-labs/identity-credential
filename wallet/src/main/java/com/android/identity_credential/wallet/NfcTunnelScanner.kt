@@ -2,8 +2,9 @@ package com.android.identity_credential.wallet
 
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
-import com.android.identity_credential.mrtd.MrtdNfc
-import com.android.identity_credential.mrtd.MrtdNfcReader
+import com.android.identity.mrtd.MrtdNfc
+import com.android.identity.mrtd.MrtdNfcReader
+import kotlinx.io.bytestring.ByteString
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CommandAPDU
 import org.jmrtd.PassportService
@@ -11,14 +12,15 @@ import org.jmrtd.PassportService
 /**
  * Reads from NFC-card serving commands that come from NFC tunnel.
  */
-class NfcTunnelScanner(private val provisioningViewModel: ProvisioningViewModel) : MrtdNfcReader<Unit> {
+class NfcTunnelScanner(private val provisioningViewModel: ProvisioningViewModel) :
+    MrtdNfcReader<Unit> {
     override fun read(
         rawConnection: CardService,
         connection: PassportService?,
         onStatus: (MrtdNfc.Status) -> Unit
     ) {
         provisioningViewModel.runIcaoNfcTunnel { request ->
-            val command = CommandAPDU(request.message)
+            val command = CommandAPDU(request.message.toByteArray())
 
             val rawCommand = if (request.passThrough) {
                 command // pass as is to the chip
@@ -48,7 +50,7 @@ class NfcTunnelScanner(private val provisioningViewModel: ProvisioningViewModel)
                     rawResponse
                 }
             }
-            EvidenceResponseIcaoNfcTunnel(response.bytes)
+            EvidenceResponseIcaoNfcTunnel(ByteString(response.bytes))
         }
     }
 }

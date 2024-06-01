@@ -1,5 +1,7 @@
 package com.android.identity.issuance.evidence
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * A request to the user for permission to send notifications to them.
  *
@@ -19,32 +21,7 @@ package com.android.identity.issuance.evidence
  */
 data class EvidenceRequestNotificationPermission(
     val permissionNotGrantedMessage: String,
-    val assets: Map<String, ByteArray>,
+    val assets: Map<String, ByteString>,
     val grantPermissionButtonText: String,
     val continueWithoutPermissionButtonText: String,
-) : EvidenceRequest() {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as EvidenceRequestNotificationPermission
-
-        if (permissionNotGrantedMessage != other.permissionNotGrantedMessage) return false
-        if (assets.size != other.assets.size) return false
-        for (entry in assets.entries) {
-            if (!entry.value.contentEquals(other.assets[entry.key])) {
-                return false
-            }
-        }
-        if (grantPermissionButtonText != other.grantPermissionButtonText) return false
-        return continueWithoutPermissionButtonText == other.continueWithoutPermissionButtonText
-    }
-
-    override fun hashCode(): Int {
-        var result = permissionNotGrantedMessage.hashCode()
-        result = 31 * result + assets.hashCode()
-        result = 31 * result + grantPermissionButtonText.hashCode()
-        result = 31 * result + continueWithoutPermissionButtonText.hashCode()
-        return result
-    }
-}
+) : EvidenceRequest()

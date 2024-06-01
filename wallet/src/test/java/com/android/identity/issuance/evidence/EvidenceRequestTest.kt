@@ -1,5 +1,6 @@
 package com.android.identity.issuance.evidence
 
+import kotlinx.io.bytestring.buildByteString
 import org.junit.Assert
 import org.junit.Test
 
@@ -15,7 +16,12 @@ class EvidenceRequestTest {
     @Test
     fun cborSerialization_IcaoNfcTunnel() {
         val orig = EvidenceRequestIcaoNfcTunnel(
-            EvidenceRequestIcaoNfcTunnelType.READING, true, 15, byteArrayOf(3, 7, 1))
+            EvidenceRequestIcaoNfcTunnelType.READING, true, 15,
+            buildByteString {
+                append(3)
+                append(7)
+                append(1)
+            })
         val copy = EvidenceRequest.fromCbor(orig.toCbor())
         Assert.assertEquals(orig, copy)
     }
@@ -24,7 +30,11 @@ class EvidenceRequestTest {
     fun cborSerialization_Message_null_field() {
         val orig = EvidenceRequestMessage(
             "Lorem ipsum",
-            mapOf("three" to byteArrayOf(3), "seven" to byteArrayOf(7), "ace" to byteArrayOf(1)),
+            mapOf(
+                "three" to buildByteString { append(3) },
+                "seven" to buildByteString { append(7) },
+                "ace" to buildByteString { append(1) }
+            ),
             "foobar",
             null)
         val copy = EvidenceRequest.fromCbor(orig.toCbor())
@@ -35,7 +45,11 @@ class EvidenceRequestTest {
     fun cborSerialization_Message_nonnull_field() {
         val orig = EvidenceRequestMessage(
             "Lorem ipsum",
-            mapOf("three" to byteArrayOf(3), "seven" to byteArrayOf(7), "ace" to byteArrayOf(1)),
+            mapOf(
+                "three" to buildByteString { append(3) },
+                "seven" to buildByteString { append(7) },
+                "ace" to buildByteString { append(1) }
+            ),
             "foo",
             "bar")
         val copy = EvidenceRequest.fromCbor(orig.toCbor())

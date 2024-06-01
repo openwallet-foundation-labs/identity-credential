@@ -1,5 +1,7 @@
 package com.android.identity.issuance.evidence
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * Evidence type for extracting data from an NFC-enabled passport or ID card through a
  * tunneled NFC connection.
@@ -19,29 +21,11 @@ data class EvidenceRequestIcaoNfcTunnel(
     val requestType: EvidenceRequestIcaoNfcTunnelType,
     val passThrough: Boolean,
     val progressPercent: Int,
-    val message: ByteArray)
+    val message: ByteString)
     : EvidenceRequest() {
 
     override fun toString(): String {
         return "EvidenceRequestIcaoNfcTunnel{type=$requestType, passThrough=$passThrough, " +
                 "progress=$progressPercent, length=${message.size}}"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as EvidenceRequestIcaoNfcTunnel
-
-        if (requestType != other.requestType) return false
-        if (progressPercent != other.progressPercent) return false
-        return message.contentEquals(other.message)
-    }
-
-    override fun hashCode(): Int {
-        var result = requestType.hashCode()
-        result = 31 * result + progressPercent
-        result = 31 * result + message.contentHashCode()
-        return result
     }
 }

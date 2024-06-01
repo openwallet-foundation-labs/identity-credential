@@ -35,11 +35,11 @@ dependencyResolutionManagement {
 rootProject.name = 'Identity Credential'
 
 // Libraries
-include ':identity', ':identity-doctypes', ':identity-mdoc', ':identity-sdjwt', ':identity-android', ':identity-android-legacy', ':mrtd-reader', ':jpeg2k', ':cbor-processor', ":wallet-issuance"
+include ':identity', ':identity-doctypes', ':identity-mdoc', ':identity-sdjwt', ':identity-android', ':identity-android-legacy', ':mrtd-reader', ':jpeg2k', ':cbor-processor', ':wallet-issuance', ':mrtd-reader-android'
 // Android apps
 include ':appholder', ':appverifier', ':secure-area-test-app', ':wwwverifier', ':wallet'
 // Server-side apps
-include ':wwwverifier', ":wallet-server"
+include ':wwwverifier', ':wallet-server'
 // Command-line tool
 include ':identityctl'
 // Samples

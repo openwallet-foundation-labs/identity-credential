@@ -23,7 +23,7 @@ import com.android.identity.issuance.fromDataItem
 import com.android.identity.issuance.toDataItem
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
-import com.android.identity_credential.mrtd.MrtdAccessData
+import com.android.identity.mrtd.MrtdAccessData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

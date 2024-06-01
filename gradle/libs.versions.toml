@@ -55,6 +55,7 @@
     kotlin-test = "1.9.20"
     ktor = "2.3.10"
     hsqldb = "2.7.2"
+    mysql = "8.0.16"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -75,6 +76,7 @@
     androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation" }
 
     hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
+    mysql = { module = "mysql:mysql-connector-java", version.ref = "mysql" }
     kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin-reflect" }
 
     kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref="kotlinx-coroutines" }

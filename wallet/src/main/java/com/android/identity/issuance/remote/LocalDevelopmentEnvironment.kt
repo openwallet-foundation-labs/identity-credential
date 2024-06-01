@@ -68,6 +68,8 @@ class LocalDevelopmentEnvironment(
     class ResourcesImpl(val context: Context): Resources {
         override fun getRawResource(name: String): ByteString? {
             return when(name) {
+                "experiment_icon.svg" ->
+                    ByteString(getRawResourceAsBytes(R.raw.experiment_icon))
                 "utopia_local/card_art.png" ->
                     bitmapData(
                         R.drawable.utopia_driving_license_card_art,
@@ -82,6 +84,16 @@ class LocalDevelopmentEnvironment(
                     ByteString(getRawResourceAsBytes(R.raw.img_erika_portrait))
                 "img_erika_signature.jpf" ->
                     ByteString(getRawResourceAsBytes(R.raw.img_erika_signature))
+                "img_erika_portrait.jpg" ->
+                    bitmapData(
+                        R.drawable.img_erika_portrait,
+                        Bitmap.CompressFormat.JPEG
+                    )
+                "img_erika_signature.jpg" ->
+                    bitmapData(
+                        R.drawable.img_erika_signature,
+                        Bitmap.CompressFormat.JPEG
+                    )
                 else -> null
             }
         }
@@ -90,6 +102,8 @@ class LocalDevelopmentEnvironment(
             return when(name) {
                 "ds_private_key.pem" -> getRawResourceAsString(R.raw.ds_private_key)
                 "ds_certificate.pem" -> getRawResourceAsString(R.raw.ds_certificate)
+                "utopia_local/tos.html" ->
+                    context.resources.getString(R.string.utopia_local_issuing_authority_tos)
                 else -> null
             }
         }

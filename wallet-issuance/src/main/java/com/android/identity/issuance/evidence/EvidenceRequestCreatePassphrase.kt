@@ -1,6 +1,7 @@
 package com.android.identity.issuance.evidence
 
 import com.android.identity.securearea.PassphraseConstraints
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Evidence type for asking the user to create a PIN.
@@ -14,5 +15,5 @@ data class EvidenceRequestCreatePassphrase (
     val passphraseConstraints: PassphraseConstraints,
     val message: String,
     val verifyMessage: String,
-    val assets: Map<String, ByteArray>,
+    val assets: Map<String, ByteString>,
 ) : EvidenceRequest()

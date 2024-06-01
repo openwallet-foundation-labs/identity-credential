@@ -13,6 +13,8 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.securearea.PassphraseConstraints
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * A builder of the graph of [Node]s that describes proofing workflows.
@@ -39,7 +41,9 @@ class SimpleIssuingAuthorityProofingGraph {
     /** Sends [EvidenceRequestMessage]. */
     fun message(id: String, message: String, assets: Map<String, ByteArray>,
                 acceptButtonText: String, rejectButtonText: String?) {
-        val evidenceRequest = EvidenceRequestMessage(message, assets, acceptButtonText, rejectButtonText)
+        val evidenceRequest = EvidenceRequestMessage(message,
+            assets.mapValues { ByteString(it.value) },
+            acceptButtonText, rejectButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 
@@ -53,7 +57,7 @@ class SimpleIssuingAuthorityProofingGraph {
     ) {
         val evidenceRequest = EvidenceRequestNotificationPermission(
             permissionNotAvailableMessage,
-            assets,
+            assets.mapValues { ByteString(it.value) },
             grantPermissionButtonText,
             continueWithoutPermissionButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
@@ -62,7 +66,8 @@ class SimpleIssuingAuthorityProofingGraph {
     /** Sends [EvidenceRequestQuestionString]. */
     fun question(id: String, message: String, assets: Map<String, ByteArray>,
                  defaultValue: String, acceptButtonText: String) {
-        val evidenceRequest = EvidenceRequestQuestionString(message, assets,
+        val evidenceRequest = EvidenceRequestQuestionString(message,
+            assets.mapValues { ByteString(it.value) },
             defaultValue, acceptButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
@@ -79,7 +84,7 @@ class SimpleIssuingAuthorityProofingGraph {
             passphraseConstraints = passphraseConstraints,
             message = message,
             verifyMessage = verifyMessage,
-            assets = assets)
+            assets = assets.mapValues { ByteString(it.value) })
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 
@@ -92,7 +97,8 @@ class SimpleIssuingAuthorityProofingGraph {
                acceptButtonText: String, initChoices: Choices.() -> Unit) {
         val choices = Choices()
         choices.initChoices()
-        val request = EvidenceRequestQuestionMultipleChoice(message, assets,
+        val request = EvidenceRequestQuestionMultipleChoice(message,
+            assets.mapValues { ByteString(it.value) },
             choices.choices, acceptButtonText)
         chain.add { followUp ->
             MultipleChoiceNode(id, request, choices.graphs.mapValues { graph ->
@@ -250,7 +256,7 @@ class SimpleIssuingAuthorityProofingGraph {
             get() = listOf(
                 EvidenceRequestIcaoNfcTunnel(
                     EvidenceRequestIcaoNfcTunnelType.HANDSHAKE,
-                !basicAuthentication, 0, byteArrayOf())
+                !basicAuthentication, 0, buildByteString {})
             )
         override val followUps: Iterable<Node>
             get() = setOf(successfulActiveAuthentication, successfulChipAuthentication, noAuthentication)

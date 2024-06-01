@@ -17,7 +17,7 @@ import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity_credential.mrtd.MrtdAccessData
+import com.android.identity.mrtd.MrtdAccessData
 import kotlin.time.Duration.Companion.seconds
 
 class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {}) {

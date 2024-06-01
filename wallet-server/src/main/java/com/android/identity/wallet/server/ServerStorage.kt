@@ -14,12 +14,28 @@ class ServerStorage(
     private val password: String = ""
 ): Storage {
     private val createdTables = mutableSetOf<String>()
+    private val blobType: String
+
+    init {
+        // initialize appropriate drives (this also ensures that dependencies don't get
+        // stripped when building WAR file).
+        if (jdbc.startsWith("jdbc:hsqldb:")) {
+            blobType = "BLOB"
+            org.hsqldb.jdbc.JDBCDriver()
+        } else if (jdbc.startsWith("jdbc:mysql:")) {
+            blobType = "LONGBLOB"  // MySQL BLOB is limited to 64k
+            com.mysql.cj.jdbc.Driver()
+        } else {
+            blobType = "BLOB"
+        }
+    }
 
     override suspend fun get(table: String, peerId: String, key: String): ByteString? {
+        val safeTable = sanitizeTable(table)
         val connection = acquireConnection()
-        ensureTable(connection, table)
+        ensureTable(connection, safeTable)
         val statement = connection.prepareStatement(
-            "SELECT data FROM $table WHERE (clientId = ? AND key = ?)")
+            "SELECT data FROM $safeTable WHERE (peerId = ? AND id = ?)")
         statement.setString(1, peerId)
         statement.setString(2, key)
         val resultSet = statement.executeQuery()
@@ -33,15 +49,15 @@ class ServerStorage(
 
     @OptIn(ExperimentalEncodingApi::class)
     override suspend fun insert(table: String, peerId: String, data: ByteString, key: String): String {
+        val safeTable = sanitizeTable(table)
         val recordKey = key.ifEmpty { Base64.encode(Random.Default.nextBytes(18)) }
         val connection = acquireConnection()
-        ensureTable(connection, table)
-        val statement = connection.prepareStatement("INSERT INTO $table VALUES(?, ?, ?)")
+        ensureTable(connection, safeTable)
+        val statement = connection.prepareStatement("INSERT INTO $safeTable VALUES(?, ?, ?)")
         statement.setString(1, recordKey)
         statement.setString(2, peerId)
         statement.setBytes(3, data.toByteArray())
         val count = statement.executeUpdate()
-        connection.commit()
         releaseConnection(connection)
         if (count != 1) {
             throw IllegalStateException("Value was not inserted")
@@ -50,15 +66,15 @@ class ServerStorage(
     }
 
     override suspend fun update(table: String, peerId: String, key: String, data: ByteString) {
+        val safeTable = sanitizeTable(table)
         val connection = acquireConnection()
-        ensureTable(connection, table)
+        ensureTable(connection, safeTable)
         val statement = connection.prepareStatement(
-            "UPDATE $table SET data = ? WHERE (clientId = ? AND key = ?)")
+            "UPDATE $safeTable SET data = ? WHERE (peerId = ? AND id = ?)")
         statement.setBytes(1, data.toByteArray())
         statement.setString(2, peerId)
         statement.setString(3, key)
         val count = statement.executeUpdate()
-        connection.commit()
         releaseConnection(connection)
         if (count != 1) {
             throw IllegalStateException("Value was not updated")
@@ -66,25 +82,26 @@ class ServerStorage(
     }
 
     override suspend fun delete(table: String, peerId: String, key: String): Boolean {
+        val safeTable = sanitizeTable(table)
         val connection = acquireConnection()
-        ensureTable(connection, table)
+        ensureTable(connection, safeTable)
         val statement = connection.prepareStatement(
-            "DELETE FROM $table WHERE (clientId = ? AND key = ?)")
+            "DELETE FROM $safeTable WHERE (peerId = ? AND id = ?)")
         statement.setString(1, peerId)
         statement.setString(2, key)
         val count = statement.executeUpdate()
-        connection.commit()
         releaseConnection(connection)
         return count > 0
     }
 
     override suspend fun enumerate(table: String, peerId: String,
                                    notBeforeKey: String, limit: Int): List<String> {
+        val safeTable = sanitizeTable(table)
         val connection = acquireConnection()
-        ensureTable(connection, table)
+        ensureTable(connection, safeTable)
         val opt = if (limit < Int.MAX_VALUE) " LIMIT 0, $limit" else ""
         val statement = connection.prepareStatement(
-            "SELECT key FROM $table WHERE (clientId = ? AND key > ?) ORDER BY key$opt")
+            "SELECT id FROM $safeTable WHERE (peerId = ? AND id > ?) ORDER BY id$opt")
         statement.setString(1, peerId)
         statement.setString(2, notBeforeKey)
         val resultSet = statement.executeQuery()
@@ -96,17 +113,16 @@ class ServerStorage(
         return list
     }
 
-    private fun ensureTable(connection: Connection, table: String) {
-        if (!createdTables.contains(table)) {
+    private fun ensureTable(connection: Connection, safeTable: String) {
+        if (!createdTables.contains(safeTable)) {
             connection.createStatement().execute("""
-                CREATE TABLE IF NOT EXISTS $table (
-                    key VARCHAR(64) PRIMARY KEY,
-                    clientId VARCHAR(64),
-                    data BLOB
+                CREATE TABLE IF NOT EXISTS $safeTable (
+                    id VARCHAR(64) PRIMARY KEY,
+                    peerId VARCHAR(64),
+                    data $blobType
                 )
             """.trimIndent())
-            connection.commit()
-            createdTables.add(table)
+            createdTables.add(safeTable)
         }
     }
 
@@ -116,5 +132,9 @@ class ServerStorage(
 
     private fun releaseConnection(connection: Connection) {
         connection.close()
+    }
+
+    private fun sanitizeTable(table: String): String {
+        return "Wt$table"
     }
 }

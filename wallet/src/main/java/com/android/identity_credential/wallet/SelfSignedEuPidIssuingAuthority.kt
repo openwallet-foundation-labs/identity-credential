@@ -25,10 +25,10 @@ import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.StorageEngine
-import com.android.identity_credential.mrtd.MrtdAccessData
-import com.android.identity_credential.mrtd.MrtdAccessDataCan
-import com.android.identity_credential.mrtd.MrtdNfcData
-import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
+import com.android.identity.mrtd.MrtdAccessData
+import com.android.identity.mrtd.MrtdAccessDataCan
+import com.android.identity.mrtd.MrtdNfcData
+import com.android.identity.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -202,7 +202,7 @@ class SelfSignedEuPidIssuingAuthority(
                 MrtdNfcData(icaoPassiveData.dataGroups, icaoPassiveData.securityObject)
             else
                 throw IllegalStateException("Should not happen")
-            val decoder = MrtdNfcDataDecoder(application.cacheDir)
+            val decoder = MrtdNfcDataDecoder()
             val decoded = decoder.decode(mrtdData)
             val firstName = decoded.firstName
             val lastName = decoded.lastName
