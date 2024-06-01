@@ -1,5 +1,7 @@
 package com.android.identity.issuance.evidence
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * Evidence type for asking a question to the user and collecting a textual response.
  *
@@ -10,7 +12,7 @@ package com.android.identity.issuance.evidence
  */
 data class EvidenceRequestQuestionString (
     val message: String,
-    val assets: Map<String, ByteArray>,
+    val assets: Map<String, ByteString>,
     val defaultValue: String,
     val acceptButtonText: String
 ) : EvidenceRequest()

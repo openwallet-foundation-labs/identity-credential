@@ -1,4 +1,9 @@
 {
+  "database(sample)": {
+    "connection": "jdbc:mysql://dbhost:3306/dbname?serverTimezone=UTC",
+    "user": "dbuser",
+    "password": "dbpass"
+  },
   "developerMode": false,
   "android": {
     "requireGmsAttestation": false,

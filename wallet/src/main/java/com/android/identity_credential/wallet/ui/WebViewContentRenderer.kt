@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayInputStream
 import java.io.FileNotFoundException
 import java.net.URLDecoder
@@ -52,7 +53,7 @@ abstract class WebViewContentRenderer {
         primaryColor: Color = MaterialTheme.colorScheme.primary,
         linkColor: Color = MaterialTheme.colorScheme.secondary,
         backgroundColor: Color = MaterialTheme.colorScheme.surface,
-        assets: Map<String, ByteArray>? = null
+        assets: Map<String, ByteString>? = null
     ) {
         val contentHeight = remember { mutableIntStateOf(0) }
         var m = modifier;
@@ -159,7 +160,7 @@ abstract class WebViewContentRenderer {
 
     internal class ClientImpl(
         val bootstrapHtml: String,
-        var assets: Map<String, ByteArray>?) : WebViewClient() {
+        var assets: Map<String, ByteString>?) : WebViewClient() {
 
         var loaded = false
         var deferredCommand = ""
@@ -201,7 +202,7 @@ abstract class WebViewContentRenderer {
                         // remove leading '/'
                         val strippedPath = path.substring(1)
                         val asset = assets[strippedPath] ?: throw FileNotFoundException()
-                        ByteArrayInputStream(asset)
+                        ByteArrayInputStream(asset.toByteArray())
                     }
                     val mediaType = mediaTypeFromName(path)
                     WebResourceResponse(mediaType, "", stream)

@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.buildByteString
 
 class ProvisioningViewModel : ViewModel() {
 
@@ -179,7 +180,7 @@ class ProvisioningViewModel : ViewModel() {
 
         runBlocking {
             // handshake
-            proofingFlow!!.sendEvidence(EvidenceResponseIcaoNfcTunnel(byteArrayOf()))
+            proofingFlow!!.sendEvidence(EvidenceResponseIcaoNfcTunnel(buildByteString {}))
 
             while (true) {
                 val requests = proofingFlow!!.getEvidenceRequests()

@@ -4,8 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-
-private val htmlDetector = Regex("""^\s*<.*""", RegexOption.MULTILINE)
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Displays rich text either as markdown (see [MarkdownText]) or html snippet
@@ -20,9 +19,9 @@ fun RichTextSnippet(
     primaryColor: Color = MaterialTheme.colorScheme.primary,
     linkColor: Color = MaterialTheme.colorScheme.secondary,
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
-    assets: Map<String, ByteArray>? = mapOf()  // no assets by default
+    assets: Map<String, ByteString>? = mapOf()  // no assets by default
 ) {
-    if (htmlDetector.matches(content)) {
+    if (isHtml(content)) {
         HtmlSnippetText(
             content = content,
             modifier = modifier,
@@ -43,4 +42,12 @@ fun RichTextSnippet(
             backgroundColor = backgroundColor,
             assets = assets)
     }
+}
+
+private fun isHtml(text: String): Boolean {
+    var i = 0;
+    while (i < text.length && text[i].isWhitespace()) {
+        i++
+    }
+    return i < text.length && text[i] == '<';
 }

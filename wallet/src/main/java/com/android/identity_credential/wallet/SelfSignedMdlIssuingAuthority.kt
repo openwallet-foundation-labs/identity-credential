@@ -27,9 +27,9 @@ import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.toDataItem
 import com.android.identity.storage.StorageEngine
-import com.android.identity_credential.mrtd.MrtdAccessData
-import com.android.identity_credential.mrtd.MrtdNfcData
-import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
+import com.android.identity.mrtd.MrtdAccessData
+import com.android.identity.mrtd.MrtdNfcData
+import com.android.identity.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -409,7 +409,7 @@ class SelfSignedMdlIssuingAuthority(
                 MrtdNfcData(icaoPassiveData.dataGroups, icaoPassiveData.securityObject)
             else
                 throw IllegalStateException("Should not happen")
-            val decoder = MrtdNfcDataDecoder(application.cacheDir)
+            val decoder = MrtdNfcDataDecoder()
             val decoded = decoder.decode(mrtdData)
             val firstName = decoded.firstName
             val lastName = decoded.lastName
@@ -430,8 +430,8 @@ class SelfSignedMdlIssuingAuthority(
             // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
             val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
             val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
-            val portrait = decoded.photo ?: bitmapData(R.drawable.img_erika_portrait)
-            val signatureOrUsualMark = decoded.signature ?: bitmapData(R.drawable.img_erika_signature)
+            val portrait = decoded.photo?.toByteArray() ?: bitmapData(R.drawable.img_erika_portrait)
+            val signatureOrUsualMark = decoded.signature?.toByteArray() ?: bitmapData(R.drawable.img_erika_signature)
 
             // Make sure we set at least all the mandatory data elements
             //

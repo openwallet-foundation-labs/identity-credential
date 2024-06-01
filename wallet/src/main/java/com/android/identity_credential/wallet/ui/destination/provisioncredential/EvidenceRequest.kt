@@ -48,9 +48,9 @@ import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthent
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.issuance.remote.WalletServerProvider
-import com.android.identity_credential.mrtd.MrtdNfc
-import com.android.identity_credential.mrtd.MrtdNfcDataReader
-import com.android.identity_credential.mrtd.MrtdNfcReader
+import com.android.identity.mrtd.MrtdNfc
+import com.android.identity.mrtd.MrtdNfcDataReader
+import com.android.identity.mrtd.MrtdNfcReader
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel

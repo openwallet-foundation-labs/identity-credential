@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import kotlinx.io.bytestring.ByteString
 
 private val htmlRenderer = object : WebViewContentRenderer() {
     override fun createStyle(
@@ -151,7 +152,7 @@ fun HtmlSnippetText(
     primaryColor: Color = MaterialTheme.colorScheme.primary,
     linkColor: Color = MaterialTheme.colorScheme.secondary,
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
-    assets: Map<String, ByteArray>? = mapOf()  // no assets by default
+    assets: Map<String, ByteString>? = mapOf()  // no assets by default
 ) {
     htmlRenderer.Render(content = content, modifier = modifier,
         verticalScrolling = verticalScrolling, color = color,
@@ -172,7 +173,7 @@ fun HtmlSnippetAsset(
     primaryColor: Color = MaterialTheme.colorScheme.primary,
     linkColor: Color = MaterialTheme.colorScheme.secondary,
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
-    assets: Map<String, ByteArray>? = null  // Android assets by default
+    assets: Map<String, ByteString>? = null  // Android assets by default
 ) {
     htmlRenderer.Render(asset = asset, modifier = modifier,
         verticalScrolling = verticalScrolling, color = color,

@@ -268,6 +268,20 @@
     <string name="utopia_mdl_issuing_authority_pending_document_title">Utopia mDL (pending)</string>
     <string name="utopia_mdl_issuing_authority_document_title">%1$s\'s mDL</string>
 
+    <string name="utopia_local_issuing_authority_tos"><![CDATA[
+        <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Department of Motor Vehicles\'/>
+        <h2>Provisioning a Mobile Driving License (mDL)</h2>
+        <p>In the following screens, information will be collected for provisioning of a mDL.</p>
+        <p>The mDL can either contain hard-coded data for fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the Issuing Authority the mDL is generated and signed on-device.
+        In other versions the collected evidence are conveyed securely and privately to an issuance
+        server for evaluation and signing of the mDL.</p>
+        <p>The created mDL will be bound to this device.</p>
+    ]]>
+    </string>
+
     <!-- SelfSignedEuPidIssuingAuthority -->
     <string name="utopia_eu_pid_issuing_authority_description">Utopia Personal Information Document</string>
     <string name="utopia_eu_pid_issuing_authority_name">Utopia Central Registry</string>

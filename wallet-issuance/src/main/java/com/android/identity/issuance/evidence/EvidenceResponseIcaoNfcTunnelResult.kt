@@ -1,6 +1,7 @@
 package com.android.identity.issuance.evidence
 
 import com.android.identity.cbor.annotation.CborMerge
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Evidence type for that represents the result of communicating through the tunnel
@@ -10,9 +11,9 @@ import com.android.identity.cbor.annotation.CborMerge
  */
 data class EvidenceResponseIcaoNfcTunnelResult(
     val advancedAuthenticationType: AdvancedAuthenticationType,
-    @com.android.identity.cbor.annotation.CborMerge
-    val dataGroups: Map<Int, ByteArray>,  // data from the passport (DG1-DG15 indexed by 1-15)
-    val securityObject: ByteArray  // Card Security Object (SOD)
+    @CborMerge
+    val dataGroups: Map<Int, ByteString>,  // data from the passport (DG1-DG15 indexed by 1-15)
+    val securityObject: ByteString  // Card Security Object (SOD)
 ) : EvidenceResponse() {
 
     enum class AdvancedAuthenticationType {
@@ -23,29 +24,5 @@ data class EvidenceResponseIcaoNfcTunnelResult(
 
     override fun toString(): String {
         return "EvidenceResponseIcaoNfcTunnelResult($advancedAuthenticationType, dataGroups=${dataGroups.keys}, securityObject.len=${securityObject.size})"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as EvidenceResponseIcaoNfcTunnelResult
-
-        if (advancedAuthenticationType != other.advancedAuthenticationType) return false
-        if (dataGroups.size != other.dataGroups.size) return false
-        for (entry in dataGroups.entries) {
-            if (!entry.value.contentEquals(other.dataGroups[entry.key])) {
-                return false
-            }
-        }
-
-        return securityObject.contentEquals(other.securityObject)
-    }
-
-    override fun hashCode(): Int {
-        var result = advancedAuthenticationType.hashCode()
-        result = 31 * result + dataGroups.hashCode()
-        result = 31 * result + securityObject.contentHashCode()
-        return result
     }
 }

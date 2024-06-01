@@ -38,6 +38,7 @@ dependencies {
     implementation libs.kotlinx.io.bytestring
     implementation libs.bundles.bouncy.castle
     implementation libs.hsqldb
+    implementation libs.mysql
 
     testImplementation libs.junit
 }

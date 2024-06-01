@@ -6,13 +6,14 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
-import com.android.identity_credential.mrtd.MrtdAccessData
-import com.android.identity_credential.mrtd.MrtdNfc
-import com.android.identity_credential.mrtd.MrtdNfcChipAccess
-import com.android.identity_credential.mrtd.MrtdNfcData
-import com.android.identity_credential.mrtd.MrtdNfcDataReader
+import com.android.identity.mrtd.MrtdAccessData
+import com.android.identity.mrtd.MrtdNfc
+import com.android.identity.mrtd.MrtdNfcChipAccess
+import com.android.identity.mrtd.MrtdNfcData
+import com.android.identity.mrtd.MrtdNfcDataReader
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.ByteString
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CommandAPDU
 import net.sf.scuba.smartcards.ISO7816
@@ -34,7 +35,6 @@ import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.security.Signature
 import java.security.interfaces.ECPublicKey
-import java.util.Arrays
 
 /**
  * Implements [SimpleIcaoNfcTunnelDriver] using JMRTD library.
@@ -86,9 +86,9 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
         return EvidenceResponseIcaoNfcTunnelResult(authenticationType, data!!.dataGroups, data!!.sod)
     }
 
-    private fun handleChipAuthentication(service: PassportService): ByteArray? {
+    private fun handleChipAuthentication(service: PassportService): ByteString? {
         val chipAuthenticationByteBudget = 56
-        val dg14bytes: ByteArray
+        val dg14bytes: ByteString
         try {
             val input14 = service.getInputStream(PassportService.EF_DG14, PassportService.DEFAULT_MAX_BLOCKSIZE)
             val bytesTotal = input14.length + chipAuthenticationByteBudget
@@ -99,7 +99,7 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
             return null
         }
 
-        val dg14 = DG14File(ByteArrayInputStream(dg14bytes))
+        val dg14 = DG14File(ByteArrayInputStream(dg14bytes.toByteArray()))
         var capk: ChipAuthenticationPublicKeyInfo? = null
         var ca: ChipAuthenticationInfo? = null
         for (securityInfo in dg14.securityInfos) {
@@ -127,9 +127,9 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
         return dg14bytes
     }
 
-    private fun handleActiveAuthentication(service: PassportService): ByteArray? {
+    private fun handleActiveAuthentication(service: PassportService): ByteString? {
         val activeAuthenticationByteBudget = 56
-        val dg15bytes: ByteArray
+        val dg15bytes: ByteString
         try {
             val input14 = service.getInputStream(PassportService.EF_DG15, PassportService.DEFAULT_MAX_BLOCKSIZE)
             val bytesTotal = input14.length + activeAuthenticationByteBudget
@@ -140,7 +140,7 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
             return null
         }
 
-        val dg15 = DG15File(ByteArrayInputStream(dg15bytes))
+        val dg15 = DG15File(ByteArrayInputStream(dg15bytes.toByteArray()))
 
         val buffer = ByteBuffer.allocate(8)
         buffer.putLong(System.currentTimeMillis())
@@ -220,17 +220,17 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
         }
 
         if (chipAuthenticationDone || activeAuthenticationDone) {
-            val sod = SODFile(ByteArrayInputStream(data.sod))
+            val sod = SODFile(ByteArrayInputStream(data.sod.toByteArray()))
             val messageDigest = MessageDigest.getInstance(sod.digestAlgorithm)
             if (dg14bytes != null) {
-                val digest = messageDigest.digest(dg14bytes)
-                if (!Arrays.equals(digest, sod.dataGroupHashes[14])) {
+                val digest = messageDigest.digest(dg14bytes.toByteArray())
+                if (!digest.contentEquals(sod.dataGroupHashes[14])) {
                     chipAuthenticationDone = false
                     throw IllegalStateException("DG14 (Chip Authentication) stream cannot be validated")
                 }
             } else if (dg15bytes != null) {
-                val digest = messageDigest.digest(dg15bytes)
-                if (!Arrays.equals(digest, sod.dataGroupHashes[15])) {
+                val digest = messageDigest.digest(dg15bytes.toByteArray())
+                if (!digest.contentEquals(sod.dataGroupHashes[15])) {
                     activeAuthenticationDone = false
                     throw IllegalStateException("DG15 (Active Authentication) stream cannot be validated")
                 }
@@ -273,10 +273,10 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
                     }
                 requestChannel.send(OptionalRequest(
                     EvidenceRequestIcaoNfcTunnel(
-                    requestType, passThrough(), progressPercent, commandAPDU!!.bytes)
+                    requestType, passThrough(), progressPercent, ByteString(commandAPDU!!.bytes))
                 ))
                 val evidenceResponse = responseChannel.receive()
-                ResponseAPDU(evidenceResponse.response)
+                ResponseAPDU(evidenceResponse.response.toByteArray())
             }
         }
 
