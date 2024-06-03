@@ -128,7 +128,7 @@ fun DocumentInfoScreen(
                                     remoteDeletionCheckedState.value,
                                     notifyApplicationCheckedState.value
                                 )
-                            } catch (e: Exception) {
+                            } catch (e: Throwable) {
                                 showErrorMessage = "Unexpected exception: $e"
                             }
 
@@ -196,7 +196,7 @@ fun DocumentInfoScreen(
                                 documentModel.refreshCard(documentInfo)
                             } catch (e: ScreenLockRequiredException) {
                                 showErrorMessage = context.getString(R.string.document_info_screen_refresh_error_missing_screenlock)
-                            } catch (e: Exception) {
+                            } catch (e: Throwable) {
                                 showErrorMessage = "Unexpected exception while refreshing: $e"
                             }
                         }

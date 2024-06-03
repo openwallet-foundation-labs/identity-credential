@@ -34,8 +34,8 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.flow.handler.FlowHandlerRemote
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.securearea.SecureAreaRepository
@@ -44,7 +44,10 @@ import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.util.toByteArray
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.Security
@@ -143,7 +146,9 @@ class WalletApplication : Application() {
         walletServerProvider = WalletServerProvider(
             this,
             androidKeystoreSecureArea,
-            settingsModel
+            settingsModel,
+            storageEngine,
+            { getWalletApplicationInformation() }
         )
 
         // init TrustManager
@@ -188,6 +193,25 @@ class WalletApplication : Application() {
                 ExistingPeriodicWorkPolicy.KEEP,
                 workRequest
             )
+
+        // If we previously connected to a Wallet Server we know whether it supports
+        // [WalletServer.waitForNotification]. If it does, make sure we make a connection
+        // at application startup so we can start getting notifications.
+        try {
+            if (walletServerProvider.walletServerCapabilities.waitForNotificationSupported) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        walletServerProvider.getWalletServer()
+                    } catch (e: Throwable) {
+                        Logger.e(TAG, "Error doing initial call to Wallet Server", e)
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            // Do nothing, this happens if we have never successfully connected to a wallet server
+            // in which case the getter for [WalletServerProvider.walletServerCapabilities]
+            // throws.
+        }
     }
 
     class SyncCredentialWithIssuerWorker(
@@ -300,5 +324,17 @@ class WalletApplication : Application() {
 
         val notificationId = document.name.hashCode()
         NotificationManagerCompat.from(applicationContext).notify(notificationId, builder.build())
+    }
+
+    private suspend fun getWalletApplicationInformation(): WalletApplicationCapabilities {
+        val now = Clock.System.now()
+
+        val keystoreCapabilities = AndroidKeystoreSecureArea.Capabilities(applicationContext)
+
+        return WalletApplicationCapabilities(
+            generatedAt = now,
+            androidKeystoreAttestKeyAvailable = keystoreCapabilities.attestKeySupported,
+            androidKeystoreStrongBoxAvailable = keystoreCapabilities.strongBoxSupported
+        )
     }
 }

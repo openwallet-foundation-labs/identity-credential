@@ -9,10 +9,14 @@ import com.android.identity.flow.environment.Resources
 import com.android.identity.flow.environment.Storage
 import com.android.identity.flow.environment.FlowEnvironment
 import com.android.identity.flow.environment.Notifications
+import com.android.identity.issuance.WalletNotificationPayload
+import com.android.identity.issuance.fromCbor
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
@@ -50,6 +54,7 @@ class LocalDevelopmentEnvironment(
         override fun getProperty(key: String): String? {
             return when (key) {
                 "developerMode" -> "true"
+                "waitForNotificationSupported" -> "false"
                 "android.requireGmsAttestation" -> "false"
                 "android.requireVerifiedBootGreen" -> "false"
                 "android.requireAppSignatureCertificateDigests" -> "[]"
@@ -127,26 +132,26 @@ class LocalDevelopmentEnvironment(
     class NotificationsImpl(
         private val walletServerProvider: WalletServerProvider
     ): Notifications {
-        override suspend fun emitNotification(
-            clientId: String,
-            issuingAuthorityIdentifier: String,
-            documentIdentifier: String
+        private val _eventFlow = MutableSharedFlow<Pair<String, ByteArray>>()
+
+        override val eventFlow
+            get() = _eventFlow.asSharedFlow()
+
+        override suspend fun emit(
+            targetId: String,
+            payload: ByteArray
         ) {
-            Timer().schedule(1L) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    Logger.w(
-                        TAG, "emitNotification - " +
-                                "clientId:$clientId " +
-                                "issuingAuthorityIdentifier:$issuingAuthorityIdentifier " +
-                                "documentIdentifier:$documentIdentifier"
-                    )
-                    walletServerProvider._eventFlow.emit(
-                        Pair(
-                            issuingAuthorityIdentifier,
-                            documentIdentifier
-                        )
-                    )
-                }
+            _eventFlow.emit(Pair(targetId, payload))
+            CoroutineScope(Dispatchers.IO).launch {
+                val data = WalletNotificationPayload.fromCbor(payload)
+                Logger.i(TAG, "Emitting notification via walletServerProvider " +
+                        "targetId:$targetId " +
+                        "issuingAuthorityId:${data.issuingAuthorityId} " +
+                        "documentId:${data.documentId}"
+                )
+                walletServerProvider._eventFlow.emit(
+                    Pair(data.issuingAuthorityId, data.documentId)
+                )
             }
         }
 

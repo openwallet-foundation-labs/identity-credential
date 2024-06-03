@@ -71,12 +71,10 @@ object DocumentExtensions {
      * condition in [Document.state] is set to [DocumentCondition.NO_SUCH_DOCUMENT].
      *
      * @param walletServerProvider the wallet server provider.
-     * @return true if the refresh succeeded, false if the document is unknown.
      */
-    suspend fun Document.refreshState(walletServerProvider: WalletServerProvider): Boolean {
+    suspend fun Document.refreshState(walletServerProvider: WalletServerProvider) {
         val walletServer = walletServerProvider.getWalletServer()
         val issuer = walletServer.getIssuingAuthority(issuingAuthorityIdentifier)
         this.state = issuer.getState(documentIdentifier)
-        return true
     }
 }

@@ -13,8 +13,11 @@ import com.android.identity.flow.environment.FlowEnvironment
 import com.android.identity.issuance.AuthenticationFlow
 import com.android.identity.issuance.ClientAuthentication
 import com.android.identity.issuance.ClientChallenge
+import com.android.identity.issuance.WalletServerCapabilities
 import com.android.identity.issuance.authenticationMessage
+import com.android.identity.issuance.toDataItem
 import com.android.identity.issuance.validateKeyAttestation
+import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -35,14 +38,12 @@ class AuthenticationState(
     suspend fun requestChallenge(env: FlowEnvironment, clientId: String): ClientChallenge {
         check(this.clientId.isEmpty())
         check(nonce != null)
-        val storage = env.getInterface(Storage::class)
-        if (storage != null) {
-            val keyData = storage.get("ClientKeys", "", clientId)
-            if (keyData != null) {
-                this.publicKey = EcPublicKey.fromDataItem(Cbor.decode(keyData.toByteArray()))
-                this.clientId = clientId
-                println("Existing client id: ${this.clientId}")
-            }
+        val storage = env.getInterface(Storage::class)!!
+        val keyData = storage.get("ClientKeys", "", clientId)
+        if (keyData != null) {
+            this.publicKey = EcPublicKey.fromDataItem(Cbor.decode(keyData.toByteArray()))
+            this.clientId = clientId
+            println("Existing client id: ${this.clientId}")
         }
 
         if (this.clientId.isEmpty()) {
@@ -54,10 +55,11 @@ class AuthenticationState(
     }
 
     @FlowMethod
-    suspend fun authenticate(env: FlowEnvironment, auth: ClientAuthentication) {
+    suspend fun authenticate(env: FlowEnvironment, auth: ClientAuthentication): WalletServerCapabilities {
         val chain = auth.certificateChain
 
         val settings = env.getInterface(Configuration::class)!!
+        val storage = env.getInterface(Storage::class)!!
 
         if (chain != null) {
             if (this.publicKey != null) {
@@ -71,11 +73,8 @@ class AuthenticationState(
                 settings.getStringList("android.requireAppSignatureCertificateDigests")
             )
             this.publicKey = chain.certificates[0].publicKey
-            val storage = env.getInterface(Storage::class)
-            if (storage != null) {
-                val keyData = ByteString(Cbor.encode(this.publicKey!!.toDataItem))
-                storage.insert("ClientKeys", "", keyData, key = clientId)
-            }
+            val keyData = ByteString(Cbor.encode(this.publicKey!!.toDataItem))
+            storage.insert("ClientKeys", "", keyData, key = clientId)
         }
         if (!Crypto.checkSignature(
                 this.publicKey!!,
@@ -85,5 +84,28 @@ class AuthenticationState(
             throw IllegalArgumentException("Authentication failed")
         }
         authenticated = true
+        if (storage.get(
+            "WalletApplicationCapabilities",
+            "",
+            clientId,
+        ) == null) {
+            storage.insert(
+                "WalletApplicationCapabilities",
+                "",
+                ByteString(Cbor.encode(auth.walletApplicationCapabilities.toDataItem)),
+                clientId
+            )
+        } else {
+            storage.update(
+                "WalletApplicationCapabilities",
+                "",
+                clientId,
+                ByteString(Cbor.encode(auth.walletApplicationCapabilities.toDataItem))
+            )
+        }
+        return WalletServerCapabilities(
+            Clock.System.now(),
+            settings.getBool("waitForNotificationSupported", false)
+        )
     }
 }

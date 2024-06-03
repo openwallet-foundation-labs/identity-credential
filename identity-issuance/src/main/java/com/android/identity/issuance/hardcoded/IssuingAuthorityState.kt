@@ -39,11 +39,13 @@ import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
+import com.android.identity.issuance.WalletNotificationPayload
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.proofing.defaultCredentialConfiguration
+import com.android.identity.issuance.toCbor
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -604,7 +606,7 @@ class IssuingAuthorityState(
         storage.delete("IssuerDocument", clientId, documentId)
         if (emitNotification) {
             val notifications = env.getInterface(Notifications::class)!!
-            notifications.emitNotification(clientId, authorityId, documentId)
+            notifications.emit(clientId, WalletNotificationPayload(authorityId, documentId).toCbor())
         }
     }
 
@@ -622,7 +624,7 @@ class IssuingAuthorityState(
         storage.update("IssuerDocument", clientId, documentId, ByteString(bytes))
         if (emitNotification) {
             val notifications = env.getInterface(Notifications::class)!!
-            notifications.emitNotification(clientId, authorityId, documentId)
+            notifications.emit(clientId, WalletNotificationPayload(authorityId, documentId).toCbor())
         }
     }
 }

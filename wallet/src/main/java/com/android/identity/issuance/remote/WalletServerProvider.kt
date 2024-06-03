@@ -1,6 +1,8 @@
 package com.android.identity.issuance.remote
 
 import android.content.Context
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.Algorithm
 import com.android.identity.flow.handler.FlowHandler
@@ -8,41 +10,84 @@ import com.android.identity.flow.handler.FlowHandlerLocal
 import com.android.identity.flow.handler.FlowHandlerRemote
 import com.android.identity.issuance.ClientAuthentication
 import com.android.identity.issuance.ClientChallenge
+import com.android.identity.issuance.WalletApplicationCapabilities
+import com.android.identity.issuance.WalletNotificationPayload
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerImpl
+import com.android.identity.issuance.WalletServerCapabilities
 import com.android.identity.issuance.authenticationMessage
 import com.android.identity.issuance.extractAttestationSequence
+import com.android.identity.issuance.fromCbor
 import com.android.identity.issuance.hardcoded.WalletServerState
+import com.android.identity.issuance.toCbor
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
+import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
+import com.android.identity.util.toHex
 import com.android.identity_credential.wallet.SettingsModel
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.websocket.Frame
+import io.ktor.websocket.send
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.asn1.ASN1OctetString
+import kotlin.time.Duration.Companion.seconds
 
 
 /**
- * An object used to connecting to a remote wallet server.
+ * An object used to connect to a remote wallet server.
  */
 class WalletServerProvider(
     private val context: Context,
     private val secureArea: SecureArea,
-    private val settingsModel: SettingsModel
+    private val settingsModel: SettingsModel,
+    private val storageEngine: StorageEngine,
+    private val getWalletApplicationCapabilities: suspend () -> WalletApplicationCapabilities
 ) {
     private var instance: WalletServer? = null
     private val instanceLock = Mutex()
 
+    private var _walletServerCapabilities: WalletServerCapabilities? = null
+
+    private var notificationsJob: Job? = null
+
+    /**
+     * Information about the wallet server that the application is connected to.
+     *
+     * @throws IllegalStateException if called if we have never previously communicated
+     * with the wallet-server
+     */
+    val walletServerCapabilities: WalletServerCapabilities
+        get() {
+            if (_walletServerCapabilities == null) {
+                throw IllegalStateException("Don't call before getWalletServer()")
+            }
+            return _walletServerCapabilities!!
+        }
+
     companion object {
         private const val TAG = "WalletServerProvider"
+
+        // Used only for SimpleNotifications
+        private const val RECONNECT_DELAY_INITIAL_SECONDS = 1
+        private const val RECONNECT_DELAY_MAX_SECONDS = 30
 
         private val noopCipher = object : FlowHandlerLocal.SimpleCipher {
             override fun encrypt(plaintext: ByteArray): ByteArray {
@@ -59,9 +104,14 @@ class WalletServerProvider(
         get() = settingsModel.walletServerUrl.value!!
 
     init {
+        _walletServerCapabilities = storageEngine.get("WalletServerCapabilities")?.let {
+            WalletServerCapabilities.fromCbor(it)
+        }
         settingsModel.walletServerUrl.observeForever {
             runBlocking {
                 instanceLock.withLock {
+                    notificationsJob?.cancel()
+                    notificationsJob = null
                     instance = null
                 }
             }
@@ -87,8 +137,9 @@ class WalletServerProvider(
      * server that the client is in good standing, e.g. that Verified Boot is GREEN, Android patch
      * level is sufficiently fresh, the app signature keys are as expected, and so on.
      *
-     * This is usually called at application startup-time. When the call succeeds, the resulting
-     * instance is cached and returned immediately in future calls.
+     * This is usually only called for operations where the wallet actively needs to interact
+     * with the wallet server, e.g. when adding a new document or refreshing state. When the
+     * call succeeds, the resulting instance is cached and returned immediately in future calls.
      *
      * @return A [WalletServer] which can be used to interact with the remote wallet server.
      * @throws FlowHandlerRemote.ConnectionException if unable to connect.
@@ -133,11 +184,54 @@ class WalletServerProvider(
             keyInfo = secureArea.getKeyInfo(alias)
         }
         val message = authenticationMessage(challenge!!.clientId, challenge.nonce)
-        authentication.authenticate(ClientAuthentication(
+        _walletServerCapabilities = authentication.authenticate(ClientAuthentication(
             ByteString(secureArea.sign(alias, Algorithm.ES256, message.toByteArray(), null)),
-            if (newClient) keyInfo!!.attestation else null
+            if (newClient) keyInfo!!.attestation else null,
+            getWalletApplicationCapabilities()
         ))
         authentication.complete()
+        storageEngine.put("WalletServerCapabilities", _walletServerCapabilities!!.toCbor())
+
+        if (walletServerCapabilities.waitForNotificationSupported) {
+            Logger.i(TAG, "Listening for notifications via waitForNotification()")
+
+            // Listen for notifications in a separate coroutine and do bounded exponential backoff
+            // when trying to reconnect and the server isn't reachable.
+            var currentReconnectDelay = RECONNECT_DELAY_INITIAL_SECONDS.seconds
+            notificationsJob = CoroutineScope(Dispatchers.IO).launch {
+                while (true) {
+                    try {
+                        val payload = walletServer.waitForNotification()
+                        Logger.i(TAG, "Received notification ${Cbor.toDiagnostics(payload)}")
+                        val data = WalletNotificationPayload.fromCbor(payload)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            _eventFlow.emit(Pair(data.issuingAuthorityId, data.documentId))
+                        }
+                    } catch (e: FlowHandlerRemote.ConnectionRefusedException) {
+                        Logger.w(TAG, "Error connecting to the wallet server for notifications", e)
+                        delay(currentReconnectDelay)
+                        Logger.w(TAG, "Waited $currentReconnectDelay, reconnecting")
+                        currentReconnectDelay *= 2
+                        if (currentReconnectDelay > RECONNECT_DELAY_MAX_SECONDS.seconds) {
+                            currentReconnectDelay = RECONNECT_DELAY_MAX_SECONDS.seconds
+                        }
+                    } catch (e: FlowHandlerRemote.TimeoutException) {
+                        Logger.d(TAG, "Timeout while waiting for notification", e)
+                        delay(5.seconds)
+                    } catch (e: FlowHandlerRemote.RemoteException) {
+                        // Note: This is the expected path b/c the server's timeout is
+                        // set to 3 minutes (see WalletServerState.waitForNotification())
+                        // and the client timeout is 5 minutes (see WalletHttpClient)
+                        //
+                        Logger.d(TAG, "Reached server timeout for notifications. Pinging again.")
+                    } catch (e: Throwable) {
+                        Logger.w(TAG, "Error while waiting for notification", e)
+                        delay(5.seconds)
+                    }
+                }
+            }
+        }
+
         return walletServer
     }
 
