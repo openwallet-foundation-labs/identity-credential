@@ -56,6 +56,7 @@ import com.android.identity_credential.wallet.presentation.TransferHelper
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
+import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.launch
 
