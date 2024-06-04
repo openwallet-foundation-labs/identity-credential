@@ -1,4 +1,4 @@
-package com.android.identity_credential.wallet.ui.destination.consentprompt
+package com.android.identity_credential.wallet.ui.prompt.consent
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
