@@ -1,0 +1,31 @@
+plugins {
+    id 'java-library'
+    alias libs.plugins.org.jetbrains.kotlin.jvm
+    alias libs.plugins.dokka
+    alias libs.plugins.ksp
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+dependencies {
+    implementation project(':processor')
+    implementation project(':identity')
+    implementation project(':identity-doctypes')
+    implementation project(':identity-mdoc')
+    implementation project(':identity-flow')
+    implementation project(':mrtd-reader')
+    implementation libs.bundles.bouncy.castle
+    implementation libs.kotlinx.datetime
+    implementation libs.kotlinx.serialization
+    implementation libs.kotlinx.io.bytestring
+    implementation libs.net.sf.scuba.scuba.sc.android
+    implementation libs.org.jmrtd.jmrtd
+    ksp project(':processor')
+}

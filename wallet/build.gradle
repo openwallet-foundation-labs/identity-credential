@@ -61,14 +61,15 @@ dependencies {
     implementation project(':identity-doctypes')
     implementation project(':identity-mdoc')
     implementation project(':identity-sdjwt')
+    implementation project(':identity-flow')
     implementation project(':identity-android')
     implementation project(':mrtd-reader')
     implementation project(':mrtd-reader-android')
-    implementation project(':cbor-processor')
+    implementation project(':processor')
     implementation project(':jpeg2k')
-    implementation project(':wallet-issuance')
+    implementation project(':identity-issuance')
+    ksp project(':processor')
 
-    ksp project(':cbor-processor')
 
     implementation files('../third-party/play-services-identity-credentials-0.0.1-eap01.aar')
     implementation libs.bundles.google.play.services

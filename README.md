@@ -123,18 +123,18 @@ with an eye towards a production-quality and easily rebrandable identity
 wallet application. Wallet app now attempts to connect to the wallet server on start-up, if
 that fails it continues in the standalone matter.
 
-The `wallet-issuance` module contains code for server-based credential issuance. It defines
+The `identity-issuance` module contains code for server-based credential issuance. It defines
 server/client interfaces as well as provides the implementation for them. Server environment
 (such as settings, resources or persistent storage) is abstracted away, so the code can be run on
 the client as well (only for development and demos).
 
-The `wallet-server` module exposes server-side code (currently only `wallet-issuance`) as a
+The `server` module exposes server-side code (currently only from `identity-issuance`) as a
 runnable servlet. It contains the servlet itself and implementations for the server environment
 interfaces. Server configuration file, resources and database can be found in 
-`wallet-server/environment` folder.
+`server/environment` folder.
 
 Use the following command to run the server locally for development:
-`./gradlew wallet-server:tomcatRun`.
+`./gradlew server:tomcatRun`.
 
 Server URL is currently hardcoded in the wallet app as `http://localhost:8080/wallet-server` (see
 WalletApplication.kt). This is expected to be moved to settings in the future. For now either
