@@ -1,4 +1,4 @@
-package com.android.identity_credential.wallet
+package com.android.identity_credential.wallet.ui.prompt.biometric
 
 import android.os.Handler
 import android.os.Looper
@@ -8,6 +8,53 @@ import androidx.biometric.BiometricPrompt.PromptInfo
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity_credential.wallet.R
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+/**
+ * [showBiometricPrompt]
+ * Async extension function of a [FragmentActivity] to show Biometric Prompt and return the result as a [Boolean] of whether
+ * authentication was successful, or raises/throws an Exception, such as [IllegalStateException],
+ * if an error prevented the Biometric Prompt from showing.
+ *
+ * @param title the title for the authentication prompt.
+ * @param subtitle the subtitle for the authentication prompt.
+ * @param cryptoObject a crypto object to be associated with this authentication.
+ * @param userAuthenticationTypes the set of allowed user authentication types, must contain at
+ *                                least one element.
+ * @param requireConfirmation option to require explicit user confirmation after a passive biometric.
+ * @return a [Boolean] indicating whether biometric authentication was successful.
+ * @throws Exception if there were errors showing the prompt
+ */
+suspend fun FragmentActivity.showBiometricPrompt(
+    title: String,
+    subtitle: String,
+    cryptoObject: BiometricPrompt.CryptoObject?,
+    userAuthenticationTypes: Set<UserAuthenticationType>,
+    requireConfirmation: Boolean,
+): Boolean = suspendCancellableCoroutine { continuation ->
+    // wrap around the [showBiometricPrompt] function signature with callbacks to return true,
+    // false or raise an Exception
+    showBiometricPrompt(
+        activity = this,
+        title = title,
+        subtitle = subtitle,
+        cryptoObject = cryptoObject,
+        userAuthenticationTypes = userAuthenticationTypes,
+        requireConfirmation = requireConfirmation,
+        onSuccess = {
+            continuation.resume(true)
+        },
+        onCanceled = {
+            continuation.resume(false)
+        },
+        onError = {
+            continuation.resumeWithException(it)
+        }
+    )
+}
 
 /**
  * Prompts user for authentication, and calls the provided functions when authentication is
@@ -45,7 +92,7 @@ fun showBiometricPrompt(
         )
     }
 
-    BiometricUserAuthPrompt(
+    BiometricPrompt(
         activity = activity,
         title = title,
         subtitle = subtitle,
@@ -58,7 +105,25 @@ fun showBiometricPrompt(
     ).authenticate()
 }
 
-private class BiometricUserAuthPrompt(
+
+/**
+ * Prompts user for authentication, and calls the provided functions when authentication is
+ * complete. Biometric authentication will be offered first if both [UserAuthenticationType.LSKF]
+ * and [UserAuthenticationType.BIOMETRIC] are allowed.
+ *
+ * @param activity the activity hosting the authentication prompt
+ * @param title the title for the authentication prompt
+ * @param subtitle the subtitle for the authentication prompt
+ * @param cryptoObject a crypto object to be associated with this authentication
+ * @param userAuthenticationTypes the set of allowed user authentication types, must contain at
+ *                                least one element
+ * @param requireConfirmation option to require explicit user confirmation after a passive biometric
+ * @param onSuccess the function which will be called when the user successfully authenticates
+ * @param onCanceled the function which will be called when the user cancels
+ * @param onError the function which will be called when there is an unexpected error in the user
+ *                authentication process - a throwable will be passed into this function
+ */
+private class BiometricPrompt(
     private val activity: FragmentActivity,
     private val title: String,
     private val subtitle: String,
@@ -81,9 +146,12 @@ private class BiometricUserAuthPrompt(
             errorString: CharSequence
         ) {
             super.onAuthenticationError(errorCode, errorString)
-            if (setOf(BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+            if (setOf(
+                    BiometricPrompt.ERROR_NEGATIVE_BUTTON,
                     BiometricPrompt.ERROR_NO_BIOMETRICS,
-                    BiometricPrompt.ERROR_UNABLE_TO_PROCESS).contains(errorCode) && lskfOnNegativeBtn) {
+                    BiometricPrompt.ERROR_UNABLE_TO_PROCESS
+                ).contains(errorCode) && lskfOnNegativeBtn
+            ) {
                 // if no delay is injected, then biometric prompt's auth callbacks would not be called
                 Handler(Looper.getMainLooper()).postDelayed({
                     authenticateLskf()
@@ -103,7 +171,7 @@ private class BiometricUserAuthPrompt(
         }
     }
 
-    private var biometricPrompt = BiometricPrompt(
+    private var androidBiometricPrompt = BiometricPrompt(
         activity,
         ContextCompat.getMainExecutor(activity),
         biometricAuthCallback
@@ -132,9 +200,9 @@ private class BiometricUserAuthPrompt(
             .build()
 
         if (cryptoObject != null) {
-            biometricPrompt.authenticate(biometricPromptInfo, cryptoObject!!)
+            androidBiometricPrompt.authenticate(biometricPromptInfo, cryptoObject!!)
         } else {
-            biometricPrompt.authenticate(biometricPromptInfo)
+            androidBiometricPrompt.authenticate(biometricPromptInfo)
         }
     }
 
@@ -149,9 +217,9 @@ private class BiometricUserAuthPrompt(
             .build()
 
         if (cryptoObject != null) {
-            biometricPrompt.authenticate(lskfPromptInfo, cryptoObject!!)
+            androidBiometricPrompt.authenticate(lskfPromptInfo, cryptoObject!!)
         } else {
-            biometricPrompt.authenticate(lskfPromptInfo)
+            androidBiometricPrompt.authenticate(lskfPromptInfo)
         }
     }
 
