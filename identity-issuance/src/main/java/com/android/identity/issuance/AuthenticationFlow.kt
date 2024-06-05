@@ -13,5 +13,5 @@ interface AuthenticationFlow : FlowBaseInterface {
     suspend fun requestChallenge(clientId: String): ClientChallenge
 
     @FlowMethod
-    suspend fun authenticate(auth: ClientAuthentication)
+    suspend fun authenticate(auth: ClientAuthentication): WalletServerCapabilities
 }

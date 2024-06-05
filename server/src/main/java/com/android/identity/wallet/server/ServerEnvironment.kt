@@ -16,7 +16,7 @@ class ServerEnvironment(private val directory: String) : FlowEnvironment {
         configuration.getProperty("database.connection") ?: defaultDatabase(),
         configuration.getProperty("database.user") ?: "",
         configuration.getProperty("database.password") ?: "")
-    private val notifications = ServerNotifications()
+    private val notifications = ServerNotifications(storage)
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
         return clazz.cast(when(clazz) {

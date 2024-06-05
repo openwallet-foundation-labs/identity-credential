@@ -25,6 +25,7 @@ dependencies {
     implementation libs.kotlinx.datetime
     implementation libs.kotlinx.serialization
     implementation libs.kotlinx.io.bytestring
+    implementation libs.kotlinx.coroutines.core
     implementation libs.net.sf.scuba.scuba.sc.android
     implementation libs.org.jmrtd.jmrtd
     ksp project(':processor')

@@ -136,13 +136,6 @@ interfaces. Server configuration file, resources and database can be found in
 Use the following command to run the server locally for development:
 `./gradlew server:tomcatRun`.
 
-Server URL is currently hardcoded in the wallet app as `http://localhost:8080/wallet-server` (see
-WalletApplication.kt). This is expected to be moved to settings in the future. For now either
-change it explicitly (but remember to configure various possible firewalls) or run the server
-locally at the development computer and tunnel in to the device using the following command:
-`adb reverse tcp:8080 tcp:8080`. When everything works you should see "El Dorado" issuance authority
-when trying to add new document to the wallet.
-
 ## Sample Applications
 
 The `samples/` directory contain a number of sample applications, intended primarily

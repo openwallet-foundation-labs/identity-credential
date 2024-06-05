@@ -70,7 +70,7 @@
 
         <provider
             android:name=".LogFileProvider"
-            android:authorities="com.android.identity_credential.wallet"
+            android:authorities="${applicationId}"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

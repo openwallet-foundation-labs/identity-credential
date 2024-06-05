@@ -1,11 +1,8 @@
 package com.android.identity.issuance
 
 import com.android.identity.flow.FlowBaseInterface
-import com.android.identity.flow.annotation.FlowGetter
 import com.android.identity.flow.annotation.FlowInterface
 import com.android.identity.flow.annotation.FlowMethod
-import kotlinx.io.bytestring.ByteString
-import org.intellij.lang.annotations.Identifier
 
 @FlowInterface
 interface WalletServer: FlowBaseInterface {
@@ -26,4 +23,18 @@ interface WalletServer: FlowBaseInterface {
 
     @FlowMethod
     suspend fun getIssuingAuthority(identifier: String): IssuingAuthority
+
+    /**
+     * Waits until a notification is available for the client.
+     *
+     * A wallet should only use this if [WalletServerCapabilities.waitForNotificationSupported] is
+     * set to `true`.
+     *
+     * This may error out if a notification wasn't available within a certain server-defined
+     * timeframe.
+     *
+     * @return a [ByteArray] with the notification payload.
+     */
+    @FlowMethod
+    suspend fun waitForNotification(): ByteArray
 }

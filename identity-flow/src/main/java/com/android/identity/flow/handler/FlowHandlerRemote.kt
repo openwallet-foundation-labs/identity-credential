@@ -35,12 +35,47 @@ class FlowHandlerRemote(private val client: HttpClient) : FlowHandler {
     }
 
     /**
-     * Should be thrown by [HttpClient] methods when connecting to the
-     * server failed.
+     * Base class for all exceptions thrown by [HttpClient]
      */
-    class ConnectionException(message: String) : RuntimeException(message)
+    open class HttpClientException: Error {
+        constructor(message: String) : super(message)
+        constructor(message: String, cause: Throwable) : super(message, cause)
+    }
 
-    class RemoteException(message: String) : RuntimeException(message)
+    /**
+     * Base class for exceptions related to connection problems in [HttpClient].
+     */
+    open class ConnectionException: HttpClientException {
+        constructor(message: String) : super(message)
+        constructor(message: String, cause: Throwable) : super(message, cause)
+    }
+
+    /**
+     * Should be thrown by [HttpClient] methods when the method fails because the connection
+     * to the remote server was refused.
+     */
+    class ConnectionRefusedException: ConnectionException {
+        constructor(message: String) : super(message)
+        constructor(message: String, cause: Throwable) : super(message, cause)
+    }
+
+    /**
+     * Should be thrown by [HttpClient] methods when a connection was established to the remote
+     * server but the connection was terminated before the server responded.
+     */
+    class TimeoutException: ConnectionException {
+        constructor(message: String) : super(message)
+        constructor(message: String, cause: Throwable) : super(message, cause)
+    }
+
+    /**
+     * Should be thrown by [HttpClient] if the the remote server encountered an error during
+     * the processing of the request.
+     */
+    class RemoteException: HttpClientException {
+        constructor(message: String) : super(message)
+        constructor(message: String, cause: Throwable) : super(message, cause)
+    }
 
     data class HttpResponse(val status: Int, val statusText: String, val body: ByteString)
 

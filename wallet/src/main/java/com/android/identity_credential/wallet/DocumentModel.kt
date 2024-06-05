@@ -109,10 +109,6 @@ class DocumentModel(
             return
         }
         syncDocumentWithIssuer(document)
-        if (document.state.condition == DocumentCondition.NO_SUCH_DOCUMENT) {
-            Logger.i(TAG, "Document ${document.name} was deleted, removing")
-            documentStore.deleteDocument(document.name)
-        }
     }
 
     suspend fun developerModeRequestUpdate(
@@ -454,10 +450,6 @@ class DocumentModel(
                         Logger.i(TAG, "Handling issuer update on $documentId")
                         try {
                             syncDocumentWithIssuer(document)
-                            if (document.state.condition == DocumentCondition.NO_SUCH_DOCUMENT) {
-                                Logger.i(TAG, "Document ${document.name} was deleted, removing")
-                                documentStore.deleteDocument(document.name)
-                            }
                         } catch (e: Throwable) {
                             Logger.e(TAG, "Error when syncing with issuer", e)
                             // For example, this can happen if the user removed the LSKF and the
@@ -536,7 +528,7 @@ class DocumentModel(
     private suspend fun syncDocumentWithIssuer(
         document: Document
     ) {
-        Logger.i(TAG, "syncDocumentWithIssuer ${document.name} ${document.documentIdentifier}")
+        Logger.i(TAG, "syncDocumentWithIssuer: Refreshing ${document.name}")
 
         val walletServer = walletServerProvider.getWalletServer()
         val issuer = walletServer.getIssuingAuthority(document.issuingAuthorityIdentifier)
@@ -545,16 +537,25 @@ class DocumentModel(
         document.issuingAuthorityConfiguration = issuer.getConfiguration()
 
         // OK, let's see what's new...
-        if (!document.refreshState(walletServerProvider)) {
+        document.refreshState(walletServerProvider)
+
+        // It's possible the document was remote deleted...
+        if (document.state.condition == DocumentCondition.NO_SUCH_DOCUMENT) {
+            Logger.i(TAG, "syncDocumentWithIssuer: ${document.name} was deleted")
             walletApplication.postNotificationForDocument(
                 document,
                 walletApplication.applicationContext.getString(
                     R.string.notifications_document_deleted_by_issuer
                 )
             )
+            documentStore.deleteDocument(document.name)
+            return
         }
 
+        // It's possible a new configuration is available...
         if (document.state.condition == DocumentCondition.CONFIGURATION_AVAILABLE) {
+            Logger.i(TAG, "syncDocumentWithIssuer: ${document.name} has a new configuration")
+
             // New configuration (= PII) is available, nuke all existing credentials
             //
             document.certifiedCredentials.forEach { it.delete() }
@@ -581,13 +582,11 @@ class DocumentModel(
             }
             document.numDocumentConfigurationsDownloaded += 1
 
-            if (!document.refreshState(walletServerProvider)) {
-                Logger.e(TAG, "Error refreshing state for document ${document.name}")
-                return
-            }
+            document.refreshState(walletServerProvider)
         }
 
-        // Request new credentials if needed
+        // If the document is in the READY state, we can request credentials. See if we need
+        // to do that.
         if (document.state.condition == DocumentCondition.READY) {
             val docConf = document.documentConfiguration
 
@@ -628,13 +627,10 @@ class DocumentModel(
             }
         }
 
+        // It's possible the request credentials have already been minted..
+        document.refreshState(walletServerProvider)
 
-        if (!document.refreshState(walletServerProvider)) {
-            Logger.e(TAG, "Error refreshing state for document ${document.name} (after requesting" +
-                    " credentials)")
-            return
-        }
-
+        // ... if so, download them.
         var numCredentialsRefreshed = 0
         if (document.state.numAvailableCredentials > 0) {
             for (credentialData in issuer.getCredentials(document.documentIdentifier)) {
@@ -653,10 +649,7 @@ class DocumentModel(
                 )
                 numCredentialsRefreshed += 1
             }
-            if (!document.refreshState(walletServerProvider)) {
-                Logger.e(TAG, "Error refreshing state for document ${document.name} (after " +
-                        "credential download)")
-            }
+            document.refreshState(walletServerProvider)
         }
     }
 

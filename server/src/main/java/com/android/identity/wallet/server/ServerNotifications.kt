@@ -1,20 +1,31 @@
 package com.android.identity.wallet.server
 
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
 import com.android.identity.flow.environment.Notifications
+import com.android.identity.flow.environment.Storage
 import com.android.identity.util.Logger
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
-class ServerNotifications : Notifications {
+class ServerNotifications(
+    private val storage: Storage,
+) : Notifications {
     companion object {
         private const val TAG = "ServerNotifications"
     }
-    override suspend fun emitNotification(
-        clientId: String,
-        issuingAuthorityIdentifier: String,
-        documentIdentifier: String
+
+    private val _eventFlow = MutableSharedFlow<Pair<String, ByteArray>>()
+
+    override val eventFlow
+        get() = _eventFlow.asSharedFlow()
+
+    override suspend fun emit(
+        targetId: String,
+        payload: ByteArray
     ) {
-        Logger.w(TAG, "emitNotification not yet implemented - " +
-                "clientId:$clientId " +
-                "issuingAuthorityIdentifier:$issuingAuthorityIdentifier " +
-                "documentIdentifier:$documentIdentifier")
+        _eventFlow.emit(Pair(targetId, payload))
+        // TODO: emit notification via Firebase
     }
 }
