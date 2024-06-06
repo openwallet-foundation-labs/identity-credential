@@ -16,10 +16,11 @@ import kotlin.coroutines.resumeWithException
 /**
  * Show the Biometric prompt
  *
- * Async extension function of a [FragmentActivity] to show Biometric Prompt and return the result as a [Boolean] of whether
- * authentication was successful, or raises/throws an Exception, such as [IllegalStateException],
- * if an error prevented the Biometric Prompt from showing.
+ * Async extension function that shows the Biometric Prompt and returns the result as a [Boolean]
+ * indicating whether authentication was successful, or raises/throws an Exception, such as
+ * [IllegalStateException], if an error prevented the Biometric Prompt from showing.
  *
+ * @param activity the [FragmentActivity] hosting the authentication prompt.
  * @param title the title for the authentication prompt.
  * @param subtitle the subtitle for the authentication prompt.
  * @param cryptoObject a crypto object to be associated with this authentication.
@@ -27,9 +28,10 @@ import kotlin.coroutines.resumeWithException
  *                                least one element.
  * @param requireConfirmation option to require explicit user confirmation after a passive biometric.
  * @return a [Boolean] indicating whether biometric authentication was successful.
- * @throws Exception if there were errors showing the prompt
+ * @throws Exception if there were errors showing the prompt.
  */
-suspend fun FragmentActivity.showBiometricPrompt(
+suspend fun showBiometricPrompt(
+    activity: FragmentActivity,
     title: String,
     subtitle: String,
     cryptoObject: BiometricPrompt.CryptoObject?,
@@ -39,6 +41,7 @@ suspend fun FragmentActivity.showBiometricPrompt(
     // wrap around the [showBiometricPrompt] function signature with callbacks to return true,
     // false or raise an Exception
     showBiometricPrompt(
+        activity = activity,
         title = title,
         subtitle = subtitle,
         cryptoObject = cryptoObject,
@@ -61,6 +64,7 @@ suspend fun FragmentActivity.showBiometricPrompt(
  * complete. Biometric authentication will be offered first if both [UserAuthenticationType.LSKF]
  * and [UserAuthenticationType.BIOMETRIC] are allowed.
  *
+ * @param activity the [FragmentActivity] hosting the authentication prompt
  * @param title the title for the authentication prompt
  * @param subtitle the subtitle for the authentication prompt
  * @param cryptoObject a crypto object to be associated with this authentication
@@ -72,7 +76,8 @@ suspend fun FragmentActivity.showBiometricPrompt(
  * @param onError the function which will be called when there is an unexpected error in the user
  *                authentication process - a throwable will be passed into this function
  */
-fun FragmentActivity.showBiometricPrompt(
+fun showBiometricPrompt(
+    activity: FragmentActivity,
     title: String,
     subtitle: String,
     cryptoObject: BiometricPrompt.CryptoObject?,
@@ -91,7 +96,7 @@ fun FragmentActivity.showBiometricPrompt(
     }
 
     BiometricPrompt(
-        activity = this,
+        activity = activity,
         title = title,
         subtitle = subtitle,
         cryptoObject = cryptoObject,

@@ -17,14 +17,16 @@ import kotlin.coroutines.resume
 /**
  * Show the Consent prompt
  *
- * Async extension function of a [FragmentActivity] that renders the Consent Prompt (Composable) from
- * a Dialog Fragment. Returns a [Boolean] identifying that user tapped on Confirm or Cancel button.
+ * Async extension function that renders the Consent Prompt (Composable) from a Dialog Fragment.
+ * Returns a [Boolean] identifying that user tapped on Confirm or Cancel button.
  *
+ * @param activity the [FragmentActivity] to show the Dialog Fragment via Activity's FragmentManager
  * @param presentationRequestData contains data after parsing the device request bytes.
  * @param documentTypeRepository the repository containing user-facing credential names
  * @return a [Boolean] indicating whether the user tapped on the 'Confirm' or 'Cancel' button.
  */
-suspend fun FragmentActivity.showConsentPrompt(
+suspend fun showConsentPrompt(
+    activity: FragmentActivity,
     presentationRequestData: PresentationRequestData,
     documentTypeRepository: DocumentTypeRepository,
 ): Boolean =
@@ -45,7 +47,7 @@ suspend fun FragmentActivity.showConsentPrompt(
             }
         )
         // show the consent prompt fragment
-        consentPrompt.show(supportFragmentManager, "consent_prompt")
+        consentPrompt.show(activity.supportFragmentManager, "consent_prompt")
     }
 
 
@@ -70,7 +72,6 @@ private class ConsentPrompt(
     private val documentTypeRepository: DocumentTypeRepository,
     private val onConsentPromptResult: (Boolean) -> Unit,
 ) : BottomSheetDialogFragment() {
-
     /**
      * Define the composable [ConsentPromptEntryField] and issue callbacks to [onConsentPromptResult]
      * based on which button is tapped.

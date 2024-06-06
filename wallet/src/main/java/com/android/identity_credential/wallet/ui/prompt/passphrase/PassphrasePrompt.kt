@@ -15,15 +15,17 @@ import kotlin.coroutines.resume
 /**
  * Show the Passphrase prompt
  *
- * Async extension function of a [FragmentActivity] that renders the Passphrase Prompt through the
- * composition of a [PassphraseEntryField] from inside a Dialog Fragment. Returns the typed [String]
- * passphrase after user taps on the "Done" key on the keyboard.
+ * Async extension function that renders the Passphrase Prompt through the composition of
+ * a [PassphraseEntryField] from inside a Dialog Fragment. Returns the typed [String]
+ * passphrase after the user taps on the "Done" key on the keyboard.
  *
+ * @param activity the [FragmentActivity] to show the Dialog Fragment via Activity's FragmentManager.
  * @param constraints the constraints for the passphrase.
  * @param checkWeakPassphrase if true, checks and disallows for weak passphrase/PINs and also
  *                            shows a hint if this is the case.
  */
-suspend fun FragmentActivity.showPassphrasePrompt(
+suspend fun showPassphrasePrompt(
+    activity: FragmentActivity,
     constraints: PassphraseConstraints,
     checkWeakPassphrase: Boolean,
 ): String =
@@ -36,7 +38,7 @@ suspend fun FragmentActivity.showPassphrasePrompt(
             },
         )
         // show the prompt fragment
-        passphrasePrompt.show(supportFragmentManager, "passphrase_prompt")
+        passphrasePrompt.show(activity.supportFragmentManager, "passphrase_prompt")
     }
 
 /**
