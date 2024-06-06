@@ -314,7 +314,7 @@
 
     <!-- Consent Prompt -->
     <string name="consent_prompt_button_cancel">Cancel</string>
-    <string name="consent_prompt_button_share">Share</string>
+    <string name="consent_prompt_button_confirm">Share</string>
     <string name="consent_prompt_text_scroll_to_bottom">Scroll to bottom</string>
     <string name="consent_prompt_title">The following information is being requested from \"%1$s\"</string>
     <string name="consent_prompt_title_verifier">%1$s is requesting information from \"%2$s\"</string>

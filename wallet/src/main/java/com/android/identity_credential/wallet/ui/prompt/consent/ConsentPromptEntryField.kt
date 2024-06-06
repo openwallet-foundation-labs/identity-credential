@@ -1,9 +1,8 @@
-package com.android.identity_credential.wallet.ui.destination.consentprompt
+package com.android.identity_credential.wallet.ui.prompt.consent
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,33 +50,38 @@ import kotlinx.coroutines.launch
 import kotlin.math.floor
 
 /**
- * ShareButtonState defines the possible states of the Share button in Consent Prompt that is
- * referenced through [ConsentPrompt.shareButtonState]
+ * ConfirmButtonState defines the possible states of the Confirm button in the  Consent Prompt.
+ * This state is referenced through [val confirmButtonState] in [ConsentPromptEntryField]
  *
- * If share button state is SHARE then the Share button is enabled for the user to tap - this
- * invokes the `onConfirm()` callback that closes Consent Prompt and proceeds to the next
- * If share button state is DISABLED then the Share button is disabled until user has scrolled to
- * the bottom of the list where the state is changed to SHARE
+ * If the Confirm button state is ENABLED then the Confirm button is enabled for the user to tap.
+ * This invokes the `onConfirm()` callback and closes Consent Prompt composable.
+ *
+ * If Confirm button state is DISABLED then user cannot tap on the Confirm button until the user has
+ * scrolled to the bottom of the list where the state is changed to ENABLED.
  */
-enum class ShareButtonState {
-    // user can share data after scrolling to bottom
-    SHARE,
+private enum class ConfirmButtonState {
+    // User can confirm sending the requested credentials after scrolling to the bottom
+    ENABLED,
 
-    // Share button cannot be tapped in this state
+    // Confirm button cannot be tapped in this state
     DISABLED,
 
-    // for initializing the state flow
+    // For initializing the state flow
     INIT
 }
 
 /**
- * ConsentPrompt composable responsible for showing a bottom sheet modal dialog prompting the user
- * to consent to sending credential data to requesting party.
+ * ConsentPromptEntryField is responsible for showing a bottom sheet modal dialog prompting the user
+ * to consent to sending credential data to requesting party and user can cancel at any time.
+ * @param consentData the Consent Prompt data used by the prompt
+ * @param documentTypeRepository the repository for finding human-readable credential names
+ * @param onConfirm callback for when user taps on the 'Confirm' button
+ * @param onCancel callback for when user taps on the 'Cancel' button
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConsentPrompt(
-    consentData: ConsentPromptData,
+fun ConsentPromptEntryField(
+    consentData: ConsentPromptEntryFieldData,
     documentTypeRepository: DocumentTypeRepository,
     onConfirm: () -> Unit = {},
     onCancel: () -> Unit = {}
@@ -94,7 +98,6 @@ fun ConsentPrompt(
         ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
         ?.attribute?.displayName
         ?: dataElement.dataElementName
-
 
     // used for bottom sheet
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -115,8 +118,8 @@ fun ConsentPrompt(
                 ConsentDataElement(displayName, dataElement)
             }
 
-    // determine whether user needs to scroll to tap on the share button
-    val shareButtonState = remember { mutableStateOf(ShareButtonState.INIT) }
+    // determine whether user needs to scroll to tap on the Confirm button
+    val confirmButtonState = remember { mutableStateOf(ConfirmButtonState.INIT) }
     val scrolledToBottom = remember { mutableStateOf(false) } // remember if user scrolled to bottom
 
     // the index of the last row that is currently visible
@@ -138,15 +141,15 @@ fun ConsentPrompt(
     // if user has not previously scrolled to bottom of list
     if (!scrolledToBottom.value) { // else if user has already scrolled to bottom, don't change button state
 
-        // set Share button state according to whether there are more rows to be shown to user than
+        // set Confirm button state according to whether there are more rows to be shown to user than
         // what the user is currently seeing
-        shareButtonState.value =
+        confirmButtonState.value =
             if (lastRowIndex > lastVisibleRowIndexState.intValue) {
-                ShareButtonState.DISABLED // user needs to scroll to reach the bottom of the list
+                ConfirmButtonState.DISABLED // user needs to scroll to reach the bottom of the list
             } else {// last visible row index has reached the LazyColumnI last row index
                 // remember that user already saw the bottom-most row even if they scroll back up
                 scrolledToBottom.value = true
-                ShareButtonState.SHARE // user has the option to now share their sensitive data
+                ConfirmButtonState.ENABLED // user has the option to now share their sensitive data
             }
     }
 
@@ -158,7 +161,6 @@ fun ConsentPrompt(
     ) {
 
         ConsentPromptHeader(
-            modifier = Modifier,
             consentData = consentData
         )
 
@@ -176,14 +178,14 @@ fun ConsentPrompt(
 
         // show the 2 action button on the bottom of the dialog
         ConsentPromptActions(
-            shareButtonState = shareButtonState,
+            confirmButtonState = confirmButtonState,
             onCancel = {
                 scope.launch {
                     sheetState.hide()
                     onCancel()
                 }
             },
-            onShareButtonPress = { onConfirm.invoke() }
+            onConfirm = { onConfirm.invoke() }
         )
     }
 }
@@ -191,9 +193,10 @@ fun ConsentPrompt(
 /**
  * Show the title text according to whether there's a TrustPoint's available, and if present, show
  * the icon too.
+ * @param consentData the data object passed from the top-most composition
  */
 @Composable
-private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptData) {
+private fun ConsentPromptHeader(consentData: ConsentPromptEntryFieldData) {
     // title of dialog, if verifier is null or verifier.displayName is null, use default text
     val title = if (consentData.verifier?.displayName == null) {
         LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
@@ -206,7 +209,7 @@ private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptDa
     }
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
         // show icon if icon bytes are present
@@ -220,7 +223,7 @@ private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptDa
         }
         Text(
             text = title,
-            modifier = modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
@@ -234,13 +237,14 @@ private fun ConsentPromptHeader(modifier: Modifier, consentData: ConsentPromptDa
  * Shows the document name that is used for extracting requested data.
  *
  * Report back on param [lastVisibleRowIndexState] the index of the last row that is considered to
- * be actively visible from Compose (as user scrolls and compose draws)
+ * be actively visible from Compose (as user scrolls and compose draws).
+ *
+ * @param dataElements the list of elements to show
+ * @param lastVisibleRowIndexState callback to notify on the last visible row index currently shown
  */
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 private fun DataElementsListView(
     dataElements: List<ConsentDataElement>,
-    // callback to update what the last visible row index is currently shown
     lastVisibleRowIndexState: MutableIntState,
 ) {
     val groupedElements = dataElements.chunked(2).map { pair ->
@@ -272,7 +276,9 @@ private fun DataElementsListView(
 }
 
 /**
- * A single row containing 2 columns of data elements to consent to sending
+ * A single row containing 2 columns of data elements to consent to sending to the Verifier.
+ * @param left the left column data to compose
+ * @param right the right column data to compose
  */
 @Composable
 private fun DataElementsRow(
@@ -300,9 +306,10 @@ private fun DataElementsRow(
 }
 
 /**
- * Individual view for a DataElement
+ * Individual view for a DataElement.
+ * @param modifier passed down for defining a common margin/padding (or any other Modifier prop).
+ * @param documentElement the data object for a requested credential of an MDOC.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DataElementView(
     modifier: Modifier = Modifier,
@@ -332,14 +339,18 @@ private fun DataElementView(
 }
 
 /**
- * Bottom actions containing 2 buttons: Cancel and Share
- * Once user taps on Share, we disable buttons to prevent unintended taps
+ * Bottom actions containing 2 buttons: Cancel and Confirm
+ * Once user taps on Confirm, we disable buttons to prevent unintended taps.
+ * @param confirmButtonState state object passed from Parent composable to force recomposition
+ * according to the state.
+ * @param onCancel callback to notify parent composable that user tapped on Cancel button.
+ * @param onConfirm callback to notify parent composable that user tapped on Confirm button.
  */
 @Composable
 private fun ConsentPromptActions(
-    shareButtonState: MutableState<ShareButtonState>,
+    confirmButtonState: MutableState<ConfirmButtonState>,
     onCancel: () -> Unit,
-    onShareButtonPress: () -> Unit
+    onConfirm: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxHeight()) {
 
@@ -356,19 +367,19 @@ private fun ConsentPromptActions(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Share button
+            // Confirm button
             Button(
                 modifier = Modifier.weight(1f),
-                // enabled when user scrolled to bottom
-                enabled = shareButtonState.value == ShareButtonState.SHARE,
-                onClick = { onShareButtonPress.invoke() }
+                // enabled when user scrolls to the bottom
+                enabled = confirmButtonState.value == ConfirmButtonState.ENABLED,
+                onClick = { onConfirm.invoke() }
             ) {
-                Text(text = stringResource(id = R.string.consent_prompt_button_share))
+                Text(text = stringResource(id = R.string.consent_prompt_button_confirm))
             }
         }
-        // fade out "scroll to bottom" when user reaches bottom of list
+        // fade out "scroll to bottom" when user reaches bottom of list (enabled via 'visible' param)
         AnimatedVisibility(
-            visible = shareButtonState.value == ShareButtonState.DISABLED,
+            visible = confirmButtonState.value == ConfirmButtonState.DISABLED,
             enter = fadeIn(),
             exit = fadeOut()
         ) {

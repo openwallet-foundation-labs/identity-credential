@@ -44,7 +44,7 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
-import com.android.identity_credential.wallet.showBiometricPrompt
+import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
 import org.json.JSONObject
 
 import com.google.android.gms.identitycredentials.GetCredentialResponse

@@ -54,8 +54,9 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.TransferHelper
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
-import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
-import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
+import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
+import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryField
+import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryFieldData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.launch
 
@@ -120,7 +121,7 @@ class PresentationActivity : FragmentActivity() {
 
     private var deviceRequest: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-    private var consentData: ConsentPromptData? = null
+    private var consentData: ConsentPromptEntryFieldData? = null
 
     // Transfer helper facilitates starting processing a presentation request and obtaining the
     // response bytes once processing has finished. This enables showing one or more dialogs to
@@ -220,7 +221,7 @@ class PresentationActivity : FragmentActivity() {
             IdentityCredentialTheme {
 
                 val stateDisplay = remember { mutableStateOf("Idle") }
-                val consentPromptData = remember { mutableStateOf<ConsentPromptData?>(null) }
+                val consentPromptData = remember { mutableStateOf<ConsentPromptEntryFieldData?>(null) }
 
                 state.observe(this as LifecycleOwner) { state ->
                     when (state) {
@@ -245,7 +246,7 @@ class PresentationActivity : FragmentActivity() {
                             transferHelper?.startProcessingRequest(getDeviceRequest())
                                 ?.let { requestData ->
                                     // update UI state object 'consentPromptData' so we can show ConsentPrompt
-                                    consentPromptData.value = ConsentPromptData(
+                                    consentPromptData.value = ConsentPromptEntryFieldData(
                                         credentialId = requestData.document.name,
                                         documentName = requestData.document.documentConfiguration.displayName,
                                         credentialData = requestData.document.documentConfiguration.mdocConfiguration!!.staticData,
@@ -294,10 +295,10 @@ class PresentationActivity : FragmentActivity() {
                         }
                     }
 
-                    // when consent data is available, show consent prompt above activity's UI
+                    // when consent data is available, show the consent prompt above the activity's UI
                     consentData = consentPromptData.value
                     if (consentData != null) {
-                        ConsentPrompt(
+                        ConsentPromptEntryField(
                             consentData = consentData!!,
                             documentTypeRepository = walletApp.documentTypeRepository,
                             onConfirm = { // user accepted to send requested credential data
