@@ -41,7 +41,7 @@ import com.android.identity_credential.wallet.DocumentInfo
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
-import com.android.identity_credential.wallet.showBiometricPrompt
+import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import kotlinx.coroutines.launch
