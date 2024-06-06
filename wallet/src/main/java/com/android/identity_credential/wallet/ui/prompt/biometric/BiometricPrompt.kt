@@ -39,6 +39,7 @@ suspend fun FragmentActivity.showBiometricPrompt(
     // wrap around the [showBiometricPrompt] function signature with callbacks to return true,
     // false or raise an Exception
     showBiometricPrompt(
+        activity = this,
         title = title,
         subtitle = subtitle,
         cryptoObject = cryptoObject,
@@ -102,6 +103,56 @@ fun FragmentActivity.showBiometricPrompt(
         onError = onError
     ).authenticate()
 }
+
+/**
+ * Prompts user for authentication, and calls the provided functions when authentication is
+ * complete. Biometric authentication will be offered first if both [UserAuthenticationType.LSKF]
+ * and [UserAuthenticationType.BIOMETRIC] are allowed.
+ *
+ * @param activity the activity hosting the authentication prompt
+ * @param title the title for the authentication prompt
+ * @param subtitle the subtitle for the authentication prompt
+ * @param cryptoObject a crypto object to be associated with this authentication
+ * @param userAuthenticationTypes the set of allowed user authentication types, must contain at
+ *                                least one element
+ * @param requireConfirmation option to require explicit user confirmation after a passive biometric
+ * @param onSuccess the function which will be called when the user successfully authenticates
+ * @param onCanceled the function which will be called when the user cancels
+ * @param onError the function which will be called when there is an unexpected error in the user
+ *                authentication process - a throwable will be passed into this function
+ */
+fun showBiometricPrompt(
+    activity: FragmentActivity,
+    title: String,
+    subtitle: String,
+    cryptoObject: BiometricPrompt.CryptoObject?,
+    userAuthenticationTypes: Set<UserAuthenticationType>,
+    requireConfirmation: Boolean,
+    onSuccess: () -> Unit,
+    onCanceled: () -> Unit,
+    onError: (Throwable) -> Unit,
+) {
+    if (userAuthenticationTypes.isEmpty()) {
+        onError.invoke(
+            IllegalStateException(
+                "userAuthenticationTypes must contain at least one authentication type"
+            )
+        )
+    }
+
+    BiometricPrompt(
+        activity = activity,
+        title = title,
+        subtitle = subtitle,
+        cryptoObject = cryptoObject,
+        userAuthenticationTypes = userAuthenticationTypes,
+        requireConfirmation = requireConfirmation,
+        onSuccess = onSuccess,
+        onCanceled = onCanceled,
+        onError = onError
+    ).authenticate()
+}
+
 
 /**
  * Prompts user for authentication, and calls the provided functions when authentication is

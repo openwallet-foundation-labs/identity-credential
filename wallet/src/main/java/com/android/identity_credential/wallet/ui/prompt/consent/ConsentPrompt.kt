@@ -48,7 +48,6 @@ suspend fun FragmentActivity.showConsentPrompt(
         consentPrompt.show(supportFragmentManager, "consent_prompt")
     }
 
-
 /**
  * ConsentPrompt Dialog Fragment class that renders Consent prompt via Composition for the purposes
  * of running Consent Prompt synchronously and return the prompt's result as a [Boolean] rather than
@@ -84,6 +83,7 @@ private class ConsentPrompt(
             setContent {
                 IdentityCredentialTheme {
                     // define the ConsentPromptComposable (and show)
+
                     ConsentPromptEntryField(
                         consentData = consentPromptEntryFieldData,
                         documentTypeRepository = documentTypeRepository,
