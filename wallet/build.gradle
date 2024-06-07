@@ -31,6 +31,19 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    flavorDimensions.addAll("standard")
+    productFlavors {
+        upstream {
+            dimension "standard"
+            getIsDefault().set(true)
+        }
+        customized {
+            dimension "standard"
+            applicationId "com.example.wallet.customized"
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

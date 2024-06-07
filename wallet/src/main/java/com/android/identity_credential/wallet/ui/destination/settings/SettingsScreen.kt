@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
+import com.android.identity_credential.wallet.WalletApplicationConfiguration
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.SettingString
@@ -139,13 +140,15 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            SettingToggle(
-                title = stringResource(R.string.settings_screen_dev_mode_title),
-                subtitleOn = stringResource(R.string.settings_screen_dev_mode_subtitle_on),
-                subtitleOff = stringResource(R.string.settings_screen_dev_mode_subtitle_off),
-                isChecked = settingsModel.developerModeEnabled.observeAsState(false).value,
-                onCheckedChange = { settingsModel.developerModeEnabled.value = it }
-            )
+            if (WalletApplicationConfiguration.DEVELOPER_MODE_TOGGLE_AVAILABLE) {
+                SettingToggle(
+                    title = stringResource(R.string.settings_screen_dev_mode_title),
+                    subtitleOn = stringResource(R.string.settings_screen_dev_mode_subtitle_on),
+                    subtitleOff = stringResource(R.string.settings_screen_dev_mode_subtitle_off),
+                    isChecked = settingsModel.developerModeEnabled.observeAsState(false).value,
+                    onCheckedChange = { settingsModel.developerModeEnabled.value = it }
+                )
+            }
             SettingToggle(
                 title = stringResource(R.string.settings_screen_log_to_file_title),
                 subtitleOn = stringResource(R.string.settings_screen_log_to_file_subtitle_on),
@@ -153,16 +156,17 @@ fun SettingsScreen(
                 isChecked = settingsModel.loggingEnabled.observeAsState(false).value,
                 onCheckedChange = { settingsModel.loggingEnabled.value = it }
             )
-            SettingString(
-                title = stringResource(R.string.settings_screen_wallet_server_title),
-                subtitle = settingsModel.walletServerUrl.observeAsState().value!!.let {
-                    if (it == "dev:") {
-                        stringResource(R.string.settings_screen_wallet_server_built_in)
-                    } else it
-                },
-                onClicked = { showSetWalletServerUrlDialog = true }
-            )
-
+            if (WalletApplicationConfiguration.WALLET_SERVER_SETTING_AVAILABLE) {
+                SettingString(
+                    title = stringResource(R.string.settings_screen_wallet_server_title),
+                    subtitle = settingsModel.walletServerUrl.observeAsState().value!!.let {
+                        if (it == "dev:") {
+                            stringResource(R.string.settings_screen_wallet_server_built_in)
+                        } else it
+                    },
+                    onClicked = { showSetWalletServerUrlDialog = true }
+                )
+            }
         }
     }
 }
