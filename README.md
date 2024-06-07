@@ -80,6 +80,17 @@ to target [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
 for the libraries and [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/)
 for applications and samples.
 
+### Customization
+
+The `wallet` application is intended to be easily customizable by downstream
+consumers and has built-in support for this via
+[Android product flavors](https://developer.android.com/build/build-variants#product-flavors).
+Downstreams are expected to change
+
+- strings/icons in `wallet/customized`
+- configuration in `wallet/src/customized/java/com/android/identity_credential/wallet/WalletApplicationConfiguration.kt`
+- the `com.example.wallet.customized` applicationId in `wallet/build.gradle`
+
 ### Command-line tool
 
 A command-line tool `identityctl` is included which can be used to generate

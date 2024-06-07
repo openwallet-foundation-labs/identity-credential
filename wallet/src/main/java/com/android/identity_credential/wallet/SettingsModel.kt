@@ -20,7 +20,7 @@ class SettingsModel(
     // Settings that are visible in the Settings screen
     val developerModeEnabled = MutableLiveData(false)
     val loggingEnabled = MutableLiveData(false)
-    val walletServerUrl = MutableLiveData<String>(DEFAULT_WALLET_SERVER_URL)
+    val walletServerUrl = MutableLiveData<String>(WalletApplicationConfiguration.WALLET_SERVER_DEFAULT_URL)
 
     // Non visible in the Settings screen
     val focusedCardId = MutableLiveData("")
@@ -42,8 +42,6 @@ class SettingsModel(
         // Logging
         private const val LOG_FOLDER_NAME = "log"
         private const val LOG_FILE_NAME = "log.txt"
-
-        private const val DEFAULT_WALLET_SERVER_URL = "dev:"
     }
 
     private val logDir = File(walletApplication.cacheDir, LOG_FOLDER_NAME)
@@ -61,7 +59,9 @@ class SettingsModel(
             sharedPreferences.edit { putString(PREFERENCE_FOCUSED_CARD_ID, value) }
         }
 
-        walletServerUrl.value = sharedPreferences.getString(PREFERENCE_WALLET_SERVER_URL, DEFAULT_WALLET_SERVER_URL)
+        walletServerUrl.value = sharedPreferences.getString(
+            PREFERENCE_WALLET_SERVER_URL,
+            WalletApplicationConfiguration.WALLET_SERVER_DEFAULT_URL)
         walletServerUrl.observeForever { value ->
             sharedPreferences.edit { putString(PREFERENCE_WALLET_SERVER_URL, value) }
         }
