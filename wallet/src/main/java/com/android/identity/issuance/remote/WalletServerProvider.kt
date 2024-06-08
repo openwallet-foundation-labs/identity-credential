@@ -25,15 +25,7 @@ import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
-import com.android.identity.util.toHex
 import com.android.identity_credential.wallet.SettingsModel
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.webSocketSession
-import io.ktor.websocket.Frame
-import io.ktor.websocket.send
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

@@ -144,7 +144,7 @@
 
     kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin-test"}
 
-    ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+    ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
     ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
     javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
 

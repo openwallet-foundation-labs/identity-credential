@@ -2,7 +2,7 @@ package com.android.identity.issuance.remote
 
 import com.android.identity.flow.handler.FlowHandlerRemote
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.timeout
@@ -24,7 +24,7 @@ class WalletHttpClient(val baseUrl: String): FlowHandlerRemote.HttpClient {
         private const val REQUEST_TIMEOUT_SECONDS = 5*60
     }
 
-    val client = HttpClient(CIO) {
+    val client = HttpClient(Android) {
         install(HttpTimeout)
     }
 

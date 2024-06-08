@@ -85,10 +85,13 @@ for applications and samples.
 The `wallet` application is intended to be easily customizable by downstream
 consumers and has built-in support for this via
 [Android product flavors](https://developer.android.com/build/build-variants#product-flavors).
-Downstreams are expected to change
+Downstreams are expected to change files under `wallet/src/customized` to
+suit their configuration, including
 
-- strings/icons in `wallet/customized`
-- configuration in `wallet/src/customized/java/com/android/identity_credential/wallet/WalletApplicationConfiguration.kt`
+- strings/icons (in particular the application name) and text in `about.md`
+- configuration in `WalletApplicationConfiguration.kt` in particular change
+  the wallet server address from `ws.example.com` to point to your own wallet server
+- the `ws.example.com` domain in `network_security_config.xml`
 - the `com.example.wallet.customized` applicationId in `wallet/build.gradle`
 
 ### Command-line tool
