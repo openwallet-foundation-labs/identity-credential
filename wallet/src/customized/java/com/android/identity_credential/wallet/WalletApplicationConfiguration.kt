@@ -22,5 +22,5 @@ object WalletApplicationConfiguration {
     /**
      * The default Wallet Server URL.
      */
-    const val WALLET_SERVER_DEFAULT_URL = "dev:"
+    const val WALLET_SERVER_DEFAULT_URL = "https://ws.example.com/server"
 }

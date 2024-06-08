@@ -103,7 +103,7 @@ dependencies {
     implementation libs.accompanist.permissions
     implementation libs.androidx.work
     implementation libs.ktor.client.core
-    implementation libs.ktor.client.cio
+    implementation libs.ktor.client.android
     implementation libs.kotlinx.io.bytestring
     implementation libs.kotlinx.serialization
     debugImplementation libs.compose.icons
