@@ -185,15 +185,16 @@ class WalletServerProvider(
         storageEngine.put("WalletServerCapabilities", _walletServerCapabilities!!.toCbor())
 
         if (walletServerCapabilities.waitForNotificationSupported) {
-            Logger.i(TAG, "Listening for notifications via waitForNotification()")
-
             // Listen for notifications in a separate coroutine and do bounded exponential backoff
             // when trying to reconnect and the server isn't reachable.
             var currentReconnectDelay = RECONNECT_DELAY_INITIAL_SECONDS.seconds
             notificationsJob = CoroutineScope(Dispatchers.IO).launch {
                 while (true) {
                     try {
+                        Logger.i(TAG, "Listening for notifications via waitForNotification()")
                         val payload = walletServer.waitForNotification()
+                        // Reset delay
+                        currentReconnectDelay = RECONNECT_DELAY_INITIAL_SECONDS.seconds
                         Logger.i(TAG, "Received notification ${Cbor.toDiagnostics(payload)}")
                         val data = WalletNotificationPayload.fromCbor(payload)
                         CoroutineScope(Dispatchers.IO).launch {
