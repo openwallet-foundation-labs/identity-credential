@@ -11,21 +11,31 @@
     "requireVerifiedBootGreen": false,
     "requireAppSignatureCertificateDigests": []
   },
-  "issuing_authority_list": ["utopia", "eldorado"],
+  "issuing_authority_list": ["utopia", "utopia_pid", "eldorado"],
   "issuing_authorities": {
     "utopia": {
       "name": "Utopia DMV",
       "logo": "utopia/logo.png",
       "description": "Utopia Driver's License",
       "card_art": "utopia/card_art.png",
-      "require_user_authentication_to_view_document": true
+      "require_user_authentication_to_view_document": true,
+      "type": "drivers_license"
+    },
+    "utopia_pid": {
+      "name": "Utopia Gov",
+      "logo": "utopia_pid/logo.png",
+      "description": "Utopia Personal ID",
+      "card_art": "utopia_pid/card_art.png",
+      "require_user_authentication_to_view_document": true,
+      "type": "eu_pid"
     },
     "eldorado": {
       "name": "El Dorado DMV",
       "logo": "eldorado/logo.png",
       "description": "El Dorado Driver License",
       "card_art": "eldorado/card_art.png",
-      "require_user_authentication_to_view_document": true
+      "require_user_authentication_to_view_document": true,
+      "type": "drivers_license"
     }
   }
 }
