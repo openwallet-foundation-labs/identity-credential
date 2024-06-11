@@ -50,7 +50,6 @@ suspend fun showConsentPrompt(
         consentPrompt.show(activity.supportFragmentManager, "consent_prompt")
     }
 
-
 /**
  * ConsentPrompt Dialog Fragment class that renders Consent prompt via Composition for the purposes
  * of running Consent Prompt synchronously and return the prompt's result as a [Boolean] rather than
@@ -58,16 +57,18 @@ suspend fun showConsentPrompt(
  *
  * Extends [BottomSheetDialogFragment] and shows up as an overlay above the current UI.
  *
- * Expects a [ConsentPromptResponseListener] instance to be provided to notify when the user taps on
- * Confirm or Cancel.
+ * Notifies when the user taps on Confirm or Cancel via callback [onConsentPromptResult]
  *
  * @param consentPromptEntryFieldData data that is extracted (via TransferHelper) during a presentation engagement
  * @param documentTypeRepository repository used to get the human-readable credential names
  * @param onConsentPromptResult callback to notify with the result of the prompt with a [Boolean]
-                  depending on whether the 'Confirm' [true] or 'Cancel' [false] button was tapped.
+depending on whether the 'Confirm' [true] or 'Cancel' [false] button was tapped.
  * @extends [BottomSheetDialogFragment] that can create the Fragment's contents via Composition.
+ *
+ * Fragment class needs to be `public` to be  properly recreated from instance state
+ * (else [IllegalStateException] is thrown).
  */
-private class ConsentPrompt(
+class ConsentPrompt(
     private val consentPromptEntryFieldData: ConsentPromptEntryFieldData,
     private val documentTypeRepository: DocumentTypeRepository,
     private val onConsentPromptResult: (Boolean) -> Unit,
