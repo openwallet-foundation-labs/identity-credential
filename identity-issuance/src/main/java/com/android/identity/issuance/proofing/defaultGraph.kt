@@ -36,11 +36,11 @@ fun defaultGraph(
             assets = mapOf(),
             acceptButtonText = "Continue"
         ) {
-            on(id = "hardcoded", text = "No, create mDL with hard-coded data") {
+            on(id = "hardcoded", text = "No, create document with hard-coded data") {
                 if (developerModeEnabled) {
                     choice(
                         id = "devmode_image_format",
-                        message = "Choose format for images in mDL $devNotice",
+                        message = "Choose format for images in document $devNotice",
                         assets = devAssets,
                         acceptButtonText = "Continue"
                     ) {
@@ -49,7 +49,7 @@ fun defaultGraph(
                     }
                 }
             }
-            on(id = "passport", text = "Yes, derive the mDL from ePassport/eID") {
+            on(id = "passport", text = "Yes, derive the document from ePassport/eID") {
                 icaoTunnel("tunnel", listOf(1, 2, 7), true) {
                     whenChipAuthenticated {}
                     whenActiveAuthenticated {}

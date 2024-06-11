@@ -59,6 +59,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.yearsUntil
 import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -66,6 +67,8 @@ import kotlin.time.Duration.Companion.days
 private const val MDL_DOCTYPE = DrivingLicense.MDL_DOCTYPE
 private const val MDL_NAMESPACE = DrivingLicense.MDL_NAMESPACE
 private const val AAMVA_NAMESPACE = DrivingLicense.AAMVA_NAMESPACE
+private const val EUPID_NAMESPACE = EUPersonalID.EUPID_NAMESPACE
+private const val EUPID_DOCTYPE = EUPersonalID.EUPID_DOCTYPE
 
 /**
  * State of [IssuingAuthority] RPC implementation.
@@ -94,6 +97,7 @@ class IssuingAuthorityState(
                         "$prefix.require_user_authentication_to_view_document",
                         false
                     )
+                val type = configuration.getProperty("$prefix.type") ?: "drivers_license"
 
                 IssuingAuthorityConfiguration(
                     identifier = id,
@@ -103,7 +107,7 @@ class IssuingAuthorityState(
                         ?: "Unknown",
                     pendingDocumentInformation = DocumentConfiguration(
                         displayName = "Pending",
-                        typeDisplayName = "Driving License",
+                        typeDisplayName = if (type == "drivers_license") "Driving License" else "EU Personal ID",
                         cardArt = art.toByteArray(),
                         requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
                         mdocConfiguration = null,
@@ -288,6 +292,8 @@ class IssuingAuthorityState(
         notifyApplicationOfUpdate: Boolean
     ) {
         val config = env.getInterface(Configuration::class)!!
+        val prefix = "issuing_authorities.$authorityId"
+        val type = config.getProperty("$prefix.type") ?: "drivers_license"
 
         if (!config.getBool("developerMode", false)) {
             throw IllegalStateException("Must be in developer mode for this feature to work")
@@ -300,9 +306,10 @@ class IssuingAuthorityState(
             issuerDocument.state = DocumentCondition.CONFIGURATION_AVAILABLE
 
             // The update consists of just slapping an extra 0 at the end of `administrative_number`
+            val namespace = if (type == "eu_pid") EUPID_NAMESPACE else MDL_NAMESPACE
             val newAdministrativeNumber = try {
                 issuerDocument.documentConfiguration!!.mdocConfiguration!!.staticData
-                    .getDataElementString(MDL_NAMESPACE, "administrative_number")
+                    .getDataElementString(namespace, "administrative_number")
             } catch (e: Throwable) {
                 ""
             } + "0"
@@ -312,7 +319,7 @@ class IssuingAuthorityState(
                 issuerDocument.documentConfiguration!!.mdocConfiguration!!.staticData
             )
             builder.putEntryString(
-                MDL_NAMESPACE,
+                namespace,
                 "administrative_number",
                 newAdministrativeNumber
             )
@@ -339,6 +346,9 @@ class IssuingAuthorityState(
         authenticationKey: EcPublicKey
     ): ByteArray {
         val now = Clock.System.now()
+        val configuration = env.getInterface(Configuration::class)!!
+        val prefix = "issuing_authorities.$authorityId"
+        val type = configuration.getProperty("$prefix.type") ?: "drivers_license"
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
@@ -346,9 +356,10 @@ class IssuingAuthorityState(
         val validUntil = Instant.fromEpochMilliseconds(validFrom.toEpochMilliseconds() + 365*24*3600*1000L)
 
         // Generate an MSO and issuer-signed data for this authentication key.
+        val docType = if (type == "eu_pid") EUPID_DOCTYPE else MDL_DOCTYPE
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
-            MDL_DOCTYPE,
+            docType,
             authenticationKey
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
@@ -406,6 +417,118 @@ class IssuingAuthorityState(
     }
 
     private fun generateDocumentConfiguration(
+        env: FlowEnvironment,
+        collectedEvidence: Map<String, EvidenceResponse>
+    ): DocumentConfiguration {
+        val configuration = env.getInterface(Configuration::class)!!
+        val prefix = "issuing_authorities.$authorityId"
+        val type = configuration.getProperty("$prefix.type") ?: "drivers_license"
+        return if (type == "eu_pid") {
+            generateEuPidDocumentConfiguration(env, collectedEvidence)
+        } else {
+            generateMdlDocumentConfiguration(env, collectedEvidence)
+        }
+    }
+
+    private fun generateEuPidDocumentConfiguration(
+        env: FlowEnvironment,
+        collectedEvidence: Map<String, EvidenceResponse>
+    ): DocumentConfiguration {
+        val now = Clock.System.now()
+        val issueDate = now
+        val resources = env.getInterface(Resources::class)!!
+        val configuration = env.getInterface(Configuration::class)!!
+        val expiryDate = now + 365.days * 5
+
+        val prefix = "issuing_authorities.$authorityId"
+        val artPath = configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
+        val issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Default Issuer"
+        val art = resources.getRawResource(artPath)!!
+
+        val credType = documentTypeRepository.getDocumentTypeForMdoc(EUPID_DOCTYPE)!!
+        val staticData: NameSpacedData
+
+        val path = (collectedEvidence["path"] as EvidenceResponseQuestionMultipleChoice).answerId
+        if (path == "hardcoded") {
+            val imageFormat = collectedEvidence["devmode_image_format"]
+            val jpeg2k = imageFormat is EvidenceResponseQuestionMultipleChoice &&
+                    imageFormat.answerId == "devmode_image_format_jpeg2000"
+            staticData = fillInSampleData(resources, jpeg2k, credType).build()
+        } else { // todo
+            val icaoPassiveData = collectedEvidence["passive"]
+            val icaoTunnelData = collectedEvidence["tunnel"]
+            val mrtdData = if (icaoTunnelData is EvidenceResponseIcaoNfcTunnelResult)
+                MrtdNfcData(icaoTunnelData.dataGroups, icaoTunnelData.securityObject)
+            else if (icaoPassiveData is EvidenceResponseIcaoPassiveAuthentication)
+                MrtdNfcData(icaoPassiveData.dataGroups, icaoPassiveData.securityObject)
+            else
+                throw IllegalStateException("Should not happen")
+            val decoded = MrtdNfcDataDecoder().decode(mrtdData)
+            val firstName = decoded.firstName
+            val lastName = decoded.lastName
+            val sex = when (decoded.gender) {
+                "MALE" -> 1L
+                "FEMALE" -> 2L
+                else -> 0L
+            }
+            val timeZone = TimeZone.currentSystemDefault()
+            val dateOfBirth = LocalDate.parse(input = decoded.dateOfBirth,
+                format = LocalDate.Format {
+                    // date of birth cannot be in future
+                    yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
+                    monthNumber()
+                    dayOfMonth()
+                })
+            val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
+            // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
+            val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
+            val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
+
+            // Make sure we set at least all the mandatory data elements
+            staticData = NameSpacedData.Builder()
+                .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
+                .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
+                .putEntry(EUPID_NAMESPACE, "birth_date",
+                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                .putEntryNumber(EUPID_NAMESPACE, "age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
+                .putEntryNumber(EUPID_NAMESPACE, "age_birth_year", dateOfBirth.year.toLong())
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
+                // not included: family_name_birth, given_name_birth, birth_place, birth_country,
+                // birth_state, birth_city, resident_address, resident_country, resident_state,
+                // resident_city, resident_postal_code, resident_street, resident_house_number,
+                // issuing_jurisdiction,
+                .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
+                .putEntryString(EUPID_NAMESPACE, "nationality", "UT")
+                .putEntry(EUPID_NAMESPACE, "issuance_date",
+                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                .putEntry(EUPID_NAMESPACE, "expiry_date",
+                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                )
+                .putEntryString(EUPID_NAMESPACE, "issuing_authority",
+                    issuingAuthorityName)
+                .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
+                .putEntryString(EUPID_NAMESPACE, "issuing_country", "UT")
+                .build()
+        }
+
+        val firstName = staticData.getDataElementString(EUPID_NAMESPACE, "given_name")
+        return DocumentConfiguration(
+            displayName = "$firstName's Personal ID",
+            typeDisplayName = "EU Personal ID",
+            cardArt = art.toByteArray(),
+            requireUserAuthenticationToViewDocument =
+            configuration.getBool("$prefix.require_user_authentication_to_view_document"),
+            mdocConfiguration = MdocDocumentConfiguration(
+                docType = EUPID_DOCTYPE,
+                staticData = staticData,
+            ),
+            sdJwtVcDocumentConfiguration = null,
+        )
+    }
+
+    private fun generateMdlDocumentConfiguration(
         env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
@@ -502,7 +625,7 @@ class IssuingAuthorityState(
             typeDisplayName = "Driving License",
             cardArt = art.toByteArray(),
             requireUserAuthenticationToViewDocument =
-                configuration.getBool("$prefix.require_user_authentication_to_view_document"),
+            configuration.getBool("$prefix.require_user_authentication_to_view_document"),
             mdocConfiguration = MdocDocumentConfiguration(
                 docType = MDL_DOCTYPE,
                 staticData = staticData,
@@ -516,16 +639,6 @@ class IssuingAuthorityState(
         jpeg2k: Boolean,
         documentType: DocumentType
     ): NameSpacedData.Builder {
-        val portrait = resources.getRawResource(if (jpeg2k) {
-            "img_erika_portrait.jpf"
-        } else {
-            "img_erika_portrait.jpg"
-        })!!.toByteArray()
-        val signatureOrUsualMark = resources.getRawResource(if (jpeg2k) {
-            "img_erika_signature.jpf"
-        } else {
-            "img_erika_signature.jpg"
-        })!!.toByteArray()
         val builder = NameSpacedData.Builder()
         for ((namespaceName, namespace) in documentType.mdocDocumentType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {
@@ -538,9 +651,23 @@ class IssuingAuthorityState(
                 }
             }
         }
-        builder
-            .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
-            .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
+
+        if (documentType == documentTypeRepository.getDocumentTypeForMdoc(MDL_DOCTYPE)!!) {
+            val portrait = resources.getRawResource(if (jpeg2k) {
+                "img_erika_portrait.jpf"
+            } else {
+                "img_erika_portrait.jpg"
+            })!!.toByteArray()
+            val signatureOrUsualMark = resources.getRawResource(if (jpeg2k) {
+                "img_erika_signature.jpf"
+            } else {
+                "img_erika_signature.jpg"
+            })!!.toByteArray()
+            builder
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
+                .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
+        }
+
         return builder
     }
 
