@@ -28,12 +28,15 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.remote.WalletServerProvider
+import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
+
+private const val TAG = "AddToWalletScreen"
 
 private data class IssuerDisplayData(
     val configuration: IssuingAuthorityConfiguration,
@@ -94,6 +97,7 @@ fun AddToWalletScreen(
             AddToWalletScreenLoading()
         } else {
             if (loadingIssuerDisplayError.value != null) {
+                Logger.e(TAG, "Error loading issuers", loadingIssuerDisplayError.value!!)
                 AddToWalletScreenLoadingError(loadingIssuerDisplayError.value!!)
             } else {
                 AddToWalletScreenWithIssuerDisplayDatas(

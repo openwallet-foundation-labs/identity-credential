@@ -13,6 +13,7 @@ import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.WalletServer
+import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.util.Logger
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -80,14 +81,13 @@ class WalletServerState(
     @FlowMethod
     fun getIssuingAuthorityConfigurations(env: FlowEnvironment): List<IssuingAuthorityConfiguration> {
         check(clientId.isNotEmpty())
-        val configuration = env.getInterface(Configuration::class)
-        val listStr = configuration?.getProperty("issuing_authority_list")
-        if (listStr == null) {
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val issuingAuthorityList = settings.getStringList("issuingAuthorityList")
+        if (issuingAuthorityList == null) {
             return listOf(devConfig(env))
         } else {
-            val list = Json.parseToJsonElement(listStr).jsonArray
-            return list.map { idElem ->
-                IssuingAuthorityState.getConfiguration(env, idElem.jsonPrimitive.content)
+            return issuingAuthorityList.map { idElem ->
+                IssuingAuthorityState.getConfiguration(env, idElem)
             }
         }
     }

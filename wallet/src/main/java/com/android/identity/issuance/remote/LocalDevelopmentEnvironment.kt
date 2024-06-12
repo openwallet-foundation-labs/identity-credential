@@ -40,21 +40,23 @@ class LocalDevelopmentEnvironment(
     }
 
     class ConfigurationImpl(val context: Context): Configuration {
-        override fun getProperty(key: String): String? {
-            return when (key) {
+        override fun getValue(key: String): String? {
+            val value = when (key) {
                 "developerMode" -> "true"
                 "waitForNotificationSupported" -> "false"
-                "android.requireGmsAttestation" -> "false"
-                "android.requireVerifiedBootGreen" -> "false"
-                "android.requireAppSignatureCertificateDigests" -> "[]"
-                "issuing_authority_list" -> "[\"utopia_local\"]"
-                "issuing_authorities.utopia_local.name" -> "Utopia DMV (Local)"
-                "issuing_authorities.utopia_local.description" -> "Utopia Driver's License (Local)"
-                "issuing_authorities.utopia_local.logo" -> "utopia_local/logo.png"
-                "issuing_authorities.utopia_local.card_art" -> "utopia_local/card_art.png"
-                "issuing_authorities.utopia_local.require_user_authentication_to_view_document" -> "false"
+                "androidRequireGmsAttestation" -> "false"
+                "androidRequireVerifiedBootGreen" -> "false"
+                "androidRequireAppSignatureCertificateDigests" -> ""
+                "issuingAuthorityList" -> "utopia_local"
+                "issuingAuthority.utopia_local.name" -> "Utopia DMV (Local)"
+                "issuingAuthority.utopia_local.type" -> "DrivingLicense"
+                "issuingAuthority.utopia_local.description" -> "Utopia Driver's License (Local)"
+                "issuingAuthority.utopia_local.logo" -> "utopia_local/logo.png"
+                "issuingAuthority.utopia_local.cardArt" -> "utopia_local/card_art.png"
+                "issuingAuthority.utopia_local.requireUserAuthenticationToViewDocument" -> "false"
                 else -> null
             }
+            return value
         }
 
     }
