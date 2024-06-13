@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinx.serialization.plugin)
 }
 
 kotlin {
@@ -106,7 +107,11 @@ dependencies {
     implementation libs.ktor.client.android
     implementation libs.kotlinx.io.bytestring
     implementation libs.kotlinx.serialization
+    implementation libs.ktor.client.content.negotiation
+    implementation libs.ktor.serialization.kotlinx.json
     debugImplementation libs.compose.icons
+
+    implementation libs.nimbus.oauth2.oidc.sdk
 
     implementation libs.net.sf.scuba.scuba.sc.android
     implementation libs.org.jmrtd.jmrtd
@@ -119,5 +124,6 @@ dependencies {
     debugImplementation libs.compose.test.manifest
 
     testImplementation libs.bundles.unit.testing
+    testImplementation libs.ktor.client.mock
     testRuntimeOnly libs.junit.jupiter.engine
 }

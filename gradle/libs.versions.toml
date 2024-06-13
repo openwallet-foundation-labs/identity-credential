@@ -56,6 +56,7 @@
     ktor = "2.3.10"
     hsqldb = "2.7.2"
     mysql = "8.0.16"
+    nimbus-sdk = "11.8"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -144,9 +145,14 @@
 
     kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin-test"}
 
+    nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
+
     ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
     ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+    ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+    ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
     javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
+    ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
