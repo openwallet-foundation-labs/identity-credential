@@ -14,6 +14,7 @@ import com.android.identity.issuance.AuthenticationFlow
 import com.android.identity.issuance.ClientAuthentication
 import com.android.identity.issuance.ClientChallenge
 import com.android.identity.issuance.WalletServerCapabilities
+import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.authenticationMessage
 import com.android.identity.issuance.toDataItem
 import com.android.identity.issuance.validateKeyAttestation
@@ -58,7 +59,7 @@ class AuthenticationState(
     suspend fun authenticate(env: FlowEnvironment, auth: ClientAuthentication): WalletServerCapabilities {
         val chain = auth.certificateChain
 
-        val settings = env.getInterface(Configuration::class)!!
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
         val storage = env.getInterface(Storage::class)!!
 
         if (chain != null) {
@@ -68,9 +69,9 @@ class AuthenticationState(
             validateKeyAttestation(
                 chain,
                 this.clientId,
-                settings.getBool("android.requireGmsAttestation", true),
-                settings.getBool("android.requireVerifiedBootGreen", true),
-                settings.getStringList("android.requireAppSignatureCertificateDigests")
+                settings.androidRequireGmsAttestation,
+                settings.androidRequireVerifiedBootGreen,
+                settings.androidRequireAppSignatureCertificateDigests
             )
             this.publicKey = chain.certificates[0].publicKey
             val keyData = ByteString(Cbor.encode(this.publicKey!!.toDataItem))

@@ -1,17 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
-
+    xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+         http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+    version="3.1">
     <servlet>
         <display-name>FlowServlet</display-name>
         <servlet-name>FlowServlet</servlet-name>
         <servlet-class>com.android.identity.wallet.server.FlowServlet</servlet-class>
         <load-on-startup>0</load-on-startup>
+
+        <init-param>
+            <param-name>developerMode</param-name>
+            <param-value>true</param-value>
+        </init-param>
+        <init-param>
+            <param-name>waitForNotificationSupported</param-name>
+            <param-value>true</param-value>
+        </init-param>
+        <init-param>
+            <param-name>androidRequireGmsAttestation</param-name>
+            <param-value>false</param-value>
+        </init-param>
+        <init-param>
+            <param-name>androidRequireVerifiedBootGreen</param-name>
+            <param-value>false</param-value>
+        </init-param>
+        <init-param>
+            <param-name>androidRequireAppSignatureCertificateDigests</param-name>
+            <param-value></param-value>
+        </init-param>
+
+        <init-param>
+            <param-name>issuingAuthorityList</param-name>
+            <param-value>
+                utopia
+                utopia_pid
+                eldorado
+            </param-value>
+        </init-param>
+
+        <init-param>
+            <param-name>issuingAuthority.utopia.name</param-name>
+            <param-value>Utopia DMV</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia.type</param-name>
+            <param-value>DrivingLicense</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia.logo</param-name>
+            <param-value>utopia/logo.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia.description</param-name>
+            <param-value>Utopia Driver's License</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia.cardArt</param-name>
+            <param-value>utopia/card_art.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia.requireUserAuthenticationToViewDocument</param-name>
+            <param-value>true</param-value>
+        </init-param>
+
+        <init-param>
+            <param-name>issuingAuthority.utopia_pid.name</param-name>
+            <param-value>Utopia Gov</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_pid.type</param-name>
+            <param-value>EuPid</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_pid.logo</param-name>
+            <param-value>utopia_pid/logo.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_pid.description</param-name>
+            <param-value>Utopia Personal ID</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_pid.cardArt</param-name>
+            <param-value>utopia_pid/card_art.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_pid.requireUserAuthenticationToViewDocument</param-name>
+            <param-value>true</param-value>
+        </init-param>
+
+        <init-param>
+            <param-name>issuingAuthority.eldorado.name</param-name>
+            <param-value>El Dorado DMV</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.eldorado.type</param-name>
+            <param-value>DrivingLicense</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.eldorado.logo</param-name>
+            <param-value>eldorado/logo.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.eldorado.description</param-name>
+            <param-value>El Dorado Driver License</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.eldorado.cardArt</param-name>
+            <param-value>eldorado/card_art.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.eldorado.requireUserAuthenticationToViewDocument</param-name>
+            <param-value>false</param-value>
+        </init-param>
     </servlet>
 
     <servlet-mapping>
         <servlet-name>FlowServlet</servlet-name>
         <url-pattern>/</url-pattern>
     </servlet-mapping>
+
+    <context-param>
+        <param-name>foo</param-name>
+        <param-value>bar</param-value>
+    </context-param>
 </web-app>

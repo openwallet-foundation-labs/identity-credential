@@ -39,6 +39,7 @@ import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityNotification
+import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
@@ -49,6 +50,7 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mrtd.MrtdNfcData
 import com.android.identity.mrtd.MrtdNfcDataDecoder
+import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
@@ -80,32 +82,35 @@ class IssuingAuthorityState(
     val authorityId: String = ""
 ) {
     companion object {
-        const val TAG = "IssuingAuthorityState"
+        private const val TAG = "IssuingAuthorityState"
+        
+        private const val TYPE_EU_PID = "EuPid"
+        private const val TYPE_DRIVING_LICENSE = "DrivingLicense"
 
         fun getConfiguration(env: FlowEnvironment, id: String): IssuingAuthorityConfiguration {
             return env.cache(IssuingAuthorityConfiguration::class, id) { configuration, resources ->
-                val prefix = "issuing_authorities.$id"
-                val logoPath = configuration.getProperty("$prefix.logo") ?: "default/logo.png"
+                val settings = WalletServerSettings(configuration)
+                val prefix = "issuingAuthority.$id"
+                val logoPath = settings.getString("${prefix}.logo") ?: "default/logo.png"
                 val logo = resources.getRawResource(logoPath)!!
                 val artPath =
-                    configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
+                    settings.getString("${prefix}.cardArt") ?: "default/card_art.png"
                 val art = resources.getRawResource(artPath)!!
-                val requireUserAuthenticationToViewDocument =
-                    configuration.getBool(
-                        "$prefix.require_user_authentication_to_view_document",
-                        false
-                    )
-                val type = configuration.getProperty("$prefix.type") ?: "drivers_license"
+                val requireUserAuthenticationToViewDocument = settings.getBool(
+                    "${prefix}.requireUserAuthenticationToViewDocument",
+                    false
+                )
+                val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
 
                 IssuingAuthorityConfiguration(
                     identifier = id,
-                    issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Untitled",
+                    issuingAuthorityName = settings.getString("${prefix}.name") ?: "Untitled",
                     issuingAuthorityLogo = logo.toByteArray(),
-                    issuingAuthorityDescription = configuration.getProperty("$prefix.description")
+                    issuingAuthorityDescription = settings.getString("${prefix}.description")
                         ?: "Unknown",
                     pendingDocumentInformation = DocumentConfiguration(
                         displayName = "Pending",
-                        typeDisplayName = if (type == "drivers_license") "Driving License" else "EU Personal ID",
+                        typeDisplayName = if (type == TYPE_DRIVING_LICENSE) "Driving License" else "EU Personal ID",
                         cardArt = art.toByteArray(),
                         requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
                         mdocConfiguration = null,
@@ -179,6 +184,10 @@ class IssuingAuthorityState(
             updateIssuerDocument(env, documentId, issuerDocument)
         }
 
+        // This information is helpful for when using the admin web interface.
+        Logger.i(TAG, "Returning state for clientId=$clientId " +
+                "issuingAuthorityId=$authorityId documentId=$documentId")
+
         // We create and sign Credential requests immediately so numPendingCredentialRequests is
         // always 0
         return DocumentState(
@@ -195,9 +204,8 @@ class IssuingAuthorityState(
         issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
         issuerDocument.collectedEvidence.clear()
         // TODO: propagate developer mode
-        val config = env.getInterface(Configuration::class)!!
-        val developerMode = config.getBool("developerMode", false)
-        return ProofingState(documentId, authorityId, developerMode)
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        return ProofingState(documentId, authorityId, settings.developerMode)
     }
 
     @FlowJoin
@@ -289,11 +297,11 @@ class IssuingAuthorityState(
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean
     ) {
-        val config = env.getInterface(Configuration::class)!!
-        val prefix = "issuing_authorities.$authorityId"
-        val type = config.getProperty("$prefix.type") ?: "drivers_license"
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val prefix = "issuingAuthority.$authorityId"
+        val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
 
-        if (!config.getBool("developerMode", false)) {
+        if (!settings.developerMode) {
             throw IllegalStateException("Must be in developer mode for this feature to work")
         }
 
@@ -304,7 +312,7 @@ class IssuingAuthorityState(
             issuerDocument.state = DocumentCondition.CONFIGURATION_AVAILABLE
 
             // The update consists of just slapping an extra 0 at the end of `administrative_number`
-            val namespace = if (type == "eu_pid") EUPID_NAMESPACE else MDL_NAMESPACE
+            val namespace = if (type == TYPE_EU_PID) EUPID_NAMESPACE else MDL_NAMESPACE
             val newAdministrativeNumber = try {
                 issuerDocument.documentConfiguration!!.mdocConfiguration!!.staticData
                     .getDataElementString(namespace, "administrative_number")
@@ -341,14 +349,19 @@ class IssuingAuthorityState(
         documentId: String,
         administrativeNumber: String
     ) {
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val prefix = "issuingAuthority.$authorityId"
+        val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
+
         val issuerDocument = loadIssuerDocument(env, documentId)
         issuerDocument.state = DocumentCondition.CONFIGURATION_AVAILABLE
 
         val builder = NameSpacedData.Builder(
             issuerDocument.documentConfiguration!!.mdocConfiguration!!.staticData
         )
+        val namespace = if (type == TYPE_EU_PID) EUPID_NAMESPACE else MDL_NAMESPACE
         builder.putEntryString(
-            MDL_NAMESPACE,
+            namespace,
             "administrative_number",
             administrativeNumber
         )
@@ -372,9 +385,10 @@ class IssuingAuthorityState(
         authenticationKey: EcPublicKey
     ): ByteArray {
         val now = Clock.System.now()
-        val configuration = env.getInterface(Configuration::class)!!
-        val prefix = "issuing_authorities.$authorityId"
-        val type = configuration.getProperty("$prefix.type") ?: "drivers_license"
+
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val prefix = "issuingAuthority.$authorityId"
+        val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
@@ -382,7 +396,7 @@ class IssuingAuthorityState(
         val validUntil = Instant.fromEpochMilliseconds(validFrom.toEpochMilliseconds() + 365*24*3600*1000L)
 
         // Generate an MSO and issuer-signed data for this authentication key.
-        val docType = if (type == "eu_pid") EUPID_DOCTYPE else MDL_DOCTYPE
+        val docType = if (type == TYPE_EU_PID) EUPID_DOCTYPE else MDL_DOCTYPE
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             docType,
@@ -446,10 +460,10 @@ class IssuingAuthorityState(
         env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
-        val configuration = env.getInterface(Configuration::class)!!
-        val prefix = "issuing_authorities.$authorityId"
-        val type = configuration.getProperty("$prefix.type") ?: "drivers_license"
-        return if (type == "eu_pid") {
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val prefix = "issuingAuthority.$authorityId"
+        val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
+        return if (type == TYPE_EU_PID) {
             generateEuPidDocumentConfiguration(env, collectedEvidence)
         } else {
             generateMdlDocumentConfiguration(env, collectedEvidence)
@@ -463,12 +477,12 @@ class IssuingAuthorityState(
         val now = Clock.System.now()
         val issueDate = now
         val resources = env.getInterface(Resources::class)!!
-        val configuration = env.getInterface(Configuration::class)!!
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
         val expiryDate = now + 365.days * 5
 
-        val prefix = "issuing_authorities.$authorityId"
-        val artPath = configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
-        val issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Default Issuer"
+        val prefix = "issuingAuthority.$authorityId"
+        val artPath = settings.getString("${prefix}.cardArt") ?: "default/card_art.png"
+        val issuingAuthorityName = settings.getString("${prefix}.name") ?: "Default Issuer"
         val art = resources.getRawResource(artPath)!!
 
         val credType = documentTypeRepository.getDocumentTypeForMdoc(EUPID_DOCTYPE)!!
@@ -545,7 +559,7 @@ class IssuingAuthorityState(
             typeDisplayName = "EU Personal ID",
             cardArt = art.toByteArray(),
             requireUserAuthenticationToViewDocument =
-            configuration.getBool("$prefix.require_user_authentication_to_view_document"),
+                settings.getBool("${prefix}.requireUserAuthenticationToViewDocument"),
             mdocConfiguration = MdocDocumentConfiguration(
                 docType = EUPID_DOCTYPE,
                 staticData = staticData,
@@ -561,12 +575,12 @@ class IssuingAuthorityState(
         val now = Clock.System.now()
         val issueDate = now
         val resources = env.getInterface(Resources::class)!!
-        val configuration = env.getInterface(Configuration::class)!!
+        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
         val expiryDate = now + 365.days * 5
 
-        val prefix = "issuing_authorities.$authorityId"
-        val artPath = configuration.getProperty("$prefix.card_art") ?: "default/card_art.png"
-        val issuingAuthorityName = configuration.getProperty("$prefix.name") ?: "Default Issuer"
+        val prefix = "issuingAuthority.$authorityId"
+        val artPath = settings.getString("${prefix}.cardArt") ?: "default/card_art.png"
+        val issuingAuthorityName = settings.getString("${prefix}.name") ?: "Default Issuer"
         val art = resources.getRawResource(artPath)!!
 
         val credType = documentTypeRepository.getDocumentTypeForMdoc(MDL_DOCTYPE)!!
@@ -651,7 +665,7 @@ class IssuingAuthorityState(
             typeDisplayName = "Driving License",
             cardArt = art.toByteArray(),
             requireUserAuthenticationToViewDocument =
-            configuration.getBool("$prefix.require_user_authentication_to_view_document"),
+                settings.getBool("${prefix}.requireUserAuthenticationToViewDocument"),
             mdocConfiguration = MdocDocumentConfiguration(
                 docType = MDL_DOCTYPE,
                 staticData = staticData,
