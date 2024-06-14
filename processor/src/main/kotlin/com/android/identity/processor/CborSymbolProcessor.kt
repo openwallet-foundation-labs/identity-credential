@@ -432,6 +432,11 @@ class CborSymbolProcessor(
                 classDeclaration.getAllProperties().forEach { property ->
                     val name = property.simpleName.asString()
                     val type = property.type.resolve()
+                    // We want exceptions to be serializable (if marked with @CborSerializable),
+                    // but we want to skip cause
+                    if (name == "cause" && type.declaration.qualifiedName?.asString() == "kotlin.Throwable") {
+                        return@forEach
+                    }
                     val (source, condition) = if (type.isMarkedNullable) {
                         val valueVar = varName(name)
                         line("val $valueVar = this.$name")
@@ -469,10 +474,15 @@ class CborSymbolProcessor(
             block("fun $deserializer($dataItem: DataItem): $baseName") {
                 val constructorParameters = mutableListOf<String>()
                 classDeclaration.getAllProperties().forEach { property ->
+                    val type = property.type.resolve()
                     val fieldName = property.simpleName.asString()
+                    // We want exceptions to be serializable (if marked with @CborSerializable),
+                    // but we want to skip cause
+                    if (fieldName == "cause" && type.declaration.qualifiedName?.asString() == "kotlin.Throwable") {
+                        return@forEach
+                    }
                     val name = varName(fieldName)
                     constructorParameters.add(name)
-                    val type = property.type.resolve()
                     if (findAnnotation(property, ANNOTATION_MERGE) != null) {
                         if (type.declaration.qualifiedName!!.asString() == "kotlin.collections.Map") {
                             line("val $name = mutableMapOf<${typeArguments(this, type)}>()")

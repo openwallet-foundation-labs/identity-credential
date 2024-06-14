@@ -2,7 +2,7 @@ package com.android.identity.remote
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.android.identity.flow.environment.Storage
+import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.remote.StorageImpl
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString

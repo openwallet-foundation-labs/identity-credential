@@ -1,7 +1,6 @@
 package com.android.identity.issuance
 
-import com.android.identity.flow.FlowBaseInterface
-import com.android.identity.flow.annotation.FlowGetter
+import com.android.identity.flow.client.FlowBase
 import com.android.identity.flow.annotation.FlowInterface
 import com.android.identity.flow.annotation.FlowMethod
 
@@ -9,7 +8,7 @@ import com.android.identity.flow.annotation.FlowMethod
  * A flow used to create a new document.
  */
 @FlowInterface
-interface RegistrationFlow : FlowBaseInterface {
+interface RegistrationFlow : FlowBase {
 
     /**
      * Gets the configuration for registering a document with the issuer.

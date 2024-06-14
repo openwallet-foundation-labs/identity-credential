@@ -1,16 +1,24 @@
 package com.android.identity.flow
 
+import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.annotation.CborSerializable
-import com.android.identity.flow.annotation.FlowGetter
+import com.android.identity.flow.annotation.FlowException
 import com.android.identity.flow.annotation.FlowInterface
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.environment.FlowEnvironment
-import com.android.identity.flow.handler.FlowHandlerLocal
-import com.android.identity.flow.handler.FlowHandlerRemote
+import com.android.identity.flow.client.FlowBase
+import com.android.identity.flow.handler.AesGcmCipher
+import com.android.identity.flow.handler.FlowDispatcherHttp
+import com.android.identity.flow.handler.FlowDispatcherLocal
+import com.android.identity.flow.handler.FlowExceptionMap
+import com.android.identity.flow.handler.FlowNotifier
+import com.android.identity.flow.handler.FlowNotifierPoll
+import com.android.identity.flow.handler.FlowPoll
+import com.android.identity.flow.handler.FlowPollHttp
+import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.handler.HttpHandler
 import kotlinx.coroutines.runBlocking
-import kotlinx.io.bytestring.ByteString
 import org.junit.Assert
 import org.junit.Test
 import kotlin.math.sqrt
@@ -33,11 +41,11 @@ data class QuadraticSolution(val x1: Double? = null, val x2: Double? = null)
 // only known to the server).
 
 @FlowInterface
-interface QuadraticSolverFlow: FlowBaseInterface {
+interface QuadraticSolverFlow: FlowBase {
 
     // A getter can only return information that does not change for a given server. Getters
     // correspond to HTTP GET requests. Getters cannot have parameters.
-    @FlowGetter
+    @FlowMethod
     suspend fun getName(): String
 
     // A method is a general-purpose operation. It corresponds to HTTP POST request. Methods
@@ -48,12 +56,12 @@ interface QuadraticSolverFlow: FlowBaseInterface {
 }
 
 @FlowInterface
-interface SolverFactoryFlow: FlowBaseInterface {
+interface SolverFactoryFlow: FlowBase {
 
     // A flow can spawn sub-flows. This is indicated by returning a flow as method's result.
     // When a sub-flow FlowBaseInterface::complete is called, the parent flow is notified.
     @FlowMethod
-    suspend fun createQuadraticSolver(): QuadraticSolverFlow
+    suspend fun createQuadraticSolver(name: String): QuadraticSolverFlow
 
     // Note that this is a method, not a getter. Getters cannot access state and must return
     // the same result if invoked multiple times (which is regular HTTP GET semantics).
@@ -76,8 +84,17 @@ interface SolverFactoryFlow: FlowBaseInterface {
 // FlowEnvironment is a way to access interfaces exposed by the server engine. If a method only
 // needs flow state and parameters to do its job (a common case), this parameter will go unused.
 // In the future we may make it optional.
-//
-// Each state must be trivially constructable and have defaults for all its fields.
+
+// Abstract base state classes do not need to be serializable, but still have to be marked with
+// FlowState annotation.
+@FlowState(
+    flowInterface = QuadraticSolverFlow::class
+)
+abstract class AbstractSolverState {
+    abstract fun finalCount(): Int
+
+    companion object
+}
 
 @CborSerializable
 @FlowState(
@@ -86,18 +103,18 @@ interface SolverFactoryFlow: FlowBaseInterface {
 )
 data class DirectQuadraticSolverState(
     var count: Int = 0
-) {
-    companion object {
-        // Getters cannot access the state, thus they must be implemented as companion methods.
-        @FlowGetter
-        fun getName(env: FlowEnvironment): String {
-            return "Direct"
-        }
+) : AbstractSolverState() {
+    companion object
+
+    @FlowMethod
+    fun getName(env: FlowEnvironment): String {
+        return "Direct"
     }
 
     @FlowMethod
     fun solve(env: FlowEnvironment, equation: QuadraticEquation): QuadraticSolution {
         val det = equation.b * equation.b - 4 * equation.a * equation.c
+        count++
         val result = if (det > 0) {
             val d = sqrt(det)
             QuadraticSolution(
@@ -107,20 +124,61 @@ data class DirectQuadraticSolverState(
         } else if (det == 0.0) {
             QuadraticSolution(-equation.b/(2*equation.a))
         } else {
-            QuadraticSolution()
+            throw NoSolutionsException("No solutions")
         }
-        count++
         return result
     }
 
     @FlowMethod
     fun getCount(env: FlowEnvironment): Int = count
+
+    override fun finalCount(): Int = count
 }
 
 @CborSerializable
 @FlowState(
     flowInterface = QuadraticSolverFlow::class,
-    path = "factory"
+    path = "mock"
+)
+class MockQuadraticSolverState : AbstractSolverState() {
+    companion object
+
+    @FlowMethod
+    fun getName(env: FlowEnvironment): String {
+        return "Mock"
+    }
+
+    @FlowMethod
+    fun solve(env: FlowEnvironment, equation: QuadraticEquation): QuadraticSolution {
+        if (equation.a == 1.0 && equation.b == -6.0 && equation.c == 9.0) {
+            return QuadraticSolution(3.0)
+        } else if (equation.a == 1.0 && equation.b == 0.0 && equation.c == 1.0) {
+            throw NoSolutionsException("No solutions")
+        }
+        throw IllegalStateException()
+    }
+
+    @FlowMethod
+    fun getCount(env: FlowEnvironment): Int = 2
+
+    override fun finalCount(): Int = 2
+}
+
+@CborSerializable
+@FlowException
+sealed class SolverException(message: String? = null) : Exception(message) {
+    companion object
+}
+
+// No need for annotations or registration for subclasses of sealed class.
+class NoSolutionsException(message: String? = null) : SolverException(message)
+class UnknownSolverException(message: String? = null) : SolverException(message)
+
+@CborSerializable
+@FlowState(
+    flowInterface = QuadraticSolverFlow::class,
+    path = "factory",
+    creatable = true
 )
 data class SolverFactoryState(
     var totalCount: Int = 0
@@ -129,15 +187,19 @@ data class SolverFactoryState(
 
     // Returning a flow on client is done merely by returning the flow state on the server.
     @FlowMethod
-    fun createQuadraticSolver(env: FlowEnvironment): DirectQuadraticSolverState {
-        return DirectQuadraticSolverState()
+    fun createQuadraticSolver(env: FlowEnvironment, name: String): AbstractSolverState {
+        return when (name) {
+            "Direct" -> DirectQuadraticSolverState()
+            "Mock" -> MockQuadraticSolverState()
+            else -> throw UnknownSolverException("No such solver")
+        }
     }
 
     // When the sub-flow of a given type is completed using FlowBaseInterface::complete call,
     // a join method is called for the corresponding flow type.
     @FlowJoin
-    fun completeQuadraticSolver(env: FlowEnvironment, solver: DirectQuadraticSolverState) {
-        totalCount += solver.count
+    fun completeQuadraticSolver(env: FlowEnvironment, solver: AbstractSolverState) {
+        totalCount += solver.finalCount()
     }
 
     @FlowMethod
@@ -146,59 +208,109 @@ data class SolverFactoryState(
 
 // FlowHandlerLocal handles flow calls that executed locally. It is for use on the server,
 // for running code in the app for development, and for testing.
-fun buildLocalHandler(): FlowHandlerLocal {
-    val builder = FlowHandlerLocal.Builder()
+fun buildLocalDispatcher(exceptionMap: FlowExceptionMap): FlowDispatcherLocal {
+    val builder = FlowDispatcherLocal.Builder()
     DirectQuadraticSolverState.register(builder)
+    MockQuadraticSolverState.register(builder)
     SolverFactoryState.register(builder)
-    return builder.build(Random.Default.nextBytes(16))
+    return builder.build(
+        FlowEnvironment.EMPTY,
+        AesGcmCipher(Random.Default.nextBytes(16)),
+        exceptionMap
+    )
+}
+
+fun buildExceptionMap(): FlowExceptionMap {
+    val builder = FlowExceptionMap.Builder()
+    SolverException.register(builder)
+    return builder.build()
 }
 
 class FlowProcessorTest {
-    val localHandler = buildLocalHandler()
+    private val exceptionMap = buildExceptionMap()
+    private val localDispatcher = buildLocalDispatcher(exceptionMap)
 
     @Test
-    fun local() {
-        testFlow(SolverFactoryFlowImpl(localHandler, "factory"))
+    fun localDirect() {
+        testFlow("Direct", localFactory())
     }
 
     @Test
-    fun remote() {
+    fun localMock() {
+        testFlow("Mock", localFactory())
+    }
+
+    @Test
+    fun localUnexpectedNameException() {
+        runBlocking {
+            try {
+                localFactory().createQuadraticSolver("Foo")
+                Assert.fail()
+            } catch (e: UnknownSolverException) {
+                // expected
+            }
+        }
+    }
+
+    @Test
+    fun remoteDirect() {
+        testFlow("Direct", remoteFactory())
+    }
+
+    @Test
+    fun remoteMock() {
+        testFlow("Mock", remoteFactory())
+    }
+
+    @Test
+    fun remoteUnexpectedNameException() {
+        runBlocking {
+            try {
+                remoteFactory().createQuadraticSolver("Foo")
+                Assert.fail()
+            } catch (e: UnknownSolverException) {
+                // expected
+            }
+        }
+    }
+
+    fun localFactory(): SolverFactoryFlow {
+        return SolverFactoryFlowImpl(
+            "factory",
+            Bstr(byteArrayOf()),
+            localDispatcher,
+            FlowNotifier.SILENT
+        )
+    }
+
+    fun remoteFactory(): SolverFactoryFlow {
         // Remote handler executes flow calls by marshalling them to another handler, typically
         // through HTTP. We can, however short-circuit them to just go to our local handler
         // for testing.
-        val remoteHandler = FlowHandlerRemote(object : FlowHandlerRemote.HttpClient {
-            override suspend fun get(url: String): FlowHandlerRemote.HttpResponse {
-                val (flow, method) = url.split("/")
-                return FlowHandlerRemote.HttpResponse(
-                    200,
-                    "OK",
-                    localHandler.handleGet(flow, method)
-                )
-            }
-
-            override suspend fun post(url: String, data: ByteString): FlowHandlerRemote.HttpResponse {
-                val (flow, method) = url.split("/")
-                return FlowHandlerRemote.HttpResponse(
-                    200,
-                    "OK",
-                    localHandler.handlePost(flow, method, data)
-                )
-            }
-        })
-        testFlow(SolverFactoryFlowImpl(remoteHandler, "factory"))
+        val http = HttpHandler(localDispatcher, FlowPoll.SILENT)
+        val remoteHandler = FlowDispatcherHttp(http, exceptionMap)
+        val remoteNotifier = FlowNotifierPoll(FlowPollHttp(http))
+        return SolverFactoryFlowImpl(
+            "factory",
+            Bstr(byteArrayOf()),
+            remoteHandler,
+            remoteNotifier)
     }
 
-    fun testFlow(factory: SolverFactoryFlow) {
+    fun testFlow(name: String, factory: SolverFactoryFlow) {
         runBlocking {
-            val solver = factory.createQuadraticSolver()
-            Assert.assertEquals("Direct", solver.getName())
+            val solver = factory.createQuadraticSolver(name)
+            Assert.assertEquals(name, solver.getName())
             val solution1 = solver.solve(QuadraticEquation(a = 1.0, b = -6.0, c = 9.0))
             Assert.assertNotNull(solution1.x1)
             Assert.assertEquals(3.0, solution1.x1!!, 1e-10)
             Assert.assertNull(solution1.x2)
-            val solution2 = solver.solve(QuadraticEquation(a = 4.0, b = 4.0, c = 1.1))
-            Assert.assertNull(solution2.x1)
-            Assert.assertNull(solution2.x2)
+            try {
+                solver.solve(QuadraticEquation(a = 1.0, b = 0.0, c = 1.0))
+                Assert.fail()
+            } catch (err: NoSolutionsException) {
+                // expect to happen
+            }
             Assert.assertEquals(0, factory.getCount())
             solver.complete()
             Assert.assertEquals(2, factory.getCount())

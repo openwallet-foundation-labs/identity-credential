@@ -25,11 +25,10 @@ import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.environment.Configuration
-import com.android.identity.flow.environment.Resources
-import com.android.identity.flow.environment.Storage
-import com.android.identity.flow.environment.FlowEnvironment
-import com.android.identity.flow.environment.Notifications
+import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.Resources
+import com.android.identity.flow.server.Storage
+import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.CredentialData
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentCondition
@@ -39,13 +38,12 @@ import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
-import com.android.identity.issuance.WalletNotificationPayload
+import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.proofing.defaultCredentialConfiguration
-import com.android.identity.issuance.toCbor
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -314,7 +312,6 @@ class IssuingAuthorityState(
                 ""
             } + "0"
 
-
             val builder = NameSpacedData.Builder(
                 issuerDocument.documentConfiguration!!.mdocConfiguration!!.staticData
             )
@@ -339,6 +336,35 @@ class IssuingAuthorityState(
         }
     }
 
+    suspend fun administrativeActionUpdateAdministrativeNumber(
+        env: FlowEnvironment,
+        documentId: String,
+        administrativeNumber: String
+    ) {
+        val issuerDocument = loadIssuerDocument(env, documentId)
+        issuerDocument.state = DocumentCondition.CONFIGURATION_AVAILABLE
+
+        val builder = NameSpacedData.Builder(
+            issuerDocument.documentConfiguration!!.mdocConfiguration!!.staticData
+        )
+        builder.putEntryString(
+            MDL_NAMESPACE,
+            "administrative_number",
+            administrativeNumber
+        )
+        issuerDocument.documentConfiguration = DocumentConfiguration(
+            issuerDocument.documentConfiguration!!.displayName,
+            issuerDocument.documentConfiguration!!.typeDisplayName,
+            issuerDocument.documentConfiguration!!.cardArt,
+            issuerDocument.documentConfiguration!!.requireUserAuthenticationToViewDocument,
+            MdocDocumentConfiguration(
+                issuerDocument.documentConfiguration!!.mdocConfiguration!!.docType,
+                builder.build()
+            ),
+            issuerDocument.documentConfiguration!!.sdJwtVcDocumentConfiguration,
+        )
+        updateIssuerDocument(env, documentId, issuerDocument, true)
+    }
 
     private fun createPresentationData(
         env: FlowEnvironment,
@@ -732,8 +758,7 @@ class IssuingAuthorityState(
         val storage = env.getInterface(Storage::class)!!
         storage.delete("IssuerDocument", clientId, documentId)
         if (emitNotification) {
-            val notifications = env.getInterface(Notifications::class)!!
-            notifications.emit(clientId, WalletNotificationPayload(authorityId, documentId).toCbor())
+            emit(env, IssuingAuthorityNotification(documentId))
         }
     }
 
@@ -750,8 +775,7 @@ class IssuingAuthorityState(
         val bytes = Cbor.encode(document.toDataItem)
         storage.update("IssuerDocument", clientId, documentId, ByteString(bytes))
         if (emitNotification) {
-            val notifications = env.getInterface(Notifications::class)!!
-            notifications.emit(clientId, WalletNotificationPayload(authorityId, documentId).toCbor())
+            emit(env, IssuingAuthorityNotification(documentId))
         }
     }
 }

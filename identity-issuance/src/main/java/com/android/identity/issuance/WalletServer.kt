@@ -1,11 +1,11 @@
 package com.android.identity.issuance
 
-import com.android.identity.flow.FlowBaseInterface
+import com.android.identity.flow.client.FlowBase
 import com.android.identity.flow.annotation.FlowInterface
 import com.android.identity.flow.annotation.FlowMethod
 
 @FlowInterface
-interface WalletServer: FlowBaseInterface {
+interface WalletServer: FlowBase {
     /**
      * No need to call on client-side if using a [WalletServer] obtained from a
      * [WalletServerProvider].
@@ -21,6 +21,13 @@ interface WalletServer: FlowBaseInterface {
     @FlowMethod
     suspend fun getIssuingAuthorityConfigurations(): List<IssuingAuthorityConfiguration>
 
+    /**
+     * Obtains interface to a particular Issuing Authority.
+     *
+     * Do not call this method directly. WalletServerProvider maintains a cache of the issuing
+     * authority instances, to avoid creating unneeded instances (that can interfere with
+     * notifications), go through WalletServerProvider.
+     */
     @FlowMethod
     suspend fun getIssuingAuthority(identifier: String): IssuingAuthority
 

@@ -1,8 +1,8 @@
 package com.android.identity.issuance.hardcoded
 
-import com.android.identity.flow.environment.Configuration
-import com.android.identity.flow.environment.FlowEnvironment
-import com.android.identity.flow.environment.Resources
+import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.server.Resources
 import java.util.WeakHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
