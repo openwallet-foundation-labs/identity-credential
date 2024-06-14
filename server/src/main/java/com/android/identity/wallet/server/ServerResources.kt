@@ -1,6 +1,6 @@
 package com.android.identity.wallet.server
 
-import com.android.identity.flow.environment.Resources
+import com.android.identity.flow.server.Resources
 import kotlinx.io.bytestring.ByteString
 import java.io.File
 

@@ -1,4 +1,4 @@
-package com.android.identity.flow.environment
+package com.android.identity.flow.server
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray

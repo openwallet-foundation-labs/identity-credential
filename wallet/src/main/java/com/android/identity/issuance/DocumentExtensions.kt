@@ -73,8 +73,7 @@ object DocumentExtensions {
      * @param walletServerProvider the wallet server provider.
      */
     suspend fun Document.refreshState(walletServerProvider: WalletServerProvider) {
-        val walletServer = walletServerProvider.getWalletServer()
-        val issuer = walletServer.getIssuingAuthority(issuingAuthorityIdentifier)
+        val issuer = walletServerProvider.getIssuingAuthority(issuingAuthorityIdentifier)
         this.state = issuer.getState(documentIdentifier)
     }
 }

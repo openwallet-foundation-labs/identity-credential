@@ -1,7 +1,7 @@
 package com.android.identity.wallet.server
 import kotlinx.serialization.json.Json
 
-import com.android.identity.flow.environment.Configuration
+import com.android.identity.flow.server.Configuration
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject

@@ -141,11 +141,14 @@ class CodeBuilder(
         if (!hasBlockBefore) {
             startLine()
         }
-        append(before)
+        if (before.isNotEmpty()) {
+            append(before)
+            append(" ")
+        }
         if (lambdaParameters.isEmpty()) {
-            append(" {")
+            append("{")
         } else {
-            append(" { $lambdaParameters ->")
+            append("{ $lambdaParameters ->")
         }
         endLine()
         withIndent(lambda)

@@ -19,6 +19,7 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.RegistrationResponse
+import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.fromDataItem
 import com.android.identity.issuance.toDataItem
 import com.android.identity.storage.StorageEngine
@@ -26,6 +27,9 @@ import com.android.identity.util.Logger
 import com.android.identity.mrtd.MrtdAccessData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -48,6 +52,11 @@ abstract class SimpleIssuingAuthority(
     companion object {
         private const val TAG = "SimpleIssuingAuthority"
     }
+
+    private val internalNotifications = MutableSharedFlow<IssuingAuthorityNotification>()
+
+    override val notifications: SharedFlow<IssuingAuthorityNotification>
+        get() = internalNotifications.asSharedFlow()
 
     // This can be changed to simulate proofing and requesting CPOs being slow.
     protected var delayForProofingAndIssuance: Duration = 1.seconds

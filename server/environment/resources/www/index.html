@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>Wallet Server</title>
+    </head>
+    <body>
+        <h1>Wallet server</h1>
+        <h2>Update a document</h2>
+        <form method="post" action="admin/updateDocument" style="display: inline-block; text-align: right">
+            <label>
+                Client Id:
+                <input type="text" name="clientId"/>
+            </label>
+            <br/>
+            <label>
+                Issuing Authority Id:
+                <input type="text" name="issuingAuthorityId"/>
+            </label>
+            <br/>
+            <label>
+                Document Id:
+                <input type="text" name="documentId"/>
+            </label>
+            <br/>
+            <label>
+                New administrative number:
+                <input type="text" name="administrativeNumber"/>
+            </label>
+            <br/>
+            <input type="submit" value="Update">
+        </form>
+    </body>
+</html>

@@ -23,4 +23,9 @@ annotation class FlowState(
      * flowInterface is not given).
      */
     val flowImplementationName: String = "",
+    /**
+     * By default, flows must be created by other flows. Set this to true to allow client to
+     * create this flow directly.
+     */
+    val creatable: Boolean = false
 )

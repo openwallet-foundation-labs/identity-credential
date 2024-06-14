@@ -1,4 +1,4 @@
-package com.android.identity.flow.environment
+package com.android.identity.flow.server
 
 import kotlinx.io.bytestring.ByteString
 

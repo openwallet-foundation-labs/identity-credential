@@ -1,6 +1,6 @@
 package com.android.identity.wallet.server
 
-import com.android.identity.flow.environment.Storage
+import com.android.identity.flow.server.Storage
 import kotlinx.io.bytestring.ByteString
 import java.sql.Connection
 import java.sql.DriverManager

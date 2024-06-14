@@ -1,4 +1,4 @@
-package com.android.identity.flow
+package com.android.identity.flow.client
 
 import com.android.identity.cbor.DataItem
 
@@ -7,7 +7,7 @@ import com.android.identity.cbor.DataItem
  * this interface and should be marked with
  * [com.android.identity.flow.annotation.FlowInterface] annotation
  */
-interface FlowBaseInterface {
+interface FlowBase {
     /** Opaque flow data accessor. Only needed in generated code, do not use. */
     val flowState: DataItem
 

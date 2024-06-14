@@ -1,17 +1,22 @@
 package com.android.identity.issuance.remote
 
 import android.content.Context
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.Algorithm
-import com.android.identity.flow.handler.FlowHandler
-import com.android.identity.flow.handler.FlowHandlerLocal
-import com.android.identity.flow.handler.FlowHandlerRemote
+import com.android.identity.flow.handler.FlowDispatcher
+import com.android.identity.flow.handler.FlowDispatcherHttp
+import com.android.identity.flow.handler.FlowDispatcherLocal
+import com.android.identity.flow.handler.FlowExceptionMap
+import com.android.identity.flow.handler.FlowNotificationsLocal
+import com.android.identity.flow.handler.FlowNotifier
+import com.android.identity.flow.handler.FlowNotifierPoll
+import com.android.identity.flow.handler.FlowPollHttp
+import com.android.identity.flow.handler.SimpleCipher
 import com.android.identity.issuance.ClientAuthentication
 import com.android.identity.issuance.ClientChallenge
+import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.WalletApplicationCapabilities
-import com.android.identity.issuance.WalletNotificationPayload
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerImpl
 import com.android.identity.issuance.WalletServerCapabilities
@@ -29,10 +34,6 @@ import com.android.identity_credential.wallet.SettingsModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -40,7 +41,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.asn1.ASN1OctetString
-import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -53,8 +53,9 @@ class WalletServerProvider(
     private val storageEngine: StorageEngine,
     private val getWalletApplicationCapabilities: suspend () -> WalletApplicationCapabilities
 ) {
-    private var instance: WalletServer? = null
     private val instanceLock = Mutex()
+    private var instance: WalletServer? = null
+    private val issuingAuthorityMap = mutableMapOf<String, IssuingAuthority>()
 
     private var _walletServerCapabilities: WalletServerCapabilities? = null
 
@@ -81,7 +82,7 @@ class WalletServerProvider(
         private const val RECONNECT_DELAY_INITIAL_SECONDS = 1
         private const val RECONNECT_DELAY_MAX_SECONDS = 30
 
-        private val noopCipher = object : FlowHandlerLocal.SimpleCipher {
+        private val noopCipher = object : SimpleCipher {
             override fun encrypt(plaintext: ByteArray): ByteArray {
                 return plaintext
             }
@@ -110,18 +111,6 @@ class WalletServerProvider(
         }
     }
 
-    private fun createFlowHandler(): FlowHandler {
-        return if (baseUrl == "dev:") {
-            val flowHandlerLocal = FlowHandlerLocal.Builder()
-            WalletServerState.registerAll(flowHandlerLocal)
-            WrapperFlowHandler(flowHandlerLocal.build(noopCipher,
-                LocalDevelopmentEnvironment(context, this)))
-        } else {
-            val httpClient = WalletHttpClient(baseUrl)
-            FlowHandlerRemote(httpClient)
-        }
-    }
-
     /**
      * Connects to the remote wallet server.
      *
@@ -134,7 +123,7 @@ class WalletServerProvider(
      * call succeeds, the resulting instance is cached and returned immediately in future calls.
      *
      * @return A [WalletServer] which can be used to interact with the remote wallet server.
-     * @throws FlowHandlerRemote.ConnectionException if unable to connect.
+     * @throws HttpTransport.ConnectionException if unable to connect.
      */
     suspend fun getWalletServer(): WalletServer {
         instanceLock.withLock {
@@ -148,10 +137,51 @@ class WalletServerProvider(
         }
     }
 
+    suspend fun getIssuingAuthority(issuingAuthorityId: String): IssuingAuthority {
+        val instance = getWalletServer()
+        instanceLock.withLock {
+            var issuingAuthority = issuingAuthorityMap[issuingAuthorityId]
+            if (issuingAuthority == null) {
+                issuingAuthority = instance.getIssuingAuthority(issuingAuthorityId)
+                issuingAuthorityMap[issuingAuthorityId] = issuingAuthority
+            }
+            return issuingAuthority
+        }
+    }
+
     private suspend fun getWalletServerUnlocked(): WalletServer {
+        val dispatcher: FlowDispatcher
+        val notifier: FlowNotifier
+        val exceptionMap = FlowExceptionMap.Builder().build()
+        if (baseUrl == "dev:") {
+            val builder = FlowDispatcherLocal.Builder()
+            WalletServerState.registerAll(builder)
+            notifier = FlowNotificationsLocal(noopCipher)
+            val environment = LocalDevelopmentEnvironment(context, notifier)
+            dispatcher = WrapperFlowDispatcher(builder.build(
+                environment,
+                noopCipher,
+                exceptionMap
+            ))
+        } else {
+            val httpClient = WalletHttpTransport(baseUrl)
+            val poll = FlowPollHttp(httpClient)
+            notifier = FlowNotifierPoll(poll)
+            CoroutineScope(Dispatchers.IO).launch {
+                notifier.loop()
+            }
+            dispatcher = FlowDispatcherHttp(httpClient, exceptionMap)
+        }
+
         // "root" is the entry point for the server, see FlowState annotation on
         // com.android.identity.issuance.hardcoded.WalletServerState
-        val walletServer = WalletServerImpl(createFlowHandler(), "root")
+        val walletServer = WalletServerImpl(
+            flowPath = "root",
+            flowState = Bstr(byteArrayOf()),
+            flowDispatcher = dispatcher,
+            flowNotifier = notifier
+        )
+
         val alias = "ClientKey:$baseUrl"
         var keyInfo: KeyInfo? = null
         var challenge: ClientChallenge? = null
@@ -184,6 +214,7 @@ class WalletServerProvider(
         authentication.complete()
         storageEngine.put("WalletServerCapabilities", _walletServerCapabilities!!.toCbor())
 
+        /*
         if (walletServerCapabilities.waitForNotificationSupported) {
             // Listen for notifications in a separate coroutine and do bounded exponential backoff
             // when trying to reconnect and the server isn't reachable.
@@ -200,7 +231,7 @@ class WalletServerProvider(
                         CoroutineScope(Dispatchers.IO).launch {
                             _eventFlow.emit(Pair(data.issuingAuthorityId, data.documentId))
                         }
-                    } catch (e: FlowHandlerRemote.ConnectionRefusedException) {
+                    } catch (e: FlowTransportRemote.ConnectionRefusedException) {
                         Logger.w(TAG, "Error connecting to the wallet server for notifications", e)
                         delay(currentReconnectDelay)
                         Logger.w(TAG, "Waited $currentReconnectDelay, reconnecting")
@@ -208,10 +239,10 @@ class WalletServerProvider(
                         if (currentReconnectDelay > RECONNECT_DELAY_MAX_SECONDS.seconds) {
                             currentReconnectDelay = RECONNECT_DELAY_MAX_SECONDS.seconds
                         }
-                    } catch (e: FlowHandlerRemote.TimeoutException) {
+                    } catch (e: FlowTransportRemote.TimeoutException) {
                         Logger.d(TAG, "Timeout while waiting for notification", e)
                         delay(5.seconds)
-                    } catch (e: FlowHandlerRemote.RemoteException) {
+                    } catch (e: FlowTransportRemote.RemoteException) {
                         // Note: This is the expected path b/c the server's timeout is
                         // set to 3 minutes (see WalletServerState.waitForNotification())
                         // and the client timeout is 5 minutes (see WalletHttpClient)
@@ -225,49 +256,29 @@ class WalletServerProvider(
             }
         }
 
+         */
+
         return walletServer
     }
-
-    /**
-     * A [SharedFlow] which can be used to listen for when a document has changed state
-     * on the issuer side.
-     *
-     * The first parameter in the pair is `issuingAuthorityIdentifier`, the second parameter
-     * is `documentIdentifier`.
-     */
-    val eventFlow : SharedFlow<Pair<String, String>>
-        get() = _eventFlow.asSharedFlow()
-
-    internal val _eventFlow = MutableSharedFlow<Pair<String, String>>()
 
     /**
      * Flow handler that delegates to a base, ensuring that the work is done in IO dispatchers
      * and logging the calls.
      */
-    internal class WrapperFlowHandler(private val base: FlowHandler): FlowHandler {
+    internal class WrapperFlowDispatcher(private val base: FlowDispatcher): FlowDispatcher {
         companion object {
             const val TAG = "FlowRpc"
         }
 
-        override suspend fun get(flow: String, method: String): DataItem {
-            Logger.i(TAG, "GET [${Thread.currentThread().name}] $flow/$method")
-            val start = System.nanoTime()
-            try {
-                return withContext(Dispatchers.IO) {
-                    base.get(flow, method)
-                }
-            } finally {
-                val duration = System.nanoTime() - start
-                Logger.i(TAG, "${durationText(duration)}[${Thread.currentThread().name}] $flow/$method")
-            }
-        }
+        override val exceptionMap: FlowExceptionMap
+            get() = base.exceptionMap
 
-        override suspend fun post(flow: String, method: String, args: List<DataItem>): List<DataItem> {
+        override suspend fun dispatch(flow: String, method: String, args: List<DataItem>): List<DataItem> {
             Logger.i(TAG, "POST [${Thread.currentThread().name}] $flow/$method")
             val start = System.nanoTime()
             try {
                 return withContext(Dispatchers.IO) {
-                    base.post(flow, method, args)
+                    base.dispatch(flow, method, args)
                 }
             } finally {
                 val duration = System.nanoTime() - start

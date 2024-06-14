@@ -1,6 +1,6 @@
 package com.android.identity.issuance
 
-import com.android.identity.flow.FlowBaseInterface
+import com.android.identity.flow.client.FlowBase
 import com.android.identity.flow.annotation.FlowInterface
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.issuance.evidence.EvidenceRequest
@@ -10,7 +10,7 @@ import com.android.identity.issuance.evidence.EvidenceResponse
  * A flow used for identifying and proofing an application.
  */
 @FlowInterface
-interface ProofingFlow : FlowBaseInterface {
+interface ProofingFlow : FlowBase {
 
     /**
      * Called to get a set of evidence requests from the issuer.
