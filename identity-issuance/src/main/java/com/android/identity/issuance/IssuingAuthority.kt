@@ -1,9 +1,8 @@
 package com.android.identity.issuance
 
-import com.android.identity.flow.FlowBaseInterface
 import com.android.identity.flow.annotation.FlowInterface
 import com.android.identity.flow.annotation.FlowMethod
-import org.intellij.lang.annotations.Flow
+import com.android.identity.flow.client.FlowNotifiable
 
 /**
  * An interface representing an Issuing Authority.
@@ -16,7 +15,7 @@ import org.intellij.lang.annotations.Flow
  * multiple credentials associated with it.
  */
 @FlowInterface
-interface IssuingAuthority : FlowBaseInterface {
+interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
     /**
      * Calls the issuer to start creating a document.
      *

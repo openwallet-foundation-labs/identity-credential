@@ -27,6 +27,7 @@ import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -46,6 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -121,8 +123,7 @@ class DocumentModel(
             Logger.w(TAG, "No document with id ${documentInfo.documentId}")
             return
         }
-        val walletServer = walletServerProvider.getWalletServer()
-        val issuer = walletServer.getIssuingAuthority(document.issuingAuthorityIdentifier)
+        val issuer = walletServerProvider.getIssuingAuthority(document.issuingAuthorityIdentifier)
         issuer.developerModeRequestUpdate(
             document.documentIdentifier,
             requestRemoteDeletion,
@@ -391,6 +392,13 @@ class DocumentModel(
         val batchDuration = 1.seconds
         val batchedUpdateFlow = MutableSharedFlow<String>()
         CoroutineScope(Dispatchers.IO).launch {
+            val issuingAuthorityIdSet = documentStore.listDocuments().mapNotNull { documentId ->
+                documentStore.lookupDocument(documentId)?.issuingAuthorityIdentifier
+            }.toMutableSet()
+            for (issuingAuthorityId in issuingAuthorityIdSet) {
+                startListeningForNotifications(issuingAuthorityId)
+            }
+
             // This ensure we process both flows sequentially, that is, that calls modifying our
             // model (addDocument, removeDocument, updateDocument) doesn't happen at
             // the same time...
@@ -402,6 +410,10 @@ class DocumentModel(
                         when (eventType) {
                             DocumentStore.EventType.DOCUMENT_ADDED -> {
                                 addDocument(document)
+                                if (!issuingAuthorityIdSet.contains(document.issuingAuthorityIdentifier)) {
+                                    issuingAuthorityIdSet.add(document.issuingAuthorityIdentifier)
+                                    startListeningForNotifications(document.issuingAuthorityIdentifier)
+                                }
                                 updateCredman()
                             }
 
@@ -434,39 +446,6 @@ class DocumentModel(
             }
         }
 
-        // This processes events from `walletServerProvider` which is a stream of events
-        // for when an issuer notifies that one of their documents has an update.
-        //
-        // For every event, we  initiate a sequence of calls into the issuer to get the latest.
-        //
-        CoroutineScope(Dispatchers.IO).launch {
-            walletServerProvider.eventFlow.collect { (issuingAuthorityId, documentId) ->
-                // Find the local [Document] instance, if any
-                for (id in documentStore.listDocuments()) {
-                    val document = documentStore.lookupDocument(id)
-                    if (document?.issuingAuthorityIdentifier == issuingAuthorityId &&
-                        document.documentIdentifier == documentId
-                    ) {
-                        Logger.i(TAG, "Handling issuer update on $documentId")
-                        try {
-                            syncDocumentWithIssuer(document)
-                        } catch (e: Throwable) {
-                            Logger.e(TAG, "Error when syncing with issuer", e)
-                            // For example, this can happen if the user removed the LSKF and the
-                            // issuer wants auth-bound keys when using Android Keystore. In this
-                            // case [ScreenLockRequiredException] is thrown... it can also happen
-                            // if e.g. there's intermittent network connectivity.
-                            //
-                            // There's no point in bubbling this up to the user and since we have
-                            // a background service running [syncDocumentWithIssuer] _anyway_
-                            // we'll recover at some point.
-                            //
-                        }
-                    }
-                }
-            }
-        }
-
         // If the LSKF is removed, make sure we delete all credentials with invalidated keys...
         //
         settingsModel.screenLockIsSetup.observeForever() {
@@ -488,6 +467,46 @@ class DocumentModel(
             }
         }
         updateCredman()
+    }
+
+    // This processes events from an Issuing Authority which is a stream of events
+    // for when an issuer notifies that one of their documents has an update.
+    //
+    // For every event, we  initiate a sequence of calls into the issuer to get the latest.
+    private fun startListeningForNotifications(issuingAuthorityId: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val issuingAuthority = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
+            Logger.i(TAG, "collecting notifications for $issuingAuthorityId...")
+            issuingAuthority.notifications.collect { notification ->
+                Logger.i(
+                    TAG,
+                    "received notification $issuingAuthorityId.${notification.documentId}"
+                )
+                // Find the local [Document] instance, if any
+                for (id in documentStore.listDocuments()) {
+                    val document = documentStore.lookupDocument(id)
+                    if (document?.issuingAuthorityIdentifier == issuingAuthorityId &&
+                        document.documentIdentifier == notification.documentId
+                    ) {
+                        Logger.i(TAG, "Handling issuer update on ${notification.documentId}")
+                        try {
+                            syncDocumentWithIssuer(document)
+                        } catch (e: Throwable) {
+                            Logger.e(TAG, "Error when syncing with issuer", e)
+                            // For example, this can happen if the user removed the LSKF and the
+                            // issuer wants auth-bound keys when using Android Keystore. In this
+                            // case [ScreenLockRequiredException] is thrown... it can also happen
+                            // if e.g. there's intermittent network connectivity.
+                            //
+                            // There's no point in bubbling this up to the user and since we have
+                            // a background service running [syncDocumentWithIssuer] _anyway_
+                            // we'll recover at some point.
+                            //
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -530,8 +549,7 @@ class DocumentModel(
     ) {
         Logger.i(TAG, "syncDocumentWithIssuer: Refreshing ${document.name}")
 
-        val walletServer = walletServerProvider.getWalletServer()
-        val issuer = walletServer.getIssuingAuthority(document.issuingAuthorityIdentifier)
+        val issuer = walletServerProvider.getIssuingAuthority(document.issuingAuthorityIdentifier)
 
         // Download latest issuer configuration.
         document.issuingAuthorityConfiguration = issuer.getConfiguration()

@@ -4,25 +4,15 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.annotation.RawRes
-import com.android.identity.flow.environment.Configuration
-import com.android.identity.flow.environment.Resources
-import com.android.identity.flow.environment.Storage
-import com.android.identity.flow.environment.FlowEnvironment
-import com.android.identity.flow.environment.Notifications
-import com.android.identity.issuance.WalletNotificationPayload
-import com.android.identity.issuance.fromCbor
-import com.android.identity.util.Logger
+import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.Resources
+import com.android.identity.flow.server.Storage
+import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity_credential.wallet.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
-import java.util.Timer
-import kotlin.concurrent.schedule
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
@@ -33,19 +23,18 @@ import kotlin.reflect.cast
  */
 class LocalDevelopmentEnvironment(
     context: Context,
-    walletServerProvider: WalletServerProvider
+    private val notifications: FlowNotifications
 ) : FlowEnvironment {
     private val configuration = ConfigurationImpl(context)
     private val storage = StorageImpl(context, "dev_local_data")
     private val resources = ResourcesImpl(context)
-    private val notifications = NotificationsImpl(walletServerProvider)
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
         return clazz.cast(when(clazz) {
             Configuration::class -> configuration
             Resources::class -> resources
             Storage::class -> storage
-            Notifications::class -> notifications
+            FlowNotifications::class -> notifications
             else -> return null
         })
     }
@@ -126,37 +115,6 @@ class LocalDevelopmentEnvironment(
             BitmapFactory.decodeResource(context.resources, resourceId)
                 .compress(format, 90, baos)
             return ByteString(baos.toByteArray())
-        }
-    }
-
-    class NotificationsImpl(
-        private val walletServerProvider: WalletServerProvider
-    ): Notifications {
-        private val _eventFlow = MutableSharedFlow<Pair<String, ByteArray>>()
-
-        override val eventFlow
-            get() = _eventFlow.asSharedFlow()
-
-        override suspend fun emit(
-            targetId: String,
-            payload: ByteArray
-        ) {
-            _eventFlow.emit(Pair(targetId, payload))
-            CoroutineScope(Dispatchers.IO).launch {
-                val data = WalletNotificationPayload.fromCbor(payload)
-                Logger.i(TAG, "Emitting notification via walletServerProvider " +
-                        "targetId:$targetId " +
-                        "issuingAuthorityId:${data.issuingAuthorityId} " +
-                        "documentId:${data.documentId}"
-                )
-                walletServerProvider._eventFlow.emit(
-                    Pair(data.issuingAuthorityId, data.documentId)
-                )
-            }
-        }
-
-        companion object {
-            private const val TAG = "NotificationsImpl"
         }
     }
 }

@@ -3,7 +3,7 @@ package com.android.identity.issuance.proofing
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.EcCurve
-import com.android.identity.flow.environment.Resources
+import com.android.identity.flow.server.Resources
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase

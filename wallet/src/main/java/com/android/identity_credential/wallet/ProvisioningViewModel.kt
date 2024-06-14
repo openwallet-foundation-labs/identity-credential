@@ -74,8 +74,7 @@ class ProvisioningViewModel : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val walletServer = walletServerProvider.getWalletServer()
-                issuer = walletServer.getIssuingAuthority(issuerIdentifier)
+                issuer = walletServerProvider.getIssuingAuthority(issuerIdentifier)
                 val issuerConfiguration = issuer.getConfiguration()
 
                 state.value = State.CREDENTIAL_REGISTRATION

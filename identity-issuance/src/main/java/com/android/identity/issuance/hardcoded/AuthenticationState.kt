@@ -7,9 +7,9 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.environment.Configuration
-import com.android.identity.flow.environment.Storage
-import com.android.identity.flow.environment.FlowEnvironment
+import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.Storage
+import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.AuthenticationFlow
 import com.android.identity.issuance.ClientAuthentication
 import com.android.identity.issuance.ClientChallenge

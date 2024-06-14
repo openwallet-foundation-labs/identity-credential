@@ -3,7 +3,8 @@ package com.android.identity.issuance.remote
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import com.android.identity.flow.environment.Storage
+import com.android.identity.flow.server.Storage
+import com.android.identity.util.Logger
 import kotlinx.io.bytestring.ByteString
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -19,19 +20,28 @@ internal class StorageImpl(
     private val executor = Executors.newSingleThreadExecutor()!!
     private val createdTables = mutableSetOf<String>()
 
+    companion object {
+        const val TAG = "StorageImpl"
+    }
+
     private suspend fun<T> runInExecutor(block: (database: SQLiteDatabase) -> T): T {
         return suspendCoroutine { continuation ->
+            Logger.i(TAG, "Submitting database task")
             executor.submit {
+                Logger.i(TAG, "Database task started")
                 try {
                     if (database == null) {
                         database = openDatabase()
                     }
                     val result = block(database!!)
+                    Logger.i(TAG, "Database task finished")
                     continuation.resume(result)
-                } catch (ex: Exception) {
+                } catch (ex: Throwable) {
+                    Logger.e(TAG, "Database task error", ex)
                     continuation.resumeWithException(ex)
                 }
             }
+            Logger.i(TAG, "Database task submitted")
         }
     }
 
