@@ -1,23 +1,27 @@
 package com.android.identity.wallet.server
 
+import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
-import com.android.identity.flow.server.FlowEnvironment
-import com.android.identity.flow.handler.FlowNotifications
+import com.android.identity.issuance.WalletServerSettings
 import java.io.File
+import jakarta.servlet.ServletConfig
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
 class ServerEnvironment(
-    private val directory: String
+    private val directory: String,
+    servletConfig: ServletConfig,
 ) : FlowEnvironment {
-    private val configuration = ServerConfiguration("$directory/settings.json")
+    private val configuration = ServerConfiguration(servletConfig)
+    private val settings = WalletServerSettings(configuration)
     private val resources = ServerResources("$directory/resources")
     private val storage = ServerStorage(
-        configuration.getProperty("database.connection") ?: defaultDatabase(),
-        configuration.getProperty("database.user") ?: "",
-        configuration.getProperty("database.password") ?: "")
+        settings.databaseConnection ?: defaultDatabase(),
+        settings.databaseUser ?: "",
+        settings.databasePassword ?: "")
     internal var notifications: FlowNotifications? = null
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {

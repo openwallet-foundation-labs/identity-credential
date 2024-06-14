@@ -94,6 +94,8 @@ suit their configuration, including
 - the `ws.example.com` domain in `network_security_config.xml`
 - the `com.example.wallet.customized` applicationId in `wallet/build.gradle`
 
+The `server` application can be customized using the `server/web.xml` file.
+
 ### Command-line tool
 
 A command-line tool `identityctl` is included which can be used to generate

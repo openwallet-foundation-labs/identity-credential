@@ -13,8 +13,9 @@ import com.android.identity.flow.transport.HttpTransport
 import com.android.identity.issuance.hardcoded.IssuingAuthorityState
 import com.android.identity.issuance.hardcoded.WalletServerState
 import com.android.identity.util.Logger
-import kotlinx.coroutines.runBlocking
+import jakarta.servlet.ServletConfig
 import jakarta.servlet.http.HttpServlet
+import kotlinx.coroutines.runBlocking
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.io.bytestring.ByteString
@@ -31,18 +32,21 @@ import kotlin.random.Random
 // you are running the server on.
 //
 class FlowServlet : HttpServlet() {
-
     companion object {
         private const val TAG = "FlowServlet"
 
-        private val serverEnvironment: FlowEnvironment
-        private val httpHandler: HttpHandler
+        private lateinit var serverEnvironment: FlowEnvironment
+        private lateinit var httpHandler: HttpHandler
 
-        init {
-            Security.addProvider(BouncyCastleProvider())
+        @Synchronized
+        private fun initialize(servletConfig: ServletConfig) {
+            if (this::serverEnvironment.isInitialized) {
+                return
+            }
 
             serverEnvironment = ServerEnvironment(
-                directory = "environment"
+                directory = "environment",
+                servletConfig
             )
 
             val dispatcherBuilder = FlowDispatcherLocal.Builder()
@@ -64,7 +68,7 @@ class FlowServlet : HttpServlet() {
             }
             val cipher = AesGcmCipher(messageEncryptionKey)
             val localPoll = FlowNotificationsLocalPoll(cipher)
-            serverEnvironment.notifications = localPoll
+            (serverEnvironment as ServerEnvironment).notifications = localPoll
             val localDispatcher = dispatcherBuilder.build(
                 serverEnvironment,
                 cipher,
@@ -75,6 +79,14 @@ class FlowServlet : HttpServlet() {
         }
     }
 
+    @Override
+    override fun init() {
+        super.init()
+
+        Security.addProvider(BouncyCastleProvider())
+
+        initialize(servletConfig)
+    }
 
     private fun getRemoteHost(req: HttpServletRequest): String {
         var remoteHost = req.remoteHost
