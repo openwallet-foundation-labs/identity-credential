@@ -80,6 +80,7 @@ dependencies {
     implementation(project(":mrtd-reader-android"))
     implementation(project(":jpeg2k"))
 
+    implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
@@ -99,6 +100,7 @@ dependencies {
     implementation(compose.components.resources)
     implementation(compose.components.uiToolingPreview)
     implementation(compose.material)
+    implementation(libs.camera.lifecycle)
 
     debugImplementation(compose.uiTooling)
     implementation(compose.preview)

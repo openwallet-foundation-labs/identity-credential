@@ -356,5 +356,14 @@
     <string name="duration_hours_and_minutes">%1$s and %2$s</string>
     <string name="duration_time_ago">%1$s ago</string>
     <string name="duration_time_from_now">%1$s from now</string>
+    <string name="selfie_video_failed">Failed to record selfie video. Please tap Back and try again.</string>
+    <string name="record_selfie_title">Record a selfie video</string>
+    <string name="initial_selfie_video_instructions">Follow these instructions to record a selfie video to upload for identity verification. Press Start when ready.</string>
+    <string name="selfie_instructions_face_front">Face directly toward the camera</string>
+    <string name="selfie_instructions_tilt_head_up">Tilt your head up</string>
+    <string name="selfie_instructions_tilt_head_down">Tilt your head down</string>
+    <string name="selfie_video_start_button">Start</string>
+    <string name="selfie_video_finish_button">Finish</string>
+    <string name="selfie_video_continue_to_next_pose_button">Continue</string>
 
 </resources>
