@@ -1,7 +1,7 @@
 package com.android.mdl.appreader
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * Example local unit test, which will execute on the development machine (host).

@@ -16,23 +16,22 @@
 
 package com.android.identity.android.legacy;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import android.content.Context;
 
+import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation;
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo;
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.android.storage.AndroidStorageEngine;
 import com.android.identity.cbor.Cbor;
 import com.android.identity.cbor.DiagnosticOption;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.crypto.EcPublicKeyKt;
+import com.android.identity.crypto.EcSignature;
 import com.android.identity.document.NameSpacedData;
 import com.android.identity.crypto.Algorithm;
 import com.android.identity.crypto.EcCurve;
+import com.android.identity.securearea.KeyLockedException;
 import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.storage.StorageEngine;
 
@@ -41,11 +40,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.security.Signature;
-import java.security.SignatureException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -142,7 +137,7 @@ public class MigrateFromKeystoreICStoreTest {
                         "    \"int_64\": 24(<< 4294967297 >>)\n" +
                         "  }\n" +
                         "}",
-                Cbor.toDiagnostics(
+                Cbor.INSTANCE.toDiagnostics(
                         nsd.encodeAsCbor(),
                         Set.of(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)));
 
@@ -152,7 +147,8 @@ public class MigrateFromKeystoreICStoreTest {
         // Check that CrendentialKey's KeyInfo is correct
         AndroidKeystoreKeyInfo keyInfo = aksSecureArea.getKeyInfo(credentialKeyAlias);
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
+        AndroidKeystoreKeyAttestation attestation = (AndroidKeystoreKeyAttestation) keyInfo.getAttestation();
+        Assert.assertTrue(attestation.getCertificateChain().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
         Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
@@ -165,20 +161,17 @@ public class MigrateFromKeystoreICStoreTest {
 
         // Check that we can use CredentialKey via AndroidKeystoreSecureArea...
         byte[] dataToSign = new byte[]{1, 2, 3};
-        byte[] derSignature = aksSecureArea.sign(
+        EcSignature ecSignature;
+        ecSignature = aksSecureArea.sign(
                 credentialKeyAlias,
                 Algorithm.ES256,
                 dataToSign,
                 null);
-        try {
-            Signature signature = Signature.getInstance("SHA256withECDSA");
-            signature.initVerify(credentialKeyPublic);
-            signature.update(dataToSign);
-            Assert.assertTrue(signature.verify(derSignature));
-        } catch (NoSuchAlgorithmException
-                 | SignatureException
-                 | InvalidKeyException e) {
-            throw new AssertionError(e);
-        }
+        EcPublicKey ecCredentialKeyPublic = EcPublicKeyKt.toEcPublicKey(credentialKeyPublic, EcCurve.P256);
+        Assert.assertTrue(Crypto.INSTANCE.checkSignature(
+                ecCredentialKeyPublic,
+                dataToSign,
+                Algorithm.ES256,
+                ecSignature));
     }
 }

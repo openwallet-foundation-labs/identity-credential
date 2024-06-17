@@ -17,8 +17,8 @@ import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.crypto.EcCurve
@@ -49,7 +49,6 @@ import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.Signature
-import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
 import java.util.UUID
@@ -270,7 +269,7 @@ class TransferManager private constructor(private val context: Context) {
 
         verification?.let {
             var signature: Signature? = null
-            var readerKeyCertificateChain: Collection<X509Certificate>? = null
+            var readerKeyCertificateChain: Collection<java.security.cert.X509Certificate>? = null
 
 
 //            SupportedCurves.values().forEach { curve ->
@@ -302,7 +301,7 @@ class TransferManager private constructor(private val context: Context) {
 
             var readerKey: EcPrivateKey? = null
             var signatureAlgorithm = Algorithm.UNSET
-            var readerCertificateChain: CertificateChain? = null
+            var readerCertificateChain: X509CertificateChain? = null
             if (curve != null) {
                 signatureAlgorithm = curve.defaultSigningAlgorithm
                 readerKey = Crypto.createEcPrivateKey(curve)
@@ -314,8 +313,8 @@ class TransferManager private constructor(private val context: Context) {
                         readerCaCert,
                         readerCaPrivateKey
                     )
-                readerCertificateChain = CertificateChain(
-                    listOf(Certificate(readerCertificate.encoded))
+                readerCertificateChain = X509CertificateChain(
+                    listOf(X509Certificate(readerCertificate.encoded))
                 )
 
             }

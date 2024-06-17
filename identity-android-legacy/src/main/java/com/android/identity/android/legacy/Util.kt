@@ -53,6 +53,7 @@ import org.bouncycastle.jcajce.provider.asymmetric.edec.BCXDHPublicKey
 import org.bouncycastle.jcajce.spec.XDHParameterSpec
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.BigIntegers
+import java.lang.StringBuilder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -594,9 +595,8 @@ object Util {
         )
         val protectedHeadersBytes = cborEncode(protectedHeaders.build().first())
         val toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent)
-        val derSignature: ByteArray =
-            secureArea.sign(alias, signatureAlgorithm, toBeSigned, keyUnlockData)
-        val coseSignature = signatureDerToCose(derSignature, 32) // TODO: infer from alias
+        val signature = secureArea.sign(alias, signatureAlgorithm, toBeSigned, keyUnlockData)
+        val coseSignature = signature.toCoseEncoded()
         val builder = CborBuilder()
         val array: ArrayBuilder<CborBuilder> = builder.addArray()
         array.add(protectedHeadersBytes)
@@ -1227,11 +1227,10 @@ object Util {
         }
 
     @JvmStatic
-    fun cborPrettyPrint(dataItem: DataItem): String =
-        StringBuilder().run {
-            cborPrettyPrintDataItem(this, 0, dataItem)
-            toString()
-        }
+    fun cborPrettyPrint(dataItem: DataItem) = StringBuilder().run {
+        cborPrettyPrintDataItem(this, 0, dataItem)
+        toString()
+    }
 
     @JvmStatic
     fun cborPrettyPrint(encodedBytes: ByteArray): String {

@@ -11,6 +11,8 @@ import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.util.Logger
 import com.android.identity.mrtd.mrtdSetLogger
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import java.io.File
 
 class SettingsModel(
@@ -44,8 +46,8 @@ class SettingsModel(
         private const val LOG_FILE_NAME = "log.txt"
     }
 
-    private val logDir = File(walletApplication.cacheDir, LOG_FOLDER_NAME)
-    private val logFile = File(logDir, LOG_FILE_NAME)
+    private val logDir = Path(walletApplication.cacheDir.path, LOG_FOLDER_NAME)
+    private val logFile = Path(logDir, LOG_FILE_NAME)
 
     init {
         developerModeEnabled.value =
@@ -73,7 +75,7 @@ class SettingsModel(
                 putBoolean(PREFERENCE_LOGGING_ENABLED, logToFile)
             }
             if (logToFile) {
-                logDir.mkdirs()
+                SystemFileSystem.createDirectories(logDir)
                 Logger.startLoggingToFile(logFile)
                 Logger.i(TAG, "Started logging to a file")
             } else {
@@ -123,7 +125,7 @@ class SettingsModel(
         if (loggingEnabled.value!!) {
             Logger.stopLoggingToFile()
         }
-        logFile.delete()
+        SystemFileSystem.delete(logFile)
         if (loggingEnabled.value!!) {
             Logger.startLoggingToFile(logFile)
         }
@@ -134,7 +136,7 @@ class SettingsModel(
         // NB: authority must match what given for <provider> in the manifest.
         val authority = "com.android.identity_credential.wallet"
         // NB: must be context for which the <provider> is defined in the manifest.
-        val shareUri = FileProvider.getUriForFile(context, authority, logFile);
+        val shareUri = FileProvider.getUriForFile(context, authority, File(logFile.name))
         val sharingIntent = Intent(Intent.ACTION_SEND)
         sharingIntent.setType("text/plain")
         sharingIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

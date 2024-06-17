@@ -32,11 +32,12 @@ import com.android.identity.document.DocumentRequest.DataElement
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.create
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -69,7 +70,7 @@ class DeviceResponseGeneratorTest {
     private lateinit  var timeValidityBegin: Instant
     private lateinit  var timeValidityEnd: Instant
     private lateinit  var documentSignerKey: EcPrivateKey
-    private lateinit  var documentSignerCert: Certificate
+    private lateinit  var documentSignerCert: X509Certificate
     
     @Before
     @Throws(Exception::class)
@@ -80,7 +81,9 @@ class DeviceResponseGeneratorTest {
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
         credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class)
+        credentialFactory.addCredentialImplementation(MdocCredential::class) {
+            document, dataItem -> MdocCredential(document, dataItem)
+        }
         provisionDocument()
     }
 
@@ -127,7 +130,7 @@ class DeviceResponseGeneratorTest {
             null,
             AUTH_KEY_DOMAIN,
             secureArea,
-            SoftwareCreateKeySettings.Builder(ByteArray(0))
+            SoftwareCreateKeySettings.Builder()
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                 .build(),
             "org.iso.18013.5.1.mDL"
@@ -138,7 +141,7 @@ class DeviceResponseGeneratorTest {
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             DOC_TYPE,
-            mdocCredential.attestation.certificates[0].publicKey
+            mdocCredential.attestation.publicKey
         )
         msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
@@ -160,7 +163,7 @@ class DeviceResponseGeneratorTest {
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
         documentSignerKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        documentSignerCert = Crypto.createX509v3Certificate(
+        documentSignerCert = X509Certificate.create(
             documentSignerKey.publicKey,
             documentSignerKey,
             null,
@@ -169,7 +172,9 @@ class DeviceResponseGeneratorTest {
             "CN=State Of Utopia",
             "CN=State Of Utopia",
             validFrom,
-            validUntil, setOf(), listOf()
+            validUntil,
+            setOf(),
+            listOf()
         )
         val mso = msoGenerator.generate()
         val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
@@ -184,7 +189,7 @@ class DeviceResponseGeneratorTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(java.util.List.of(documentSignerCert)).toDataItem
+            X509CertificateChain(listOf(documentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(
@@ -268,7 +273,7 @@ class DeviceResponseGeneratorTest {
         // Check DeviceSigned data
         Assert.assertEquals(0, doc.deviceNamespaces.size.toLong())
         // Check the key which signed DeviceSigned was the expected one.
-        Assert.assertEquals(mdocCredential.attestation.certificates[0].publicKey, doc.deviceKey)
+        Assert.assertEquals(mdocCredential.attestation.publicKey, doc.deviceKey)
         // Check DeviceSigned was correctly authenticated.
         Assert.assertTrue(doc.deviceSignedAuthenticated)
         Assert.assertTrue(doc.deviceSignedAuthenticatedViaSignature)
@@ -529,7 +534,7 @@ class DeviceResponseGeneratorTest {
         // Check DeviceSigned data
         Assert.assertEquals(0, doc.deviceNamespaces.size.toLong())
         // Check the key which signed DeviceSigned was the expected one.
-        Assert.assertEquals(mdocCredential.attestation.certificates[0].publicKey, doc.deviceKey)
+        Assert.assertEquals(mdocCredential.attestation.publicKey, doc.deviceKey)
         // Check DeviceSigned was correctly authenticated.
         Assert.assertTrue(doc.deviceSignedAuthenticated)
         Assert.assertTrue(doc.deviceSignedAuthenticatedViaSignature)

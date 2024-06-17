@@ -2,6 +2,7 @@ package com.android.identity.sdjwt.presentation
 
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcSignature
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.util.fromBase64
@@ -40,9 +41,9 @@ class SdJwtVerifiablePresentation(
         }
 
         val toBeVerified = "$keyBindingHeader.$keyBindingBody".toByteArray(Charsets.US_ASCII)
-        val signatureBytes = keyBindingSignature.fromBase64
+        val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64)
 
-        if (!Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signatureBytes)) {
+        if (!Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signature)) {
             throw IllegalStateException("Signature verification failed")
         }
 

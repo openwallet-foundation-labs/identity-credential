@@ -1,16 +1,16 @@
 package com.android.mdl.appreader.home
 
 import com.android.mdl.appreader.R
-import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.StateFlow
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
+import kotlin.test.assertTrue
 
 class RequestCreationTest {
 
     @Test
     fun defaultRequest() {
         val viewModel = CreateRequestViewModel()
-        assertThat(viewModel.state.value.mdlForUsTransportation.isSelected).isTrue()
+        assertTrue(viewModel.state.value.mdlForUsTransportation.isSelected)
     }
 
     @Test
@@ -22,7 +22,7 @@ class RequestCreationTest {
 
         viewModel.onRequestUpdate(mdlOver18)
 
-        assertThat(viewModel.state.mdlElementsUnselectedExcept(mdlOver18)).isTrue()
+        assertTrue(viewModel.state.mdlElementsUnselectedExcept(mdlOver18))
     }
 
     @Test
@@ -34,7 +34,7 @@ class RequestCreationTest {
 
         viewModel.onRequestUpdate(mdlOver21)
 
-        assertThat(viewModel.state.mdlElementsUnselectedExcept(mdlOver21)).isTrue()
+        assertTrue(viewModel.state.mdlElementsUnselectedExcept(mdlOver21))
     }
 
     @Test
@@ -46,7 +46,7 @@ class RequestCreationTest {
 
         viewModel.onRequestUpdate(mdlMandatory)
 
-        assertThat(viewModel.state.mdlElementsUnselectedExcept(mdlMandatory)).isTrue()
+        assertTrue(viewModel.state.mdlElementsUnselectedExcept(mdlMandatory))
     }
 
     @Test
@@ -58,7 +58,7 @@ class RequestCreationTest {
 
         viewModel.onRequestUpdate(fullMdl)
 
-        assertThat(viewModel.state.mdlElementsUnselectedExcept(fullMdl)).isTrue()
+        assertTrue(viewModel.state.mdlElementsUnselectedExcept(fullMdl))
     }
 
     @Test
@@ -70,7 +70,7 @@ class RequestCreationTest {
 
         viewModel.onRequestUpdate(mdlUS)
 
-        assertThat(viewModel.state.mdlElementsUnselectedExcept(mdlUS)).isTrue()
+        assertTrue(viewModel.state.mdlElementsUnselectedExcept(mdlUS))
     }
 
     @Test
@@ -82,7 +82,7 @@ class RequestCreationTest {
 
         viewModel.onRequestUpdate(customMdl)
 
-        assertThat(viewModel.state.mdlElementsUnselectedExcept(customMdl)).isTrue()
+        assertTrue(viewModel.state.mdlElementsUnselectedExcept(customMdl))
     }
 
     private val StateFlow<RequestingDocumentState>.mdlElements

@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.readercertgen
 
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.X509Certificate
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
@@ -14,8 +14,6 @@ import java.security.InvalidAlgorithmParameterException
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.NoSuchAlgorithmException
-import java.security.PrivateKey
-import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.Optional
 
@@ -50,9 +48,9 @@ object ReaderCertificateGenerator {
 
     fun createReaderCertificate(
         readerKey: EcPrivateKey, //dsKeyPair: KeyPair,
-        readerRootCert: Certificate, // issuerCert: X509Certificate,
+        readerRootCert: X509Certificate, // issuerCert: X509Certificate,
         readerRootKey: EcPrivateKey // issuerPrivateKey: PrivateKey
-    ): X509Certificate {
+    ): java.security.cert.X509Certificate {
         val data = DataMaterial(
             subjectDN = "C=UT, CN=OWF Identity Credential mDoc Reader",
 

@@ -21,6 +21,7 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.mdoc.transport.DataTransportTcp
+import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
@@ -37,13 +38,13 @@ import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto.createEcPrivateKey
-import com.android.identity.crypto.Crypto.createX509v3Certificate
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.create
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -101,7 +102,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var timeValidityBegin: Instant
     private lateinit var timeValidityEnd: Instant
     private lateinit var documentSignerKey: EcPrivateKey
-    private lateinit var documentSignerCert: Certificate
+    private lateinit var documentSignerCert: X509Certificate
     
     @Before
     fun setUp() {
@@ -115,7 +116,9 @@ class DeviceRetrievalHelperTest {
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
         var credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class)
+        credentialFactory.addCredentialImplementation(MdocCredential::class) {
+            document, dataItem -> MdocCredential(document, dataItem)
+        }
         val documentStore = DocumentStore(
             storageEngine,
             secureAreaRepository,
@@ -143,7 +146,7 @@ class DeviceRetrievalHelperTest {
             null,
             CREDENTIAL_DOMAIN,
             secureArea,
-            SoftwareCreateKeySettings.Builder(ByteArray(0))
+            SoftwareCreateKeySettings.Builder()
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                 .build(),
             MDL_DOCTYPE
@@ -154,7 +157,7 @@ class DeviceRetrievalHelperTest {
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            mdocCredential.attestation.certificates[0].publicKey
+            mdocCredential.attestation.publicKey
         )
         msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
         val issuerNameSpaces = generateIssuerNameSpaces(
@@ -176,7 +179,7 @@ class DeviceRetrievalHelperTest {
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
         documentSignerKey = createEcPrivateKey(EcCurve.P256)
-        documentSignerCert = createX509v3Certificate(
+        documentSignerCert = X509Certificate.create(
             documentSignerKey.publicKey,
             documentSignerKey,
             null,
@@ -200,7 +203,7 @@ class DeviceRetrievalHelperTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(java.util.List.of(documentSignerCert)).toDataItem
+            X509CertificateChain(listOf(documentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(

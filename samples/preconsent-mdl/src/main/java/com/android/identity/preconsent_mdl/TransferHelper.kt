@@ -106,7 +106,9 @@ class TransferHelper private constructor(private val context: Context) {
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
         secureAreaRepository.addImplementation(androidKeystoreSecureArea);
         credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class)
+        credentialFactory.addCredentialImplementation(MdocCredential::class) {
+            document, dataItem -> MdocCredential(document, dataItem)
+        }
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
         state.value = State.NOT_CONNECTED
     }

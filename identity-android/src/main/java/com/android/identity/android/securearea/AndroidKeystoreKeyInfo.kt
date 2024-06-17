@@ -1,6 +1,5 @@
 package com.android.identity.android.securearea
 
-import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyPurpose
@@ -11,7 +10,7 @@ import kotlinx.datetime.Instant
  */
 class AndroidKeystoreKeyInfo internal constructor(
     publicKey: EcPublicKey,
-    attestation: CertificateChain,
+    attestation: AndroidKeystoreKeyAttestation,
     keyPurposes: Set<KeyPurpose>,
 
     /**
@@ -52,4 +51,4 @@ class AndroidKeystoreKeyInfo internal constructor(
      * The point in time after which the key is not valid, if set.
      */
     val validUntil: Instant?
-) : KeyInfo(publicKey, attestation, keyPurposes)
+) : KeyInfo(publicKey, keyPurposes, attestation)

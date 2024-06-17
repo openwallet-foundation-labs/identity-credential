@@ -1,7 +1,5 @@
 package com.android.identity.processor
 
-import com.android.identity.cbor.annotation.CborSerializable
-import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies

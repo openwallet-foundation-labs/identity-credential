@@ -3,6 +3,7 @@ package com.android.identity.sdjwt
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcSignature
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.sdjwt.vc.JwtHeader
@@ -59,14 +60,14 @@ class SdJwtVcGenerator(
      * @param sign a lambda taking a ByteArray (the data to be signed) and an Issuer
      *        object (which has information about the keypair that is to be used to
      *        sign the SD-JWT, in case that's ambiguous at the time of calling). The
-     *        lambda must return, as a ByteArray, the signature over the to-be-signed
+     *        lambda must return, as a [EcSignature], the signature over the to-be-signed
      *        data.
      *
      * @return the SD-JWT VC.
      *
      */
     fun generateSdJwt(
-        sign: (toBeSigned:ByteArray, issuer: Issuer) -> ByteArray
+        sign: (toBeSigned:ByteArray, issuer: Issuer) -> EcSignature
     ): SdJwtVerifiableCredential {
         val header = JwtHeader(issuer.alg, issuer.kid)
         val headerStr = header.toString()
@@ -84,7 +85,8 @@ class SdJwtVcGenerator(
         val bodyStr = body.toString()
 
         val toBeSigned = "$headerStr.$bodyStr".toByteArray(Charsets.US_ASCII)
-        val signatureStr = sign(toBeSigned, issuer).toBase64
+        val signature = sign(toBeSigned, issuer)
+        val signatureStr = (signature.r + signature.s).toBase64
 
         return SdJwtVerifiableCredential(
             headerStr,

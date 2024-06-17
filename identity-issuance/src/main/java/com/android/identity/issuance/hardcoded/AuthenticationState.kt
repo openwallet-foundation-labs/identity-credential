@@ -56,7 +56,7 @@ class AuthenticationState(
 
     @FlowMethod
     suspend fun authenticate(env: FlowEnvironment, auth: ClientAuthentication): WalletServerCapabilities {
-        val chain = auth.certificateChain
+        val chain = auth.attestation
 
         val settings = env.getInterface(Configuration::class)!!
         val storage = env.getInterface(Storage::class)!!
@@ -72,7 +72,7 @@ class AuthenticationState(
                 settings.getBool("android.requireVerifiedBootGreen", true),
                 settings.getStringList("android.requireAppSignatureCertificateDigests")
             )
-            this.publicKey = chain.certificates[0].publicKey
+            this.publicKey = chain.certificates[0].ecPublicKey
             val keyData = ByteString(Cbor.encode(this.publicKey!!.toDataItem))
             storage.insert("ClientKeys", "", keyData, key = clientId)
         }
@@ -80,7 +80,7 @@ class AuthenticationState(
                 this.publicKey!!,
                 authenticationMessage(this.clientId, this.nonce!!).toByteArray(),
                 Algorithm.ES256,
-                auth.signature.toByteArray())) {
+                auth.signature)) {
             throw IllegalArgumentException("Authentication failed")
         }
         authenticated = true

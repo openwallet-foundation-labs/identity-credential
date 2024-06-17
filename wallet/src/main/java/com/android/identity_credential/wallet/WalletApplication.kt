@@ -32,7 +32,7 @@ import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
-import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.X509Certificate
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
@@ -136,8 +136,12 @@ class WalletApplication : Application() {
 
         // init credentialFactory
         credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class)
-        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class)
+        credentialFactory.addCredentialImplementation(MdocCredential::class) {
+            document, dataItem -> MdocCredential(document, dataItem)
+        }
+        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class) {
+            document, dataItem -> SdJwtVcCredential(document, dataItem)
+        }
 
         // init documentStore
         documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
@@ -244,7 +248,7 @@ class WalletApplication : Application() {
         displayIconResourceId: Int?
     ) = addTrustPoint(
         TrustPoint(
-            certificate = Certificate.fromPem(
+            certificate = X509Certificate.fromPem(
                 String(
                     resources.openRawResource(certificateResourceId).readBytes()
                 )

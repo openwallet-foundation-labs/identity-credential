@@ -384,12 +384,12 @@ abstract class SimpleIssuingAuthority(
         for (request in credentialRequests) {
             // Skip if we already have a request for the authentication key
             if (hasCpoRequestForAuthenticationKey(issuerDocument,
-                    request.secureAreaBoundKeyAttestation.certificates.first().publicKey)) {
+                    request.secureAreaBoundKeyAttestation.publicKey)) {
                 Logger.d(TAG, "Already has cpoRequest for attestation with key " +
-                        "${request.secureAreaBoundKeyAttestation.certificates.first().publicKey}")
+                        "${request.secureAreaBoundKeyAttestation.publicKey}")
                 continue
             }
-            val authenticationKey = request.secureAreaBoundKeyAttestation.certificates.first().publicKey
+            val authenticationKey = request.secureAreaBoundKeyAttestation.publicKey
             val presentationData = createPresentationData(
                 format,
                 issuerDocument.documentConfiguration!!,

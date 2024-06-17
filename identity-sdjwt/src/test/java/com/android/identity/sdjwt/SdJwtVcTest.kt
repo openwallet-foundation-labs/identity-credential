@@ -2,9 +2,10 @@ package com.android.identity.sdjwt
 
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.X509Certificate
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.create
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.sdjwt.SdJwtVerifiableCredential.AttributeNotDisclosedException
@@ -47,7 +48,7 @@ class SdJwtVcTest {
     private lateinit var timeValidityBegin: Instant
     private lateinit var timeSigned: Instant
     private lateinit var timeValidityEnd: Instant
-    private lateinit var issuerCert: Certificate
+    private lateinit var issuerCert: X509Certificate
     private lateinit var credential: SdJwtVcCredential
 
     @Before
@@ -58,7 +59,9 @@ class SdJwtVcTest {
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
         credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class)
+        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class) {
+            document, dataItem ->  SdJwtVcCredential(document, dataItem)
+        }
         provisionCredential()
     }
 
@@ -83,7 +86,7 @@ class SdJwtVcTest {
             null,
             "domain",
             secureArea,
-            SoftwareCreateKeySettings.Builder("".toByteArray())
+            SoftwareCreateKeySettings.Builder()
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                 .build(),
             "IdentityCredential",
@@ -109,7 +112,7 @@ class SdJwtVcTest {
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
-        issuerCert = Crypto.createX509v3Certificate(
+        issuerCert = X509Certificate.create(
             issuerKey.publicKey,
             issuerKey,
             null,
@@ -130,7 +133,7 @@ class SdJwtVcTest {
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 
-        sdJwtVcGenerator.publicKey = JsonWebKey(credential.attestation.certificates[0].publicKey)
+        sdJwtVcGenerator.publicKey = JsonWebKey(credential.attestation.publicKey)
         sdJwtVcGenerator.timeSigned = timeSigned
         sdJwtVcGenerator.timeValidityBegin = timeValidityBegin
         sdJwtVcGenerator.timeValidityEnd = timeValidityEnd
@@ -214,7 +217,7 @@ class SdJwtVcTest {
         )
 
         // also on the verifier, check the signature over the SD-JWT from the issuer
-        presentation.sdJwtVc.verifyIssuerSignature(issuerCert.publicKey)
+        presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
 
         // at this point, the verifier could read out the attributes they were
         // interested in:
