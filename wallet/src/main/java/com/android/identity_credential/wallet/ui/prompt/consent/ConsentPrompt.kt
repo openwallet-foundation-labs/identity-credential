@@ -6,8 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.FragmentActivity
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentRequest
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.presentation.PresentationRequestData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -17,7 +20,7 @@ import kotlin.coroutines.resume
 /**
  * Show the Consent prompt
  *
- * Async extension function that renders the Consent Prompt (Composable) from a Dialog Fragment.
+ * Async function that renders the Consent Prompt (Composable) from a Dialog Fragment.
  * Returns a [Boolean] identifying that user tapped on Confirm or Cancel button.
  *
  * @param activity the [FragmentActivity] to show the Dialog Fragment via Activity's FragmentManager
@@ -27,19 +30,21 @@ import kotlin.coroutines.resume
  */
 suspend fun showConsentPrompt(
     activity: FragmentActivity,
-    presentationRequestData: PresentationRequestData,
     documentTypeRepository: DocumentTypeRepository,
+    document: Document,
+    documentRequest: DocumentRequest,
+    trustPoint: TrustPoint?
 ): Boolean =
     suspendCancellableCoroutine { continuation ->
         // new instance of the ConsentPrompt bottom sheet dialog fragment but not shown yet
         val consentPrompt = ConsentPrompt(
             consentPromptEntryFieldData = ConsentPromptEntryFieldData(
-                credentialId = presentationRequestData.document.name,
-                documentName = presentationRequestData.document.documentConfiguration.displayName,
-                credentialData = presentationRequestData.document.documentConfiguration.mdocConfiguration!!.staticData,
-                documentRequest = presentationRequestData.documentRequest,
-                docType = presentationRequestData.docType,
-                verifier = presentationRequestData.trustPoint,
+                credentialId = document.name,
+                documentName = document.documentConfiguration.displayName,
+                credentialData = document.documentConfiguration.mdocConfiguration!!.staticData,
+                documentRequest = documentRequest,
+                docType = document.documentConfiguration.mdocConfiguration!!.docType,
+                verifier = trustPoint,
             ),
             documentTypeRepository = documentTypeRepository,
             onConsentPromptResult = { promptWasSuccessful ->

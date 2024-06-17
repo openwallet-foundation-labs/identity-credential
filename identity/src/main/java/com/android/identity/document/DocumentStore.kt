@@ -116,6 +116,18 @@ class DocumentStore(
         return result
     }
 
+
+    /**
+     * Given a [documentId] of a Document that already exists in the [DocumentStore], find and
+     * return the [Document] object, or throw an [IllegalStateException] if it cannot be found.
+     *
+     * @param documentId the document identifier.
+     * @return the [Document] that was cached or stored in document store.
+     * @throws IllegalStateException if no [Document] could be found.
+     */
+    fun lookupExistingDocument(documentId: String): Document = lookupDocument(documentId)
+        ?: throw IllegalStateException("Unable to find Document with id $documentId")
+
     /**
      * Lists all documents in the store.
      *

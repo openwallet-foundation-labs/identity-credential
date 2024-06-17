@@ -19,25 +19,6 @@ package com.android.identity_credential.wallet
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
@@ -45,35 +26,19 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.javaX509Certificates
-import com.android.identity.issuance.DocumentExtensions.documentConfiguration
-import com.android.identity.mdoc.request.DeviceRequestParser
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentRequest
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.presentation.PresentationFlowActivity
-import com.android.identity_credential.wallet.presentation.PresentationRequestData
-import com.android.identity_credential.wallet.ui.ScreenWithAppBar
-import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryField
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryFieldData
-import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
-import kotlinx.coroutines.Dispatchers
+import com.android.identity_credential.wallet.presentation.PresentmentFlow
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
-class PresentationActivity : PresentationFlowActivity() {
+class PresentationActivity : FragmentActivity() {
     companion object {
         private const val TAG = "PresentationActivity"
         private var transport: DataTransport?
@@ -135,6 +100,10 @@ class PresentationActivity : PresentationFlowActivity() {
     private var deviceRequestByteArray: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
+    val presentmentFlow: PresentmentFlow by lazy {
+        PresentmentFlow(walletApp, this)
+    }
+
     // Listener for obtaining request bytes from NFC/QR presentation engagements
     val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
 
@@ -170,64 +139,8 @@ class PresentationActivity : PresentationFlowActivity() {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
 
-        setContent {
-            IdentityCredentialTheme {
-
-                val parsedPresentationRequestData =
-                    remember { mutableStateOf<PresentationRequestData?>(null) }
-                /**
-                 * Handle Presentation Activity State changes so that on
-                 * [State.CONNECTED] - instantiates a new [DeviceRetrievalHelper] and its listener
-                 * [DeviceRetrievalHelper.Listener],
-                 *
-                 * [State.REQUEST_AVAILABLE] - parses the request [ByteArray] and produces a
-                 * [PresentationRequestData] and Presentation Flow is shown.
-                 *
-                 * [State.RESPONSE_SENT] - cleanup
-                 *
-                 * Produces a [PresentationRequestData] that notifies UI composition to show the flow.
-                 * Exceptions are
-                 */
-                handleActivityStateChanges { presentationRequestData ->
-                    // notify that we are ready to show the Presentation Flow
-                    parsedPresentationRequestData.value = presentationRequestData
-                }
-
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.Transparent
-                ) {
-                    // if Presentation data is parsed and ready to use, show the Presentation Flow
-                    parsedPresentationRequestData.value?.let { presentationRequestData ->
-                        // launched effect [key1] does not change for presentations,
-                        // either the flow succeeds or Activity is finish()'ed
-                        LaunchedEffect(key1 = "MDL_Presentation") {
-
-                            try {
-                                val responseBytes = showPresentationFlow(presentationRequestData)
-                                sendResponseToDevice(responseBytes)
-                            } catch (exception: Exception) {
-                                Logger.e(TAG, "Error finishing the Presentation flow: $exception")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Handle the different Presentation Activity State changes, such as instantiating a new
-     * [DeviceRetrievalHelper] when state is [State.CONNECTED], parse the request bytes when state
-     * is [State.REQUEST_AVAILABLE] that initiates showing the Presentation flow upon successfully
-     * generating [PresentationRequestData], or perform cleanup operations.
-     *
-     * @param onPresentationRequestData callback that RETURNS the generated [PresentationRequestData]
-     *                                  parsed from the request bytes.
-     */
-    private fun handleActivityStateChanges(onPresentationRequestData: (PresentationRequestData) -> Unit) {
         state.observe(this as LifecycleOwner) { state ->
-            when (state) {
+            when (state!!) {
                 State.NOT_CONNECTED -> {
                     Logger.i(TAG, "State: Not Connected")
                 }
@@ -250,20 +163,30 @@ class PresentationActivity : PresentationFlowActivity() {
 
                 State.REQUEST_AVAILABLE -> {
                     Logger.i(TAG, "State: Request Available")
-
                     /**
                      * Device request bytes have been transmitted via device retrieval helper listener,
-                     * parse the bytes and generate a [PresentationRequestData] that is used throughout
-                     * all the prompts.
-                     *
-                     * Return this generated data through the callback [onPresentationRequestData],
-                     * or an Exception is thrown.
+                     * Start the Presentment Flow where a Presentment is shown for every
+                     * [DocumentRequest] that has a suitable [Document].
                      */
-                    try {
-                        val presentationRequestData = parseDeviceRequestBytes(getDeviceRequest())
-                        onPresentationRequestData(presentationRequestData)
-                    } catch (exception: Exception) {
-                        Logger.e(TAG, "Unable to parse device Request Bytes: $exception")
+                    lifecycleScope.launch(
+                        /**
+                         * Define a custom exception handler to prevent exceptions from propagating
+                         * upwards the coroutine and force close the app on uncaught exceptions.
+                         */
+                        CoroutineExceptionHandler { _, exception ->
+                            Logger.e(
+                                TAG,
+                                "Exception during Presentment flow: $exception"
+                            )
+                        }
+                    ) {
+                        // get the response bytes containing 1 or more generated Documents to send
+                        val responseBytes = presentmentFlow.showPresentmentFlow(
+                            encodedDeviceRequest = deviceRequestByteArray!!,
+                            encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
+                        )
+
+                        sendResponseToDevice(responseBytes)
                     }
                 }
 
@@ -272,8 +195,6 @@ class PresentationActivity : PresentationFlowActivity() {
                     // cleanup
                     disconnect()
                 }
-
-                else -> {}
             }
         }
     }
@@ -301,120 +222,17 @@ class PresentationActivity : PresentationFlowActivity() {
     }
 
     /**
-     * Parses the device request bytes returns a [PresentationRequestData] object that is passed to
-     * all prompts that need the data.
-     *
-     * If it's unable to find a matching document credential it returns an [IllegalStateException]
-     * amongst any other Exceptions thrown (such as a null pointer when calling lookupDocument())
-     *
-     * @param deviceRequest the (request) bytes provided from [DeviceRetrievalHelper.Listener].
-     * @return the generated [PresentationRequestData] containing the request document and data.
-     */
-    private fun parseDeviceRequestBytes(deviceRequest: ByteArray): PresentationRequestData {
-        val request =
-            DeviceRequestParser(deviceRequest, deviceRetrievalHelper!!.sessionTranscript).parse()
-
-        lateinit var docRequestToUse: DeviceRequestParser.DocRequest
-        var credentialId: String? = null
-        request.docRequests.forEach { docRequest ->
-            // TODO when selecting a matching credential of the MDOC_MSO format, also use docRequest.docType
-            //     to select a credential of the right doctype
-            // TODO confirm if TODO ABOVE is still valid --- (see canDocumentSatisfyRequest())
-            findFirstDocumentSatisfyingRequest(
-                walletApp.settingsModel, docRequest
-            )?.let { credId ->
-                // we found a valid credential id
-                credentialId = credId
-                docRequestToUse = docRequest
-            }
-        }
-        check(credentialId != null) { "No matching credentials could be found" }
-
-        val validCredentialId = credentialId!!
-        val credentialDocument = walletApp.documentStore.lookupDocument(validCredentialId)!!
-        var trustPoint: TrustPoint? = null
-        if (docRequestToUse.readerAuthenticated) {
-            val result = walletApp.trustManager.verify(
-                docRequestToUse.readerCertificateChain!!.javaX509Certificates,
-                customValidators = emptyList()  // not needed for reader auth
-            )
-            if (result.isTrusted && result.trustPoints.isNotEmpty()) {
-                trustPoint = result.trustPoints.first()
-            } else if (result.error != null) {
-                Logger.w(TAG, "Error finding TrustPoint for reader auth", result.error!!)
-            }
-        }
-
-        val credentialDocumentRequest = MdocUtil.generateDocumentRequest(docRequestToUse)
-        return PresentationRequestData(
-            document = credentialDocument,
-            documentRequest = credentialDocumentRequest,
-            docType = docRequestToUse.docType,
-            trustPoint = trustPoint,
-            sessionTranscript = deviceRetrievalHelper!!.sessionTranscript
-        )
-    }
-
-
-    /**
-     * Return a credential identifier which can satisfy the request.
-     *
-     * If multiple credentials can satisfy the request, preference is given to the currently
-     * focused credential in the main pager.
-     *
-     * @param settingsModel app-wide settings
-     * @param docRequest the parsed [DeviceRequestParser.DocRequest]
-     * @return credential identifier if found, otherwise null.
-     */
-    private fun findFirstDocumentSatisfyingRequest(
-        settingsModel: SettingsModel,
-        docRequest: DeviceRequestParser.DocRequest,
-    ): String? {
-        // prefer the credential which is on-screen if possible
-        val credentialIdFromPager: String? = settingsModel.focusedCardId.value
-        if (credentialIdFromPager != null
-            && canDocumentSatisfyRequest(credentialIdFromPager, docRequest)
-        ) {
-            return credentialIdFromPager
-        }
-
-        return walletApp.documentStore.listDocuments().firstOrNull { credentialId ->
-            canDocumentSatisfyRequest(credentialId, docRequest)
-        }
-    }
-
-    /**
-     * Return whether the passed credential id can satisfy the request
-     *
-     * @param credentialId the id of the credential to check for satisfaction.
-     * @param docRequest the DocRequest with its DocType.
-     * @return whether the specified credential id can satisfy the request.
-     */
-    private fun canDocumentSatisfyRequest(
-        credentialId: String,
-        docRequest: DeviceRequestParser.DocRequest
-    ): Boolean {
-        val credential = walletApp.documentStore.lookupDocument(credentialId)!!
-        return credential.documentConfiguration.mdocConfiguration?.docType == docRequest.docType
-    }
-
-    /**
      * Send response bytes to requesting party and updates state to [State.RESPONSE_SENT]
      * @param deviceResponseBytes response bytes that may or may not have been processed (such as
      * when sending an error)
      */
-    private fun sendResponseToDevice(deviceResponseBytes: ByteArray) {
-        deviceRetrievalHelper?.sendDeviceResponse(
-            deviceResponseBytes,
-            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
-        )
-        state.value = State.RESPONSE_SENT
-    }
-
-
-    private fun getDeviceRequest(): ByteArray {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
-        check(deviceRequestByteArray != null) { "No request available " }
-        return deviceRequestByteArray as ByteArray
-    }
+    private fun sendResponseToDevice(deviceResponseBytes: ByteArray) =
+        deviceRetrievalHelper?.run {
+            sendDeviceResponse(
+                deviceResponseBytes,
+                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+            )
+            state.value = State.RESPONSE_SENT
+        }
+            ?: throw IllegalStateException("Unable to send response bytes, deviceRetrievalHelper is [null].")
 }

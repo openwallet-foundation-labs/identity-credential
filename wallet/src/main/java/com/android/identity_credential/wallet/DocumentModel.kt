@@ -76,14 +76,15 @@ class DocumentModel(
 
     val documentInfos = mutableStateListOf<DocumentInfo>()
 
-    fun getDocumentInfo(cardId: String): DocumentInfo? {
-        for (card in documentInfos) {
-            if (card.documentId == cardId) {
-                return card
-            }
-        }
-        return null
-    }
+    /**
+     * Given the [documentId] of a stored [Document], find & return the corresponding [DocumentInfo]
+     * or [null] if none can be found.
+     * @param documentId the document name that is used by the [DocumentStore].
+     * @return the [DocumentInfo] that matches the specified [documentId] or [null] for not matches.
+     */
+    fun getDocumentInfo(documentId: String): DocumentInfo? =
+        documentInfos.firstOrNull { it.documentId == documentId }
+
 
     fun getCardIndex(cardId: String): Int? {
         for (n in documentInfos.indices) {
@@ -171,9 +172,11 @@ class DocumentModel(
                 is MdocCredential -> {
                     keyInfos.add(createCardInfoForMdocCredential(credential))
                 }
+
                 is SdJwtVcCredential -> {
                     keyInfos.add(createCardInfoForSdJwtVcCredential(credential))
                 }
+
                 else -> {
                     Logger.w(TAG, "No CardInfo support for ${credential::class}")
                 }
@@ -653,11 +656,14 @@ class DocumentModel(
         if (document.state.numAvailableCredentials > 0) {
             for (credentialData in issuer.getCredentials(document.documentIdentifier)) {
                 val pendingCredential = document.pendingCredentials.find {
-                            (it as SecureAreaBoundCredential).attestation.certificates.first()
-                                .publicKey.equals(credentialData.secureAreaBoundKey)
+                    (it as SecureAreaBoundCredential).attestation.certificates.first()
+                        .publicKey.equals(credentialData.secureAreaBoundKey)
                 }
                 if (pendingCredential == null) {
-                    Logger.w(TAG, "No pending Credential for pubkey ${credentialData.secureAreaBoundKey}")
+                    Logger.w(
+                        TAG,
+                        "No pending Credential for pubkey ${credentialData.secureAreaBoundKey}"
+                    )
                     continue
                 }
                 pendingCredential.certify(
@@ -681,7 +687,7 @@ class DocumentModel(
             credentialDomain: String,
             secureArea: SecureArea,
             createKeySettings: CreateKeySettings,
-                ) -> Credential)
+        ) -> Credential)
     ) {
         // TODO: this should all come from issuer configuration
         val numCreds = 3
@@ -701,7 +707,8 @@ class DocumentModel(
         )
         if (numPendingCredentialsToCreate > 0) {
             val requestCredentialsFlow = issuer.requestCredentials(document.documentIdentifier)
-            val credConfig = requestCredentialsFlow.getCredentialConfiguration(credentialFormat.toString())
+            val credConfig =
+                requestCredentialsFlow.getCredentialConfiguration(credentialFormat.toString())
 
             val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
                 ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
@@ -754,6 +761,7 @@ class DocumentModel(
 private class TimedChunkFlow<T>(sourceFlow: Flow<T>, period: Duration) {
     private val chunkLock = ReentrantLock()
     private var chunk = mutableListOf<T>()
+
     @OptIn(FlowPreview::class)
     val resultFlow = flow {
         sourceFlow.collect {
@@ -770,4 +778,5 @@ private class TimedChunkFlow<T>(sourceFlow: Flow<T>, period: Duration) {
     }
 }
 
-fun <T> Flow<T>.timedChunk(periodMs: Duration): Flow<List<T>> = TimedChunkFlow(this, periodMs).resultFlow
+fun <T> Flow<T>.timedChunk(periodMs: Duration): Flow<List<T>> =
+    TimedChunkFlow(this, periodMs).resultFlow
