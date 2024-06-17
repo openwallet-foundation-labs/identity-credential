@@ -19,20 +19,6 @@ package com.android.identity_credential.wallet
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
@@ -40,24 +26,15 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentRequest
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.presentation.TransferHelper
-import com.android.identity_credential.wallet.ui.ScreenWithAppBar
-import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryField
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryFieldData
-import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
+import com.android.identity_credential.wallet.presentation.PresentmentFlow
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
@@ -119,91 +96,36 @@ class PresentationActivity : FragmentActivity() {
         application as WalletApplication
     }
 
-    private var deviceRequest: ByteArray? = null
+    // device request bytes
+    private var deviceRequestByteArray: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-    private var consentData: ConsentPromptEntryFieldData? = null
 
-    // Transfer helper facilitates starting processing a presentation request and obtaining the
-    // response bytes once processing has finished. This enables showing one or more dialogs to
-    // the user to accept before sending a response to requesting party.
-    private var transferHelper: TransferHelper? = null
-
-    // Define the Builder for building a TransferHelper once it gets new instance of DeviceRetrievalHelper
-    private val transferHelperBuilder: TransferHelper.Builder by lazy {
-        TransferHelper.Builder(
-            settingsModel = walletApp.settingsModel,
-            documentStore = walletApp.documentStore,
-            trustManager = walletApp.trustManager,
-            context = applicationContext,
-            onError = showErrorAndDismiss
-        )
+    val presentmentFlow: PresentmentFlow by lazy {
+        PresentmentFlow(walletApp, this)
     }
 
-    // lambda called whenever an error is encountered during processing of the Presentation request
-    private val showErrorAndDismiss: (Throwable) -> Unit = { throwable ->
-        Toast.makeText(applicationContext, throwable.message, Toast.LENGTH_SHORT).show()
-        onDestroy()
-    }
+    // Listener for obtaining request bytes from NFC/QR presentation engagements
+    val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
 
-    // lambda called with response bytes once the request has finished processing and is ready to be sent to requesting party
-    private val onFinishedProcessingRequest: (ByteArray) -> Unit = { encodedDeviceResponse ->
-        // ensure we are in the right state before sending the response
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
-
-        checkNotNull(transferHelper)
-
-        // send the response bytes to requesting party
-        transferHelper!!.sendResponse(encodedDeviceResponse)
-
-        // ensure we update UI-bound state value on Main thread
-        lifecycleScope.launch {
-            state.value = State.RESPONSE_SENT
+        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
+            Logger.i(TAG, "onEReaderKeyReceived")
         }
 
-        // terminate PresentationActivity since "presentation is complete" (once response is sent)
-        finish()
-    }
+        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+            Logger.i(TAG, "onDeviceRequest")
 
-    private fun onAuthenticationKeyLocked(credential: MdocCredential) {
-        val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
-        var userAuthenticationTypes = emptySet<UserAuthenticationType>()
-        if (keyInfo is AndroidKeystoreKeyInfo) {
-            userAuthenticationTypes = keyInfo.userAuthenticationTypes
+            deviceRequestByteArray = deviceRequestBytes
+            state.value = State.REQUEST_AVAILABLE
         }
 
-        val unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
-        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
+        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+            Logger.i(TAG, "onDeviceDisconnected $transportSpecificTermination")
+            disconnect()
+        }
 
-        showBiometricPrompt(
-            activity = this,
-            title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
-            subtitle = applicationContext.resources.getString(R.string.presentation_biometric_prompt_subtitle),
-            cryptoObject = cryptoObject,
-            userAuthenticationTypes = userAuthenticationTypes,
-            requireConfirmation = false,
-            onCanceled = { finish() },
-            onSuccess = { finishProcessingRequest(unlockData, credential) },
-            onError = {exception ->
-                Logger.e(TAG, exception.toString())
-                finish() },
-        )
-    }
-
-    private fun finishProcessingRequest(
-        keyUnlockData: KeyUnlockData? = null,
-        credential: MdocCredential? = null,
-    ) {
-        // finish processing the request on IO thread
-        lifecycleScope.launch {
-            transferHelper?.finishProcessingRequest(
-                requestedDocType = consentData!!.docType,
-                credentialId = consentData!!.credentialId,
-                documentRequest = consentData!!.documentRequest,
-                keyUnlockData = keyUnlockData,
-                onFinishedProcessing = onFinishedProcessingRequest,
-                onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
-                credential = credential
-            )
+        override fun onError(error: Throwable) {
+            Logger.e(TAG, "onError", error)
+            disconnect()
         }
     }
 
@@ -217,159 +139,70 @@ class PresentationActivity : FragmentActivity() {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
 
-        setContent {
-            IdentityCredentialTheme {
+        state.observe(this as LifecycleOwner) { state ->
+            when (state!!) {
+                State.NOT_CONNECTED -> {
+                    Logger.i(TAG, "State: Not Connected")
+                }
 
-                val stateDisplay = remember { mutableStateOf("Idle") }
-                val consentPromptData = remember { mutableStateOf<ConsentPromptEntryFieldData?>(null) }
+                State.CONNECTED -> {
+                    Logger.i(TAG, "State: Connected")
 
-                state.observe(this as LifecycleOwner) { state ->
-                    when (state) {
-                        State.NOT_CONNECTED -> {
-                            stateDisplay.value = "Not Connected"
-                            Logger.i(TAG, "State: Not Connected")
+                    // on a new connected client, create a new DeviceRetrievalHelper
+                    deviceRetrievalHelper = DeviceRetrievalHelper
+                        .Builder(
+                            applicationContext,
+                            deviceRetrievalHelperListener,
+                            ContextCompat.getMainExecutor(applicationContext),
+                            eDeviceKey!!
+                        )
+                        .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
+                        .build()
+
+                }
+
+                State.REQUEST_AVAILABLE -> {
+                    Logger.i(TAG, "State: Request Available")
+                    /**
+                     * Device request bytes have been transmitted via device retrieval helper listener,
+                     * Start the Presentment Flow where a Presentment is shown for every
+                     * [DocumentRequest] that has a suitable [Document].
+                     */
+                    lifecycleScope.launch(
+                        /**
+                         * Define a custom exception handler to prevent exceptions from propagating
+                         * upwards the coroutine and force close the app on uncaught exceptions.
+                         */
+                        CoroutineExceptionHandler { _, exception ->
+                            Logger.e(
+                                TAG,
+                                "Exception during Presentment flow: $exception"
+                            )
                         }
+                    ) {
+                        // get the response bytes containing 1 or more generated Documents to send
+                        val responseBytes = presentmentFlow.showPresentmentFlow(
+                            encodedDeviceRequest = deviceRequestByteArray!!,
+                            encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
+                        )
 
-                        State.CONNECTED -> {
-                            // on a new connected client, create a new DeviceRetrievalHelper and TransferHelper
-                            newDeviceRetrievalHelper().run {
-                                newTransferHelper(this)
-                            }
-                            stateDisplay.value = "Connected"
-                            Logger.i(TAG, "State: Connected")
-                        }
-
-                        State.REQUEST_AVAILABLE -> {
-                            stateDisplay.value = "Request Available"
-                            Logger.i(TAG, "State: Request Available")
-                            // start processing request and use processed request data to show consent prompt
-                            transferHelper?.startProcessingRequest(getDeviceRequest())
-                                ?.let { requestData ->
-                                    // update UI state object 'consentPromptData' so we can show ConsentPrompt
-                                    consentPromptData.value = ConsentPromptEntryFieldData(
-                                        credentialId = requestData.document.name,
-                                        documentName = requestData.document.documentConfiguration.displayName,
-                                        credentialData = requestData.document.documentConfiguration.mdocConfiguration!!.staticData,
-                                        documentRequest = requestData.documentRequest,
-                                        docType = requestData.docType,
-                                        verifier = requestData.trustPoint,
-                                    )
-                                }
-                        }
-
-                        State.RESPONSE_SENT -> {
-                            stateDisplay.value = "Response Sent"
-                            Logger.i(TAG, "State: Response Sent")
-                        }
-
-                        else -> {}
+                        sendResponseToDevice(responseBytes)
                     }
                 }
 
-                ScreenWithAppBar(title = "Presenting", navigationIcon = { }) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Sending mDL to reader.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "TODO: finalize UI",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Divider()
-                        Text(
-                            text = "State: ${stateDisplay.value}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Divider()
-                        Button(onClick = { finish() }) {
-                            Text("Close")
-                        }
-                    }
-
-                    // when consent data is available, show the consent prompt above the activity's UI
-                    consentData = consentPromptData.value
-                    if (consentData != null) {
-                        ConsentPromptEntryField(
-                            consentData = consentData!!,
-                            documentTypeRepository = walletApp.documentTypeRepository,
-                            onConfirm = { // user accepted to send requested credential data
-                                finishProcessingRequest()
-                            },
-                            onCancel = { // user declined submitting data to requesting party
-                                finish() // close activity
-                            }
-                        )
-                    }
+                State.RESPONSE_SENT -> {
+                    Logger.i(TAG, "State: Response Sent")
+                    // cleanup
+                    disconnect()
                 }
             }
         }
     }
 
     /**
-     * Set property transferHelper to a new instance of TransferHelper created with a new instance
-     * of DeviceRetrievalHelper
+     * Perform disconnect (via DeviceRetrievalHelper) and cleanup operations (nullifying vars) and
+     * a call to finish(). A new Engagement will result in a new Activity instance.
      */
-    private fun newTransferHelper(deviceRetrievalHelper: DeviceRetrievalHelper) {
-        // new TransferHelper instance
-        transferHelper =
-            transferHelperBuilder.setDeviceRetrievalHelper(deviceRetrievalHelper).build()
-    }
-
-    /**
-     * Create a new instance of DeviceRetrievalHelper and,
-     * 1. set property deviceRetrievalHelper to point to it
-     * 2. return the new instance so it can be used to create a new TransferHelper
-     */
-    private fun newDeviceRetrievalHelper() =
-        DeviceRetrievalHelper.Builder(
-            applicationContext,
-            object : DeviceRetrievalHelper.Listener {
-
-                override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
-                    Logger.i(TAG, "onEReaderKeyReceived")
-                }
-
-                override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-                    Logger.i(TAG, "onDeviceRequest")
-                    deviceRequest = deviceRequestBytes
-                    state.value = State.REQUEST_AVAILABLE
-                }
-
-                override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-                    Logger.i(TAG, "onDeviceDisconnected $transportSpecificTermination")
-                    deviceRetrievalHelper?.disconnect()
-                    deviceRetrievalHelper = null
-                    state.value = State.NOT_CONNECTED
-                }
-
-                override fun onError(error: Throwable) {
-                    Logger.i(TAG, "onError", error)
-                    deviceRetrievalHelper?.disconnect()
-                    deviceRetrievalHelper = null
-                    state.value = State.NOT_CONNECTED
-                }
-
-            },
-            ContextCompat.getMainExecutor(applicationContext),
-            eDeviceKey!!
-        )
-            .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
-            .build().apply {
-                // set deviceRetrievalHelper to this newly built instance
-                deviceRetrievalHelper = this
-                // return the instance
-            }
-
-
     private fun disconnect() {
         Logger.i(TAG, "disconnect")
         if (deviceRetrievalHelper == null) {
@@ -379,18 +212,27 @@ class PresentationActivity : FragmentActivity() {
         if (state.value == State.REQUEST_AVAILABLE) {
             val deviceResponseGenerator =
                 DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
-            transferHelper?.sendResponse(deviceResponseGenerator.generate())
+            sendResponseToDevice(deviceResponseGenerator.generate())
         }
         deviceRetrievalHelper?.disconnect()
         deviceRetrievalHelper = null
         transport = null
         handover = null
-        state.value = State.NOT_CONNECTED
+        finish()
     }
 
-    private fun getDeviceRequest(): ByteArray {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
-        check(deviceRequest != null) { "No request available " }
-        return deviceRequest as ByteArray
-    }
+    /**
+     * Send response bytes to requesting party and updates state to [State.RESPONSE_SENT]
+     * @param deviceResponseBytes response bytes that may or may not have been processed (such as
+     * when sending an error)
+     */
+    private fun sendResponseToDevice(deviceResponseBytes: ByteArray) =
+        deviceRetrievalHelper?.run {
+            sendDeviceResponse(
+                deviceResponseBytes,
+                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+            )
+            state.value = State.RESPONSE_SENT
+        }
+            ?: throw IllegalStateException("Unable to send response bytes, deviceRetrievalHelper is [null].")
 }

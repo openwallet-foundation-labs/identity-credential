@@ -16,7 +16,7 @@ import kotlin.coroutines.resumeWithException
 /**
  * Show the Biometric prompt
  *
- * Async extension function that shows the Biometric Prompt and returns the result as a [Boolean]
+ * Async function that shows the Biometric Prompt and returns the result as a [Boolean]
  * indicating whether authentication was successful, or raises/throws an Exception, such as
  * [IllegalStateException], if an error prevented the Biometric Prompt from showing.
  *

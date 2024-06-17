@@ -15,7 +15,7 @@ import kotlin.coroutines.resume
 /**
  * Show the Passphrase prompt
  *
- * Async extension function that renders the Passphrase Prompt through the composition of
+ * Async function that renders the Passphrase Prompt through the composition of
  * a [PassphraseEntryField] from inside a Dialog Fragment. Returns the typed [String]
  * passphrase after the user taps on the "Done" key on the keyboard.
  *
