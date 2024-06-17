@@ -57,5 +57,5 @@ class SecureAreaSupportNull : SecureAreaSupport {
         challenge: ByteArray,
         validFrom: Instant,
         validUntil: Instant
-    ): CreateKeySettings = CreateKeySettings(challenge)
+    ): CreateKeySettings = CreateKeySettings()
 }

@@ -28,10 +28,12 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea.Capabil
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
@@ -60,6 +62,10 @@ import java.security.spec.InvalidKeySpecException
 import java.sql.Date
 import javax.crypto.KeyAgreement
 import kotlinx.datetime.Instant
+import org.bouncycastle.asn1.ASN1InputStream
+import org.bouncycastle.asn1.ASN1Integer
+import org.bouncycastle.asn1.ASN1Sequence
+import java.io.ByteArrayInputStream
 
 /**
  * An implementation of [SecureArea] using Android Keystore.
@@ -134,10 +140,7 @@ class AndroidKeystoreSecureArea(
             createKeySettings
         } else {
             // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            AndroidKeystoreCreateKeySettings.Builder(
-                createKeySettings.attestationChallenge
-            )
-                .build()
+            AndroidKeystoreCreateKeySettings.Builder("".toByteArray()).build()
         }
         var kpg: KeyPairGenerator? = null
         try {
@@ -261,18 +264,18 @@ class AndroidKeystoreSecureArea(
         } catch (e: NoSuchProviderException) {
             throw IllegalStateException("Error creating key", e)
         }
-        val attestationCerts = mutableListOf<Certificate>()
+        val attestationCerts = mutableListOf<X509Certificate>()
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
             ks.getCertificateChain(alias).forEach { certificate ->
-                attestationCerts.add(Certificate(certificate.encoded))
+                attestationCerts.add(X509Certificate(certificate.encoded))
             }
         } catch (e: Exception) {
             throw IllegalStateException(e)
         }
         Logger.d(TAG, "EC key with alias '$alias' created")
-        saveKeyMetadata(alias, aSettings, CertificateChain(attestationCerts))
+        saveKeyMetadata(alias, aSettings, X509CertificateChain(attestationCerts))
     }
 
     /**
@@ -321,12 +324,12 @@ class AndroidKeystoreSecureArea(
         val settingsBuilder = AndroidKeystoreCreateKeySettings.Builder("".toByteArray(StandardCharsets.UTF_8))
 
         // attestation
-        val attestationCerts = mutableListOf<Certificate>()
+        val attestationCerts = mutableListOf<X509Certificate>()
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
             ks.getCertificateChain(existingAlias).forEach { certificate ->
-                attestationCerts.add(Certificate(certificate.encoded))
+                attestationCerts.add(X509Certificate(certificate.encoded))
             }
         } catch (e: Exception) {
             throw IllegalStateException(e)
@@ -371,7 +374,7 @@ class AndroidKeystoreSecureArea(
             keyInfo.userAuthenticationValidityDurationSeconds * 1000L,
             userAuthenticationTypes
         )
-        saveKeyMetadata(existingAlias, settingsBuilder.build(), CertificateChain(attestationCerts))
+        saveKeyMetadata(existingAlias, settingsBuilder.build(), X509CertificateChain(attestationCerts))
         Logger.d(TAG, "EC existing key with alias '$existingAlias' created")
     }
 
@@ -399,13 +402,16 @@ class AndroidKeystoreSecureArea(
         Logger.d(TAG, "EC key with alias '$alias' deleted")
     }
 
-    @Throws(KeyLockedException::class)
     override fun sign(
         alias: String,
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: com.android.identity.securearea.KeyUnlockData?
-    ): ByteArray {
+    ): EcSignature {
+        val (entry, data) = loadKey(alias)
+        val decodedData = Cbor.decode(data)
+        val curve = EcCurve.fromInt(decodedData["curve"].asNumber.toInt())
+
         if (keyUnlockData != null) {
             val unlockData = keyUnlockData as AndroidKeystoreKeyUnlockData
             require(unlockData.alias == alias) {
@@ -418,21 +424,21 @@ class AndroidKeystoreSecureArea(
                 }
                 return try {
                     unlockData.signature!!.update(dataToSign)
-                    unlockData.signature!!.sign()
+                    val derEncodedSignature = unlockData.signature!!.sign()
+                    signatureFromDer(curve, derEncodedSignature)
                 } catch (e: SignatureException) {
                     throw IllegalStateException(e.message, e)
                 }
             }
         }
 
-        val (entry, _) = loadKey(alias)
-
         return try {
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val s = Signature.getInstance(getSignatureAlgorithmName(signatureAlgorithm))
             s.initSign(privateKey)
             s.update(dataToSign)
-            s.sign()
+            val derEncodedSignature = s.sign()
+            signatureFromDer(curve, derEncodedSignature)
         } catch (e: UserNotAuthenticatedException) {
             throw KeyLockedException("User not authenticated", e)
         } catch (e: SignatureException) {
@@ -528,8 +534,8 @@ class AndroidKeystoreSecureArea(
                     keyInfo.keyValidityForOriginationEnd!!.time
                 )
             }
-            val attestation = map["attestation"].asCertificateChain
-            val publicKey = attestation.certificates.first().publicKey
+            val attestation = map["attestation"].asX509CertificateChain
+            val publicKey = attestation.certificates.first().ecPublicKey
 
             val userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -546,7 +552,7 @@ class AndroidKeystoreSecureArea(
             }
             AndroidKeystoreKeyInfo(
                 publicKey,
-                attestation,
+                AndroidKeystoreKeyAttestation(attestation),
                 keyPurposes,
                 attestKeyAlias,
                 userAuthenticationRequired,
@@ -564,7 +570,7 @@ class AndroidKeystoreSecureArea(
     private fun saveKeyMetadata(
         alias: String,
         settings: AndroidKeystoreCreateKeySettings,
-        attestation: CertificateChain
+        attestation: X509CertificateChain
     ) {
         val map = CborMap.builder()
         map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))
@@ -575,6 +581,7 @@ class AndroidKeystoreSecureArea(
         map.put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
         map.put("useStrongBox", settings.useStrongBox)
         map.put("attestation", attestation.toDataItem)
+        map.put("curve", settings.ecCurve.coseCurveIdentifier)
         storageEngine.put(PREFIX + alias, Cbor.encode(map.end().build()))
     }
 
@@ -704,6 +711,41 @@ class AndroidKeystoreSecureArea(
                 )
             }
         }
+
+        private fun stripLeadingZeroes(array: ByteArray): ByteArray {
+            val idx = array.indexOfFirst { it != 0.toByte() }
+            if (idx == -1)
+                return array
+            return array.copyOfRange(idx, array.size)
+        }
+
+        internal fun signatureFromDer(curve: EcCurve, derEncodedSignature: ByteArray): EcSignature {
+            val asn1 = try {
+                ASN1InputStream(ByteArrayInputStream(derEncodedSignature)).readObject()
+            } catch (e: IOException) {
+                throw IllegalArgumentException("Error decoding DER signature", e)
+            }
+            val asn1Encodables = (asn1 as ASN1Sequence).toArray()
+            require(asn1Encodables.size == 2) { "Expected two items in sequence" }
+            val r = stripLeadingZeroes(((asn1Encodables[0].toASN1Primitive() as ASN1Integer).value).toByteArray())
+            val s = stripLeadingZeroes(((asn1Encodables[1].toASN1Primitive() as ASN1Integer).value).toByteArray())
+
+            val keySize = (curve.bitSize + 7)/8
+            check(r.size <= keySize)
+            check(s.size <= keySize)
+
+            val rPadded = ByteArray(keySize)
+            val sPadded = ByteArray(keySize)
+            r.copyInto(rPadded, keySize - r.size)
+            s.copyInto(sPadded, keySize - s.size)
+
+            check(rPadded.size == keySize)
+            check(sPadded.size == keySize)
+
+            return EcSignature(rPadded, sPadded)
+        }
+
+
 
         private fun getFeatureVersionKeystore(appContext: Context, useStrongbox: Boolean): Int {
             var feature = PackageManager.FEATURE_HARDWARE_KEYSTORE

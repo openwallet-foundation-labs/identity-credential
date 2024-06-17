@@ -1,8 +1,8 @@
 package com.android.identity.issuance
 
 import com.android.identity.cbor.annotation.CborSerializable
-import com.android.identity.crypto.CertificateChain
-import kotlinx.io.bytestring.ByteString
+import com.android.identity.crypto.EcSignature
+import com.android.identity.crypto.X509CertificateChain
 
 /**
  * An data structure sent from the Wallet Application to the Wallet Server used to prove
@@ -11,18 +11,18 @@ import kotlinx.io.bytestring.ByteString
 @CborSerializable
 data class ClientAuthentication(
     /**
-     * An ECDSA signature made by WalletAppliactionKey.
+     * An ECDSA signature made by WalletApplicationKey.
      *
      * TODO: describe what we're actually signing here.
      */
-    val signature: ByteString,
+    val signature: EcSignature,
 
     /**
-     * The attestation for WalletAppliactionKey.
+     * The attestation for WalletApplicationKey.
      *
      * This is only set if this is the first time the client is authenticating.
      */
-    val certificateChain: CertificateChain?,
+    val attestation: X509CertificateChain?,
 
     /**
      * The capabilities of the Wallet Application.

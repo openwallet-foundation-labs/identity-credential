@@ -21,7 +21,7 @@ import androidx.navigation.fragment.findNavController
 import co.nstant.`in`.cbor.CborBuilder
 import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
@@ -47,11 +47,6 @@ import kotlinx.datetime.Instant
 import kotlin.time.Duration.Companion.days
 
 class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
-
-    private lateinit var softwareAttestationKey: EcPrivateKey
-    private lateinit var softwareAttestationKeySignatureAlgorithm: Algorithm
-    private lateinit var softwareAttestationKeyIssuer: String
-    private lateinit var softwareAttestationKeyCertification: CertificateChain
 
     private val screenState = SoftwareKeystoreSecureAreaSupportState()
 
@@ -132,46 +127,6 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
         return screenState
     }
 
-    private fun initSoftwareAttestationKey() {
-        val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
-        val now = Clock.System.now()
-        secureArea.createKey(
-            "SoftwareAttestationRoot",
-            SoftwareCreateKeySettings.Builder("".toByteArray())
-                .setEcCurve(EcCurve.P256)
-                .setKeyPurposes(setOf(KeyPurpose.SIGN))
-                .setSubject("CN=Software Attestation Root")
-                .setValidityPeriod(
-                    now,
-                    Instant.fromEpochMilliseconds(
-                        Clock.System.now().toEpochMilliseconds() + 10L * 86400 * 365 * 1000)
-                )
-                .build()
-        )
-        val validFrom = Clock.System.now()
-        val validUntil = validFrom + 100.days
-        softwareAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        softwareAttestationKeySignatureAlgorithm = Algorithm.ES256
-        softwareAttestationKeyIssuer = "CN=Software Attestation Root"
-        softwareAttestationKeyCertification = CertificateChain(
-            listOf(
-                Crypto.createX509v3Certificate(
-                    softwareAttestationKey.publicKey,
-                    softwareAttestationKey,
-                    null,
-                    Algorithm.ES256,
-                    "1",
-                    "CN=Software Attestation Root",
-                    "CN=Software Attestation Root",
-                    validFrom,
-                    validUntil,
-                    setOf(),
-                    listOf()
-                )
-            )
-        )
-    }
-
     override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
         val state = secureAreaSupportState as SoftwareKeystoreSecureAreaSupportState
         return FormatUtil.cborEncode(
@@ -192,26 +147,16 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
         validFrom: Instant,
         validUntil: Instant
     ): CreateKeySettings {
-        if (!this::softwareAttestationKey.isInitialized) {
-            initSoftwareAttestationKey()
-        }
-
         val map = Cbor.decode(encodedConfiguration)
         val curve = EcCurve.fromInt(map["curve"].asNumber.toInt())
         val purposes = KeyPurpose.decodeSet(map["purposes"].asNumber)
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val passphrase = map["passphrase"].asTstr
-        return SoftwareCreateKeySettings.Builder(challenge)
+        return SoftwareCreateKeySettings.Builder()
             .setEcCurve(curve)
             .setKeyPurposes(purposes)
             .setValidityPeriod(validFrom, validUntil)
             .setPassphraseRequired(passphraseRequired, passphrase, null)
-            .setAttestationKey(
-                softwareAttestationKey,
-                softwareAttestationKeySignatureAlgorithm,
-                softwareAttestationKeyIssuer,
-                softwareAttestationKeyCertification
-            )
             .build()
     }
 }

@@ -24,6 +24,7 @@ import com.android.identity.wallet.document.KeysAndCertificates
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
 import com.google.android.material.color.DynamicColors
+import kotlinx.io.files.Path
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
 import java.security.Security
@@ -41,7 +42,7 @@ class HolderApp: Application() {
     }
 
     private val certificateStorageEngine by lazy {
-        GenericStorageEngine(getDir("Certificates", MODE_PRIVATE))
+        GenericStorageEngine(Path(getDir("Certificates", MODE_PRIVATE).name))
     }
 
     override fun onCreate() {
@@ -89,7 +90,9 @@ class HolderApp: Application() {
             secureAreaRepository.addImplementation(softwareSecureArea)
 
             var credentialFactory = CredentialFactory()
-            credentialFactory.addCredentialImplementation(MdocCredential::class)
+            credentialFactory.addCredentialImplementation(MdocCredential::class) {
+                document, dataItem -> MdocCredential(document, dataItem)
+            }
             return DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
         }
     }

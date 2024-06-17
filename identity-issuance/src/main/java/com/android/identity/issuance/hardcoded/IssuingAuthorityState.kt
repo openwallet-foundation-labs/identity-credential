@@ -13,8 +13,8 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.document.NameSpacedData
@@ -248,10 +248,10 @@ class IssuingAuthorityState(
         for (request in state.credentialRequests) {
             // Skip if we already have a request for the authentication key
             if (hasCpoRequestForAuthenticationKey(issuerDocument,
-                    request.secureAreaBoundKeyAttestation.certificates.first().publicKey)) {
+                    request.secureAreaBoundKeyAttestation.publicKey)) {
                 continue
             }
-            val authenticationKey = request.secureAreaBoundKeyAttestation.certificates.first().publicKey
+            val authenticationKey = request.secureAreaBoundKeyAttestation.publicKey
             val presentationData = createPresentationData(
                 env,
                 issuerDocument.documentConfiguration!!,
@@ -420,11 +420,11 @@ class IssuingAuthorityState(
         }
 
         val resources = env.getInterface(Resources::class)!!
-        val documentSigningKeyCert = Certificate.fromPem(
+        val documentSigningKeyCert = X509Certificate.fromPem(
             resources.getStringResource("ds_certificate.pem")!!)
         val documentSigningKey = EcPrivateKey.fromPem(
             resources.getStringResource("ds_private_key.pem")!!,
-            documentSigningKeyCert.publicKey
+            documentSigningKeyCert.ecPublicKey
         )
 
         val mso = msoGenerator.generate()
@@ -435,7 +435,9 @@ class IssuingAuthorityState(
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).toDataItem
+            X509CertificateChain(listOf(
+                X509Certificate(documentSigningKeyCert.encodedCertificate))
+            ).toDataItem
         ))
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(

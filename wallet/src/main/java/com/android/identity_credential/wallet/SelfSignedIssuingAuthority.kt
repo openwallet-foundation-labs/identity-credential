@@ -22,8 +22,8 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificate
@@ -200,7 +200,9 @@ abstract class SelfSignedIssuingAuthority(
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).toDataItem
+            X509CertificateChain(listOf(
+                X509Certificate(documentSigningKeyCert.encodedCertificate))
+            ).toDataItem
         ))
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(
@@ -223,7 +225,7 @@ abstract class SelfSignedIssuingAuthority(
     }
 
     private lateinit var documentSigningKey: EcPrivateKey
-    private lateinit var documentSigningKeyCert: Certificate
+    private lateinit var documentSigningKeyCert: X509Certificate
 
     private fun getRawResourceAsString(@RawRes resourceId: Int): String {
         val inputStream = application.applicationContext.resources.openRawResource(resourceId)
@@ -253,11 +255,13 @@ abstract class SelfSignedIssuingAuthority(
         // $ mv identityctl/ds_*.pem wallet/src/main/res/raw/
         //
 
-        documentSigningKeyCert = Certificate.fromPem(getRawResourceAsString(R.raw.ds_certificate))
+        documentSigningKeyCert = X509Certificate.fromPem(
+            getRawResourceAsString(R.raw.ds_certificate)
+        )
         Logger.d(TAG, "Cert: " + documentSigningKeyCert.javaX509Certificate.toString())
         documentSigningKey = EcPrivateKey.fromPem(
             getRawResourceAsString(R.raw.ds_private_key),
-            documentSigningKeyCert.publicKey
+            documentSigningKeyCert.ecPublicKey
         )
 
     }

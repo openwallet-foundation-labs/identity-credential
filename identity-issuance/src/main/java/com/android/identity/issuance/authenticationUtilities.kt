@@ -1,6 +1,6 @@
 package com.android.identity.issuance
 
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.util.AndroidAttestationExtensionParser
@@ -28,7 +28,7 @@ fun authenticationMessage(clientId: String, nonce: ByteString): ByteString {
     return buffer.toByteString()
 }
 
-fun extractAttestationSequence(chain: CertificateChain): ASN1Sequence {
+fun extractAttestationSequence(chain: X509CertificateChain): ASN1Sequence {
     val extension = chain.certificates[0].javaX509Certificate.getExtensionValue(KEY_DESCRIPTION_OID)
     val asn1InputStream = ASN1InputStream(extension)
     val derSequenceBytes = (asn1InputStream.readObject() as ASN1OctetString).octets
@@ -37,7 +37,7 @@ fun extractAttestationSequence(chain: CertificateChain): ASN1Sequence {
 }
 
 fun validateKeyAttestation(
-    chain: CertificateChain,
+    chain: X509CertificateChain,
     clientId: String,
     requireGmsAttestation: Boolean,
     requireVerifiedBootGreen: Boolean,

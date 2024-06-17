@@ -20,9 +20,11 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.create
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.fromHex
 import kotlinx.datetime.Clock
@@ -143,7 +145,7 @@ class DeviceRequestParserTest {
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
-        val certificate = Crypto.createX509v3Certificate(
+        val certificate = X509Certificate.create(
             readerKey.publicKey,
             trustPoint,
             null,
@@ -152,9 +154,11 @@ class DeviceRequestParserTest {
             "CN=Some Reader Key",
             "CN=Some Reader Authority",
             validFrom,
-            validUntil, setOf(), listOf()
+            validUntil,
+            setOf(),
+            listOf()
         )
-        val readerCertChain = CertificateChain(listOf(certificate))
+        val readerCertChain = X509CertificateChain(listOf(certificate))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)
@@ -226,7 +230,7 @@ class DeviceRequestParserTest {
     //   fails gracefully.. that is, should successfully parse the request message but the
     //   getReaderAuthenticated() method should return false.
     //
-    
+
     companion object {
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"

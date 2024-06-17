@@ -11,9 +11,15 @@ import kotlinx.datetime.Instant
  * Class for holding Android Keystore-specific settings related to key creation.
  */
 class AndroidKeystoreCreateKeySettings private constructor(
+
     keyPurposes: Set<KeyPurpose>,
+
     ecCurve: EcCurve,
-    attestationChallenge: ByteArray,
+
+    /**
+     * The attestation challenge.
+     */
+    val attestationChallenge: ByteArray,
 
     /**
      * Gets whether user authentication is required.
@@ -52,7 +58,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
      */
     val validUntil: Instant?
 
-) : CreateKeySettings(attestationChallenge, keyPurposes, ecCurve) {
+) : CreateKeySettings(keyPurposes, ecCurve) {
 
     /**
      * A builder for [CreateKeySettings].

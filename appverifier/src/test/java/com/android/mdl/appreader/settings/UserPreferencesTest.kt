@@ -1,7 +1,8 @@
 package com.android.mdl.appreader.settings
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class UserPreferencesTest {
 
@@ -34,8 +35,7 @@ class UserPreferencesTest {
     fun defaultSettings() {
         val settingsViewModel = SettingsViewModel(userPreferences)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState())
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState())
     }
 
     @Test
@@ -44,8 +44,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onAutoCloseConnectionUpdated(connectionAutoClose)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isAutoCloseConnectionEnabled = connectionAutoClose))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isAutoCloseConnectionEnabled = connectionAutoClose))
     }
 
     @Test
@@ -54,8 +53,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onBleL2capUpdated(bleL2CapEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isL2CAPEnabled = bleL2CapEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isL2CAPEnabled = bleL2CapEnabled))
     }
 
     @Test
@@ -64,8 +62,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onBleClearCacheUpdated(bleClearCacheEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isBleClearCacheEnabled = bleClearCacheEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isBleClearCacheEnabled = bleClearCacheEnabled))
     }
 
     @Test
@@ -76,8 +73,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onHttpTransferUpdated(httpTransferEnabled)
 
-        assertThat(settingsViewModel.screenState.value.isHttpTransferEnabled)
-            .isEqualTo(httpTransferEnabled)
+        assertEquals(settingsViewModel.screenState.value.isHttpTransferEnabled, httpTransferEnabled)
     }
 
     @Test
@@ -86,8 +82,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onBleCentralClientModeUpdated(bleCentralModeEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isBleCentralClientModeEnabled = bleCentralModeEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isBleCentralClientModeEnabled = bleCentralModeEnabled))
     }
 
     @Test
@@ -96,8 +91,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onBlePeripheralClientModeUpdated(blePeripheralModeEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isBlePeripheralServerMode = blePeripheralModeEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isBlePeripheralServerMode = blePeripheralModeEnabled))
     }
 
     @Test
@@ -106,8 +100,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onWifiAwareUpdated(wifiAwareEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isWifiAwareEnabled = wifiAwareEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isWifiAwareEnabled = wifiAwareEnabled))
     }
 
     @Test
@@ -116,8 +109,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onNfcTransferUpdated(nfcTransferEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isNfcTransferEnabled = nfcTransferEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isNfcTransferEnabled = nfcTransferEnabled))
     }
 
     @Test
@@ -126,8 +118,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onDebugLoggingUpdated(debugLogEnabled)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isDebugLoggingEnabled = debugLogEnabled))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isDebugLoggingEnabled = debugLogEnabled))
     }
 
     @Test
@@ -136,8 +127,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onReaderAuthenticationUpdated(authentication)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(readerAuthentication = authentication))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(readerAuthentication = authentication))
     }
 
     @Test
@@ -146,8 +136,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onHttpTransferUpdated(false)
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(SettingsScreenState(isHttpTransferEnabled = true))
+        assertEquals(settingsViewModel.screenState.value, SettingsScreenState(isHttpTransferEnabled = true))
     }
 
     @Test
@@ -159,7 +148,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onBleCentralClientModeUpdated(false)
 
-        assertThat(settingsViewModel.screenState.value.isBleCentralClientModeEnabled).isTrue()
+        assertTrue(settingsViewModel.screenState.value.isBleCentralClientModeEnabled)
     }
 
     @Test
@@ -171,7 +160,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onBlePeripheralClientModeUpdated(false)
 
-        assertThat(settingsViewModel.screenState.value.isBlePeripheralServerMode).isTrue()
+        assertTrue(settingsViewModel.screenState.value.isBlePeripheralServerMode)
     }
 
     @Test
@@ -183,7 +172,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onWifiAwareUpdated(false)
 
-        assertThat(settingsViewModel.screenState.value.isWifiAwareEnabled).isTrue()
+        assertTrue(settingsViewModel.screenState.value.isWifiAwareEnabled)
     }
 
     @Test
@@ -195,7 +184,7 @@ class UserPreferencesTest {
 
         settingsViewModel.onNfcTransferUpdated(false)
 
-        assertThat(settingsViewModel.screenState.value.isNfcTransferEnabled).isTrue()
+        assertTrue(settingsViewModel.screenState.value.isNfcTransferEnabled)
     }
 
     @Test
@@ -215,7 +204,6 @@ class UserPreferencesTest {
 
         settingsViewModel.loadSettings()
 
-        assertThat(settingsViewModel.screenState.value)
-            .isEqualTo(settingsScreenState)
+        assertEquals(settingsViewModel.screenState.value, settingsScreenState)
     }
 }

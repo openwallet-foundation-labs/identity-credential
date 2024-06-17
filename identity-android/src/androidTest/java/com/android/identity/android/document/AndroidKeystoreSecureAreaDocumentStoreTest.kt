@@ -16,8 +16,8 @@
 package com.android.identity.android.document
 
 import androidx.test.InstrumentationRegistry
-import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
@@ -29,6 +29,7 @@ import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
+import com.android.identity.util.AndroidAttestationExtensionParser
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -56,7 +57,9 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         secureArea = AndroidKeystoreSecureArea(context, storageEngine)
         secureAreaRepository.addImplementation(secureArea)
         credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(SecureAreaBoundCredential::class)
+        credentialFactory.addCredentialImplementation(SecureAreaBoundCredential::class) {
+            document, dataItem -> SecureAreaBoundCredential(document, dataItem)
+        }
     }
 
     @Test
@@ -83,8 +86,9 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
                 .build(),
         )
         Assert.assertFalse(pendingCredential.isCertified)
+        val attestation = pendingCredential.attestation as AndroidKeystoreKeyAttestation
         val parser =
-            AndroidAttestationExtensionParser(pendingCredential.attestation.certificates[0].javaX509Certificate)
+            AndroidAttestationExtensionParser(attestation.certificateChain.certificates[0].javaX509Certificate)
         Assert.assertArrayEquals(
             authKeyChallenge,
             parser.attestationChallenge

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.identity.android.legacy;
+package com.android.identity.android.legacy
+
+import androidx.annotation.Keep
 
 /**
  * Represents a single instant in time. Ideally, we'd use `java.time.Instant`, but we cannot

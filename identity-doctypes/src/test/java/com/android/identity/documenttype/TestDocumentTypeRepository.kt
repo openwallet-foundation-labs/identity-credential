@@ -18,33 +18,33 @@ import org.junit.Test
 class TestDocumentTypeRepository {
 
     @Test
-    fun testCredentialTypeRepositoryDrivingLicense() {
+    fun testDocumentTypeRepositoryDrivingLicense() {
         val documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
-        val credentialTypes = documentTypeRepository.documentTypes
-        assert(credentialTypes.count() == 1)
-        assert(credentialTypes[0].displayName == "Driving License")
-        assert(credentialTypes[0].mdocDocumentType?.docType == "org.iso.18013.5.1.mDL")
-        assert(credentialTypes[0].vcDocumentType?.type == "Iso18013DriversLicenseCredential")
+        val documentTypes = documentTypeRepository.documentTypes
+        assert(documentTypes.count() == 1)
+        assert(documentTypes[0].displayName == "Driving License")
+        assert(documentTypes[0].mdocDocumentType?.docType == "org.iso.18013.5.1.mDL")
+        assert(documentTypes[0].vcDocumentType?.type == "Iso18013DriversLicenseCredential")
         assert(
-            credentialTypes[0].mdocDocumentType?.namespaces?.iterator()
+            documentTypes[0].mdocDocumentType?.namespaces?.iterator()
                 ?.next()?.key == "org.iso.18013.5.1"
         )
         assert(
-            credentialTypes[0].mdocDocumentType?.namespaces?.iterator()
+            documentTypes[0].mdocDocumentType?.namespaces?.iterator()
                 ?.next()?.value?.namespace == "org.iso.18013.5.1"
         )
         assert(
-            credentialTypes[0].mdocDocumentType?.namespaces?.get("org.iso.18013.5.1")?.dataElements?.get(
+            documentTypes[0].mdocDocumentType?.namespaces?.get("org.iso.18013.5.1")?.dataElements?.get(
                 "family_name"
             )?.attribute?.type == DocumentAttributeType.String
         )
         assert(
-            credentialTypes[0].mdocDocumentType?.namespaces?.values?.toList()
+            documentTypes[0].mdocDocumentType?.namespaces?.values?.toList()
                 ?.last()?.namespace == "org.iso.18013.5.1.aamva"
         )
         assert(
-            credentialTypes[0].mdocDocumentType?.namespaces?.get("org.iso.18013.5.1.aamva")?.dataElements?.get(
+            documentTypes[0].mdocDocumentType?.namespaces?.get("org.iso.18013.5.1.aamva")?.dataElements?.get(
                 "domestic_driving_privileges"
             )?.attribute?.type == DocumentAttributeType.ComplexType
         )
@@ -126,7 +126,7 @@ class TestDocumentTypeRepository {
 
         // CredentialAttributeType.DateTime - supports both tdate and full-date
         Assert.assertEquals(
-            "1976-02-03 06:30:00",
+            "1976-02-03T06:30:00",
             MdocDataElement(
                 DocumentAttribute(
                     DocumentAttributeType.DateTime,
@@ -145,7 +145,7 @@ class TestDocumentTypeRepository {
         // isn't taken into account, check a couple of different timezones
         for (zoneId in listOf("Europe/Copenhagen", "Australia/Brisbane", "Pacific/Honolulu")) {
             Assert.assertEquals(
-                "1976-02-03 00:00:00",
+                "1976-02-03T00:00:00",
                 MdocDataElement(
                     DocumentAttribute(
                         DocumentAttributeType.DateTime,

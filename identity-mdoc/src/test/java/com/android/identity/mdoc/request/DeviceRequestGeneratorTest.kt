@@ -20,9 +20,11 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.create
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -61,7 +63,7 @@ class DeviceRequestGeneratorTest {
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 30L * 24 * 60 * 60 * 1000
         )
-        val readerCert = Crypto.createX509v3Certificate(
+        val readerCert = X509Certificate.create(
             readerKey.publicKey,
             readerKey,
             null,
@@ -70,9 +72,11 @@ class DeviceRequestGeneratorTest {
             "CN=Test Key",
             "CN=Test Key",
             validFrom,
-            validUntil, setOf(), listOf()
+            validUntil,
+            setOf(),
+            listOf()
         )
-        val readerCertChain = CertificateChain(listOf(readerCert))
+        val readerCertChain = X509CertificateChain(listOf(readerCert))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)

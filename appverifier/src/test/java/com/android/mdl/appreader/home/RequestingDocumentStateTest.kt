@@ -1,8 +1,9 @@
 package com.android.mdl.appreader.home
 
 import com.android.mdl.appreader.R
-import com.google.common.truth.Truth.assertThat
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class RequestingDocumentStateTest {
 
@@ -11,84 +12,84 @@ class RequestingDocumentStateTest {
 
     @Test
     fun detectNonCustomMdlRequest() {
-        assertThat(requestingDocumentState.isCustomMdlRequest).isFalse()
+        assertFalse(requestingDocumentState.isCustomMdlRequest)
     }
 
     @Test
     fun detectCustomMdlRequest() {
         val state = requestingDocumentState.copy(custom = selected)
-        assertThat(state.isCustomMdlRequest).isTrue()
+        assertTrue(state.isCustomMdlRequest)
     }
 
     @Test
     fun detectMdlElementsWhenOlderThan18Selected() {
         val state = requestingDocumentState.copy(olderThan18 = selected)
-        assertThat(state.hasMdlElementsSelected).isTrue()
+        assertTrue(state.hasMdlElementsSelected)
     }
 
     @Test
     fun detectMdlElementsWhenOlderThan21Selected() {
         val state = requestingDocumentState.copy(olderThan21 = selected)
-        assertThat(state.hasMdlElementsSelected).isTrue()
+        assertTrue(state.hasMdlElementsSelected)
     }
 
     @Test
     fun detectMdlElementsWhenMandatoryFieldsSelected() {
         val state = requestingDocumentState.copy(mandatoryFields = selected)
-        assertThat(state.hasMdlElementsSelected).isTrue()
+        assertTrue(state.hasMdlElementsSelected)
     }
 
     @Test
     fun detectMdlElementsWhenFullMdlSelected() {
         val state = requestingDocumentState.copy(fullMdl = selected)
-        assertThat(state.hasMdlElementsSelected).isTrue()
+        assertTrue(state.hasMdlElementsSelected)
     }
 
     @Test
     fun detectMdlElementsWhenUsTransportationSelected() {
         val state = requestingDocumentState.copy(mdlForUsTransportation = selected)
-        assertThat(state.hasMdlElementsSelected).isTrue()
+        assertTrue(state.hasMdlElementsSelected)
     }
 
     @Test
     fun detectMdlElementsWhenCustomMdlSelected() {
         val state = requestingDocumentState.copy(custom = selected)
-        assertThat(state.hasMdlElementsSelected).isTrue()
+        assertTrue(state.hasMdlElementsSelected)
     }
 
     @Test
     fun detectMdlRequestForOlderThan18Request() {
         val mdlOver18 = DocumentElementsRequest(R.string.mdl_over_18)
-        assertThat(requestingDocumentState.isMdlRequest(mdlOver18)).isTrue()
+        assertTrue(requestingDocumentState.isMdlRequest(mdlOver18))
     }
 
     @Test
     fun detectMdlRequestForOlderThan21Request() {
         val mdlOver21 = DocumentElementsRequest(R.string.mdl_over_21)
-        assertThat(requestingDocumentState.isMdlRequest(mdlOver21)).isTrue()
+        assertTrue(requestingDocumentState.isMdlRequest(mdlOver21))
     }
 
     @Test
     fun detectMdlRequestForMdlWithMandatoryFieldsRequest() {
         val mldMandatoryFields = DocumentElementsRequest(R.string.mdl_mandatory_fields)
-        assertThat(requestingDocumentState.isMdlRequest(mldMandatoryFields)).isTrue()
+        assertTrue(requestingDocumentState.isMdlRequest(mldMandatoryFields))
     }
 
     @Test
     fun detectMdlRequestForFullMdl() {
         val fullMdlFields = DocumentElementsRequest(R.string.mdl_full)
-        assertThat(requestingDocumentState.isMdlRequest(fullMdlFields)).isTrue()
+        assertTrue(requestingDocumentState.isMdlRequest(fullMdlFields))
     }
 
     @Test
     fun detectMdlRequestForMdlForUsTransportation() {
         val mdlForUsFields = DocumentElementsRequest(R.string.mdl_us_transportation)
-        assertThat(requestingDocumentState.isMdlRequest(mdlForUsFields)).isTrue()
+        assertTrue(requestingDocumentState.isMdlRequest(mdlForUsFields))
     }
 
     @Test
     fun detectMdlRequestForCustomMdl() {
         val customMdlRequest = DocumentElementsRequest(R.string.mdl_custom)
-        assertThat(requestingDocumentState.isMdlRequest(customMdlRequest)).isTrue()
+        assertTrue(requestingDocumentState.isMdlRequest(customMdlRequest))
     }
 }

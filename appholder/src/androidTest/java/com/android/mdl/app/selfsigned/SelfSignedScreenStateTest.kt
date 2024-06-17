@@ -14,7 +14,7 @@ import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.AddSelfSignedViewModel
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.ProvisioningUtil
-import com.google.common.truth.Truth.assertThat
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,8 +41,7 @@ class SelfSignedScreenStateTest {
     fun defaultScreenState() {
         val viewModel = AddSelfSignedViewModel(savedStateHandle)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState())
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState())
     }
 
     @Test
@@ -53,7 +52,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateDocumentType(personalId, name)
 
-        assertThat(viewModel.screenState.value).isEqualTo(
+        assertEquals(viewModel.screenState.value,
             AddSelfSignedScreenState(documentType = personalId, documentName = "EU Personal ID")
         )
     }
@@ -65,8 +64,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateDocumentName(newName)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState(documentName = newName))
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState(documentName = newName))
     }
 
     @Test
@@ -78,7 +76,7 @@ class SelfSignedScreenStateTest {
         viewModel.updateDocumentName(":irrelevant:")
         viewModel.updateDocumentType(registration, name)
 
-        assertThat(viewModel.screenState.value).isEqualTo(
+        assertEquals(viewModel.screenState.value,
             AddSelfSignedScreenState(
                 documentType = registration,
                 documentName = "Vehicle Registration"
@@ -93,8 +91,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateCardArt(blue)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState(cardArt = blue))
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState(cardArt = blue))
     }
 
     @Test
@@ -104,8 +101,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateValidityInDays(newValue)
 
-        assertThat(viewModel.screenState.value.validityInDays)
-            .isEqualTo(newValue)
+        assertEquals(viewModel.screenState.value.validityInDays, newValue)
     }
 
     @Test
@@ -117,8 +113,7 @@ class SelfSignedScreenStateTest {
         viewModel.updateValidityInDays(defaultMinValidity)
         viewModel.updateValidityInDays(belowMinValidity)
 
-        assertThat(viewModel.screenState.value.validityInDays)
-            .isEqualTo(defaultMinValidity)
+        assertEquals(viewModel.screenState.value.validityInDays, defaultMinValidity)
     }
 
     @Test
@@ -128,8 +123,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateMinValidityInDays(newMinValidity)
 
-        assertThat(viewModel.screenState.value.minValidityInDays)
-            .isEqualTo(newMinValidity)
+        assertEquals(viewModel.screenState.value.minValidityInDays, newMinValidity)
     }
 
     @Test
@@ -140,8 +134,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateMinValidityInDays(minValidityInDays)
 
-        assertThat(viewModel.screenState.value.validityInDays)
-            .isEqualTo(minValidityInDays)
+        assertEquals(viewModel.screenState.value.validityInDays, minValidityInDays)
     }
 
     @Test
@@ -151,8 +144,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateNumberOfMso(msoCount)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState(numberOfMso = msoCount))
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState(numberOfMso = msoCount))
     }
 
     @Test
@@ -163,8 +155,7 @@ class SelfSignedScreenStateTest {
         viewModel.updateNumberOfMso(0)
         viewModel.updateNumberOfMso(-1)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState(numberOfMso = 1))
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState(numberOfMso = 1))
     }
 
     @Test
@@ -174,8 +165,7 @@ class SelfSignedScreenStateTest {
 
         viewModel.updateMaxUseOfMso(maxMsoUsages)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState(maxUseOfMso = maxMsoUsages))
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState(maxUseOfMso = maxMsoUsages))
     }
 
     @Test
@@ -186,7 +176,6 @@ class SelfSignedScreenStateTest {
         viewModel.updateMaxUseOfMso(0)
         viewModel.updateMaxUseOfMso(-1)
 
-        assertThat(viewModel.screenState.value)
-            .isEqualTo(AddSelfSignedScreenState(maxUseOfMso = 1))
+        assertEquals(viewModel.screenState.value, AddSelfSignedScreenState(maxUseOfMso = 1))
     }
 }

@@ -653,7 +653,7 @@ class DocumentModel(
         if (document.state.numAvailableCredentials > 0) {
             for (credentialData in issuer.getCredentials(document.documentIdentifier)) {
                 val pendingCredential = document.pendingCredentials.find {
-                            (it as SecureAreaBoundCredential).attestation.certificates.first()
+                            (it as SecureAreaBoundCredential).attestation
                                 .publicKey.equals(credentialData.secureAreaBoundKey)
                 }
                 if (pendingCredential == null) {
@@ -713,7 +713,7 @@ class DocumentModel(
                 }
 
                 is SoftwareSecureArea -> {
-                    SoftwareCreateKeySettings.Builder(credConfig.challenge)
+                    SoftwareCreateKeySettings.Builder()
                         .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
                         .build()
                 }

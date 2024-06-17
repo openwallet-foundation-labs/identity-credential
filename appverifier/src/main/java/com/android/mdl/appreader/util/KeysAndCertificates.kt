@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.util
 
 import android.content.Context
-import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.X509Certificate
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaX509Certificate
@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
 
@@ -36,10 +35,10 @@ object KeysAndCertificates {
         return kf.generatePrivate(spec)
     }
 
-    private fun getCertificate(context: Context, resourceId: Int): X509Certificate {
+    private fun getCertificate(context: Context, resourceId: Int): java.security.cert.X509Certificate {
         val certInputStream = context.resources.openRawResource(resourceId)
         val factory: CertificateFactory = CertificateFactory.getInstance("X509")
-        return factory.generateCertificate(certInputStream) as X509Certificate
+        return factory.generateCertificate(certInputStream) as java.security.cert.X509Certificate
     }
 
     fun getRAGooglePrivateKey(context: Context) =
@@ -51,12 +50,12 @@ object KeysAndCertificates {
     fun getGoogleReaderCA(context: Context) =
         getCertificate(context, R.raw.google_reader_ca)
 
-    fun getReaderAuthority(context: Context): Pair<Certificate, EcPrivateKey> {
-        val certificate = Certificate.fromPem(String(
+    fun getReaderAuthority(context: Context): Pair<X509Certificate, EcPrivateKey> {
+        val certificate = X509Certificate.fromPem(String(
             context.resources.openRawResource(R.raw.owf_identity_credential_reader_cert).readBytes()))
         val privateKey = EcPrivateKey.fromPem(String(
             context.resources.openRawResource(R.raw.owf_identity_credential_reader_private_key).readBytes()),
-            certificate.publicKey)
+            certificate.ecPublicKey)
         return Pair(certificate, privateKey)
     }
 

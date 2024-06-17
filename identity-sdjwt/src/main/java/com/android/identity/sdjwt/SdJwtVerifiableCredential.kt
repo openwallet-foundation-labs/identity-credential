@@ -3,6 +3,7 @@ package com.android.identity.sdjwt
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcSignature
 import com.android.identity.sdjwt.presentation.KeyBindingBody
 import com.android.identity.sdjwt.presentation.KeyBindingHeader
 import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
@@ -104,14 +105,14 @@ class SdJwtVerifiableCredential(
      *        @param signature ByteArray the signature that needs to be checked
      *        The lambda must return true if the signature verifies, and false otherwise.
      */
-    fun verifyIssuerSignature(verify: (JwtHeader, JwtBody, ByteArray, ByteArray) -> Boolean) {
+    fun verifyIssuerSignature(verify: (JwtHeader, JwtBody, ByteArray, EcSignature) -> Boolean) {
         val headerObj = JwtHeader.fromString(header)
         val bodyObj = JwtBody.fromString(body)
 
         val toBeVerified = "$header.$body".toByteArray(Charsets.US_ASCII)
-        val signatureBytes = signature.fromBase64
+        val signature = EcSignature.fromCoseEncoded(signature.fromBase64)
 
-        if(!verify(headerObj, bodyObj, toBeVerified, signatureBytes)) {
+        if(!verify(headerObj, bodyObj, toBeVerified, signature)) {
             throw IllegalStateException("Signature verification failed")
         }
     }
@@ -143,7 +144,8 @@ class SdJwtVerifiableCredential(
         val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
 
         val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".toByteArray(Charsets.US_ASCII)
-        val signatureStr = secureArea.sign(alias, alg, toBeSigned, keyUnlockData).toBase64
+        val signature = secureArea.sign(alias, alg, toBeSigned, keyUnlockData)
+        val signatureStr = signature.toCoseEncoded().toBase64
 
         return SdJwtVerifiablePresentation(
             this,

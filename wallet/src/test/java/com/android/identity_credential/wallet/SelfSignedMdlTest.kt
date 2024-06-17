@@ -156,7 +156,7 @@ class SelfSignedMdlTest {
         val credentialRequests = mutableListOf<CredentialRequest>()
         for (authKeyNumber in IntRange(0, numMso - 1)) {
             val alias = "AuthKey_$authKeyNumber"
-            secureArea.createKey(alias, CreateKeySettings(authKeyConfiguration.challenge))
+            secureArea.createKey(alias, CreateKeySettings())
             credentialRequests.add(
                 CredentialRequest(secureArea.getKeyInfo(alias).attestation)
             )
@@ -193,8 +193,7 @@ class SelfSignedMdlTest {
             for (n in IntRange(0, it.size - 1)) {
                 Assert.assertEquals(
                     it[n].secureAreaBoundKey,
-                    credentialRequests[n]
-                        .secureAreaBoundKeyAttestation.certificates.first().publicKey
+                    credentialRequests[n].secureAreaBoundKeyAttestation.publicKey
                 )
             }
         }

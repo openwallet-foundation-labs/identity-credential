@@ -1,6 +1,8 @@
 package com.android.identity.issuance.remote
 
 import android.content.Context
+import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.Algorithm
@@ -192,7 +194,8 @@ class WalletServerProvider(
             challenge = authentication.requestChallenge("")
         }
         if (keyInfo != null) {
-            val seq = extractAttestationSequence(keyInfo.attestation)
+            val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
+            val seq = extractAttestationSequence(attestation.certificateChain)
             val clientId = String(ASN1OctetString.getInstance(seq.getObjectAt(4)).octets)
             challenge = authentication.requestChallenge(clientId)
             if (clientId != challenge.clientId) {
@@ -202,13 +205,19 @@ class WalletServerProvider(
         }
         val newClient = keyInfo == null
         if (newClient) {
-            secureArea.createKey(alias, CreateKeySettings(challenge!!.clientId.toByteArray()))
+            secureArea.createKey(alias,
+                AndroidKeystoreCreateKeySettings.Builder(
+                    challenge!!.clientId.toByteArray()
+                ).build()
+            )
             keyInfo = secureArea.getKeyInfo(alias)
         }
         val message = authenticationMessage(challenge!!.clientId, challenge.nonce)
         _walletServerCapabilities = authentication.authenticate(ClientAuthentication(
-            ByteString(secureArea.sign(alias, Algorithm.ES256, message.toByteArray(), null)),
-            if (newClient) keyInfo!!.attestation else null,
+            secureArea.sign(alias, Algorithm.ES256, message.toByteArray(), null),
+            if (newClient) {
+                (keyInfo!!.attestation as AndroidKeystoreKeyAttestation).certificateChain
+            } else null,
             getWalletApplicationCapabilities()
         ))
         authentication.complete()

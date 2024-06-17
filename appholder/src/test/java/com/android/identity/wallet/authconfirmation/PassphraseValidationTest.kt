@@ -1,7 +1,7 @@
 package com.android.identity.wallet.authconfirmation
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class PassphraseValidationTest {
 
@@ -9,8 +9,7 @@ class PassphraseValidationTest {
     fun defaultValue() {
         val viewModel = PassphrasePromptViewModel()
 
-        assertThat(viewModel.authorizationState.value)
-            .isEqualTo(PassphraseAuthResult.Idle)
+        assertEquals(viewModel.authorizationState.value, PassphraseAuthResult.Idle)
     }
 
     @Test
@@ -20,8 +19,7 @@ class PassphraseValidationTest {
 
         viewModel.authorize(userPassphrase = passphrase)
 
-        assertThat(viewModel.authorizationState.value)
-            .isEqualTo(PassphraseAuthResult.Success(passphrase))
+        assertEquals(viewModel.authorizationState.value, PassphraseAuthResult.Success(passphrase))
     }
 
     @Test
@@ -33,7 +31,6 @@ class PassphraseValidationTest {
 
         viewModel.reset()
 
-        assertThat(viewModel.authorizationState.value)
-            .isEqualTo(PassphraseAuthResult.Idle)
+        assertEquals(viewModel.authorizationState.value, PassphraseAuthResult.Idle)
     }
 }

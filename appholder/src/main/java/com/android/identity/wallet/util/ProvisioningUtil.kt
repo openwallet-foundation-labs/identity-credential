@@ -18,8 +18,8 @@ import com.android.identity.document.Document
 import com.android.identity.document.DocumentUtil
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Certificate
-import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509CertificateChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.toEcPrivateKey
 import com.android.identity.mdoc.credential.MdocCredential
@@ -146,7 +146,7 @@ class ProvisioningUtil private constructor(
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 docType,
-                pendingCred.attestation.certificates.first().publicKey
+                pendingCred.attestation.publicKey
             )
             msoGenerator.setValidityInfo(now, validFrom, validUntil, null)
 
@@ -213,7 +213,9 @@ class ProvisioningUtil private constructor(
                     unprotectedHeaders = mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                            CertificateChain(listOf(Certificate(issuerCert.encoded))).toDataItem
+                            X509CertificateChain(
+                                listOf(X509Certificate(issuerCert.encoded))
+                            ).toDataItem
                         )
                     ),
                 ).toDataItem
