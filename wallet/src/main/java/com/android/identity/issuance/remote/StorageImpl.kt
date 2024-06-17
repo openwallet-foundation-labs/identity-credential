@@ -2,7 +2,10 @@ package com.android.identity.issuance.remote
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.AbstractWindowedCursor
+import android.database.CursorWindow
 import android.database.sqlite.SQLiteDatabase
+import android.os.Build
 import com.android.identity.flow.server.Storage
 import com.android.identity.util.Logger
 import kotlinx.io.bytestring.ByteString
@@ -58,6 +61,15 @@ internal class StorageImpl(
                 null,
                 null
             )
+            // TODO: Older OS versions don't support setting the cursor window size.
+            //  What should we do with older OS versions?
+            //  Also note that a large window size may lead to longer delays when loading from the
+            //  database. And if we keep this, replace the magic number with a constant.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // The default window size of 2MB is too small for video files.
+                (cursor as? AbstractWindowedCursor)?.window = CursorWindow(
+                    "Larger Window", 256 * 1024 * 1024)
+            }
             if (cursor.moveToFirst()) {
                 val bytes = cursor.getBlob(0)
                 cursor.close()

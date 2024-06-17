@@ -3,15 +3,19 @@ package com.android.identity_credential.wallet.ui.destination.provisioncredentia
 import android.Manifest
 import android.content.Context
 import android.os.Build
+import android.util.Size
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Button
@@ -22,6 +26,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -29,9 +34,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
@@ -46,15 +55,20 @@ import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
+import com.android.identity.issuance.evidence.EvidenceResponseSelfieVideo
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mrtd.MrtdNfc
 import com.android.identity.mrtd.MrtdNfcDataReader
 import com.android.identity.mrtd.MrtdNfcReader
+import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.FaceImageClassifier
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -64,6 +78,7 @@ import com.android.identity_credential.wallet.ui.prompt.passphrase.PassphraseEnt
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -597,6 +612,236 @@ fun <ResultT> EvidenceRequestIcaoView(
                                 is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
                             }
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestSelfieVideoView(
+    evidenceRequest: EvidenceRequestSelfieVideo,
+    provisioningViewModel: ProvisioningViewModel,
+    permissionTracker: PermissionTracker,
+    walletServerProvider: WalletServerProvider,
+    documentStore: DocumentStore
+) {
+    if (evidenceRequest.poseSequence.isEmpty()) {
+        throw IllegalArgumentException("Pose sequence must not be empty.")
+    }
+
+    var stage by remember { mutableIntStateOf(-1) }
+    var buttonEnabled by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    var enablePoseRecognition by remember { mutableStateOf(false) }
+    var overrideMessage: String? by remember { mutableStateOf(null) }
+    // Using the local lifecycle owner (rather than the Activity) ensures that the camera will be
+    // released when this screen is finished.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // We want a slight delay from the time the screen provides instructions for a pose to the time
+    // we tell the face recognizer to look for that pose. This handles that transition.
+    fun moveToNextPose() {
+        enablePoseRecognition = false
+        stage += 1
+        val cachedStage = stage
+        if (cachedStage < evidenceRequest.poseSequence.size) {
+            coroutineScope.launch {
+                delay(1000)
+                if (stage == cachedStage) {
+                    enablePoseRecognition = true
+                }
+            }
+        }
+    }
+    val selfieRecorder: SelfieRecorder = remember {
+        SelfieRecorder(
+            lifecycleOwner,
+            context,
+            onRecordingStarted = {
+                buttonEnabled = true
+            },
+            onFinished = { selfieResult: ByteArray ->
+                Logger.i(TAG, "Selfie video finished.")
+                if (selfieResult.isEmpty()) {
+                    // There was an error recording the video. Show an error message.
+                    // TODO: Depending on what caused the error, we may be able to provide more
+                    //  actionable information. Update this so we have more information about what
+                    //  caused the failure.
+                    errorMessage = context.getString(R.string.selfie_video_failed)
+                    return@SelfieRecorder
+                } else {
+                    provisioningViewModel.provideEvidence(
+                        evidence = EvidenceResponseSelfieVideo(selfieResult),
+                        walletServerProvider = walletServerProvider,
+                        documentStore = documentStore
+                    )
+                }
+            },
+            onStateChange = { recognitionState, pose ->
+                overrideMessage = null
+                when (recognitionState) {
+                    FaceImageClassifier.RecognitionState.TOO_MANY_FACES -> {
+                        overrideMessage =
+                            context.getString(R.string.selfie_instructions_too_many_faces)
+                    }
+                    FaceImageClassifier.RecognitionState.POSE_RECOGNIZED -> {
+                        val cachedStage = stage
+                        if (cachedStage < 0 || cachedStage >= evidenceRequest.poseSequence.size) {
+                            // Face recognition happens in another thread, so we may receive results
+                            // after we've finished recording the video.
+                            return@SelfieRecorder
+                        }
+
+                        // Since recognition happens in another thread, ensure that the pose that
+                        // was recognized is the pose we're currently looking for, not a pose that
+                        // we were looking for in a past stage.
+                        val expectedPose = evidenceRequest.poseSequence[cachedStage]
+                        if (pose == expectedPose) {
+                            moveToNextPose()
+                            Logger.i(TAG, "Face pose detected: $pose. Moving to stage $stage.")
+                        }
+                    }
+                    else -> {}
+                }
+            }
+        )
+    }
+    // Update the expected pose anytime the stage changes. We can't do this in the
+    // onFacePoseDetected handler, because it can't reference selfieRecorder (there's a circular
+    // reference, and the variable hasn't been created yet). This ends up setting the value any time
+    // the composable is recomposed, but it's just setting a single variable, so it should be quick.
+    if (!enablePoseRecognition) {
+        selfieRecorder.faceClassifier?.setExpectedPose(null)
+    } else if (stage >= 0 && stage < evidenceRequest.poseSequence.size) {
+        val expectedPose = evidenceRequest.poseSequence[stage]
+        selfieRecorder.faceClassifier?.setExpectedPose(expectedPose)
+    }
+
+    var finishing by remember { mutableStateOf(false) }
+    SideEffect {
+        if (stage >= evidenceRequest.poseSequence.size && !finishing) {
+            finishing = true
+            coroutineScope.launch {
+                selfieRecorder.finish()
+            }
+        }
+    }
+
+    val requiredPermissions =
+        mutableListOf (Manifest.permission.CAMERA).apply {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                // Needed in older OS versions so we can save the video file to external storage.
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }.toList()
+    permissionTracker.PermissionCheck(requiredPermissions) {
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                modifier = Modifier.padding(16.dp),
+                textAlign = TextAlign.Center
+            )
+            return@PermissionCheck
+        }
+
+        Column {
+            // We want a fixed height for the instructions and for the video, so when the
+            // instructions get longer or shorter, the screen layout doesn't jump around.
+            // These won't take up 100% of the screen height, since there are other screen
+            // elements above and below them.
+            val displayMetrics = context.resources.displayMetrics
+            val videoHeightPx = displayMetrics.heightPixels * 7 / 10
+            val instructionsHeightPx = displayMetrics.heightPixels  * 2 / 10
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .height(with(LocalDensity.current) { instructionsHeightPx.toDp() })) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.record_selfie_title),
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    AnimatedContent(
+                        targetState = stage,
+                        label = "SelfieInstructions"
+                    ) { cachedStage ->
+                        val cachedOverrideMessage = overrideMessage
+                        Text(
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                            text = when {
+                                cachedStage == -1 -> stringResource(R.string.initial_selfie_video_instructions)
+                                cachedOverrideMessage != null -> cachedOverrideMessage
+                                cachedStage < evidenceRequest.poseSequence.size -> {
+                                    when (evidenceRequest.poseSequence[cachedStage]) {
+                                        EvidenceRequestSelfieVideo.Poses.FRONT -> stringResource(R.string.selfie_instructions_face_front)
+                                        EvidenceRequestSelfieVideo.Poses.SMILE -> stringResource(R.string.selfie_instructions_smile)
+                                        EvidenceRequestSelfieVideo.Poses.TILT_HEAD_UP -> stringResource(R.string.selfie_instructions_tilt_head_up)
+                                        EvidenceRequestSelfieVideo.Poses.TILT_HEAD_DOWN -> stringResource(R.string.selfie_instructions_tilt_head_down)
+                                    }
+                                }
+
+                                else -> {
+                                    stringResource(R.string.selfie_instructions_finishing_video)
+                                }
+                            },
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(with(LocalDensity.current) { videoHeightPx.toDp() })) {
+                AndroidView(
+                    modifier = Modifier.padding(16.dp),
+                    factory = { context ->
+                        PreviewView(context).apply {
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                videoHeightPx
+                            )
+                            scaleType = PreviewView.ScaleType.FILL_START
+                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                            coroutineScope.launch {
+                                async { selfieRecorder.launchCamera(surfaceProvider) }.await()
+                                buttonEnabled = true
+                            }
+                        }
+                    }
+                )
+                if (stage == -1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(
+                            modifier = Modifier.padding(8.dp),
+                            enabled = buttonEnabled,
+                            onClick = {
+                                buttonEnabled = false
+                                moveToNextPose()
+                                coroutineScope.launch {
+                                    selfieRecorder.startRecording()
+                                }
+                            }
+                        ) {
+                            Text(stringResource(R.string.selfie_video_start_recording_button))
+                        }
                     }
                 }
             }

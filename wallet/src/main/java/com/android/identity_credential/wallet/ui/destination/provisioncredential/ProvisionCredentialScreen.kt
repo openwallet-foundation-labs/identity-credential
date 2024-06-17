@@ -25,6 +25,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
@@ -163,6 +164,16 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             permissionTracker = permissionTracker
+                        )
+                    }
+
+                    is EvidenceRequestSelfieVideo -> {
+                        EvidenceRequestSelfieVideoView(
+                            evidenceRequest,
+                            provisioningViewModel = provisioningViewModel,
+                            permissionTracker = permissionTracker,
+                            walletServerProvider = walletServerProvider,
+                            documentStore = documentStore
                         )
                     }
 
