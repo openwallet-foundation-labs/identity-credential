@@ -158,6 +158,19 @@ fun defaultGraph(
                 }
             }
         }
+        if (developerModeEnabled) {
+            choice(
+                id = "choose_selfie",
+                message = "Verify using a selfie? $devNotice",
+                assets = devAssets,
+                acceptButtonText = "Continue"
+            ) {
+                on(id = "no_selfie", text = "No, skip selfie verification") {}
+                on(id = "use_selfie", text = "Yes, take a selfie for verification") {
+                    createSelfieRequest(id = "selfie_request")
+                }
+            }
+        }
         message(
             "message",
             message = """

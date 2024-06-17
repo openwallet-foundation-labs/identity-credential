@@ -22,6 +22,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,24 +47,30 @@ import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
+import com.android.identity.issuance.evidence.EvidenceResponseSelfieVideo
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mrtd.MrtdNfc
 import com.android.identity.mrtd.MrtdNfcDataReader
 import com.android.identity.mrtd.MrtdNfcReader
+import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.android.identity_credential.wallet.ui.prompt.passphrase.PassphraseEntryField
+import com.android.identity_credential.wallet.util.getActivity
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -599,6 +606,161 @@ fun <ResultT> EvidenceRequestIcaoView(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestSelfieVideoView(
+    evidenceRequest: EvidenceRequestSelfieVideo,
+    provisioningViewModel: ProvisioningViewModel,
+    permissionTracker: PermissionTracker,
+    walletServerProvider: WalletServerProvider,
+    documentStore: DocumentStore
+) {
+    if (evidenceRequest.poseSequence.isEmpty()) {
+        throw IllegalArgumentException("Pose sequence must not be empty.")
+    }
+
+    var stage by remember { mutableIntStateOf(-1) }
+    var buttonEnabled by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val activity = context.getActivity()!!
+    val selfieRecorder: SelfieRecorder = remember {
+        SelfieRecorder(
+            activity,
+            onRecordingStarted = {
+                buttonEnabled = true
+            },
+            onFinished = { selfieResult: ByteArray ->
+                Logger.i(TAG, "Selfie video finished.")
+                if (selfieResult.isEmpty()) {
+                    // There was an error recording the video. Show an error message.
+                    // TODO: Depending on what caused the error, we may be able to provide more
+                    //  actionable information. Update this so we have more information about what
+                    //  caused the failure.
+                    errorMessage = context.getString(R.string.selfie_video_failed)
+                    return@SelfieRecorder
+                } else {
+                    provisioningViewModel.provideEvidence(
+                        evidence = EvidenceResponseSelfieVideo(selfieResult),
+                        walletServerProvider = walletServerProvider,
+                        documentStore = documentStore
+                    )
+                }
+            }
+        )
+    }
+    val coroutineScope = rememberCoroutineScope()
+
+    val requiredPermissions =
+        mutableListOf (Manifest.permission.CAMERA).apply {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                // Needed in older OS versions so we can save the video file to external storage.
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }.toList()
+    permissionTracker.PermissionCheck(requiredPermissions) {
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                modifier = Modifier.padding(16.dp),
+                textAlign = TextAlign.Center
+            )
+            return@PermissionCheck
+        }
+
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.record_selfie_title),
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                    text = if (stage == -1) {
+                        stringResource(R.string.initial_selfie_video_instructions)
+                    } else {
+                        val pose = evidenceRequest.poseSequence[stage]
+                        when (pose) {
+                            EvidenceRequestSelfieVideo.Poses.FRONT -> stringResource(R.string.selfie_instructions_face_front)
+                            EvidenceRequestSelfieVideo.Poses.TILT_HEAD_UP -> stringResource(R.string.selfie_instructions_tilt_head_up)
+                            EvidenceRequestSelfieVideo.Poses.TILT_HEAD_DOWN-> stringResource(R.string.selfie_instructions_tilt_head_down)
+                            else -> "Unknown pose"
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                val text = when(stage) {
+                    -1 -> stringResource(R.string.selfie_video_start_button)
+                    evidenceRequest.poseSequence.size - 1 -> stringResource(R.string.selfie_video_finish_button)
+                    else -> stringResource(R.string.selfie_video_continue_to_next_pose_button)
+                }
+                Button(
+                    modifier = Modifier.padding(8.dp),
+                    enabled = buttonEnabled,
+                    onClick = {
+                        when (stage) {
+                            -1 -> {
+                                stage = 0
+                                buttonEnabled = false
+                                coroutineScope.launch {
+                                    selfieRecorder.startRecording()
+                                }
+                            }
+                            evidenceRequest.poseSequence.size - 1 -> {
+                                buttonEnabled = false
+                                coroutineScope.launch {
+                                    selfieRecorder.finish()
+                                }
+                            }
+                            else -> stage += 1
+                        }
+                    }
+                ) {
+                    Text(text)
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                AndroidView(
+                    modifier = Modifier.padding(16.dp),
+                    factory = { context ->
+                        PreviewView(context).apply {
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            scaleType = PreviewView.ScaleType.FILL_START
+                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                            coroutineScope.launch {
+                                async { selfieRecorder.launchCamera(surfaceProvider) }.await()
+                                buttonEnabled = true
+                            }
+                        }
+                    }
+                )
             }
         }
     }
