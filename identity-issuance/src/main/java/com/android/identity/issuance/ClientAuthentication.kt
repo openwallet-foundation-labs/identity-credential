@@ -2,7 +2,7 @@ package com.android.identity.issuance
 
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.EcSignature
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 
 /**
  * An data structure sent from the Wallet Application to the Wallet Server used to prove
@@ -22,7 +22,7 @@ data class ClientAuthentication(
      *
      * This is only set if this is the first time the client is authenticating.
      */
-    val attestation: X509CertificateChain?,
+    val attestation: X509CertChain?,
 
     /**
      * The capabilities of the Wallet Application.

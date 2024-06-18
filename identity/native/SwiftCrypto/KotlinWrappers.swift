@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Security
 
 @objc public class SwiftCrypto : NSObject {
     @objc(sha256:) public class func sha256(data: Data) -> Data {
@@ -268,6 +269,19 @@ import Foundation
         var receiver = try! HPKE.Recipient(privateKey: receiverKey, ciphersuite: HPKE.Ciphersuite.P256_SHA256_AES_GCM_256, info: Data(), encapsulatedKey: encapsulatedPublicKey)
         let plainText = try! receiver.open(cipherText, authenticating: aad)
         return plainText
+    }
+
+    @objc(x509CertGetKey:) public class func x509CertGetKey(encodedX509Cert: Data) -> Data? {
+        let certificate = SecCertificateCreateWithData(nil, encodedX509Cert as CFData)
+        if (certificate == nil) {
+            return nil
+        }
+        let key = SecCertificateCopyKey(certificate!)
+        if (key == nil) {
+            return nil
+        }
+        let data = SecKeyCopyExternalRepresentation(key!, nil)
+        return data as Data?
     }
 
 }

@@ -20,19 +20,13 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import co.nstant.`in`.cbor.CborBuilder
 import com.android.identity.cbor.Cbor
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
-import com.android.identity.crypto.Crypto
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareKeyUnlockData
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.wallet.authconfirmation.AuthConfirmationFragmentDirections
 import com.android.identity.wallet.authconfirmation.PassphraseAuthResult
 import com.android.identity.wallet.authconfirmation.PassphrasePromptViewModel
@@ -42,9 +36,7 @@ import com.android.identity.wallet.composables.SoftwareSetupContainer
 import com.android.identity.wallet.support.softwarekeystore.SoftwareAuthKeyCurveOption
 import com.android.identity.wallet.util.FormatUtil
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlin.time.Duration.Companion.days
 
 class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
 

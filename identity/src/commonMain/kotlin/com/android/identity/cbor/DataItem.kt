@@ -4,8 +4,8 @@ import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseSign1
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseMac0
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.fromDataItem
 import kotlinx.datetime.Instant
@@ -420,20 +420,20 @@ sealed class DataItem(
     /**
      * The value of a data item containing a certificate.
      *
-     * This is equivalent to calling [X509Certificate.fromDataItem].
+     * This is equivalent to calling [X509Cert.fromDataItem].
      *
      * @throws IllegalArgumentException if not the data item isn't a certificate.
      */
-    val asX509Certificate: X509Certificate
-        get() = X509Certificate.fromDataItem(this)
+    val asX509Cert: X509Cert
+        get() = X509Cert.fromDataItem(this)
 
     /**
      * The value of a data item containing a certificate chain.
      *
-     * This is equivalent to calling [X509CertificateChain.fromDataItem].
+     * This is equivalent to calling [X509CertChain.fromDataItem].
      *
      * @throws IllegalArgumentException if not the data item isn't a certificate chain.
      */
-    val asX509CertificateChain: X509CertificateChain
-        get() = X509CertificateChain.fromDataItem(this)
+    val asX509CertChain: X509CertChain
+        get() = X509CertChain.fromDataItem(this)
 }

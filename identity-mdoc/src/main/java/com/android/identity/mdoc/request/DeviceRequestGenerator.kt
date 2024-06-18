@@ -29,7 +29,7 @@ import com.android.identity.cose.Cose.coseSign1Sign
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
 
 /**
@@ -65,7 +65,7 @@ class DeviceRequestGenerator(
         requestInfo: Map<String, ByteArray>?,
         readerKey: EcPrivateKey?,
         signatureAlgorithm: Algorithm,
-        readerKeyCertificateChain: X509CertificateChain?
+        readerKeyCertificateChain: X509CertChain?
     ): DeviceRequestGenerator = apply {
         // TODO: Add variant that can sign with SecureArea readerKey
         val nsBuilder = CborMap.builder().apply {

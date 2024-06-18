@@ -262,7 +262,7 @@ actual object Crypto {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun NSData.toByteArray(): ByteArray {
+internal fun NSData.toByteArray(): ByteArray {
     return ByteArray(length.toInt()).apply {
         usePinned {
             memcpy(it.addressOf(0), bytes, length)
@@ -271,6 +271,6 @@ private fun NSData.toByteArray(): ByteArray {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun ByteArray.toNSData(): NSData = memScoped {
+internal fun ByteArray.toNSData(): NSData = memScoped {
     NSData.create(bytes = allocArrayOf(this@toNSData), length = this@toNSData.size.toULong())
 }

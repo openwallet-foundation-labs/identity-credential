@@ -21,7 +21,6 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.mdoc.transport.DataTransportTcp
-import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
@@ -42,8 +41,8 @@ import com.android.identity.crypto.Crypto.createEcPrivateKey
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.create
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
@@ -102,7 +101,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var timeValidityBegin: Instant
     private lateinit var timeValidityEnd: Instant
     private lateinit var documentSignerKey: EcPrivateKey
-    private lateinit var documentSignerCert: X509Certificate
+    private lateinit var documentSignerCert: X509Cert
     
     @Before
     fun setUp() {
@@ -179,7 +178,7 @@ class DeviceRetrievalHelperTest {
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
         documentSignerKey = createEcPrivateKey(EcCurve.P256)
-        documentSignerCert = X509Certificate.create(
+        documentSignerCert = X509Cert.create(
             documentSignerKey.publicKey,
             documentSignerKey,
             null,
@@ -203,7 +202,7 @@ class DeviceRetrievalHelperTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertificateChain(listOf(documentSignerCert)).toDataItem
+            X509CertChain(listOf(documentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(

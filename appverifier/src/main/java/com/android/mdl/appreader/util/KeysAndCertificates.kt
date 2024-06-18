@@ -1,10 +1,8 @@
 package com.android.mdl.appreader.util
 
 import android.content.Context
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaX509Certificate
 import com.android.mdl.appreader.R
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
@@ -50,8 +48,8 @@ object KeysAndCertificates {
     fun getGoogleReaderCA(context: Context) =
         getCertificate(context, R.raw.google_reader_ca)
 
-    fun getReaderAuthority(context: Context): Pair<X509Certificate, EcPrivateKey> {
-        val certificate = X509Certificate.fromPem(String(
+    fun getReaderAuthority(context: Context): Pair<X509Cert, EcPrivateKey> {
+        val certificate = X509Cert.fromPem(String(
             context.resources.openRawResource(R.raw.owf_identity_credential_reader_cert).readBytes()))
         val privateKey = EcPrivateKey.fromPem(String(
             context.resources.openRawResource(R.raw.owf_identity_credential_reader_private_key).readBytes()),

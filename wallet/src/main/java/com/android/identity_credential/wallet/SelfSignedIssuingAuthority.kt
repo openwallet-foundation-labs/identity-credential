@@ -22,8 +22,8 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificate
@@ -200,8 +200,8 @@ abstract class SelfSignedIssuingAuthority(
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertificateChain(listOf(
-                X509Certificate(documentSigningKeyCert.encodedCertificate))
+            X509CertChain(listOf(
+                X509Cert(documentSigningKeyCert.encodedCertificate))
             ).toDataItem
         ))
         val encodedIssuerAuth = Cbor.encode(
@@ -225,7 +225,7 @@ abstract class SelfSignedIssuingAuthority(
     }
 
     private lateinit var documentSigningKey: EcPrivateKey
-    private lateinit var documentSigningKeyCert: X509Certificate
+    private lateinit var documentSigningKeyCert: X509Cert
 
     private fun getRawResourceAsString(@RawRes resourceId: Int): String {
         val inputStream = application.applicationContext.resources.openRawResource(resourceId)
@@ -255,7 +255,7 @@ abstract class SelfSignedIssuingAuthority(
         // $ mv identityctl/ds_*.pem wallet/src/main/res/raw/
         //
 
-        documentSigningKeyCert = X509Certificate.fromPem(
+        documentSigningKeyCert = X509Cert.fromPem(
             getRawResourceAsString(R.raw.ds_certificate)
         )
         Logger.d(TAG, "Cert: " + documentSigningKeyCert.javaX509Certificate.toString())

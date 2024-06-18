@@ -54,7 +54,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DataItem
@@ -66,8 +65,8 @@ import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
@@ -186,8 +185,8 @@ class MainActivity : ComponentActivity() {
             ))
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                X509CertificateChain(
-                    listOf(X509Certificate(documentSigningKeyCert.encodedCertificate))
+                X509CertChain(
+                    listOf(X509Cert(documentSigningKeyCert.encodedCertificate))
                 ).toDataItem
             ))
             val encodedIssuerAuth = Cbor.encode(
@@ -215,7 +214,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var documentSigningKey: EcPrivateKey
-    private lateinit var documentSigningKeyCert: X509Certificate
+    private lateinit var documentSigningKeyCert: X509Cert
 
     private fun getRawResourceAsString(@RawRes resourceId: Int): String {
         val inputStream = application.applicationContext.resources.openRawResource(resourceId)
@@ -228,7 +227,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        documentSigningKeyCert = X509Certificate.fromPem(getRawResourceAsString(R.raw.ds_certificate))
+        documentSigningKeyCert = X509Cert.fromPem(getRawResourceAsString(R.raw.ds_certificate))
         documentSigningKey = EcPrivateKey.fromPem(
             getRawResourceAsString(R.raw.ds_private_key),
             documentSigningKeyCert.ecPublicKey

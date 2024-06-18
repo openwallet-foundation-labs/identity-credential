@@ -9,8 +9,8 @@ import com.android.identity.cbor.DataItem
  *
  * @param certificates the certificates in the chain.
  */
-data class X509CertificateChain(
-    val certificates: List<X509Certificate>
+data class X509CertChain(
+    val certificates: List<X509Cert>
 ) {
 
     /**
@@ -41,14 +41,14 @@ data class X509CertificateChain(
          * @param dataItem the CBOR data item to decode.
          * @return the certificate chain.
          */
-        fun fromDataItem(dataItem: DataItem): X509CertificateChain {
-            val certificates: List<X509Certificate> =
+        fun fromDataItem(dataItem: DataItem): X509CertChain {
+            val certificates: List<X509Cert> =
                 if (dataItem is CborArray) {
-                    dataItem.items.map { item -> item.asX509Certificate }.toList()
+                    dataItem.items.map { item -> item.asX509Cert }.toList()
                 } else {
-                    listOf(dataItem.asX509Certificate)
+                    listOf(dataItem.asX509Cert)
                 }
-            return X509CertificateChain(certificates)
+            return X509CertChain(certificates)
         }
     }
 }

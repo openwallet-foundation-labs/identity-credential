@@ -5,12 +5,11 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertificateCreateOption
 import com.android.identity.crypto.X509CertificateExtension
 import com.android.identity.crypto.create
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.mdoc.util.MdocUtil
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.Instant
@@ -59,7 +58,7 @@ object IdentityCtl {
         validUntil: Instant,
         issuerAltName: String,
         crlUrl: String
-    ): X509Certificate {
+    ): X509Cert {
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
         // From 18013-5 table B.1: countryName is mandatory
@@ -129,7 +128,7 @@ object IdentityCtl {
             )
         )
 
-        return X509Certificate.create(
+        return X509Cert.create(
             iacaKey.publicKey,
             iacaKey,
             null,
@@ -164,13 +163,13 @@ object IdentityCtl {
      */
     @JvmStatic
     fun generateDsCertificate(
-        iacaCert: X509Certificate,
+        iacaCert: X509Cert,
         iacaKey: EcPrivateKey,
         dsKey: EcPublicKey,
         subject: String,
         validFrom: Instant,
         validUntil: Instant,
-    ): X509Certificate {
+    ): X509Cert {
 
         val iacaCertJava = iacaCert.javaX509Certificate
 
@@ -215,7 +214,7 @@ object IdentityCtl {
             )
         )
 
-        val documentSigningKeyCert = X509Certificate.create(
+        val documentSigningKeyCert = X509Cert.create(
             dsKey,
             iacaKey,
             iacaCert,
@@ -325,7 +324,7 @@ object IdentityCtl {
         val iacaPrivateKeyFilename =
             getArg(args,"iaca_private_key","iaca_private_key.pem")
 
-        val iacaCert = X509Certificate.fromPem(
+        val iacaCert = X509Cert.fromPem(
             String(File(iacaCertificateFilename).readBytes(), StandardCharsets.US_ASCII))
 
         val iacaPrivateKey = EcPrivateKey.fromPem(
@@ -411,7 +410,7 @@ object IdentityCtl {
             )
         )
 
-        val readerRootCertificate = X509Certificate.create(
+        val readerRootCertificate = X509Cert.create(
             readerRootKey.publicKey,
             readerRootKey,
             null,

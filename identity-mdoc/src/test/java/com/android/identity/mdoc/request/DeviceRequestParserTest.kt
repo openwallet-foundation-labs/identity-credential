@@ -20,10 +20,10 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.create
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.fromHex
@@ -145,7 +145,7 @@ class DeviceRequestParserTest {
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
-        val certificate = X509Certificate.create(
+        val certificate = X509Cert.create(
             readerKey.publicKey,
             trustPoint,
             null,
@@ -158,7 +158,7 @@ class DeviceRequestParserTest {
             setOf(),
             listOf()
         )
-        val readerCertChain = X509CertificateChain(listOf(certificate))
+        val readerCertChain = X509CertChain(listOf(certificate))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)

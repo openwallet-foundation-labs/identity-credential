@@ -88,10 +88,9 @@ import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.secure_area_test_app.ui.theme.IdentityCredentialTheme
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
@@ -99,11 +98,9 @@ import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.Security
@@ -218,7 +215,7 @@ class MainActivity :  FragmentActivity() {
                     mutableStateOf<AndroidKeystoreSecureArea.Capabilities?>(null)
                 }
                 val showCertificateDialog = remember {
-                    mutableStateOf<X509CertificateChain?>(null)
+                    mutableStateOf<X509CertChain?>(null)
                 }
                 val swShowPassphraseDialog = remember {
                     mutableStateOf<swPassphraseTestConfiguration?>(null)
@@ -582,7 +579,7 @@ class MainActivity :  FragmentActivity() {
     }
 
     @Composable
-    fun ShowCertificateDialog(attestation: X509CertificateChain,
+    fun ShowCertificateDialog(attestation: X509CertChain,
                               onDismissRequest: () -> Unit) {
         var certNumber by rememberSaveable() { mutableStateOf(0) }
         if (certNumber < 0 || certNumber >= attestation.certificates.size) {
@@ -769,7 +766,7 @@ class MainActivity :  FragmentActivity() {
         }
     }
 
-    private fun aksAttestation(strongBox: Boolean): X509CertificateChain {
+    private fun aksAttestation(strongBox: Boolean): X509CertChain {
         val now = Clock.System.now()
         val thirtyDaysFromNow = now + 30.days
         androidKeystoreSecureArea.createKey(

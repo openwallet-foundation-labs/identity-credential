@@ -17,17 +17,12 @@ import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaPublicKey
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.crypto.toEcPrivateKey
-import com.android.identity.crypto.toEcPublicKey
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -44,9 +39,7 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyFactory
-import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
@@ -301,7 +294,7 @@ class TransferManager private constructor(private val context: Context) {
 
             var readerKey: EcPrivateKey? = null
             var signatureAlgorithm = Algorithm.UNSET
-            var readerCertificateChain: X509CertificateChain? = null
+            var readerCertificateChain: X509CertChain? = null
             if (curve != null) {
                 signatureAlgorithm = curve.defaultSigningAlgorithm
                 readerKey = Crypto.createEcPrivateKey(curve)
@@ -313,8 +306,8 @@ class TransferManager private constructor(private val context: Context) {
                         readerCaCert,
                         readerCaPrivateKey
                     )
-                readerCertificateChain = X509CertificateChain(
-                    listOf(X509Certificate(readerCertificate.encoded))
+                readerCertificateChain = X509CertChain(
+                    listOf(X509Cert(readerCertificate.encoded))
                 )
 
             }
