@@ -157,7 +157,7 @@ internal data class ResponseComponents (
 
 class OpenID4VPPresentationActivity : FragmentActivity() {
     companion object {
-        private const val TAG = "OnlinePresentmentActivity"
+        private const val TAG = "OpenID4VPPresentationActivity"
     }
 
     private enum class State { PROCESSING, RESPONSE_SENT }
@@ -203,7 +203,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             onSuccess = {
                 // create and send response on IO thread
                 lifecycleScope.launch {
-                    createAndSendResponse(unlockData, credential)
+                    try {
+                        createAndSendResponse(unlockData, credential)
+                    } catch (e: Throwable) {
+                        Logger.e(TAG, e.toString())
+                        showErrorAndDismiss(IllegalStateException("Unexpected error"))
+                    }
                 } },
             onError = {exception ->
                 Logger.e(TAG, exception.toString())
@@ -243,7 +248,13 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                         State.PROCESSING -> {
                             Logger.i(TAG, "State: Processing")
                             stateDisplay.value = "Processing"
-                            processRequest(authorizationRequest, consentPromptData)
+                            try {
+                                processRequest(authorizationRequest, consentPromptData)
+                            } catch (e: Throwable) {
+                                Logger.e(TAG, e.toString())
+                                showErrorAndDismiss(IllegalStateException("Unexpected error"))
+                            }
+
                         }
 
                         State.RESPONSE_SENT -> {
@@ -293,7 +304,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                             onConfirm = {
                                 // create and send response on IO thread
                                 lifecycleScope.launch {
-                                    createAndSendResponse()
+                                    try {
+                                        createAndSendResponse()
+                                    } catch (e: Throwable) {
+                                        Logger.e(TAG, e.toString())
+                                        showErrorAndDismiss(IllegalStateException("Unexpected error"))
+                                    }
                                 }
                             },
                             onCancel = {
@@ -701,7 +717,7 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String): Auth
             jwtClaimsSetVerifier = TimeChecks()
         }
         jwtProcessor.process(signedJWT, null)
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         throw RuntimeException(e)
     }
 
