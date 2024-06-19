@@ -12,7 +12,7 @@ permissions:
 jobs:
   build_and_test:
 
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
     - name: Harden Runner
@@ -45,7 +45,7 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
-      run: ./gradlew build -x test
+      run: ./gradlew build -x test -x buildIphoneos -x buildIphonesimulator
     - name: Run unit tests
       run: ./gradlew test
 

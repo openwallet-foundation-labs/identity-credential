@@ -22,6 +22,16 @@ class X509CertTests {
         ).map { X509Cert(it) }
     )
 
+    // The public EC keys (X || Y) for the first four certificates from the chain above. The fifth
+    // certificate is for an RSA key.
+    //
+    private val androidKeyCertChainKeysRaw = listOf(
+        "ac858c2a816562929c5c69bfd64aacaf7c2e84c0db4f0b71a6a1dd153a72265c1b91fb8608e39bedf168a56634966b6fd4c140796397ce3171e50c8a5a30ebc6",
+        "02a3dd51ea8533eda9abad1b4dd4df5674abb01c839a21c7918f85d89eb77aaa3d570e522ba79ba40d26e21db20bf5a955c789711a9e1788b4592ea14c5487f8",
+        "b893145670be40c9d352400297edef3bc9a1fea89d0b4fb0226eb4363aa2cdf8b47cc5b8ce77036389ba4a1bf257fefc0fa40f667598393dab429cc032f2d9ce",
+        "ba9a716d9bc98303575deeaa40a89d5ea52dd68a13f0ce90fb2b16230a5db8cd846a5493f2ffc2cb624dd746aa4df5124e12616bfa02b46f85f53514be239c87a45a86ba6357205d868a4cf4c1439427e488290f08f1aed8e0cc8fb3bf6ca9e4"
+    )
+
     // The first certificate from the chain above, encoded as PEM
     //
     private val androidKeyCertChainFirstCertAsPem = """
@@ -70,4 +80,31 @@ class X509CertTests {
     }
 
     // TODO: add tests for certificates with keys of all supported curves
+
+    @Test
+    fun testEcPublicKey() {
+        // Check we can extract EC public keys for certs with EC keys and that we throw
+        // if the certificate does not have an EC key. In this case the first three
+        // certificates are for P-256 keys, the fourth for a P-384 key, and the fifth
+        // for a 4096-bit RSA key.
+        //
+        for (n in IntRange(0, androidKeyCertChain.certificates.size - 1)) {
+            when (n) {
+                0, 1, 2, 3 -> {
+                    val cert = androidKeyCertChain.certificates[n]
+                    val publicKey = cert.ecPublicKey as EcPublicKeyDoubleCoordinate
+                    assertEquals(
+                        androidKeyCertChainKeysRaw[n],
+                        (publicKey.x + publicKey.y).toHex
+                    )
+                }
+                else -> {
+                    assertFailsWith(IllegalStateException::class) {
+                        val publicKey = androidKeyCertChain.certificates[n].ecPublicKey
+                    }
+                }
+            }
+        }
+    }
+
 }

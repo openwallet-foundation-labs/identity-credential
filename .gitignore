@@ -9,3 +9,4 @@
 fastlane/report.xml
 /version*
 .kotlin/
+identity/SwiftBridge/SwiftBridge.xcodeproj/xcuserdata

@@ -2,7 +2,7 @@ package com.android.identity.crypto
 
 import kotlinx.datetime.Instant
 
-import com.android.identity.swiftcrypto.SwiftCrypto
+import com.android.identity.SwiftBridge
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.allocArrayOf
@@ -31,9 +31,9 @@ actual object Crypto {
         message: ByteArray
     ): ByteArray {
         return when (algorithm) {
-            Algorithm.SHA256 -> SwiftCrypto.sha256(message.toNSData()).toByteArray()
-            Algorithm.SHA384 -> SwiftCrypto.sha384(message.toNSData()).toByteArray()
-            Algorithm.SHA512 -> SwiftCrypto.sha512(message.toNSData()).toByteArray()
+            Algorithm.SHA256 -> SwiftBridge.sha256(message.toNSData()).toByteArray()
+            Algorithm.SHA384 -> SwiftBridge.sha384(message.toNSData()).toByteArray()
+            Algorithm.SHA512 -> SwiftBridge.sha512(message.toNSData()).toByteArray()
             else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
         }
     }
@@ -44,9 +44,9 @@ actual object Crypto {
         message: ByteArray
     ): ByteArray {
         return when (algorithm) {
-            Algorithm.HMAC_SHA256 -> SwiftCrypto.hmacSha256(key.toNSData(), message.toNSData()).toByteArray()
-            Algorithm.HMAC_SHA384 -> SwiftCrypto.hmacSha384(key.toNSData(), message.toNSData()).toByteArray()
-            Algorithm.HMAC_SHA512 -> SwiftCrypto.hmacSha512(key.toNSData(), message.toNSData()).toByteArray()
+            Algorithm.HMAC_SHA256 -> SwiftBridge.hmacSha256(key.toNSData(), message.toNSData()).toByteArray()
+            Algorithm.HMAC_SHA384 -> SwiftBridge.hmacSha384(key.toNSData(), message.toNSData()).toByteArray()
+            Algorithm.HMAC_SHA512 -> SwiftBridge.hmacSha512(key.toNSData(), message.toNSData()).toByteArray()
             else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
         }
     }
@@ -57,7 +57,7 @@ actual object Crypto {
         nonce: ByteArray,
         messagePlaintext: ByteArray
     ): ByteArray {
-        return SwiftCrypto.aesGcmEncrypt(
+        return SwiftBridge.aesGcmEncrypt(
             key.toNSData(),
             messagePlaintext.toNSData(),
             nonce.toNSData()
@@ -70,7 +70,7 @@ actual object Crypto {
         nonce: ByteArray,
         messageCiphertext: ByteArray
     ): ByteArray {
-        return SwiftCrypto.aesGcmDecrypt(
+        return SwiftBridge.aesGcmDecrypt(
             key.toNSData(),
             messageCiphertext.toNSData(),
             nonce.toNSData()
@@ -90,7 +90,7 @@ actual object Crypto {
             Algorithm.HMAC_SHA512 -> 64
             else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
         }
-        return SwiftCrypto.hkdf(
+        return SwiftBridge.hkdf(
             hashLen.toLong(),
             ikm.toNSData(),
             (if (salt != null && salt.size > 0) salt else ByteArray(hashLen)).toNSData(),
@@ -109,7 +109,7 @@ actual object Crypto {
             is EcPublicKeyDoubleCoordinate -> publicKey.x + publicKey.y
             is EcPublicKeyOkp -> publicKey.x
         }
-        return SwiftCrypto.ecVerifySignature(
+        return SwiftBridge.ecVerifySignature(
             publicKey.curve.coseCurveIdentifier.toLong(),
             raw.toNSData(),
             message.toNSData(),
@@ -118,7 +118,7 @@ actual object Crypto {
     }
 
     actual fun createEcPrivateKey(curve: EcCurve): EcPrivateKey {
-        val ret = SwiftCrypto.createEcPrivateKey(curve.coseCurveIdentifier.toLong()) as List<NSData>
+        val ret = SwiftBridge.createEcPrivateKey(curve.coseCurveIdentifier.toLong()) as List<NSData>
         if (ret.size == 0) {
             throw UnsupportedOperationException("Curve is not supported")
         }
@@ -134,7 +134,7 @@ actual object Crypto {
         signatureAlgorithm: Algorithm,
         message: ByteArray
     ): EcSignature {
-        val rawSignature = SwiftCrypto.ecSign(
+        val rawSignature = SwiftBridge.ecSign(
             key.curve.coseCurveIdentifier.toLong(),
             key.d.toNSData(),
             message.toNSData()
@@ -153,7 +153,7 @@ actual object Crypto {
             is EcPublicKeyDoubleCoordinate -> otherKey.x + otherKey.y
             is EcPublicKeyOkp -> otherKey.x
         }
-        return SwiftCrypto.ecKeyAgreement(
+        return SwiftBridge.ecKeyAgreement(
             key.curve.coseCurveIdentifier.toLong(),
             key.d.toNSData(),
             otherKeyRaw.toNSData()
@@ -171,7 +171,7 @@ actual object Crypto {
             is EcPublicKeyDoubleCoordinate -> receiverPublicKey.x + receiverPublicKey.y
             is EcPublicKeyOkp -> receiverPublicKey.x
         }
-        val ret = SwiftCrypto.hpkeEncrypt(
+        val ret = SwiftBridge.hpkeEncrypt(
             receiverPublicKeyRaw.toNSData(),
             plainText.toNSData(),
             aad.toNSData()
@@ -197,7 +197,7 @@ actual object Crypto {
     ): ByteArray {
         require(cipherSuite == Algorithm.HPKE_BASE_P256_SHA256_AES128GCM)
         val receiverPrivateKeyRaw = receiverPrivateKey.d
-        val ret = SwiftCrypto.hpkeDecrypt(
+        val ret = SwiftBridge.hpkeDecrypt(
             receiverPrivateKeyRaw.toNSData(),
             cipherText.toNSData(),
             aad.toNSData(),
@@ -214,7 +214,7 @@ actual object Crypto {
             is EcPublicKeyDoubleCoordinate -> publicKey.x + publicKey.y
             is EcPublicKeyOkp -> publicKey.x
         }
-        val pemEncoding = SwiftCrypto.ecPublicKeyToPem(
+        val pemEncoding = SwiftBridge.ecPublicKeyToPem(
             publicKey.curve.coseCurveIdentifier.toLong(),
             raw.toNSData()
         ) ?: throw IllegalStateException("Not available")
@@ -228,7 +228,7 @@ actual object Crypto {
         pemEncoding: String,
         curve: EcCurve
     ): EcPublicKey {
-        val rawEncoding = SwiftCrypto.ecPublicKeyFromPem(
+        val rawEncoding = SwiftBridge.ecPublicKeyFromPem(
             curve.coseCurveIdentifier.toLong(),
             pemEncoding
         )?.toByteArray() ?: throw IllegalStateException("Not available")
@@ -238,7 +238,7 @@ actual object Crypto {
     }
 
     internal actual fun ecPrivateKeyToPem(privateKey: EcPrivateKey): String {
-        val pemEncoding = SwiftCrypto.ecPrivateKeyToPem(
+        val pemEncoding = SwiftBridge.ecPrivateKeyToPem(
             privateKey.curve.coseCurveIdentifier.toLong(),
             privateKey.d.toNSData()
         ) ?: throw IllegalStateException("Not available")
@@ -252,7 +252,7 @@ actual object Crypto {
         pemEncoding: String,
         publicKey: EcPublicKey
     ): EcPrivateKey {
-        val rawEncoding = SwiftCrypto.ecPrivateKeyFromPem(
+        val rawEncoding = SwiftBridge.ecPrivateKeyFromPem(
             publicKey.curve.coseCurveIdentifier.toLong(),
             pemEncoding
         )?.toByteArray() ?: throw IllegalStateException("Not available")

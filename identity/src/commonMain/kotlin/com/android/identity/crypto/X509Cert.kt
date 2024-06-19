@@ -30,7 +30,10 @@ expect class X509Cert(
     /**
      * The public key in the certificate, as an Elliptic Curve key.
      *
-     * @throws IllegalStateException if the public key for the certificate isn't an EC key.
+     * Note that this is only supported for curves in [Crypto.supportedCurves].
+     *
+     * @throws IllegalStateException if the public key for the certificate isn't an EC key or
+     * supported by the platform.
      */
     val ecPublicKey: EcPublicKey
 
