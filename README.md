@@ -11,7 +11,8 @@ but the current scope also include other credential formats.
 The project includes libraries written in Kotlin:
 
 - `identity` provides the core building blocks and which can also be used
-   in server-side environments.
+   in server-side environments. This is a [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
+   library with support for JVM and iOS.
 - `identity-mdoc` provides data structures and routines for working with
    mdoc credentials. This library can also be used in server-side-environments
 - `identity-sdjwt` provides data structures and routines for working with
@@ -75,10 +76,13 @@ building blocks
   QR engagement, NFC engagement (both static and negotiated), device retrieval
   (BLE, Wifi Aware, and NFC)
 
-Currently these libraries require a Java runtime environment but the plan is
-to target [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
-for the libraries and [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/)
-for applications and samples.
+### Multiplatform support
+
+If not using a Mac for development, the `disableIosSupport` gradle property
+can be set to skip targets for iOS:
+```
+echo "disableIosSupport=1" > ~/.gradle/gradle.properties
+```
 
 ### Customization
 

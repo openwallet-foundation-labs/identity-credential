@@ -1,5 +1,3 @@
-import com.android.builder.core.apiVersionFromString
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -12,21 +10,23 @@ kotlin {
 
     jvm()
 
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach {
-        it.compilations {
-            val main by getting {
-                cinterops {
-                    create("SwiftCrypto")
+    if (!project.hasProperty("disableIosSupport")) {
+        listOf(
+            iosX64(),
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach {
+            it.compilations {
+                val main by getting {
+                    cinterops {
+                        create("SwiftCrypto")
+                    }
                 }
             }
-        }
-        it.binaries.framework {
-            baseName = "identity"
-            isStatic = true
+            it.binaries.framework {
+                baseName = "identity"
+                isStatic = true
+            }
         }
     }
 
@@ -75,22 +75,31 @@ kotlin {
 }
 
 dependencies {
+    if (project.hasProperty("disableIosSupport")) {
+        add("kspJvm", project(":processor"))
+    }
     add("kspCommonMainMetadata", project(":processor"))
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
-    if (name != "kspCommonMainKotlinMetadata") {
-        dependsOn("kspCommonMainKotlinMetadata")
+if (!project.hasProperty("disableIosSupport")) {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
+        if (name != "kspCommonMainKotlinMetadata") {
+            dependsOn("kspCommonMainKotlinMetadata")
+        }
     }
 }
 
-tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
-tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
-tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
+if (!project.hasProperty("disableIosSupport")) {
+    tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
+    tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
+    tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
+}
 
 swiftklib {
-    create("SwiftCrypto") {
-        path = file("native/SwiftCrypto")
-        packageName("com.android.identity.swiftcrypto")
+    if (!project.hasProperty("disableIosSupport")) {
+        create("SwiftCrypto") {
+            path = file("native/SwiftCrypto")
+            packageName("com.android.identity.swiftcrypto")
+        }
     }
 }
