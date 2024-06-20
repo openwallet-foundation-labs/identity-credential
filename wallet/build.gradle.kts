@@ -61,6 +61,9 @@ android {
             excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -87,6 +90,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.net.sf.scuba.scuba.sc.android)
     implementation(libs.org.jmrtd.jmrtd)
+    implementation(libs.ausweis.sdk)
 
     implementation(compose.runtime)
     implementation(compose.foundation)

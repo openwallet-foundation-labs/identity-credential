@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -11,6 +12,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Process
 import android.preference.PreferenceManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -26,18 +28,18 @@ import androidx.work.WorkerParameters
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
-import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.issuance.remote.WalletServerProvider
+import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustManager
@@ -104,6 +106,10 @@ class WalletApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (isAusweisSdkProcess()) {
+            Logger.d(TAG, "Ausweis SDK - onCreate")
+            return
+        }
         Logger.d(TAG, "onCreate")
 
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
@@ -340,5 +346,20 @@ class WalletApplication : Application() {
             androidKeystoreAttestKeyAvailable = keystoreCapabilities.attestKeySupported,
             androidKeystoreStrongBoxAvailable = keystoreCapabilities.strongBoxSupported
         )
+    }
+
+    private fun isAusweisSdkProcess(): Boolean {
+        val ausweisServiceName = "ausweisapp2_service"
+        if (Build.VERSION.SDK_INT >= 28) {
+            return getProcessName().endsWith(ausweisServiceName)
+        }
+        val pid = Process.myPid()
+        val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        for (appProcess in manager.runningAppProcesses) {
+            if (appProcess.pid == pid) {
+                return appProcess.processName.endsWith(ausweisServiceName)
+            }
+        }
+        return false
     }
 }

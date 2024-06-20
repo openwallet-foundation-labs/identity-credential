@@ -10,6 +10,8 @@ import com.android.identity.flow.server.Storage
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity_credential.wallet.R
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
 import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
@@ -28,6 +30,7 @@ class LocalDevelopmentEnvironment(
     private val configuration = ConfigurationImpl(context)
     private val storage = StorageImpl(context, "dev_local_data")
     private val resources = ResourcesImpl(context)
+    private val httpClient = HttpClient(Android)
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
         return clazz.cast(when(clazz) {
@@ -35,6 +38,7 @@ class LocalDevelopmentEnvironment(
             Resources::class -> resources
             Storage::class -> storage
             FlowNotifications::class -> notifications
+            HttpClient::class -> httpClient
             else -> return null
         })
     }

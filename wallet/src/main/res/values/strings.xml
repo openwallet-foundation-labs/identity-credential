@@ -232,6 +232,22 @@
     <string name="nfc_status_tunnel_reading_data">Reading data through tunnel: %1$d%%</string>
     <string name="nfc_status_finished">Finished</string>
 
+    <!-- eID reading -->
+    <string name="eid_status_preparing">Initializing eID reading module</string>
+    <string name="eid_status_ready">Ready to read eID</string>
+    <string name="eid_status_started">Initializing…</string>
+    <string name="eid_start_workflow">Start</string>
+    <string name="eid_start_workflow_with_simulator">Start using Simulator</string>
+    <string name="eid_access_rights_title">Please allow reading the following items</string>
+    <string name="eid_access_right_first_name">First name</string>
+    <string name="eid_access_right_last_name">Last name</string>
+    <string name="eid_access_right_maiden_name">Birth (maiden) name</string>
+    <string name="eid_access_right_date_of_birth">Date of birth</string>
+    <string name="eid_access_right_allow">Allow</string>
+    <string name="eid_nfc_scanning">Scanning eID using NFC</string>
+    <string name="eid_enter_pin">Enter your PIN</string>
+    <string name="eid_enter_pin_continue">Continue</string>
+
     <!-- Accessibility -->
     <string name="accessibility_go_back_icon">Go back</string>
     <string name="accessibility_menu_icon">Menu</string>

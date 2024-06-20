@@ -1,0 +1,9 @@
+package com.android.identity.issuance.evidence
+
+/**
+ * Evidence request type for asking user to identify themselves using German eID card,
+ * according to BSI TR-03127.
+ */
+data class EvidenceRequestGermanEid(
+    val optionalComponents: List<String>
+) : EvidenceRequest()

@@ -56,6 +56,9 @@ fun defaultGraph(
                     whenNotAuthenticated {}
                 }
             }
+            on(id = "germanEid", text = "Yes, derive the document from PIN-protected German eID") {
+                eId("germanEidCard")
+            }
         }
         if (developerModeEnabled) {
             choice(

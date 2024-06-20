@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,12 +39,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
+import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
@@ -593,6 +596,192 @@ fun <ResultT> EvidenceRequestIcaoView(
                                 is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
                             }
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestEIdView(
+    evidenceRequest: EvidenceRequestGermanEid,
+    provisioningViewModel: ProvisioningViewModel,
+    walletServerProvider: WalletServerProvider,
+    documentStore: DocumentStore,
+    permissionTracker: PermissionTracker
+) {
+    AusweisView(
+        evidenceRequest.optionalComponents,
+        permissionTracker
+    ) { evidence ->
+        provisioningViewModel.provideEvidence(
+            evidence = evidence,
+            walletServerProvider = walletServerProvider,
+            documentStore = documentStore
+        )
+    }
+}
+
+@Composable
+fun AusweisView(
+    requiredComponents: List<String>,
+    permissionTracker: PermissionTracker,
+    onResult: (evidence: EvidenceResponseGermanEid) -> Unit
+) {
+    val navController = rememberNavController()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val status = remember { mutableStateOf<AusweisModel.Status?>(null) }
+    val model = remember {
+        AusweisModel(
+            context,
+            status,
+            navController,
+            requiredComponents,
+            coroutineScope,
+            onResult
+        )
+    }
+    NavHost(navController = navController, startDestination = AusweisModel.Route.INITIAL.route) {
+        composable(AusweisModel.Route.INITIAL.route) {
+            Column {
+                val ready = status.value != null
+                val started = ready && status.value !is AusweisModel.Ready
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (started) {
+                                R.string.eid_status_started
+                            } else if (ready) {
+                                R.string.eid_status_ready
+                            } else {
+                                R.string.eid_status_preparing
+                            }
+                        ),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        enabled = ready && !started,
+                        onClick = { model.startWorkflow(false) }
+                    ) {
+                        Text(stringResource(R.string.eid_start_workflow))
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        enabled = ready && !started,
+                        onClick = { model.startWorkflow(true) }
+                    ) {
+                        Text(stringResource(R.string.eid_start_workflow_with_simulator))
+                    }
+                }
+            }
+        }
+        composable(AusweisModel.Route.ACCESS_RIGHTS.route) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.eid_access_rights_title),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+                val statusValue = status.value
+                if (statusValue is AusweisModel.AccessRights) {
+                    for (component in statusValue.components) {
+                        Text(
+                            when (component) {
+                                "GivenNames" -> stringResource(R.string.eid_access_right_first_name)
+                                "FamilyName" -> stringResource(R.string.eid_access_right_last_name)
+                                "BirthName" -> stringResource(R.string.eid_access_right_maiden_name)
+                                "DateOfBirth" -> stringResource(R.string.eid_access_right_date_of_birth)
+                                // TODO: all others
+                                else -> "Item [$component]"
+                            },
+                            modifier = Modifier.padding(8.dp, 0.dp)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(onClick = { model.acceptAccess() }) {
+                        Text(stringResource(R.string.eid_access_right_allow))
+                    }
+                }
+            }
+        }
+        composable(AusweisModel.Route.CARD_SCAN.route) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.eid_nfc_scanning),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+                val statusValue = status.value
+                if (statusValue is AusweisModel.Auth) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Progress: ${statusValue.progress}%",
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(8.dp),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        }
+        composable(AusweisModel.Route.PIN_ENTRY.route) {
+            val pin = remember { mutableStateOf("") }
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextField(value = pin.value, onValueChange = {pin.value = it},
+                        label = { Text(stringResource(R.string.eid_enter_pin)) })
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        enabled = status.value is AusweisModel.WaitingForPin &&
+                                pin.value.matches(Regex("^\\d{6}\$")),  // 6-digit
+                        onClick = {
+                            model.providePin(pin.value)
+                            pin.value = ""
+                        }
+                    ) {
+                        Text(stringResource(R.string.eid_enter_pin_continue))
                     }
                 }
             }

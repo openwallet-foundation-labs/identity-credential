@@ -30,6 +30,7 @@ dependencies {
     implementation(libs.org.jmrtd.jmrtd)
     implementation(libs.bouncy.castle.bcprov)
     implementation(libs.bouncy.castle.bcpkix)
+    implementation(libs.ktor.client.core)
 
     testImplementation(libs.junit)
 }
