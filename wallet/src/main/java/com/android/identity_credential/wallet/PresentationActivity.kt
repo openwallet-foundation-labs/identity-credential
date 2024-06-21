@@ -28,14 +28,21 @@ import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
+import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.presentation.PresentmentFlow
-import kotlinx.coroutines.CoroutineExceptionHandler
+import com.android.identity_credential.wallet.presentation.showPresentmentFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
 class PresentationActivity : FragmentActivity() {
@@ -100,9 +107,9 @@ class PresentationActivity : FragmentActivity() {
     private var deviceRequestByteArray: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
-    val presentmentFlow: PresentmentFlow by lazy {
-        PresentmentFlow(walletApp, this)
-    }
+    // TODO: add SD_JWT_VC support
+    // the supported formats for the Credentials of a Document
+    val supportedCredentialFormats = listOf(CredentialFormat.MDOC_MSO)
 
     // Listener for obtaining request bytes from NFC/QR presentation engagements
     val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
@@ -168,25 +175,60 @@ class PresentationActivity : FragmentActivity() {
                      * Start the Presentment Flow where a Presentment is shown for every
                      * [DocumentRequest] that has a suitable [Document].
                      */
-                    lifecycleScope.launch(
-                        /**
-                         * Define a custom exception handler to prevent exceptions from propagating
-                         * upwards the coroutine and force close the app on uncaught exceptions.
-                         */
-                        CoroutineExceptionHandler { _, exception ->
-                            Logger.e(
-                                TAG,
-                                "Exception during Presentment flow: $exception"
-                            )
-                        }
-                    ) {
-                        // get the response bytes containing 1 or more generated Documents to send
-                        val responseBytes = presentmentFlow.showPresentmentFlow(
-                            encodedDeviceRequest = deviceRequestByteArray!!,
-                            encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
-                        )
+                    lifecycleScope.launch {
 
-                        sendResponseToDevice(responseBytes)
+                        try {
+                            val deviceRequest = DeviceRequestParser(
+                                deviceRequestByteArray!!,
+                                deviceRetrievalHelper!!.sessionTranscript
+                            ).parse()
+
+                            deviceRequest.docRequests.forEach { docRequest ->
+                                // find a suitable Document for the docRequest
+                                val document = findSuitableDocumentForRequest(docRequest)
+                                // if document == null no suitable documents could be found then skip to next docRequest
+                                val mdocCredential = document.findCredential(
+                                    WalletApplication.CREDENTIAL_DOMAIN_MDOC,
+                                    Clock.System.now()
+                                ) as MdocCredential
+
+                                // extract the TrustPoint if possible
+                                var trustPoint: TrustPoint? = null
+                                if (docRequest.readerAuthenticated) {
+                                    val result = walletApp.trustManager.verify(
+                                        docRequest.readerCertificateChain!!.javaX509Certificates,
+                                        customValidators = emptyList()  // not needed for reader auth
+                                    )
+                                    if (result.isTrusted && result.trustPoints.isNotEmpty()) {
+                                        trustPoint = result.trustPoints.first()
+                                    } else if (result.error != null) {
+                                        Logger.w(
+                                            com.android.identity_credential.wallet.presentation.TAG,
+                                            "Error finding TrustPoint for reader auth",
+                                            result.error!!
+                                        )
+                                    }
+                                }
+
+                                // generate the DocumentRequest from the current docRequest
+                                val documentRequest = MdocUtil.generateDocumentRequest(docRequest)
+
+                                // show the Presentation Flow for and get the response bytes for
+                                // the generated Document
+                                val responseBytes = showPresentmentFlow(
+                                    activity = this@PresentationActivity,
+                                    walletApp = walletApp,
+                                    documentRequest = documentRequest,
+                                    mdocCredential = mdocCredential,
+                                    trustPoint = trustPoint,
+                                    encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
+                                )
+                                sendResponseToDevice(responseBytes)
+                            }
+
+                        } catch (exception: Exception) {
+                            Logger.e(TAG, "Unable to start Presentment Flow: $exception")
+                        }
                     }
                 }
 
@@ -197,6 +239,82 @@ class PresentationActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+
+    /**
+     * Find a suitable Document for the given [docRequest] else throw [IllegalStateException].
+     * @param docRequest parsed from DeviceRequest CBOR.
+     * @return a matching [Document] from either on-screen Document or [DocumentStore].
+     * @throws IllegalStateException if no Documents in [DocumentStore] matched the given [docType]
+     */
+    fun findSuitableDocumentForRequest(docRequest: DeviceRequestParser.DocRequest): Document {
+
+        fun isDocumentSuitableForDocRequest(
+            document: Document,
+            docType: String,
+            supportedCredentialFormats: List<CredentialFormat>,
+        ): Boolean {
+            /**
+             * Nested local function that returns whether the given [Document] matches the
+             * requested [docType] that also has at least one [Credential] with a [CredentialFormat]
+             * listed in the [supportedCredentialFormats]. This function is nested here for
+             * maintaining high cohesion and grouping this reusable function near the location of
+             * where it's used (directly underneath this function).
+             *
+             * @param document the [Document] being checked for suitability for a [DocumentRequest]
+             * @param docType the mDoc Document Type that the [document] should have for a match
+             * @param supportedCredentialFormats a list of [CredentialFormat]s that are supported
+             *      for authentication - this applies Credentials of a [Document].
+             * @return a Boolean, [true] if the [document] matches the requested [docType] and has
+             * at least one Credential where its [CredentialFormat] is supported/listed in
+             * param [supportedCredentialFormats].
+             */
+            // if the docType matches, proceed to iterate over the document's credentials
+            if (document.documentConfiguration.mdocConfiguration?.docType == docType) {
+                val documentInfo = walletApp.documentModel.getDocumentInfo(document.name)
+
+                // return true if there's at least 1 credential with a supported format
+                return documentInfo?.credentialInfos?.any {
+                    supportedCredentialFormats.contains(it.format)
+                }
+                // else encountered null getting DocumentInfo or CredentialInfos
+                    ?: throw IllegalStateException("Error validating suitability for Document ${document.name} having DocumentInfo $documentInfo and CredentialInfos ${documentInfo?.credentialInfos}")
+            }
+            // the specified Document does not have the requested docType
+            return false
+        }
+
+        // prefer the document that is on-screen if possible
+        walletApp.settingsModel.focusedCardId.value?.let onscreenloop@{ documentIdFromPager ->
+            val pagerDocument = walletApp.documentStore.lookupDocument(documentIdFromPager)
+            if (pagerDocument != null) {
+                val suitable = isDocumentSuitableForDocRequest(
+                    document = pagerDocument,
+                    docType = docRequest.docType,
+                    supportedCredentialFormats = supportedCredentialFormats
+                )
+
+                if (suitable) {
+                    return pagerDocument
+                }
+            }
+        }
+
+        // no matches from above, check suitability with all Documents added to DocumentStore
+        walletApp.documentStore.listDocuments().forEach storeloop@{ documentIdFromStore ->
+            val storeDocument = walletApp.documentStore.lookupDocument(documentIdFromStore)!!
+            val suitable = isDocumentSuitableForDocRequest(
+                document = storeDocument,
+                docType = docRequest.docType,
+                supportedCredentialFormats = supportedCredentialFormats
+            )
+            if (suitable) {
+                return storeDocument
+            }
+        }
+
+        throw Exception("Unable to find a suitable Document for ${docRequest.docType}")
     }
 
     /**

@@ -11,7 +11,6 @@ import com.android.identity.document.DocumentRequest
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.trustmanagement.TrustPoint
-import com.android.identity_credential.wallet.presentation.PresentationRequestData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -63,16 +62,13 @@ suspend fun showConsentPrompt(
  *
  * Extends [BottomSheetDialogFragment] and shows up as an overlay above the current UI.
  *
- * Expects a [ConsentPromptResponseListener] instance to be provided to notify when the user taps on
- * Confirm or Cancel.
- *
  * @param consentPromptEntryFieldData data that is extracted (via TransferHelper) during a presentation engagement
  * @param documentTypeRepository repository used to get the human-readable credential names
  * @param onConsentPromptResult callback to notify with the result of the prompt with a [Boolean]
-                  depending on whether the 'Confirm' [true] or 'Cancel' [false] button was tapped.
+depending on whether the 'Confirm' [true] or 'Cancel' [false] button was tapped.
  * @extends [BottomSheetDialogFragment] that can create the Fragment's contents via Composition.
  */
-private class ConsentPrompt(
+class ConsentPrompt(
     private val consentPromptEntryFieldData: ConsentPromptEntryFieldData,
     private val documentTypeRepository: DocumentTypeRepository,
     private val onConsentPromptResult: (Boolean) -> Unit,

@@ -33,7 +33,7 @@ suspend fun showPassphrasePrompt(
         val passphrasePrompt = PassphrasePrompt(
             constraints = constraints,
             checkWeakPassphrase = checkWeakPassphrase,
-            onPassphraseEntered = { passphrase->
+            onPassphraseEntered = { passphrase ->
                 continuation.resume(passphrase)
             },
         )
@@ -52,7 +52,7 @@ suspend fun showPassphrasePrompt(
  * @param onPassphraseEntered callback issued from this dialog fragment when the user enters a passphrase
  * @extends [BottomSheetDialogFragment] that can create the Fragment's contents via Composition.
  */
-private class PassphrasePrompt(
+class PassphrasePrompt(
     private val constraints: PassphraseConstraints,
     private val checkWeakPassphrase: Boolean,
     private val onPassphraseEntered: (String) -> Unit,
