@@ -60,7 +60,7 @@ object Logger {
 
     fun stopLoggingToFile() {
         if (fileWriter == null) {
-            w(TAG, "startLoggingToFile: Not logging to file")
+            w(TAG, "stopLoggingToFile: Not logging to file")
             return
         }
         fileWriter!!.close()

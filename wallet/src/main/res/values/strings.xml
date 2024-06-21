@@ -90,11 +90,20 @@
     <string name="settings_screen_dev_mode_subtitle_on">Additional functionality for developers is enabled</string>
     <string name="settings_screen_dev_mode_subtitle_off">Additional functionality for developers not enabled</string>
     <string name="settings_screen_log_to_file_title">Logging</string>
-    <string name="settings_screen_log_to_file_subtitle_on">Diagnostic messages are being logged</string>
-    <string name="settings_screen_log_to_file_subtitle_off">Diagnostic messages are not being logged</string>
-    <string name="settings_screen_log_to_file_clear_button">Clear log</string>
-    <string name="settings_screen_log_to_file_share_button">Share log</string>
-    <string name="settings_screen_log_to_file_chooser_title">Share Log</string>
+    <string name="settings_screen_log_to_file_subtitle">Diagnostics and activities logging settings</string>
+    <string name="settings_screen_diagnostic_log_to_file_subtitle_on">Diagnostic messages are being logged</string>
+    <string name="settings_screen_diagnostic_log_to_file_subtitle_off">Diagnostic messages are not being logged</string>
+    <string name="settings_screen_activity_verify_log_to_file_subtitle_on">Verify activities are being logged</string>
+    <string name="settings_screen_activity_verify_log_to_file_subtitle_off">Verify activities are not being logged</string>
+    <string name="settings_screen_activity_provisioning_log_to_file_subtitle_on">Provisioning activities are being logged</string>
+    <string name="settings_screen_activity_provisioning_log_to_file_subtitle_off">Provisioning activities are not being logged</string>
+    <string name="settings_screen_activity_update_log_to_file_subtitle_on">Update activities are being logged</string>
+    <string name="settings_screen_activity_update_log_to_file_subtitle_off">Update activities are not being logged</string>
+    <string name="settings_screen_activity_communication_log_to_file_subtitle_on">Communication with issuing authority activities are being logged</string>
+    <string name="settings_screen_activity_communication_log_to_file_subtitle_off">Communication with issuing authority activities are not being logged</string>
+    <string name="settings_screen_diagnostic_log_to_file_clear_button">Clear log</string>
+    <string name="settings_screen_diagnostic_log_to_file_share_button">Share log</string>
+    <string name="settings_screen_diagnostic_log_to_file_chooser_title">Share Log</string>
     <string name="settings_screen_wallet_server_title">Wallet Server</string>
     <string name="settings_screen_wallet_server_built_in">Built-in Wallet Server (dev:)</string>
     <string name="settings_screen_set_wallet_server_url_dialog_title">Wallet Server</string>
@@ -338,5 +347,4 @@
     <string name="duration_hours_and_minutes">%1$s and %2$s</string>
     <string name="duration_time_ago">%1$s ago</string>
     <string name="duration_time_from_now">%1$s from now</string>
-
 </resources>

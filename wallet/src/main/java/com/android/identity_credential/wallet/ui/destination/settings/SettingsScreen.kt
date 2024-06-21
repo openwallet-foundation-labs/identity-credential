@@ -10,17 +10,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -47,6 +45,8 @@ import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.SettingString
 import com.android.identity_credential.wallet.ui.SettingToggle
+import java.util.EnumMap
+import com.android.identity_credential.wallet.util.Logging
 
 @Composable
 fun SettingsScreen(
@@ -96,6 +96,9 @@ fun SettingsScreen(
     }
 
     var showMenu by remember { mutableStateOf(false) }
+    var showLoggingDialog by remember { mutableStateOf(false) }
+    val loggingEnabled by settingsModel.loggingEnabled.observeAsState(EnumMap<Logging, Boolean>(Logging::class.java))
+
     ScreenWithAppBarAndBackButton(
         title = stringResource(R.string.settings_screen_title),
         onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
@@ -108,9 +111,10 @@ fun SettingsScreen(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text(text = stringResource(R.string.settings_screen_log_to_file_clear_button)) },
+                    text = { Text(text = stringResource(R.string.settings_screen_diagnostic_log_to_file_clear_button)) },
                     leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
-                    enabled = settingsModel.loggingEnabled.observeAsState(false).value,
+                    trailingIcon = { Icon(Icons.Default.MoreVert, contentDescription = "More actions") },
+                    enabled = loggingEnabled?.get(Logging.DIAGNOSTIC) ?: false,
                     onClick = {
                         settingsModel.clearLog()
                         showMenu = false
@@ -118,14 +122,14 @@ fun SettingsScreen(
                 )
                 val context = LocalContext.current
                 DropdownMenuItem(
-                    text = { Text(text = stringResource(R.string.settings_screen_log_to_file_share_button)) },
+                    text = { Text(text = stringResource(R.string.settings_screen_diagnostic_log_to_file_share_button)) },
                     leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
-                    enabled = settingsModel.loggingEnabled.observeAsState(false).value,
+                    enabled = loggingEnabled?.get(Logging.DIAGNOSTIC) ?: false,
                     onClick = {
                         context.startActivity(
                             Intent.createChooser(
                                 settingsModel.createLogSharingIntent(context),
-                                context.getString(R.string.settings_screen_log_to_file_chooser_title)
+                                context.getString(R.string.settings_screen_diagnostic_log_to_file_chooser_title)
                             )
                         )
                         showMenu = false
@@ -149,12 +153,10 @@ fun SettingsScreen(
                     onCheckedChange = { settingsModel.developerModeEnabled.value = it }
                 )
             }
-            SettingToggle(
+            SettingString(
                 title = stringResource(R.string.settings_screen_log_to_file_title),
-                subtitleOn = stringResource(R.string.settings_screen_log_to_file_subtitle_on),
-                subtitleOff = stringResource(R.string.settings_screen_log_to_file_subtitle_off),
-                isChecked = settingsModel.loggingEnabled.observeAsState(false).value,
-                onCheckedChange = { settingsModel.loggingEnabled.value = it }
+                subtitle = stringResource(R.string.settings_screen_log_to_file_subtitle),
+                onClicked = { showLoggingDialog = true }
             )
             if (WalletApplicationConfiguration.WALLET_SERVER_SETTING_AVAILABLE) {
                 SettingString(
@@ -167,6 +169,16 @@ fun SettingsScreen(
                     onClicked = { showSetWalletServerUrlDialog = true }
                 )
             }
+        }
+
+        if (showLoggingDialog) {
+            LoggingSettingsDialog(
+                loggingEnabled = loggingEnabled,
+                onDismissed = { showLoggingDialog = false },
+                onSetLoggingEnabled = { loggingType, enabled ->
+                    settingsModel.setLoggingEnabled(loggingType, enabled)
+                }
+            )
         }
     }
 }
@@ -220,6 +232,57 @@ private fun SetWalletServerUrlDialog(
 }
 
 @Composable
+private fun LoggingSettingsDialog(
+    loggingEnabled: EnumMap<Logging, Boolean>,
+    onDismissed: () -> Unit,
+    onSetLoggingEnabled: (Logging, Boolean) -> Unit
+) {
+    // Create a map to hold MutableState for each logging type
+    val loggingEnabledState = remember {
+        loggingEnabled.mapValues { mutableStateOf(it.value) }
+    }
+
+    AlertDialog(
+        onDismissRequest = { onDismissed() },
+        title = { Text(text = stringResource(R.string.settings_screen_log_to_file_title)) },
+        text = {
+            Column {
+                Logging.values().forEach { loggingType ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val isCheckedState = loggingEnabledState[loggingType] ?: remember { mutableStateOf(false) }
+                        SettingToggle(
+                            title = "",
+                            subtitleOn = stringResource(getLoggingOnStringRes(loggingType)),
+                            subtitleOff = stringResource(getLoggingOffStringRes(loggingType)),
+                            isChecked = isCheckedState.value,
+                            onCheckedChange = {
+                                isCheckedState.value = it
+                                onSetLoggingEnabled(loggingType, it)
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onDismissed() }) {
+                Text(stringResource(R.string.settings_screen_set_wallet_server_url_dialog_confirm_button))
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = { onDismissed() }
+            ) {
+                Text(stringResource(R.string.settings_screen_set_wallet_server_url_dialog_dismiss_button))
+            }
+        }
+    )
+}
+
+@Composable
 private fun LinkText(
     text: String,
     onClicked: () -> Unit,
@@ -235,5 +298,27 @@ private fun LinkText(
         }
     }) {
         onClicked()
+    }
+}
+
+@Composable
+private fun getLoggingOnStringRes(loggingType: Logging): Int {
+    return when (loggingType) {
+        Logging.DIAGNOSTIC -> R.string.settings_screen_diagnostic_log_to_file_subtitle_on
+        Logging.VERIFY -> R.string.settings_screen_activity_verify_log_to_file_subtitle_on
+        Logging.UPDATE -> R.string.settings_screen_activity_update_log_to_file_subtitle_on
+        Logging.PRESENTATION -> R.string.settings_screen_activity_provisioning_log_to_file_subtitle_on
+        Logging.COMMUNICATION -> R.string.settings_screen_activity_communication_log_to_file_subtitle_on
+    }
+}
+
+@Composable
+private fun getLoggingOffStringRes(loggingType: Logging): Int {
+    return when (loggingType) {
+        Logging.DIAGNOSTIC -> R.string.settings_screen_diagnostic_log_to_file_subtitle_off
+        Logging.VERIFY -> R.string.settings_screen_activity_verify_log_to_file_subtitle_off
+        Logging.UPDATE -> R.string.settings_screen_activity_update_log_to_file_subtitle_off
+        Logging.PRESENTATION -> R.string.settings_screen_activity_provisioning_log_to_file_subtitle_off
+        Logging.COMMUNICATION -> R.string.settings_screen_activity_communication_log_to_file_subtitle_off
     }
 }
