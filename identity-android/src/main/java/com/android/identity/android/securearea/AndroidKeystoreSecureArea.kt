@@ -28,9 +28,8 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea.Capabil
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
@@ -264,18 +263,18 @@ class AndroidKeystoreSecureArea(
         } catch (e: NoSuchProviderException) {
             throw IllegalStateException("Error creating key", e)
         }
-        val attestationCerts = mutableListOf<X509Certificate>()
+        val attestationCerts = mutableListOf<X509Cert>()
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
             ks.getCertificateChain(alias).forEach { certificate ->
-                attestationCerts.add(X509Certificate(certificate.encoded))
+                attestationCerts.add(X509Cert(certificate.encoded))
             }
         } catch (e: Exception) {
             throw IllegalStateException(e)
         }
         Logger.d(TAG, "EC key with alias '$alias' created")
-        saveKeyMetadata(alias, aSettings, X509CertificateChain(attestationCerts))
+        saveKeyMetadata(alias, aSettings, X509CertChain(attestationCerts))
     }
 
     /**
@@ -324,12 +323,12 @@ class AndroidKeystoreSecureArea(
         val settingsBuilder = AndroidKeystoreCreateKeySettings.Builder("".toByteArray(StandardCharsets.UTF_8))
 
         // attestation
-        val attestationCerts = mutableListOf<X509Certificate>()
+        val attestationCerts = mutableListOf<X509Cert>()
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
             ks.getCertificateChain(existingAlias).forEach { certificate ->
-                attestationCerts.add(X509Certificate(certificate.encoded))
+                attestationCerts.add(X509Cert(certificate.encoded))
             }
         } catch (e: Exception) {
             throw IllegalStateException(e)
@@ -374,7 +373,7 @@ class AndroidKeystoreSecureArea(
             keyInfo.userAuthenticationValidityDurationSeconds * 1000L,
             userAuthenticationTypes
         )
-        saveKeyMetadata(existingAlias, settingsBuilder.build(), X509CertificateChain(attestationCerts))
+        saveKeyMetadata(existingAlias, settingsBuilder.build(), X509CertChain(attestationCerts))
         Logger.d(TAG, "EC existing key with alias '$existingAlias' created")
     }
 
@@ -534,7 +533,7 @@ class AndroidKeystoreSecureArea(
                     keyInfo.keyValidityForOriginationEnd!!.time
                 )
             }
-            val attestation = map["attestation"].asX509CertificateChain
+            val attestation = map["attestation"].asX509CertChain
             val publicKey = attestation.certificates.first().ecPublicKey
 
             val userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
@@ -570,7 +569,7 @@ class AndroidKeystoreSecureArea(
     private fun saveKeyMetadata(
         alias: String,
         settings: AndroidKeystoreCreateKeySettings,
-        attestation: X509CertificateChain
+        attestation: X509CertChain
     ) {
         val map = CborMap.builder()
         map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))

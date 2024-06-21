@@ -32,7 +32,7 @@ import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
@@ -248,7 +248,7 @@ class WalletApplication : Application() {
         displayIconResourceId: Int?
     ) = addTrustPoint(
         TrustPoint(
-            certificate = X509Certificate.fromPem(
+            certificate = X509Cert.fromPem(
                 String(
                     resources.openRawResource(certificateResourceId).readBytes()
                 )

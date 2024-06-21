@@ -13,8 +13,8 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.document.NameSpacedData
@@ -420,7 +420,7 @@ class IssuingAuthorityState(
         }
 
         val resources = env.getInterface(Resources::class)!!
-        val documentSigningKeyCert = X509Certificate.fromPem(
+        val documentSigningKeyCert = X509Cert.fromPem(
             resources.getStringResource("ds_certificate.pem")!!)
         val documentSigningKey = EcPrivateKey.fromPem(
             resources.getStringResource("ds_private_key.pem")!!,
@@ -435,8 +435,8 @@ class IssuingAuthorityState(
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertificateChain(listOf(
-                X509Certificate(documentSigningKeyCert.encodedCertificate))
+            X509CertChain(listOf(
+                X509Cert(documentSigningKeyCert.encodedCertificate))
             ).toDataItem
         ))
         val encodedIssuerAuth = Cbor.encode(

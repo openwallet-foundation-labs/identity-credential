@@ -18,8 +18,8 @@ import com.android.identity.document.Document
 import com.android.identity.document.DocumentUtil
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.toEcPrivateKey
 import com.android.identity.mdoc.credential.MdocCredential
@@ -213,8 +213,8 @@ class ProvisioningUtil private constructor(
                     unprotectedHeaders = mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                            X509CertificateChain(
-                                listOf(X509Certificate(issuerCert.encoded))
+                            X509CertChain(
+                                listOf(X509Cert(issuerCert.encoded))
                             ).toDataItem
                         )
                     ),

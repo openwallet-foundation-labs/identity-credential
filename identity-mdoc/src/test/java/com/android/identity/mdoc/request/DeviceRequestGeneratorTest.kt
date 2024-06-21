@@ -20,10 +20,10 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.create
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -63,7 +63,7 @@ class DeviceRequestGeneratorTest {
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 30L * 24 * 60 * 60 * 1000
         )
-        val readerCert = X509Certificate.create(
+        val readerCert = X509Cert.create(
             readerKey.publicKey,
             readerKey,
             null,
@@ -76,7 +76,7 @@ class DeviceRequestGeneratorTest {
             setOf(),
             listOf()
         )
-        val readerCertChain = X509CertificateChain(listOf(readerCert))
+        val readerCertChain = X509CertChain(listOf(readerCert))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)

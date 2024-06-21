@@ -32,8 +32,8 @@ import com.android.identity.document.DocumentRequest.DataElement
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
@@ -70,7 +70,7 @@ class DeviceResponseGeneratorTest {
     private lateinit  var timeValidityBegin: Instant
     private lateinit  var timeValidityEnd: Instant
     private lateinit  var documentSignerKey: EcPrivateKey
-    private lateinit  var documentSignerCert: X509Certificate
+    private lateinit  var documentSignerCert: X509Cert
     
     @Before
     @Throws(Exception::class)
@@ -163,7 +163,7 @@ class DeviceResponseGeneratorTest {
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
         documentSignerKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        documentSignerCert = X509Certificate.create(
+        documentSignerCert = X509Cert.create(
             documentSignerKey.publicKey,
             documentSignerKey,
             null,
@@ -189,7 +189,7 @@ class DeviceResponseGeneratorTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertificateChain(listOf(documentSignerCert)).toDataItem
+            X509CertChain(listOf(documentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(

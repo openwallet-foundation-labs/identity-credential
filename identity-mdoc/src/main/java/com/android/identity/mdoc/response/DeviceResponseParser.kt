@@ -25,7 +25,7 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
@@ -127,7 +127,7 @@ class DeviceResponseParser(
             val issuerAuthorityCertChain =
                 issuerAuth.unprotectedHeaders[
                     CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)
-                ]!!.asX509CertificateChain
+                ]!!.asX509CertChain
             val signatureAlgorithm = Algorithm.fromInt(
                 issuerAuth.protectedHeaders[
                     CoseNumberLabel(Cose.COSE_LABEL_ALG)
@@ -368,7 +368,7 @@ class DeviceResponseParser(
         /**
          * Returns the certificate chain for the issuer which signed the data in the document.
          */
-        lateinit var issuerCertificateChain: X509CertificateChain
+        lateinit var issuerCertificateChain: X509CertChain
 
         private data class EntryData(var value: ByteArray, var digestMatch: Boolean)
 
@@ -706,7 +706,7 @@ class DeviceResponseParser(
                 }
             }
 
-            fun setIssuerCertificateChain(certificateChain: X509CertificateChain) {
+            fun setIssuerCertificateChain(certificateChain: X509CertChain) {
                 result.issuerCertificateChain = certificateChain
             }
 

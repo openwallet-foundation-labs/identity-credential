@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.readercertgen
 
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
@@ -48,7 +48,7 @@ object ReaderCertificateGenerator {
 
     fun createReaderCertificate(
         readerKey: EcPrivateKey, //dsKeyPair: KeyPair,
-        readerRootCert: X509Certificate, // issuerCert: X509Certificate,
+        readerRootCert: X509Cert, // issuerCert: X509Certificate,
         readerRootKey: EcPrivateKey // issuerPrivateKey: PrivateKey
     ): java.security.cert.X509Certificate {
         val data = DataMaterial(

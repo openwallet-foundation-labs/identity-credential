@@ -23,7 +23,7 @@ import com.android.identity.cbor.Tagged
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509CertificateChain
+import com.android.identity.crypto.X509CertChain
 
 /**
  * Helper class for parsing the bytes of `DeviceRequest`
@@ -112,7 +112,7 @@ class DeviceRequestParser(
             val request = Cbor.decode(encodedDeviceRequest)
             version = request["version"].asTstr
             require(version.compareTo("1.0") >= 0) { "Given version '$version' not >= '1.0'" }
-            var readerCertChain: X509CertificateChain? = null
+            var readerCertChain: X509CertChain? = null
             request.getOrNull("docRequests")?.let { docRequests ->
                 val docRequestsDataItems = docRequests.asArray
                 for (docRequestDataItem in docRequestsDataItems) {
@@ -131,7 +131,7 @@ class DeviceRequestParser(
                                 CoseNumberLabel(Cose.COSE_LABEL_ALG)
                             ]!!.asNumber.toInt()
                         )
-                        readerCertChain = readerCertChainDataItem!!.asX509CertificateChain
+                        readerCertChain = readerCertChainDataItem!!.asX509CertChain
                         val readerKey = readerCertChain!!.certificates[0].ecPublicKey
                         val encodedReaderAuthentication = Cbor.encode(
                             CborArray.builder()
@@ -229,7 +229,7 @@ class DeviceRequestParser(
          * The certificate chain for the reader which signed the request or null if reader
          * authentication isn't used.
          */
-        val readerCertificateChain: X509CertificateChain?,
+        val readerCertificateChain: X509CertChain?,
 
         /**
          * Whether `ItemsRequest` was authenticated.
@@ -290,7 +290,7 @@ class DeviceRequestParser(
             docType: String, encodedItemsRequest: ByteArray,
             requestInfo: Map<String, ByteArray>,
             encodedReaderAuth: ByteArray?,
-            readerCertChain: X509CertificateChain?,
+            readerCertChain: X509CertChain?,
             readerAuthenticated: Boolean
         ) {
             private val result = DocRequest(

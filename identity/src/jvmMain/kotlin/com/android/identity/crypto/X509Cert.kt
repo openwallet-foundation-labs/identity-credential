@@ -18,11 +18,12 @@ import java.io.ByteArrayInputStream
 import java.math.BigInteger
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.util.Date
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
-actual class X509Certificate actual constructor(actual val encodedCertificate: ByteArray) {
+actual class X509Cert actual constructor(actual val encodedCertificate: ByteArray) {
 
     actual val toDataItem: DataItem
         get() = Bstr(encodedCertificate)
@@ -35,9 +36,9 @@ actual class X509Certificate actual constructor(actual val encodedCertificate: B
         sb.append("\n-----END CERTIFICATE-----\n")
         return sb.toString()    }
 
-    actual fun verify(signingCertificate: X509Certificate): Boolean =
+    fun verify(signingCertificate: X509Cert): Boolean =
         try {
-            this.javaX509Certificate.verify(javaX509Certificate.publicKey)
+            this.javaX509Certificate.verify(signingCertificate.javaX509Certificate.publicKey)
             true
         } catch (e: Throwable) {
             false
@@ -109,28 +110,28 @@ actual class X509Certificate actual constructor(actual val encodedCertificate: B
 
     actual val ecPublicKey: EcPublicKey
         get() {
-            val javaCert = javaX509Certificate
-            return javaCert.publicKey.toEcPublicKey(getCurve(javaCert.tbsCertificate))
+            val curve = getCurve(javaX509Certificate.tbsCertificate)
+            return javaX509Certificate.publicKey.toEcPublicKey(curve)
         }
 
     actual companion object {
         @OptIn(ExperimentalEncodingApi::class)
-        actual fun fromPem(pemEncoding: String): X509Certificate {
+        actual fun fromPem(pemEncoding: String): X509Cert {
             val encoded = Base64.Mime.decode(pemEncoding
                 .replace("-----BEGIN CERTIFICATE-----", "")
                 .replace("-----END CERTIFICATE-----", "")
                 .trim())
-            return X509Certificate(encoded)
+            return X509Cert(encoded)
         }
 
-        actual fun fromDataItem(dataItem: DataItem): X509Certificate {
-            return X509Certificate(dataItem.asBstr)
+        actual fun fromDataItem(dataItem: DataItem): X509Cert {
+            return X509Cert(dataItem.asBstr)
         }
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is X509Certificate) return false
+        if (other !is X509Cert) return false
 
         return encodedCertificate.contentEquals(other.encodedCertificate)
     }
@@ -143,12 +144,12 @@ actual class X509Certificate actual constructor(actual val encodedCertificate: B
 /**
  * The Java X509 certificate from the encoded certificate data.
  */
-val X509Certificate.javaX509Certificate: java.security.cert.X509Certificate
+val X509Cert.javaX509Certificate: X509Certificate
     get() {
         try {
             val cf = CertificateFactory.getInstance("X.509")
             val certBais = ByteArrayInputStream(this.encodedCertificate)
-            return cf.generateCertificate(certBais) as java.security.cert.X509Certificate
+            return cf.generateCertificate(certBais) as X509Certificate
         } catch (e: CertificateException) {
             throw IllegalStateException("Error decoding certificate blob", e)
         }
@@ -210,17 +211,17 @@ data class X509CertificateExtension(
  * @param options one or more options from the [CreateCertificateOption] enumeration.
  * @param additionalExtensions additional extensions to put into the certificate.
  */
-fun X509Certificate.Companion.create(publicKey: EcPublicKey,
-                                     signingKey: EcPrivateKey,
-                                     signingKeyCertificate: X509Certificate?,
-                                     signatureAlgorithm: Algorithm,
-                                     serial: String,
-                                     subject: String,
-                                     issuer: String,
-                                     validFrom: Instant,
-                                     validUntil: Instant,
-                                     options: Set<X509CertificateCreateOption>,
-                                     additionalExtensions: List<X509CertificateExtension>): X509Certificate {
+fun X509Cert.Companion.create(publicKey: EcPublicKey,
+                              signingKey: EcPrivateKey,
+                              signingKeyCertificate: X509Cert?,
+                              signatureAlgorithm: Algorithm,
+                              serial: String,
+                              subject: String,
+                              issuer: String,
+                              validFrom: Instant,
+                              validUntil: Instant,
+                              options: Set<X509CertificateCreateOption>,
+                              additionalExtensions: List<X509CertificateExtension>): X509Cert {
     val signatureAlgorithmString = when (signatureAlgorithm) {
         Algorithm.ES256 -> "SHA256withECDSA"
         Algorithm.ES384 -> "SHA384withECDSA"
@@ -285,6 +286,6 @@ fun X509Certificate.Companion.create(publicKey: EcPublicKey,
     val encodedCert: ByteArray = certBuilder.build(signer).getEncoded()
     val cf = CertificateFactory.getInstance("X.509")
     val bais = ByteArrayInputStream(encodedCert)
-    val x509cert = cf.generateCertificate(bais) as java.security.cert.X509Certificate
-    return X509Certificate(x509cert.encoded)
+    val x509cert = cf.generateCertificate(bais) as X509Certificate
+    return X509Cert(x509cert.encoded)
 }

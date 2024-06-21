@@ -2,7 +2,7 @@ package com.android.identity.sdjwt
 
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Certificate
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.create
@@ -48,7 +48,7 @@ class SdJwtVcTest {
     private lateinit var timeValidityBegin: Instant
     private lateinit var timeSigned: Instant
     private lateinit var timeValidityEnd: Instant
-    private lateinit var issuerCert: X509Certificate
+    private lateinit var issuerCert: X509Cert
     private lateinit var credential: SdJwtVcCredential
 
     @Before
@@ -112,7 +112,7 @@ class SdJwtVcTest {
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
-        issuerCert = X509Certificate.create(
+        issuerCert = X509Cert.create(
             issuerKey.publicKey,
             issuerKey,
             null,
