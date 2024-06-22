@@ -23,6 +23,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.util.UUID
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -44,7 +45,6 @@ import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
-import java.util.UUID
 import java.util.concurrent.Executor
 
 class TransferManager private constructor(private val context: Context) {

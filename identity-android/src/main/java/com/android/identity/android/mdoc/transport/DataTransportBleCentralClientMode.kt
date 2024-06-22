@@ -32,6 +32,7 @@ import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
+import com.android.identity.util.toJavaUuid
 import java.util.UUID
 
 /**
@@ -121,10 +122,10 @@ class DataTransportBleCentralClientMode(
         reportConnecting()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
             options.bleUseL2CAP &&
-            connectionMethod.peripheralServerModePsm.isPresent
+            connectionMethod.peripheralServerModePsm != null
         ) {
             Logger.i(TAG, "Have L2CAP PSM from engagement, connecting directly and skipping GATT")
-            connectL2CAP(device, connectionMethod.peripheralServerModePsm.asInt)
+            connectL2CAP(device, connectionMethod.peripheralServerModePsm!!)
         } else {
             connectGatt(device)
         }
@@ -137,7 +138,8 @@ class DataTransportBleCentralClientMode(
         }
         gattClient = GattClient(
             context,
-            serviceUuid!!, encodedEDeviceKeyBytes,
+            serviceUuid!!.toJavaUuid(),
+            encodedEDeviceKeyBytes,
             characteristicStateUuid, characteristicClient2ServerUuid,
             characteristicServer2ClientUuid, characteristicIdentUuid,
             characteristicL2CAPUuid
@@ -213,7 +215,7 @@ class DataTransportBleCentralClientMode(
 
         // Start scanning...
         val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(serviceUuid))
+            .setServiceUuid(ParcelUuid(serviceUuid!!.toJavaUuid()))
             .build()
         val settings = ScanSettings.Builder()
             .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
@@ -240,7 +242,7 @@ class DataTransportBleCentralClientMode(
             characteristicL2CAPUuid = characteristicL2CAPUuidMdocReader
         }
         gattServer = GattServer(
-            context, bluetoothManager, serviceUuid!!,
+            context, bluetoothManager, serviceUuid!!.toJavaUuid(),
             encodedEDeviceKeyBytes,
             characteristicStateUuid, characteristicClient2ServerUuid,
             characteristicServer2ClientUuid, characteristicIdentUuid,
@@ -304,7 +306,7 @@ class DataTransportBleCentralClientMode(
                 .build()
             val data = AdvertiseData.Builder()
                 .setIncludeTxPowerLevel(false)
-                .addServiceUuid(ParcelUuid(serviceUuid))
+                .addServiceUuid(ParcelUuid(serviceUuid!!.toJavaUuid()))
                 .build()
             Logger.d(TAG, "Started advertising UUID $serviceUuid")
             try {

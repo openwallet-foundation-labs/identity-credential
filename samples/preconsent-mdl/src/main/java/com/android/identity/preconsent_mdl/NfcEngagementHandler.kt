@@ -35,8 +35,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
-import java.util.OptionalLong
-import java.util.UUID
+import com.android.identity.util.UUID
 
 class NfcEngagementHandler : HostApduService() {
     companion object {
@@ -127,7 +126,7 @@ class NfcEngagementHandler : HostApduService() {
                 null))
         }
         if (transferHelper.getWifiAwareDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodWifiAware(null, OptionalLong.empty(), OptionalLong.empty(), null))
+            connectionMethods.add(ConnectionMethodWifiAware(null, null, null, null))
         }
         if (transferHelper.getNfcDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodNfc(4096, 32768))

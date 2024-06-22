@@ -21,13 +21,13 @@ import android.util.Pair
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
+import com.android.identity.util.UUID
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Locale
 import java.util.OptionalInt
-import java.util.UUID
 
 /**
  * BLE data transport
@@ -80,7 +80,7 @@ abstract class DataTransportBle(
             var uuid: UUID? = null
             var gotLeRole = false
             var gotUuid = false
-            var psm = OptionalInt.empty()
+            var psm : Int? = null
             var macAddress: ByteArray? = null
 
             // See createNdefRecords() method for how this data is encoded.
@@ -120,8 +120,8 @@ abstract class DataTransportBle(
                     // We only use the last UUID...
                     var n = 0
                     while (n < uuidLen) {
-                        val lsb = payload.getLong()
-                        val msb = payload.getLong()
+                        val lsb = payload.getLong().toULong()
+                        val msb = payload.getLong().toULong()
                         uuid = UUID(msb, lsb)
                         gotUuid = true
                         n += 16
@@ -132,7 +132,7 @@ abstract class DataTransportBle(
                     payload[macAddress]
                 } else if (type == 0x77 && len == 0x05) {
                     // PSM
-                    psm = OptionalInt.of(payload.getInt())
+                    psm = payload.getInt()
                 } else {
                     Logger.d(TAG, String.format("Skipping unknown type %d of length %d", type, len))
                     payload.position(payload.position() + len - 1)
@@ -243,8 +243,8 @@ abstract class DataTransportBle(
                 baos.write(0x11) // Complete List of 128-bit Service UUID’s (0x07)
                 baos.write(0x07)
                 val uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
-                uuidBuf.putLong(0, uuid.leastSignificantBits)
-                uuidBuf.putLong(8, uuid.mostSignificantBits)
+                uuidBuf.putLong(0, uuid.leastSignificantBits.toLong())
+                uuidBuf.putLong(8, uuid.mostSignificantBits.toLong())
                 try {
                     baos.write(uuidBuf.array())
                 } catch (e: IOException) {
@@ -265,13 +265,13 @@ abstract class DataTransportBle(
                 }
             }
             val psm = cm.peripheralServerModePsm
-            if (psm.isPresent) {
+            if (psm != null) {
                 // TODO: need to actually allocate this number (0x77)
                 baos.write(0x05) // PSM: 4 bytes
                 baos.write(0x77)
                 val psmValue = ByteBuffer.allocate(4)
                     .order(ByteOrder.LITTLE_ENDIAN)
-                    .putInt(psm.asInt)
+                    .putInt(psm)
                 try {
                     baos.write(psmValue.array())
                 } catch (e: IOException) {

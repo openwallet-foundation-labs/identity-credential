@@ -61,7 +61,6 @@ import java.net.UnknownHostException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.SecureRandom
-import java.util.OptionalLong
 import java.util.Random
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedTransferQueue
@@ -601,8 +600,8 @@ Content-Type: application/CBOR
         ): ConnectionMethodWifiAware? {
             var passphraseInfoPassphrase: String? = null
             var bandInfoSupportedBands: ByteArray? = null
-            val channelInfoChannelNumber = OptionalLong.empty()
-            val channelInfoOperatingClass = OptionalLong.empty()
+            val channelInfoChannelNumber: Long? = null
+            val channelInfoOperatingClass: Long? = null
             val payload = ByteBuffer.wrap(record.payload).order(ByteOrder.LITTLE_ENDIAN)
             while (payload.remaining() > 0) {
                 val len = payload.get().toInt()

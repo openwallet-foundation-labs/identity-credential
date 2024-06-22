@@ -87,12 +87,12 @@ import com.budiyev.android.codescanner.DecodeCallback
 import com.budiyev.android.codescanner.ErrorCallback
 import com.budiyev.android.codescanner.ScanMode
 import com.android.identity.simple_verifier.ui.theme.IdentityCredentialTheme
+import com.android.identity.util.UUID
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
-import java.util.UUID
 
 class MdocReaderPrompt(
     private val mdocReaderSettings: MdocReaderSettings

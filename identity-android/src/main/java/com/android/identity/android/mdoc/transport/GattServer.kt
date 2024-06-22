@@ -34,7 +34,6 @@ import com.android.identity.util.toHex
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.util.ArrayDeque
-import java.util.OptionalInt
 import java.util.Queue
 import java.util.UUID
 
@@ -51,7 +50,7 @@ internal class GattServer(
     var characteristicIdentUuid: UUID?,
     var characteristicL2CAPUuid: UUID?
 ) : BluetoothGattServerCallback() {
-    var psm = OptionalInt.empty()
+    var psm: Int? = null
         private set
     var listener: Listener? = null
 
@@ -176,12 +175,12 @@ internal class GattServer(
                 }
             })
             psm = l2capServer!!.start(bluetoothManager.adapter)
-            if (psm.isEmpty) {
+            if (psm == null) {
                 Logger.w(TAG, "Error starting L2CAP server")
                 l2capServer = null
                 usingL2CAP = false
             } else {
-                Logger.i(TAG, "Listening on L2CAP with PSM ${psm.asInt}")
+                Logger.i(TAG, "Listening on L2CAP with PSM ${psm}")
                 c = BluetoothGattCharacteristic(
                     characteristicL2CAPUuid,
                     BluetoothGattCharacteristic.PROPERTY_READ,
@@ -251,7 +250,7 @@ internal class GattServer(
             }
             // TODO: it's not clear this is the right way to encode the PSM and 18013-5 doesn't
             //   seem to give enough guidance on it.
-            val encodedPsmValue = ByteBuffer.allocate(4).putInt(psm.asInt).array()
+            val encodedPsmValue = ByteBuffer.allocate(4).putInt(psm!!).array()
             gattServer!!.sendResponse(
                 device,
                 requestId,
