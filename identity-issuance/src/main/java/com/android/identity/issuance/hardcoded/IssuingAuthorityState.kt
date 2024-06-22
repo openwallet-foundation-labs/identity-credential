@@ -41,6 +41,7 @@ import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.evidence.EvidenceResponse
+import com.android.identity.issuance.evidence.EvidenceResponseGermanEidResolved
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
@@ -61,6 +62,10 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearsUntil
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -458,7 +463,7 @@ class IssuingAuthorityState(
         return issuerProvidedAuthenticationData
     }
 
-    private fun generateDocumentConfiguration(
+    private suspend fun generateDocumentConfiguration(
         env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
@@ -472,7 +477,7 @@ class IssuingAuthorityState(
         }
     }
 
-    private fun generateEuPidDocumentConfiguration(
+    private suspend fun generateEuPidDocumentConfiguration(
         env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
@@ -496,6 +501,44 @@ class IssuingAuthorityState(
             val jpeg2k = imageFormat is EvidenceResponseQuestionMultipleChoice &&
                     imageFormat.answerId == "devmode_image_format_jpeg2000"
             staticData = fillInSampleData(resources, jpeg2k, credType).build()
+        } else if (path == "germanEid") {
+            // Make sure we set at least all the mandatory data elements
+            val germanEid = collectedEvidence["germanEidCard"] as EvidenceResponseGermanEidResolved
+            val personalData = getPersonalData(env, germanEid)
+            val firstName = personalData["GivenNames"]!!.jsonPrimitive.content
+            val lastName = personalData["FamilyNames"]!!.jsonPrimitive.content
+            val dateOfBirth = parseDateOfBirth(personalData["DateOfBirth"]!!.jsonPrimitive.content)
+            val timeZone = TimeZone.currentSystemDefault()
+            val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
+            // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
+            val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
+            val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
+
+            staticData = NameSpacedData.Builder()
+                .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
+                .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
+                .putEntry(EUPID_NAMESPACE, "birth_date",
+                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                .putEntryNumber(EUPID_NAMESPACE, "age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
+                .putEntryNumber(EUPID_NAMESPACE, "age_birth_year", dateOfBirth.year.toLong())
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
+                // not included: family_name_birth, given_name_birth, birth_place, birth_country,
+                // birth_state, birth_city, resident_address, resident_country, resident_state,
+                // resident_city, resident_postal_code, resident_street, resident_house_number,
+                // issuing_jurisdiction,
+                .putEntryString(EUPID_NAMESPACE, "nationality", "UT")
+                .putEntry(EUPID_NAMESPACE, "issuance_date",
+                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                .putEntry(EUPID_NAMESPACE, "expiry_date",
+                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                )
+                .putEntryString(EUPID_NAMESPACE, "issuing_authority",
+                    issuingAuthorityName)
+                .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
+                .putEntryString(EUPID_NAMESPACE, "issuing_country", "UT")
+                .build()
         } else { // todo
             val icaoPassiveData = collectedEvidence["passive"]
             val icaoTunnelData = collectedEvidence["tunnel"]
@@ -570,7 +613,7 @@ class IssuingAuthorityState(
         )
     }
 
-    private fun generateMdlDocumentConfiguration(
+    private suspend fun generateMdlDocumentConfiguration(
         env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
@@ -594,6 +637,52 @@ class IssuingAuthorityState(
             val jpeg2k = imageFormat is EvidenceResponseQuestionMultipleChoice &&
                     imageFormat.answerId == "devmode_image_format_jpeg2000"
             staticData = fillInSampleData(resources, jpeg2k, credType).build()
+        } else if (path == "germanEid") {
+            // Make sure we set at least all the mandatory data elements
+            val germanEid = collectedEvidence["germanEidCard"] as EvidenceResponseGermanEidResolved
+            val personalData = getPersonalData(env, germanEid)
+            val firstName = personalData["GivenNames"]!!.jsonPrimitive.content
+            val lastName = personalData["FamilyNames"]!!.jsonPrimitive.content
+            val dateOfBirth = parseDateOfBirth(personalData["DateOfBirth"]!!.jsonPrimitive.content)
+            val timeZone = TimeZone.currentSystemDefault()
+            val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
+            // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
+            val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
+            val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
+            val portrait = resources.getRawResource("img_erika_portrait.jpg")!!
+            val signatureOrUsualMark = resources.getRawResource("img_erika_signature.jpg")!!
+
+            // Make sure we set at least all the mandatory data elements
+            //
+            staticData = NameSpacedData.Builder()
+                .putEntryString(MDL_NAMESPACE, "given_name", firstName)
+                .putEntryString(MDL_NAMESPACE, "family_name", lastName)
+                .putEntry(MDL_NAMESPACE, "birth_date",
+                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
+                .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark",
+                    signatureOrUsualMark.toByteArray())
+                .putEntry(MDL_NAMESPACE, "issue_date",
+                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                .putEntry(MDL_NAMESPACE, "expiry_date",
+                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                )
+                // TODO
+                .putEntryString(MDL_NAMESPACE, "issuing_authority",
+                    issuingAuthorityName)
+                .putEntryString(MDL_NAMESPACE, "issuing_country", "UT")
+                .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
+                .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(MDL_NAMESPACE, "administrative_number", "123456789")
+                .putEntry(MDL_NAMESPACE, "driving_privileges",
+                    Cbor.encode(CborArray.builder().end().build()))
+
+                .putEntryBoolean(MDL_NAMESPACE, "age_over_18", ageOver18)
+                .putEntryBoolean(MDL_NAMESPACE, "age_over_21", ageOver21)
+
+                .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
+                .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
+                .build()
         } else {
             val icaoPassiveData = collectedEvidence["passive"]
             val icaoTunnelData = collectedEvidence["tunnel"]
@@ -674,6 +763,23 @@ class IssuingAuthorityState(
             ),
             sdJwtVcDocumentConfiguration = null,
         )
+    }
+
+    private suspend fun getPersonalData(
+        env: FlowEnvironment,
+        germanEid: EvidenceResponseGermanEidResolved
+    ): JsonObject {
+        if (germanEid.data == null) {
+            Logger.e(TAG, "No data in eId response")
+            throw IllegalStateException("No personal data")
+        }
+        val elem = Json.parseToJsonElement(germanEid.data)
+        val personalData = elem.jsonObject["PersonalData"]?.jsonObject
+        if (personalData == null) {
+            Logger.e(TAG, "Error in German eID response data: ${germanEid.data}")
+            throw IllegalStateException("No personal data")
+        }
+        return personalData
     }
 
     private fun fillInSampleData(
@@ -793,5 +899,15 @@ class IssuingAuthorityState(
         if (emitNotification) {
             emit(env, IssuingAuthorityNotification(documentId))
         }
+    }
+
+    private fun parseDateOfBirth(date: String): LocalDate {
+        return LocalDate.parse(date.substring(0, 10), format = LocalDate.Format {
+            year()
+            chars("-")
+            monthNumber()
+            chars("-")
+            dayOfMonth()
+        })
     }
 }

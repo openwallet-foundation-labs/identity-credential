@@ -6,6 +6,9 @@ import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.WalletServerSettings
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.ProxyBuilder
+import io.ktor.client.engine.java.Java
 import java.io.File
 import jakarta.servlet.ServletConfig
 import kotlin.reflect.KClass
@@ -22,6 +25,7 @@ class ServerEnvironment(
         settings.databaseConnection ?: defaultDatabase(),
         settings.databaseUser ?: "",
         settings.databasePassword ?: "")
+    private val httpClient = HttpClient(Java)
     internal var notifications: FlowNotifications? = null
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
@@ -30,6 +34,7 @@ class ServerEnvironment(
             Resources::class -> resources
             Storage::class -> storage
             FlowNotifications::class -> notifications
+            HttpClient::class -> httpClient
             else -> return null
         })
     }

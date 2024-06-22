@@ -27,6 +27,8 @@ dependencies {
     implementation(libs.bouncy.castle.bcprov)
     implementation(libs.hsqldb)
     implementation(libs.mysql)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.java)
 
     testImplementation(libs.junit)
 }

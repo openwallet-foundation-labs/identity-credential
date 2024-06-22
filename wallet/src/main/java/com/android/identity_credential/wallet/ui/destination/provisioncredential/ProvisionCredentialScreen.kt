@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
+import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
@@ -161,6 +162,16 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestIcaoNfcTunnelView(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
+                            permissionTracker = permissionTracker
+                        )
+                    }
+
+                    is EvidenceRequestGermanEid -> {
+                        EvidenceRequestEIdView(
+                            evidenceRequest = evidenceRequest,
+                            provisioningViewModel = provisioningViewModel,
+                            walletServerProvider = walletServerProvider,
+                            documentStore = documentStore,
                             permissionTracker = permissionTracker
                         )
                     }

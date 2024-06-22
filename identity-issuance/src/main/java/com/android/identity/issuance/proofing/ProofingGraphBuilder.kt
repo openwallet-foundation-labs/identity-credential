@@ -1,6 +1,7 @@
 package com.android.identity.issuance.proofing
 
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
+import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
@@ -116,6 +117,12 @@ class ProofingGraphBuilder {
                 successfulChipAuthentication = map[choices.chipAuthenticationGraph]!!,
                 noAuthentication = map[choices.noAuthenticationGraph]!!
             )
+        }
+    }
+
+    fun eId(id: String, optionalComponents: List<String> = listOf()) {
+        chain.add { followUp ->
+            ProofingGraph.SimpleNode(id, followUp, EvidenceRequestGermanEid(optionalComponents))
         }
     }
 

@@ -7,12 +7,18 @@ import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceResponse
+import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
+import com.android.identity.issuance.evidence.EvidenceResponseGermanEidResolved
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
+import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.proofing.ProofingGraph
 import com.android.identity.issuance.proofing.defaultGraph
 import com.android.identity.issuance.tunnel.inProcessMrtdNfcTunnelFactory
 import com.android.identity.mrtd.MrtdAccessDataCan
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.readBytes
 
 /**
  * State of [ProofingFlow] RPC implementation.
@@ -54,32 +60,54 @@ class ProofingState(
     suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
         val graph = getGraph(env)
         val node = graph.map[state]
-        val newEvidence = if (evidenceResponse is EvidenceResponseIcaoNfcTunnel) {
-            // MRTD tunnel is a special case
-            val tunnel = if (nfcTunnelToken == null) {
-                val dataGroups = (node as ProofingGraph.IcaoNfcTunnelNode).dataGroups
-                val mrtdAccessData = if (evidence.containsKey("mrtd_can")) {
-                    MrtdAccessDataCan((evidence["mrtd_can"] as EvidenceResponseQuestionString).answer)
+        // Certain evidence types require special processing
+        val newEvidence = when (evidenceResponse) {
+            is EvidenceResponseIcaoNfcTunnel -> {
+                // MRTD tunnel is a special case
+                val tunnel = if (nfcTunnelToken == null) {
+                    val dataGroups = (node as ProofingGraph.IcaoNfcTunnelNode).dataGroups
+                    val mrtdAccessData = if (evidence.containsKey("mrtd_can")) {
+                        MrtdAccessDataCan((evidence["mrtd_can"] as EvidenceResponseQuestionString).answer)
+                    } else {
+                        null
+                    }
+                    tunnelProvider.acquire(dataGroups, mrtdAccessData)
+                } else {
+                    tunnelProvider.getByToken(nfcTunnelToken!!)
+                }
+                val nextRequest = tunnel.handleNfcTunnelResponse(evidenceResponse)
+                if (nextRequest == null) {
+                    // end if tunnel workflow; do not send to the client, instead save collected
+                    // evidence and move on to the next node in the evidence collection graph.
+                    nfcTunnelToken = null
+                    tunnel.complete()
+                } else {
+                    nfcTunnelToken = tunnel.token
+                    pendingTunnelRequest = nextRequest
+                    return
+                }
+            }
+            is EvidenceResponseIcaoNfcTunnelResult -> {
+                throw IllegalArgumentException("illegal evidence type")
+            }
+            is EvidenceResponseGermanEid -> {
+                val data = if (evidenceResponse.url != null) {
+                    val httpClient = env.getInterface(HttpClient::class)!!
+                    val response = httpClient.get("${evidenceResponse.url}&mode=json") {}
+                    String(response.readBytes())
                 } else {
                     null
                 }
-                tunnelProvider.acquire(dataGroups, mrtdAccessData)
-            } else {
-                tunnelProvider.getByToken(nfcTunnelToken!!)
+                EvidenceResponseGermanEidResolved(
+                    complete = evidenceResponse.complete,
+                    status = evidenceResponse.status,
+                    data = data
+                )
             }
-            val nextRequest = tunnel.handleNfcTunnelResponse(evidenceResponse)
-            if (nextRequest == null) {
-                // end if tunnel workflow; do not send to the client, instead save collected
-                // evidence and move on to the next node in the evidence collection graph.
-                nfcTunnelToken = null
-                tunnel.complete()
-            } else {
-                nfcTunnelToken = tunnel.token
-                pendingTunnelRequest = nextRequest
-                return
+            is EvidenceResponseGermanEidResolved -> {
+                throw IllegalArgumentException("illegal evidence type")
             }
-        } else {
-            evidenceResponse
+            else -> evidenceResponse
         }
 
         evidence[state!!] = newEvidence
