@@ -26,12 +26,11 @@ import com.android.identity.cbor.Cbor;
 import com.android.identity.cbor.DiagnosticOption;
 import com.android.identity.crypto.Crypto;
 import com.android.identity.crypto.EcPublicKey;
-import com.android.identity.crypto.EcPublicKeyKt;
+import com.android.identity.crypto.EcPublicKeyJvmKt;
 import com.android.identity.crypto.EcSignature;
 import com.android.identity.document.NameSpacedData;
 import com.android.identity.crypto.Algorithm;
 import com.android.identity.crypto.EcCurve;
-import com.android.identity.securearea.KeyLockedException;
 import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.storage.StorageEngine;
 
@@ -167,7 +166,7 @@ public class MigrateFromKeystoreICStoreTest {
                 Algorithm.ES256,
                 dataToSign,
                 null);
-        EcPublicKey ecCredentialKeyPublic = EcPublicKeyKt.toEcPublicKey(credentialKeyPublic, EcCurve.P256);
+        EcPublicKey ecCredentialKeyPublic = EcPublicKeyJvmKt.toEcPublicKey(credentialKeyPublic, EcCurve.P256);
         Assert.assertTrue(Crypto.INSTANCE.checkSignature(
                 ecCredentialKeyPublic,
                 dataToSign,

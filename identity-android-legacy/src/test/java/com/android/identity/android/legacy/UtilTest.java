@@ -30,7 +30,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.android.identity.crypto.EcCurve;
-import com.android.identity.crypto.EcPublicKeyKt;
+import com.android.identity.crypto.EcPublicKeyJvmKt;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 
@@ -193,7 +193,7 @@ public class UtilTest {
                     new MobileSecurityObjectGenerator(
                             "SHA-256",
                             docType,
-                            EcPublicKeyKt.toEcPublicKey(authKey, EcCurve.P256))
+                            EcPublicKeyJvmKt.toEcPublicKey(authKey, EcCurve.P256))
                             .setValidityInfo(
                                     kotlinx.datetime.Instant.Companion.fromEpochMilliseconds(signedDate.toEpochMilli()),
                                     kotlinx.datetime.Instant.Companion.fromEpochMilliseconds(validFromDate.toEpochMilli()),

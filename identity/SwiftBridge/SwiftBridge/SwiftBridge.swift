@@ -1,9 +1,7 @@
 import CryptoKit
 import Foundation
 import Security
-
-import X509
-import SwiftASN1
+import LocalAuthentication
 
 @objc public class SwiftBridge : NSObject {
     @objc(sha256:) public class func sha256(data: Data) -> Data {
@@ -97,11 +95,11 @@ import SwiftASN1
             return Data(Array($0))
         }
     }
-
+    
     static let CURVE_P256 = 1
     static let CURVE_P384 = 2
     static let CURVE_P521 = 3
-
+    
     @objc(createEcPrivateKey:) public class func createEcPrivateKey(curve: Int) -> Array<Data> {
         switch (curve) {
         case CURVE_P256:
@@ -118,6 +116,87 @@ import SwiftASN1
         }
     }
     
+    static let PURPOSE_SIGNING = 1
+    static let PURPOSE_KEY_AGREEMENT = 2
+    
+    static let ACCESS_CONTROL_DEVICE_PASSCODE = 1
+    static let ACCESS_CONTROL_BIOMETRY_CURRENT_SET = 2
+    static let ACCESS_CONTROL_BIOMETRY_ANY = 4
+    static let ACCESS_CONTROL_USER_PRESENCE = 8
+    
+    @objc(secureEnclaveCreateEcPrivateKey: :) public class func secureEnclaveCreateEcPrivateKey(purposes: Int, accessControlCreateFlags: Int) -> Array<Data> {
+        
+        let authContext = LAContext()
+        
+        var flags = SecAccessControlCreateFlags([.privateKeyUsage])
+        if (accessControlCreateFlags & ACCESS_CONTROL_DEVICE_PASSCODE != 0) {
+            flags.insert(.devicePasscode)
+        }
+        if (accessControlCreateFlags & ACCESS_CONTROL_BIOMETRY_CURRENT_SET != 0) {
+            flags.insert(.biometryCurrentSet)
+        }
+        if (accessControlCreateFlags & ACCESS_CONTROL_USER_PRESENCE != 0) {
+            flags.insert(.userPresence)
+        }
+        
+        var error: Unmanaged<CFError>?
+        guard let accessControl = SecAccessControlCreateWithFlags(
+            kCFAllocatorDefault,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            flags,
+            &error
+        ) else {
+            return []
+        }
+        
+        if (purposes & PURPOSE_SIGNING != 0) {
+            guard let key = try? SecureEnclave.P256.Signing.PrivateKey.init(
+                accessControl: accessControl,
+                authenticationContext: authContext
+            ) else {
+                return []
+            }
+            return [key.dataRepresentation, Data(key.publicKey.rawRepresentation)]
+        } else {
+            guard let key = try? SecureEnclave.P256.KeyAgreement.PrivateKey.init(
+                accessControl: accessControl,
+                authenticationContext: authContext
+            ) else {
+                return []
+            }
+            return [key.dataRepresentation, Data(key.publicKey.rawRepresentation)]
+        }
+    }
+    
+    @objc(secureEnclaveEcSign: : :) public class func secureEnclaveEcSign(
+        keyBlob: Data, dataToSign: Data, authContext: LAContext?) -> Data? {
+            
+            let key = try! SecureEnclave.P256.Signing.PrivateKey(
+                dataRepresentation: keyBlob,
+                authenticationContext: authContext)
+            do {
+                let signature = try key.signature(for: dataToSign)
+                return Data(signature.rawRepresentation)
+            } catch {
+                return nil
+            }
+        }
+    
+    @objc(secureEnclaveEcKeyAgreement: : :) public class func secureEnclaveEcKeyAgreement(
+        keyBlob: Data, otherPublicKeyRepresentation: Data, authContext: LAContext?) -> Data? {
+            
+        let key = try! SecureEnclave.P256.KeyAgreement.PrivateKey(
+            dataRepresentation: keyBlob,
+            authenticationContext: authContext)
+        let otherKey = try! P256.KeyAgreement.PublicKey(rawRepresentation: otherPublicKeyRepresentation)
+        do {
+            let sharedSecret = try key.sharedSecretFromKeyAgreement(with: otherKey)
+            return sharedSecret.withUnsafeBytes { return Data(Array($0)) }
+        } catch {
+            return nil
+        }
+    }
+
     @objc(ecPublicKeyToPem: :) public class func ecPublicKeyToPem(curve: Int, rawRepresentation: Data) -> String? {
         guard #available(iOS 14.0, *) else {
             return nil
