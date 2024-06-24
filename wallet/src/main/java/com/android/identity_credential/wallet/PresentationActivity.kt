@@ -58,6 +58,8 @@ import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricP
 import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryField
 import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryFieldData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
+import com.android.identity_credential.wallet.util.ActivityLogger
+import com.android.identity_credential.wallet.util.Logging
 import kotlinx.coroutines.launch
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
@@ -160,6 +162,7 @@ class PresentationActivity : FragmentActivity() {
             state.value = State.RESPONSE_SENT
         }
 
+        ActivityLogger.logActivity(Logging.PRESENTATION)
         // terminate PresentationActivity since "presentation is complete" (once response is sent)
         finish()
     }

@@ -42,6 +42,8 @@ import com.android.identity.securearea.software.SoftwareKeyInfo
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.credman.CredmanRegistry
+import com.android.identity_credential.wallet.util.ActivityLogger
+import com.android.identity_credential.wallet.util.Logging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -111,6 +113,7 @@ class DocumentModel(
             return
         }
         syncDocumentWithIssuer(document)
+        ActivityLogger.logActivity(Logging.UPDATE)
     }
 
     suspend fun developerModeRequestUpdate(
