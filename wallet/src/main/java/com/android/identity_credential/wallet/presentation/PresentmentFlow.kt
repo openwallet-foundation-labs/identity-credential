@@ -33,10 +33,10 @@ const val TAG = "PresentmentFlow"
 
 /**
  * Function responsible for showing the Presentment Flow for a given [DocumentRequest] and returning
- * response bytes or throw an Exception. The purpose of the Presentment Flow is to authorize a
- * [Document] that is suitable for fulfilling the specified [DocumentRequest], by showing a series
- * of consent and authentication Prompts to the user and upon success the response bytes containing
- * the [Document] are returned.
+ * the [Document] CBOR bytes or throw an Exception. The purpose of the Presentment Flow is to
+ * authorize a [Document] that is suitable for fulfilling the specified [DocumentRequest],
+ * by showing a series of consent and authentication Prompts to the user and upon success
+ * the [Document] CBOR bytes are returned.
  *
  * The Presentment Flow always starts by showing the Consent Prompt to confirm with the user
  * before sending sensitive data of a [Document] to a Verifying party. If the Consent Prompt
@@ -55,7 +55,7 @@ const val TAG = "PresentmentFlow"
  * @param mdocCredential the object containing the [Document] and docType amongst other properties.
  * @param trustPoint if provided, identifies the Verifying party.
  * @param encodedSessionTranscript the bytes of `SessionTranscript` CBOR.
- * @return the response bytes that contain the suitable [Document], else throws an exception.
+ * @return the [Document] CBOR bytes, else throws an exception.
  * @throws Exception for incorrect configurations, cannot find credentials or unsuccessful
  *      prompts because user cancelled or wasn't able to authenticate.
  */
@@ -81,8 +81,6 @@ suspend fun showPresentmentFlow(
 
     // initially null and updated when catching a KeyLockedException in the while-loop below
     var keyUnlockData: KeyUnlockData? = null
-    // for adding the Document to the response generator
-    val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
 
     while (true) {
         try {
@@ -105,8 +103,7 @@ suspend fun showPresentmentFlow(
             // increment the credential's usage count since it just finished signing the data successfully
             mdocCredential.increaseUsageCount()
             // finally add the document to the response generator and generate the bytes
-            deviceResponseGenerator.addDocument(documentGenerator.generate())
-            return deviceResponseGenerator.generate()
+            return documentGenerator.generate()
         }
         // if KeyLockedException is raised show the corresponding Prompt to unlock
         // the auth key for a Credential's Secure Area

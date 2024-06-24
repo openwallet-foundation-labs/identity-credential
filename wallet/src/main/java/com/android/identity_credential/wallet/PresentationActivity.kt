@@ -183,16 +183,15 @@ class PresentationActivity : FragmentActivity() {
                                 deviceRetrievalHelper!!.sessionTranscript
                             ).parse()
 
-                            deviceRequest.docRequests.forEach { docRequest ->
-                                // find a suitable Document for the docRequest
-                                val document = findSuitableDocumentForRequest(docRequest)
-                                // if document == null no suitable documents could be found then skip to next docRequest
-                                val mdocCredential = document.findCredential(
-                                    WalletApplication.CREDENTIAL_DOMAIN_MDOC,
-                                    Clock.System.now()
-                                ) as MdocCredential
+                            // generates the DeviceResponse from all the [Document] CBOR bytes of docRequests
+                            val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
 
-                                // extract the TrustPoint if possible
+                            deviceRequest.docRequests.forEach { docRequest ->
+                                // find an MdocCredential for the docRequest or skip to next docRequest
+                                val mdocCredential =
+                                    findMdocCredentialForRequest(docRequest) ?: return@forEach
+
+                                // See if we recognize the reader/verifier
                                 var trustPoint: TrustPoint? = null
                                 if (docRequest.readerAuthenticated) {
                                     val result = walletApp.trustManager.verify(
@@ -210,22 +209,22 @@ class PresentationActivity : FragmentActivity() {
                                     }
                                 }
 
-                                // generate the DocumentRequest from the current docRequest
-                                val documentRequest = MdocUtil.generateDocumentRequest(docRequest)
 
                                 // show the Presentation Flow for and get the response bytes for
                                 // the generated Document
-                                val responseBytes = showPresentmentFlow(
+                                val documentCborBytes = showPresentmentFlow(
                                     activity = this@PresentationActivity,
                                     walletApp = walletApp,
-                                    documentRequest = documentRequest,
+                                    documentRequest = MdocUtil.generateDocumentRequest(docRequest),
                                     mdocCredential = mdocCredential,
                                     trustPoint = trustPoint,
                                     encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
                                 )
-                                sendResponseToDevice(responseBytes)
-                            }
+                                deviceResponseGenerator.addDocument(documentCborBytes)
 
+                            }
+                            // send the response with all the Document CBOR bytes that succeeded Presentation Flows
+                            sendResponseToDevice(deviceResponseGenerator.generate())
                         } catch (exception: Exception) {
                             Logger.e(TAG, "Unable to start Presentment Flow: $exception")
                         }
@@ -245,15 +244,15 @@ class PresentationActivity : FragmentActivity() {
     /**
      * Find a suitable Document for the given [docRequest] else throw [IllegalStateException].
      * @param docRequest parsed from DeviceRequest CBOR.
-     * @return a matching [Document] from either on-screen Document or [DocumentStore].
-     * @throws IllegalStateException if no Documents in [DocumentStore] matched the given [docType]
+     * @return a matching [MdocCredential] from either on-screen Document or [DocumentStore]
+     *      or null if there are no matching MdocCredential
      */
-    fun findSuitableDocumentForRequest(docRequest: DeviceRequestParser.DocRequest): Document {
+    fun findMdocCredentialForRequest(docRequest: DeviceRequestParser.DocRequest): MdocCredential? {
 
         fun isDocumentSuitableForDocRequest(
             document: Document,
             docType: String,
-            supportedCredentialFormats: List<CredentialFormat>,
+            supportedCredentialFormats: List<CredentialFormat> = listOf(CredentialFormat.MDOC_MSO)
         ): Boolean {
             /**
              * Nested local function that returns whether the given [Document] matches the
@@ -285,6 +284,8 @@ class PresentationActivity : FragmentActivity() {
             return false
         }
 
+        var document: Document? = null
+
         // prefer the document that is on-screen if possible
         walletApp.settingsModel.focusedCardId.value?.let onscreenloop@{ documentIdFromPager ->
             val pagerDocument = walletApp.documentStore.lookupDocument(documentIdFromPager)
@@ -296,7 +297,8 @@ class PresentationActivity : FragmentActivity() {
                 )
 
                 if (suitable) {
-                    return pagerDocument
+                    document = pagerDocument
+                    return@onscreenloop
                 }
             }
         }
@@ -310,11 +312,19 @@ class PresentationActivity : FragmentActivity() {
                 supportedCredentialFormats = supportedCredentialFormats
             )
             if (suitable) {
-                return storeDocument
+                document = storeDocument
+                return@storeloop
             }
         }
 
-        throw Exception("Unable to find a suitable Document for ${docRequest.docType}")
+        if (document == null) {
+            return null
+        }
+
+        return document!!.findCredential(
+            WalletApplication.CREDENTIAL_DOMAIN_MDOC,
+            Clock.System.now()
+        ) as MdocCredential
     }
 
     /**
