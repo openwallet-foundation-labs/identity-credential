@@ -16,42 +16,22 @@
 
 package com.android.identity.android.legacy;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import android.content.Context;
-import android.icu.util.Calendar;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.crypto.EcPublicKeyKt;
-import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
-import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
-import com.android.identity.crypto.EcCurve;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.SecureRandom;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
 
-import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.UnicodeString;
 
 /**
  * Miscellaneous utility functions that are useful when building mdoc applications.

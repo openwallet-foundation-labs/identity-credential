@@ -1,17 +1,67 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
+    alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.jetbrainsCompose)
-    id("kotlin-android")
+    alias(libs.plugins.compose.compiler)
 }
 
 kotlin {
-    jvmToolchain(17)
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+    
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "SecureAreaTestApp"
+            isStatic = true
+        }
+    }
+    
+    sourceSets {
+
+        androidMain.dependencies {
+            implementation(compose.preview)
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.bouncy.castle.bcprov)
+            implementation(libs.androidx.biometrics)
+            implementation(project(":identity-android"))
+        }
+
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(compose.components.uiToolingPreview)
+            implementation(compose.materialIconsExtended)
+            implementation(libs.jetbrains.navigation.compose)
+            implementation(libs.jetbrains.navigation.runtime)
+
+            implementation(project(":identity"))
+            implementation(project(":identity-mdoc"))
+            implementation(libs.kotlinx.datetime)
+        }
+    }
 }
 
 android {
     namespace = "com.android.identity.secure_area_test_app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    sourceSets["main"].res.srcDirs("src/androidMain/res")
+    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
         applicationId = "com.android.identity.secure_area_test_app"
@@ -19,58 +69,27 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        }
+    }
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
     buildFeatures {
         compose = true
     }
-
-    packaging {
-        resources {
-            excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
-            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
-        }
+    dependencies {
+        debugImplementation(compose.uiTooling)
     }
-}
-
-dependencies {
-    implementation(project(":identity"))
-    implementation(project(":identity-mdoc"))
-    implementation(project(":identity-android"))
-
-    implementation(libs.kotlinx.datetime)
-
-    implementation(compose.runtime)
-    implementation(compose.foundation)
-    implementation(compose.material)
-    implementation(compose.ui)
-    implementation(compose.components.resources)
-    implementation(compose.components.uiToolingPreview)
-    implementation(compose.material)
-
-    debugImplementation(compose.uiTooling)
-    implementation(compose.preview)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.biometrics)
-    implementation(compose.material3)
-    implementation(libs.compose.material.icons.extended)
-
-    implementation(libs.bouncy.castle.bcprov)
-
-    testImplementation(libs.kotlin.test)
-    androidTestImplementation(libs.androidx.test.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }
