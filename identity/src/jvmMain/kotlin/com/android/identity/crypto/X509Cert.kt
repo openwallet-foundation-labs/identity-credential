@@ -77,7 +77,7 @@ actual class X509Cert actual constructor(actual val encodedCertificate: ByteArra
         //
 
         val input = ASN1InputStream(tbsCertificate)
-        val seq = ASN1Sequence.getInstance(input.readObject());
+        val seq = ASN1Sequence.getInstance(input.readObject())
         val subjectPublicKeyInfo = seq.getObjectAt(6) as ASN1Sequence
         val algorithmIdentifier = subjectPublicKeyInfo.getObjectAt(0) as ASN1Sequence
         val algorithmOidString = (algorithmIdentifier.getObjectAt(0) as ASN1ObjectIdentifier).id

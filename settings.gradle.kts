@@ -36,6 +36,7 @@ dependencyResolutionManagement {
 include(":processor")
 include(":processor-annotations")
 include(":identity")
+include(":identity:SwiftBridge")
 include(":identity-flow")
 include(":identity-mdoc")
 include(":identity-sdjwt")

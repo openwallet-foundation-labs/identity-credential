@@ -1,10 +1,6 @@
-import com.android.builder.core.apiVersionFromString
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.ksp)
-    id("io.github.ttypic.swiftklib") version "0.5.1"
 }
 
 kotlin {
@@ -17,21 +13,33 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach {
-        it.compilations {
-            val main by getting {
-                cinterops {
-                    create("SwiftCrypto")
-                }
-            }
+        val platform = when (it.name) {
+            "iosX64" -> "iphonesimulator"
+            "iosArm64" -> "iphoneos"
+            "iosSimulatorArm64" -> "iphonesimulator"
+            else -> error("Unsupported target ${it.name}")
         }
-        it.binaries.framework {
-            baseName = "identity"
-            isStatic = true
+        it.compilations.getByName("main") {
+            val SwiftBridge by cinterops.creating {
+                definitionFile.set(project.file("nativeInterop/cinterop/SwiftBridge-$platform.def"))
+                includeDirs.headerFilterOnly("$rootDir/identity/SwiftBridge/build/Release-$platform/include")
+
+                val interopTask = tasks[interopProcessingTaskName]
+                interopTask.dependsOn(":identity:SwiftBridge:build${platform.capitalize()}")
+            }
+
+            it.binaries.all {
+                // Linker options required to link to the library.
+                linkerOpts(
+                    "-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/${platform}/",
+                    "-L$rootDir/identity/SwiftBridge/build/Release-${platform}/",
+                    "-lSwiftBridge"
+                )
+            }
         }
     }
 
     sourceSets {
-
         val commonMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
             dependencies {
@@ -87,10 +95,3 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
 tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
-
-swiftklib {
-    create("SwiftCrypto") {
-        path = file("native/SwiftCrypto")
-        packageName("com.android.identity.swiftcrypto")
-    }
-}
