@@ -4,18 +4,15 @@ import com.android.identity.flow.server.Resources
 import kotlinx.io.bytestring.ByteString
 import java.io.File
 
-class ServerResources(private val resourceDir: String): Resources {
+class ServerResources: Resources {
     override fun getRawResource(name: String): ByteString? {
-        val file = fileFor(name)
-        return if (file.canRead()) ByteString(file.inputStream().readBytes()) else null
+        val stream = javaClass.getResourceAsStream("/resources/$name")
+        return if (stream != null) ByteString(stream.readBytes()) else null
     }
 
     override fun getStringResource(name: String): String? {
-        val file = fileFor(name)
-        return if (file.canRead()) file.bufferedReader().readText() else null
+        val stream = javaClass.getResourceAsStream("/resources/$name")
+        return stream?.bufferedReader()?.readText()
     }
 
-    private fun fileFor(name: String): File {
-        return File("$resourceDir/$name")
-    }
 }

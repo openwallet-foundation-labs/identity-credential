@@ -15,7 +15,6 @@ java {
 dependencies {
     implementation(libs.net.sf.scuba.scuba.sc.android)
     implementation(libs.org.jmrtd.jmrtd)
-    implementation(libs.com.google.mlkit.text.recognition)
     implementation(libs.kotlinx.io.bytestring)
 
     testImplementation(libs.junit)

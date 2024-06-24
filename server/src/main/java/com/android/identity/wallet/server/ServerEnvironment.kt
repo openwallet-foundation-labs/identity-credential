@@ -15,12 +15,11 @@ import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
 class ServerEnvironment(
-    private val directory: String,
     servletConfig: ServletConfig,
 ) : FlowEnvironment {
     private val configuration = ServerConfiguration(servletConfig)
     private val settings = WalletServerSettings(configuration)
-    private val resources = ServerResources("$directory/resources")
+    private val resources = ServerResources()
     private val storage = ServerStorage(
         settings.databaseConnection ?: defaultDatabase(),
         settings.databaseUser ?: "",
@@ -40,7 +39,7 @@ class ServerEnvironment(
     }
 
     private fun defaultDatabase(): String {
-        val dbFile = File("$directory/db/db.hsqldb").absoluteFile
+        val dbFile = File("environment/db/db.hsqldb").absoluteFile
         if (!dbFile.canRead()) {
             val parent = File(dbFile.parent)
             if (!parent.exists()) {

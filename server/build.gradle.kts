@@ -3,6 +3,7 @@ plugins {
     id("war")
     id("java-library")
     id("org.jetbrains.kotlin.jvm")
+    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -15,8 +16,10 @@ java {
 }
 
 dependencies {
+    ksp(project(":processor"))
     implementation(project(":identity"))
     implementation(project(":identity-flow"))
+    implementation(project(":processor-annotations"))
     implementation(project(":identity-issuance"))
 
     implementation(libs.javax.servlet.api)
@@ -33,5 +36,4 @@ dependencies {
     testImplementation(libs.junit)
 }
 
-gretty {
-}
+gretty {}
