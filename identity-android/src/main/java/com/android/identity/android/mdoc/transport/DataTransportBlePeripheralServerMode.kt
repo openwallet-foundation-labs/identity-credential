@@ -32,6 +32,7 @@ import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
+import com.android.identity.util.toJavaUuid
 import java.util.UUID
 
 /**
@@ -121,13 +122,13 @@ class DataTransportBlePeripheralServerMode(
         reportConnecting()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
             options.bleUseL2CAP &&
-            connectionMethod.peripheralServerModePsm.isPresent
+            connectionMethod.peripheralServerModePsm != null
         ) {
             Logger.i(
                 TAG, "Have L2CAP PSM from engagement, connecting directly " +
-                        "(psm = ${connectionMethod.peripheralServerModePsm.asInt})"
+                        "(psm = ${connectionMethod.peripheralServerModePsm})"
             )
-            connectL2CAP(device, connectionMethod.peripheralServerModePsm.asInt)
+            connectL2CAP(device, connectionMethod.peripheralServerModePsm!!)
         } else {
             connectGatt(device)
         }
@@ -162,7 +163,7 @@ class DataTransportBlePeripheralServerMode(
         }
         gattClient = GattClient(
             context,
-            serviceUuid!!, encodedEDeviceKeyBytes,
+            serviceUuid!!.toJavaUuid(), encodedEDeviceKeyBytes,
             characteristicStateUuid, characteristicClient2ServerUuid,
             characteristicServer2ClientUuid, null,
             characteristicL2CAPUuid
@@ -217,7 +218,7 @@ class DataTransportBlePeripheralServerMode(
             characteristicL2CAPUuid = characteristicL2CAPUuidMdoc
         }
         gattServer = GattServer(
-            context, bluetoothManager, serviceUuid!!,
+            context, bluetoothManager, serviceUuid!!.toJavaUuid(),
             encodedEDeviceKeyBytes,
             characteristicStateUuid, characteristicClient2ServerUuid,
             characteristicServer2ClientUuid, null,
@@ -280,7 +281,7 @@ class DataTransportBlePeripheralServerMode(
                 .build()
             val data = AdvertiseData.Builder()
                 .setIncludeTxPowerLevel(false)
-                .addServiceUuid(ParcelUuid(serviceUuid))
+                .addServiceUuid(ParcelUuid(serviceUuid!!.toJavaUuid()))
                 .build()
             Logger.d(TAG, "Started advertising UUID $serviceUuid")
             try {
@@ -303,7 +304,7 @@ class DataTransportBlePeripheralServerMode(
             return
         }
         val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(serviceUuid))
+            .setServiceUuid(ParcelUuid(serviceUuid!!.toJavaUuid()))
             .build()
         val settings = ScanSettings.Builder()
             .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)

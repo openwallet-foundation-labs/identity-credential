@@ -16,9 +16,9 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
+import com.android.identity.util.UUID
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class QrEngagementViewModel(val context: Application) : AndroidViewModel(context)  {
     companion object {
@@ -45,58 +45,60 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
     fun startQrEngagement() {
         state = State.STARTING
 
-        viewModelScope.launch(
-            CoroutineExceptionHandler{ _, exception ->
-                Logger.e(TAG, "CoroutineExceptionHandler got $exception")
+        viewModelScope.launch {
+            try {
+                eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+                val qrEngagementListener = object : QrEngagementHelper.Listener {
+
+                    override fun onDeviceConnecting() {
+                        Logger.i(TAG, "onDeviceConnecting")
+                    }
+
+                    override fun onDeviceConnected(transport: DataTransport) {
+                        Logger.i(TAG, "OnDeviceConnected via QR: qrEngagement=$qrEngagementHelper")
+
+                        state = State.CONNECTED
+                        PresentationActivity.startPresentation(
+                            context, transport,
+                            qrEngagementHelper!!.handover, eDeviceKey!!,
+                            qrEngagementHelper!!.deviceEngagement
+                        )
+
+                        qrEngagementHelper?.close()
+                        qrEngagementHelper = null
+                    }
+
+                    override fun onError(error: Throwable) {
+                        Logger.i(TAG, "QR onError: ${error.message}")
+                        stopQrConnection()
+                        state = State.ERROR
+                    }
+                }
+
+                val options = DataTransportOptions.Builder().build()
+                val connectionMethods = mutableListOf<ConnectionMethod>()
+                val bleUuid = UUID.randomUUID()
+                connectionMethods.add(
+                    ConnectionMethodBle(
+                        false,
+                        true,
+                        null,
+                        bleUuid
+                    )
+                )
+                qrEngagementHelper = QrEngagementHelper.Builder(
+                    context,
+                    eDeviceKey!!.publicKey,
+                    options,
+                    qrEngagementListener,
+                    ContextCompat.getMainExecutor(context)
+                ).setConnectionMethods(connectionMethods).build()
+                state = State.LISTENING
+            } catch (e: Throwable) {
+                Logger.e(TAG, "Caught exception generating QR code", e)
                 stopQrConnection()
                 state = State.ERROR
             }
-        ) {
-            eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
-            val qrEngagementListener = object : QrEngagementHelper.Listener {
-
-                override fun onDeviceConnecting() {
-                    Logger.i(TAG, "onDeviceConnecting")
-                }
-
-                override fun onDeviceConnected(transport: DataTransport) {
-                    Logger.i(TAG, "OnDeviceConnected via QR: qrEngagement=$qrEngagementHelper")
-
-                    state = State.CONNECTED
-                    PresentationActivity.startPresentation(context, transport,
-                        qrEngagementHelper!!.handover, eDeviceKey!!,
-                        qrEngagementHelper!!.deviceEngagement)
-
-                    qrEngagementHelper?.close()
-                    qrEngagementHelper = null
-                }
-
-                override fun onError(error: Throwable) {
-                    Logger.i(TAG, "QR onError: ${error.message}")
-                    stopQrConnection()
-                    state = State.ERROR
-                }
-            }
-
-            val options = DataTransportOptions.Builder().build()
-            val connectionMethods = mutableListOf<ConnectionMethod>()
-            val bleUuid = UUID.randomUUID()
-            connectionMethods.add(
-                ConnectionMethodBle(
-                    false,
-                    true,
-                    null,
-                    bleUuid
-                )
-            )
-            qrEngagementHelper = QrEngagementHelper.Builder(
-                context,
-                eDeviceKey!!.publicKey,
-                options,
-                qrEngagementListener,
-                ContextCompat.getMainExecutor(context)
-            ).setConnectionMethods(connectionMethods).build()
-            state = State.LISTENING
         }
     }
 

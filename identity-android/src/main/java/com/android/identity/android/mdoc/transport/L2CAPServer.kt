@@ -24,7 +24,6 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.util.OptionalInt
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedTransferQueue
 import java.util.concurrent.TimeUnit
@@ -38,7 +37,7 @@ internal class L2CAPServer(val listener: Listener) {
     var writingThread: Thread? = null
     
     @RequiresApi(api = Build.VERSION_CODES.Q)
-    fun start(bluetoothAdapter: BluetoothAdapter): OptionalInt {
+    fun start(bluetoothAdapter: BluetoothAdapter): Int? {
         return try {
             // Using insecure L2CAP allows the app to use L2CAP frictionless, otherwise
             // Android will require bluetooth pairing with other device showing the pairing code
@@ -46,11 +45,11 @@ internal class L2CAPServer(val listener: Listener) {
             val psm = serverSocket!!.psm
             val waitingForConnectionThread = Thread { waitForConnectionThread() }
             waitingForConnectionThread.start()
-            OptionalInt.of(psm)
+            psm
         } catch (e: IOException) {
             Logger.w(TAG, "Error creating L2CAP channel " + e.message)
             serverSocket = null
-            OptionalInt.empty()
+            null
         }
     }
 

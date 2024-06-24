@@ -1,8 +1,7 @@
 package com.android.identity.crypto
 
-import kotlinx.datetime.Instant
-
 import com.android.identity.SwiftBridge
+import com.android.identity.util.UUID
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.allocArrayOf
@@ -11,6 +10,7 @@ import kotlinx.cinterop.usePinned
 import platform.Foundation.NSData
 import platform.Foundation.create
 import platform.posix.memcpy
+import platform.Foundation.NSUUID
 
 @OptIn(ExperimentalForeignApi::class)
 actual object Crypto {
@@ -258,6 +258,11 @@ actual object Crypto {
         )?.toByteArray() ?: throw IllegalStateException("Not available")
         publicKey as EcPublicKeyDoubleCoordinate
         return EcPrivateKeyDoubleCoordinate(publicKey.curve, rawEncoding, publicKey.x, publicKey.y)
+    }
+
+    internal actual fun uuidGetRandom(): UUID {
+        val uuid = NSUUID()
+        return UUID.fromString(uuid.UUIDString())
     }
 }
 

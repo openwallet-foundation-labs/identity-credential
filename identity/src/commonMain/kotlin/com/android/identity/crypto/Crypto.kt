@@ -1,6 +1,6 @@
 package com.android.identity.crypto
 
-import kotlinx.datetime.Instant
+import com.android.identity.util.UUID
 
 /**
  * Cryptographic support routines.
@@ -200,4 +200,6 @@ expect object Crypto {
     internal fun ecPrivateKeyToPem(privateKey: EcPrivateKey): String
 
     internal fun ecPrivateKeyFromPem(pemEncoding: String, publicKey: EcPublicKey): EcPrivateKey
+
+    internal fun uuidGetRandom(): UUID
 }

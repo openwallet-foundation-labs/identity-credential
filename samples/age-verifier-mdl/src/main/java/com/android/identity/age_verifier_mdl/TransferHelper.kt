@@ -21,9 +21,9 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
+import com.android.identity.util.UUID
 import java.io.File
 import java.util.OptionalLong
-import java.util.UUID
 
 class TransferHelper private constructor(
     private var context: Context,
@@ -145,7 +145,7 @@ class TransferHelper private constructor(
                 null))
         }
         if (getWifiAwareDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodWifiAware(null, OptionalLong.empty(), OptionalLong.empty(), null))
+            connectionMethods.add(ConnectionMethodWifiAware(null, null, null, null))
         }
         if (getNfcDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodNfc(4096, 32768))

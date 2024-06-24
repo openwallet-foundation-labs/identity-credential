@@ -1,5 +1,7 @@
 package com.android.identity.crypto
 
+import com.android.identity.util.UUID
+import com.android.identity.util.fromJavaUuid
 import com.google.crypto.tink.HybridDecrypt
 import com.google.crypto.tink.HybridEncrypt
 import com.google.crypto.tink.InsecureSecretKeyAccess
@@ -839,5 +841,9 @@ actual object Crypto {
         val spec = PKCS8EncodedKeySpec(encoded)
         val privateKeyJava = kf.generatePrivate(spec)
         return privateKeyJava.toEcPrivateKey(publicKey.javaPublicKey, publicKey.curve)
+    }
+
+    internal actual fun uuidGetRandom(): UUID {
+        return UUID.fromJavaUuid(java.util.UUID.randomUUID())
     }
 }

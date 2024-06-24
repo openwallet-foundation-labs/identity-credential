@@ -6,10 +6,10 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.util.UUID
 import com.android.identity.wallet.util.PreferencesHelper
 import java.util.ArrayList
 import java.util.OptionalLong
-import java.util.UUID
 
 class ConnectionSetup(
     private val context: Context
@@ -45,12 +45,11 @@ class ConnectionSetup(
             )
         }
         if (PreferencesHelper.isWifiDataRetrievalEnabled()) {
-            val empty = OptionalLong.empty()
             connectionMethods.add(
                 ConnectionMethodWifiAware(
                     null,
-                    empty,
-                    empty,
+                    null,
+                    null,
                     null
                 )
             )
