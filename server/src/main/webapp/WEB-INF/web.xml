@@ -11,6 +11,16 @@
         <load-on-startup>0</load-on-startup>
 
         <init-param>
+            <!--
+                This is initial admin password. Login at the servlet root page and change it.
+                Once changed, new password is written into the database and new deployments will
+                read it from there.
+             -->
+            <param-name>initialAdminPassword</param-name>
+            <param-value>FeelingLucky!</param-value>
+        </init-param>
+
+        <init-param>
             <param-name>developerMode</param-name>
             <param-value>true</param-value>
         </init-param>
@@ -114,6 +124,24 @@
             <param-name>issuingAuthority.eldorado.requireUserAuthenticationToViewDocument</param-name>
             <param-value>false</param-value>
         </init-param>
+
+        <!--
+         Sample config for MySQL database server
+
+        <init-param>
+            <param-name>databaseConnection</param-name>
+            <param-value>jdbc:mysql://localhost:3306/wallet?serverTimezone=UTC</param-value>
+        </init-param>
+        <init-param>
+            <param-name>databaseUser</param-name>
+            <param-value>wallet</param-value>
+        </init-param>
+        <init-param>
+            <param-name>databasePassword</param-name>
+            <param-value>mypassword</param-value>
+        </init-param>
+        -->
+
     </servlet>
 
     <servlet-mapping>

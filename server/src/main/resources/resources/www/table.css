@@ -1,0 +1,14 @@
+th, td {
+  border: 1px solid black;
+  padding: 4px;
+}
+table {
+  border-collapse: collapse;
+}
+.code {
+    font-size: 0.875em;
+    font-family: Consola, monospace;
+}
+.numeric {
+    text-align: right;
+}
