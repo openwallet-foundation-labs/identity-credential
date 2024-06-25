@@ -1,24 +1,28 @@
-listOf("iphoneos", "iphonesimulator").forEach { sdk ->
-    tasks.create<Exec>("build${sdk.capitalize()}") {
-        group = "build"
+import org.jetbrains.kotlin.konan.target.HostManager
 
-        commandLine(
-            "xcodebuild",
-            "-project", "SwiftBridge.xcodeproj",
-            "-scheme", "SwiftBridge",
-            "-sdk", sdk,
-            "-configuration", "Release",
-            "SYMROOT=${projectDir}/build"
-        )
-        workingDir(projectDir)
+if (HostManager.hostIsMac) {
+    listOf("iphoneos", "iphonesimulator").forEach { sdk ->
+        tasks.create<Exec>("build${sdk.capitalize()}") {
+            group = "build"
 
-        inputs.files(
-            fileTree("$projectDir/SwiftBridge.xcodeproj") { exclude("**/xcuserdata") },
-            fileTree("$projectDir/SwiftBridge")
-        )
-        outputs.files(
-            fileTree("$projectDir/build/Release-${sdk}")
-        )
+            commandLine(
+                "xcodebuild",
+                "-project", "SwiftBridge.xcodeproj",
+                "-scheme", "SwiftBridge",
+                "-sdk", sdk,
+                "-configuration", "Release",
+                "SYMROOT=${projectDir}/build"
+            )
+            workingDir(projectDir)
+
+            inputs.files(
+                fileTree("$projectDir/SwiftBridge.xcodeproj") { exclude("**/xcuserdata") },
+                fileTree("$projectDir/SwiftBridge")
+            )
+            outputs.files(
+                fileTree("$projectDir/build/Release-${sdk}")
+            )
+        }
     }
 }
 
