@@ -15,7 +15,7 @@ import kotlin.coroutines.resume
 /**
  * Show the Passphrase prompt
  *
- * Async extension function that renders the Passphrase Prompt through the composition of
+ * Async function that renders the Passphrase Prompt through the composition of
  * a [PassphraseEntryField] from inside a Dialog Fragment. Returns the typed [String]
  * passphrase after the user taps on the "Done" key on the keyboard.
  *
@@ -33,7 +33,7 @@ suspend fun showPassphrasePrompt(
         val passphrasePrompt = PassphrasePrompt(
             constraints = constraints,
             checkWeakPassphrase = checkWeakPassphrase,
-            onPassphraseEntered = { passphrase->
+            onPassphraseEntered = { passphrase ->
                 continuation.resume(passphrase)
             },
         )
@@ -52,7 +52,7 @@ suspend fun showPassphrasePrompt(
  * @param onPassphraseEntered callback issued from this dialog fragment when the user enters a passphrase
  * @extends [BottomSheetDialogFragment] that can create the Fragment's contents via Composition.
  */
-private class PassphrasePrompt(
+class PassphrasePrompt(
     private val constraints: PassphraseConstraints,
     private val checkWeakPassphrase: Boolean,
     private val onPassphraseEntered: (String) -> Unit,
