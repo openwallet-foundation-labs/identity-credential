@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.konan.target.HostManager
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.ksp)
@@ -19,22 +21,24 @@ kotlin {
             "iosSimulatorArm64" -> "iphonesimulator"
             else -> error("Unsupported target ${it.name}")
         }
-        it.compilations.getByName("main") {
-            val SwiftBridge by cinterops.creating {
-                definitionFile.set(project.file("nativeInterop/cinterop/SwiftBridge-$platform.def"))
-                includeDirs.headerFilterOnly("$rootDir/identity/SwiftBridge/build/Release-$platform/include")
+        if (HostManager.hostIsMac) {
+            it.compilations.getByName("main") {
+                val SwiftBridge by cinterops.creating {
+                    definitionFile.set(project.file("nativeInterop/cinterop/SwiftBridge-$platform.def"))
+                    includeDirs.headerFilterOnly("$rootDir/identity/SwiftBridge/build/Release-$platform/include")
 
-                val interopTask = tasks[interopProcessingTaskName]
-                interopTask.dependsOn(":identity:SwiftBridge:build${platform.capitalize()}")
-            }
+                    val interopTask = tasks[interopProcessingTaskName]
+                    interopTask.dependsOn(":identity:SwiftBridge:build${platform.capitalize()}")
+                }
 
-            it.binaries.all {
-                // Linker options required to link to the library.
-                linkerOpts(
-                    "-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/${platform}/",
-                    "-L$rootDir/identity/SwiftBridge/build/Release-${platform}/",
-                    "-lSwiftBridge"
-                )
+                it.binaries.all {
+                    // Linker options required to link to the library.
+                    linkerOpts(
+                        "-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/${platform}/",
+                        "-L$rootDir/identity/SwiftBridge/build/Release-${platform}/",
+                        "-lSwiftBridge"
+                    )
+                }
             }
         }
     }
