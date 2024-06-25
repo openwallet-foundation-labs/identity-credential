@@ -25,11 +25,11 @@ import com.android.identity.android.util.NfcUtil
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.fromDeviceEngagement
+import com.android.identity.util.UUID
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
 import org.junit.Assert
 import org.junit.Test
-import java.util.UUID
 
 // This is quite similar to ConnectionMethodTest but tests all the NDEF results
 //
@@ -62,8 +62,8 @@ class ConnectionMethodNdefTest {
     @Test
     @SmallTest
     fun testConnectionMethodBle() {
-        val uuidPeripheral = UUID(0, 1)
-        val uuidCentral = UUID(123456789, 987654321)
+        val uuidPeripheral = UUID(0UL, 1UL)
+        val uuidCentral = UUID(123456789UL, 987654321UL)
         var cm = ConnectionMethodBle(
             true,
             true,
@@ -90,7 +90,7 @@ class ConnectionMethodNdefTest {
         )
 
         // For use in NFC, the UUIDs have to be the same
-        val uuidBoth = UUID(0, 2)
+        val uuidBoth = UUID(0UL, 2UL)
         cm = ConnectionMethodBle(
             true,
             true,
@@ -122,7 +122,7 @@ class ConnectionMethodNdefTest {
     @Test
     @SmallTest
     fun testConnectionMethodBleOnlyCentralClient() {
-        val uuid = UUID(123456789, 987654321)
+        val uuid = UUID(123456789UL, 987654321UL)
         val cm = ConnectionMethodBle(
             false,
             true,
@@ -184,7 +184,7 @@ class ConnectionMethodNdefTest {
     @Test
     @SmallTest
     fun testConnectionMethodBleOnlyPeripheralServer() {
-        val uuid = UUID(0, 1)
+        val uuid = UUID(0UL, 1UL)
         val cm = ConnectionMethodBle(
             true,
             false,

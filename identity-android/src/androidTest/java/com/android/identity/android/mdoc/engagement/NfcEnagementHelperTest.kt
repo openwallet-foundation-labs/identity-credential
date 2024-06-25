@@ -31,6 +31,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.mdoc.engagement.EngagementParser
+import com.android.identity.util.UUID
 import com.android.identity.util.toHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
@@ -39,7 +40,6 @@ import org.junit.Test
 import java.security.Security
 import java.util.Arrays
 import java.util.OptionalLong
-import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -96,8 +96,8 @@ class NfcEnagementHelperTest {
         connectionMethods.add(
             ConnectionMethodWifiAware(
                 null,
-                OptionalLong.empty(),
-                OptionalLong.empty(),
+                null,
+                null,
                 null
             )
         )
@@ -237,8 +237,8 @@ class NfcEnagementHelperTest {
         connectionMethods.add(
             ConnectionMethodWifiAware(
                 null,
-                OptionalLong.empty(),
-                OptionalLong.empty(),
+                null,
+                null,
                 null
             )
         )

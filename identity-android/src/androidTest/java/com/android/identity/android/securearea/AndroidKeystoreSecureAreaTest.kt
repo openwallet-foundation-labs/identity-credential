@@ -24,6 +24,7 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.InstrumentationRegistry
+import com.android.identity.android.TestUtil
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
@@ -155,6 +156,7 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     fun testEcKeySigningAuthBoundHelper(useStrongBox: Boolean) {
+        Assume.assumeFalse(TestUtil.isRunningOnEmulator)
         val context = InstrumentationRegistry.getTargetContext()
         val storageDir = File(context.dataDir, "ic-testing")
         val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
@@ -196,6 +198,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     fun testEcKeyAuthenticationTypeLskf() {
+        Assume.assumeFalse(TestUtil.isRunningOnEmulator)
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
@@ -230,6 +233,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     fun testEcKeyAuthenticationTypeBiometric() {
+        Assume.assumeFalse(TestUtil.isRunningOnEmulator)
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
@@ -689,10 +693,16 @@ class AndroidKeystoreSecureAreaTest {
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
-        Assert.assertEquals(
-            if (useStrongBox) AndroidAttestationExtensionParser.SecurityLevel.STRONG_BOX else AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,
-            securityLevel
-        )
+        if (!TestUtil.isRunningOnEmulator) {
+            Assert.assertEquals(
+                if (useStrongBox) {
+                    AndroidAttestationExtensionParser.SecurityLevel.STRONG_BOX
+                } else {
+                    AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT
+                },
+                securityLevel
+            )
+        }
 
         // tag 400: https://source.android.com/docs/security/features/keystore/tags#active_datetime
         Assert.assertEquals(
@@ -799,10 +809,16 @@ class AndroidKeystoreSecureAreaTest {
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
-        Assert.assertEquals(
-            if (useStrongBox) AndroidAttestationExtensionParser.SecurityLevel.STRONG_BOX else AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,
-            securityLevel
-        )
+        if (!TestUtil.isRunningOnEmulator) {
+            Assert.assertEquals(
+                if (useStrongBox) {
+                    AndroidAttestationExtensionParser.SecurityLevel.STRONG_BOX
+                } else {
+                    AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT
+                },
+                securityLevel
+            )
+        }
     }
 
     @Test
