@@ -33,11 +33,7 @@ import kotlin.time.Duration.Companion.seconds
 fun durationFromNowText(instant: Instant, now: Instant = Clock.System.now()): String {
     val tick = remember { mutableIntStateOf(0) }
     tick.intValue  // reading value ensures update when tick changes
-    val (text, updateAt) = if (instant > now) {
-        futureRawTextAndUpdateTime(instant, now)
-    } else {
-        pastRawTextAndUpdateTime(instant, now)
-    }
+    val (text, updateAt) = durationFromNowTextCore(instant, now)
     val delayDuration = maxOf(updateAt - now, 16.milliseconds)
     SideEffect {
         Timer().schedule(delayDuration.inWholeMilliseconds) {
@@ -48,11 +44,24 @@ fun durationFromNowText(instant: Instant, now: Instant = Clock.System.now()): St
 }
 
 /**
+ * Formats text for duration from time instant in the past or future and computes the time
+ * instant when this text has to be updated.
+ */
+@Composable
+fun durationFromNowTextCore(instant: Instant, now: Instant): Pair<String, Instant> {
+    return if (instant > now) {
+        futureRawTextAndUpdateTime(instant, now)
+    } else {
+        pastRawTextAndUpdateTime(instant, now)
+    }
+}
+
+/**
  * Formats text for duration from time instant in the past and computes the time instant when
  * this text has to be updated.
  */
 @Composable
-internal fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String, Instant> {
+private fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String, Instant> {
     val (majorUnit, majorCount) = selectMajorUnit(past, now)
     if (majorUnit == null) {
         // Less than a minute: special case
@@ -89,7 +98,7 @@ internal fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String,
  * text has to be updated.
  */
 @Composable
-internal fun futureRawTextAndUpdateTime(future: Instant, now: Instant): Pair<String, Instant> {
+private fun futureRawTextAndUpdateTime(future: Instant, now: Instant): Pair<String, Instant> {
     val (majorUnit, majorCount) = selectMajorUnit(now, future)
     if (majorUnit == null) {
         val duration = future - now
