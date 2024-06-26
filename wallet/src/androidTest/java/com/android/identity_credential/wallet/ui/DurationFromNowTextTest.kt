@@ -19,7 +19,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00.2Z")
             val now = Instant.parse("2021-11-25T15:20:04.4Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("just now", text)
         }
     }
@@ -29,7 +29,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-25T15:20:22Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("less than a minute ago", text)
         }
     }
@@ -39,7 +39,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-25T15:21:01Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("1 minute ago", text)
         }
     }
@@ -49,7 +49,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-25T17:20:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 hours ago", text)
         }
     }
@@ -59,7 +59,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-25T17:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 hours and 8 minutes ago", text)
         }
     }
@@ -69,7 +69,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-28T15:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("3 days ago", text)
         }
     }
@@ -79,7 +79,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-28T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("3 days and 5 hours ago", text)
         }
     }
@@ -89,7 +89,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2024-02-25T15:20:00Z")
             val now = Instant.parse("2024-03-04T12:20:00Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("1 week ago", text)
         }
     }
@@ -99,7 +99,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-12-02T15:20:00Z")
             val now = Instant.parse("2022-01-01T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("4 weeks and 2 days ago", text)
         }
     }
@@ -109,7 +109,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-12-25T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("1 month ago", text)
         }
     }
@@ -119,7 +119,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-02-25T15:20:00Z")
             val now = Instant.parse("2021-04-26T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 months and 1 day ago", text)
         }
     }
@@ -130,7 +130,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2023-02-25T15:20:00Z")
             val now = Instant.parse("2023-03-25T16:20:00Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("1 month ago", text)
         }
     }
@@ -140,7 +140,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-02-28T15:20:00Z")
             val now = Instant.parse("2021-04-30T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 months ago", text)
         }
     }
@@ -150,7 +150,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2024-02-25T15:20:00Z")
             val now = Instant.parse("2024-04-28T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 months and 3 days ago", text)
         }
     }
@@ -160,7 +160,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2023-11-26T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 years ago", text)
         }
     }
@@ -170,7 +170,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val instant = Instant.parse("1910-11-25T15:20:00Z")
             val now = Instant.parse("2023-12-26T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("113 years and 1 month ago", text)
         }
     }
@@ -180,7 +180,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val now = Instant.parse("2021-11-25T15:20:00.2Z")
             val instant = Instant.parse("2021-11-25T15:20:00.4Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("in a few moments", text)
         }
     }
@@ -190,7 +190,7 @@ class DurationFromNowTextTest {
         composeTestRule.setContent {
             val now = Instant.parse("2021-02-28T15:20:00Z")
             val instant = Instant.parse("2021-04-30T20:28:59Z")
-            val text = durationFromNowText(instant = instant, now = now)
+            val text = durationFromNowTextCore(instant = instant, now = now).first
             Assert.assertEquals("2 months and 2 days from now", text)
         }
     }
@@ -201,7 +201,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2021-11-25T15:20:00.2Z")
             val now = Instant.parse("2021-11-25T15:20:00.4Z")
 
-            val (_, updateAt) = pastRawTextAndUpdateTime(instant, now)
+            val (_, updateAt) = durationFromNowTextCore(instant, now)
             Assert.assertEquals(Instant.parse("2021-11-25T15:20:10.2Z"), updateAt)
         }
     }
@@ -212,7 +212,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2021-11-25T15:20:00.5Z")
             val now = Instant.parse("2021-11-25T15:24:50Z")
 
-            val (_, updateAt) = pastRawTextAndUpdateTime(instant, now)
+            val (_, updateAt) = durationFromNowTextCore(instant, now)
             Assert.assertEquals(Instant.parse("2021-11-25T15:25:00.5Z"), updateAt)
         }
     }
@@ -223,7 +223,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2021-11-25T15:20:00.5Z")
             val now = Instant.parse("2021-11-25T19:24:50Z")
 
-            val (_, updateAt) = pastRawTextAndUpdateTime(instant, now)
+            val (_, updateAt) = durationFromNowTextCore(instant, now)
             Assert.assertEquals(Instant.parse("2021-11-25T19:25:00.5Z"), updateAt)
         }
     }
@@ -234,7 +234,7 @@ class DurationFromNowTextTest {
             val now = Instant.parse("2021-11-25T15:20:00Z")
             val instant = Instant.parse("2021-11-25T15:20:09Z")
 
-            val (_, updateAt) = futureRawTextAndUpdateTime(instant, now)
+            val (_, updateAt) = durationFromNowTextCore(instant, now)
             Assert.assertEquals(instant, updateAt)
         }
     }
@@ -245,7 +245,7 @@ class DurationFromNowTextTest {
             val now = Instant.parse("2021-11-25T15:20:00Z")
             val instant = Instant.parse("2021-11-25T15:20:49Z")
 
-            val (_, updateAt) = futureRawTextAndUpdateTime(instant, now)
+            val (_, updateAt) = durationFromNowTextCore(instant, now)
             Assert.assertEquals(Instant.parse("2021-11-25T15:20:39Z"), updateAt)
         }
     }
@@ -256,7 +256,7 @@ class DurationFromNowTextTest {
             val now = Instant.parse("1990-11-03T15:20:00Z")
             val instant = Instant.parse("1990-11-25T15:34:50Z")
 
-            val (_, updateAt) = futureRawTextAndUpdateTime(instant, now)
+            val (_, updateAt) = durationFromNowTextCore(instant, now)
             Assert.assertEquals(Instant.parse("1990-11-03T15:34:50Z"), updateAt)
         }
     }
