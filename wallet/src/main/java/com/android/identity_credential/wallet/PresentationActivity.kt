@@ -226,7 +226,7 @@ class PresentationActivity : FragmentActivity() {
                             // send the response with all the Document CBOR bytes that succeeded Presentation Flows
                             sendResponseToDevice(deviceResponseGenerator.generate())
                         } catch (exception: Exception) {
-                            Logger.e(TAG, "Unable to start Presentment Flow: $exception")
+                            Logger.e(TAG, "Unable to start Presentment Flow", exception)
                         }
                     }
                 }
