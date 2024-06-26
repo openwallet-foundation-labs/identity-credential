@@ -41,13 +41,17 @@ class AusweisModel(
 ) {
     companion object {
         const val TAG = "AusweisModel"
+
+        const val MAJOR_STATUS_ERROR = "http://www.bsi.bund.de/ecard/api/1.1/resultmajor#error"
+        const val MINOR_STATUS_NETWORK = "http://www.bsi.bund.de/ecard/api/1.1/resultminor/dp#trustedChannelEstablishmentFailed"
     }
 
     enum class Route(val route: String) {
         INITIAL("initial"),
         ACCESS_RIGHTS("access"),
         CARD_SCAN("card"),
-        PIN_ENTRY("pin")
+        PIN_ENTRY("pin"),
+        ERROR("error")
     }
 
     sealed class Status
@@ -57,6 +61,8 @@ class AusweisModel(
     data class AccessRights(val components: List<String>) : Status()
     data object WaitingForPin: Status()
     data class Auth(val progress: Int): Status()
+    data object NetworkError: Status()
+    data object GenericError: Status()
 
     private lateinit var sdk: IAusweisApp2Sdk
     private lateinit var sessionId: String
@@ -103,6 +109,10 @@ class AusweisModel(
     }
 
     init {
+        initialize()
+    }
+
+    private fun initialize() {
         val serviceIntent = Intent("com.governikus.ausweisapp2.START_SERVICE")
         serviceIntent.setPackage(context.packageName)
         context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
@@ -125,6 +135,12 @@ class AusweisModel(
         coroutineScope.launch {
             pinChanel.send(pin)
         }
+    }
+
+    fun tryAgain() {
+        status.value = null
+        navController.navigate(AusweisModel.Route.INITIAL.route)
+        initialize()
     }
 
     private suspend fun runAusweisSdk() {
@@ -209,14 +225,26 @@ class AusweisModel(
                     "AUTH" -> {
                         val result = message["result"]
                         if (result != null && result is JsonObject) {
+                            val major = result["major"]?.jsonPrimitive?.content
                             completed = true
-                            onResult(
-                                EvidenceResponseGermanEid(
-                                    true,
-                                    result["major"]?.jsonPrimitive?.content,
-                                    message["url"]?.jsonPrimitive?.content,
-                                )
-                            )
+                            when (major) {
+                                MAJOR_STATUS_ERROR -> {
+                                    status.value = when(result["minor"]?.jsonPrimitive?.content) {
+                                        MINOR_STATUS_NETWORK -> NetworkError
+                                        else -> GenericError
+                                    }
+                                    navController.navigate(Route.ERROR.route)
+                                }
+                                else -> {
+                                    onResult(
+                                        EvidenceResponseGermanEid(
+                                            true,
+                                            major,
+                                            message["url"]?.jsonPrimitive?.content,
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -225,9 +253,13 @@ class AusweisModel(
             if (!completed) {
                 onResult(EvidenceResponseGermanEid(false))
             }
-            messageChannel.close()
+            // Purge the channel
+            while (messageChannel.tryReceive().isSuccess) {
+                // empty
+            }
             disableCardScanning(nfcAdapter)
             context.unbindService(serviceConnection)
+            sessionId = ""
         }
     }
 
