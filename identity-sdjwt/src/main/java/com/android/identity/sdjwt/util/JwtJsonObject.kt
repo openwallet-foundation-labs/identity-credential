@@ -23,14 +23,14 @@ abstract class JwtJsonObject {
 
     private fun toJsonObject() = buildJsonObject(buildJson())
 
-    override fun toString() = toJsonObject().toString().toByteArray().toBase64
+    override fun toString() = toJsonObject().toString().toByteArray().toBase64()
 
     protected companion object {
         @JvmStatic
         protected fun parse(input: String): JsonObject {
             return Json.decodeFromString(
                 JsonObject.serializer(),
-                String(input.fromBase64))
+                String(input.fromBase64()))
         }
     }
 }

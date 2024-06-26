@@ -115,13 +115,13 @@ class DeviceRequestGenerator(
             val protectedHeaders = mapOf<CoseLabel, DataItem>(
                 Pair(
                     CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                    signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
+                    signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
                 )
             )
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
                 Pair(
                     CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                    readerKeyCertificateChain.toDataItem
+                    readerKeyCertificateChain.toDataItem()
                 )
             )
             readerAuth = coseSign1Sign(
@@ -131,7 +131,7 @@ class DeviceRequestGenerator(
                 signatureAlgorithm,
                 protectedHeaders,
                 unprotectedHeaders
-            ).toDataItem
+            ).toDataItem()
         }
 
         CborMap.builder().let { mapBuilder ->

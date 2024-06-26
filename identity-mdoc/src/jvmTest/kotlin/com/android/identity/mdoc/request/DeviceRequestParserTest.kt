@@ -50,11 +50,11 @@ class DeviceRequestParserTest {
     fun testDeviceRequestParserWithVectors() {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex()
         val encodedSessionTranscript =
             Cbor.encode(Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor)
         val parser = DeviceRequestParser(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex(),
             encodedSessionTranscript
         )
         val request = parser.parse()
@@ -64,17 +64,17 @@ class DeviceRequestParserTest {
         val dr = docRequests.iterator().next()
         assertEquals(MDL_DOCTYPE, dr.docType)
         assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex(),
             dr.itemsRequest
         )
         val readerCertChain = dr.readerCertificateChain
         assertEquals(1, readerCertChain!!.certificates.size.toLong())
         assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex(),
             readerCertChain.certificates[0].encodedCertificate
         )
         assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_READER_AUTH.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_READER_AUTH.fromHex(),
             dr.readerAuth
         )
         assertTrue(dr.readerAuthenticated)
@@ -104,14 +104,14 @@ class DeviceRequestParserTest {
     fun testDeviceRequestParserWithVectorsMalformedReaderSignature() {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex()
         val encodedSessionTranscript =
             Cbor.encode(Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor)
 
         // We know the COSE_Sign1 signature for reader authentication is at index 655 and
         // starts with 1f340006... Poison that so we can check whether signature verification
         // detects it...
-        val encodedDeviceRequest = TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex
+        val encodedDeviceRequest = TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex()
         assertEquals(0x1f.toByte().toLong(), encodedDeviceRequest[655].toLong())
         encodedDeviceRequest[655] = 0x1e
         val parser = DeviceRequestParser(
@@ -125,13 +125,13 @@ class DeviceRequestParserTest {
         val dr = docRequests.iterator().next()
         assertEquals(MDL_DOCTYPE, dr.docType)
         assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex(),
             dr.itemsRequest
         )
         val readerCertChain = dr.readerCertificateChain
         assertEquals(1, readerCertChain!!.certificates.size.toLong())
         assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex(),
             readerCertChain.certificates[0].encodedCertificate
         )
         assertFalse(dr.readerAuthenticated)
@@ -166,7 +166,7 @@ class DeviceRequestParserTest {
         val readerCertChain = X509CertChain(listOf(certificate))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
-        mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)
+        mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem())
         val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
             .addDocumentRequest(
                 MDL_DOCTYPE,

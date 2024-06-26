@@ -40,8 +40,8 @@ class HttpHandler(
         try {
             val result = flowPoll.poll(consumedToken, pollKeys)
             val resultList = mutableListOf<DataItem>()
-            resultList.add(result.consumeToken.toDataItem)
-            resultList.add(result.index.toDataItem)
+            resultList.add(result.consumeToken.toDataItem())
+            resultList.add(result.index.toDataItem())
             resultList.add(result.notification)
             return resultList.toList()
         } catch (err: FlowPoll.TimeoutException) {

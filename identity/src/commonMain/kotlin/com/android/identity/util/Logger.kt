@@ -170,7 +170,7 @@ object Logger {
     }
 
     private fun hex(level: Int, tag: String, message: String, data: ByteArray) {
-        val sb = "$message: ${data.size} bytes of data: " + data.toHex
+        val sb = "$message: ${data.size} bytes of data: " + data.toHex()
         println(level, tag, sb, null)
     }
 
@@ -193,7 +193,7 @@ object Logger {
     }
 
     private fun cbor(level: Int, tag: String, message: String, encodedCbor: ByteArray) {
-        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex +
+        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex() +
                 "\n" +
                 "In diagnostic notation:\n" +
                 Cbor.toDiagnostics(

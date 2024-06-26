@@ -145,7 +145,7 @@ class SessionEncryption(
             var eReaderKey = eSelfKey.publicKey
             mapBuilder.putTaggedEncodedCbor(
                 "eReaderKey",
-                Cbor.encode(eReaderKey.toCoseKey().toDataItem)
+                Cbor.encode(eReaderKey.toCoseKey().toDataItem())
             )
             checkNotNull(messageCiphertext) { "Data cannot be empty in initial message" }
         }

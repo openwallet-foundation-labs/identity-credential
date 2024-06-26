@@ -207,7 +207,7 @@ class ProvisioningUtil private constructor(
                     protectedHeaders = mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+                            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
                         )
                     ),
                     unprotectedHeaders = mapOf(
@@ -215,10 +215,10 @@ class ProvisioningUtil private constructor(
                             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
                             X509CertChain(
                                 listOf(X509Cert(issuerCert.encoded))
-                            ).toDataItem
+                            ).toDataItem()
                         )
                     ),
-                ).toDataItem
+                ).toDataItem()
             )
 
             val issuerProvidedAuthenticationData = StaticAuthDataGenerator(

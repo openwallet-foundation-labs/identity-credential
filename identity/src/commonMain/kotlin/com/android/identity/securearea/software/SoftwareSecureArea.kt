@@ -75,14 +75,14 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             }
 
             if (!settings.passphraseRequired) {
-                mapBuilder.put("privateKey", privateKey.toCoseKey().toDataItem)
+                mapBuilder.put("privateKey", privateKey.toCoseKey().toDataItem())
             } else {
-                val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem)
+                val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem())
                 val secretKey = derivePrivateKeyEncryptionKey(
                     encodedPublicKey,
                     settings.passphrase!!
                 )
-                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem)
+                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem())
                 val iv = Random.Default.nextBytes(12)
                 val encryptedPrivateKey = Crypto.encrypt(
                     Algorithm.A128GCM,
@@ -96,9 +96,9 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                     put("encryptedPrivateKeyIv", iv)
                 }
             }
-            mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem)
+            mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem())
             if (settings.passphraseConstraints != null) {
-                mapBuilder.put("passphraseConstraints", settings.passphraseConstraints.toDataItem)
+                mapBuilder.put("passphraseConstraints", settings.passphraseConstraints.toDataItem())
             }
             storageEngine.put(PREFIX + alias, Cbor.encode(mapBuilder.end().build()))
         } catch (e: Exception) {

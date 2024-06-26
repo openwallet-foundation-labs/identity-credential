@@ -61,8 +61,8 @@ class FlowExceptionMap private constructor(
         val item = byClass[exception::class] ?: throw exception
         return listOf(
             state,
-            FlowReturnCode.EXCEPTION.ordinal.toDataItem,
-            item.exceptionId.toDataItem,
+            FlowReturnCode.EXCEPTION.ordinal.toDataItem(),
+            item.exceptionId.toDataItem(),
             item.serialize(exception)
         )
     }

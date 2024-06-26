@@ -74,7 +74,7 @@ class AuthenticationState(
                 settings.androidRequireAppSignatureCertificateDigests
             )
             this.publicKey = chain.certificates[0].ecPublicKey
-            val keyData = ByteString(Cbor.encode(this.publicKey!!.toDataItem))
+            val keyData = ByteString(Cbor.encode(this.publicKey!!.toDataItem()))
             storage.insert("ClientKeys", "", keyData, key = clientId)
         }
         if (!Crypto.checkSignature(
@@ -93,7 +93,7 @@ class AuthenticationState(
             storage.insert(
                 "WalletApplicationCapabilities",
                 "",
-                ByteString(Cbor.encode(auth.walletApplicationCapabilities.toDataItem)),
+                ByteString(Cbor.encode(auth.walletApplicationCapabilities.toDataItem())),
                 clientId
             )
         } else {
@@ -101,7 +101,7 @@ class AuthenticationState(
                 "WalletApplicationCapabilities",
                 "",
                 clientId,
-                ByteString(Cbor.encode(auth.walletApplicationCapabilities.toDataItem))
+                ByteString(Cbor.encode(auth.walletApplicationCapabilities.toDataItem()))
             )
         }
         return WalletServerCapabilities(

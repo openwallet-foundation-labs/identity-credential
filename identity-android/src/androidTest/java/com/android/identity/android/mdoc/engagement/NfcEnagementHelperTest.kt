@@ -127,7 +127,7 @@ class NfcEnagementHelperTest {
         Assert.assertNotNull(responseApdu)
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
-        Assert.assertEquals("000f207fff7fff0406e1047fff00ff9000", responseApdu.toHex)
+        Assert.assertEquals("000f207fff7fff0406e1047fff00ff9000", responseApdu.toHex())
 
         // Select NDEF file
         responseApdu = helper.nfcProcessCommandApdu(
@@ -268,7 +268,7 @@ class NfcEnagementHelperTest {
         Assert.assertNotNull(responseApdu)
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
-        Assert.assertEquals("000f207fff7fff0406e1047fff00009000", responseApdu.toHex)
+        Assert.assertEquals("000f207fff7fff0406e1047fff00009000", responseApdu.toHex())
 
         // Select NDEF file
         responseApdu = helper.nfcProcessCommandApdu(

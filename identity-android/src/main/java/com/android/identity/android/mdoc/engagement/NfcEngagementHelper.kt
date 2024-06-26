@@ -126,7 +126,7 @@ class NfcEngagementHelper private constructor(
         Logger.d(TAG, "Setting up transports")
         val timeStartedSettingUpTransports = System.currentTimeMillis()
         val encodedEDeviceKeyBytes = Cbor.encode(
-            Tagged(24, Bstr(Cbor.encode(eDeviceKey.toCoseKey().toDataItem))))
+            Tagged(24, Bstr(Cbor.encode(eDeviceKey.toCoseKey().toDataItem()))))
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.

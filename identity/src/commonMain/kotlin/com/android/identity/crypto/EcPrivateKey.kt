@@ -61,7 +61,7 @@ sealed class EcPrivateKey(
          */
         fun fromCoseKey(coseKey: CoseKey): EcPrivateKey =
             when (coseKey.keyType) {
-                Cose.COSE_KEY_TYPE_EC2.toDataItem -> {
+                Cose.COSE_KEY_TYPE_EC2.toDataItem() -> {
                     val curve = EcCurve.fromInt(
                         coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )
@@ -74,7 +74,7 @@ sealed class EcPrivateKey(
                     EcPrivateKeyDoubleCoordinate(curve, d, x, y)
                 }
 
-                Cose.COSE_KEY_TYPE_OKP.toDataItem -> {
+                Cose.COSE_KEY_TYPE_OKP.toDataItem() -> {
                     val curve = EcCurve.fromInt(
                         coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )

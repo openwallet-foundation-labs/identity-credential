@@ -13,7 +13,7 @@ sealed class CoseLabel {
     /**
      * The CBOR encoding for a COSE Label.
      */
-    abstract val toDataItem: DataItem
+    abstract fun toDataItem(): DataItem
 
     companion object {
         /**

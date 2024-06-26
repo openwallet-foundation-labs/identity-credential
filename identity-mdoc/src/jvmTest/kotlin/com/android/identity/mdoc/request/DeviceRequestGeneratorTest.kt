@@ -85,7 +85,7 @@ class DeviceRequestGeneratorTest {
         val readerCertChain = X509CertChain(listOf(readerCert))
         val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
-        mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem)
+        mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem())
         val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
             .addDocumentRequest(
                 MDL_DOCTYPE,
@@ -137,7 +137,7 @@ class DeviceRequestGeneratorTest {
         assertNotNull(requestInfo)
         assertEquals(2, requestInfo.keys.size.toLong())
         assertContentEquals(Cbor.encode(Tstr("bar")), requestInfo["foo"])
-        assertContentEquals(Cbor.encode(42.toDataItem), requestInfo["bar"])
+        assertContentEquals(Cbor.encode(42.toDataItem()), requestInfo["bar"])
         docRequest = it.next()
         assertTrue(docRequest.readerAuthenticated)
         assertEquals(MVR_DOCTYPE, docRequest.docType)

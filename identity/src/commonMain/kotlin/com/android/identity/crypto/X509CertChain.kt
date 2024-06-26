@@ -21,16 +21,16 @@ data class X509CertChain(
      *
      * Use [fromDataItem] to decode the returned data item.
      */
-    val toDataItem: DataItem
-        get() = if (certificates.size == 1) {
-            certificates[0].toDataItem
+    fun toDataItem(): DataItem {
+        if (certificates.size == 1) {
+            return certificates[0].toDataItem()
         } else {
             CborArray.builder().run {
-                certificates.forEach { certificate -> add(certificate.toDataItem) }
+                certificates.forEach { certificate -> add(certificate.toDataItem()) }
                 return end().build()
             }
-
         }
+    }
 
     companion object {
         /**

@@ -27,8 +27,8 @@ class CoseTests {
         //
         //   https://datatracker.ietf.org/doc/html/rfc9052#name-public-keys
         //
-        val x = "65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d".fromHex
-        val y = "1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c".fromHex
+        val x = "65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d".fromHex()
+        val y = "1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c".fromHex()
         val id = "meriadoc.brandybuck@buckland.example".encodeToByteArray()
         val item = CborMap.builder()
             .put(-1, 1)
@@ -85,8 +85,8 @@ class CoseTests {
         //
         //  https://datatracker.ietf.org/doc/html/rfc9052#name-public-keys
         //
-        val x = "bac5b11cad8f99f9c72b05cf4b9e26d244dc189f745228255a219a86d6a09eff".fromHex
-        val y = "20138bf82dc1b6d562be0fa54ab7804a3a64b6d72ccfed6b6fb6ed28bbfc117e".fromHex
+        val x = "bac5b11cad8f99f9c72b05cf4b9e26d244dc189f745228255a219a86d6a09eff".fromHex()
+        val y = "20138bf82dc1b6d562be0fa54ab7804a3a64b6d72ccfed6b6fb6ed28bbfc117e".fromHex()
         val coseKey = CborMap.builder()
             .put(-1, 1)
             .put(-2, x)
@@ -96,14 +96,14 @@ class CoseTests {
 
         val coseSign1 = CoseSign1(
             mutableMapOf(
-                Pair(1L.toCoseLabel, (-7).toDataItem)
+                Pair(1L.toCoseLabel, (-7).toDataItem())
             ),
             mutableMapOf(
-                Pair(11L.toCoseLabel, byteArrayOf(1, 1).toDataItem)
+                Pair(11L.toCoseLabel, byteArrayOf(1, 1).toDataItem())
             ),
             ("8eb33e4ca31d1c465ab05aac34cc6b23d58fef5c083106c4" +
                     "d25a91aef0b0117e2af9a291aa32e14ab834dc56ed2a223444547e01f11d3b0916e5" +
-                    "a4c345cacb36").fromHex,
+                    "a4c345cacb36").fromHex(),
             "This is the content.".encodeToByteArray()
         )
 
@@ -130,7 +130,7 @@ class CoseTests {
         val protectedHeaders = mapOf<CoseLabel, DataItem>(
             Pair(
                 Cose.COSE_LABEL_ALG.toCoseLabel,
-                signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
+                signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
             )
         )
         val message = "Hello World".encodeToByteArray()

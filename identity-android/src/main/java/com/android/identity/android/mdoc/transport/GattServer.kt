@@ -279,7 +279,7 @@ internal class GattServer(
     ) {
         val charUuid = characteristic.uuid
         Logger.d(TAG, "onCharacteristicWriteRequest: ${device.address} $requestId " +
-                "$offset ${characteristic.uuid} ${value.toHex}")
+                "$offset ${characteristic.uuid} ${value.toHex()}")
 
         // If we are connected to a device, ignore write from any other device
         if (currentConnection != null &&
@@ -387,7 +387,7 @@ internal class GattServer(
         if (Logger.isDebugEnabled) {
             Logger.d(
                 TAG, "onDescriptorWriteRequest: ${device.address}" +
-                        "${descriptor.characteristic.uuid} $offset ${value.toHex}"
+                        "${descriptor.characteristic.uuid} $offset ${value.toHex()}"
             )
         }
         if (responseNeeded) {

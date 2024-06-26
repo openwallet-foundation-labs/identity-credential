@@ -232,7 +232,7 @@ class DeviceRetrievalHelper internal constructor(
             val encodedEDeviceKeyBytes: ByteArray = Cbor.encode(
                 Tagged(
                     24, Bstr(
-                        Cbor.encode(eDeviceKey.toCoseKey().toDataItem)
+                        Cbor.encode(eDeviceKey.toCoseKey().toDataItem())
                     )
                 )
             )

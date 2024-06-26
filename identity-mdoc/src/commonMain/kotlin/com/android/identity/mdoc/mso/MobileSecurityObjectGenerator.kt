@@ -205,7 +205,7 @@ class MobileSecurityObjectGenerator(
 
     private fun generateDeviceKeyBuilder(): CborBuilder {
         val deviceKeyMapBuilder = CborMap.builder()
-        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(mapOf()).toDataItem)
+        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(mapOf()).toDataItem())
         if (mAuthorizedNameSpaces.isNotEmpty() or !mAuthorizedDataElements.isEmpty()) {
             val keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations")
             if (mAuthorizedNameSpaces.isNotEmpty()) {
@@ -240,11 +240,11 @@ class MobileSecurityObjectGenerator(
 
     private fun generateValidityInfoBuilder(): CborBuilder =
         CborMap.builder().run {
-            put("signed", mSigned!!.toEpochMilliseconds().toDataItemDateTimeString)
-            put("validFrom", mValidFrom!!.toEpochMilliseconds().toDataItemDateTimeString)
-            put("validUntil", mValidUntil!!.toEpochMilliseconds().toDataItemDateTimeString)
+            put("signed", mSigned!!.toEpochMilliseconds().toDataItemDateTimeString())
+            put("validFrom", mValidFrom!!.toEpochMilliseconds().toDataItemDateTimeString())
+            put("validUntil", mValidUntil!!.toEpochMilliseconds().toDataItemDateTimeString())
             if (mExpectedUpdate != null)
-                put("expectedUpdate", mExpectedUpdate!!.toEpochMilliseconds().toDataItemDateTimeString)
+                put("expectedUpdate", mExpectedUpdate!!.toEpochMilliseconds().toDataItemDateTimeString())
             end()
         }
 

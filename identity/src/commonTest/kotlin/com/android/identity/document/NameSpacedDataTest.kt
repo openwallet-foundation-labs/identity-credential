@@ -84,7 +84,7 @@ class NameSpacedDataTest {
                     "  }\n" +
                     "}",
             Cbor.toDiagnostics(
-                foo.toDataItem,
+                foo.toDataItem(),
                 setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
             )
         )
@@ -100,7 +100,7 @@ class NameSpacedDataTest {
                     "  }\n" +
                     "}",
             Cbor.toDiagnostics(
-                fooModified.toDataItem,
+                fooModified.toDataItem(),
                 setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
             )
         )

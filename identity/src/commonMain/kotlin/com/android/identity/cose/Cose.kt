@@ -140,7 +140,7 @@ object Cose {
         val encodedProtectedHeaders =
             if (signature.protectedHeaders.isNotEmpty()) {
                 val phb = CborMap.builder()
-                signature.protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+                signature.protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
                 Cbor.encode(phb.end().build())
             } else {
                 byteArrayOf()
@@ -189,7 +189,7 @@ object Cose {
     ): CoseSign1 {
         val encodedProtectedHeaders = if (protectedHeaders.isNotEmpty()) {
             val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
             Cbor.encode(phb.end().build())
         } else {
             byteArrayOf()
@@ -233,7 +233,7 @@ object Cose {
     ): CoseSign1 {
         val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
             val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
             Cbor.encode(phb.end().build())
         } else {
             byteArrayOf()
@@ -272,7 +272,7 @@ object Cose {
     ): CoseMac0 {
         val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
             val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
+            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
             Cbor.encode(phb.end().build())
         } else {
             byteArrayOf()

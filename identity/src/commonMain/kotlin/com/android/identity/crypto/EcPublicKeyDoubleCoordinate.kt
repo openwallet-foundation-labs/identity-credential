@@ -23,10 +23,10 @@ data class EcPublicKeyDoubleCoordinate(
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey =
         CoseKey(
             mapOf(
-                Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_EC2.toDataItem),
-                Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
-                Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem),
-                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem)
+                Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_EC2.toDataItem()),
+                Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem()),
+                Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem()),
+                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem())
             ) + additionalLabels
         )
 

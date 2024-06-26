@@ -30,10 +30,10 @@ object NfcUtil {
 
     // Defined by NFC Forum
     @JvmField
-    val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = "D2760000850101".fromHex
+    val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = "D2760000850101".fromHex()
 
     // Defined by 18013-5 Section 8.3.3.1.2 Data retrieval using near field communication (NFC)
-    val AID_FOR_MDL_DATA_TRANSFER = "A0000002480400".fromHex
+    val AID_FOR_MDL_DATA_TRANSFER = "A0000002480400".fromHex()
 
     const val COMMAND_TYPE_OTHER = 0
     const val COMMAND_TYPE_SELECT_BY_AID = 1
@@ -216,8 +216,8 @@ object NfcUtil {
                 if (Logger.isDebugEnabled) {
                     Logger.d(
                         TAG, "ConnectionMethod $cm: alternativeCarrierRecord: "
-                                + "${records.second.toHex} carrierConfigurationRecord: "
-                                + "${records.first.payload.toHex}"
+                                + "${records.second.toHex()} carrierConfigurationRecord: "
+                                + "${records.first.payload.toHex()}"
                     )
                 }
                 alternativeCarrierRecords.add(records.second)

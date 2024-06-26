@@ -66,7 +66,7 @@ class QrEngagementHelper internal constructor(
 
     init {
         val encodedEDeviceKeyBytes =
-            Cbor.encode(Tagged(24, Bstr(Cbor.encode(eDeviceKey.toCoseKey().toDataItem))))
+            Cbor.encode(Tagged(24, Bstr(Cbor.encode(eDeviceKey.toCoseKey().toDataItem()))))
 
         // Set EDeviceKey for transports we were given.
         if (transports != null) {

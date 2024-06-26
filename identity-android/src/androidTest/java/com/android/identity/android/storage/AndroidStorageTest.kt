@@ -86,7 +86,7 @@ class AndroidStorageTest {
         storage.put("foo", data)
         var targetFile = File(storageDir, PREFIX + URLEncoder.encode("foo", "UTF-8"))
         var fileContents = AtomicFile(targetFile).readFully()
-        Assert.assertEquals(-1, (fileContents.toHex).indexOf(data.toHex).toLong())
+        Assert.assertEquals(-1, (fileContents.toHex()).indexOf(data.toHex()).toLong())
 
         // Try again without encryption. The data should start at offset 4.
         storage = AndroidStorageEngine.Builder(context, storageDir)

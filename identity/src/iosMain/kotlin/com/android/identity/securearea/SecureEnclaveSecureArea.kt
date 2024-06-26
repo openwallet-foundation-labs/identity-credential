@@ -82,7 +82,7 @@ class SecureEnclaveSecureArea(
         map.put("userAuthenticationTypes",
             SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes))
         map.put("curve", settings.ecCurve.coseCurveIdentifier)
-        map.put("publicKey", publicKey.toDataItem)
+        map.put("publicKey", publicKey.toDataItem())
         map.put("keyBlob", keyBlob)
         storageEngine.put(PREFIX + alias, Cbor.encode(map.end().build()))
     }

@@ -396,7 +396,7 @@ fun defaultCredentialConfiguration(collectedEvidence: Map<String, EvidenceRespon
                 builder.put("passphrase", passphrase)
             }
             if (passphraseConstraints != null) {
-                builder.put("passphraseConstraints", passphraseConstraints.toDataItem)
+                builder.put("passphraseConstraints", passphraseConstraints.toDataItem())
             }
             return CredentialConfiguration(
                 challenge,

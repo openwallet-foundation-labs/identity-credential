@@ -715,7 +715,7 @@ class VerificationHelper internal constructor(
         // to avoid delaying the transaction...
         ephemeralKey = Crypto.createEcPrivateKey(engagement.eSenderKey.curve)
         val encodedEReaderKeyPub: ByteArray = Cbor.encode(
-            ephemeralKey!!.publicKey.toCoseKey().toDataItem
+            ephemeralKey!!.publicKey.toCoseKey().toDataItem()
         )
         encodedSessionTranscript = Cbor.encode(
             CborArray.builder()

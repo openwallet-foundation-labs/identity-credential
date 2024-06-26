@@ -9,12 +9,10 @@ import com.android.identity.cbor.toDataItem
  * @param text the string.
  */
 data class CoseTextLabel(val text: String) : CoseLabel() {
-    override val toDataItem: DataItem
-        get() = text.toDataItem
+    override fun toDataItem(): DataItem = text.toDataItem()
 }
 
 /**
  * Gets a [CoseLabel] from a string.
  */
-val String.toCoseLabel
-    get() = CoseTextLabel(this)
+fun String.toCoseLabel() = CoseTextLabel(this)

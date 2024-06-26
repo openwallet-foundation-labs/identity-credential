@@ -43,13 +43,13 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
     }
 
     override fun setString(key: String, value: String): ApplicationData =
-        setData(key, Cbor.encode(value.toDataItem))
+        setData(key, Cbor.encode(value.toDataItem()))
 
     override fun setNumber(key: String, value: Long): ApplicationData =
-        setData(key, Cbor.encode(value.toDataItem))
+        setData(key, Cbor.encode(value.toDataItem()))
 
     override fun setBoolean(key: String, value: Boolean): ApplicationData =
-        setData(key, Cbor.encode(value.toDataItem))
+        setData(key, Cbor.encode(value.toDataItem()))
 
     override fun setNameSpacedData(key: String, value: NameSpacedData): ApplicationData =
         setData(key, value.encodeAsCbor())

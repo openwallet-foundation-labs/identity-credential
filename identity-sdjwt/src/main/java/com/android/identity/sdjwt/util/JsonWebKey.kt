@@ -51,13 +51,13 @@ class JsonWebKey {
                     is EcPublicKeyOkp -> {
                         put("kty", JsonPrimitive("OKP"))
                         put("crv", JsonPrimitive(pubKey.curve.jwkName))
-                        put("x", JsonPrimitive(pubKey.x.toBase64))
+                        put("x", JsonPrimitive(pubKey.x.toBase64()))
                     }
                     is EcPublicKeyDoubleCoordinate -> {
                         put("kty", JsonPrimitive("EC"))
                         put("crv", JsonPrimitive(pubKey.curve.jwkName))
-                        put("x", JsonPrimitive(pubKey.x.toBase64))
-                        put("y", JsonPrimitive(pubKey.y.toBase64))
+                        put("x", JsonPrimitive(pubKey.x.toBase64()))
+                        put("y", JsonPrimitive(pubKey.y.toBase64()))
                     }
                     else -> throw IllegalStateException("Unsupported key $pubKey")
                 }
@@ -72,14 +72,14 @@ class JsonWebKey {
                 "OKP" -> {
                     EcPublicKeyOkp(
                         EcCurve.fromJwkName(key.getString("crv")),
-                        key.getString("x").fromBase64
+                        key.getString("x").fromBase64()
                     )
                 }
                 "EC" -> {
                     EcPublicKeyDoubleCoordinate(
                         EcCurve.fromJwkName(key.getString("crv")),
-                        key.getString("x").fromBase64,
-                        key.getString("y").fromBase64
+                        key.getString("x").fromBase64(),
+                        key.getString("y").fromBase64()
                     )
                 }
                 else -> throw IllegalArgumentException("Not supporting key type $kty")

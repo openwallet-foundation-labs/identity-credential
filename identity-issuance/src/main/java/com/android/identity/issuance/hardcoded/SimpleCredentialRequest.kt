@@ -26,7 +26,7 @@ data class SimpleCredentialRequest(
     fun toCbor(): ByteArray {
         return Cbor.encode(
             CborMap.builder()
-                .put("authenticationKey", authenticationKey.toCoseKey().toDataItem)
+                .put("authenticationKey", authenticationKey.toCoseKey().toDataItem())
                 .put("format", format.name)
                 .put("data", data)
                 .end()

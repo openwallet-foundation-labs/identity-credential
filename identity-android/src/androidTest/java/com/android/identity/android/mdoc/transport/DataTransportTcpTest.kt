@@ -40,8 +40,8 @@ class DataTransportTcpTest {
             DataTransport.Role.MDOC,
             DataTransportOptions.Builder().build()
         )
-        val messageSentByVerifier = "010203".fromHex
-        val messageSentByProver = "0405".fromHex
+        val messageSentByVerifier = "010203".fromHex()
+        val messageSentByProver = "0405".fromHex()
         val messageReceivedByProver = arrayOf<ByteArray?>(null)
         val messageReceivedByVerifier = arrayOf<ByteArray?>(null)
         val proverMessageReceivedCondVar = ConditionVariable()

@@ -263,13 +263,13 @@ internal class GattClient(
         if (characteristic.uuid == characteristicIdentUuid) {
             val identValue = characteristic.value
             if (Logger.isDebugEnabled) {
-                Logger.d(TAG, "Received identValue: ${identValue.toHex}")
+                Logger.d(TAG, "Received identValue: ${identValue.toHex()}")
             }
             // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
             //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
             if (!Arrays.equals(identValue, this.identValue)) {
-                Logger.w(TAG, "Received ident '${identValue.toHex}' does not match " +
-                            "expected ident '${this.identValue!!.toHex}'")
+                Logger.w(TAG, "Received ident '${identValue.toHex()}' does not match " +
+                            "expected ident '${this.identValue!!.toHex()}'")
             }
             afterIdentObtained(gatt)
         } else if (characteristic.uuid == characteristicL2CAPUuid) {

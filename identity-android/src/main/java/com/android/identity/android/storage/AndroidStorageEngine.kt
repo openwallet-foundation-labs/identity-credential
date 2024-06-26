@@ -99,7 +99,7 @@ class AndroidStorageEngine internal constructor(
             } else if (Arrays.equals(magic, MAGIC_NOT_ENCRYPTED)) {
                 Arrays.copyOfRange(data, MAGIC_SIZE, data.size)
             } else {
-                throw IllegalStateException("Unexpected magic ${magic.toHex}")
+                throw IllegalStateException("Unexpected magic ${magic.toHex()}")
             }
         } catch (e: FileNotFoundException) {
             null

@@ -436,13 +436,13 @@ class IssuingAuthorityState(
         val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
         val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
             X509CertChain(listOf(
                 X509Cert(documentSigningKeyCert.encodedCertificate))
-            ).toDataItem
+            ).toDataItem()
         ))
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(
@@ -452,7 +452,7 @@ class IssuingAuthorityState(
                 Algorithm.ES256,
                 protectedHeaders,
                 unprotectedHeaders
-            ).toDataItem
+            ).toDataItem()
         )
 
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
@@ -518,7 +518,7 @@ class IssuingAuthorityState(
                 .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
                 .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
                 .putEntry(EUPID_NAMESPACE, "birth_date",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                    Cbor.encode(dateOfBirth.toDataItemFullDate()))
                 .putEntryNumber(EUPID_NAMESPACE, "age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
                 .putEntryNumber(EUPID_NAMESPACE, "age_birth_year", dateOfBirth.year.toLong())
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
@@ -529,9 +529,9 @@ class IssuingAuthorityState(
                 // issuing_jurisdiction,
                 .putEntryString(EUPID_NAMESPACE, "nationality", "UT")
                 .putEntry(EUPID_NAMESPACE, "issuance_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                    Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(EUPID_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                    Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
                 .putEntryString(EUPID_NAMESPACE, "issuing_authority",
                     issuingAuthorityName)
@@ -574,7 +574,7 @@ class IssuingAuthorityState(
                 .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
                 .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
                 .putEntry(EUPID_NAMESPACE, "birth_date",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                    Cbor.encode(dateOfBirth.toDataItemFullDate()))
                 .putEntryNumber(EUPID_NAMESPACE, "age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
                 .putEntryNumber(EUPID_NAMESPACE, "age_birth_year", dateOfBirth.year.toLong())
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
@@ -586,9 +586,9 @@ class IssuingAuthorityState(
                 .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
                 .putEntryString(EUPID_NAMESPACE, "nationality", "UT")
                 .putEntry(EUPID_NAMESPACE, "issuance_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                    Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(EUPID_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                    Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
                 .putEntryString(EUPID_NAMESPACE, "issuing_authority",
                     issuingAuthorityName)
@@ -658,14 +658,14 @@ class IssuingAuthorityState(
                 .putEntryString(MDL_NAMESPACE, "given_name", firstName)
                 .putEntryString(MDL_NAMESPACE, "family_name", lastName)
                 .putEntry(MDL_NAMESPACE, "birth_date",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                    Cbor.encode(dateOfBirth.toDataItemFullDate()))
                 .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark",
                     signatureOrUsualMark.toByteArray())
                 .putEntry(MDL_NAMESPACE, "issue_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                    Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(MDL_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                    Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
                 // TODO
                 .putEntryString(MDL_NAMESPACE, "issuing_authority",
@@ -721,15 +721,15 @@ class IssuingAuthorityState(
                 .putEntryString(MDL_NAMESPACE, "given_name", firstName)
                 .putEntryString(MDL_NAMESPACE, "family_name", lastName)
                 .putEntry(MDL_NAMESPACE, "birth_date",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                    Cbor.encode(dateOfBirth.toDataItemFullDate()))
                 .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark",
                     signatureOrUsualMark.toByteArray())
                 .putEntryNumber(MDL_NAMESPACE, "sex", sex)
                 .putEntry(MDL_NAMESPACE, "issue_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                    Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(MDL_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                    Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
                 // TODO
                 .putEntryString(MDL_NAMESPACE, "issuing_authority",
@@ -867,7 +867,7 @@ class IssuingAuthorityState(
             throw IllegalStateException("Client not authenticated")
         }
         val storage = env.getInterface(Storage::class)!!
-        val bytes = Cbor.encode(document.toDataItem)
+        val bytes = Cbor.encode(document.toDataItem())
         return storage.insert("IssuerDocument", clientId, ByteString(bytes))
     }
 
@@ -894,7 +894,7 @@ class IssuingAuthorityState(
             throw IllegalStateException("Client not authenticated")
         }
         val storage = env.getInterface(Storage::class)!!
-        val bytes = Cbor.encode(document.toDataItem)
+        val bytes = Cbor.encode(document.toDataItem())
         storage.update("IssuerDocument", clientId, documentId, ByteString(bytes))
         if (emitNotification) {
             emit(env, IssuingAuthorityNotification(documentId))

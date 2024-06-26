@@ -24,32 +24,31 @@ data class CoseMac0(
     /**
      * Encodes the COSE_Mac0 as a CBOR data item.
      */
-    val toDataItem: DataItem
-        get() {
-            val uphb = CborMap.builder()
-            unprotectedHeaders.forEach { (label, dataItem) -> uphb.put(label.toDataItem, dataItem) }
+    fun toDataItem(): DataItem {
+        val uphb = CborMap.builder()
+        unprotectedHeaders.forEach { (label, dataItem) -> uphb.put(label.toDataItem(), dataItem) }
 
-            val serializedProtectedHeaders =
-                if (protectedHeaders.isNotEmpty()) {
-                    val phb = CborMap.builder()
-                    protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
-                    Cbor.encode(phb.end().build())
-                } else {
-                    byteArrayOf()
-                }
-            val payloadOrNil =
-                if (payload != null) {
-                    Bstr(payload)
-                } else {
-                    Simple.NULL
-                }
-            return CborArray.builder()
-                .add(serializedProtectedHeaders)
-                .add(uphb.end().build())
-                .add(payloadOrNil)
-                .add(tag)
-                .end().build()
-        }
+        val serializedProtectedHeaders =
+            if (protectedHeaders.isNotEmpty()) {
+                val phb = CborMap.builder()
+                protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
+                Cbor.encode(phb.end().build())
+            } else {
+                byteArrayOf()
+            }
+        val payloadOrNil =
+            if (payload != null) {
+                Bstr(payload)
+            } else {
+                Simple.NULL
+            }
+        return CborArray.builder()
+            .add(serializedProtectedHeaders)
+            .add(uphb.end().build())
+            .add(payloadOrNil)
+            .add(tag)
+            .end().build()
+    }
 
     companion object {
         /**

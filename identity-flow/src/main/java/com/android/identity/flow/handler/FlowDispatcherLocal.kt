@@ -128,7 +128,7 @@ class FlowDispatcherLocal private constructor(
             try {
                 val result = handler(owner, state, args.subList(1, args.size))
                 val newStateBlob = stateDataItem(cipher, args[0], decryptedState, state)
-                return listOf(newStateBlob, FlowReturnCode.RESULT.ordinal.toDataItem, result)
+                return listOf(newStateBlob, FlowReturnCode.RESULT.ordinal.toDataItem(), result)
             } catch (err: Throwable) {
                 val newStateBlob = stateDataItem(cipher, args[0], decryptedState, state)
                 return owner.exceptionMap.exceptionReturn(newStateBlob, err)

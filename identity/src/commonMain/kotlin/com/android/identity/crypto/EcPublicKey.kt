@@ -36,10 +36,7 @@ sealed class EcPublicKey(
     @OptIn(ExperimentalEncodingApi::class)
     fun toPem(): String = Crypto.ecPublicKeyToPem(this)
 
-    val toDataItem: DataItem
-        get() {
-            return toCoseKey().toDataItem
-        }
+    fun toDataItem(): DataItem = toCoseKey().toDataItem()
 
     companion object {
         /**
@@ -61,7 +58,7 @@ sealed class EcPublicKey(
          */
         fun fromCoseKey(coseKey: CoseKey): EcPublicKey =
             when (coseKey.keyType) {
-                Cose.COSE_KEY_TYPE_EC2.toDataItem -> {
+                Cose.COSE_KEY_TYPE_EC2.toDataItem() -> {
                     val curve = EcCurve.fromInt(
                         coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )
@@ -74,7 +71,7 @@ sealed class EcPublicKey(
                     EcPublicKeyDoubleCoordinate(curve, x, y)
                 }
 
-                Cose.COSE_KEY_TYPE_OKP.toDataItem -> {
+                Cose.COSE_KEY_TYPE_OKP.toDataItem() -> {
                     val curve = EcCurve.fromInt(
                         coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )

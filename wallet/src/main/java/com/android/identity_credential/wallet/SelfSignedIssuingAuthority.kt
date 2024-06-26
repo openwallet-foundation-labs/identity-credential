@@ -196,13 +196,13 @@ abstract class SelfSignedIssuingAuthority(
         val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
         val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
             X509CertChain(listOf(
                 X509Cert(documentSigningKeyCert.encodedCertificate))
-            ).toDataItem
+            ).toDataItem()
         ))
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(
@@ -212,7 +212,7 @@ abstract class SelfSignedIssuingAuthority(
                 Algorithm.ES256,
                 protectedHeaders,
                 unprotectedHeaders
-            ).toDataItem
+            ).toDataItem()
         )
 
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(

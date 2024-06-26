@@ -35,7 +35,7 @@ class CoseTestsJvm {
                     EcCurve.P256,
                     BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32),
                     BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)
-                ).toCoseKey().toDataItem,
+                ).toCoseKey().toDataItem(),
                 setOf(DiagnosticOption.PRETTY_PRINT)
             )
         )
@@ -50,7 +50,7 @@ class CoseTestsJvm {
             BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)
         )
         val coseKey = key.toCoseKey(
-            mapOf(Pair(Cose.COSE_KEY_KID.toCoseLabel, "name@example.com".toByteArray().toDataItem))
+            mapOf(Pair(Cose.COSE_KEY_KID.toCoseLabel, "name@example.com".toByteArray().toDataItem()))
         )
         assertEquals(
             "{\n" +
@@ -60,7 +60,7 @@ class CoseTestsJvm {
                     "  -3: h'0000000000000000000000000000000000000000000000000000000000000001',\n" +
                     "  2: h'6e616d65406578616d706c652e636f6d'\n" +
                     "}",
-            Cbor.toDiagnostics(coseKey.toDataItem, setOf(DiagnosticOption.PRETTY_PRINT))
+            Cbor.toDiagnostics(coseKey.toDataItem(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
     }
 
@@ -110,7 +110,7 @@ class CoseTestsJvm {
             "23032312d31302d30315431333a33303a30325a584059e64205df1e2f708dd6db0847aed7" +
             "9fc7c0201d80fa55badcaf2e1bcf5902e1e5a62e4832044b890ad85aa53f129134775d733" +
             "754d7cb7a413766aeff13cb2e"
-        val coseSign1 = Cbor.decode(issuerAuth.fromHex).asCoseSign1
+        val coseSign1 = Cbor.decode(issuerAuth.fromHex()).asCoseSign1
 
         val signatureAlgorithm = coseSign1.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber
         assertEquals(signatureAlgorithm, Algorithm.ES256.coseAlgorithmIdentifier.toLong())
@@ -124,8 +124,8 @@ class CoseTestsJvm {
         assertEquals("C=US, CN=utopia iaca", cert.issuerX500Principal.toString())
         assertEquals("C=US, CN=utopia ds", cert.subjectX500Principal.toString())
 
-        val x = "ace7ab7340e5d9648c5a72a9a6f56745c7aad436a03a43efea77b5fa7b88f019".fromHex
-        val y = "7d57d8983e1b37d3a539f4d588365e38cbbf5b94d68c547b5bc8731dcd2f146b".fromHex
+        val x = "ace7ab7340e5d9648c5a72a9a6f56745c7aad436a03a43efea77b5fa7b88f019".fromHex()
+        val y = "7d57d8983e1b37d3a539f4d588365e38cbbf5b94d68c547b5bc8731dcd2f146b".fromHex()
         val publicKey = EcPublicKeyDoubleCoordinate(EcCurve.P256, x, y)
         assertEquals(publicKey, cert.publicKey.toEcPublicKey(EcCurve.P256))
 

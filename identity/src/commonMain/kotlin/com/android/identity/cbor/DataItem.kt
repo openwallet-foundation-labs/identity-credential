@@ -216,7 +216,7 @@ sealed class DataItem(
      */
     fun hasKey(key: String): Boolean {
         require(this is CborMap)
-        return items.get(key.toDataItem) != null
+        return items.get(key.toDataItem()) != null
     }
 
     /**
@@ -228,7 +228,7 @@ sealed class DataItem(
      */
     fun hasKey(key: Long): Boolean {
         require(this is CborMap)
-        return items.get(key.toDataItem) != null
+        return items.get(key.toDataItem()) != null
     }
 
     /**
@@ -257,7 +257,7 @@ sealed class DataItem(
      * @throws IllegalStateException if the value doesn't exist in the map.
      */
     operator fun get(key: String): DataItem {
-        return get(key.toDataItem)
+        return get(key.toDataItem())
     }
 
     /**
@@ -275,7 +275,7 @@ sealed class DataItem(
                 items[key.toInt()]
             }
             else -> {
-                get(key.toDataItem)
+                get(key.toDataItem())
             }
         }
     }
@@ -307,7 +307,7 @@ sealed class DataItem(
      */
     fun getOrDefault(key: String, defaultValue: DataItem): DataItem {
         require(this is CborMap)
-        val value = items.get(key.toDataItem)
+        val value = items.get(key.toDataItem())
         if (value == null) {
             return defaultValue
         }
@@ -324,7 +324,7 @@ sealed class DataItem(
      */
     fun getOrDefault(key: Long, defaultValue: DataItem): DataItem {
         require(this is CborMap)
-        val value = items.get(key.toDataItem)
+        val value = items.get(key.toDataItem())
         if (value == null) {
             return defaultValue
         }
@@ -352,7 +352,7 @@ sealed class DataItem(
      */
     fun getOrNull(key: String): DataItem? {
         require(this is CborMap)
-        return items.get(key.toDataItem)
+        return items.get(key.toDataItem())
     }
 
     /**
@@ -364,7 +364,7 @@ sealed class DataItem(
      */
     fun getOrNull(key: Long): DataItem? {
         require(this is CborMap)
-        return items.get(key.toDataItem)
+        return items.get(key.toDataItem())
     }
 
     /**
