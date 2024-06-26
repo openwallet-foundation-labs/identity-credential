@@ -786,5 +786,33 @@ fun AusweisView(
                 }
             }
         }
+        composable(AusweisModel.Route.ERROR.route) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (status.value == AusweisModel.NetworkError) {
+                                R.string.eid_network_error
+                            } else {
+                                R.string.eid_generic_error
+                            }),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(onClick = { model.tryAgain() }) {
+                        Text(stringResource(R.string.eid_try_again))
+                    }
+                }
+            }
+        }
     }
 }
