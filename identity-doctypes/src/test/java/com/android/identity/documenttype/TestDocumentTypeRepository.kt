@@ -137,7 +137,7 @@ class TestDocumentTypeRepository {
                 ),
                 false
             ).renderValue(
-                Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString,
+                Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),
                 timeZone = TimeZone.of("Europe/Copenhagen")
             )
         )
@@ -156,7 +156,7 @@ class TestDocumentTypeRepository {
                     ),
                     false
                 ).renderValue(
-                    LocalDate.parse("1976-02-03").toDataItemFullDate,
+                    LocalDate.parse("1976-02-03").toDataItemFullDate(),
                     timeZone = TimeZone.of(zoneId)
                 )
             )
@@ -167,28 +167,28 @@ class TestDocumentTypeRepository {
         Assert.assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
-                Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString,
+                Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),
                 timeZone = TimeZone.of("Europe/Copenhagen")
             )
         )
         Assert.assertEquals(
             "1976-02-02",
             mdlNs.dataElements["birth_date"]?.renderValue(
-                Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString,
+                Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),
                 timeZone = TimeZone.of("America/Los_Angeles")
             )
         )
         Assert.assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
-                LocalDate.parse("1976-02-03").toDataItemFullDate,
+                LocalDate.parse("1976-02-03").toDataItemFullDate(),
                 timeZone = TimeZone.of("Europe/Copenhagen")
             )
         )
         Assert.assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
-                LocalDate.parse("1976-02-03").toDataItemFullDate,
+                LocalDate.parse("1976-02-03").toDataItemFullDate(),
                 timeZone = TimeZone.of("America/Los_Angeles")
             )
         )

@@ -46,7 +46,7 @@ internal object TrustManagerUtil {
             ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(octets)
-        return subjectKeyIdentifier.keyIdentifier.toHex
+        return subjectKeyIdentifier.keyIdentifier.toHex()
     }
 
     /**
@@ -58,7 +58,7 @@ internal object TrustManagerUtil {
             ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val authorityKeyIdentifier = AuthorityKeyIdentifier.getInstance(octets)
-        return authorityKeyIdentifier.keyIdentifier.toHex
+        return authorityKeyIdentifier.keyIdentifier.toHex()
     }
 
     /**

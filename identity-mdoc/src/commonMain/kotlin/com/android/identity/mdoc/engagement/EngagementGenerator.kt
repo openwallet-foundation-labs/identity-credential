@@ -71,7 +71,7 @@ class EngagementGenerator(
      * @return the bytes of the `Engagement` structure.
      */
     fun generate(): ByteArray {
-        val encodedCoseKey = Cbor.encode(eSenderKey.toCoseKey(emptyMap()).toDataItem)
+        val encodedCoseKey = Cbor.encode(eSenderKey.toCoseKey(emptyMap()).toDataItem())
         val security = CborArray.builder()
             .add(1) // cipher suite
             .addTaggedEncodedCbor(encodedCoseKey)

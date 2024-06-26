@@ -358,7 +358,7 @@ class SelfSignedMdlIssuingAuthority(
                     builder.put("passphrase", passphrase)
                 }
                 if (passphraseConstraints != null) {
-                    builder.put("passphraseConstraints", passphraseConstraints.toDataItem)
+                    builder.put("passphraseConstraints", passphraseConstraints.toDataItem())
                 }
                 return CredentialConfiguration(
                     challenge,
@@ -439,14 +439,14 @@ class SelfSignedMdlIssuingAuthority(
                 .putEntryString(MDL_NAMESPACE, "given_name", firstName)
                 .putEntryString(MDL_NAMESPACE, "family_name", lastName)
                 .putEntry(MDL_NAMESPACE, "birth_date",
-                        Cbor.encode(dateOfBirth.toDataItemFullDate))
+                        Cbor.encode(dateOfBirth.toDataItemFullDate()))
                 .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
                 .putEntryNumber(MDL_NAMESPACE, "sex", sex)
                 .putEntry(MDL_NAMESPACE, "issue_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                    Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(MDL_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                    Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
                 .putEntryString(MDL_NAMESPACE, "issuing_authority",
                     resourceString(R.string.utopia_mdl_issuing_authority_name),)

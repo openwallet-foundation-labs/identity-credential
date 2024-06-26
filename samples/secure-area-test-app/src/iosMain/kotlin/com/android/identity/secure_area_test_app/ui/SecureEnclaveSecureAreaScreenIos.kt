@@ -138,7 +138,7 @@ private fun seTestUnguarded(
         Logger.d(
             TAG,
             "Made signature with key " +
-                    "r=${signature.r.toHex} s=${signature.s.toHex}",
+                    "r=${signature.r.toHex()} s=${signature.s.toHex()}",
         )
         showToast("Signed (${t1 - t0})")
     } else {

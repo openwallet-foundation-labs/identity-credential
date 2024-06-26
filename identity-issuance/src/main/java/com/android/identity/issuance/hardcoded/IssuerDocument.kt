@@ -58,24 +58,23 @@ data class IssuerDocument(
         }
     }
 
-    val toDataItem: DataItem
-        get() {
-            val credentialRequestsBuilder = CborArray.builder()
-            simpleCredentialRequests.forEach() { cpoRequest ->
-                credentialRequestsBuilder.add(RawCbor(cpoRequest.toCbor()))
-            }
-            val ceMapBuilder = CborMap.builder()
-            collectedEvidence.forEach() { evidence ->
-                ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
-            }
-            val mapBuilder = CborMap.builder()
-                .put("registrationResponse", registrationResponse.toDataItem)
-                .put("state", state.ordinal.toLong())
-                .put("collectedEvidence", ceMapBuilder.end().build())
-                .put("credentialRequests", credentialRequestsBuilder.end().build())
-            if (documentConfiguration != null) {
-                mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem)
-            }
-            return mapBuilder.end().build()
+    fun toDataItem(): DataItem {
+        val credentialRequestsBuilder = CborArray.builder()
+        simpleCredentialRequests.forEach() { cpoRequest ->
+            credentialRequestsBuilder.add(RawCbor(cpoRequest.toCbor()))
         }
+        val ceMapBuilder = CborMap.builder()
+        collectedEvidence.forEach() { evidence ->
+            ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
+        }
+        val mapBuilder = CborMap.builder()
+            .put("registrationResponse", registrationResponse.toDataItem())
+            .put("state", state.ordinal.toLong())
+            .put("collectedEvidence", ceMapBuilder.end().build())
+            .put("credentialRequests", credentialRequestsBuilder.end().build())
+        if (documentConfiguration != null) {
+            mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem())
+        }
+        return mapBuilder.end().build()
+    }
 }

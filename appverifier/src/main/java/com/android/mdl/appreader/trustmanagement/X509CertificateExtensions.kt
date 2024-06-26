@@ -14,5 +14,5 @@ fun X509Certificate.getSubjectKeyIdentifier(): String {
     val extensionValue = this.getExtensionValue(Extension.subjectKeyIdentifier.id)
     val octets = DEROctetString.getInstance(extensionValue).octets
     val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(octets)
-    return subjectKeyIdentifier.keyIdentifier.toHex
+    return subjectKeyIdentifier.keyIdentifier.toHex()
 }

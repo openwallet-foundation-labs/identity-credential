@@ -109,11 +109,11 @@ class ConnectionMethodNdefTest {
         Assert.assertEquals(uuidBoth, decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c03110702000000000000000000000000000000",
-            pair.first.toByteArray().toHex
+            pair.first.toByteArray().toHex()
         )
         Assert.assertEquals(
             "01013001046d646f63",
-            pair.second.toHex
+            pair.second.toHex()
         )
         val hrPair = NfcUtil.toNdefRecord(cm, listOf(""), false)
         Assert.assertArrayEquals(pair.first.toByteArray(), hrPair!!.first.toByteArray())
@@ -161,11 +161,11 @@ class ConnectionMethodNdefTest {
         Assert.assertEquals(uuid, decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c011107b168de3a0000000015cd5b0700000000",
-            pair.first.toByteArray().toHex
+            pair.first.toByteArray().toHex()
         )
         Assert.assertEquals(
             "01013001046d646f63",
-            pair.second!!.toHex
+            pair.second!!.toHex()
         )
         pair = NfcUtil.toNdefRecord(cm, emptyList(), false)
         decoded = fromNdefRecord(pair!!.first, false)
@@ -176,9 +176,9 @@ class ConnectionMethodNdefTest {
         Assert.assertEquals(uuid, decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c001107b168de3a0000000015cd5b0700000000",
-            pair.first.toByteArray().toHex
+            pair.first.toByteArray().toHex()
         )
-        Assert.assertEquals("01013000", pair.second!!.toHex)
+        Assert.assertEquals("01013000", pair.second!!.toHex())
     }
 
     @Test
@@ -223,11 +223,11 @@ class ConnectionMethodNdefTest {
         Assert.assertNull(decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c00110701000000000000000000000000000000",
-            pair.first.toByteArray().toHex
+            pair.first.toByteArray().toHex()
         )
         Assert.assertEquals(
             "01013001046d646f63",
-            pair.second!!.toHex
+            pair.second!!.toHex()
         )
         pair = NfcUtil.toNdefRecord(cm, emptyList(), false)
         decoded = fromNdefRecord(pair!!.first, false)
@@ -238,9 +238,9 @@ class ConnectionMethodNdefTest {
         Assert.assertNull(decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c01110701000000000000000000000000000000",
-            pair.first.toByteArray().toHex
+            pair.first.toByteArray().toHex()
         )
-        Assert.assertEquals("01013000", pair.second!!.toHex)
+        Assert.assertEquals("01013000", pair.second!!.toHex())
     }
 
     @Test
@@ -273,7 +273,7 @@ class ConnectionMethodNdefTest {
     @Throws(FormatException::class)
     fun testConnectionMethodVector() {
         val ndefHsMessage =
-            NdefMessage("91020f487315d10209616301013001046d646f631a2003016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c015c1e580469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a20063312e30018201d818584ba401022001215820e778fcb1513fad715c755462cb4d3ee3c1de2f618d10e07788a35eda2da58b982258205e6ee59512414cdb11ee330db2590ab6d1b5a78ede4a0ecac02e3af65cafbcd9".fromHex)
+            NdefMessage("91020f487315d10209616301013001046d646f631a2003016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c015c1e580469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a20063312e30018201d818584ba401022001215820e778fcb1513fad715c755462cb4d3ee3c1de2f618d10e07788a35eda2da58b982258205e6ee59512414cdb11ee330db2590ab6d1b5a78ede4a0ecac02e3af65cafbcd9".fromHex())
         Assert.assertNotNull(ndefHsMessage)
         var cm: ConnectionMethodBle? = null
         for (r in ndefHsMessage.records) {

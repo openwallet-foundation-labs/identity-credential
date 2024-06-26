@@ -110,7 +110,7 @@ class SdJwtVerifiableCredential(
         val bodyObj = JwtBody.fromString(body)
 
         val toBeVerified = "$header.$body".toByteArray(Charsets.US_ASCII)
-        val signature = EcSignature.fromCoseEncoded(signature.fromBase64)
+        val signature = EcSignature.fromCoseEncoded(signature.fromBase64())
 
         if(!verify(headerObj, bodyObj, toBeVerified, signature)) {
             throw IllegalStateException("Signature verification failed")
@@ -140,12 +140,12 @@ class SdJwtVerifiableCredential(
 
         val keyBindingHeaderStr = KeyBindingHeader(alg).toString()
 
-        val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64
+        val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64()
         val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
 
         val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".toByteArray(Charsets.US_ASCII)
         val signature = secureArea.sign(alias, alg, toBeSigned, keyUnlockData)
-        val signatureStr = signature.toCoseEncoded().toBase64
+        val signatureStr = signature.toCoseEncoded().toBase64()
 
         return SdJwtVerifiablePresentation(
             this,

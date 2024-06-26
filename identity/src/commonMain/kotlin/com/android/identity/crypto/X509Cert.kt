@@ -18,7 +18,7 @@ expect class X509Cert(
     /**
      * Gets an [DataItem] with the encoded X.509 certificate.
      */
-    val toDataItem: DataItem
+    fun toDataItem(): DataItem
 
     /**
      * Encode this certificate in PEM format

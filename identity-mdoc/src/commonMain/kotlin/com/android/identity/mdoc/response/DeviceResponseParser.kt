@@ -273,7 +273,7 @@ class DeviceResponseParser(
                     mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
+                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem()
                         )
                     ),
                     mapOf()
@@ -283,8 +283,8 @@ class DeviceResponseParser(
                     Logger.d(TAG, "Verified DeviceSigned using MAC")
                 } else {
                     Logger.d(
-                        TAG, "Device MAC mismatch, got ${tagInResponse.toHex}"
-                                + " expected ${expectedTag.toHex}"
+                        TAG, "Device MAC mismatch, got ${tagInResponse.toHex()}"
+                                + " expected ${expectedTag.toHex()}"
                     )
                 }
             }

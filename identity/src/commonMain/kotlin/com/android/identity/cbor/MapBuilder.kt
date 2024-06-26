@@ -86,7 +86,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: DataItem) = apply {
-        map.items[key.toDataItem] = value
+        map.items[key.toDataItem()] = value
     }
 
     /**
@@ -97,7 +97,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: String) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -108,7 +108,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: ByteArray) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -119,7 +119,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Byte) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -130,7 +130,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Short) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -141,7 +141,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Int) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -152,7 +152,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Long) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -163,7 +163,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Boolean) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -174,7 +174,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Double) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -185,7 +185,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: Float) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -197,7 +197,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param key the key.
      * @return a [ArrayBuilder].
      */
-    fun putArray(key: String): ArrayBuilder<MapBuilder<T>> = putArray(key.toDataItem)
+    fun putArray(key: String): ArrayBuilder<MapBuilder<T>> = putArray(key.toDataItem())
 
     /**
      * Puts a new map in the map.
@@ -209,7 +209,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return a [MapBuilder].
      */
     fun putMap(key: String): MapBuilder<MapBuilder<T>> {
-        return putMap(key.toDataItem)
+        return putMap(key.toDataItem())
     }
 
     /**
@@ -221,7 +221,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun putTagged(key: String, tagNumber: Long, value: DataItem) = apply {
-        putTagged(key.toDataItem, tagNumber, value)
+        putTagged(key.toDataItem(), tagNumber, value)
     }
 
     /**
@@ -231,7 +231,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param encodedCbor the bytes of the encoded CBOR.
      */
     fun putTaggedEncodedCbor(key: String, encodedCbor: ByteArray) = apply {
-        putTaggedEncodedCbor(key.toDataItem, encodedCbor)
+        putTaggedEncodedCbor(key.toDataItem(), encodedCbor)
     }
 
     // Convenience putters for Long keys
@@ -244,7 +244,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: DataItem) = apply {
-        map.items[key.toDataItem] = value
+        map.items[key.toDataItem()] = value
     }
 
     /**
@@ -255,7 +255,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: String) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -266,7 +266,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: ByteArray) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -277,7 +277,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Byte) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -288,7 +288,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Short) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -299,7 +299,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Int) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -310,7 +310,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Long) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -321,7 +321,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Boolean) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -332,7 +332,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Double) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -343,7 +343,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: Float) = apply {
-        put(key.toDataItem, value.toDataItem)
+        put(key.toDataItem(), value.toDataItem())
     }
 
     /**
@@ -355,7 +355,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param key the key.
      * @return a [ArrayBuilder].
      */
-    fun putArray(key: Long): ArrayBuilder<MapBuilder<T>> = putArray(key.toDataItem)
+    fun putArray(key: Long): ArrayBuilder<MapBuilder<T>> = putArray(key.toDataItem())
 
     /**
      * Puts a new map in the map.
@@ -366,7 +366,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param key the key.
      * @return a [MapBuilder].
      */
-    fun putMap(key: Long): MapBuilder<MapBuilder<T>> = putMap(key.toDataItem)
+    fun putMap(key: Long): MapBuilder<MapBuilder<T>> = putMap(key.toDataItem())
 
     /**
      * Puts a tagged data item in the map.
@@ -377,7 +377,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun putTagged(key: Long, tagNumber: Long, value: DataItem): MapBuilder<T> =
-        putTagged(key.toDataItem, tagNumber, value)
+        putTagged(key.toDataItem(), tagNumber, value)
 
 
     /**
@@ -387,6 +387,6 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param encodedCbor the bytes of the encoded CBOR.
      */
     fun putTaggedEncodedCbor(key: Long, encodedCbor: ByteArray) = apply {
-        putTaggedEncodedCbor(key.toDataItem, encodedCbor)
+        putTaggedEncodedCbor(key.toDataItem(), encodedCbor)
     }
 }

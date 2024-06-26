@@ -49,11 +49,11 @@ class HexUtilTest {
     @Test
     fun extensions() {
         assertContentEquals(
-            "deadbeef".fromHex,
+            "deadbeef".fromHex(),
             byteArrayOf(0xde.toByte(), 0xad.toByte(), 0xbe.toByte(), 0xef.toByte())
         )
         assertEquals(
-            byteArrayOf(0xde.toByte(), 0xad.toByte(), 0xbe.toByte(), 0xef.toByte()).toHex,
+            byteArrayOf(0xde.toByte(), 0xad.toByte(), 0xbe.toByte(), 0xef.toByte()).toHex(),
             "deadbeef"
         )
     }

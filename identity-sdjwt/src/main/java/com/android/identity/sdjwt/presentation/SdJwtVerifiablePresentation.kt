@@ -35,13 +35,13 @@ class SdJwtVerifiablePresentation(
         val keyBindingBodyObj = KeyBindingBody.fromString(keyBindingBody)
 
         // compare the hash of the VC against what's in the key binding JWT
-        val sdHash = Crypto.digest(sdJwtVc.sdHashAlg, sdJwtVc.toString().toByteArray()).toBase64
+        val sdHash = Crypto.digest(sdJwtVc.sdHashAlg, sdJwtVc.toString().toByteArray()).toBase64()
         if (sdHash != keyBindingBodyObj.sdHash) {
             throw IllegalStateException("hash in key binding JWT didn't match SD-JWT")
         }
 
         val toBeVerified = "$keyBindingHeader.$keyBindingBody".toByteArray(Charsets.US_ASCII)
-        val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64)
+        val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64())
 
         if (!Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signature)) {
             throw IllegalStateException("Signature verification failed")

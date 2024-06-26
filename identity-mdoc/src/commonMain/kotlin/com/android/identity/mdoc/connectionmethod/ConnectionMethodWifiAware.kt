@@ -37,7 +37,7 @@ class ConnectionMethodWifiAware(
         }
         if (bandInfoSupportedBands != null) {
             builder.append(":base_info_supported_bands=")
-            builder.append(bandInfoSupportedBands.toHex)
+            builder.append(bandInfoSupportedBands.toHex())
         }
         return builder.toString()
     }

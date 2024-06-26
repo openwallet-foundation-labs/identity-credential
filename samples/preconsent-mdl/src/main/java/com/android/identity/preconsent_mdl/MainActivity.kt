@@ -121,8 +121,8 @@ class MainActivity : ComponentActivity() {
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryNumber(MDL_NAMESPACE, "sex", 2)
-            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(now.toDataItemDateTimeString))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString))
+            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(now.toDataItemDateTimeString()))
+            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString()))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
             .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
@@ -181,13 +181,13 @@ class MainActivity : ComponentActivity() {
             val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
             val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
             ))
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
                 X509CertChain(
                     listOf(X509Cert(documentSigningKeyCert.encodedCertificate))
-                ).toDataItem
+                ).toDataItem()
             ))
             val encodedIssuerAuth = Cbor.encode(
                 Cose.coseSign1Sign(
@@ -197,7 +197,7 @@ class MainActivity : ComponentActivity() {
                     Algorithm.ES256,
                     protectedHeaders,
                     unprotectedHeaders
-                ).toDataItem
+                ).toDataItem()
             )
 
             val issuerProvidedAuthenticationData = StaticAuthDataGenerator(

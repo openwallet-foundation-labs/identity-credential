@@ -626,7 +626,7 @@ class FlowSymbolProcessor(
             importQualifiedName(CborSymbolProcessor.BSTR_TYPE)
 
             block("private fun serialize(state: $baseName?): DataItem") {
-                line("return state?.toDataItem ?: Bstr(byteArrayOf())")
+                line("return state?.toDataItem() ?: Bstr(byteArrayOf())")
             }
 
             emptyLine()
@@ -654,7 +654,7 @@ class FlowSymbolProcessor(
                     line("val notifications = env.getInterface(FlowNotifications::class)!!")
                     val notification = CborSymbolProcessor.serializeValue(
                         this, "notification", flowInfo.notificationType)
-                    line("notifications.emit(\"${flowInfo.path}\", this.toDataItem, $notification)")
+                    line("notifications.emit(\"${flowInfo.path}\", this.toDataItem(), $notification)")
                 }
             }
 

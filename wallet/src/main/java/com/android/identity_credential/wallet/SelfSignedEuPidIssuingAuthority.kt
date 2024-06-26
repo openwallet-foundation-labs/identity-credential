@@ -229,12 +229,12 @@ class SelfSignedEuPidIssuingAuthority(
                 .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
                 .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
                 .putEntry(EUPID_NAMESPACE, "birth_date",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate))
+                    Cbor.encode(dateOfBirth.toDataItemFullDate()))
                 .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
                 .putEntry(EUPID_NAMESPACE, "issuance_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString))
+                    Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(EUPID_NAMESPACE, "expiry_date",
-                    Cbor.encode(expiryDate.toDataItemDateTimeString)
+                    Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
                 .putEntryString(EUPID_NAMESPACE, "issuing_authority",
                     resourceString(R.string.utopia_eu_pid_issuing_authority_name))

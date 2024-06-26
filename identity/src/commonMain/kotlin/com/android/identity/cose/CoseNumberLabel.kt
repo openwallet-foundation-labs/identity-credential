@@ -9,8 +9,7 @@ import com.android.identity.cbor.toDataItem
  * @param number the number.
  */
 data class CoseNumberLabel(val number: Long) : CoseLabel() {
-    override val toDataItem: DataItem
-        get() = number.toDataItem
+    override fun toDataItem(): DataItem = number.toDataItem()
 }
 
 /**

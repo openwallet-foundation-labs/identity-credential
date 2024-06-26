@@ -122,12 +122,12 @@ class DocumentGenerator
                     mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
+                            signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
                         )
                     ),
                     mapOf(),
                     keyUnlockData
-                ).toDataItem
+                ).toDataItem()
             )
         } else {
             val sharedSecret = secureArea.keyAgreement(
@@ -148,11 +148,11 @@ class DocumentGenerator
                     mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
+                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem()
                         )
                     ),
                     mapOf()
-                ).toDataItem
+                ).toDataItem()
             )
         }
         val deviceAuthType: String

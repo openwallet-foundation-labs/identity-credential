@@ -86,7 +86,7 @@ class SdJwtVcGenerator(
 
         val toBeSigned = "$headerStr.$bodyStr".toByteArray(Charsets.US_ASCII)
         val signature = sign(toBeSigned, issuer)
-        val signatureStr = (signature.r + signature.s).toBase64
+        val signatureStr = (signature.r + signature.s).toBase64()
 
         return SdJwtVerifiableCredential(
             headerStr,

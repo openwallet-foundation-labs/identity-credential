@@ -109,7 +109,7 @@ abstract class SimpleIssuingAuthority(
         fun toCbor(): ByteArray {
             return Cbor.encode(
                 CborMap.builder()
-                    .put("authenticationKey", authenticationKey.toCoseKey().toDataItem)
+                    .put("authenticationKey", authenticationKey.toCoseKey().toDataItem())
                     .put("format", format.name)
                     .put("data", data)
                     .put("deadline", deadline.toEpochMilliseconds())
@@ -176,13 +176,13 @@ abstract class SimpleIssuingAuthority(
                 ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
             }
             val mapBuilder = CborMap.builder()
-                .put("registrationResponse", registrationResponse.toDataItem)
+                .put("registrationResponse", registrationResponse.toDataItem())
                 .put("proofingDeadline", proofingDeadline.toEpochMilliseconds())
                 .put("state", state.ordinal.toLong())
                 .put("collectedEvidence", ceMapBuilder.end().build())
                 .put("credentialRequests", credentialRequestsBuilder.end().build())
             if (documentConfiguration != null) {
-                mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem)
+                mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem())
             }
             return Cbor.encode(mapBuilder.end().build())
         }

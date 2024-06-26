@@ -292,7 +292,7 @@ private fun swTestUnguarded(
             Logger.d(
                 TAG,
                 "Made signature with key without authentication " +
-                        "r=${signature.r.toHex} s=${signature.s.toHex}"
+                        "r=${signature.r.toHex()} s=${signature.s.toHex()}"
             )
             showToast("Signed w/o authn (${t1 - t0})")
         } catch (e: KeyLockedException) {

@@ -28,13 +28,13 @@ class CoseKey(val labels: Map<CoseLabel, DataItem>) {
     /**
      * Encodes the COSE Key as a CBOR data item.
      */
-    val toDataItem: DataItem
-        get() = CborMap.builder().apply {
+    fun toDataItem(): DataItem {
+        return CborMap.builder().apply {
             for ((key, value) in labels) {
-                put(key.toDataItem, value)
+                put(key.toDataItem(), value)
             }
         }.end().build()
-
+    }
 
     /**
      * Gets the public key in the COSE Key as a [EcPublicKey].

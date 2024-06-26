@@ -20,10 +20,10 @@ data class EcPrivateKeyOkp(
 
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
         return CoseKey(mapOf(
-            Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_OKP.toDataItem),
-            Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
-            Pair(Cose.COSE_KEY_PARAM_D.toCoseLabel, d.toDataItem),
-            Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem)) + additionalLabels)
+            Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_OKP.toDataItem()),
+            Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem()),
+            Pair(Cose.COSE_KEY_PARAM_D.toCoseLabel, d.toDataItem()),
+            Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem())) + additionalLabels)
     }
 
     override val publicKey: EcPublicKey

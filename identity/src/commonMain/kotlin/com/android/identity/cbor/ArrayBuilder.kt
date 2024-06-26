@@ -78,7 +78,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: ByteArray) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -88,7 +88,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: String) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -98,7 +98,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Byte) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -108,7 +108,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Short) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -118,7 +118,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Int) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -128,7 +128,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Long) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -138,7 +138,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Boolean) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
     /**
@@ -148,7 +148,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Double) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 
 
@@ -159,6 +159,6 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Float) = apply {
-        add(value.toDataItem)
+        add(value.toDataItem())
     }
 }

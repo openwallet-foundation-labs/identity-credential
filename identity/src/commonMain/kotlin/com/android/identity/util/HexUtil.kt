@@ -48,11 +48,9 @@ object HexUtil {
 /**
  * Extension to encode a [ByteArray] to a string with hexadecimal numbers.
  */
-val ByteArray.toHex: String
-    get() = HexUtil.toHex(this)
+fun ByteArray.toHex(): String = HexUtil.toHex(this)
 
 /**
  * Extension to decode a [ByteArray] from a string with hexadecimal numbers.
  */
-val String.fromHex: ByteArray
-    get() = HexUtil.fromHex(this)
+fun String.fromHex(): ByteArray = HexUtil.fromHex(this)

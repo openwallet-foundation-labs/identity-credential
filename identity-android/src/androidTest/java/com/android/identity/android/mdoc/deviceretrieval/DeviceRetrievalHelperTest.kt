@@ -198,11 +198,11 @@ class DeviceRetrievalHelperTest {
         //
         val protectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertChain(listOf(documentSignerCert)).toDataItem
+            X509CertChain(listOf(documentSignerCert)).toDataItem()
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(
@@ -212,7 +212,7 @@ class DeviceRetrievalHelperTest {
                 Algorithm.ES256,
                 protectedHeaders,
                 unprotectedHeaders
-            ).toDataItem
+            ).toDataItem()
         )
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
             stripIssuerNameSpaces(issuerNameSpaces, null),
@@ -269,7 +269,7 @@ class DeviceRetrievalHelperTest {
         val encodedDeviceEngagement = qrHelper.deviceEngagement
         val eReaderKey = createEcPrivateKey(EcCurve.P256)
         val encodedEReaderKeyPub =
-            encode(eReaderKey.publicKey.toCoseKey(java.util.Map.of()).toDataItem)
+            encode(eReaderKey.publicKey.toCoseKey(java.util.Map.of()).toDataItem())
         val encodedSessionTranscript = encode(
             CborArray.builder()
                 .addTaggedEncodedCbor(encodedDeviceEngagement)
@@ -484,7 +484,7 @@ class DeviceRetrievalHelperTest {
         val encodedDeviceEngagement = qrHelper.deviceEngagement
         val eReaderKey = createEcPrivateKey(EcCurve.P256)
         val encodedEReaderKeyPub =
-            encode(eReaderKey.publicKey.toCoseKey(java.util.Map.of()).toDataItem)
+            encode(eReaderKey.publicKey.toCoseKey(java.util.Map.of()).toDataItem())
         val encodedSessionTranscript = encode(
             CborArray.builder()
                 .addTaggedEncodedCbor(encodedDeviceEngagement)

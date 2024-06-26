@@ -51,17 +51,16 @@ data class DocumentState(
     }
 
     fun toCbor(): ByteArray {
-        return Cbor.encode(toDataItem)
+        return Cbor.encode(toDataItem())
     }
 
-    val toDataItem: DataItem
-        get() {
-            return CborMap.builder()
-                .put("timestamp", timestamp.toEpochMilliseconds())
-                .put("condition", condition.value)
-                .put("numPendingCredentials", numPendingCredentials)
-                .put("numAvailableCredentials", numAvailableCredentials)
-                .end()
-                .build()
-        }
+    fun toDataItem(): DataItem {
+        return CborMap.builder()
+            .put("timestamp", timestamp.toEpochMilliseconds())
+            .put("condition", condition.value)
+            .put("numPendingCredentials", numPendingCredentials)
+            .put("numAvailableCredentials", numAvailableCredentials)
+            .end()
+            .build()
+    }
 }

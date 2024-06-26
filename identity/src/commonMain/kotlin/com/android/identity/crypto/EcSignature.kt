@@ -15,11 +15,12 @@ data class EcSignature(
 ) {
     fun toCoseEncoded() = r + s
 
-    val toDataItem: DataItem
-        get() = CborMap.builder().apply {
+    fun toDataItem(): DataItem {
+        return CborMap.builder().apply {
             put("r", r)
             put("s", s)
         }.end().build()
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

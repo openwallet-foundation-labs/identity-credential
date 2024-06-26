@@ -579,7 +579,7 @@ class AndroidKeystoreSecureArea(
         map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
         map.put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
         map.put("useStrongBox", settings.useStrongBox)
-        map.put("attestation", attestation.toDataItem)
+        map.put("attestation", attestation.toDataItem())
         map.put("curve", settings.ecCurve.coseCurveIdentifier)
         storageEngine.put(PREFIX + alias, Cbor.encode(map.end().build()))
     }

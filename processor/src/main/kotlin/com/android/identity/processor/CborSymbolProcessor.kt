@@ -218,22 +218,22 @@ class CborSymbolProcessor(
                 }
                 "kotlin.Int" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
-                    return "$code.toLong().toDataItem"
+                    return "$code.toLong().toDataItem()"
                 }
 
                 "kotlin.Long", "kotlin.Float", "kotlin.Double", "kotlin.Boolean" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
-                    return "$code.toDataItem"
+                    return "$code.toDataItem()"
                 }
 
                 "kotlinx.datetime.Instant" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_DATETIMESTRING_FUN)
-                    return "$code.toDataItemDateTimeString"
+                    return "$code.toDataItemDateTimeString()"
                 }
 
                 "kotlinx.datetime.LocalDate" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_FULLDATE_FUN)
-                    return "$code.toDataItemFullDate"
+                    return "$code.toDataItemFullDate()"
                 }
 
                 DATA_ITEM_CLASS -> return code
@@ -247,7 +247,7 @@ class CborSymbolProcessor(
                     if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
                         codeBuilder.importFunctionName("toDataItem", declaration.packageName.asString())
                     }
-                    "$code.toDataItem"
+                    "$code.toDataItem()"
                 }
             }
         }
@@ -373,13 +373,12 @@ class CborSymbolProcessor(
 
             generateSerialization(this, classDeclaration)
 
-            line("val $baseName.toDataItem: DataItem")
-            block("get()") {
+            block("fun $baseName.toDataItem(): DataItem") {
                 block("return when (this)") {
                     for (subclass in subclasses) {
                         importQualifiedName(subclass)
                         val subclassName = subclass.simpleName.asString()
-                        line("is $subclassName -> (this as $subclassName).toDataItem")
+                        line("is $subclassName -> (this as $subclassName).toDataItem()")
                     }
                 }
             }
@@ -422,8 +421,7 @@ class CborSymbolProcessor(
 
             var hadMergedMap = false
 
-            line("val $baseName.toDataItem: DataItem")
-            block("get()") {
+            block("fun $baseName.toDataItem(): DataItem") {
                 importQualifiedName(CBOR_MAP_TYPE)
                 line("val builder = CborMap.builder()")
                 if (typeKey != null) {
@@ -586,7 +584,7 @@ class CborSymbolProcessor(
         val baseName = classDeclaration.simpleName.asString()
 
         codeBuilder.block("fun $baseName.toCbor(): ByteArray") {
-            line("return Cbor.encode(toDataItem)")
+            line("return Cbor.encode(toDataItem())")
         }
         codeBuilder.emptyLine()
 

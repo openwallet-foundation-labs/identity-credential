@@ -9,8 +9,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 @OptIn(ExperimentalForeignApi::class)
 actual class X509Cert actual constructor(actual val encodedCertificate: ByteArray) {
-    actual val toDataItem: DataItem
-        get() = Bstr(encodedCertificate)
+
+    actual fun toDataItem(): DataItem = Bstr(encodedCertificate)
 
     @OptIn(ExperimentalEncodingApi::class)
     actual fun toPem(): String {
