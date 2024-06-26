@@ -16,6 +16,7 @@
 package com.android.identity.android.document
 
 import androidx.test.InstrumentationRegistry
+import com.android.identity.android.TestUtil
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
@@ -78,12 +79,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
             null,
             CREDENTIAL_DOMAIN,
             secureArea,
-            AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge)
-                .setUserAuthenticationRequired(
-                    true, (30 * 1000).toLong(),
-                    setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
-                )
-                .build(),
+            AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge).build(),
         )
         Assert.assertFalse(pendingCredential.isCertified)
         val attestation = pendingCredential.attestation as AndroidKeystoreKeyAttestation
@@ -93,10 +89,12 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
             authKeyChallenge,
             parser.attestationChallenge
         )
-        Assert.assertEquals(
-            AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,
-            parser.keymasterSecurityLevel
-        )
+        if (!TestUtil.isRunningOnEmulator) {
+            Assert.assertEquals(
+                AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,
+                parser.keymasterSecurityLevel
+            )
+        }
 
         // Check we can load the document...
         document = documentStore.lookupDocument("testDocument")

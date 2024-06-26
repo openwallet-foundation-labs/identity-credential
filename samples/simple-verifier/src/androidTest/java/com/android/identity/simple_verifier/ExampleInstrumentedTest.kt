@@ -17,6 +17,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        Assert.assertEquals("com.example.simple_verifier", appContext.packageName)
+        Assert.assertEquals("com.android.identity.simple_verifier", appContext.packageName)
     }
 }
