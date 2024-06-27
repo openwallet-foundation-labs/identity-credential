@@ -54,6 +54,7 @@ import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mrtd.MrtdNfc
 import com.android.identity.mrtd.MrtdNfcDataReader
 import com.android.identity.mrtd.MrtdNfcReader
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -760,28 +761,29 @@ fun AusweisView(
             }
         }
         composable(AusweisModel.Route.PIN_ENTRY.route) {
-            val pin = remember { mutableStateOf("") }
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    TextField(value = pin.value, onValueChange = {pin.value = it},
-                        label = { Text(stringResource(R.string.eid_enter_pin)) })
+                    Text(
+                        text = stringResource(R.string.eid_enter_pin),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Button(
-                        enabled = status.value is AusweisModel.WaitingForPin &&
-                                pin.value.matches(Regex("^\\d{6}\$")),  // 6-digit
-                        onClick = {
-                            model.providePin(pin.value)
-                            pin.value = ""
+                    PassphraseEntryField(
+                        constraints = PassphraseConstraints.PIN_SIX_DIGITS,
+                        checkWeakPassphrase = false
+                    ) { passphrase, meetsRequirements, _ ->
+                        if (meetsRequirements) {
+                            model.providePin(passphrase)
                         }
-                    ) {
-                        Text(stringResource(R.string.eid_enter_pin_continue))
                     }
                 }
             }
