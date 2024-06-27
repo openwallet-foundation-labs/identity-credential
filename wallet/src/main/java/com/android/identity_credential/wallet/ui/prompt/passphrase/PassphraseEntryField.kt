@@ -117,7 +117,7 @@ fun PassphraseEntryField(
                 }
 
                 inputText = it
-                calcHintAndMeetsRequirements(inputText, constraints).let {
+                calcHintAndMeetsRequirements(inputText, constraints, checkWeakPassphrase).let {
                     hint = it.first
                     meetsRequirements = it.second
                 }
@@ -192,7 +192,7 @@ fun PassphraseEntryField(
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
 
-        calcHintAndMeetsRequirements(inputText, constraints).let {
+        calcHintAndMeetsRequirements(inputText, constraints, checkWeakPassphrase).let {
             hint = it.first
             meetsRequirements = it.second
         }
@@ -202,6 +202,7 @@ fun PassphraseEntryField(
 private fun calcHintAndMeetsRequirements(
     passphrase: String,
     constraints: PassphraseConstraints,
+    checkWeakPassphrase: Boolean
 ): Pair<String, Boolean> {
     // For a fixed-length passphrase, never give any hints until user has typed it in.
     val isFixedLength = (constraints.minLength == constraints.maxLength)
@@ -221,7 +222,7 @@ private fun calcHintAndMeetsRequirements(
         )
     }
 
-    if (isWeakPassphrase(passphrase)) {
+    if (checkWeakPassphrase && isWeakPassphrase(passphrase)) {
         return Pair(
             if (constraints.requireNumerical)
                 "PIN is weak, please choose another"
