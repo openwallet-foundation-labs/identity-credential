@@ -281,6 +281,7 @@ class CredmanPresentationActivity : FragmentActivity() {
 
     /**
      * Show the Presentment Flow and handle producing the DeviceResponse CBOR bytes.
+     *
      * @param credentialId the int index of [Document] in [DocumentStore]
      * @param dataElements the list of requested data points of a credential
      * @param encodedSessionTranscript CBOR bytes

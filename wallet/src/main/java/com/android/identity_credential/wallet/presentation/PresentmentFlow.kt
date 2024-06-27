@@ -65,7 +65,7 @@ suspend fun showPresentmentFlow(
     documentRequest: DocumentRequest,
     mdocCredential: MdocCredential,
     trustPoint: TrustPoint?,
-    encodedSessionTranscript: ByteArray,
+    encodedSessionTranscript: ByteArray
 ): ByteArray {
     // always show the Consent Prompt first
     showConsentPrompt(
