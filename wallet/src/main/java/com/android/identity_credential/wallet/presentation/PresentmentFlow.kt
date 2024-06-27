@@ -55,8 +55,6 @@ const val TAG = "PresentmentFlow"
  * @param mdocCredential the object containing the [Document] and docType amongst other properties.
  * @param trustPoint if provided, identifies the Verifying party.
  * @param encodedSessionTranscript the bytes of `SessionTranscript` CBOR.
- * @param showConsentPrompt is [true] by default, else if provided [false] then the Consent Prompt
- *      will not be shown.
  * @return the [Document] CBOR bytes, else throws an exception.
  * @throws Exception for incorrect configurations, cannot find credentials or unsuccessful
  *      prompts because user cancelled or wasn't able to authenticate.
@@ -68,21 +66,18 @@ suspend fun showPresentmentFlow(
     mdocCredential: MdocCredential,
     trustPoint: TrustPoint?,
     encodedSessionTranscript: ByteArray,
-    showConsentPrompt: Boolean = true
 ): ByteArray {
 
-    // always show the Consent Prompt first unless specified to not show the Prompt at all
-    if (showConsentPrompt) {
-        showConsentPrompt(
-            activity = activity,
-            documentTypeRepository = walletApp.documentTypeRepository,
-            document = mdocCredential.document,
-            documentRequest = documentRequest,
-            trustPoint = trustPoint
-        ).let { resultSuccess ->
-            // throw exception if user cancelled the Prompt
-            check(resultSuccess) { "[Consent Unsuccessful]" }
-        }
+    // always show the Consent Prompt first
+    showConsentPrompt(
+        activity = activity,
+        documentTypeRepository = walletApp.documentTypeRepository,
+        document = mdocCredential.document,
+        documentRequest = documentRequest,
+        trustPoint = trustPoint
+    ).let { resultSuccess ->
+        // throw exception if user cancelled the Prompt
+        check(resultSuccess) { "[Consent Unsuccessful]" }
     }
 
     // initially null and updated when catching a KeyLockedException in the while-loop below

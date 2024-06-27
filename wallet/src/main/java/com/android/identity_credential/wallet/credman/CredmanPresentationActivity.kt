@@ -32,6 +32,7 @@ import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
@@ -56,7 +57,13 @@ import java.util.StringTokenizer
 import kotlinx.datetime.Clock
 
 
-// using FragmentActivity in order to support androidx.biometric.BiometricPrompt
+/**
+ * Activity that is called from Credential Manager to authenticate the user.
+ * Depending on the protocol that is specified on this Activity's Intent,
+ * a Presentment Flow is initiated and a response JSON is called back as the payload on the Intent.
+ *
+ * Using FragmentActivity in order to support androidx.biometric.BiometricPrompt.
+ */
 class CredmanPresentationActivity : FragmentActivity() {
     companion object {
         private const val TAG = "CredmanPresentationActivity"
@@ -143,52 +150,13 @@ class CredmanPresentationActivity : FragmentActivity() {
                     )
                 }
 
-                lifecycleScope.launch {
-                    val mdocCredential = getMdocCredentialForCredentialId(credentialId)
-                    // show Presentment FLow, skipping consent prompt
-                    val documentCborBytes = showPresentmentFlow(
-                        activity = this@CredmanPresentationActivity,
-                        walletApp = walletApp,
-                        documentRequest = DocumentRequest(dataElements),
-                        mdocCredential = mdocCredential,
-                        trustPoint = null,
-                        encodedSessionTranscript = encodedSessionTranscript,
-                        showConsentPrompt = false
-                    )
-                    // Create ISO DeviceResponse
-                    val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-                    deviceResponseGenerator.addDocument(documentCborBytes)
-                    val deviceResponse = deviceResponseGenerator.generate()
+                showPresentmentFlowAndRespond(
+                    credentialId,
+                    dataElements,
+                    encodedSessionTranscript,
+                    readerPublicKey
+                )
 
-                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
-                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                        readerPublicKey,
-                        deviceResponse,
-                        encodedSessionTranscript
-                    )
-                    val encodedCredentialDocument =
-                        CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
-
-                    // Create the preview response
-                    val responseJson = JSONObject()
-                    responseJson.put(
-                        "token",
-                        Base64.encodeToString(
-                            encodedCredentialDocument,
-                            Base64.NO_WRAP or Base64.URL_SAFE
-                        )
-                    )
-                    val response = responseJson.toString(2)
-
-                    // Send result back to credman
-                    val resultData = Intent()
-                    IntentHelper.setGetCredentialResponse(
-                        resultData,
-                        createGetCredentialResponse(response)
-                    )
-                    setResult(RESULT_OK, resultData)
-                    finish()
-                }
             } else if (protocol == "openid4vp") {
                 val openid4vpRequest = JSONObject(request)
                 val clientID = openid4vpRequest.getString("client_id")
@@ -197,7 +165,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                 Logger.i(TAG, "nonce: $nonceBase64")
                 val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
 
-                val presentationDefinition = openid4vpRequest.getJSONObject("presentation_definition")
+                val presentationDefinition =
+                    openid4vpRequest.getJSONObject("presentation_definition")
                 val inputDescriptors = presentationDefinition.getJSONArray("input_descriptors")
                 if (inputDescriptors.length() != 1) {
                     throw IllegalArgumentException("Only support a single input input_descriptor")
@@ -241,43 +210,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                         Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
                     )
                 }
-                lifecycleScope.launch {
-                    val mdocCredential = getMdocCredentialForCredentialId(credentialId)
-                    val documentCborBytes = showPresentmentFlow(
-                        activity = this@CredmanPresentationActivity,
-                        walletApp = walletApp,
-                        documentRequest = DocumentRequest(dataElements),
-                        mdocCredential = mdocCredential,
-                        trustPoint = null,
-                        encodedSessionTranscript = encodedSessionTranscript,
-                        showConsentPrompt = false
-                    )
-                    // Create ISO DeviceResponse
-                    val deviceResponseGenerator =
-                        DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-                    deviceResponseGenerator.addDocument(documentCborBytes)
-                    val deviceResponse = deviceResponseGenerator.generate()
 
-                    // Create the openid4vp response
-                    val responseJson = JSONObject()
-                    responseJson.put(
-                        "vp_token",
-                        Base64.encodeToString(
-                            deviceResponse,
-                            Base64.NO_WRAP or Base64.URL_SAFE
-                        )
-                    )
-                    val response = responseJson.toString(2)
-
-                    // Send result back to credman
-                    val resultData = Intent()
-                    IntentHelper.setGetCredentialResponse(
-                        resultData,
-                        createGetCredentialResponse(response)
-                    )
-                    setResult(RESULT_OK, resultData)
-                    finish()
-                }
+                showPresentmentFlowAndRespond(credentialId, dataElements, encodedSessionTranscript)
             } else {
                 // Unknown protocol
                 throw IllegalArgumentException("Unknown protocol")
@@ -293,7 +227,88 @@ class CredmanPresentationActivity : FragmentActivity() {
     }
 
     /**
+     * Show the Presentment Flow and handle producing and sending the response.
+     * @param credentialId the int index of [Document] in [DocumentStore]
+     * @param dataElements the list of requested data points of a credential
+     * @param encodedSessionTranscript CBOR bytes
+     * @param readerPublicKey null by default means to generate the response for the 'openid4vp'
+     *      protocol, else if reader key is provided then generate a response for the  'preview'
+     *      protocol.
+     */
+    private fun showPresentmentFlowAndRespond(
+        credentialId: Int,
+        dataElements: List<DocumentRequest.DataElement>,
+        encodedSessionTranscript: ByteArray,
+        readerPublicKey: EcPublicKey? = null
+    ) {
+        lifecycleScope.launch {
+            val mdocCredential = getMdocCredentialForCredentialId(credentialId)
+            // show Presentment FLow, skipping consent prompt
+            val documentCborBytes = showPresentmentFlow(
+                activity = this@CredmanPresentationActivity,
+                walletApp = walletApp,
+                documentRequest = DocumentRequest(dataElements),
+                mdocCredential = mdocCredential,
+                // TODO: Need to extend TrustManager with a verify() variants which takes a domain or appId
+                trustPoint = null,
+                encodedSessionTranscript = encodedSessionTranscript,
+            )
+            // Create ISO DeviceResponse
+            val deviceResponseGenerator =
+                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+            deviceResponseGenerator.addDocument(documentCborBytes)
+            val deviceResponse = deviceResponseGenerator.generate()
+
+            // openid4vp response
+            val response = if (readerPublicKey == null) {
+                val responseJson = JSONObject()
+                responseJson.put(
+                    "vp_token",
+                    Base64.encodeToString(
+                        deviceResponse,
+                        Base64.NO_WRAP or Base64.URL_SAFE
+                    )
+                )
+                responseJson.toString(2)
+            } else {
+                // The Preview protocol HPKE encrypts the response.
+                val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
+                    Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                    readerPublicKey,
+                    deviceResponse,
+                    encodedSessionTranscript
+                )
+                val encodedCredentialDocument =
+                    CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
+
+                // Create the preview response
+                val responseJson = JSONObject()
+
+                responseJson.put(
+                    "token",
+                    Base64.encodeToString(
+                        encodedCredentialDocument,
+                        Base64.NO_WRAP or Base64.URL_SAFE
+                    )
+                )
+                responseJson.toString(2)
+            }
+
+            // Send result back to credman
+            val resultData = Intent()
+            IntentHelper.setGetCredentialResponse(
+                resultData,
+                createGetCredentialResponse(response)
+            )
+            setResult(RESULT_OK, resultData)
+            finish()
+        }
+    }
+
+
+    /**
      * Return the MdocCredential that has the given Int credentialId.
+     *
      * @param credentialId the index of the credential in the document store.
      * @return the [MdocCredential] object.
      */
