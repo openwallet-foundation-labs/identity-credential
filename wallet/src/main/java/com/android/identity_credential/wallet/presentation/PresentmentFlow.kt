@@ -67,7 +67,6 @@ suspend fun showPresentmentFlow(
     trustPoint: TrustPoint?,
     encodedSessionTranscript: ByteArray,
 ): ByteArray {
-
     // always show the Consent Prompt first
     showConsentPrompt(
         activity = activity,
