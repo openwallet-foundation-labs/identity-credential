@@ -40,6 +40,7 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import java.io.File
 import kotlinx.datetime.Clock
+import kotlinx.io.files.Path
 
 class TransferHelper private constructor(private val context: Context) {
 
@@ -99,9 +100,9 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     init {
-        val storageDir = File(context.noBackupFilesDir, "identity")
+        val storagePath = Path(context.noBackupFilesDir.path, "identity.bin")
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        storageEngine = AndroidStorageEngine.Builder(context, storagePath).build()
         secureAreaRepository = SecureAreaRepository();
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
         secureAreaRepository.addImplementation(androidKeystoreSecureArea);

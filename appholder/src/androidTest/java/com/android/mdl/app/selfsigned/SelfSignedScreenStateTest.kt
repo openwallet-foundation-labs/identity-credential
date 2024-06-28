@@ -14,6 +14,7 @@ import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.AddSelfSignedViewModel
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.ProvisioningUtil
+import kotlinx.io.files.Path
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -29,8 +30,8 @@ class SelfSignedScreenStateTest {
     fun setUp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         repository = ProvisioningUtil.getInstance(context).secureAreaRepository
-        val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
-        val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        val storageFile = Path(PreferencesHelper.getKeystoreBackedStorageLocation(context).path)
+        val storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
         val androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine)
         val softwareSecureArea = SoftwareSecureArea(storageEngine)
         repository.addImplementation(androidKeystoreSecureArea)

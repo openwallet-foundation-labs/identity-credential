@@ -51,6 +51,7 @@ kotlin {
             implementation(project(":identity"))
             implementation(project(":identity-mdoc"))
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.io.core)
         }
     }
 }

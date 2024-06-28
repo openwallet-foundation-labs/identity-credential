@@ -80,8 +80,8 @@ class HolderApp: Application() {
             context: Context,
             secureAreaRepository: SecureAreaRepository
         ): DocumentStore {
-            val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
-            val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+            val storageFile = Path(PreferencesHelper.getKeystoreBackedStorageLocation(context).path)
+            val storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
 
             val androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine)
             val softwareSecureArea = SoftwareSecureArea(storageEngine)

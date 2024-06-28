@@ -47,6 +47,7 @@ import java.util.Set;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.UnicodeString;
+import kotlinx.io.files.Path;
 
 @SuppressWarnings("deprecation")
 public class MigrateFromKeystoreICStoreTest {
@@ -62,8 +63,8 @@ public class MigrateFromKeystoreICStoreTest {
     @Test
     public void testMigrateToCredentialStore() throws Exception {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
-        File storageDir = new File(context.getDataDir(), "ic-testing");
-        StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
+        Path storageFile = new Path(new File(context.getDataDir(), "testdata.bin"));
+        StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageFile).build();
         AndroidKeystoreSecureArea aksSecureArea = new AndroidKeystoreSecureArea(context, storageEngine);
         IdentityCredentialStore icStore = Utility.getIdentityCredentialStore(context);
 

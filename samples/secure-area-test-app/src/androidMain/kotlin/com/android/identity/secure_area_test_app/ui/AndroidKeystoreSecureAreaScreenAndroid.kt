@@ -67,7 +67,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import java.io.File
+import kotlinx.io.files.Path
 import kotlin.time.Duration.Companion.days
 
 private val TAG = "AndroidKeystoreSecureAreaScreen"
@@ -75,7 +75,7 @@ private val TAG = "AndroidKeystoreSecureAreaScreen"
 private val androidKeystoreStorage: AndroidStorageEngine by lazy { 
     AndroidStorageEngine.Builder(
         MainActivity.appContext,
-        File(MainActivity.appContext.dataDir, "ic-testing")
+        Path(MainActivity.appContext.dataDir.path, "testdata.bin")
     ).build()
 }
 
