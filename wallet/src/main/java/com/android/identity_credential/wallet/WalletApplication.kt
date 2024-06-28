@@ -50,6 +50,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.io.files.Path
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.Security
@@ -124,9 +125,9 @@ class WalletApplication : Application() {
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
 
-        // secure storage properties
-        val storageDir = File(applicationContext.noBackupFilesDir, "identity")
-        val storageEngine = AndroidStorageEngine.Builder(applicationContext, storageDir).build()
+        // init storage
+        val storageFile = Path(applicationContext.noBackupFilesDir.path, "identity.bin")
+        val storageEngine = AndroidStorageEngine.Builder(applicationContext, storageFile).build()
 
         // init AndroidKeyStoreSecureArea
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(applicationContext, storageEngine)

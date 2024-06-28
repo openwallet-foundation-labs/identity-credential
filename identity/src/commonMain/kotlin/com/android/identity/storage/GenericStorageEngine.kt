@@ -17,6 +17,7 @@ package com.android.identity.storage
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import com.android.identity.util.Logger
 import kotlinx.io.buffered
 import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
@@ -26,9 +27,27 @@ import kotlinx.io.readByteArray
 /**
  * An storage engine implemented by storing data in a file.
  *
- * @param storageFile the directory to store the data in.
+ * @param storageFile the file to store the data in.
  */
-class GenericStorageEngine(private val storageFile: Path) : StorageEngine {
+open class GenericStorageEngine(
+    private val storageFile: Path,
+) : StorageEngine {
+
+    companion object {
+        private const val TAG = "GenericStorageEngine"
+    }
+
+    /**
+     * Function to transform data when loading or saving data.
+     *
+     * This can be used for encryption/decryption. By defualt this is the identity function.
+     *
+     * @param data the data to transform.
+     * @param isLoading set to `true` when loading data, `false` when saving data.
+     */
+    open fun transform(data: ByteArray, isLoading: Boolean): ByteArray {
+        return data
+    }
 
     private var data: MutableMap<String, ByteArray>? = null
 
@@ -38,12 +57,17 @@ class GenericStorageEngine(private val storageFile: Path) : StorageEngine {
         }
         val path = Path(storageFile)
         try {
-            val encodedData = SystemFileSystem.source(path).buffered().readByteArray()
+            val nonTransformedData = SystemFileSystem.source(path).buffered().readByteArray()
+            val encodedData = transform(nonTransformedData, true)
             data = mutableMapOf()
             if (encodedData.size > 0) {
-                val map = Cbor.decode(encodedData).asMap
-                for ((key, value) in map) {
-                    data!!.put(key.asTstr, value.asBstr)
+                try {
+                    val map = Cbor.decode(encodedData).asMap
+                    for ((key, value) in map) {
+                        data!!.put(key.asTstr, value.asBstr)
+                    }
+                } catch (e: Throwable) {
+                    Logger.w(TAG, "Error decoding data at $path - treating as zeroed data", e)
                 }
             }
         } catch (e: FileNotFoundException) {
@@ -60,10 +84,13 @@ class GenericStorageEngine(private val storageFile: Path) : StorageEngine {
         for ((key, value) in data!!) {
             builder.put(key, value)
         }
-        val newPath = Path(storageFile.name + ".tmp")
+        val nonTransformedData = Cbor.encode(builder.end().build())
+        val transformedData = transform(nonTransformedData, false)
+        // TODO: would be better if something like mkstemp(3) was available... but it's not.
+        val newPath = Path("$storageFile.tmp")
         val path = Path(storageFile)
         val sink = SystemFileSystem.sink(newPath).buffered()
-        sink.write(Cbor.encode(builder.end().build()))
+        sink.write(transformedData)
         sink.flush()
         sink.close()
         SystemFileSystem.atomicMove(newPath, path)

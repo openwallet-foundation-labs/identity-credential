@@ -20,7 +20,6 @@ import com.android.identity.android.TestUtil
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.credential.SecureAreaBoundCredential
@@ -31,10 +30,11 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.AndroidAttestationExtensionParser
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.io.File
 
 // See DocumentStoreTest in non-Android tests for main tests for DocumentStore. These
 // tests are just for the Android-specific bits including attestation.
@@ -51,9 +51,11 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
     @Before
     fun setup() {
+
         val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        val storageFile = Path(context.dataDir.path, "testdata.bin")
+        SystemFileSystem.delete(storageFile, false)
+        storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
         secureAreaRepository = SecureAreaRepository()
         secureArea = AndroidKeystoreSecureArea(context, storageEngine)
         secureAreaRepository.addImplementation(secureArea)
