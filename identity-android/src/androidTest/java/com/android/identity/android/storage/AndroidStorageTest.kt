@@ -19,7 +19,12 @@ import android.util.AtomicFile
 import androidx.test.InstrumentationRegistry
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.toHex
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readByteArray
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.net.URLEncoder
@@ -27,11 +32,18 @@ import java.nio.charset.StandardCharsets
 import java.util.Arrays
 
 class AndroidStorageTest {
+
+    @Before
+    fun setup() {
+        val context = InstrumentationRegistry.getTargetContext()
+        SystemFileSystem.delete(Path(context.dataDir.path, "testdata.bin"), false)
+    }
+
     @Test
     fun testStorageImplementation() {
         val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storage: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        val storageFile = Path(context.dataDir.path, "testdata.bin")
+        val storage = AndroidStorageEngine.Builder(context, storageFile).build()
         storage.deleteAll()
         Assert.assertEquals(0, storage.enumerate().size.toLong())
         Assert.assertNull(storage["foo"])
@@ -57,8 +69,8 @@ class AndroidStorageTest {
     @Test
     fun testPersistence() {
         val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        var storage: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        val storageFile = Path(context.dataDir.path, "testdata.bin")
+        val storage = AndroidStorageEngine.Builder(context, storageFile).build()
         storage.deleteAll()
         Assert.assertEquals(0, storage.enumerate().size.toLong())
         Assert.assertNull(storage["foo"])
@@ -67,59 +79,55 @@ class AndroidStorageTest {
         Assert.assertArrayEquals(storage["foo"], data)
 
         // Create a new StorageEngine instance and check that data is still there...
-        storage = AndroidStorageEngine.Builder(context, storageDir).build()
-        Assert.assertArrayEquals(storage["foo"], data)
+        val storage2 = AndroidStorageEngine.Builder(context, storageFile).build()
+        Assert.assertArrayEquals(storage2["foo"], data)
     }
 
     @Test
     fun testEncryption() {
         val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
+        val storageFile = Path(context.dataDir.path, "testdata.bin")
         val data = "xyz123".toByteArray(StandardCharsets.UTF_8)
 
         // First try with a storage engine using encryption... we should not be able
         // to find the data in what is saved to disk.
-        var storage: StorageEngine = AndroidStorageEngine.Builder(context, storageDir)
+        val storage = AndroidStorageEngine.Builder(context, storageFile)
             .setUseEncryption(true)
             .build()
         storage.deleteAll()
         storage.put("foo", data)
-        var targetFile = File(storageDir, PREFIX + URLEncoder.encode("foo", "UTF-8"))
-        var fileContents = AtomicFile(targetFile).readFully()
+        val fileContents = SystemFileSystem.source(storageFile).buffered().readByteArray()
         Assert.assertEquals(-1, (fileContents.toHex()).indexOf(data.toHex()).toLong())
 
-        // Try again without encryption. The data should start at offset 4.
-        storage = AndroidStorageEngine.Builder(context, storageDir)
+        // Try again without encryption. The data should start at offset 20 which is
+        // an implementation detail of how [GenericStorageEngine] stores the data.
+        val storageWithoutEncryption = AndroidStorageEngine.Builder(context, storageFile)
             .setUseEncryption(false)
             .build()
-        storage.deleteAll()
-        storage.put("foo", data)
-        targetFile = File(storageDir, PREFIX + URLEncoder.encode("foo", "UTF-8"))
-        fileContents = AtomicFile(targetFile).readFully()
-        Assert.assertArrayEquals(data, Arrays.copyOfRange(fileContents, 4, fileContents.size))
+        storageWithoutEncryption.deleteAll()
+        storageWithoutEncryption.put("foo", data)
+        val fileContentsWithoutEncryption = SystemFileSystem.source(storageFile).buffered().readByteArray()
+        val idx = (fileContentsWithoutEncryption.toHex()).indexOf(data.toHex())
+        Assert.assertEquals(20, idx)
     }
 
     @Test
     fun testEncryptionLargeValue() {
         val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
+        val storageFile = Path(context.dataDir.path, "testdata.bin")
 
         // Store 2 MiB of data...
-        val data = ByteArray(2 * 1024 * 1024)
+        val data = ByteArray(2*1024*1024)
         for (n in data.indices) {
             val value = n * 3 + n + n * n
             data[n] = (value and 0xff).toByte()
         }
-        val storage: StorageEngine = AndroidStorageEngine.Builder(context, storageDir)
+        val storage: StorageEngine = AndroidStorageEngine.Builder(context, storageFile)
             .setUseEncryption(true)
             .build()
         storage.deleteAll()
         storage.put("foo", data)
         val retrievedData = storage["foo"]
         Assert.assertArrayEquals(retrievedData, data)
-    }
-
-    companion object {
-        private const val PREFIX = "IC_AndroidStorageEngine_"
     }
 }

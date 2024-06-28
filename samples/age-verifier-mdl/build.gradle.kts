@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":identity-android"))
 
     implementation(libs.kotlinx.datetime)
+    implementation(libs.kotlinx.io.core)
 
     implementation(compose.runtime)
     implementation(compose.foundation)

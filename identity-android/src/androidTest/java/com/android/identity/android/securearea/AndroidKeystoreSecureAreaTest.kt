@@ -30,12 +30,10 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.crypto.toEcPublicKey
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.storage.StorageEngine
 import com.android.identity.util.AndroidAttestationExtensionParser
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
@@ -43,7 +41,6 @@ import org.junit.Assume
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
-import java.io.File
 import java.io.IOException
 import java.security.InvalidAlgorithmParameterException
 import java.security.KeyPairGenerator
@@ -55,22 +52,30 @@ import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 
 class AndroidKeystoreSecureAreaTest {
+
+    private lateinit var ks: AndroidKeystoreSecureArea
+
     @Before
     fun setup() {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
+
+
+        val context = InstrumentationRegistry.getTargetContext()
+        val storageFile = Path(context.dataDir.path, "testdata.bin")
+        SystemFileSystem.delete(storageFile, false)
+        val storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
+        ks = AndroidKeystoreSecureArea(context, storageEngine)
     }
 
     @Test
     fun testEcKeyDeletion() {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val settings = AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3)).build()
 
         // First create the key...
@@ -106,10 +111,6 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     fun testEcKeySigningHelper(useStrongBox: Boolean) {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
@@ -157,10 +158,6 @@ class AndroidKeystoreSecureAreaTest {
 
     fun testEcKeySigningAuthBoundHelper(useStrongBox: Boolean) {
         Assume.assumeFalse(TestUtil.isRunningOnEmulator)
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
@@ -202,10 +199,6 @@ class AndroidKeystoreSecureAreaTest {
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val type = setOf(UserAuthenticationType.LSKF)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
@@ -237,10 +230,6 @@ class AndroidKeystoreSecureAreaTest {
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val type = setOf(UserAuthenticationType.BIOMETRIC)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
@@ -271,10 +260,6 @@ class AndroidKeystoreSecureAreaTest {
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val type = setOf<UserAuthenticationType>()
         val challenge = byteArrayOf(1, 2, 3)
         try {
@@ -296,10 +281,6 @@ class AndroidKeystoreSecureAreaTest {
         // Also note it's not available on StrongBox.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setEcCurve(EcCurve.ED25519)
@@ -336,13 +317,9 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testEcKeySigningWithKeyWithoutCorrectPurpose() {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
-
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
+        val context = InstrumentationRegistry.getTargetContext()
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
@@ -392,10 +369,6 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     fun testEcdhHelper(useStrongBox: Boolean) {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
         ks.createKey(
             "testKey",
@@ -441,10 +414,6 @@ class AndroidKeystoreSecureAreaTest {
         // Also note it's not available on StrongBox.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val otherKey = Crypto.createEcPrivateKey(EcCurve.X25519)
         ks.createKey(
             "testKey",
@@ -508,10 +477,6 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     fun testEcdhAndSigningHelper(useStrongBox: Boolean) {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
         ks.createKey(
             "testKey",
@@ -565,13 +530,9 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testEcdhWithoutCorrectPurpose() {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
-
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
+        val context = InstrumentationRegistry.getTargetContext()
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
@@ -601,10 +562,6 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     fun testEcKeyCreationOverridesExistingAlias() {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge).build()
         ks.createKey("testKey", settings)
@@ -642,8 +599,7 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testAttestation() {
-        val context = InstrumentationRegistry.getTargetContext()
-        testAttestationHelper(context, false)
+        testAttestationHelper(false)
     }
 
     @Test
@@ -651,14 +607,11 @@ class AndroidKeystoreSecureAreaTest {
     fun testAttestationStrongBox() {
         val context = InstrumentationRegistry.getTargetContext()
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE))
-        testAttestationHelper(context, true)
+        testAttestationHelper(true)
     }
 
     @Throws(IOException::class)
-    fun testAttestationHelper(context: Context, useStrongBox: Boolean) {
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
+    fun testAttestationHelper(useStrongBox: Boolean) {
         val validFromCalendar: Calendar = GregorianCalendar(TimeZone.getTimeZone("UTC"))
         validFromCalendar[2023, 5, 15, 0, 0] = 0
         val validUntilCalendar: Calendar = GregorianCalendar(TimeZone.getTimeZone("UTC"))
@@ -767,9 +720,6 @@ class AndroidKeystoreSecureAreaTest {
         } catch (e: CertificateException) {
             throw IllegalStateException("Error creating attest key", e)
         }
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         val challenge = byteArrayOf(4, 5, 6, 7)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setAttestKeyAlias(attestKeyAlias)
@@ -824,10 +774,6 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testUsingGenericCreateKeySettings() {
-        val context = InstrumentationRegistry.getTargetContext()
-        val storageDir = File(context.dataDir, "ic-testing")
-        val storageEngine: StorageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
-        val ks = AndroidKeystoreSecureArea(context, storageEngine)
         // Challenge is always empty when using the generic CreateKeySettings
         val challenge = byteArrayOf()
         ks.createKey("testKey", CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256))

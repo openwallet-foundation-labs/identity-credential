@@ -19,51 +19,60 @@ import android.content.Context
 import android.os.storage.StorageManager
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.util.AtomicFile
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
-import com.android.identity.storage.StorageEngine
+import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteStringBuilder
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.UnsupportedEncodingException
-import java.net.URLDecoder
-import java.net.URLEncoder
 import java.security.KeyStore
-import java.util.Arrays
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlinx.io.files.Path
 
 /**
  * A storage engine on Android.
  *
- * Values in the key/value store is optionally stored encrypted on disk, using a hardware-backed
- * symmetric encryption key and AES-128 GCM.
+ * This is like `GenericStorageEngine` but the backing file is optionally encrypted at rest,
+ * using a hardware-backed symmetric encryption key and AES-128 GCM.
  *
- * Each file name in the given directory will be prefixed with `IC_AndroidStorageEngine_`.
+ * Note that data is stored in a way so it's still available to the application even if when
+ * encryption is toggled on and off.
  */
 class AndroidStorageEngine internal constructor(
     private val context: Context,
-    private val storageDirectory: File,
+    private val storageFile: Path,
     private val useEncryption: Boolean
-) : StorageEngine {
-    private fun getTargetFile(key: String): File {
-        return try {
-            val fileName = PREFIX + URLEncoder.encode(key, "UTF-8")
-            File(storageDirectory, fileName)
-        } catch (e: UnsupportedEncodingException) {
-            throw IllegalStateException(e)
+) : GenericStorageEngine(Path(storageFile)) {
+
+    private val secretKey by lazy { ensureSecretKey() }
+
+    override fun transform(data: ByteArray, isLoading: Boolean): ByteArray {
+        if (isLoading) {
+            check(data.size >= MAGIC_SIZE) { "File too short for magic" }
+            val magic = data.sliceArray(IntRange(0, MAGIC_SIZE - 1))
+            val dataAfterMagic = data.sliceArray(IntRange(MAGIC_SIZE, data.size - 1))
+            if (magic contentEquals MAGIC_ENCRYPTED) {
+                return decrypt(secretKey, dataAfterMagic)
+            } else if (magic contentEquals MAGIC_NOT_ENCRYPTED) {
+                return dataAfterMagic
+            } else {
+                throw IllegalStateException("Unexpected magic ${magic.toHex()}")
+            }
+        } else {
+            if (useEncryption) {
+                return MAGIC_ENCRYPTED + encrypt(secretKey, data)
+            } else {
+                return MAGIC_NOT_ENCRYPTED + data
+            }
         }
     }
 
     private fun ensureSecretKey(): SecretKey {
-        val keyAlias = PREFIX + "_KeyFor_" + storageDirectory
+        val keyAlias = PREFIX + "_KeyFor_" + storageFile.name
         return try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
@@ -88,106 +97,24 @@ class AndroidStorageEngine internal constructor(
         }
     }
 
-    override fun get(key: String): ByteArray? {
-        val file = AtomicFile(getTargetFile(key))
-        return try {
-            val data = file.readFully()
-            check(data.size >= MAGIC_SIZE) { "File too short for magic" }
-            val magic = Arrays.copyOfRange(data, 0, MAGIC_SIZE)
-            if (Arrays.equals(magic, MAGIC_ENCRYPTED)) {
-                decrypt(ensureSecretKey(), Arrays.copyOfRange(data, MAGIC_SIZE, data.size))
-            } else if (Arrays.equals(magic, MAGIC_NOT_ENCRYPTED)) {
-                Arrays.copyOfRange(data, MAGIC_SIZE, data.size)
-            } else {
-                throw IllegalStateException("Unexpected magic ${magic.toHex()}")
-            }
-        } catch (e: FileNotFoundException) {
-            null
-        } catch (e: IOException) {
-            throw IllegalStateException("Unexpected exception", e)
-        }
-    }
-
-    override fun put(key: String, data: ByteArray) {
-        // AtomicFile isn't thread-safe (!) so need to serialize access when writing data.
-        synchronized(this) {
-            val file = AtomicFile(getTargetFile(key))
-            var outputStream: FileOutputStream? = null
-            try {
-                outputStream = file.startWrite()
-                if (useEncryption) {
-                    outputStream.write(MAGIC_ENCRYPTED)
-                    outputStream.write(encrypt(ensureSecretKey(), data))
-                } else {
-                    outputStream.write(MAGIC_NOT_ENCRYPTED)
-                    outputStream.write(data)
-                }
-                file.finishWrite(outputStream)
-            } catch (e: IOException) {
-                if (outputStream != null) {
-                    file.failWrite(outputStream)
-                }
-                throw IllegalStateException("Error writing data", e)
-            }
-        }
-    }
-
-    override fun delete(key: String) {
-        val file = AtomicFile(getTargetFile(key))
-        file.delete()
-    }
-
-    override fun deleteAll() {
-        val fileList = storageDirectory.listFiles() ?: return
-        for (file in fileList) {
-            val name = file.name
-            if (!name.startsWith(PREFIX)) {
-                continue
-            }
-            file.delete()
-        }
-    }
-
-    override fun enumerate(): Collection<String> {
-        val ret = ArrayList<String>()
-        val fileList = storageDirectory.listFiles()
-        if (fileList != null) {
-            for (file in fileList) {
-                val name = file.name
-                if (!name.startsWith(PREFIX)) {
-                    continue
-                }
-                try {
-                    val decodedName = URLDecoder.decode(name.substring(PREFIX.length), "UTF-8")
-                    ret.add(decodedName)
-                } catch (e: UnsupportedEncodingException) {
-                    throw IllegalStateException(e)
-                }
-            }
-        }
-        return ret
-    }
-
     /**
      * A builder for [AndroidStorageEngine].
      *
      * @param context application context.
-     * @param storageDirectory the directory to store data files in.
+     * @param storagePath the file to store data in.
      */
     class Builder(
         private val context: Context,
-        private val storageDirectory: File
+        private val storageFile: Path
     ) {
         private var useEncryption =
             !((context.getSystemService(StorageManager::class.java) as StorageManager)
-                .isEncrypted(storageDirectory))
+                .isEncrypted(File(storageFile.toString())))
 
         /**
-         * Sets whether to encrypt the values stored on disk.
+         * Sets whether to encrypt the backing file on disk.
          *
-         * Note that keys are not encrypted, only values.
-         *
-         * By default this is set to `true` only if the given directory to store data files in
+         * By default this is set to `true` only if the given file to store data files in
          * isn't encrypted (determined using [StorageManager.isEncrypted]). All Android
          * devices launching with Android 10 or later has an encrypted data partition meaning
          * that the encryption of values won't be on by default for such devices.
@@ -205,19 +132,19 @@ class AndroidStorageEngine internal constructor(
          * @return a [AndroidStorageEngine].
          */
         fun build(): AndroidStorageEngine {
-            return AndroidStorageEngine(context, storageDirectory, useEncryption)
+            return AndroidStorageEngine(context, storageFile, useEncryption)
         }
     }
 
     companion object {
-        private const val PREFIX = "IC_AndroidStorageEngine_"
-
         // We prefix the data stored with a magic marker so we know whether it needs to be
         // decrypted or not.
         //
         private const val MAGIC_SIZE = 4
-        private val MAGIC_ENCRYPTED = "Ienc".toByteArray()
-        private val MAGIC_NOT_ENCRYPTED = "Iraw".toByteArray()
+        private val MAGIC_ENCRYPTED = "Ienc".encodeToByteArray()
+        private val MAGIC_NOT_ENCRYPTED = "Iraw".encodeToByteArray()
+
+        private const val PREFIX = "IC_AndroidStorageEngine_"
 
         // Because some older Android versions have a buggy Android Keystore where encryption
         // only works with small amounts of data (b/234563696) chop the cleartext into smaller

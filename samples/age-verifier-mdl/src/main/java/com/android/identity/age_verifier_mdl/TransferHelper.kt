@@ -22,6 +22,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import kotlinx.io.files.Path
 import java.io.File
 import java.util.OptionalLong
 
@@ -201,8 +202,8 @@ class TransferHelper private constructor(
 
     init {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        val storageDir = File(context.noBackupFilesDir, "identity")
-        storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        val storageFile = Path(context.noBackupFilesDir.path, "identity.bin")
+        storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
         state.value = State.IDLE
 
