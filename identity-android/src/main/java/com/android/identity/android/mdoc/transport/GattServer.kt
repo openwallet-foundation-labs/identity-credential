@@ -432,7 +432,12 @@ internal class GattServer(
         }
         val chunk = writingQueue.poll() ?: return
         if (chunk.size == 0) {
-            Logger.d(TAG, "Chunk is length 0, shutting down GattServer")
+            Logger.d(TAG, "Chunk is length 0, shutting down GattServer in 1000ms")
+            // TODO: On some devices we lose messages already sent if we don't have a delay like
+            //  this. Need to properly investigate if this is a problem in our stack or the
+            //  underlying BLE subsystem.
+            Thread.sleep(1000)
+            Logger.d(TAG, "Shutting down GattServer now")
             try {
                 if (currentConnection != null) {
                     gattServer!!.cancelConnection(currentConnection)
