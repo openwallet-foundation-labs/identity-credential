@@ -342,6 +342,7 @@ class PresentationActivity : FragmentActivity() {
                 DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
             sendResponseToDevice(deviceResponseGenerator.generate())
         }
+        state.value = State.NOT_CONNECTED
         deviceRetrievalHelper?.disconnect()
         deviceRetrievalHelper = null
         transport = null
