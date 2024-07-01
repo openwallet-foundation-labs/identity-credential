@@ -7,6 +7,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.issuance.proofing.ProofingGraph.Node
@@ -118,6 +119,20 @@ class ProofingGraphBuilder {
                 noAuthentication = map[choices.noAuthenticationGraph]!!
             )
         }
+    }
+
+    /** Sends [EvidenceRequestSelfieVideo]. */
+    fun createSelfieRequest(id: String) {
+        // For now, the list of poses is hardcoded here. In the future, this may come from the
+        // issuing authority.
+        val evidenceRequest = EvidenceRequestSelfieVideo(
+            listOf(
+                EvidenceRequestSelfieVideo.Poses.FRONT,
+                EvidenceRequestSelfieVideo.Poses.TILT_HEAD_UP,
+                EvidenceRequestSelfieVideo.Poses.TILT_HEAD_DOWN
+            )
+        )
+        chain.add { followUp -> ProofingGraph.SimpleNode(id, followUp, evidenceRequest) }
     }
 
     fun eId(id: String, optionalComponents: List<String> = listOf()) {
