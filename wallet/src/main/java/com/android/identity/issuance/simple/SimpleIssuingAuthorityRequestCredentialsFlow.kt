@@ -13,8 +13,8 @@ class SimpleIssuingAuthorityRequestCredentialsFlow(
 ) : RequestCredentialsFlow {
     lateinit var format: CredentialFormat
 
-    override suspend fun getCredentialConfiguration(formatName: String): CredentialConfiguration {
-        this.format = CredentialFormat.valueOf(formatName)
+    override suspend fun getCredentialConfiguration(format: CredentialFormat): CredentialConfiguration {
+        this.format = format
         return credentialConfiguration
     }
 

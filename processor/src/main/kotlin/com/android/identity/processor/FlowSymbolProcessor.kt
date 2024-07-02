@@ -11,6 +11,7 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSFile
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 
@@ -63,45 +64,33 @@ class FlowSymbolProcessor(
     }
 
     private fun processStateClass(stateClass: KSClassDeclaration) {
-        if (stateClass.isAbstract()) {
-            // Don't generate anything for abstract state classes
-            return
-        }
+        val isAbstract = stateClass.isAbstract()
         val annotation = findAnnotation(stateClass, ANNOTATION_STATE)
         val path = getPathFromStateType(stateClass)
         val creatable = getBooleanArgument(annotation, "creatable", false)
         val flowInterface = getClassArgument(annotation, "flowInterface")
-        val notificationType = if (flowInterface == null) null else notificationType(flowInterface)
-        val flowInterfaceName = getFlowInterfaceName(stateClass, annotation)!!
-        val joins = mutableMapOf<String, String>()  // interface to path
-        val operations = mutableListOf<FlowOperationInfo>()
-        val companionClass = CborSymbolProcessor.getCompanion(stateClass)
-        if (companionClass == null) {
-            logger.error("Companion object required", stateClass)
+        if (flowInterface == null) {
+            logger.error("flowInterface must be specified", annotation)
             return
         }
+        val notificationType = notificationType(flowInterface)
+        val joins = mutableMapOf<String, String>()  // interface to path
+        val operations = mutableListOf<FlowOperationInfo>()
 
         collectFlowJoins(stateClass, joins, operations)
         collectFlowMethods(stateClass, joins, operations)
 
-        val lastDot = flowInterfaceName.lastIndexOf('.')
-        val interfacePackage = flowInterfaceName.substring(0, lastDot)
-        val interfaceName = flowInterfaceName.substring(lastDot + 1)
         val flowInfo = FlowInterfaceInfo(
-            path, stateClass, interfacePackage, interfaceName, notificationType, operations.toList()
-        )
+            path, stateClass, flowInterface, notificationType, operations.toList())
 
-        if (flowInterface == null) {
-            val flowImplName = getStringArgument(
-                annotation, "flowImplementationName", flowInterfaceName + "Impl"
-            )
-            val containingFile = stateClass.containingFile!!
-            generateFlowInterface(flowInfo)
-            generateFlowImplementation(
-                containingFile, flowInterfaceName, interfaceName, null, flowImplName, operations
-            )
+        if (checkTypes(flowInfo) && !stateClass.isAbstract()) {
+            val companionClass = CborSymbolProcessor.getCompanion(stateClass)
+            if (companionClass == null) {
+                logger.error("Companion object required for non-abstract flow state classes", stateClass)
+            } else {
+                generateFlowRegistration(creatable, flowInfo)
+            }
         }
-        generateFlowRegistration(creatable, flowInfo)
     }
 
     private fun processFlowInterface(flowClass: KSClassDeclaration) {
@@ -135,7 +124,7 @@ class FlowSymbolProcessor(
             val methodPath = getStringArgument(methodAnnotation, "path", methodName)
             operations.add(
                 FlowOperationInfo(
-                    false, methodPath, methodName, parameters, type, clientTypeInfo
+                    function, false, methodPath, methodName, parameters, type, clientTypeInfo
                 )
             )
         }
@@ -255,7 +244,7 @@ class FlowSymbolProcessor(
                 joins[typeInfo.qualifiedInterfaceName] = methodPath
                 operations.add(
                     FlowOperationInfo(
-                        true, methodPath, methodName, listOf(
+                        function, true, methodPath, methodName, listOf(
                             FlowOperationParameterInfo("joiningFlow", typeInfo, type)
                         ), null, null
                     )
@@ -308,33 +297,80 @@ class FlowSymbolProcessor(
             val methodPath = getStringArgument(methodAnnotation, "path", methodName)
             operations.add(
                 FlowOperationInfo(
-                    false, methodPath, methodName, parameters, type, clientTypeInfo
+                    function, false, methodPath, methodName, parameters, type, clientTypeInfo
                 )
             )
         }
     }
 
-    private fun generateFlowInterface(flowInfo: FlowInterfaceInfo) {
-        with(CodeBuilder()) {
-            importQualifiedName(CborSymbolProcessor.DATA_ITEM_CLASS)
-            importQualifiedName(FLOW_DISPATCHER)
-            importQualifiedName(BASE_INTERFACE)
-
-            emptyLine()
-            block("interface ${flowInfo.interfaceName}: $BASE_INTERFACE") {
-                flowInfo.operations.forEach { op ->
-                    if (!op.hidden) {
-                        line("suspend fun ${opDeclaration(this, op)}")
+    private fun checkTypes(flowInfo: FlowInterfaceInfo): Boolean {
+        val byPath = mutableMapOf<String, KSFunctionDeclaration>()
+        var errors = false
+        for (method in flowInfo.interfaceClass.getAllFunctions()) {
+            val annotation = findAnnotation(method, ANNOTATION_METHOD) ?: continue
+            val methodName = method.simpleName.getShortName()
+            val methodPath = getStringArgument(annotation, "path", methodName)
+            byPath[methodPath] = method
+        }
+        for (operation in flowInfo.operations) {
+            if (operation.hidden) {
+                continue
+            }
+            val method = byPath.remove(operation.path)
+            if (method == null) {
+                logger.error("Method with path \"${operation.path}\" is not declared in the interface", operation.declaration)
+                errors = true
+                continue
+            }
+            if (!checkType(operation.type, method.returnType)) {
+                logger.error("Method return type does not match interface declaration", operation.declaration)
+                errors = true
+            }
+            val requiredCount = method.parameters.size
+            val declaredCount = operation.parameters.size
+            if (requiredCount != declaredCount) {
+                    logger.error("Interface declaration requires $requiredCount parameters (not counting FlowEnvironment), $declaredCount declared",
+                        operation.declaration)
+                    errors = true
+            } else {
+                for (i in 0..<method.parameters.size) {
+                    val parameter = method.parameters[i]
+                    if (!checkType(operation.parameters[i].type, parameter.type)) {
+                        logger.error(
+                            "Parameter ${operation.parameters[i].name}'s type does not match interface declaration",
+                            operation.declaration
+                        )
+                        errors = true
                     }
                 }
             }
+        }
+        if (!flowInfo.stateClass.isAbstract() && byPath.isNotEmpty()) {
+            val list = byPath.keys.joinToString(", ") { "\"$it\"" }
+            logger.error("Methods with given paths are not implemented: $list", flowInfo.stateClass)
+            errors = true
+        }
+        if (errors) {
+            logger.error("Flow state class ${flowInfo.stateClass.qualifiedName?.asString()} does not correctly implement its flow interface ${flowInfo.interfaceClass.qualifiedName?.asString()}")
+        }
+        return !errors
+    }
 
-            writeToFile(
-                codeGenerator = codeGenerator,
-                dependencies = Dependencies(false, flowInfo.stateClass.containingFile!!),
-                packageName = flowInfo.interfacePackage,
-                fileName = flowInfo.interfaceName
-            )
+    private fun checkType(stateType: KSType?, interfaceRef: KSTypeReference?): Boolean {
+        if (interfaceRef == null) {
+            return false
+        }
+        val interfaceType = interfaceRef.resolve()
+        if (stateType == null) {
+            return interfaceType.declaration.qualifiedName?.asString() == "kotlin.Unit"
+        }
+        val interfaceAnnotation = findAnnotation(interfaceType.declaration, ANNOTATION_INTERFACE)
+        if (interfaceAnnotation != null) {
+            val stateAnnotation = findAnnotation(stateType.declaration, ANNOTATION_STATE)
+            val stateInterface = getClassArgument(stateAnnotation, "flowInterface")
+            return stateInterface == interfaceType.declaration
+        } else {
+            return stateType == interfaceType
         }
     }
 
@@ -792,13 +828,13 @@ class FlowSymbolProcessor(
     data class FlowInterfaceInfo(
         val path: String,
         val stateClass: KSClassDeclaration,
-        val interfacePackage: String,
-        val interfaceName: String,
+        val interfaceClass: KSClassDeclaration,
         val notificationType: KSType?,
         val operations: List<FlowOperationInfo>
     )
 
     data class FlowOperationInfo(
+        val declaration: KSFunctionDeclaration,
         val hidden: Boolean,  // used for flow join methods
         val path: String,
         val name: String,

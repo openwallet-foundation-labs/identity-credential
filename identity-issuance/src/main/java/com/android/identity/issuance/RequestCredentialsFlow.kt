@@ -16,15 +16,12 @@ interface RequestCredentialsFlow : FlowBase {
      * This is the first method that should be called in the flow. Once this has been
      * obtained, the application should create a number of credentials based
      * on the returned configuration and return their attestation using [sendCredentials]
-     *
-     * TODO: fix flow-processor to support enums so we can use 'format: CredentialFormat'
-     *   instead of 'formatName: String'
-     *
-     * @param formatString the name of the credential format.
+     **
+     * @param format the credential format.
      * @return the [CredentialConfiguration] to use.
      */
     @FlowMethod
-    suspend fun getCredentialConfiguration(formatName: String): CredentialConfiguration
+    suspend fun getCredentialConfiguration(format: CredentialFormat): CredentialConfiguration
 
     /**
      * Sends credential requests to the issuer.

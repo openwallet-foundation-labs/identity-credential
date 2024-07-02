@@ -30,18 +30,4 @@ interface WalletServer: FlowBase {
      */
     @FlowMethod
     suspend fun getIssuingAuthority(identifier: String): IssuingAuthority
-
-    /**
-     * Waits until a notification is available for the client.
-     *
-     * A wallet should only use this if [WalletServerCapabilities.waitForNotificationSupported] is
-     * set to `true`.
-     *
-     * This may error out if a notification wasn't available within a certain server-defined
-     * timeframe.
-     *
-     * @return a [ByteArray] with the notification payload.
-     */
-    @FlowMethod
-    suspend fun waitForNotification(): ByteArray
 }

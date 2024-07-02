@@ -42,17 +42,14 @@ data class QuadraticSolution(val x1: Double? = null, val x2: Double? = null)
 
 @FlowInterface
 interface QuadraticSolverFlow: FlowBase {
-
-    // A getter can only return information that does not change for a given server. Getters
-    // correspond to HTTP GET requests. Getters cannot have parameters.
-    @FlowMethod
-    suspend fun getName(): String
-
     // A method is a general-purpose operation. It corresponds to HTTP POST request. Methods
     // can take zero or more parameters and optionally return a value. Methods also have
     // access to flow state (can read and modify it).
     @FlowMethod
     suspend fun solve(equation: QuadraticEquation): QuadraticSolution
+
+    @FlowMethod
+    suspend fun getName(): String
 }
 
 @FlowInterface
@@ -63,8 +60,6 @@ interface SolverFactoryFlow: FlowBase {
     @FlowMethod
     suspend fun createQuadraticSolver(name: String): QuadraticSolverFlow
 
-    // Note that this is a method, not a getter. Getters cannot access state and must return
-    // the same result if invoked multiple times (which is regular HTTP GET semantics).
     @FlowMethod
     suspend fun getCount(): Int
 }
@@ -129,9 +124,6 @@ data class DirectQuadraticSolverState(
         return result
     }
 
-    @FlowMethod
-    fun getCount(env: FlowEnvironment): Int = count
-
     override fun finalCount(): Int = count
 }
 
@@ -158,9 +150,6 @@ class MockQuadraticSolverState : AbstractSolverState() {
         throw IllegalStateException()
     }
 
-    @FlowMethod
-    fun getCount(env: FlowEnvironment): Int = 2
-
     override fun finalCount(): Int = 2
 }
 
@@ -176,7 +165,7 @@ class UnknownSolverException(message: String? = null) : SolverException(message)
 
 @CborSerializable
 @FlowState(
-    flowInterface = QuadraticSolverFlow::class,
+    flowInterface = SolverFactoryFlow::class,
     path = "factory",
     creatable = true
 )
