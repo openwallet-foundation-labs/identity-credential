@@ -64,8 +64,6 @@ internal class GattServer(
     private var characteristicL2CAP: BluetoothGattCharacteristic? = null
     private var incomingMessage = ByteArrayOutputStream()
     private var writingQueue: Queue<ByteArray> = ArrayDeque()
-    private var writingQueueTotalChunks = 0
-    private var writeIsOutstanding = false
     private var gattServer: BluetoothGattServer? = null
     private var currentConnection: BluetoothDevice? = null
     private var negotiatedMtu = 0
@@ -320,8 +318,8 @@ internal class GattServer(
             }
             incomingMessage.write(value, 1, value.size - 1)
             val isLast = (value[0].toInt() == 0x00)
-            Logger.d(TAG, "Received chunk with ${value.size} bytes " +
-                    "(last=$isLast), incomingMessage.length=${incomingMessage.toByteArray().size}")
+            Logger.dHex(TAG, "Received chunk with ${value.size} bytes " +
+                    "(last=$isLast), incomingMessage.length=${incomingMessage.toByteArray().size}", value)
             if (value[0].toInt() == 0x00) {
                 // Last message.
                 val entireMessage = incomingMessage.toByteArray()
@@ -426,10 +424,7 @@ internal class GattServer(
         }
 
     fun drainWritingQueue() {
-        Logger.d(TAG, "drainWritingQueue $writeIsOutstanding")
-        if (writeIsOutstanding) {
-            return
-        }
+        Logger.d(TAG, "drainWritingQueue")
         val chunk = writingQueue.poll() ?: return
         if (chunk.size == 0) {
             Logger.d(TAG, "Chunk is length 0, shutting down GattServer in 1000ms")
@@ -467,7 +462,6 @@ internal class GattServer(
             reportError(e)
             return
         }
-        writeIsOutstanding = true
     }
 
     override fun onNotificationSent(device: BluetoothDevice, status: Int) {
@@ -476,12 +470,6 @@ internal class GattServer(
             reportError(Error("Error in onNotificationSent status=$status"))
             return
         }
-        if (writingQueueTotalChunks > 0) {
-            if (writingQueue.size == 0) {
-                writingQueueTotalChunks = 0
-            }
-        }
-        writeIsOutstanding = false
         drainWritingQueue()
     }
 
@@ -493,6 +481,8 @@ internal class GattServer(
             l2capServer!!.sendMessage(data)
             return
         }
+        // Only initiate the write if no other write was outstanding.
+        val queueNeedsDraining = (writingQueue.size == 0)
         if (data.size == 0) {
             // Data of length 0 is used to signal we should shut down.
             writingQueue.add(data)
@@ -514,8 +504,9 @@ internal class GattServer(
                 offset += size
             } while (offset < data.size)
         }
-        writingQueueTotalChunks = writingQueue.size
-        drainWritingQueue()
+        if (queueNeedsDraining) {
+            drainWritingQueue()
+        }
     }
 
     fun reportPeerConnected() {
