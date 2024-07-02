@@ -5,6 +5,7 @@ import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.CredentialConfiguration
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.RequestCredentialsFlow
 
@@ -21,7 +22,8 @@ class RequestCredentialsState(
     companion object
 
     @FlowMethod
-    fun getCredentialConfiguration(env: FlowEnvironment): CredentialConfiguration {
+    fun getCredentialConfiguration(env: FlowEnvironment, format: CredentialFormat): CredentialConfiguration {
+        // TODO: make use of the format
         check(credentialConfiguration != null)
         return credentialConfiguration
     }

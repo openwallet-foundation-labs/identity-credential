@@ -701,7 +701,7 @@ class DocumentModel(
         )
         if (numPendingCredentialsToCreate > 0) {
             val requestCredentialsFlow = issuer.requestCredentials(document.documentIdentifier)
-            val credConfig = requestCredentialsFlow.getCredentialConfiguration(credentialFormat.toString())
+            val credConfig = requestCredentialsFlow.getCredentialConfiguration(credentialFormat)
 
             val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
                 ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
