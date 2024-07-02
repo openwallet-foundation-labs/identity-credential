@@ -63,8 +63,6 @@ internal class GattClient(
     private var clientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     private var incomingMessage = ByteArrayOutputStream()
     private var writingQueue: Queue<ByteArray> = ArrayDeque()
-    private var writingQueueTotalChunks = 0
-    private var writeIsOutstanding = false
     private var inhibitCallbacks = false
     private var negotiatedMtu = 0
     private var identValue: ByteArray? = null
@@ -424,12 +422,6 @@ internal class GattClient(
                 )
                 return
             }
-            if (writingQueueTotalChunks > 0) {
-                if (writingQueue.size == 0) {
-                    writingQueueTotalChunks = 0
-                }
-            }
-            writeIsOutstanding = false
             drainWritingQueue()
         }
     }
@@ -481,10 +473,7 @@ internal class GattClient(
     }
 
     private fun drainWritingQueue() {
-        Logger.d(TAG, "drainWritingQueue $writeIsOutstanding")
-        if (writeIsOutstanding) {
-            return
-        }
+        Logger.d(TAG, "drainWritingQueue")
         val chunk = writingQueue.poll() ?: return
         if (chunk.size == 0) {
             Logger.d(TAG, "Chunk is length 0, shutting down GattClient in 1000ms")
@@ -503,7 +492,7 @@ internal class GattClient(
             return
         }
         val isLast = chunk[0].toInt() == 0x00
-        Logger.d(TAG,"Sending chunk with ${chunk.size} bytes (last=$isLast)")
+        Logger.dHex(TAG,"Sending chunk with ${chunk.size} bytes (last=$isLast)", chunk)
         characteristicClient2Server!!.setValue(chunk)
         try {
             if (!gatt!!.writeCharacteristic(characteristicClient2Server)) {
@@ -514,7 +503,6 @@ internal class GattClient(
             reportError(e)
             return
         }
-        writeIsOutstanding = true
     }
 
     fun sendMessage(data: ByteArray) {
@@ -523,6 +511,8 @@ internal class GattClient(
             l2capClient!!.sendMessage(data)
             return
         }
+        // Only initiate the write if no other write was outstanding.
+        val queueNeedsDraining = (writingQueue.size == 0)
         if (data.size == 0) {
             // Data of length 0 is used to signal we should shut down.
             writingQueue.add(data)
@@ -544,8 +534,9 @@ internal class GattClient(
                 offset += size
             } while (offset < data.size)
         }
-        writingQueueTotalChunks = writingQueue.size
-        drainWritingQueue()
+        if (queueNeedsDraining) {
+            drainWritingQueue()
+        }
     }
 
     // When using L2CAP it doesn't support characteristics notification
