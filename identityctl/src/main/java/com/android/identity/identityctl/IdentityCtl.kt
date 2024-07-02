@@ -472,7 +472,13 @@ Generate an IACA certificate and corresponding private key:
         [--subject_and_issuer 'CN=Utopia TEST Reader CA,C=UT']
         [--validity_in_years 3]
         [--curve P384]
+
+    identityctl version
 """)
+    }
+
+    fun version(args: Array<String>) {
+        println(BuildConfig.VERSION)
     }
 
     @JvmStatic
@@ -488,6 +494,7 @@ Generate an IACA certificate and corresponding private key:
                 "generateDs" -> generateDs(args)
                 "generateReaderRoot" -> generateReaderRoot(args)
                 "help" -> usage(args)
+                "version" -> version(args)
                 else -> {
                     println("Unknown command '$command'")
                     usage(args)
