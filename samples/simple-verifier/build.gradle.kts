@@ -5,6 +5,9 @@ plugins {
     id("kotlin-android")
 }
 
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
+
 kotlin {
     jvmToolchain(17)
 }
@@ -17,8 +20,8 @@ android {
         applicationId = "com.android.identity.simple_verifier"
         minSdk = 29
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = projectVersionCode
+        versionName = projectVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
