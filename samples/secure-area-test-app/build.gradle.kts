@@ -8,6 +8,9 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
+
 kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -68,8 +71,8 @@ android {
         applicationId = "com.android.identity.secure_area_test_app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = projectVersionCode
+        versionName = projectVersionName
     }
     packaging {
         resources {

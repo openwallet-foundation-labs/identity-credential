@@ -2,7 +2,16 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.buildconfig)
     id("kotlin-android")
+}
+
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
+
+buildConfig {
+    packageName("com.android.identity_credential.wallet")
+    buildConfigField("VERSION", projectVersionName)
 }
 
 kotlin {
@@ -17,8 +26,8 @@ android {
         applicationId = "com.android.identity_credential.wallet"
         minSdk = 27
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = projectVersionCode
+        versionName = projectVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

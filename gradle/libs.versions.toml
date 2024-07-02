@@ -55,6 +55,7 @@ androidx-preference = "1.2.1"
 exif = "1.3.7"
 ausweis-sdk = "2.1.1"
 jetbrains-navigation = "2.7.0-alpha07"
+buildconfig = "5.3.5"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -137,3 +138,4 @@ gretty = { id = "org.gretty", version.ref = "gretty"}
 navigation-safe-args = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation-plugin" }
 kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }

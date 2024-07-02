@@ -1,3 +1,25 @@
+import org.apache.commons.io.output.ByteArrayOutputStream
+
+// For `versionCode` we just use the number of commits.
+val projectVersionCode: Int by extra {
+    val stdout = ByteArrayOutputStream()
+    rootProject.exec {
+        commandLine("git", "rev-list", "HEAD", "--count")
+        standardOutput = stdout
+    }
+    stdout.toString().trim().toInt()
+}
+
+// For versionName, we use the output of: git describe --tags --dirty
+val projectVersionName: String by extra {
+    val stdout = ByteArrayOutputStream()
+    rootProject.exec {
+        commandLine("git", "describe", "--tags", "--dirty")
+        standardOutput = stdout
+    }
+    stdout.toString().trim()
+}
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -11,4 +33,5 @@ plugins {
     alias(libs.plugins.navigation.safe.args) apply false
     alias(libs.plugins.parcelable) apply false
     alias(libs.plugins.kapt) apply false
+    alias(libs.plugins.buildconfig) apply false
 }

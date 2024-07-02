@@ -1,6 +1,15 @@
 plugins {
     id("java-library")
     id("org.jetbrains.kotlin.jvm")
+    alias(libs.plugins.buildconfig)
+}
+
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
+
+buildConfig {
+    packageName("com.android.identity.identityctl")
+    buildConfigField("VERSION", projectVersionName)
 }
 
 kotlin {
