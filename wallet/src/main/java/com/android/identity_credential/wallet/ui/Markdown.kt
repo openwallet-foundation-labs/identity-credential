@@ -37,8 +37,11 @@ private val markdownRenderer = object : WebViewContentRenderer() {
         }
         function render(markdownText, css) {
           var md = markdownit().use(markdownItAttrs,
-             {allowedAttributes: ['id', 'class', 'width', 'height', 'style']}).use(markdownItAnchor);
+             {allowedAttributes: ['id', 'class', 'width', 'height', 'style', 'appinfo']}).use(markdownItAnchor);
           document.getElementById('content').innerHTML = md.render(markdownText);
+          for (let q of document.querySelectorAll("[appinfo]")) {
+            q.textContent = window.Callback?.appinfo(q.getAttribute("appinfo"))
+          }
           document.getElementById('style').textContent = css;
           reportHeight();
           for (let image of document.images) {
@@ -52,7 +55,11 @@ private val markdownRenderer = object : WebViewContentRenderer() {
         """.trimIndent()
 }
 
-/** Displays markdown-formatted content. */
+/**
+ * Displays markdown-formatted content.
+ *
+ * Use `appinfo` attribute to inject application data, e.g. `_dummytext_[appinfo=version]`.
+ */
 @Composable
 fun MarkdownText(
     content: String,

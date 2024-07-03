@@ -1,4 +1,4 @@
-Wallet version TODO
+Wallet version __placeholder__{appinfo=version}
 
 This application supports provisioning and presentation of real-world
 identity using the ISO/IEC 18013-5:2021 mdoc credential format.
