@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.android.identity_credential.wallet.BuildConfig
 import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayInputStream
 import java.io.FileNotFoundException
@@ -93,6 +94,16 @@ abstract class WebViewContentRenderer {
                             } else {
                                 contentHeight.intValue = height.roundToInt()
                            }
+                        }
+                    }
+
+                    @JavascriptInterface
+                    fun appinfo(query: String): String {
+                        // Returns text that will be injected into an HTML element that has
+                        // appinfo attribute with the given query.
+                        return when (query) {
+                            "version" -> return BuildConfig.VERSION
+                            else -> ""
                         }
                     }
                 }

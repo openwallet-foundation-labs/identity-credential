@@ -12,6 +12,7 @@ val projectVersionName: String by rootProject.extra
 buildConfig {
     packageName("com.android.identity_credential.wallet")
     buildConfigField("VERSION", projectVersionName)
+    useKotlinOutput { internalVisibility = false }
 }
 
 kotlin {

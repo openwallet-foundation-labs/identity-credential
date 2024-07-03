@@ -36,6 +36,9 @@ private val htmlRenderer = object : WebViewContentRenderer() {
         function render(markupText, css) {
           let doc = (new DOMParser()).parseFromString(
               "<div>" + markupText + "</div>", "text/xml");
+          for (let q of doc.querySelectorAll("[appinfo]")) {
+            q.textContent = window.Callback?.appinfo(q.getAttribute("appinfo"))
+          }
           let destination = document.getElementById('content');
           destination.innerHTML = '';
           injectContent(doc.firstChild, destination);
@@ -142,6 +145,8 @@ private val htmlRenderer = object : WebViewContentRenderer() {
  * Styling can be applied using style attributes. Only certain elements and
  * attributes are allowed (in particular, no scripting), so this should be
  * generally safe to use with arbitrary content.
+ *
+ * Use `appinfo` attribute to inject application data, e.g. `<span appinfo='version'/>`.
  */
 @Composable
 fun HtmlSnippetText(
