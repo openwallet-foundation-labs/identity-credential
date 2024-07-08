@@ -121,7 +121,7 @@ fun ReaderScreen(
             if (event == Lifecycle.Event.ON_START) {
                 model.startRequest(
                     activity,
-                    availableRequests[0].second,
+                    availableRequests[5].second,  // Funke: Default to EU PID Mandatory
                     issuerTrustManager,
                 )
             } else if (event == Lifecycle.Event.ON_STOP) {
@@ -170,7 +170,7 @@ private fun WaitForEngagement(
 ) {
     val showQrScannerDialog = remember { mutableStateOf(false) }
     var dropdownExpanded = remember { mutableStateOf(false) }
-    var dropdownSelected = remember { mutableStateOf(availableRequests[0]) }
+    var dropdownSelected = remember { mutableStateOf(availableRequests[5]) } // Funke: Default to EU PID Mandatory
 
     if (showQrScannerDialog.value) {
         ScanQrCodeDialog(
