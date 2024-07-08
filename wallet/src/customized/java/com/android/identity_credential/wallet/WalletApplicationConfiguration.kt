@@ -22,7 +22,7 @@ object WalletApplicationConfiguration {
     /**
      * The default Wallet Server URL.
      */
-    const val WALLET_SERVER_DEFAULT_URL = "https://ws.example.com/server"
+    const val WALLET_SERVER_DEFAULT_URL = "dev:"
 
     /**
      * If `true`, the Settings screen will allow the user to configure the Cloud Secure Area URL.
@@ -32,5 +32,5 @@ object WalletApplicationConfiguration {
     /**
      * The default Cloud Secure Area URL.
      */
-    const val CLOUD_SECURE_AREA_DEFAULT_URL = "https://ws.example.com/server"
+    const val CLOUD_SECURE_AREA_DEFAULT_URL = "https://ws.utopia-central-registry.org/server/csa"
 }

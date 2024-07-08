@@ -35,14 +35,15 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            setProguardFiles(
-                listOf(
-                    getDefaultProguardFile("proguard-android-optimize.txt"),
-                    "proguard-rules.pro"
-                )
-            )
+            isMinifyEnabled = false
+            isShrinkResources = false
+            //setProguardFiles(
+            //    listOf(
+            //        getDefaultProguardFile("proguard-android-optimize.txt"),
+            //        "proguard-rules.pro"
+            //    )
+            //)
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -50,11 +51,11 @@ android {
     productFlavors {
         create("upstream") {
             dimension = "standard"
-            isDefault = true
         }
         create("customized") {
             dimension = "standard"
-            applicationId = "com.example.wallet.customized"
+            applicationId = "dev.quietoryx.funke.wallet"
+            isDefault = true
         }
     }
 

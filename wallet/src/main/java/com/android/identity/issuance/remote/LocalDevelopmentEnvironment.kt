@@ -68,19 +68,13 @@ class LocalDevelopmentEnvironment(
                 "androidRequireGmsAttestation" -> "false"
                 "androidRequireVerifiedBootGreen" -> "false"
                 "androidRequireAppSignatureCertificateDigests" -> ""
-                "issuingAuthorityList" -> "utopia_local utopia_local_pid"
-                "issuingAuthority.utopia_local.name" -> "Utopia DMV (Local)"
-                "issuingAuthority.utopia_local.type" -> "DrivingLicense"
-                "issuingAuthority.utopia_local.description" -> "Utopia Driver's License (Local)"
-                "issuingAuthority.utopia_local.logo" -> "utopia_local/logo.png"
-                "issuingAuthority.utopia_local.cardArt" -> "utopia_local/card_art.png"
-                "issuingAuthority.utopia_local.requireUserAuthenticationToViewDocument" -> "false"
-                "issuingAuthority.utopia_local_pid.name" -> "Utopia Gov (Local)"
+                "issuingAuthorityList" -> "utopia_local_pid"
+                "issuingAuthority.utopia_local_pid.name" -> "Android Funke Wallet PID Issuer"
                 "issuingAuthority.utopia_local_pid.type" -> "EuPid"
-                "issuingAuthority.utopia_local_pid.description" -> "Utopia Personal ID (Local)"
+                "issuingAuthority.utopia_local_pid.description" -> "Utopia Personal ID"
                 "issuingAuthority.utopia_local_pid.logo" -> "utopia_local_pid/logo.png"
                 "issuingAuthority.utopia_local_pid.cardArt" -> "utopia_local_pid/card_art.png"
-                "issuingAuthority.utopia_local_pid.requireUserAuthenticationToViewDocument" -> "false"
+                "issuingAuthority.utopia_local_pid.requireUserAuthenticationToViewDocument" -> "true"
                 "cloudSecureAreaUrl" -> settingsModel.cloudSecureAreaUrl.value
                 else -> null
             }

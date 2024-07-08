@@ -1,14 +1,31 @@
 <resources>
-    <string name="app_name">WL Wallet</string>
+    <string name="app_name">Android Funke Wallet</string>
 
     <!-- Wallet drawer -->
-    <string name="wallet_drawer_title">WL Wallet</string>
+    <string name="wallet_drawer_title">Android Funke Wallet</string>
 
     <!-- Wallet screen -->
-    <string name="wallet_screen_title">WL Wallet</string>
-    <string name="wallet_drawer_about">About WL Wallet</string>
+    <string name="wallet_screen_title">Android Funke Wallet</string>
+    <string name="wallet_drawer_about">About Android Funke Wallet</string>
 
     <!-- About screen -->
-    <string name="about_screen_title">About WL Wallet</string>
+    <string name="about_screen_title">About Android Funke Wallet</string>
+
+    <string name="utopia_local_issuing_authority_pid_tos"><![CDATA[
+        <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Government\'/>
+        <h2>Provisioning a Personal ID (PID)</h2>
+        <p>In the following screens, information will be collected for provisioning of a PID.</p>
+        <p>The PID can either contain hard-coded data for fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>For simplicity, in this version of the Issuing Authority the PID is generated and
+        signed on-device however our software stack also supports securely and privately
+        conveying the collected evidence to an issuance server for evaluation and signing of the PID.</p>
+        <p>The created PID will be bound to this device.</p>
+        <p><b>Note to SPRIND Funke EUDI Wallet Jury:</b>This document type is
+        included solely as a technology demonstrator of our the OWF Identity Credential project
+        provisioning protocol. Please refer to our written report for more information.</p>
+        ]]>
+    </string>
 
 </resources>

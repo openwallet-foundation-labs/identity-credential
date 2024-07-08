@@ -1,6 +1,6 @@
-This is a customized flavor of the OWF Identity Credential Wallet.
-
-Wallet version __placeholder__{appinfo=version}
+This is a customized flavor of the OWF Identity Credential Wallet specific to the [Funke
+competition](https://www.sprind.org/en/challenges/eudi-wallet-prototypes/) and represents the
+"Android German EUDI Open Source Wallet Prototype" team's submission.
 
 This application supports provisioning, presentation, and reading
 of real-world identity using the ISO/IEC 18013-5:2021 mdoc and
@@ -19,5 +19,5 @@ API being worked on in the
 
 ## Resources
 
- * [OWF Identity Credential Home Page](https://github.com/openwallet-foundation-labs/identity-credential)
- * [IACA certificate](https://github.com/openwallet-foundation-labs/identity-credential/blob/main/wallet/src/main/res/raw/iaca_certificate.pem)
+* [SPRIND Funke EUDI WALLET Prototypes](https://www.sprind.org/en/challenges/eudi-wallet-prototypes/)
+* [OWF Identity Credential Home Page](https://github.com/openwallet-foundation-labs/identity-credential)

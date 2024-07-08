@@ -204,6 +204,11 @@ class WalletApplication : Application() {
             certificateResourceId = R.raw.owf_wallet_iaca_root,
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
+        issuerTrustManager.addTrustPoint(
+            displayName = "SPRIND Funke EUDI Wallet Prototype Issuing CA",
+            certificateResourceId = R.raw.funke_root_certificate,
+            displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
+        )
 
         documentModel = DocumentModel(
             applicationContext,
