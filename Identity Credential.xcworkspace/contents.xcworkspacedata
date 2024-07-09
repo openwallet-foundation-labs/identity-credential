@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:samples/secure-area-test-app/iosApp/SecureAreaTestApp.xcodeproj">
+      location = "group:samples/testapp/iosApp/TestApp.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:identity/SwiftBridge/SwiftBridge.xcodeproj">

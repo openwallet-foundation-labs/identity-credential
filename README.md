@@ -172,6 +172,8 @@ samples are included
     {`age_over_18` and `portrait`}. It's intended to demonstrate use of the 
     `MdocReaderPrompt` class, which allows any app to easily act as a reader app for 
     the common age-verification use case.
+- `testapp` - a Compose Multiplatform application for manually testing elements of the
+  project that aren't easily tested using unit tests.
 
 ## ISO 18013-7 Reader Website
 
