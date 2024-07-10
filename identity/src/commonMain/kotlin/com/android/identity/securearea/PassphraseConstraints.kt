@@ -30,4 +30,17 @@ data class PassphraseConstraints(
         val PASSPHRASE_SIX_CHARS = PassphraseConstraints(6, 6, false)
         val PASSPHRASE_SIX_CHARS_OR_LONGER = PassphraseConstraints(6, Int.MAX_VALUE, false)
     }
+
+    /**
+     * Get whether the constraints define a fixed length entry, when [minLength] == [maxLength].
+     * // TODO : fix CBOR processor so this function can be refactored into a public property:
+     *          val isFixedLength: Boolean
+     *              get() = minLength == maxLength
+     *      currently, generates PassphraseConstraints_Cbor.kt that instantiates PassphraseConstraints
+     *      with an invalid constructor signature, such as,
+     *          "return PassphraseConstraints(isFixedLength, minLength, maxLength, requireNumerical)"
+     *
+     * @return [true] if this object's properties [minLength] and [maxLength] are the same, else [false]
+     */
+    fun isFixedLength() = minLength == maxLength
 }

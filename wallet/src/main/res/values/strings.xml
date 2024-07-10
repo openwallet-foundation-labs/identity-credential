@@ -196,6 +196,9 @@
     <string name="presentation_lskf_warning_dismiss_btn">Ok</string>
     <string name="presentation_lskf_warning_dialog_title">Unable to Present Document</string>
     <string name="presentation_lskf_warning_dialog_text">In order to present the document, your device must have a lock-screen pin/password/pattern</string>
+    <string name="presentation_result_success_message">The information was shared</string>
+    <string name="presentation_result_error_message">An error occurred</string>
+
 
     <!-- QR screen -->
     <string name="qr_title">Share using QR code</string>
@@ -217,6 +220,14 @@
     <string name="evidence_create_passphrase_confirm">Confirm</string>
     <string name="evidence_create_passphrase_no_match">The passphrase didn\'t match, please try again</string>
     <string name="evidence_create_passphrase_no_match_pin">The PIN didn\'t match, please try again</string>
+
+    <!-- Passphrase Prompt -->
+    <string name="passphrase_prompt_next">Next</string>
+    <string name="passphrase_prompt_cancel">Cancel</string>
+    <string name="passphrase_prompt_pin_title">Enter PIN</string>
+    <string name="passphrase_prompt_pin_content">Enter the PIN for the document</string>
+    <string name="passphrase_prompt_passphrase_title">Enter Passphrase</string>
+    <string name="passphrase_prompt_passphrase_content">Enter the Passphrase for the document</string>
 
     <!-- NFC status -->
     <string name="nfc_status_initial">Establishing NFC connection</string>

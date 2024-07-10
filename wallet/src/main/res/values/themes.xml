@@ -2,4 +2,12 @@
 <resources>
 
     <style name="Theme.IdentityCredential" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="PassphrasePromptBottomSheetTheme" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/BottomSheetTransparentBackground</item>
+    </style>
+
+    <style name="BottomSheetTransparentBackground" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
 </resources>

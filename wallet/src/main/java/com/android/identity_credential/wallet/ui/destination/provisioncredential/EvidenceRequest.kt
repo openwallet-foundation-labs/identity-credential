@@ -273,8 +273,7 @@ fun EvidenceRequestCreatePassphraseView(
             onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
                 currentPassphrase = passphrase
                 currentPassphraseMeetsRequirements = passphraseMeetsRequirements
-                val isFixedLength = (constraints.minLength == constraints.maxLength)
-                if (isFixedLength && currentPassphraseMeetsRequirements) {
+                if (constraints.isFixedLength() && currentPassphraseMeetsRequirements) {
                     chosenPassphrase = passphrase
                 } else if (donePressed) {
                     chosenPassphrase = passphrase
@@ -305,8 +304,7 @@ fun EvidenceRequestCreatePassphraseView(
             checkWeakPassphrase = false,
             onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
                 currentPassphrase = passphrase
-                val isFixedLength = (constraints.minLength == constraints.maxLength)
-                if (isFixedLength && currentPassphrase.length == constraints.minLength) {
+                if (constraints.isFixedLength() && currentPassphrase.length == constraints.minLength) {
                     verifiedPassphrase = passphrase
                 } else if (donePressed) {
                     verifiedPassphrase = passphrase
