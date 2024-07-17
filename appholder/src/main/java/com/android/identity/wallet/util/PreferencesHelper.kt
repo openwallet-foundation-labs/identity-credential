@@ -30,11 +30,7 @@ object PreferencesHelper {
         // As per the docs, the document data contains reference to Keystore aliases so ensure
         // this is stored in a location where it's not automatically backed up and restored by
         // Android Backup as per https://developer.android.com/guide/topics/data/autobackup
-        val storageDir = File(context.noBackupFilesDir, "identity.bin")
-        if (!storageDir.exists()) {
-            storageDir.mkdir()
-        }
-        return storageDir;
+        return File(context.noBackupFilesDir, "identity.bin")
     }
 
     fun isBleDataRetrievalEnabled(): Boolean =
