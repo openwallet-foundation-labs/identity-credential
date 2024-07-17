@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.FragmentActivity
+import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment

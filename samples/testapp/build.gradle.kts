@@ -60,6 +60,7 @@ kotlin {
 
             implementation(project(":identity"))
             implementation(project(":identity-mdoc"))
+            implementation(project(":identity-appsupport"))
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.io.core)
         }

@@ -17,6 +17,7 @@ import com.android.identity.testapp.platform
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.about_screen_title
 import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import org.jetbrains.compose.resources.stringResource
@@ -62,6 +63,7 @@ fun StartScreen(navController: NavHostController) {
                         }
                     }
                 }
+
                 Platform.IOS -> {
                     item {
                         TextButton(
@@ -74,6 +76,17 @@ fun StartScreen(navController: NavHostController) {
                     }
                 }
             }
+
+            item {
+                TextButton(
+                    onClick = {
+                        navController.navigate(route = Screen.PassphraseEntryField.name)
+                    }
+                ) {
+                    Text(stringResource(Res.string.passphrase_entry_field_screen_title))
+                }
+            }
+
         }
     }
 }

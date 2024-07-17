@@ -23,11 +23,11 @@ data class PassphraseConstraints(
         val PIN_FOUR_DIGITS = PassphraseConstraints(4, 4, true)
         val PIN_FOUR_DIGITS_OR_LONGER = PassphraseConstraints(4, Int.MAX_VALUE, true)
         val PASSPHRASE_FOUR_CHARS = PassphraseConstraints(4, 4, false)
-        val PASSPHRASE_FOUR_CHARS_OR_LONGER = PassphraseConstraints(4, Int.MAX_VALUE, true)
+        val PASSPHRASE_FOUR_CHARS_OR_LONGER = PassphraseConstraints(4, Int.MAX_VALUE, false)
 
         val PIN_SIX_DIGITS = PassphraseConstraints(6, 6, true)
         val PIN_SIX_DIGITS_OR_LONGER = PassphraseConstraints(6, Int.MAX_VALUE, true)
         val PASSPHRASE_SIX_CHARS = PassphraseConstraints(6, 6, false)
-        val PASSPHRASE_SIX_CHARS_OR_LONGER = PassphraseConstraints(6, Int.MAX_VALUE, true)
+        val PASSPHRASE_SIX_CHARS_OR_LONGER = PassphraseConstraints(6, Int.MAX_VALUE, false)
     }
 }

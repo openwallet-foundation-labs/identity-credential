@@ -1,0 +1,5 @@
+<resources>
+    <!-- PassphraseEntryField -->
+    <string name="passphrase_entry_field_pin_is_weak">PIN is weak, please choose another</string>
+    <string name="passphrase_entry_field_passphrase_is_weak">Passphrase is weak, please choose another</string>
+</resources>
