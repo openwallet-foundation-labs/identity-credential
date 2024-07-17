@@ -667,13 +667,17 @@ class FlowSymbolProcessor(
 
             emptyLine()
             block("private fun deserialize(state: DataItem): $baseName") {
-                block(
-                    "return if (state is Bstr && state.value.isEmpty())", hasBlockAfter = true
-                ) {
-                    line("$baseName()")
-                }
-                block("else", hasBlockBefore = true) {
-                    line("$baseName.fromDataItem(state)")
+                if (creatable) {
+                    block(
+                        "return if (state is Bstr && state.value.isEmpty())", hasBlockAfter = true
+                    ) {
+                        line("$baseName()")
+                    }
+                    block("else", hasBlockBefore = true) {
+                        line("$baseName.fromDataItem(state)")
+                    }
+                } else {
+                    line("return $baseName.fromDataItem(state)")
                 }
             }
 

@@ -26,7 +26,7 @@ import com.android.identity.issuance.WalletServerCapabilities
 import com.android.identity.issuance.authenticationMessage
 import com.android.identity.issuance.extractAttestationSequence
 import com.android.identity.issuance.fromCbor
-import com.android.identity.issuance.hardcoded.WalletServerState
+import com.android.identity.issuance.wallet.WalletServerState
 import com.android.identity.issuance.toCbor
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
@@ -181,7 +181,7 @@ class WalletServerProvider(
             val builder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
             notifier = FlowNotificationsLocal(noopCipher)
-            val environment = LocalDevelopmentEnvironment(context, notifier)
+            val environment = LocalDevelopmentEnvironment(context, secureArea, notifier)
             dispatcher = WrapperFlowDispatcher(builder.build(
                 environment,
                 noopCipher,
@@ -198,7 +198,7 @@ class WalletServerProvider(
         }
 
         // "root" is the entry point for the server, see FlowState annotation on
-        // com.android.identity.issuance.hardcoded.WalletServerState
+        // com.android.identity.issuance.wallet.WalletServerState
         val walletServer = WalletServerImpl(
             flowPath = "root",
             flowState = Bstr(byteArrayOf()),

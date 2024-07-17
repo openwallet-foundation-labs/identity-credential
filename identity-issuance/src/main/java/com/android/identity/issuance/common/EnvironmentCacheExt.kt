@@ -1,4 +1,4 @@
-package com.android.identity.issuance.hardcoded
+package com.android.identity.issuance.common
 
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment

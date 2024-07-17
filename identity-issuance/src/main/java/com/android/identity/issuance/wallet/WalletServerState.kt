@@ -1,6 +1,5 @@
-package com.android.identity.issuance.hardcoded
+package com.android.identity.issuance.wallet
 
-import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
@@ -9,18 +8,22 @@ import com.android.identity.flow.handler.FlowDispatcherLocal
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.FlowEnvironment
-import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerSettings
-import com.android.identity.util.Logger
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
+import com.android.identity.issuance.common.AbstractIssuingAuthorityState
+import com.android.identity.issuance.hardcoded.IssuingAuthorityState
+import com.android.identity.issuance.hardcoded.ProofingState
+import com.android.identity.issuance.hardcoded.RegistrationState
+import com.android.identity.issuance.hardcoded.RequestCredentialsState
+import com.android.identity.issuance.hardcoded.register
+import com.android.identity.issuance.funke.FunkeIssuingAuthorityState
+import com.android.identity.issuance.funke.FunkeProofingState
+import com.android.identity.issuance.funke.FunkeRegistrationState
+import com.android.identity.issuance.funke.FunkeRequestCredentialsState
+import com.android.identity.issuance.funke.register
 import kotlinx.io.bytestring.buildByteString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 
 @FlowState(
@@ -62,8 +65,11 @@ class WalletServerState(
             ProofingState.register(dispatcher)
             RegistrationState.register(dispatcher)
             RequestCredentialsState.register(dispatcher)
+            FunkeIssuingAuthorityState.register(dispatcher)
+            FunkeProofingState.register(dispatcher)
+            FunkeRegistrationState.register(dispatcher)
+            FunkeRequestCredentialsState.register(dispatcher)
         }
-
     }
 
     @FlowMethod
@@ -83,18 +89,22 @@ class WalletServerState(
         check(clientId.isNotEmpty())
         val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
         val issuingAuthorityList = settings.getStringList("issuingAuthorityList")
-        if (issuingAuthorityList == null) {
-            return listOf(devConfig(env))
+        val fromConfig = if (issuingAuthorityList.isEmpty()) {
+            listOf(devConfig(env))
         } else {
-            return issuingAuthorityList.map { idElem ->
+            issuingAuthorityList.map { idElem ->
                 IssuingAuthorityState.getConfiguration(env, idElem)
             }
         }
+        return fromConfig + listOf(FunkeIssuingAuthorityState.getConfiguration(env))
     }
 
     @FlowMethod
-    fun getIssuingAuthority(env: FlowEnvironment, identifier: String): IssuingAuthorityState {
+    fun getIssuingAuthority(env: FlowEnvironment, identifier: String): AbstractIssuingAuthorityState {
         check(clientId.isNotEmpty())
-        return IssuingAuthorityState(clientId, identifier)
+        return when (identifier) {
+            "funke" -> FunkeIssuingAuthorityState(clientId)
+            else -> IssuingAuthorityState(clientId, identifier)
+        }
     }
 }

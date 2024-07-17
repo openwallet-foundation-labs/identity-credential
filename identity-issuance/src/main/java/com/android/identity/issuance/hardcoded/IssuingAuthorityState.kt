@@ -40,6 +40,8 @@ import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.WalletServerSettings
+import com.android.identity.issuance.common.AbstractIssuingAuthorityState
+import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEidResolved
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -85,7 +87,7 @@ private const val EUPID_DOCTYPE = EUPersonalID.EUPID_DOCTYPE
 class IssuingAuthorityState(
     val clientId: String = "",
     val authorityId: String = ""
-) {
+) : AbstractIssuingAuthorityState() {
     companion object {
         private const val TAG = "IssuingAuthorityState"
         

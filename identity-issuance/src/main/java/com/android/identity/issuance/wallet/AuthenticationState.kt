@@ -1,4 +1,4 @@
-package com.android.identity.issuance.hardcoded
+package com.android.identity.issuance.wallet
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.annotation.CborSerializable
