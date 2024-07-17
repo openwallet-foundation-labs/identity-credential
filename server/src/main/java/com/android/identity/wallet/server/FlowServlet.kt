@@ -15,7 +15,7 @@ import com.android.identity.flow.server.Storage
 import com.android.identity.flow.transport.HttpTransport
 import com.android.identity.issuance.hardcoded.IssuerDocument
 import com.android.identity.issuance.hardcoded.IssuingAuthorityState
-import com.android.identity.issuance.hardcoded.WalletServerState
+import com.android.identity.issuance.wallet.WalletServerState
 import com.android.identity.util.Logger
 import io.ktor.utils.io.core.toByteArray
 import jakarta.servlet.ServletConfig

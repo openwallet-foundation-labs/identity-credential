@@ -9,6 +9,7 @@ import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.handler.FlowNotifications
+import com.android.identity.securearea.SecureArea
 import com.android.identity_credential.wallet.R
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
@@ -25,6 +26,7 @@ import kotlin.reflect.cast
  */
 class LocalDevelopmentEnvironment(
     context: Context,
+    private val secureArea: SecureArea,
     private val notifications: FlowNotifications
 ) : FlowEnvironment {
     private val configuration = ConfigurationImpl(context)
@@ -39,6 +41,7 @@ class LocalDevelopmentEnvironment(
             Storage::class -> storage
             FlowNotifications::class -> notifications
             HttpClient::class -> httpClient
+            SecureArea::class -> secureArea
             else -> return null
         })
     }
@@ -75,11 +78,20 @@ class LocalDevelopmentEnvironment(
                         R.drawable.utopia_driving_license_card_art,
                         Bitmap.CompressFormat.PNG
                     )
+                "funke/card_art.png"  ->
+                    bitmapData(
+                        R.drawable.funke_card_art,
+                        Bitmap.CompressFormat.PNG
+                    )
                 "utopia_local/logo.png" ->
                     bitmapData(
                         R.drawable.utopia_dmv_issuing_authority_logo,
                         Bitmap.CompressFormat.PNG
                     )
+                "funke/logo.png" -> bitmapData(
+                    R.drawable.funke_logo,
+                    Bitmap.CompressFormat.PNG
+                )
                 "img_erika_portrait.jpf" ->
                     ByteString(getRawResourceAsBytes(R.raw.img_erika_portrait))
                 "img_erika_signature.jpf" ->

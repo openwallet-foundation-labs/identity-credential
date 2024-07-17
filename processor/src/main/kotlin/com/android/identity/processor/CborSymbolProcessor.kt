@@ -95,7 +95,7 @@ class CborSymbolProcessor(
                 } else {
                     codeBuilder.importQualifiedName(qualifiedName)
                     val deserializer = deserializerName(declaration as KSClassDeclaration, false)
-                    if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
+                    whenSerializationGenerated(declaration) {
                         val shortName = deserializer.substring(deserializer.lastIndexOf(".") + 1)
                         codeBuilder.importFunctionName(
                             shortName,
@@ -244,11 +244,31 @@ class CborSymbolProcessor(
                     "Tstr($code.name)"
                 } else {
                     codeBuilder.importQualifiedName(qualifiedName)
-                    if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) != null) {
-                        codeBuilder.importFunctionName("toDataItem", declaration.packageName.asString())
+                    whenSerializationGenerated(declaration) { serializableDeclaration ->
+                        codeBuilder.importFunctionName("toDataItem",
+                            serializableDeclaration.packageName.asString())
                     }
                     "$code.toDataItem()"
                 }
+            }
+        }
+
+        private fun whenSerializationGenerated(
+            declaration: KSDeclaration,
+            block: (serializableDeclaration: KSDeclaration) -> Unit
+        ) {
+            var decl = declaration
+            while (true) {
+                if (findAnnotation(decl, ANNOTATION_SERIALIZABLE) != null) {
+                    block(decl)
+                } else if (decl is KSClassDeclaration) {
+                    val supertypes = decl.superTypes.iterator()
+                    if (supertypes.hasNext()) {
+                        decl = supertypes.next().resolve().declaration
+                        continue
+                    }
+                }
+                break
             }
         }
 

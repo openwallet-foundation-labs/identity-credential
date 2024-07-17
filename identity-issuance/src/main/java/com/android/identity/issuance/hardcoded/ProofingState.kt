@@ -5,6 +5,7 @@ import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
