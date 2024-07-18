@@ -81,6 +81,9 @@ import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.android.identity_credential.wallet.util.engagementSimulationStarted
+import com.android.identity_credential.wallet.util.getEngagementSimulationSessionTranscript
+import com.android.identity_credential.wallet.util.handleEngagementSimulation
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -299,13 +302,18 @@ class PresentationActivity : FragmentActivity() {
 
                 State.CONNECTED -> {
                     Logger.i(TAG, "State: Connected")
+                    // if user previously started the Engagement Simulator then use the Session
+                    // Transcript CBOR bytes generated from the Engagement Simulator.
+                    val engagementSimulatorSessionTranscript = getEngagementSimulationSessionTranscript()
+
                     // on a new connected client, create a new DeviceRetrievalHelper
                     deviceRetrievalHelper = DeviceRetrievalHelper
                         .Builder(
                             applicationContext,
                             deviceRetrievalHelperListener,
                             ContextCompat.getMainExecutor(applicationContext),
-                            eDeviceKey!!
+                            eDeviceKey!!,
+                            engagementSimulatorSessionTranscript
                         )
                         .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
                         .build()
@@ -385,6 +393,9 @@ class PresentationActivity : FragmentActivity() {
                 }
             }
         }
+
+        // if enabled (because of user invocation) "simulate" receiving the passed DeviceRequest CBOR bytes after 300 ms
+        handleEngagementSimulation(deviceRetrievalHelperListener)
     }
 
 
@@ -510,6 +521,12 @@ class PresentationActivity : FragmentActivity() {
      */
     private fun sendResponseToDevice(deviceResponseBytes: ByteArray) =
         deviceRetrievalHelper?.run {
+            if (engagementSimulationStarted()) {
+                // let's not do it but say we did
+                state.value = State.RESPONSE_SENT
+                return
+            }
+
             sendDeviceResponse(
                 deviceResponseBytes,
                 Constants.SESSION_DATA_STATUS_SESSION_TERMINATION

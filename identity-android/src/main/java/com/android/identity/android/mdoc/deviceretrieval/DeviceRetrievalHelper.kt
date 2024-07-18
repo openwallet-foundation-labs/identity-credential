@@ -53,7 +53,8 @@ class DeviceRetrievalHelper internal constructor(
     private val context: Context,
     private val listener: Listener,
     private val listenerExecutor: Executor,
-    private val eDeviceKey: EcPrivateKey
+    private val eDeviceKey: EcPrivateKey,
+    private val engagementSimSessionTranscriptBytes: ByteArray? = null
 ) {
     private var _eReaderKey: EcPublicKey? = null
     
@@ -95,6 +96,10 @@ class DeviceRetrievalHelper internal constructor(
      */
     val sessionTranscript: ByteArray
         get() {
+            // Use the Session Transcript bytes of Engagement Simulator if it's started
+            engagementSimSessionTranscriptBytes?.run {
+                return this
+            }
             checkNotNull(encodedSessionTranscript) { "No message received from reader" }
             return encodedSessionTranscript!!
         }
@@ -500,14 +505,16 @@ class DeviceRetrievalHelper internal constructor(
      * @param listener a listener.
      * @param executor a [Executor] to use with the listener.
      * @param eDeviceKey the ephemeral device session encryption key.
+     * @param engagementSimSessionTranscriptBytes provided when user starts the Engagement Simulator.
      */
     class Builder(
         context: Context,
         listener: Listener,
         executor: Executor,
-        eDeviceKey: EcPrivateKey
+        eDeviceKey: EcPrivateKey,
+        engagementSimSessionTranscriptBytes: ByteArray? = null
     ) {
-        var helper = DeviceRetrievalHelper(context, listener, executor, eDeviceKey)
+        var helper = DeviceRetrievalHelper(context, listener, executor, eDeviceKey, engagementSimSessionTranscriptBytes)
 
         /**
          * Configures the helper to use normal engagement.
