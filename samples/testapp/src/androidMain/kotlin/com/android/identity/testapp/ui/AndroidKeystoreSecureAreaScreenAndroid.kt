@@ -21,12 +21,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -269,7 +269,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
                     text = "Versions and Capabilities",
                     modifier = Modifier.padding(16.dp),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.subtitle1
+                    style = MaterialTheme.typography.titleLarge
                 )
                 Column(
                     modifier = Modifier
@@ -286,7 +286,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
                                 "StrongBox KeyMint version: ${keymintVersionStrongBox}",
                         modifier = Modifier.padding(8.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.subtitle2
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     val userAuthText =
                         if (capabilities.multipleAuthenticationTypesSupported)
@@ -302,7 +302,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
                                 "Secure Lock Screen: $secureLockScreenText",
                         modifier = Modifier.padding(8.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.subtitle2
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = "Attest Key support (TEE): ${capabilities.attestKeySupported}\n" +
@@ -310,7 +310,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
                                 "Curve 25519 support (TEE): ${capabilities.curve25519Supported}",
                         modifier = Modifier.padding(8.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.subtitle2
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         text = "StrongBox Available: ${capabilities.strongBoxSupported}\n" +
@@ -319,7 +319,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
                                 "Curve 25519 support (StrongBox): ${capabilities.strongBoxCurve25519Supported}",
                         modifier = Modifier.padding(8.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.subtitle2
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Row(
@@ -360,14 +360,14 @@ fun ShowCertificateDialog(attestation: X509CertChain,
                     text = "Certificates",
                     modifier = Modifier.padding(16.dp),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.subtitle1
+                    style = MaterialTheme.typography.titleLarge
                 )
                 Row() {
                     Text(
                         text = "Certificate ${certNumber + 1} of ${attestation.certificates.size}",
                         modifier = Modifier.padding(8.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.body1,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(
@@ -396,7 +396,7 @@ fun ShowCertificateDialog(attestation: X509CertChain,
                         //text = attestation[certNumber].toString(),
                         modifier = Modifier.padding(8.dp),
                         textAlign = TextAlign.Start,
-                        style = MaterialTheme.typography.subtitle2
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Row(

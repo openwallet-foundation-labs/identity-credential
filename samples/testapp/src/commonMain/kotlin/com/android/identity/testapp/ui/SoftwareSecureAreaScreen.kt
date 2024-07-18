@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.material.TextField
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -177,21 +177,21 @@ private fun ShowPassphraseDialog(
                     text = "Enter passphrase to use key",
                     modifier = Modifier.padding(16.dp),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.body1
+                    style = MaterialTheme.typography.bodyLarge
                 )
 
                 Text(
                     text = "The passphrase is '1111'.",
                     modifier = Modifier.padding(16.dp),
                     textAlign = TextAlign.Start,
-                    style = MaterialTheme.typography.body2
+                    style = MaterialTheme.typography.bodyMedium
                 )
 
                 TextField(
                     value = passphraseTextField,
                     maxLines = 3,
                     onValueChange = { passphraseTextField = it },
-                    textStyle = MaterialTheme.typography.body2,
+                    textStyle = MaterialTheme.typography.bodyMedium,
                     visualTransformation = if (showPassphrase) {
                         VisualTransformation.None
                     } else {

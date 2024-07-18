@@ -1,8 +1,8 @@
 package com.android.identity.testapp.ui
 
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
