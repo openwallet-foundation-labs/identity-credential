@@ -86,6 +86,7 @@ dependencies {
     implementation(project(":identity-flow"))
     implementation(project(":identity-android"))
     implementation(project(":identity-issuance"))
+    implementation(project(":identity-appsupport"))
     implementation(project(":mrtd-reader"))
     implementation(project(":mrtd-reader-android"))
     implementation(project(":jpeg2k"))

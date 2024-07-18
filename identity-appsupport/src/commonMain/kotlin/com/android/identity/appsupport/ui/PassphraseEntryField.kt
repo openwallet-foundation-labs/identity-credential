@@ -1,4 +1,4 @@
-package com.android.identity_credential.wallet.ui.prompt.passphrase
+package com.android.identity.appsupport.ui
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -11,9 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.Divider
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,16 +34,29 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.securearea.PassphraseConstraints
+import identitycredential.identity_appsupport.generated.resources.Res
+import identitycredential.identity_appsupport.generated.resources.passphrase_entry_field_passphrase_is_weak
+import identitycredential.identity_appsupport.generated.resources.passphrase_entry_field_pin_is_weak
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString
 
 
 /**
  * A composable for entering a passphrase or PIN.
  *
+ * Three parameters are passed to the [onChanged] callback, the first is the current passphrase,
+ * the second is whether this meets requirements, and they third is a boolean which is set to
+ * `true` only if the user pressed the "Done" button on the virtual keyboard.
+ *
+ * Note that [onChanged] will be fired right after the composable is first shown. This is to
+ * enable the calling code to update e.g. a "Next" button based on whether the currently
+ * entered passphrase meets requirements.
+ *
  * @param constraints the constraints for the passphrase.
  * @param checkWeakPassphrase if true, checks and disallows for weak passphrase/PINs and also
- *   shows a hint if this is the case.
+ *   shows a hint if one is input
  * @param onChanged called when the user is entering text or pressing the "Done" IME action
  */
 @Composable
@@ -53,8 +66,9 @@ fun PassphraseEntryField(
     onChanged: (passphrase: String, meetsRequirements: Boolean, donePressed: Boolean) -> Unit,
 ) {
     var inputText by remember { mutableStateOf("") }
-    var meetsRequirements by remember { mutableStateOf(false) }
-    var hint by remember { mutableStateOf("") }
+    var passphraseAnalysis by remember {
+        mutableStateOf(PassphraseAnalysis(false, null))
+    }
     var obfuscateAll by remember { mutableStateOf(false) }
     val focusRequester = FocusRequester()
     val scope = rememberCoroutineScope()
@@ -85,11 +99,11 @@ fun PassphraseEntryField(
                     Text(
                         text = digit,
                         modifier = Modifier
-                            .width(48.dp)
+                            .width(40.dp)
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                             .padding(2.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.headlineLarge,
+                        style = MaterialTheme.typography.h3,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -117,10 +131,7 @@ fun PassphraseEntryField(
                 }
 
                 inputText = it
-                calcHintAndMeetsRequirements(inputText, constraints, checkWeakPassphrase).let {
-                    hint = it.first
-                    meetsRequirements = it.second
-                }
+                passphraseAnalysis = analyzePassphrase(inputText, constraints, checkWeakPassphrase)
 
                 obfuscateAll = false
                 scope.launch {
@@ -131,18 +142,18 @@ fun PassphraseEntryField(
                     inputText = value
                 }
 
-                onChanged(inputText, meetsRequirements, false)
+                onChanged(inputText, passphraseAnalysis.meetsRequirements, false)
             },
             singleLine = true,
-            textStyle = MaterialTheme.typography.headlineMedium,
+            textStyle = MaterialTheme.typography.subtitle2,
             decorationBox = decorationBox,
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (constraints.requireNumerical) KeyboardType.NumberPassword else KeyboardType.Password,
-                imeAction = ImeAction.Done,
+                imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    onChanged(inputText, meetsRequirements, true)
+                    onChanged(inputText, passphraseAnalysis.meetsRequirements, true)
                 }
             ),
             visualTransformation = { text ->
@@ -172,7 +183,7 @@ fun PassphraseEntryField(
         )
     }
 
-    if (checkWeakPassphrase) {
+    passphraseAnalysis.weakHint?.let {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -181,9 +192,9 @@ fun PassphraseEntryField(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = hint,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
+                text = it,
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.error
             )
         }
     }
@@ -191,53 +202,53 @@ fun PassphraseEntryField(
     // Bring up keyboard when entering screen
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
-
-        calcHintAndMeetsRequirements(inputText, constraints, checkWeakPassphrase).let {
-            hint = it.first
-            meetsRequirements = it.second
-        }
+        passphraseAnalysis = analyzePassphrase(inputText, constraints, checkWeakPassphrase)
+        // Fire initially so caller can adjust e.g. sensitivity of a possible "Next" button
+        onChanged(inputText, passphraseAnalysis.meetsRequirements, false)
     }
 }
 
-private fun calcHintAndMeetsRequirements(
+private data class PassphraseAnalysis(
+    val meetsRequirements: Boolean,
+    val weakHint: String?,
+)
+
+private fun analyzePassphrase(
     passphrase: String,
     constraints: PassphraseConstraints,
     checkWeakPassphrase: Boolean
-): Pair<String, Boolean> {
+): PassphraseAnalysis {
     // For a fixed-length passphrase, never give any hints until user has typed it in.
     val isFixedLength = (constraints.minLength == constraints.maxLength)
     if (isFixedLength) {
         if (passphrase.length < constraints.minLength) {
-            return Pair("", false)
+            return PassphraseAnalysis(meetsRequirements = false, weakHint = null)
         }
     }
 
     if (passphrase.length < constraints.minLength) {
-        return Pair(
-            if (constraints.requireNumerical)
-                "PIN must be at least ${constraints.minLength} digits"
-            else
-                "Passphrase must be at least ${constraints.minLength} characters",
-            false
+        return PassphraseAnalysis(meetsRequirements = false, weakHint = null,
         )
     }
 
     if (checkWeakPassphrase && isWeakPassphrase(passphrase)) {
-        return Pair(
-            if (constraints.requireNumerical)
-                "PIN is weak, please choose another"
+        return PassphraseAnalysis(
+            meetsRequirements = false,
+            weakHint = if (constraints.requireNumerical)
+                runBlocking { getString(Res.string.passphrase_entry_field_pin_is_weak) }
             else
-                "Passphrase is weak, please choose another",
-            false
+                runBlocking { getString(Res.string.passphrase_entry_field_passphrase_is_weak) },
         )
     }
 
-    return Pair("", true)
+    return PassphraseAnalysis(
+        meetsRequirements = true,
+        weakHint = null)
 }
 
 private fun isWeakPassphrase(passphrase: String): Boolean {
     if (passphrase.isEmpty()) {
-        return false
+        return true
     }
 
     // Check all characters being the same
@@ -253,5 +264,8 @@ private fun isWeakPassphrase(passphrase: String): Boolean {
         }
         nextChar = nextChar.inc()
     }
+
+    // TODO: add more checks
+
     return true
 }

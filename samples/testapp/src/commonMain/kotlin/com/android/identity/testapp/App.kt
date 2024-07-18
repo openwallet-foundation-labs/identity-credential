@@ -25,6 +25,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
+import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
@@ -32,6 +33,7 @@ import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.about_screen_title
 import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.back_button
+import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
@@ -48,6 +50,7 @@ enum class Screen(val title: StringResource) {
     SoftwareSecureArea(title = Res.string.software_secure_area_screen_title),
     AndroidKeystoreSecureArea(title = Res.string.android_keystore_secure_area_screen_title),
     SecureEnclaveSecureArea(title = Res.string.secure_enclave_secure_area_screen_title),
+    PassphraseEntryField(title = Res.string.passphrase_entry_field_screen_title)
 }
 
 class App {
@@ -105,6 +108,9 @@ class App {
                     }
                     composable(route = Screen.SecureEnclaveSecureArea.name) {
                         SecureEnclaveSecureAreaScreen(showToast = { message -> showToast(message) })
+                    }
+                    composable(route = Screen.PassphraseEntryField.name) {
+                        PassphraseEntryFieldScreen(showToast = { message -> showToast(message) })
                     }
                 }
             }
