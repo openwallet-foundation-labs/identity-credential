@@ -11,9 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Divider
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Divider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,7 +103,7 @@ fun PassphraseEntryField(
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                             .padding(2.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.h3,
+                        style = MaterialTheme.typography.headlineLarge,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -145,7 +145,7 @@ fun PassphraseEntryField(
                 onChanged(inputText, passphraseAnalysis.meetsRequirements, false)
             },
             singleLine = true,
-            textStyle = MaterialTheme.typography.subtitle2,
+            textStyle = MaterialTheme.typography.headlineMedium,
             decorationBox = decorationBox,
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (constraints.requireNumerical) KeyboardType.NumberPassword else KeyboardType.Password,
@@ -193,8 +193,8 @@ fun PassphraseEntryField(
         ) {
             Text(
                 text = it,
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.error
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
             )
         }
     }
