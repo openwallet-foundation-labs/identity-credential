@@ -16,9 +16,44 @@
 
 package com.android.identity_credential.wallet
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
@@ -40,7 +75,12 @@ import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showPresentmentFlow
+import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -136,15 +176,120 @@ class PresentationActivity : FragmentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        Logger.i(TAG, "onDestroy")
-        disconnect()
-        super.onDestroy()
+    /**
+     * Enum class defining the types of result statuses that a Presentment can yield to.
+     *
+     * @param messageResourceId the message to show for a status
+     * @param imageResourceId the image to show above the message
+     */
+    enum class ResultStatus(val messageResourceId: Int, val imageResourceId: Int) {
+        // All prompts were successful
+        SUCCESS(R.string.presentation_result_success_message, R.drawable.report_status_success),
+
+        // Something prevented success
+        ERROR(R.string.presentation_result_error_message, R.drawable.report_status_error),
+
+        // User tapped on the cancel button or outside of prompt (if permissible)
+        CANCEL(0,0),
+
+        // For init of Flow
+        UNSET(0, 0)
+    }
+
+    private val _resultStatus = MutableStateFlow(ResultStatus.UNSET)
+    private val resultStatus: StateFlow<ResultStatus> = _resultStatus
+
+    /**
+     * Composable view that is shown at the end of the Presentation result to briefly update the user
+     * on the result of the Presentation Prompt - success, neutral, or error.
+     * @param resultStatus the [ResultStatus] object containing the result status data to show.
+     */
+    @Composable
+    fun ResultStatus(resultStatus: ResultStatus) {
+        // show the result message if there's one to show
+        if (resultStatus == ResultStatus.UNSET) return
+
+        val activity = LocalContext.current as? Activity
+        val coroutineScope = rememberCoroutineScope() // Get the coroutine scope
+
+        var visible by remember { mutableStateOf(true) }
+
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.onTertiary)
+                        .shadow(
+                            elevation = 1.dp, // adjust the elevation for the shadow's depth
+                            shape = RoundedCornerShape(1.dp)
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        modifier = Modifier.padding(top = 30.dp),
+                        painter = painterResource(id = resultStatus.imageResourceId),
+                        contentDescription = null,
+                        contentScale = ContentScale.None,
+                    )
+                    Text(
+                        text = stringResource(id = resultStatus.messageResourceId),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 20.dp, bottom = 40.dp),
+                        fontSize = when (resultStatus) {
+                            ResultStatus.SUCCESS -> 36.sp
+                            ResultStatus.ERROR -> 30.sp
+                            else -> 1.sp
+
+                        },
+                        color = when (resultStatus) {
+                            ResultStatus.SUCCESS -> MaterialTheme.colorScheme.primary
+                            ResultStatus.ERROR -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.tertiary
+                        }
+                    )
+                }
+            }
+            LaunchedEffect(resultStatus) {
+                // wait 1 sec so user can read the status message before starting the
+                // fade out animation
+                delay(1000)
+                visible = false
+                coroutineScope.launch {
+                    // delay before finishing this Activity
+                    delay(500)
+                    activity?.finish()
+                }
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
+
+        setContent {
+            IdentityCredentialTheme {
+                val resultStatus = resultStatus.collectAsState().value
+                if (resultStatus == ResultStatus.CANCEL) {
+                    finish()
+                    return@IdentityCredentialTheme
+                }
+                ResultStatus(resultStatus = resultStatus)
+            }
+        }
 
         state.observe(this as LifecycleOwner) { state ->
             when (state!!) {
@@ -154,7 +299,6 @@ class PresentationActivity : FragmentActivity() {
 
                 State.CONNECTED -> {
                     Logger.i(TAG, "State: Connected")
-
                     // on a new connected client, create a new DeviceRetrievalHelper
                     deviceRetrievalHelper = DeviceRetrievalHelper
                         .Builder(
@@ -165,7 +309,6 @@ class PresentationActivity : FragmentActivity() {
                         )
                         .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
                         .build()
-
                 }
 
                 State.REQUEST_AVAILABLE -> {
@@ -176,7 +319,6 @@ class PresentationActivity : FragmentActivity() {
                      * [DocumentRequest] that has a suitable [Document].
                      */
                     lifecycleScope.launch {
-
                         try {
                             val deviceRequest = DeviceRequestParser(
                                 deviceRequestByteArray!!,
@@ -184,7 +326,8 @@ class PresentationActivity : FragmentActivity() {
                             ).parse()
 
                             // generates the DeviceResponse from all the [Document] CBOR bytes of docRequests
-                            val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+                            val deviceResponseGenerator =
+                                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
 
                             deviceRequest.docRequests.forEach { docRequest ->
                                 // find an MdocCredential for the docRequest or skip to next docRequest
@@ -209,7 +352,6 @@ class PresentationActivity : FragmentActivity() {
                                     }
                                 }
 
-
                                 // show the Presentation Flow for and get the response bytes for
                                 // the generated Document
                                 val documentCborBytes = showPresentmentFlow(
@@ -221,12 +363,17 @@ class PresentationActivity : FragmentActivity() {
                                     encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
                                 )
                                 deviceResponseGenerator.addDocument(documentCborBytes)
-
                             }
                             // send the response with all the Document CBOR bytes that succeeded Presentation Flows
                             sendResponseToDevice(deviceResponseGenerator.generate())
-                        } catch (exception: Exception) {
-                            Logger.e(TAG, "Unable to start Presentment Flow", exception)
+                            _resultStatus.value = ResultStatus.SUCCESS
+                        } catch (e: Exception) {
+                            if (e !is UserCanceledPromptException){
+                                _resultStatus.value = ResultStatus.ERROR
+                                Logger.e(TAG, "Error while running the Presentment Flow", e)
+                            } else {
+                                _resultStatus.value = ResultStatus.CANCEL
+                            }
                         }
                     }
                 }
@@ -240,6 +387,12 @@ class PresentationActivity : FragmentActivity() {
         }
     }
 
+
+    override fun onDestroy() {
+        Logger.i(TAG, "onDestroy")
+        disconnect()
+        super.onDestroy()
+    }
 
     /**
      * Find a suitable Document for the given [docRequest] else throw [IllegalStateException].
@@ -341,13 +494,13 @@ class PresentationActivity : FragmentActivity() {
             val deviceResponseGenerator =
                 DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
             sendResponseToDevice(deviceResponseGenerator.generate())
+            _resultStatus.value = ResultStatus.ERROR
         }
         state.value = State.NOT_CONNECTED
         deviceRetrievalHelper?.disconnect()
         deviceRetrievalHelper = null
         transport = null
         handover = null
-        finish()
     }
 
     /**

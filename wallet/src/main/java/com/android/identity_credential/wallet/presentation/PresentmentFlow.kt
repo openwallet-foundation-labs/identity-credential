@@ -13,16 +13,15 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.software.SoftwareKeyInfo
 import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustPoint
-import com.android.identity.util.Constants
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
@@ -30,6 +29,7 @@ import com.android.identity_credential.wallet.ui.prompt.consent.showConsentPromp
 import com.android.identity_credential.wallet.ui.prompt.passphrase.showPassphrasePrompt
 
 const val TAG = "PresentmentFlow"
+const val MAX_PASSPHRASE_ATTEMPTS = 3
 
 /**
  * Function responsible for showing the Presentment Flow for a given [DocumentRequest] and returning
@@ -75,12 +75,15 @@ suspend fun showPresentmentFlow(
         documentRequest = documentRequest,
         trustPoint = trustPoint
     ).let { resultSuccess ->
-        // throw exception if user cancelled the Prompt
-        check(resultSuccess) { "[Consent Unsuccessful]" }
+        // throw exception if user canceled the Prompt
+        if (!resultSuccess){
+            throw UserCanceledPromptException()
+        }
     }
 
     // initially null and updated when catching a KeyLockedException in the while-loop below
     var keyUnlockData: KeyUnlockData? = null
+    var remainingPassphraseAttempts = MAX_PASSPHRASE_ATTEMPTS
 
     while (true) {
         try {
@@ -131,25 +134,47 @@ suspend fun showPresentmentFlow(
                         requireConfirmation = false
                     )
                     // if user cancelled or was unable to authenticate, throw IllegalStateException
-                    check(successfulBiometricResult) { "[Biometric Unsuccessful]" }
+                    check(successfulBiometricResult) { "Biometric Unsuccessful" }
                 }
 
                 // show Passphrase prompt
                 is SoftwareSecureArea -> {
+                    // enforce a maximum number of attempts
+                    if (remainingPassphraseAttempts == 0) {
+                        throw IllegalStateException("Error! Reached maximum number of Passphrase attempts.")
+                    }
+                    remainingPassphraseAttempts--
+
                     val softwareKeyInfo =
                         mdocCredential.secureArea.getKeyInfo(mdocCredential.alias) as SoftwareKeyInfo
-
+                    val constraints = softwareKeyInfo.passphraseConstraints!!
+                    val title =
+                        if (constraints.requireNumerical)
+                            activity.resources.getString(R.string.passphrase_prompt_pin_title)
+                        else
+                            activity.resources.getString(R.string.passphrase_prompt_passphrase_title)
+                    val content =
+                        if (constraints.requireNumerical) {
+                            activity.resources.getString(R.string.passphrase_prompt_pin_content)
+                        } else {
+                            activity.resources.getString(
+                                R.string.passphrase_prompt_passphrase_content
+                            )
+                        }
                     val passphrase = showPassphrasePrompt(
                         activity = activity,
-                        constraints = softwareKeyInfo.passphraseConstraints!!,
-                        checkWeakPassphrase = softwareKeyInfo.isPassphraseProtected,
+                        constraints = constraints,
+                        title = title,
+                        content = content,
                     )
-                    // ensure the passphrase is not empty, else throw IllegalStateException
-                    check(passphrase.isNotEmpty()) { "[Passphrase Unsuccessful]" }
-                    // use the passphrase that the user entered to create the KeyUnlockData
+
+                    // if passphrase is null then user canceled the prompt
+                    if (passphrase == null) {
+                        throw UserCanceledPromptException()
+                    }
+
                     keyUnlockData = SoftwareKeyUnlockData(passphrase)
                 }
-
                 // for secure areas not yet implemented
                 else -> {
                     throw IllegalStateException("No prompts implemented for Secure Area ${mdocCredential.secureArea.displayName}")
@@ -198,3 +223,8 @@ private fun createDocumentGenerator(
     documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
     return documentGenerator
 }
+
+/**
+ * Exception thrown when user taps on the Cancel button. We can filter for all other exceptions.
+ */
+class UserCanceledPromptException : Exception()

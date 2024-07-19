@@ -57,27 +57,34 @@ import org.jetbrains.compose.resources.getString
  * @param constraints the constraints for the passphrase.
  * @param checkWeakPassphrase if true, checks and disallows for weak passphrase/PINs and also
  *   shows a hint if one is input
+ * @param imeAction optional, the icon to show for the keyboard action button. If parameter is not
+ *      provided or is [null] (default case), then it uses [ImeAction.Done].
+ *      Note: only the [ImeAction.Done] is recognized to have a task that is executed when the
+ *      user taps on the keyboard's action button.
  * @param onChanged called when the user is entering text or pressing the "Done" IME action
  */
 @Composable
 fun PassphraseEntryField(
     constraints: PassphraseConstraints,
     checkWeakPassphrase: Boolean,
+    imeAction: ImeAction? = null,
     onChanged: (passphrase: String, meetsRequirements: Boolean, donePressed: Boolean) -> Unit,
 ) {
+    // if no imeAction specified define the default to be ImeAction.Done
+    val validImeAction = imeAction ?: ImeAction.Done
+    val focusRequester = remember { FocusRequester() }
+
     var inputText by remember { mutableStateOf("") }
     var passphraseAnalysis by remember {
         mutableStateOf(PassphraseAnalysis(false, null))
     }
     var obfuscateAll by remember { mutableStateOf(false) }
-    val focusRequester = FocusRequester()
     val scope = rememberCoroutineScope()
 
     // Put boxes around the entered chars for fixed length and six or fewer characters
     var decorationBox: @Composable (@Composable () -> Unit) -> Unit =
         @Composable { innerTextField -> innerTextField() }
-    val isFixedLength = (constraints.minLength == constraints.maxLength)
-    if (isFixedLength && constraints.minLength <= 6) {
+    if (constraints.isFixedLength() && constraints.minLength <= 6) {
         decorationBox = {
             Row(
                 horizontalArrangement = Arrangement.Center,
@@ -103,7 +110,7 @@ fun PassphraseEntryField(
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                             .padding(2.dp),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.headlineLarge,
+                        style = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.primary),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -145,11 +152,11 @@ fun PassphraseEntryField(
                 onChanged(inputText, passphraseAnalysis.meetsRequirements, false)
             },
             singleLine = true,
-            textStyle = MaterialTheme.typography.headlineMedium,
+            textStyle = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.primary),
             decorationBox = decorationBox,
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (constraints.requireNumerical) KeyboardType.NumberPassword else KeyboardType.Password,
-                imeAction = ImeAction.Done
+                imeAction = validImeAction,
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
@@ -175,7 +182,7 @@ fun PassphraseEntryField(
         )
     }
 
-    if (!isFixedLength) {
+    if (!constraints.isFixedLength()) {
         Divider(
             color = Color.Blue,
             thickness = 2.dp,
@@ -201,6 +208,7 @@ fun PassphraseEntryField(
 
     // Bring up keyboard when entering screen
     LaunchedEffect(Unit) {
+        // Bring up keyboard when entering screen and no external focus requester has been provided
         focusRequester.requestFocus()
         passphraseAnalysis = analyzePassphrase(inputText, constraints, checkWeakPassphrase)
         // Fire initially so caller can adjust e.g. sensitivity of a possible "Next" button
@@ -219,8 +227,7 @@ private fun analyzePassphrase(
     checkWeakPassphrase: Boolean
 ): PassphraseAnalysis {
     // For a fixed-length passphrase, never give any hints until user has typed it in.
-    val isFixedLength = (constraints.minLength == constraints.maxLength)
-    if (isFixedLength) {
+    if (constraints.isFixedLength()) {
         if (passphrase.length < constraints.minLength) {
             return PassphraseAnalysis(meetsRequirements = false, weakHint = null)
         }
