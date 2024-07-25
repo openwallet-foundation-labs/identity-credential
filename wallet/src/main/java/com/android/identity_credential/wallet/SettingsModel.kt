@@ -134,9 +134,9 @@ class SettingsModel(
 
     fun createLogSharingIntent(context: Context): Intent {
         // NB: authority must match what given for <provider> in the manifest.
-        val authority = "com.android.identity_credential.wallet"
+        val authority = BuildConfig.javaClass.`package`.name
         // NB: must be context for which the <provider> is defined in the manifest.
-        val shareUri = FileProvider.getUriForFile(context, authority, File(logFile.name))
+        val shareUri = FileProvider.getUriForFile(context, authority, File(logFile.toString()))
         val sharingIntent = Intent(Intent.ACTION_SEND)
         sharingIntent.setType("text/plain")
         sharingIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
