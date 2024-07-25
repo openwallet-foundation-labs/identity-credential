@@ -91,6 +91,7 @@ dependencies {
     implementation(project(":mrtd-reader-android"))
     implementation(project(":jpeg2k"))
 
+    implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)
     implementation(libs.kotlinx.io.bytestring)
@@ -110,6 +111,7 @@ dependencies {
     implementation(compose.components.resources)
     implementation(compose.components.uiToolingPreview)
     implementation(compose.material)
+    implementation(libs.camera.lifecycle)
 
     debugImplementation(compose.uiTooling)
     implementation(compose.preview)
@@ -125,6 +127,7 @@ dependencies {
     implementation(libs.nimbus.oauth2.oidc.sdk)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.material)
+    implementation(libs.face.detection)
     implementation(libs.zxing.core)
 
     implementation(files("../third-party/play-services-identity-credentials-0.0.1-eap01.aar"))
