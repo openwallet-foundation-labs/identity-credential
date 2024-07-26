@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.konan.target.HostManager
+
 plugins {
     kotlin("multiplatform")
 }
@@ -28,4 +30,9 @@ kotlin {
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+// Workaround for gradle error whey to find :identity-appsupport:testClasses.
+tasks.register("testClasses") {
+    dependsOn("jvmTestClasses")
 }

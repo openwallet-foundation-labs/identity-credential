@@ -99,3 +99,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
 tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
+
+// Workaround for gradle error whey to find :identity-appsupport:testClasses.
+tasks.register("testClasses") {
+    dependsOn("jvmTestClasses")
+}

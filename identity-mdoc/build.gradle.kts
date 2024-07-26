@@ -57,3 +57,8 @@ kotlin {
         }
     }
 }
+
+// Workaround for gradle error whey to find :identity-appsupport:testClasses.
+tasks.register("testClasses") {
+    dependsOn("jvmTestClasses")
+}
