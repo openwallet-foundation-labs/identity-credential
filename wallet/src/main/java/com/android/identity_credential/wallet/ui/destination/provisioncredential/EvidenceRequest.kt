@@ -1030,6 +1030,7 @@ fun EvidenceRequestEIdView(
     permissionTracker: PermissionTracker
 ) {
     AusweisView(
+        evidenceRequest.tcTokenUrl,
         evidenceRequest.optionalComponents,
         permissionTracker
     ) { evidence ->
@@ -1043,6 +1044,7 @@ fun EvidenceRequestEIdView(
 
 @Composable
 fun AusweisView(
+    tcTokenUrl: String,
     requiredComponents: List<String>,
     permissionTracker: PermissionTracker,
     onResult: (evidence: EvidenceResponseGermanEid) -> Unit
@@ -1056,6 +1058,7 @@ fun AusweisView(
             context,
             status,
             navController,
+            tcTokenUrl,
             requiredComponents,
             coroutineScope,
             onResult
@@ -1131,6 +1134,11 @@ fun AusweisView(
                                 "FamilyName" -> stringResource(R.string.eid_access_right_last_name)
                                 "BirthName" -> stringResource(R.string.eid_access_right_maiden_name)
                                 "DateOfBirth" -> stringResource(R.string.eid_access_right_date_of_birth)
+                                "Address" -> stringResource(R.string.eid_access_right_address)
+                                "Nationality" -> stringResource(R.string.eid_access_right_nationality)
+                                "PlaceOfBirth" -> stringResource(R.string.eid_access_right_place_of_birth)
+                                "Pseudonym" -> stringResource(R.string.eid_access_right_pseudonym)
+                                "AgeVerification" -> stringResource(R.string.eid_access_right_age_verification)
                                 // TODO: all others
                                 else -> "Item [$component]"
                             },

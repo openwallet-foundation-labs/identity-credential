@@ -200,6 +200,7 @@ class WalletApplication : Application() {
 
         documentModel = DocumentModel(
             applicationContext,
+
             settingsModel,
             documentStore,
             secureAreaRepository,

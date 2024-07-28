@@ -7,6 +7,8 @@ import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.CredentialRequest
+import com.android.identity.issuance.KeyPossessionChallenge
+import com.android.identity.issuance.KeyPossessionProof
 import com.android.identity.issuance.RequestCredentialsFlow
 
 /**
@@ -22,7 +24,6 @@ class RequestCredentialsState(
 ) {
     companion object {}
 
-
     @FlowMethod
     fun getCredentialConfiguration(env: FlowEnvironment, format: CredentialFormat): CredentialConfiguration {
         // TODO: make use of the format
@@ -32,7 +33,13 @@ class RequestCredentialsState(
     }
 
     @FlowMethod
-    fun sendCredentials(env: FlowEnvironment, credentialRequests: List<CredentialRequest>) {
+    fun sendCredentials(env: FlowEnvironment, credentialRequests: List<CredentialRequest>): List<KeyPossessionChallenge> {
         this.credentialRequests.addAll(credentialRequests)
+        return emptyList()
+    }
+
+    @FlowMethod
+    fun sendPossessionProofs(env: FlowEnvironment, keyPossessionProofs: List<KeyPossessionProof>) {
+        throw IllegalStateException()  // should not be called
     }
 }

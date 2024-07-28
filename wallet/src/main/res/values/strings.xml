@@ -200,6 +200,10 @@
     <string name="presentation_result_error_message">An error occurred</string>
 
 
+    <!-- Credential issuance -->
+    <string name="issuance_biometric_prompt_title">Use your screen lock</string>
+    <string name="issuance_biometric_prompt_subtitle">Authentication is required to bind issued credential to this device</string>
+
     <!-- QR screen -->
     <string name="qr_title">Share using QR code</string>
     <string name="qr_instructions">Present QR code to verifier</string>
@@ -260,6 +264,11 @@
     <string name="eid_access_right_last_name">Last name</string>
     <string name="eid_access_right_maiden_name">Birth (maiden) name</string>
     <string name="eid_access_right_date_of_birth">Date of birth</string>
+    <string name="eid_access_right_place_of_birth">Place of birth</string>
+    <string name="eid_access_right_address">Address</string>
+    <string name="eid_access_right_nationality">Nationality</string>
+    <string name="eid_access_right_pseudonym">Pseudonym</string>
+    <string name="eid_access_right_age_verification">Age</string>
     <string name="eid_access_right_allow">Allow</string>
     <string name="eid_nfc_scanning">Scanning eID using NFC</string>
     <string name="eid_enter_pin">Enter your PIN</string>

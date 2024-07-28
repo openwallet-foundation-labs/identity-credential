@@ -13,6 +13,10 @@ import com.android.identity.jpeg2k.Jpeg2kConverter
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 
 private const val TAG = "ViewDocumentData"
 
@@ -112,7 +116,9 @@ fun Document.renderDocumentDetails(
         is MdocCredential -> {
             return renderDocumentDetailsForMdoc(context, documentTypeRepository, credential)
         }
-        // TODO: add SD-JWT support
+        is SdJwtVcCredential -> {
+            return renderDocumentDetailsForSdJwt(context, credential)
+        }
         else -> {
             return DocumentDetails(
                 null,
@@ -142,7 +148,7 @@ private fun Document.renderDocumentDetailsForMdoc(
     val documentType = documentTypeRepository.getDocumentTypeForMdoc(mso.docType)
     val kvPairs = mutableMapOf<String, String>()
     for (namespaceName in mso.valueDigestNamespaces) {
-        val digestIdMapping = documentData.digestIdMapping[namespaceName] ?: continue
+        val digestIdMapping = documentData.digestIdMapping[namespaceName] ?: listOf()
         val result = visitNamespace(
             context,
             documentType?.mdocDocumentType,
@@ -160,4 +166,38 @@ private fun Document.renderDocumentDetailsForMdoc(
     }
 
     return DocumentDetails(portrait, signatureOrUsualMark, kvPairs)
+}
+
+private fun Document.renderDocumentDetailsForSdJwt(
+    context: Context,
+    credential: SdJwtVcCredential
+): DocumentDetails {
+    val kvPairs = mutableMapOf<String, String>()
+
+    val sdJwt = SdJwtVerifiableCredential.fromString(
+        String(credential.issuerProvidedData, Charsets.US_ASCII))
+
+    for (disclosure in sdJwt.disclosures) {
+        // TODO: replace this ad-hoc mapping with document type based mapping like what is done
+        // for mdoc
+        val content = if (disclosure.value is JsonPrimitive) {
+            disclosure.value.jsonPrimitive.content
+        } else {
+            disclosure.value.toString()
+        }
+        when (disclosure.key) {
+            "family_name" -> kvPairs["Family Name"] = content
+            "given_name" -> kvPairs["First Name"] = content
+            "birthdate" -> kvPairs["Date of Birth"] = content
+            "age_in_years" -> kvPairs["Age"] = content
+            "birth_family_name" -> kvPairs["Maiden Name"] = content
+            else -> if (disclosure.key.matches(Regex("^\\d+\$"))) {
+                kvPairs["Over ${disclosure.key}"] = content
+            } else {
+                kvPairs[disclosure.key] = content
+            }
+        }
+    }
+
+    return DocumentDetails(null, null, kvPairs)
 }
