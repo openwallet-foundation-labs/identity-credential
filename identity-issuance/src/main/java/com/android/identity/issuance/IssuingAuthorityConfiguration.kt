@@ -40,6 +40,21 @@ data class IssuingAuthorityConfiguration(
      * A [DocumentConfiguration] that can be used while proofing is pending for a document.
      */
     val pendingDocumentInformation: DocumentConfiguration,
+
+    /**
+     * Recommended number of credentials to request.
+     */
+    val numberOfCredentialsToRequest: Int?,
+
+    /**
+     * Minimum validity in milliseconds
+     */
+    val minCredentialValidityMillis: Long?,
+
+    /**
+     * Maximum number a single credential should be used
+     */
+    val maxUsesPerCredentials: Int?,
 ) {
     companion object
 }

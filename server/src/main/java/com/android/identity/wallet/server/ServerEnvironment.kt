@@ -29,7 +29,9 @@ class ServerEnvironment(
         settings.databaseConnection ?: defaultDatabase(),
         settings.databaseUser ?: "",
         settings.databasePassword ?: "")
-    private val httpClient = HttpClient(Java)
+    private val httpClient = HttpClient(Java) {
+        followRedirects = false
+    }
     private val secureArea = SoftwareSecureArea(StorageAdapter(storage, "ServerKeys"))
     internal var notifications: FlowNotifications? = null
 

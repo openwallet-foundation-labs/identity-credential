@@ -200,6 +200,10 @@
     <string name="presentation_result_error_message">An error occurred</string>
 
 
+    <!-- Credential issuance -->
+    <string name="issuance_biometric_prompt_title">Use your screen lock</string>
+    <string name="issuance_biometric_prompt_subtitle">Authentication is required to bind issued credential to this device</string>
+
     <!-- QR screen -->
     <string name="qr_title">Share using QR code</string>
     <string name="qr_instructions">Present QR code to verifier</string>
