@@ -17,14 +17,17 @@ import com.android.identity.issuance.RequestCredentialsFlow
 class RequestCredentialsState(
     val documentId: String = "",
     val credentialConfiguration: CredentialConfiguration? = null,
-    val credentialRequests: MutableList<CredentialRequest> = mutableListOf()
+    val credentialRequests: MutableList<CredentialRequest> = mutableListOf(),
+    var format: CredentialFormat? = null
 ) {
-    companion object
+    companion object {}
+
 
     @FlowMethod
     fun getCredentialConfiguration(env: FlowEnvironment, format: CredentialFormat): CredentialConfiguration {
         // TODO: make use of the format
         check(credentialConfiguration != null)
+        this.format = format
         return credentialConfiguration
     }
 

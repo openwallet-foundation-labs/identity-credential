@@ -3,8 +3,10 @@ package com.android.identity.issuance.hardcoded
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborInt
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.cbor.toDataItem
 import com.android.identity.cbor.toDataItemDateTimeString
@@ -39,6 +41,7 @@ import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityNotification
+import com.android.identity.issuance.SdJwtVcDocumentConfiguration
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.common.cache
@@ -53,6 +56,9 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mrtd.MrtdNfcData
 import com.android.identity.mrtd.MrtdNfcDataDecoder
+import com.android.identity.sdjwt.Issuer
+import com.android.identity.sdjwt.SdJwtVcGenerator
+import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -66,8 +72,10 @@ import kotlinx.datetime.yearsUntil
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -261,6 +269,7 @@ class IssuingAuthorityState(
             val authenticationKey = request.secureAreaBoundKeyAttestation.publicKey
             val presentationData = createPresentationData(
                 env,
+                state.format!!,
                 issuerDocument.documentConfiguration!!,
                 authenticationKey
             )
@@ -388,6 +397,16 @@ class IssuingAuthorityState(
 
     private fun createPresentationData(
         env: FlowEnvironment,
+        format: CredentialFormat,
+        documentConfiguration: DocumentConfiguration,
+        authenticationKey: EcPublicKey
+    ): ByteArray = when (format) {
+        CredentialFormat.MDOC_MSO -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey)
+        CredentialFormat.SD_JWT_VC -> createPresentationDataSdJwt(env, documentConfiguration, authenticationKey)
+    }
+
+    private fun createPresentationDataMdoc(
+        env: FlowEnvironment,
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
     ): ByteArray {
@@ -463,6 +482,60 @@ class IssuingAuthorityState(
         ).generate()
 
         return issuerProvidedAuthenticationData
+    }
+
+    private fun createPresentationDataSdJwt(
+        env: FlowEnvironment,
+        documentConfiguration: DocumentConfiguration,
+        authenticationKey: EcPublicKey
+    ): ByteArray {
+        // For now, just use the mdoc data element names and only import tstr and numbers
+        //
+        val identityAttributes = buildJsonObject {
+            for (nsName in documentConfiguration.mdocConfiguration!!.staticData.nameSpaceNames) {
+                for (deName in documentConfiguration.mdocConfiguration!!.staticData.getDataElementNames(nsName)) {
+                    val value = Cbor.decode(
+                        documentConfiguration.mdocConfiguration!!.staticData.getDataElement(nsName, deName)
+                    )
+                    when (value) {
+                        is Tstr -> put(deName, value.asTstr)
+                        is CborInt -> put(deName, value.asNumber.toString())
+                        else -> {} /* do nothing */
+                    }
+                }
+            }
+        }
+
+        val sdJwtVcGenerator = SdJwtVcGenerator(
+            random = Random.Default,
+            payload = identityAttributes,
+            docType = "PersonalIdentificationDocument",
+            issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
+        )
+
+        val now = Clock.System.now()
+
+        val timeSigned = now
+        val validFrom = now
+        val validUntil = validFrom + 30.days
+
+        sdJwtVcGenerator.publicKey = JsonWebKey(authenticationKey)
+        sdJwtVcGenerator.timeSigned = timeSigned
+        sdJwtVcGenerator.timeValidityBegin = validFrom
+        sdJwtVcGenerator.timeValidityEnd = validUntil
+
+        // Just use the mdoc Document Signing key for now
+        //
+        val resources = env.getInterface(Resources::class)!!
+        val documentSigningKeyCert = X509Cert.fromPem(
+            resources.getStringResource("ds_certificate.pem")!!)
+        val documentSigningKey = EcPrivateKey.fromPem(
+            resources.getStringResource("ds_private_key.pem")!!,
+            documentSigningKeyCert.ecPublicKey
+        )
+        val sdJwt = sdJwtVcGenerator.generateSdJwt(documentSigningKey)
+
+        return sdJwt.toString().toByteArray()
     }
 
     private suspend fun generateDocumentConfiguration(
@@ -611,7 +684,9 @@ class IssuingAuthorityState(
                 docType = EUPID_DOCTYPE,
                 staticData = staticData,
             ),
-            sdJwtVcDocumentConfiguration = null,
+            sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
+                "https://example.bmi.bund.de/credential/pid/1.0"
+            ),
         )
     }
 
