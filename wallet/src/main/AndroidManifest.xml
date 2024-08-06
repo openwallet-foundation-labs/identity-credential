@@ -63,12 +63,19 @@
             android:name=".presentation.OpenID4VPPresentationActivity"
             android:exported="true"
             android:label="@string/app_name_presentation"
-            android:theme="@style/Theme.IdentityCredential">
+            android:theme="@style/Theme.IdentityCredential"
+            android:windowSoftInputMode="adjustPan"
+            android:noHistory="true"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="eudi-openid4vp" android:host="*" />
+                <data android:scheme="eudi-openid4vp"/>
+                <data android:scheme="mdoc-openid4vp"/>
+                <data android:host="*"/>
             </intent-filter>
         </activity>
 
