@@ -5,26 +5,33 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
@@ -32,27 +39,17 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
-import com.android.identity.document.NameSpacedData
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.mdoc.mso.MobileSecurityObjectParser
-import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.mdoc.response.DocumentGenerator
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.KeyLockedException
-import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
-import com.android.identity_credential.wallet.ui.ScreenWithAppBar
-import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryField
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentPromptEntryFieldData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
 import com.nimbusds.jose.EncryptionMethod
@@ -89,10 +86,8 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.formUrlEncode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.InternalAPI
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Required
@@ -112,7 +107,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.security.cert.X509Certificate
 import java.util.UUID
-import kotlin.coroutines.resume
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
@@ -145,33 +139,68 @@ internal data class AuthorizationRequest (
     var certificateChain: List<X509Certificate>?
 )
 
-internal data class ResponseComponents (
-    var documentRequest: DocumentRequest,
-    var sessionTranscript: ByteArray,
-    var jweHeader: JWEHeader,
-    var responseUrl: Url,
-    var state: String?,
-    var presentationSubmission: PresentationSubmission,
-    val keySet: JWKSet
-)
-
 class OpenID4VPPresentationActivity : FragmentActivity() {
     companion object {
         private const val TAG = "OpenID4VPPresentationActivity"
     }
 
-    private enum class State { PROCESSING, RESPONSE_SENT }
+    private enum class Phase {
+        NOT_CONNECTED,
+        TRANSACTING,
+        SHOW_RESULT,
+        POST_RESULT,
+        CANCELED,
+    }
 
-    private var state = MutableLiveData<State>()
-    private var document: Document? = null
-    private var responseComponents: ResponseComponents? = null
-    private var consentData: ConsentPromptEntryFieldData? = null
+    private var phase = MutableLiveData<Phase>(Phase.TRANSACTING)
 
-    // creating new HttpClients is not cheap, better to reuse/not create when possible
-    private var httpClient = lazy { HttpClient {
-        install(ContentNegotiation) { json() }
-        expectSuccess = true
-    } }
+    private var resultStringId: Int = 0
+    private var resultDrawableId: Int = 0
+    private var successRedirectUri: Uri? = null
+
+    @Composable
+    private fun Result(phase: Phase) {
+        AnimatedVisibility(
+            visible = phase == Phase.SHOW_RESULT,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (resultDrawableId != 0) {
+                        Image(
+                            modifier = Modifier.padding(top = 30.dp),
+                            painter = painterResource(resultDrawableId),
+                            contentDescription = null,
+                            contentScale = ContentScale.None,
+                        )
+                    }
+                    if (resultStringId != 0) {
+                        androidx.compose.material.Text(
+                            text = stringResource(resultStringId),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 20.dp, bottom = 40.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     private val walletApp: WalletApplication by lazy {
         application as WalletApplication
@@ -182,225 +211,89 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         onDestroy()
     }
 
-    private fun onAuthenticationKeyLocked(credential: MdocCredential) {
-        val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
-        var userAuthenticationTypes = emptySet<UserAuthenticationType>()
-        if (keyInfo is AndroidKeystoreKeyInfo) {
-            userAuthenticationTypes = keyInfo.userAuthenticationTypes
-        }
-
-        val unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
-        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
-
-        showBiometricPrompt(
-            activity = this,
-            title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
-            subtitle = applicationContext.resources.getString(R.string.presentation_biometric_prompt_subtitle),
-            cryptoObject = cryptoObject,
-            userAuthenticationTypes = userAuthenticationTypes,
-            requireConfirmation = false,
-            onCanceled = { finish() },
-            onSuccess = {
-                // create and send response on IO thread
-                lifecycleScope.launch {
-                    try {
-                        createAndSendResponse(unlockData, credential)
-                    } catch (e: Throwable) {
-                        Logger.e(TAG, e.toString())
-                        showErrorAndDismiss(IllegalStateException("Unexpected error"))
-                    }
-                } },
-            onError = {exception ->
-                Logger.e(TAG, exception.toString())
-                finish() },
-        )
-    }
-
     override fun onDestroy() {
         Logger.i(TAG, "onDestroy")
-        if (httpClient.isInitialized()) {
-            httpClient.value.close()
-        }
         super.onDestroy()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val supportedUriSchemes = listOf("mdoc-openid4vp", "eudi-openid4vp")
-        var authorizationRequest = ""
-        if (supportedUriSchemes.contains(intent.scheme)) {
-            authorizationRequest = Uri.parse(intent.toUri(0)).toString()
-            state.value = State.PROCESSING
-        } else {
-            Logger.e(TAG, "URI scheme not recognized")
-            showErrorAndDismiss(IllegalArgumentException("URI scheme not recognized"))
-        }
+        phase.value = Phase.TRANSACTING
+        resultStringId = 0
+        resultDrawableId = 0
+        successRedirectUri = null
+
+        val authorizationRequest = Uri.parse(intent.toUri(0)).toString()
 
         setContent {
+            val phaseState: Phase by phase.observeAsState(Phase.TRANSACTING)
             IdentityCredentialTheme {
-
-                val stateDisplay = remember { mutableStateOf("Idle") }
-                val consentPromptData = remember { mutableStateOf<ConsentPromptEntryFieldData?>(null) }
-
-                state.observe(this as LifecycleOwner) { state ->
-                    when (state) {
-                        State.PROCESSING -> {
-                            Logger.i(TAG, "State: Processing")
-                            stateDisplay.value = "Processing"
-                            try {
-                                processRequest(authorizationRequest, consentPromptData)
-                            } catch (e: Throwable) {
-                                Logger.e(TAG, e.toString())
-                                showErrorAndDismiss(IllegalStateException("Unexpected error"))
-                            }
-
-                        }
-
-                        State.RESPONSE_SENT -> {
-                            Logger.i(TAG, "State: Response Sent")
-                            stateDisplay.value = "Response Sent"
-                        }
-
-                        else -> {}
-                    }
-                }
-
-                ScreenWithAppBar(title = "Presenting", navigationIcon = { }) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Sending mDL to reader.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "TODO: finalize UI",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        HorizontalDivider()
-                        Text(
-                            text = "State: ${stateDisplay.value}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        HorizontalDivider()
-                        Button(onClick = { finish() }) {
-                            Text("Close")
-                        }
-                    }
-
-                    // when consent data is available, show consent prompt
-                    consentData = consentPromptData.value
-                    if (consentData != null) {
-                        ConsentPromptEntryField(
-                            consentData = consentData!!,
-                            documentTypeRepository = walletApp.documentTypeRepository,
-                            onConfirm = {
-                                // create and send response on IO thread
-                                lifecycleScope.launch {
-                                    try {
-                                        createAndSendResponse()
-                                    } catch (e: Throwable) {
-                                        Logger.e(TAG, e.toString())
-                                        showErrorAndDismiss(IllegalStateException("Unexpected error"))
-                                    }
-                                }
-                            },
-                            onCancel = {
-                                finish()
-                            }
-                        )
-                    }
-                }
+                Result(phaseState)
             }
         }
-    }
-
-    @OptIn(ExperimentalEncodingApi::class)
-    private fun processRequest(
-        authRequest: String,
-        consentPromptData: MutableState<ConsentPromptEntryFieldData?>
-    )  {
-        val uri = Uri.parse(authRequest)
 
         lifecycleScope.launch {
-            val authorizationRequest = getAuthorizationRequest(uri, httpClient, showErrorAndDismiss)
-            val presentationSubmission = createPresentationSubmission(authorizationRequest)
-            val inputDescriptors = authorizationRequest.presentationDefinition["input_descriptors"]!!.jsonArray
-
-            // for now, we only respond to the first credential being requested
-            // NOTE: openid4vp spec gives a non-normative example of multiple input descriptors
-            // as "alternatives credentials" https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.1-6
-            // but identity.foundation says all input descriptors MUST be satisfied https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-descriptor
-            val inputDescriptorObj = inputDescriptors[0].jsonObject
-            val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
-            val verifierName = inputDescriptorObj["name"].toString().run { substring(1, this.length - 1) }
-            val format = inputDescriptorObj["format"]!!.jsonObject
-            val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
-
-            val credentialFormat: CredentialFormat
-            if (format.contains("mso_mdoc")) {
-                credentialFormat = CredentialFormat.MDOC_MSO
-            } else {
-                throw IllegalArgumentException("We only support the mdoc profile.")
+            try {
+                createAndSendResponse(authorizationRequest)
+                resultStringId = R.string.presentation_result_success_message
+                resultDrawableId = R.drawable.report_status_success
+                phase.value = Phase.SHOW_RESULT
+            } catch (e: UserCanceledPromptException) {
+                Logger.e(TAG, "User canceled the prompt")
+                phase.value = Phase.CANCELED
+            } catch (e: Throwable) {
+                Logger.e(TAG, "Error presenting", e)
+                resultStringId = R.string.presentation_result_error_message
+                resultDrawableId = R.drawable.report_status_error
+                phase.value = Phase.SHOW_RESULT
             }
-            document = firstMatchingDocument(credentialFormat, docType)
-                ?: run { throw IllegalStateException("No matching credentials in wallet") }
-
-            // begin collecting and creating data needed for the response
-            val secureRandom = Random.Default
-            val bytes = ByteArray(16)
-            secureRandom.nextBytes(bytes)
-            val mdocGeneratedNonce = Base64.UrlSafe.encode(bytes)
-            val sessionTranscript = createSessionTranscript(
-                clientId = authorizationRequest.clientId,
-                responseUri = authorizationRequest.responseUri,
-                authorizationRequestNonce = authorizationRequest.nonce,
-                mdocGeneratedNonce = mdocGeneratedNonce
-            )
-
-            if (authorizationRequest.clientMetadata["authorization_signed_response_alg"] != null) {
-                TODO("Support signing the authorization response")
-            }
-            val responseEncryptionAlg = JWEAlgorithm.parse(authorizationRequest.clientMetadata
-                ["authorization_encrypted_response_alg"]!!.toString().run { substring(1, this.length - 1) })
-            val responseEncryptionMethod = EncryptionMethod.parse(authorizationRequest.clientMetadata
-                ["authorization_encrypted_response_enc"]!!.toString().run { substring(1, this.length - 1) })
-            val apv = Base64URL.encode(authorizationRequest.nonce)
-            val apu = Base64URL.encode(mdocGeneratedNonce)
-            val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
-                .apply {
-                    apv?.let(::agreementPartyVInfo)
-                    apu?.let(::agreementPartyUInfo)
-                }
-                .build()
-
-            responseComponents = ResponseComponents(
-                documentRequest = documentRequest,
-                sessionTranscript = sessionTranscript,
-                jweHeader = jweHeader,
-                responseUrl = Url(authorizationRequest.responseUri),
-                state = authorizationRequest.state,
-                presentationSubmission = presentationSubmission,
-                keySet = getKeySet(authorizationRequest.clientMetadata)
-            )
-
-            consentPromptData.value = ConsentPromptEntryFieldData(
-                documentRequest = documentRequest,
-                docType = docType,
-                documentName = document!!.documentConfiguration.displayName,
-                credentialData = document!!.documentConfiguration.mdocConfiguration!!.staticData,
-                credentialId = document!!.name,
-                verifier = if (authorizationRequest.certificateChain != null) TrustPoint(
-                    authorizationRequest.certificateChain!![0], verifierName) else null
-            )
         }
+
+        phase.observe(this as LifecycleOwner) {
+            when (it!!) {
+                Phase.NOT_CONNECTED -> {
+                    Logger.i(TAG, "Phase: Not Connected")
+                    finish()
+                }
+
+                Phase.TRANSACTING -> {
+                }
+
+                Phase.SHOW_RESULT -> {
+                    Logger.i(TAG, "Phase: Showing result")
+                    lifecycleScope.launch {
+                        // the amount of time to show the result for
+                        delay(1500)
+                        phase.value = Phase.POST_RESULT
+                    }
+                }
+
+                Phase.POST_RESULT -> {
+                    Logger.i(TAG, "Phase: Post showing result")
+                    lifecycleScope.launch {
+                        // delay before finishing activity, to ensure the result is fading out
+                        delay(500)
+                        // Once faded out, switch back to browser if the transaction succeeded
+                        if (successRedirectUri != null) {
+                            startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(successRedirectUri.toString())
+                                )
+                            )
+                        }
+                        phase.value = Phase.NOT_CONNECTED
+                    }
+                }
+
+                Phase.CANCELED -> {
+                    Logger.i(TAG, "Phase: Canceled")
+                    phase.value = Phase.NOT_CONNECTED
+                }
+            }
+        }
+
     }
 
     private fun firstMatchingDocument(
@@ -438,18 +331,19 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         return credential.documentConfiguration.mdocConfiguration?.docType == docType
     }
 
-    private suspend fun getKeySet(clientMetadata: JsonObject): JWKSet {
+    private suspend fun getKeySet(httpClient: HttpClient, clientMetadata: JsonObject): JWKSet {
         if (clientMetadata["jwks"] != null) {
             TODO("Add support for parsing keySet directly")
         }
 
         val jwksUri = clientMetadata["jwks_uri"].toString().run { substring(1, this.length - 1) }
-        val unparsed = httpClient.value.get(Url(jwksUri)).body<String>()
+        val unparsed = httpClient.get(Url(jwksUri)).body<String>()
         return JWKSet.parse(unparsed)
     }
 
     /**
-     * [OutgoingContent] for `application/x-www-form-urlencoded` formatted requests that use US-ASCII encoding.
+     * [OutgoingContent] for `application/x-www-form-urlencoded` formatted requests that use
+     * US-ASCII encoding.
      */
     internal class FormData(
         val formData: Parameters,
@@ -462,72 +356,131 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         override fun bytes(): ByteArray = content
     }
 
+    // Returns `false` if canceled by the user
+    //
     @OptIn(InternalAPI::class, ExperimentalEncodingApi::class)
-    private suspend fun createAndSendResponse(
-        keyUnlockData: KeyUnlockData? = null,
-        credential: MdocCredential? = null,
-    ) {
+    private suspend fun createAndSendResponse(authRequest: String) {
+        val httpClient = HttpClient {
+            install(ContentNegotiation) { json() }
+            expectSuccess = true
+        }
+
+        val uri = Uri.parse(authRequest)
+        val authorizationRequest = getAuthorizationRequest(uri, httpClient, showErrorAndDismiss)
+        val presentationSubmission = createPresentationSubmission(authorizationRequest)
+        val inputDescriptors =
+            authorizationRequest.presentationDefinition["input_descriptors"]!!.jsonArray
+
+        // For now, we only respond to the first credential being requested.
+        //
+        // NOTE: openid4vp spec gives a non-normative example of multiple input descriptors
+        // as "alternatives credentials", see
+        //
+        //  https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.1-6
+        //
+        // Also note identity.foundation says all input descriptors MUST be satisfied, see
+        //
+        //  https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-descriptor
+        //
+        val inputDescriptorObj = inputDescriptors[0].jsonObject
+        val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
+        val verifierName =
+            inputDescriptorObj["name"].toString().run { substring(1, this.length - 1) }
+        val format = inputDescriptorObj["format"]!!.jsonObject
+        val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
+
+        val credentialFormat: CredentialFormat
+        if (format.contains("mso_mdoc")) {
+            credentialFormat = CredentialFormat.MDOC_MSO
+        } else {
+            TODO("mso_mdoc only supported for now")
+        }
+        val document = firstMatchingDocument(credentialFormat, docType)
+            ?: run { throw IllegalStateException("No matching credentials in wallet") }
+
+        // begin collecting and creating data needed for the response
+        val secureRandom = Random.Default
+        val bytes = ByteArray(16)
+        secureRandom.nextBytes(bytes)
+        val mdocGeneratedNonce = Base64.UrlSafe.encode(bytes)
+        val sessionTranscript = createSessionTranscript(
+            clientId = authorizationRequest.clientId,
+            responseUri = authorizationRequest.responseUri,
+            authorizationRequestNonce = authorizationRequest.nonce,
+            mdocGeneratedNonce = mdocGeneratedNonce
+        )
+
+        if (authorizationRequest.clientMetadata["authorization_signed_response_alg"] != null) {
+            TODO("Support signing the authorization response")
+        }
+        val responseEncryptionAlg = JWEAlgorithm.parse(authorizationRequest.clientMetadata
+            ["authorization_encrypted_response_alg"]!!.toString()
+            .run { substring(1, this.length - 1) })
+        val responseEncryptionMethod = EncryptionMethod.parse(authorizationRequest.clientMetadata
+            ["authorization_encrypted_response_enc"]!!.toString()
+            .run { substring(1, this.length - 1) })
+        val apv = Base64URL.encode(authorizationRequest.nonce)
+        val apu = Base64URL.encode(mdocGeneratedNonce)
+        val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
+            .apply {
+                apv?.let(::agreementPartyVInfo)
+                apu?.let(::agreementPartyUInfo)
+            }
+            .build()
+
         val now = Clock.System.now()
-        val credentialToUse: MdocCredential = credential
-            ?: (document!!.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
-                ?: run {
-                    showErrorAndDismiss(IllegalArgumentException("No valid credentials, please request more"))
-                    return
-                }) as MdocCredential
+        val credentialToUse: MdocCredential = (
+                document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
+                    ?: run {
+                        throw IllegalStateException("No credentials available")
+                    }) as MdocCredential
 
-        val staticAuthData = StaticAuthDataParser(credentialToUse.issuerProvidedData).parse()
-        val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
-        val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
-        val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-        val mso = MobileSecurityObjectParser(encodedMso).parse()
+        var trustPoint: TrustPoint? = null
+        if (authorizationRequest.certificateChain != null) {
+            val trustResult = walletApp.trustManager.verify(authorizationRequest.certificateChain!!)
+            if (trustResult.isTrusted && trustResult.trustPoints.size > 0) {
+                trustPoint = trustResult.trustPoints[0]
+            }
+        }
 
-        val credentialConfiguration = document!!.documentConfiguration
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            responseComponents!!.documentRequest,
-            credentialConfiguration.mdocConfiguration!!.staticData,
-            staticAuthData
+        // TODO: Need to catch UserCanceledPromptException and tell the verifier that
+        //  the user declined to share data.
+        //
+        val documentResponse = showPresentmentFlow(
+            activity = this,
+            walletApp = walletApp,
+            documentRequest = documentRequest,
+            mdocCredential = credentialToUse,
+            trustPoint = trustPoint,
+            encodedSessionTranscript = sessionTranscript,
         )
 
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-
-        // in sep coroutine so that an unexpected error will still allow this function to
-        // finish and send potentially empty response
-        val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
-            addDocumentToResponse(
-                deviceResponseGenerator = deviceResponseGenerator,
-                docType = mso.docType,
-                issuerAuth = staticAuthData.issuerAuth,
-                mergedIssuerNamespaces = mergedIssuerNamespaces,
-                credential = credentialToUse,
-                keyUnlockData = keyUnlockData
-            )
-        }
-
-        if (result != null) {
-            onAuthenticationKeyLocked(result)
-            return
-        }
+        deviceResponseGenerator.addDocument(documentResponse)
 
         // build response
         val deviceResponseCbor = deviceResponseGenerator.generate()
         val vpToken = Base64.UrlSafe.encode(deviceResponseCbor)
         val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
             // put("id_token", idToken) // depends on response type, only supporting vp_token for now
-            put("state", responseComponents!!.state)
+            put("state", authorizationRequest.state)
             put("vp_token", vpToken)
-            put("presentation_submission", Json.encodeToJsonElement(responseComponents!!.presentationSubmission))
+            put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
         }))
 
 
         // encrypt
-        val jweEncrypter: ECDHEncrypter? = responseComponents!!.keySet.keys.mapNotNull { key ->
-            runCatching { ECDHEncrypter(key as ECKey) }.getOrNull()?.let { encrypter -> key to encrypter }}
+        val keySet = getKeySet(httpClient, authorizationRequest.clientMetadata)
+        val jweEncrypter: ECDHEncrypter? = keySet.keys.mapNotNull { key ->
+            runCatching { ECDHEncrypter(key as ECKey) }.getOrNull()
+                ?.let { encrypter -> key to encrypter }
+        }
             .toMap().firstNotNullOfOrNull { it.value }
-        val encrypted = EncryptedJWT(responseComponents!!.jweHeader, claimSet).apply { encrypt(jweEncrypter) }
+        val encrypted = EncryptedJWT(jweHeader, claimSet).apply { encrypt(jweEncrypter) }
 
         // send response
-        val requestState: String? = responseComponents!!.state
-        val response = httpClient.value.post(responseComponents!!.responseUrl.toString()) {
+        val requestState: String? = authorizationRequest.state
+        val response = httpClient.post(authorizationRequest.responseUri) {
             body = FormData(Parameters.build {
                 append("response", encrypted.serialize())
                 requestState?.let {
@@ -550,61 +503,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                     } catch (t: NoTransformationFoundException) {
                         null
                     }
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(redirectUri.toString())))
+                successRedirectUri = redirectUri
             }
-
-            else -> Logger.d(TAG, "Response from verifier not ok")
+            else -> Logger.d(TAG, "Response $response unexpected")
         }
-
-        // ensure we update UI-bound state value on Main thread
-        lifecycleScope.launch {
-            state.value = State.RESPONSE_SENT
-        }
-
-        // terminate PresentationActivity since "presentation is complete" (once response is sent)
-        finish()
-    }
-
-    private suspend fun addDocumentToResponse(
-        deviceResponseGenerator: DeviceResponseGenerator,
-        docType: String,
-        issuerAuth: ByteArray,
-        mergedIssuerNamespaces: Map<String, MutableList<ByteArray>>,
-        credential: MdocCredential,
-        keyUnlockData: KeyUnlockData?
-    ) = suspendCancellableCoroutine { continuation ->
-        var result: MdocCredential?
-
-        try {
-            deviceResponseGenerator.addDocument(
-                DocumentGenerator(
-                    docType,
-                    issuerAuth, responseComponents!!.sessionTranscript
-                )
-                    .setIssuerNamespaces(mergedIssuerNamespaces)
-                    .setDeviceNamespacesSignature(
-                        NameSpacedData.Builder().build(),
-                        credential.secureArea,
-                        credential.alias,
-                        keyUnlockData,
-                        Algorithm.ES256
-                    )
-                    .generate()
-            )
-            credential.increaseUsageCount()
-            if (credential.usageCount > 1) {
-                Toast.makeText(
-                    applicationContext,
-                    applicationContext.resources.getString(R.string.presentation_credential_usage_warning),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            result = null
-        } catch (e: KeyLockedException) {
-            result = credential
-        }
-
-        continuation.resume(result)
     }
 }
 
@@ -655,7 +557,7 @@ private fun createSessionTranscript(
     )
 }
 
-private suspend fun getAuthorizationRequest(requestUri: Uri, httpClient: Lazy<HttpClient>, onError: (Exception) -> Unit): AuthorizationRequest {
+private suspend fun getAuthorizationRequest(requestUri: Uri, httpClient: HttpClient, onError: (Exception) -> Unit): AuthorizationRequest {
     // simplified same-device flow:
     val presentationDefinition = requestUri.getQueryParameter("presentation_definition")?.let { Json.parseToJsonElement(it).jsonObject }
     if (presentationDefinition != null) {
@@ -684,7 +586,7 @@ private suspend fun getAuthorizationRequest(requestUri: Uri, httpClient: Lazy<Ht
         onError(IllegalArgumentException("Unexpected Error"))
     }
 
-    val httpResponse = httpClient.value.get(urlString = requestUriValue!!) {
+    val httpResponse = httpClient.get(urlString = requestUriValue!!) {
         accept(ContentType.parse("application/oauth-authz-req+jwt"))
         accept(ContentType.parse("application/jwt"))
     }.body<String>()
