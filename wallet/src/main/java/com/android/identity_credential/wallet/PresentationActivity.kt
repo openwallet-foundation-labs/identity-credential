@@ -20,33 +20,32 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -78,6 +77,7 @@ import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showPresentmentFlow
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
+import com.android.identity_credential.wallet.util.inverse
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -184,13 +184,19 @@ class PresentationActivity : FragmentActivity() {
      */
     enum class ResultStatus(val messageResourceId: Int, val imageResourceId: Int) {
         // All prompts were successful
-        SUCCESS(R.string.presentation_result_success_message, R.drawable.report_status_success),
+        SUCCESS(
+            R.string.presentation_result_success_message,
+            R.drawable.presentment_result_status_success
+        ),
 
         // Something prevented success
-        ERROR(R.string.presentation_result_error_message, R.drawable.report_status_error),
+        ERROR(
+            R.string.presentation_result_error_message,
+            R.drawable.presentment_result_status_error
+        ),
 
         // User tapped on the cancel button or outside of prompt (if permissible)
-        CANCEL(0,0),
+        CANCEL(0, 0),
 
         // For init of Flow
         UNSET(0, 0)
@@ -198,6 +204,7 @@ class PresentationActivity : FragmentActivity() {
 
     private val _resultStatus = MutableStateFlow(ResultStatus.UNSET)
     private val resultStatus: StateFlow<ResultStatus> = _resultStatus
+
 
     /**
      * Composable view that is shown at the end of the Presentation result to briefly update the user
@@ -209,35 +216,41 @@ class PresentationActivity : FragmentActivity() {
         // show the result message if there's one to show
         if (resultStatus == ResultStatus.UNSET) return
 
+        // used for finishing the Activity after briefly showing the result
         val activity = LocalContext.current as? Activity
         val coroutineScope = rememberCoroutineScope() // Get the coroutine scope
-
-        var visible by remember { mutableStateOf(true) }
-
-
+        // whether we're showing the result status box
+        val resultIsVisible = remember { mutableStateOf(true) }
         AnimatedVisibility(
-            visible = visible,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Transparent)
+                // more padding here shrinks the status result box below
+                .padding(25.dp),
+            visible = resultIsVisible.value,
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(horizontal = 32.dp),
-                verticalArrangement = Arrangement.Center
+            Surface(
+                modifier = Modifier.shadow(
+                    elevation = 6.dp,
+                    shape = RoundedCornerShape(10.dp),
+                    // drop shadow color is inverse of colorScheme.surface
+                    spotColor = MaterialTheme.colorScheme.surface.inverse()
+                )
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.onTertiary)
-                        .shadow(
-                            elevation = 1.dp, // adjust the elevation for the shadow's depth
-                            shape = RoundedCornerShape(1.dp)
-                        ),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Image(
-                        modifier = Modifier.padding(top = 30.dp),
+                        modifier = Modifier.padding(
+                            top = if (resultStatus == ResultStatus.ERROR) {
+                                25.dp
+                            } else {
+                                0.dp
+                            }
+                        ),
                         painter = painterResource(id = resultStatus.imageResourceId),
                         contentDescription = null,
                         contentScale = ContentScale.None,
@@ -247,18 +260,15 @@ class PresentationActivity : FragmentActivity() {
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 20.dp, bottom = 40.dp),
-                        fontSize = when (resultStatus) {
-                            ResultStatus.SUCCESS -> 36.sp
-                            ResultStatus.ERROR -> 30.sp
-                            else -> 1.sp
-
-                        },
-                        color = when (resultStatus) {
-                            ResultStatus.SUCCESS -> MaterialTheme.colorScheme.primary
-                            ResultStatus.ERROR -> MaterialTheme.colorScheme.secondary
-                            else -> MaterialTheme.colorScheme.tertiary
-                        }
+                            .padding(
+                                top = if (resultStatus == ResultStatus.ERROR) {
+                                    20.dp
+                                } else {
+                                    0.dp
+                                }, bottom = 40.dp
+                            ),
+                        fontSize = 36.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -266,7 +276,7 @@ class PresentationActivity : FragmentActivity() {
                 // wait 1 sec so user can read the status message before starting the
                 // fade out animation
                 delay(1000)
-                visible = false
+                resultIsVisible.value = false
                 coroutineScope.launch {
                     // delay before finishing this Activity
                     delay(500)
@@ -279,15 +289,21 @@ class PresentationActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
+        // ensure no external apps can take a peek of Presentment Prompts while viewing recent apps
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         setContent {
             IdentityCredentialTheme {
                 val resultStatus = resultStatus.collectAsState().value
                 if (resultStatus == ResultStatus.CANCEL) {
                     finish()
-                    return@IdentityCredentialTheme
+                } else {
+                    // show the Result Status message 100 dp from top of screen
+                    Column {
+                        Spacer(modifier = Modifier.height(100.dp))
+                        ResultStatus(resultStatus = resultStatus)
+                    }
                 }
-                ResultStatus(resultStatus = resultStatus)
             }
         }
 
@@ -345,7 +361,7 @@ class PresentationActivity : FragmentActivity() {
                                         trustPoint = result.trustPoints.first()
                                     } else if (result.error != null) {
                                         Logger.w(
-                                            com.android.identity_credential.wallet.presentation.TAG,
+                                            TAG,
                                             "Error finding TrustPoint for reader auth",
                                             result.error!!
                                         )
@@ -368,7 +384,7 @@ class PresentationActivity : FragmentActivity() {
                             sendResponseToDevice(deviceResponseGenerator.generate())
                             _resultStatus.value = ResultStatus.SUCCESS
                         } catch (e: Exception) {
-                            if (e !is UserCanceledPromptException){
+                            if (e !is UserCanceledPromptException) {
                                 _resultStatus.value = ResultStatus.ERROR
                                 Logger.e(TAG, "Error while running the Presentment Flow", e)
                             } else {

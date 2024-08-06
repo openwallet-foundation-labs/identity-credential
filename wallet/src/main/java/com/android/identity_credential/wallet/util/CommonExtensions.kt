@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.datetime.Instant
@@ -52,3 +53,8 @@ val Instant.asFormattedDateTimeInCurrentTimezone: String
             dt.year, dt.monthNumber, dt.dayOfMonth, dt.time.hour, dt.time.minute, dt.time.second
         )
     }
+
+/**
+ * Get the inverse Color of an androidx.compose.ui.graphics.Color.
+ */
+fun Color.inverse() = Color(1f - red, 1f - green, 1f - blue, alpha)

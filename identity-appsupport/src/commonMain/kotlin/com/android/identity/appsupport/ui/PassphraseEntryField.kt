@@ -1,6 +1,7 @@
 package com.android.identity.appsupport.ui
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,13 +28,16 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.util.Logger
 import identitycredential.identity_appsupport.generated.resources.Res
 import identitycredential.identity_appsupport.generated.resources.passphrase_entry_field_passphrase_is_weak
 import identitycredential.identity_appsupport.generated.resources.passphrase_entry_field_pin_is_weak
@@ -61,13 +65,18 @@ import org.jetbrains.compose.resources.getString
  *      provided or is [null] (default case), then it uses [ImeAction.Done].
  *      Note: only the [ImeAction.Done] is recognized to have a task that is executed when the
  *      user taps on the keyboard's action button.
+ * @param disableKeyboard optionally provide [true] to prevent requesting focus on [BasicTextField]
+ *      and dismiss all taps on the text field.
+ * @param setText optionally provide [String] to set as the current value of the text field.
  * @param onChanged called when the user is entering text or pressing the "Done" IME action
  */
 @Composable
 fun PassphraseEntryField(
     constraints: PassphraseConstraints,
-    checkWeakPassphrase: Boolean,
+    checkWeakPassphrase: Boolean = false,
     imeAction: ImeAction? = null,
+    disableKeyboard: Boolean = false,
+    setText: String? = null,
     onChanged: (passphrase: String, meetsRequirements: Boolean, donePressed: Boolean) -> Unit,
 ) {
     // if no imeAction specified define the default to be ImeAction.Done
@@ -75,12 +84,14 @@ fun PassphraseEntryField(
     val focusRequester = remember { FocusRequester() }
 
     var inputText by remember { mutableStateOf("") }
+    if (setText != null) {
+        inputText = setText
+    }
     var passphraseAnalysis by remember {
         mutableStateOf(PassphraseAnalysis(false, null))
     }
     var obfuscateAll by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
     // Put boxes around the entered chars for fixed length and six or fewer characters
     var decorationBox: @Composable (@Composable () -> Unit) -> Unit =
         @Composable { innerTextField -> innerTextField() }
@@ -108,9 +119,26 @@ fun PassphraseEntryField(
                         modifier = Modifier
                             .width(40.dp)
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-                            .padding(2.dp),
+                            .padding(2.dp)
+                            .then(
+                                // if keyboard is flagged as disabled
+                                if (disableKeyboard) {
+                                    // intercept the tap on the text field
+                                    Modifier.clickable { /* Do nothing  */ }
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.headlineLarge.copy(color = MaterialTheme.colorScheme.primary),
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            color = MaterialTheme.colorScheme.primary,
+                            // make the "dot" \u2022 be a bit bolder/bigger
+                            fontWeight = if (digit == "\u2022"){
+                                FontWeight.Black
+                            } else {
+                                MaterialTheme.typography.headlineLarge.fontWeight
+                            }
+                        ),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -208,8 +236,10 @@ fun PassphraseEntryField(
 
     // Bring up keyboard when entering screen
     LaunchedEffect(Unit) {
-        // Bring up keyboard when entering screen and no external focus requester has been provided
-        focusRequester.requestFocus()
+        // Bring up keyboard when entering screen if keyboard has not been disabled
+        if (!disableKeyboard) {
+            focusRequester.requestFocus()
+        }
         passphraseAnalysis = analyzePassphrase(inputText, constraints, checkWeakPassphrase)
         // Fire initially so caller can adjust e.g. sensitivity of a possible "Next" button
         onChanged(inputText, passphraseAnalysis.meetsRequirements, false)
@@ -234,8 +264,7 @@ private fun analyzePassphrase(
     }
 
     if (passphrase.length < constraints.minLength) {
-        return PassphraseAnalysis(meetsRequirements = false, weakHint = null,
-        )
+        return PassphraseAnalysis(meetsRequirements = false, weakHint = null,)
     }
 
     if (checkWeakPassphrase && isWeakPassphrase(passphrase)) {
