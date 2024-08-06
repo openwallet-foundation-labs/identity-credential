@@ -12,7 +12,7 @@ object SampleDataProvider {
     const val MVR_NAMESPACE = "nl.rdw.mekb.1"
     const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
     const val MICOV_VTR_NAMESPACE = "org.micov.vtr.1"
-    const val EUPID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
+    const val EUPID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
 
     fun getSampleValue(
         context: Context,

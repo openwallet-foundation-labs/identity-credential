@@ -396,7 +396,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             TODO("mso_mdoc only supported for now")
         }
         val document = firstMatchingDocument(credentialFormat, docType)
-            ?: run { throw IllegalStateException("No matching credentials in wallet") }
+            ?: run { throw IllegalStateException("No matching credentials in wallet for " +
+                    "docType $docType and credentialFormat $credentialFormat") }
 
         // begin collecting and creating data needed for the response
         val secureRandom = Random.Default

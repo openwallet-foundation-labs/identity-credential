@@ -119,7 +119,7 @@ using four different mdoc Document Types:
 - `org.iso.18013.5.1.mDL`: Mobile Driving License
 - `org.micov.1`: mdoc for eHealth ([link](https://github.com/18013-5/micov))
 - `nl.rdw.mekb.1`: mdoc for Vehicle Registration ([link](https://github.com/18013-5/mVR))
-- `eu.europa.ec.eudiw.pid.1`: mdoc for Personal Identification
+- `eu.europa.ec.eudi.pid.1`: mdoc for Personal Identification
 
 and their associated mdoc name spaces. The first one is defined in 
 ISO/IEC 18013-5:2021 and the other three have been used at mdoc/mDL

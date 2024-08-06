@@ -27,8 +27,8 @@ import com.android.identity.documenttype.DocumentType
  * Source: https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/blob/main/docs/annexes/annex-06-pid-rulebook.md
  */
 object EUPersonalID {
-    const val EUPID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
-    const val EUPID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
+    const val EUPID_DOCTYPE = "eu.europa.ec.eudi.pid.1"
+    const val EUPID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
 
     /**
      * Build the EU Personal ID Document Type.
