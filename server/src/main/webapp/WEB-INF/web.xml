@@ -173,4 +173,47 @@
         <servlet-name>CsaServlet</servlet-name>
         <url-pattern>/csa</url-pattern>
     </servlet-mapping>
+
+    <servlet>
+        <display-name>VerifierServlet</display-name>
+        <servlet-name>VerifierServlet</servlet-name>
+        <servlet-class>com.android.identity.wallet.server.VerifierServlet</servlet-class>
+        <load-on-startup>0</load-on-startup>
+
+        <init-param>
+            <!-- The Base URL to send to clients. This should be configured to whatever
+                 hostname the HTTP server has been configured with, for example
+
+                  https://something.example.com/verifier
+
+                 If left blank the IP address of the server is used *without* TLS, for example
+
+                   http://192.168.42.42:8080/server.
+
+                 This of course isn't secure at all but it does mean that the verifier
+                 works out of the box for development without any configuration.
+            -->
+            <param-name>verifierBaseUrl</param-name>
+            <param-value></param-value>
+        </init-param>
+
+        <init-param>
+            <!-- The ClientID to use. If left blank the value of `verifierBaseUrl` is used. -->
+            <param-name>verifierClientId</param-name>
+            <param-value></param-value>
+        </init-param>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>VerifierServlet</servlet-name>
+        <url-pattern>/verifier</url-pattern>
+        <url-pattern>/verifier/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- This is required to serve the files in the webapp directory -->
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>

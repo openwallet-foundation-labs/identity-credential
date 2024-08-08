@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.gretty)
+    alias(libs.plugins.kotlinSerialization)
     id("war")
     id("java-library")
     id("org.jetbrains.kotlin.jvm")
@@ -22,6 +23,7 @@ dependencies {
     implementation(project(":processor-annotations"))
     implementation(project(":identity-issuance"))
     implementation(project(":identity-csa"))
+    implementation(project(":identity-mdoc"))
 
     implementation(libs.javax.servlet.api)
     implementation(libs.kotlinx.datetime)
@@ -33,6 +35,7 @@ dependencies {
     implementation(libs.mysql)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.java)
+    implementation(libs.nimbus.oauth2.oidc.sdk)
 
     testImplementation(libs.junit)
 }

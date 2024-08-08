@@ -37,6 +37,8 @@ sealed class EcPrivateKey(
      */
     fun toPem(): String = Crypto.ecPrivateKeyToPem(this)
 
+    fun toDataItem(): DataItem = toCoseKey().toDataItem()
+
     /**
      * The public part of the key.
      */
@@ -87,5 +89,9 @@ sealed class EcPrivateKey(
                     throw IllegalArgumentException("Unknown key type ${coseKey.keyType}")
                 }
             }
+
+        fun fromDataItem(dataItem: DataItem): EcPrivateKey {
+            return fromCoseKey(CoseKey.fromDataItem(dataItem))
+        }
     }
 }

@@ -37,6 +37,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.X509Cert
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
 import com.android.identity.issuance.CredentialFormat
@@ -206,11 +207,6 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         application as WalletApplication
     }
 
-    private val showErrorAndDismiss: (Throwable) -> Unit = { throwable ->
-        Toast.makeText(applicationContext, throwable.message, Toast.LENGTH_SHORT).show()
-        onDestroy()
-    }
-
     override fun onDestroy() {
         Logger.i(TAG, "onDestroy")
         super.onDestroy()
@@ -332,10 +328,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
     }
 
     private suspend fun getKeySet(httpClient: HttpClient, clientMetadata: JsonObject): JWKSet {
-        if (clientMetadata["jwks"] != null) {
-            TODO("Add support for parsing keySet directly")
+        val jwks = clientMetadata["jwks"]
+        if (jwks != null) {
+            return JWKSet.parse("{\"keys\": " + Json.encodeToString(jwks) + "}")
         }
-
         val jwksUri = clientMetadata["jwks_uri"].toString().run { substring(1, this.length - 1) }
         val unparsed = httpClient.get(Url(jwksUri)).body<String>()
         return JWKSet.parse(unparsed)
@@ -366,7 +362,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         }
 
         val uri = Uri.parse(authRequest)
-        val authorizationRequest = getAuthorizationRequest(uri, httpClient, showErrorAndDismiss)
+        val authorizationRequest = getAuthorizationRequest(uri, httpClient)
         val presentationSubmission = createPresentationSubmission(authorizationRequest)
         val inputDescriptors =
             authorizationRequest.presentationDefinition["input_descriptors"]!!.jsonArray
@@ -384,8 +380,6 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         //
         val inputDescriptorObj = inputDescriptors[0].jsonObject
         val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
-        val verifierName =
-            inputDescriptorObj["name"].toString().run { substring(1, this.length - 1) }
         val format = inputDescriptorObj["format"]!!.jsonObject
         val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
 
@@ -439,6 +433,15 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         var trustPoint: TrustPoint? = null
         if (authorizationRequest.certificateChain != null) {
             val trustResult = walletApp.trustManager.verify(authorizationRequest.certificateChain!!)
+            if (!trustResult.isTrusted) {
+                Logger.w(TAG, "Reader root not trusted")
+                if (trustResult.error != null) {
+                    Logger.w(TAG, "trustResult.error", trustResult.error!!)
+                }
+                for (cert in authorizationRequest.certificateChain!!) {
+                    Logger.i(TAG, "${X509Cert(cert.encoded).toPem()}")
+                }
+            }
             if (trustResult.isTrusted && trustResult.trustPoints.size > 0) {
                 trustPoint = trustResult.trustPoints[0]
             }
@@ -558,7 +561,10 @@ private fun createSessionTranscript(
     )
 }
 
-private suspend fun getAuthorizationRequest(requestUri: Uri, httpClient: HttpClient, onError: (Exception) -> Unit): AuthorizationRequest {
+private suspend fun getAuthorizationRequest(
+    requestUri: Uri,
+    httpClient: HttpClient
+): AuthorizationRequest {
     // simplified same-device flow:
     val presentationDefinition = requestUri.getQueryParameter("presentation_definition")?.let { Json.parseToJsonElement(it).jsonObject }
     if (presentationDefinition != null) {
@@ -583,9 +589,7 @@ private suspend fun getAuthorizationRequest(requestUri: Uri, httpClient: HttpCli
     // more complex same-device flow as outline in Annex B -> request_uri is
     // needed to retrieve Request Object from provided url
     val requestUriValue = requestUri.getQueryParameter("request_uri")
-    if (requestUriValue == null) {
-        onError(IllegalArgumentException("Unexpected Error"))
-    }
+        ?: throw IllegalArgumentException("request_uri is not set")
 
     val httpResponse = httpClient.get(urlString = requestUriValue!!) {
         accept(ContentType.parse("application/oauth-authz-req+jwt"))
