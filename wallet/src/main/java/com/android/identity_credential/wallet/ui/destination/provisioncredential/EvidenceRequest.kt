@@ -316,7 +316,6 @@ fun EvidenceRequestCreatePassphraseView(
         var currentPassphrase by remember { mutableStateOf("") }
         PassphraseEntryField(
             constraints = constraints,
-            checkWeakPassphrase = false,
             onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
                 currentPassphrase = passphrase
                 if (constraints.isFixedLength() && currentPassphrase.length == constraints.minLength) {
@@ -350,7 +349,6 @@ fun EvidenceRequestCreatePassphraseView(
             showMatchErrorText = true
             PassphraseEntryField(
                 constraints = constraints,
-                checkWeakPassphrase = false,
                 onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
                 }
             )
@@ -1022,7 +1020,6 @@ fun AusweisView(
                 ) {
                     PassphraseEntryField(
                         constraints = PassphraseConstraints.PIN_SIX_DIGITS,
-                        checkWeakPassphrase = false
                     ) { passphrase, meetsRequirements, _ ->
                         if (meetsRequirements) {
                             model.providePin(passphrase)

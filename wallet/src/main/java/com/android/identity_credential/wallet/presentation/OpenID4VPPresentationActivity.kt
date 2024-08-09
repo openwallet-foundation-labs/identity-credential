@@ -237,7 +237,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             try {
                 createAndSendResponse(authorizationRequest)
                 resultStringId = R.string.presentation_result_success_message
-                resultDrawableId = R.drawable.report_status_success
+                resultDrawableId = R.drawable.presentment_result_status_success
                 phase.value = Phase.SHOW_RESULT
             } catch (e: UserCanceledPromptException) {
                 Logger.e(TAG, "User canceled the prompt")
@@ -245,7 +245,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             } catch (e: Throwable) {
                 Logger.e(TAG, "Error presenting", e)
                 resultStringId = R.string.presentation_result_error_message
-                resultDrawableId = R.drawable.report_status_error
+                resultDrawableId = R.drawable.presentment_result_status_error
                 phase.value = Phase.SHOW_RESULT
             }
         }

@@ -15,26 +15,34 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val LightThemeColors = lightColorScheme(
+    // background color
+    surface = ICThemeColorLight.surface,
+    // header & content, buttons cancel, delete and done colors
+    onSurface = ICThemeColorLight.onSurface,
+    // Passphrase text field color
+    primary = ICThemeColorLight.primary,
+    // passphrase PIN keypad button background
+    secondary = ICThemeColorLight.secondary,
+    // passphrase PIN keypad button text
+    onSecondary =  ICThemeColorLight.onSecondary,
+    // passphrase PIN keypad button on tap ripple effect
+    scrim = ICThemeColorLight.scrim
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkThemeColors = darkColorScheme(
+    // background color
+    surface = ICThemeColorDark.surface,
+    // header & content, buttons cancel, delete and done colors
+    onSurface = ICThemeColorDark.onSurface,
+    // Passphrase text field color
+    primary = ICThemeColorDark.primary,
+    // passphrase PIN keypad button background
+    secondary = ICThemeColorDark.secondary,
+    // passphrase PIN keypad button text
+    onSecondary =  ICThemeColorDark.onSecondary,
+    // passphrase PIN keypad button on tap ripple effect
+    scrim = ICThemeColorDark.scrim
 )
 
 @Composable
@@ -50,8 +58,8 @@ fun IdentityCredentialTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> DarkThemeColors
+        else -> LightThemeColors
     }
     val view = LocalView.current
     if (!view.isInEditMode) {
