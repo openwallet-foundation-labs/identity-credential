@@ -1,5 +1,7 @@
 package com.android.identity_credential.wallet.ui.destination.main
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -143,6 +145,12 @@ fun MainScreen(
     }
 }
 
+private fun isBluetoothEnabled(context: Context): Boolean {
+    val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
+    val bluetoothAdapter = bluetoothManager?.adapter
+    return bluetoothAdapter?.isEnabled ?: false
+}
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreenContent(
@@ -186,7 +194,6 @@ fun MainScreenContent(
         )
     }
 
-
     var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
     if (showDeviceLockNotSetupWarning) {
         AlertDialog(
@@ -202,6 +209,44 @@ fun MainScreenContent(
                     onClick = { showDeviceLockNotSetupWarning = false }
                 ) {
                     Text(text = stringResource(R.string.qr_lskf_warning_dismiss_btn))
+                }
+            },
+        )
+    }
+
+    var showBluetoothDisabled by remember { mutableStateOf(false) }
+    if (showBluetoothDisabled) {
+        AlertDialog(
+            title = {
+                Text(stringResource(R.string.qr_alert_dialog_bt_disabled_title))
+            },
+            text = {
+                Text(stringResource(R.string.qr_alert_dialog_bt_disabled_text))
+            },
+            onDismissRequest = { showBluetoothDisabled = false },
+            dismissButton = {
+                TextButton(onClick = { showBluetoothDisabled = false }) {
+                    Text(stringResource(R.string.proximity_permissions_qr_alert_dialog_dismiss_button))
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBluetoothDisabled = false
+                        Logger.i(TAG, "Opening Bluetooth enablement dialog")
+                        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                        enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try {
+                            context.startActivity(enableBtIntent)
+                        } catch (e: SecurityException) {
+                            // The linter complains if we don't handle this exception. We check for
+                            // permissions before bringing up this warning, but maybe we'll hit this
+                            // if the code changes or there's an unexpected race condition.
+                            Logger.e(TAG, "Permission failure trying to open BT enablement: $e")
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.qr_alert_dialog_bt_enable_button))
                 }
             },
         )
@@ -310,13 +355,13 @@ fun MainScreenContent(
                     onClick = {
                         if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
                             showDeviceLockNotSetupWarning = true
+                        } else if (!hasProximityPresentationPermissions.allPermissionsGranted) {
+                            showProximityPresentationPermissionsMissing = true
+                        } else if (!isBluetoothEnabled(context)) {
+                            showBluetoothDisabled = true
                         } else {
-                            if (!hasProximityPresentationPermissions.allPermissionsGranted) {
-                                showProximityPresentationPermissionsMissing = true
-                            } else {
-                                qrEngagementViewModel.startQrEngagement()
-                                onNavigate(WalletDestination.QrEngagement.route)
-                            }
+                            qrEngagementViewModel.startQrEngagement()
+                            onNavigate(WalletDestination.QrEngagement.route)
                         }
                     },
                 ) {
