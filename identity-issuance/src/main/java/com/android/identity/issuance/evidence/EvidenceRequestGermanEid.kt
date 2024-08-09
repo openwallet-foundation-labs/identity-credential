@@ -5,5 +5,6 @@ package com.android.identity.issuance.evidence
  * according to BSI TR-03127.
  */
 data class EvidenceRequestGermanEid(
+    val tcTokenUrl: String,
     val optionalComponents: List<String>
 ) : EvidenceRequest()

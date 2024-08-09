@@ -64,7 +64,10 @@ class SelfSignedEuPidIssuingAuthority(
                     requireUserAuthenticationToViewDocument = false,
                     mdocConfiguration = null,
                     sdJwtVcDocumentConfiguration = null
-                )
+                ),
+                numberOfCredentialsToRequest = 3,
+                minCredentialValidityMillis = 30 * 24 * 3600L,
+                maxUsesPerCredentials = 1
             )
         }
     }

@@ -47,7 +47,10 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
                     NameSpacedData.Builder().build(),
                 ),
                 sdJwtVcDocumentConfiguration = null,
-            )
+            ),
+            maxUsesPerCredentials = 1,
+            minCredentialValidityMillis = 1000L,
+            numberOfCredentialsToRequest = 3
         )
 
         // This is used in testing, see SelfSignedMdlTest

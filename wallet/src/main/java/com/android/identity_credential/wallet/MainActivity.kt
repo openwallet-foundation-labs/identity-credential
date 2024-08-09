@@ -59,6 +59,12 @@ class MainActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         application.settingsModel.updateScreenLockIsSetup()
+        application.documentModel.attachToActivity(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        application.documentModel.detachFromActivity(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

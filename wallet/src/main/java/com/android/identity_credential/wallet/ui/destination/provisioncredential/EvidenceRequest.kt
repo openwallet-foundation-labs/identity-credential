@@ -854,6 +854,7 @@ fun EvidenceRequestEIdView(
     permissionTracker: PermissionTracker
 ) {
     AusweisView(
+        evidenceRequest.tcTokenUrl,
         evidenceRequest.optionalComponents,
         permissionTracker
     ) { evidence ->
@@ -867,6 +868,7 @@ fun EvidenceRequestEIdView(
 
 @Composable
 fun AusweisView(
+    tcTokenUrl: String,
     requiredComponents: List<String>,
     permissionTracker: PermissionTracker,
     onResult: (evidence: EvidenceResponseGermanEid) -> Unit
@@ -880,6 +882,7 @@ fun AusweisView(
             context,
             status,
             navController,
+            tcTokenUrl,
             requiredComponents,
             coroutineScope,
             onResult

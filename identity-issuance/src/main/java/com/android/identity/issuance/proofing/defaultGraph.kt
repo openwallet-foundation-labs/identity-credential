@@ -57,7 +57,7 @@ fun defaultGraph(
                 }
             }
             on(id = "germanEid", text = "Yes, derive the document from PIN-protected German eID") {
-                eId("germanEidCard")
+                eId("germanEidCard", "https://test.governikus-eid.de/AusweisAuskunft/WebServiceRequesterServlet")
             }
         }
         if (developerModeEnabled) {

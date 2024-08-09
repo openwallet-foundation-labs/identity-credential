@@ -32,7 +32,9 @@ class LocalDevelopmentEnvironment(
     private val configuration = ConfigurationImpl(context)
     private val storage = StorageImpl(context, "dev_local_data")
     private val resources = ResourcesImpl(context)
-    private val httpClient = HttpClient(Android)
+    private val httpClient = HttpClient(Android) {
+        followRedirects = false
+    }
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
         return clazz.cast(when(clazz) {
