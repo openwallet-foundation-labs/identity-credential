@@ -207,7 +207,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         }
         return SoftwareKeyInfo(
             publicKey,
-            KeyAttestation(publicKey),
+            KeyAttestation(publicKey, null),
             keyPurposes,
             passphraseRequired,
             passphraseConstraints

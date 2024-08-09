@@ -42,17 +42,17 @@ interface SecureArea {
      * A stable identifier for the Secure Area.
      *
      * This is typically just the class name but for secure areas allowing
-     * multiple instances, this could differ.
+     * multiple instances, this is of the form className@identifier.
      */
     val identifier: String
 
     /**
-     * A string suitable to display to the end user, for identifying the Secure Area instance.
+     * The name of the Secure Area, suitable for displaying to the end user.
      */
     val displayName: String
 
     /**
-     * Creates an new key.
+     * Creates a new key.
      *
      * This creates an Elliptic Curve key-pair where the private part of the key
      * is never exposed to the user of this interface.

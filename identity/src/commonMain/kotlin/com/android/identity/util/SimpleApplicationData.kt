@@ -26,10 +26,10 @@ import com.android.identity.document.NameSpacedData.Companion.fromEncodedCbor
  *
  * Also contains functionality to serialize to/from CBOR.
  *
- * @param onDataChanged callback invoked whenever changes are made to a key that is
+ * @param onDataChanged optional callback invoked whenever changes are made to a key that is
  * if it's added, changed, or removed.
  */
-class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : ApplicationData {
+class SimpleApplicationData(private val onDataChanged: ((key: String) -> Unit)?) : ApplicationData {
 
     private val data = mutableMapOf<String, ByteArray>()
 
@@ -39,7 +39,7 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
         } else {
             data[key] = value
         }
-        onDataChanged(key)
+        onDataChanged?.let { it(key) }
     }
 
     override fun setString(key: String, value: String): ApplicationData =
@@ -88,13 +88,13 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
          * To encode a SimpleApplicationData, use [.encodeAsCbor].
          *
          * @param encodedApplicationData The byte array resulting from [.encodeAsCbor].
-         * @param onDataChanged callback invoked whenever changes are made to a key that is
+         * @param onDataChanged optoinal callback invoked whenever changes are made to a key that is
          * if it's added, changed, or removed.
          * @return A [SimpleApplicationData].
          */
         fun decodeFromCbor(
             encodedApplicationData: ByteArray,
-            onDataChanged: (key: String) -> Unit
+            onDataChanged: ((key: String) -> Unit)?
         ): SimpleApplicationData {
             val appData = SimpleApplicationData(onDataChanged)
             val map = Cbor.decode(encodedApplicationData) as CborMap

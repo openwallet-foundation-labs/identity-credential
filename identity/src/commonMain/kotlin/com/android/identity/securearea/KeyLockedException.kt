@@ -3,7 +3,7 @@ package com.android.identity.securearea
 /**
  * Exception thrown when trying to use a key which hasn't been unlocked.
  */
-class KeyLockedException : Exception {
+open class KeyLockedException : Exception {
     /**
      * Construct a new exception.
      */

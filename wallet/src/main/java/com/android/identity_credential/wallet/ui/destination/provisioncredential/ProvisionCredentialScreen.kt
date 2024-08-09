@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet.ui.destination.provisioncredential
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,10 +27,13 @@ import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermiss
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
+import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
+import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.issuance.remote.WalletServerProvider
+import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
@@ -40,6 +44,7 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 @Composable
 fun ProvisionDocumentScreen(
     context: Context,
+    secureAreaRepository: SecureAreaRepository,
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
@@ -111,6 +116,28 @@ fun ProvisionDocumentScreen(
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseCreatePassphrase(inputString),
+                                    walletServerProvider = walletServerProvider,
+                                    documentStore = documentStore
+                                )
+                            }
+                        )
+                    }
+
+                    is EvidenceRequestSetupCloudSecureArea -> {
+                        EvidenceRequestSetupCloudSecureAreaView(
+                            context = context,
+                            secureAreaRepository = secureAreaRepository,
+                            evidenceRequest,
+                            onAccept = {
+                                provisioningViewModel.provideEvidence(
+                                    evidence = EvidenceResponseSetupCloudSecureArea(true),
+                                    walletServerProvider = walletServerProvider,
+                                    documentStore = documentStore
+                                )
+                            },
+                            onError = { error ->
+                                provisioningViewModel.evidenceCollectionFailed(
+                                    error = error,
                                     walletServerProvider = walletServerProvider,
                                     documentStore = documentStore
                                 )
@@ -228,7 +255,7 @@ fun ProvisionDocumentScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         text = stringResource(R.string.provisioning_error,
                             provisioningViewModel.error.toString())

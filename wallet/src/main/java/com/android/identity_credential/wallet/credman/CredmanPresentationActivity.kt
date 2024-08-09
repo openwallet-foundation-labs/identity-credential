@@ -73,8 +73,7 @@ class CredmanPresentationActivity : FragmentActivity() {
     private val walletApp: WalletApplication by lazy {
         application as WalletApplication
     }
-
-
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -271,7 +270,7 @@ class CredmanPresentationActivity : FragmentActivity() {
             }
 
         } catch (e: Exception) {
-            Logger.i(TAG, "Exception $e")
+            Logger.i(TAG, "Exception caught while generating response", e)
             val resultData = Intent()
             IntentHelper.setGetCredentialException(resultData, e.toString(), e.message)
             setResult(RESULT_OK, resultData)

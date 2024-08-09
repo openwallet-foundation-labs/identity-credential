@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
+import com.android.identity.securearea.KeyAttestation
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
@@ -338,7 +338,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
 }
 
 @Composable
-fun ShowCertificateDialog(attestation: X509CertChain,
+private fun ShowCertificateDialog(attestation: X509CertChain,
                           onDismissRequest: () -> Unit) {
     var certNumber by rememberSaveable() { mutableStateOf(0) }
     if (certNumber < 0 || certNumber >= attestation.certificates.size) {
@@ -487,8 +487,7 @@ private fun aksAttestation(strongBox: Boolean): X509CertChain {
             .setUseStrongBox(strongBox)
             .build()
     )
-    val attestation = androidKeystoreSecureArea.getKeyInfo("testKey").attestation as AndroidKeystoreKeyAttestation
-    return attestation.certificateChain
+    return androidKeystoreSecureArea.getKeyInfo("testKey").attestation.certChain!!
 }
 
 private fun aksTest(

@@ -149,8 +149,28 @@
         <url-pattern>/</url-pattern>
     </servlet-mapping>
 
-    <context-param>
-        <param-name>foo</param-name>
-        <param-value>bar</param-value>
-    </context-param>
+    <servlet>
+        <display-name>CsaServlet</display-name>
+        <servlet-name>CsaServlet</servlet-name>
+        <servlet-class>com.android.identity.wallet.server.CloudSecureAreaServlet</servlet-class>
+        <load-on-startup>0</load-on-startup>
+
+        <init-param>
+            <param-name>androidRequireGmsAttestation</param-name>
+            <param-value>false</param-value>
+        </init-param>
+        <init-param>
+            <param-name>androidRequireVerifiedBootGreen</param-name>
+            <param-value>false</param-value>
+        </init-param>
+        <init-param>
+            <param-name>androidRequireAppSignatureCertificateDigests</param-name>
+            <param-value></param-value>
+        </init-param>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>CsaServlet</servlet-name>
+        <url-pattern>/csa</url-pattern>
+    </servlet-mapping>
 </web-app>

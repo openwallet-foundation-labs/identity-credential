@@ -230,6 +230,10 @@
     <string name="passphrase_prompt_passphrase_content">Enter the Passphrase for the document</string>
     <string name="passphrase_pin_screen_delete">Delete</string>
     <string name="passphrase_pin_screen_done">Done</string>
+    <string name="passphrase_prompt_csa_pin_title">Enter Wallet PIN</string>
+    <string name="passphrase_prompt_csa_pin_content">Enter the Wallet PIN chosen when document was set up</string>
+    <string name="passphrase_prompt_csa_passphrase_title">Enter Wallet Passphrase</string>
+    <string name="passphrase_prompt_csa_passphrase_content">Enter the Wallet Passphrase chosen when document was set up</string>
 
     <!-- NFC status -->
     <string name="nfc_status_initial">Establishing NFC connection</string>

@@ -121,14 +121,21 @@ class ProofingState(
     }
 
     private fun getGraph(env: FlowEnvironment): ProofingGraph {
-        val key = GraphKey(issuingAuthorityId, developerModeEnabled)
+        val key = GraphKey(issuingAuthorityId, documentId, developerModeEnabled)
         return env.cache(ProofingGraph::class, key) { configuration, resources ->
-            defaultGraph(resources, developerModeEnabled,
+            defaultGraph(
+                documentId,
+                resources,
+                developerModeEnabled,
                 resources.getStringResource("$issuingAuthorityId/tos.html")!!,
                 mapOf("logo.png" to resources.getRawResource("$issuingAuthorityId/logo.png")!!)
             )
         }
     }
 
-    data class GraphKey(val issuingAuthorityId: String, val developerModeEnabled: Boolean)
+    data class GraphKey(
+        val issuingAuthorityId: String,
+        val documentId: String,
+        val developerModeEnabled: Boolean
+    )
 }

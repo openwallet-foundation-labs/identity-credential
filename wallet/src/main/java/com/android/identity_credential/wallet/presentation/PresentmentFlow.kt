@@ -4,6 +4,10 @@ import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.android.securearea.cloud.CloudKeyInfo
+import com.android.identity.android.securearea.cloud.CloudKeyLockedException
+import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
+import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Algorithm
 import com.android.identity.document.Document
@@ -22,6 +26,7 @@ import com.android.identity.securearea.software.SoftwareKeyInfo
 import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustPoint
+import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
@@ -110,7 +115,7 @@ suspend fun showPresentmentFlow(
         }
         // if KeyLockedException is raised show the corresponding Prompt to unlock
         // the auth key for a Credential's Secure Area
-        catch (_: KeyLockedException) {
+        catch (e: KeyLockedException) {
             when (mdocCredential.secureArea) {
                 // show Biometric prompt
                 is AndroidKeystoreSecureArea -> {
@@ -175,6 +180,70 @@ suspend fun showPresentmentFlow(
 
                     keyUnlockData = SoftwareKeyUnlockData(passphrase)
                 }
+
+                // Shows Wallet PIN/Passphrase prompt or Biometrics/LSKF, depending
+                is CloudSecureArea -> {
+                    if (keyUnlockData == null) {
+                        keyUnlockData = CloudKeyUnlockData(
+                            mdocCredential.secureArea as CloudSecureArea,
+                            mdocCredential.alias,
+                        )
+                    }
+
+                    when ((e as CloudKeyLockedException).reason) {
+                        CloudKeyLockedException.Reason.WRONG_PASSPHRASE -> {
+                            // enforce a maximum number of attempts
+                            if (remainingPassphraseAttempts == 0) {
+                                throw IllegalStateException("Error! Reached maximum number of Passphrase attempts.")
+                            }
+                            remainingPassphraseAttempts--
+
+                            val constraints = (mdocCredential.secureArea as CloudSecureArea).passphraseConstraints
+                            val title =
+                                if (constraints.requireNumerical)
+                                    activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)
+                                else
+                                    activity.resources.getString(R.string.passphrase_prompt_csa_passphrase_title)
+                            val content =
+                                if (constraints.requireNumerical) {
+                                    activity.resources.getString(R.string.passphrase_prompt_csa_pin_content)
+                                } else {
+                                    activity.resources.getString(
+                                        R.string.passphrase_prompt_csa_passphrase_content
+                                    )
+                                }
+                            val passphrase = showPassphrasePrompt(
+                                activity = activity,
+                                constraints = constraints,
+                                title = title,
+                                content = content,
+                            )
+
+                            // if passphrase is null then user canceled the prompt
+                            if (passphrase == null) {
+                                throw UserCanceledPromptException()
+                            }
+                            (keyUnlockData as CloudKeyUnlockData).passphrase = passphrase
+                        }
+
+                        CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED -> {
+                            val successfulBiometricResult = showBiometricPrompt(
+                                activity = activity,
+                                title = activity.resources.getString(R.string.presentation_biometric_prompt_title),
+                                subtitle = activity.resources.getString(R.string.presentation_biometric_prompt_subtitle),
+                                cryptoObject = (keyUnlockData as CloudKeyUnlockData).cryptoObject,
+                                userAuthenticationTypes = setOf(
+                                    UserAuthenticationType.BIOMETRIC,
+                                    UserAuthenticationType.LSKF
+                                ),
+                                requireConfirmation = false
+                            )
+                            // if user cancelled or was unable to authenticate, throw IllegalStateException
+                            check(successfulBiometricResult) { "Biometric Unsuccessful" }
+                        }
+                    }
+                }
+
                 // for secure areas not yet implemented
                 else -> {
                     throw IllegalStateException("No prompts implemented for Secure Area ${mdocCredential.secureArea.displayName}")

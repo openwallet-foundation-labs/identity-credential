@@ -18,7 +18,6 @@ package com.android.identity.android.legacy;
 
 import android.content.Context;
 
-import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation;
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo;
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.android.storage.AndroidStorageEngine;
@@ -31,6 +30,7 @@ import com.android.identity.crypto.EcSignature;
 import com.android.identity.document.NameSpacedData;
 import com.android.identity.crypto.Algorithm;
 import com.android.identity.crypto.EcCurve;
+import com.android.identity.securearea.KeyAttestation;
 import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.storage.StorageEngine;
 
@@ -147,8 +147,8 @@ public class MigrateFromKeystoreICStoreTest {
         // Check that CrendentialKey's KeyInfo is correct
         AndroidKeystoreKeyInfo keyInfo = aksSecureArea.getKeyInfo(credentialKeyAlias);
         Assert.assertNotNull(keyInfo);
-        AndroidKeystoreKeyAttestation attestation = (AndroidKeystoreKeyAttestation) keyInfo.getAttestation();
-        Assert.assertTrue(attestation.getCertificateChain().getCertificates().size() >= 1);
+        KeyAttestation attestation = keyInfo.getAttestation();
+        Assert.assertTrue(attestation.getCertChain().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
         Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());

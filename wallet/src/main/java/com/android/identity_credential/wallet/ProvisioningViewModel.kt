@@ -127,6 +127,19 @@ class ProvisioningViewModel : ViewModel() {
         }
     }
 
+    fun evidenceCollectionFailed(
+        error: Throwable,
+        walletServerProvider: WalletServerProvider,
+        documentStore: DocumentStore
+    ) {
+        if (document != null) {
+            documentStore.deleteDocument(document!!.name)
+        }
+        Logger.w(TAG, "Error collecting evidence", error)
+        this.error = error
+        state.value = State.FAILED
+    }
+
     fun provideEvidence(
         evidence: EvidenceResponse,
         walletServerProvider: WalletServerProvider,
