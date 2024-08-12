@@ -35,5 +35,8 @@ interface RequestCredentialsFlow : FlowBase {
      * @throws IllegalArgumentException if the issuer rejects the one or more of the requests.
      */
     @FlowMethod
-    suspend fun sendCredentials(credentialRequests: List<CredentialRequest>)
+    suspend fun sendCredentials(credentialRequests: List<CredentialRequest>): List<KeyPossessionChallenge>
+
+    @FlowMethod
+    suspend fun sendPossessionProofs(keyPossessionProofs: List<KeyPossessionProof>)
 }

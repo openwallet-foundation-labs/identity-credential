@@ -7,6 +7,7 @@ import com.android.identity.crypto.EcPublicKeyOkp
 import com.android.identity.util.fromBase64
 import com.android.identity.util.toBase64
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -46,23 +47,28 @@ class JsonWebKey {
 
     val asJwk: JsonObject
         get() = buildJsonObject {
-            put("jwk", buildJsonObject {
-                when (pubKey) {
-                    is EcPublicKeyOkp -> {
-                        put("kty", JsonPrimitive("OKP"))
-                        put("crv", JsonPrimitive(pubKey.curve.jwkName))
-                        put("x", JsonPrimitive(pubKey.x.toBase64()))
-                    }
-                    is EcPublicKeyDoubleCoordinate -> {
-                        put("kty", JsonPrimitive("EC"))
-                        put("crv", JsonPrimitive(pubKey.curve.jwkName))
-                        put("x", JsonPrimitive(pubKey.x.toBase64()))
-                        put("y", JsonPrimitive(pubKey.y.toBase64()))
-                    }
-                    else -> throw IllegalStateException("Unsupported key $pubKey")
-                }
-            })
+            put("jwk", toRawJwk {})
         }
+
+    fun toRawJwk(block: JsonObjectBuilder.() -> Unit): JsonObject {
+        return buildJsonObject {
+            when (pubKey) {
+                is EcPublicKeyOkp -> {
+                    put("kty", JsonPrimitive("OKP"))
+                    put("crv", JsonPrimitive(pubKey.curve.jwkName))
+                    put("x", JsonPrimitive(pubKey.x.toBase64()))
+                }
+                is EcPublicKeyDoubleCoordinate -> {
+                    put("kty", JsonPrimitive("EC"))
+                    put("crv", JsonPrimitive(pubKey.curve.jwkName))
+                    put("x", JsonPrimitive(pubKey.x.toBase64()))
+                    put("y", JsonPrimitive(pubKey.y.toBase64()))
+                }
+                else -> throw IllegalStateException("Unsupported key $pubKey")
+            }
+            block()
+        }
+    }
 
     private companion object {
 

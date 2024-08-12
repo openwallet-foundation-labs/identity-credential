@@ -8,6 +8,7 @@ import com.android.identity.flow.handler.FlowDispatcherLocal
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.WalletServer
@@ -54,7 +55,10 @@ class WalletServerState(
                     requireUserAuthenticationToViewDocument = true,
                     mdocConfiguration = null,
                     sdJwtVcDocumentConfiguration = null
-                )
+                ),
+                numberOfCredentialsToRequest = 3,
+                minCredentialValidityMillis = 30 * 24 * 3600L,
+                maxUsesPerCredentials = 1
             )
         }
 
@@ -96,14 +100,18 @@ class WalletServerState(
                 IssuingAuthorityState.getConfiguration(env, idElem)
             }
         }
-        return fromConfig + listOf(FunkeIssuingAuthorityState.getConfiguration(env))
+        return fromConfig + listOf(
+            FunkeIssuingAuthorityState.getConfiguration(env, CredentialFormat.SD_JWT_VC),
+            FunkeIssuingAuthorityState.getConfiguration(env, CredentialFormat.MDOC_MSO)
+        )
     }
 
     @FlowMethod
     fun getIssuingAuthority(env: FlowEnvironment, identifier: String): AbstractIssuingAuthorityState {
         check(clientId.isNotEmpty())
         return when (identifier) {
-            "funke" -> FunkeIssuingAuthorityState(clientId)
+            "funkeSdJwtVc" -> FunkeIssuingAuthorityState(clientId, CredentialFormat.SD_JWT_VC)
+            "funkeMdocMso" -> FunkeIssuingAuthorityState(clientId, CredentialFormat.MDOC_MSO)
             else -> IssuingAuthorityState(clientId, identifier)
         }
     }

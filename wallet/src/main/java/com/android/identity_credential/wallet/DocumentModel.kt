@@ -3,16 +3,22 @@ package com.android.identity_credential.wallet
 import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableStateListOf
+import androidx.fragment.app.FragmentActivity
 import com.android.identity.securearea.SecureArea
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
+import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.cloud.CloudCreateKeySettings
 import com.android.identity.android.securearea.cloud.CloudKeyInfo
 import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.android.securearea.cloud.CloudKeyLockedException
+import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
+import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
@@ -29,8 +35,7 @@ import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthority
-import com.android.identity.issuance.IssuingAuthorityConfiguration
-import com.android.identity.issuance.IssuingAuthorityNotification
+import com.android.identity.issuance.KeyPossessionProof
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -39,26 +44,32 @@ import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
+import com.android.identity.securearea.KeyLockedException
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareKeyInfo
+import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.credman.CredmanRegistry
+import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
+import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
+import com.android.identity_credential.wallet.ui.prompt.passphrase.showPassphrasePrompt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.time.Duration
@@ -78,6 +89,7 @@ class DocumentModel(
     }
 
     val documentInfos = mutableStateListOf<DocumentInfo>()
+    var activity: FragmentActivity? = null
 
     fun getDocumentInfo(cardId: String): DocumentInfo? {
         for (card in documentInfos) {
@@ -141,6 +153,16 @@ class DocumentModel(
             return
         }
         documentStore.deleteDocument(document.name)
+    }
+
+    fun attachToActivity(activity: FragmentActivity) {
+        this.activity = activity
+    }
+
+    fun detachFromActivity(activity: FragmentActivity) {
+        if (activity == this.activity) {
+            this.activity = null
+        }
     }
 
     private fun getStr(getStrId: Int): String {
@@ -711,9 +733,9 @@ class DocumentModel(
             createKeySettings: CreateKeySettings,
                 ) -> Credential)
     ) {
-        // TODO: this should all come from issuer configuration
-        val numCreds = 3
-        val minValidTimeMillis = 30 * 24 * 3600L
+        val numCreds = document.issuingAuthorityConfiguration.numberOfCredentialsToRequest ?: 3
+        val minValidTimeMillis = document.issuingAuthorityConfiguration.minCredentialValidityMillis ?: (30 * 24 * 3600L)
+        val maxUsesPerCredential = document.issuingAuthorityConfiguration.maxUsesPerCredentials ?: 1
 
         val now = Clock.System.now()
         // First do a dry-run to see how many pending credentials will be created
@@ -723,7 +745,7 @@ class DocumentModel(
             null,
             now,
             numCreds,
-            1,
+            maxUsesPerCredential,
             minValidTimeMillis,
             true
         )
@@ -767,7 +789,7 @@ class DocumentModel(
                 },
                 now,
                 numCreds,
-                1,
+                maxUsesPerCredential,
                 minValidTimeMillis,
                 false
             )
@@ -779,7 +801,31 @@ class DocumentModel(
                     )
                 )
             }
-            requestCredentialsFlow.sendCredentials(credentialRequests)
+            val challenges = requestCredentialsFlow.sendCredentials(credentialRequests)
+            if (challenges.isNotEmpty()) {
+                val activity = this.activity!!
+                if (challenges.size != document.pendingCredentials.size) {
+                    throw IllegalStateException("Unexpected number of possession challenges")
+                }
+                val possessionProofs = mutableListOf<KeyPossessionProof>()
+                withContext(Dispatchers.Main) {
+                    for (credData in document.pendingCredentials.zip(challenges)) {
+                        val credential = credData.first as SecureAreaBoundCredential
+                        val challenge = credData.second
+                        val signature = signWithUnlock(
+                            activity = activity,
+                            title = activity.resources.getString(R.string.issuance_biometric_prompt_title),
+                            subtitle = activity.resources.getString(R.string.issuance_biometric_prompt_subtitle),
+                            secureArea = credential.secureArea,
+                            alias = credential.alias,
+                            algorithm = Algorithm.ES256,
+                            messageToSign = challenge.messageToSign
+                        )
+                        possessionProofs.add(KeyPossessionProof(signature))
+                    }
+                }
+                requestCredentialsFlow.sendPossessionProofs(possessionProofs)
+            }
             requestCredentialsFlow.complete()  // noop for local, but important for server-side IA
         }
     }
@@ -805,3 +851,137 @@ private class TimedChunkFlow<T>(sourceFlow: Flow<T>, period: Duration) {
 }
 
 fun <T> Flow<T>.timedChunk(periodMs: Duration): Flow<List<T>> = TimedChunkFlow(this, periodMs).resultFlow
+
+// TODO: factor it out to some common utility file
+// Must be called on main thread
+suspend fun signWithUnlock(
+    activity: FragmentActivity,
+    title: String,
+    subtitle: String,
+    secureArea: SecureArea,
+    alias: String,
+    algorithm: Algorithm,
+    messageToSign: ByteString
+): ByteString {
+    // initially null and updated when catching a KeyLockedException in the while-loop below
+    var keyUnlockData: KeyUnlockData? = null
+    var remainingPassphraseAttempts = 3
+    while (true) {
+        try {
+            val signature = secureArea.sign(
+                alias,
+                algorithm,
+                messageToSign.toByteArray(),
+                keyUnlockData = keyUnlockData
+            )
+
+            return ByteString(signature.toCoseEncoded())
+        } catch (e: KeyLockedException) {
+            when (secureArea) {
+                // show Biometric prompt
+                is AndroidKeystoreSecureArea -> {
+                    val unlockData = AndroidKeystoreKeyUnlockData(alias)
+                    val cryptoObject = unlockData.getCryptoObjectForSigning(algorithm)
+
+                    // update KeyUnlockData to be used on the next loop iteration
+                    keyUnlockData = unlockData
+
+                    val successfulBiometricResult = showBiometricPrompt(
+                        activity = activity,
+                        title = title,
+                        subtitle = subtitle,
+                        cryptoObject = cryptoObject,
+                        userAuthenticationTypes = setOf(
+                            UserAuthenticationType.BIOMETRIC,
+                            UserAuthenticationType.LSKF
+                        ),
+                        requireConfirmation = false
+                    )
+                    // if user cancelled or was unable to authenticate, throw IllegalStateException
+                    check(successfulBiometricResult) { "[Biometric Unsuccessful]" }
+                }
+
+                // show Passphrase prompt
+                is SoftwareSecureArea -> {
+                    val softwareKeyInfo = secureArea.getKeyInfo(alias)
+
+                    val passphrase = showPassphrasePrompt(
+                        activity = activity,
+                        constraints = softwareKeyInfo.passphraseConstraints!!,
+                        title = title,
+                        content = subtitle
+                    )
+                    // ensure the passphrase is not empty, else throw IllegalStateException
+                    check(passphrase != null) { "[Passphrase Unsuccessful]" }
+                    // use the passphrase that the user entered to create the KeyUnlockData
+                    keyUnlockData = SoftwareKeyUnlockData(passphrase)
+                }
+
+                // show Passphrase prompt
+                is CloudSecureArea -> {
+                    if (keyUnlockData == null) {
+                        keyUnlockData = CloudKeyUnlockData(secureArea, alias)
+                    }
+
+                    when ((e as CloudKeyLockedException).reason) {
+                        CloudKeyLockedException.Reason.WRONG_PASSPHRASE -> {
+                            // enforce a maximum number of attempts
+                            if (remainingPassphraseAttempts == 0) {
+                                throw IllegalStateException("Error! Reached maximum number of Passphrase attempts.")
+                            }
+                            remainingPassphraseAttempts--
+
+                            val constraints = secureArea.passphraseConstraints
+                            val title =
+                                if (constraints.requireNumerical)
+                                    activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)
+                                else
+                                    activity.resources.getString(R.string.passphrase_prompt_csa_passphrase_title)
+                            val content =
+                                if (constraints.requireNumerical) {
+                                    activity.resources.getString(R.string.passphrase_prompt_csa_pin_content)
+                                } else {
+                                    activity.resources.getString(
+                                        R.string.passphrase_prompt_csa_passphrase_content
+                                    )
+                                }
+                            val passphrase = showPassphrasePrompt(
+                                activity = activity,
+                                constraints = constraints,
+                                title = title,
+                                content = content,
+                            )
+
+                            // if passphrase is null then user canceled the prompt
+                            if (passphrase == null) {
+                                throw UserCanceledPromptException()
+                            }
+                            (keyUnlockData as CloudKeyUnlockData).passphrase = passphrase
+                        }
+
+                        CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED -> {
+                            val successfulBiometricResult = showBiometricPrompt(
+                                activity = activity,
+                                title = activity.resources.getString(R.string.presentation_biometric_prompt_title),
+                                subtitle = activity.resources.getString(R.string.presentation_biometric_prompt_subtitle),
+                                cryptoObject = (keyUnlockData as CloudKeyUnlockData).cryptoObject,
+                                userAuthenticationTypes = setOf(
+                                    UserAuthenticationType.BIOMETRIC,
+                                    UserAuthenticationType.LSKF
+                                ),
+                                requireConfirmation = false
+                            )
+                            // if user cancelled or was unable to authenticate, throw IllegalStateException
+                            check(successfulBiometricResult) { "Biometric Unsuccessful" }
+                        }
+                    }
+                }
+
+                // for secure areas not yet implemented
+                else -> {
+                    throw IllegalStateException("No prompts implemented for Secure Area ${secureArea.displayName}")
+                }
+            }
+        }
+    }
+}

@@ -155,9 +155,9 @@ class ProofingGraphBuilder {
         chain.add { followUp -> ProofingGraph.SimpleNode(id, followUp, evidenceRequest) }
     }
 
-    fun eId(id: String, optionalComponents: List<String> = listOf()) {
+    fun eId(id: String, tcTokenUrl: String, optionalComponents: List<String> = listOf()) {
         chain.add { followUp ->
-            ProofingGraph.SimpleNode(id, followUp, EvidenceRequestGermanEid(optionalComponents))
+            ProofingGraph.SimpleNode(id, followUp, EvidenceRequestGermanEid(tcTokenUrl, optionalComponents))
         }
     }
 

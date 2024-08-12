@@ -35,6 +35,7 @@ class AusweisModel(
     private val context: Context,
     private val status: MutableState<Status?>,
     private val navController: NavController,
+    private val tcTokenUrl: String,
     private val requiredComponents: List<String>,
     private val coroutineScope: CoroutineScope,
     private val onResult: (result: EvidenceResponseGermanEid) -> Unit
@@ -160,7 +161,7 @@ class AusweisModel(
             sdk.send(sessionId, """
                 {
                   "cmd": "RUN_AUTH",
-                  "tcTokenURL": "https://test.governikus-eid.de/AusweisAuskunft/WebServiceRequesterServlet",
+                  "tcTokenURL": "$tcTokenUrl",
                   "developerMode": $useSimulatedCard,
                   "handleInterrupt": false,
                   "status": true

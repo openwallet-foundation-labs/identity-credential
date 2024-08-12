@@ -73,7 +73,11 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
         internal fun parse(encodedStaticAuthData: ByteArray) =
             Cbor.decode(encodedStaticAuthData).run {
                 issuerAuth = Cbor.encode(this["issuerAuth"])
-                parseDigestIdMapping(this["digestIdMapping"])
+                if (this.hasKey("digestIdMapping")) {
+                    parseDigestIdMapping(this["digestIdMapping"])
+                } else if (this.hasKey("nameSpaces")) {
+                    parseDigestIdMapping(this["nameSpaces"])
+                }
             }
 
     }
