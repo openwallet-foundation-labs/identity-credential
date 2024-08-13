@@ -408,5 +408,8 @@
     <string name="selfie_instructions_finishing_video">Thank you. Finishing video...</string>
     <string name="selfie_instructions_smile">Smile</string>
     <string name="selfie_instructions_too_many_faces">Too many faces found. Please ensure you only have one person on camera.</string>
+    <string name="qr_alert_dialog_bt_disabled_title">Bluetooth disabled</string>
+    <string name="qr_alert_dialog_bt_disabled_text">Bluetooth must be enabled to share a QR connection code</string>
+    <string name="qr_alert_dialog_bt_enable_button">Enable</string>
 
 </resources>
