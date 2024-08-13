@@ -17,7 +17,6 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
 
 class QrEngagementViewModel(val context: Application) : AndroidViewModel(context)  {
@@ -52,6 +51,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
 
                     override fun onDeviceConnecting() {
                         Logger.i(TAG, "onDeviceConnecting")
+                        PresentationActivity.engagementDetected(context)
                     }
 
                     override fun onDeviceConnected(transport: DataTransport) {

@@ -54,8 +54,10 @@
 
         <activity
             android:name=".PresentationActivity"
+            android:enabled="true"
             android:exported="true"
             android:label="@string/app_name_presentation"
+            android:launchMode="singleInstance"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:windowSoftInputMode="adjustPan"/>
 
@@ -84,7 +86,7 @@
             android:name=".credman.CredmanPresentationActivity"
             android:enabled="true"
             android:exported="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="androidx.identitycredentials.action.GET_CREDENTIALS" />
                 <category android:name="android.intent.category.DEFAULT" />

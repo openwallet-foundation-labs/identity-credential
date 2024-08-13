@@ -91,6 +91,16 @@ class NfcEngagementHandler : HostApduService() {
         if (application.documentStore.listDocuments().size > 0
             && !PresentationActivity.isPresentationActive()) {
 
+            // This starts the presentation activity in the foreground... we want to do this from
+            // onCreate() because if we do it later we might not have permission b/c we're a
+            // background task. See
+            //
+            //   https://developer.android.com/guide/components/activities/background-starts
+            //
+            // for more information about background launching
+            //
+            PresentationActivity.engagementDetected(application.applicationContext)
+
             val options = DataTransportOptions.Builder().build()
             val builder = NfcEngagementHelper.Builder(
                 applicationContext,
@@ -115,7 +125,7 @@ class NfcEngagementHandler : HostApduService() {
 
                 val walletApplication = application as WalletApplication
 
-                // Make sure the user sees the permissoins SnackBar next time they go to the app...
+                // Make sure the user sees the permissions SnackBar next time they go to the app...
                 walletApplication.settingsModel.hideMissingProximityPermissionsWarning.value = false
 
                 // This is best effort, user may not have grant POST_NOTIFICATIONS permission..
@@ -152,6 +162,10 @@ class NfcEngagementHandler : HostApduService() {
             if (engagementHelper != null) {
                 Logger.w(TAG, "Reader didn't connect inside $timeoutSeconds seconds, closing")
                 engagementHelper!!.close()
+
+                if (PresentationActivity.isPresentationActive()) {
+                    PresentationActivity.stopPresentationReaderTimeout(applicationContext)
+                }
             }
         }, timeoutSeconds * 1000L)
     }
