@@ -131,7 +131,7 @@ class FlowServlet : HttpServlet() {
     }
 
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
-        val path = req.servletPath.substring(1)
+        val path = req.pathInfo.substring(1)
         val threadId = Thread.currentThread().id
         val remoteHost = getRemoteHost(req)
         val prefix = "tid=$threadId host=$remoteHost"

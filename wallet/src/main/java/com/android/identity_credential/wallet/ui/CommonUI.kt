@@ -229,3 +229,23 @@ fun SettingString(
         }
     }
 }
+
+@Composable
+fun SettingSectionSubtitle(
+    modifier: Modifier = Modifier,
+    title: String
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                modifier = Modifier.padding(top = 20.dp),
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}

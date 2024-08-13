@@ -130,7 +130,8 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             onAccept = {
                                 provisioningViewModel.provideEvidence(
-                                    evidence = EvidenceResponseSetupCloudSecureArea(true),
+                                    evidence = EvidenceResponseSetupCloudSecureArea(
+                                        evidenceRequest.cloudSecureAreaIdentifier),
                                     walletServerProvider = walletServerProvider,
                                     documentStore = documentStore
                                 )

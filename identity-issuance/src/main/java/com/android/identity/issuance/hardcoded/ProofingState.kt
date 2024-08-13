@@ -3,8 +3,10 @@ package com.android.identity.issuance.hardcoded
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
+import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceResponse
@@ -20,6 +22,7 @@ import com.android.identity.mrtd.MrtdAccessDataCan
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
+import java.net.URLEncoder
 
 /**
  * State of [ProofingFlow] RPC implementation.
@@ -123,10 +126,12 @@ class ProofingState(
     private fun getGraph(env: FlowEnvironment): ProofingGraph {
         val key = GraphKey(issuingAuthorityId, documentId, developerModeEnabled)
         return env.cache(ProofingGraph::class, key) { configuration, resources ->
+            val cloudSecureAreaUrl = WalletServerSettings(configuration).cloudSecureAreaUrl
             defaultGraph(
                 documentId,
                 resources,
                 developerModeEnabled,
+                cloudSecureAreaUrl,
                 resources.getStringResource("$issuingAuthorityId/tos.html")!!,
                 mapOf("logo.png" to resources.getRawResource("$issuingAuthorityId/logo.png")!!)
             )

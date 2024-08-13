@@ -1,5 +1,5 @@
 package com.android.identity.issuance.evidence
 
 data class EvidenceResponseSetupCloudSecureArea(
-    val success: Boolean
+    val cloudSecureAreaIdentifier: String
 ) : EvidenceResponse()

@@ -3,6 +3,7 @@ package com.android.identity.issuance.remote
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Handler
 import androidx.annotation.RawRes
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
@@ -11,6 +12,7 @@ import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.securearea.SecureArea
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.SettingsModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import kotlinx.io.bytestring.ByteString
@@ -26,14 +28,24 @@ import kotlin.reflect.cast
  */
 class LocalDevelopmentEnvironment(
     context: Context,
+    settingsModel: SettingsModel,
     private val secureArea: SecureArea,
     private val notifications: FlowNotifications
 ) : FlowEnvironment {
-    private val configuration = ConfigurationImpl(context)
+    private var configuration = ConfigurationImpl(context, settingsModel)
     private val storage = StorageImpl(context, "dev_local_data")
     private val resources = ResourcesImpl(context)
     private val httpClient = HttpClient(Android) {
         followRedirects = false
+    }
+
+    init {
+        Handler(context.mainLooper).post {
+            settingsModel.cloudSecureAreaUrl.observeForever {
+                // this signals config change
+                configuration = ConfigurationImpl(context, settingsModel)
+            }
+        }
     }
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
@@ -48,7 +60,7 @@ class LocalDevelopmentEnvironment(
         })
     }
 
-    class ConfigurationImpl(val context: Context): Configuration {
+    class ConfigurationImpl(val context: Context, val settingsModel: SettingsModel): Configuration {
         override fun getValue(key: String): String? {
             val value = when (key) {
                 "developerMode" -> "true"
@@ -69,6 +81,7 @@ class LocalDevelopmentEnvironment(
                 "issuingAuthority.utopia_local_pid.logo" -> "utopia_local_pid/logo.png"
                 "issuingAuthority.utopia_local_pid.cardArt" -> "utopia_local_pid/card_art.png"
                 "issuingAuthority.utopia_local_pid.requireUserAuthenticationToViewDocument" -> "false"
+                "cloudSecureAreaUrl" -> settingsModel.cloudSecureAreaUrl.value
                 else -> null
             }
             return value

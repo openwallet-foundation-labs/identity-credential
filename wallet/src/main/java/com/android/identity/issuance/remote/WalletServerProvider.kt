@@ -181,7 +181,8 @@ class WalletServerProvider(
             val builder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
             notifier = FlowNotificationsLocal(noopCipher)
-            val environment = LocalDevelopmentEnvironment(context, secureArea, notifier)
+            val environment = LocalDevelopmentEnvironment(
+                context, settingsModel, secureArea, notifier)
             dispatcher = WrapperFlowDispatcher(builder.build(
                 environment,
                 noopCipher,

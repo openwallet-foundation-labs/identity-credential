@@ -35,6 +35,9 @@ class WalletServerSettings(private val conf: Configuration) {
     val cloudSecureAreaEnabled: Boolean
         get() = getBool("cloudSecureAreaEnabled", false)
 
+    val cloudSecureAreaUrl: String
+        get() = getString("cloudSecureAreaUrl") ?: "/csa"
+
     val cloudSecureAreaRekeyingIntervalSeconds: Int
         get() = getInt("cloudSecureAreaRekeyingIntervalSeconds", 300)
 

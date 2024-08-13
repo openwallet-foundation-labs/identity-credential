@@ -1,11 +1,12 @@
 package com.android.identity.issuance.funke
 
 import com.android.identity.cbor.annotation.CborSerializable
-import com.android.identity.crypto.Crypto
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
+import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
@@ -16,7 +17,6 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleCh
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.util.Logger
-import com.android.identity.util.toBase64
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -24,11 +24,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
-import kotlinx.datetime.Clock
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import java.net.URLEncoder
-import kotlin.random.Random
 
 
 @FlowState(
@@ -43,7 +39,7 @@ class FunkeProofingState(
     var dpopNonce: String? = null,
     var token: String? = null,
     var secureAreaIdentifier: String? = null,
-    var secureAreaPinSet: Boolean = false
+    var secureAreaSetupDone: Boolean = false
 ) {
     companion object {
         private const val TAG = "FunkeProofingState"
@@ -65,7 +61,7 @@ class FunkeProofingState(
                     acceptButtonText = "Continue"
                 )
             )
-        } else if (secureAreaIdentifier!!.startsWith("CloudSecureArea?") && !secureAreaPinSet) {
+        } else if (secureAreaIdentifier!!.startsWith("CloudSecureArea?") && !secureAreaSetupDone) {
             listOf(
                 EvidenceRequestSetupCloudSecureArea(
                     cloudSecureAreaIdentifier = secureAreaIdentifier!!,
@@ -86,14 +82,17 @@ class FunkeProofingState(
             is EvidenceResponseGermanEid -> processGermanEId(env, evidenceResponse)
             is EvidenceResponseQuestionMultipleChoice -> {
                 secureAreaIdentifier = if (evidenceResponse.answerId == "cloud") {
-                    "CloudSecureArea?id=${documentId}&url=/csa"
+                    val cloudSecureAreaUrl = URLEncoder.encode(
+                        WalletServerSettings(env.getInterface(Configuration::class)!!)
+                            .cloudSecureAreaUrl, "UTF-8"
+                    )
+                    "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
                 } else {
                     "AndroidKeystoreSecureArea"
                 }
             }
             is EvidenceResponseSetupCloudSecureArea -> {
-                secureAreaPinSet = true
-                check(evidenceResponse.success)
+                secureAreaSetupDone = true
             }
             else -> throw IllegalArgumentException("Unexpected evidence type")
         }

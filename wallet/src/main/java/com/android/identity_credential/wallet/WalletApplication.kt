@@ -56,6 +56,7 @@ import kotlinx.datetime.Clock
 import kotlinx.io.files.Path
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
+import java.net.URLDecoder
 import java.security.Security
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -150,7 +151,7 @@ class WalletApplication : Application() {
                 val queryString = identifier.substring(CloudSecureArea.IDENTIFIER_PREFIX.length + 1)
                 val params = queryString.split("&").map {
                     val parts = it.split("=", ignoreCase = false, limit = 2)
-                    parts[0] to parts[1]
+                    parts[0] to URLDecoder.decode(parts[1], "UTF-8")
                 }.toMap()
                 val givenUrl = params["url"]!!
                 val cloudSecureAreaUrl =
@@ -185,6 +186,7 @@ class WalletApplication : Application() {
         // init Wallet Server
         walletServerProvider = WalletServerProvider(
             this,
+            this.
             androidKeystoreSecureArea,
             settingsModel,
             storageEngine,
