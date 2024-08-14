@@ -22,32 +22,17 @@ import android.util.Base64
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.cbor.Cbor
-import com.android.identity.credential.Credential
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.DocumentRequest
-import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.issuance.DocumentExtensions.documentConfiguration
-import com.android.identity.mdoc.mso.MobileSecurityObjectParser
-import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.mdoc.response.DocumentGenerator
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.KeyLockedException
-import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
-import com.android.identity_credential.wallet.presentation.showPresentmentFlow
-import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
+import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import org.json.JSONObject
 
 import com.google.android.gms.identitycredentials.GetCredentialResponse
@@ -292,11 +277,11 @@ class CredmanPresentationActivity : FragmentActivity() {
         encodedSessionTranscript: ByteArray,
     ): ByteArray {
         val mdocCredential = getMdocCredentialForCredentialId(credentialId)
-        val documentCborBytes = showPresentmentFlow(
+        val documentCborBytes = showMdocPresentmentFlow(
             activity = this@CredmanPresentationActivity,
             walletApp = walletApp,
             documentRequest = DocumentRequest(dataElements),
-            mdocCredential = mdocCredential,
+            credential = mdocCredential,
             // TODO: Need to extend TrustManager with a verify() variants which takes a domain or appId
             trustPoint = null,
             encodedSessionTranscript = encodedSessionTranscript,

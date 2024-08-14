@@ -4,11 +4,12 @@ import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.android.securearea.cloud.CloudKeyInfo
 import com.android.identity.android.securearea.cloud.CloudKeyLockedException
 import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
 import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.cbor.Cbor
+import com.android.identity.credential.Credential
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
@@ -19,9 +20,10 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.software.SoftwareKeyInfo
 import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
@@ -56,27 +58,29 @@ const val MAX_PASSPHRASE_ATTEMPTS = 3
  * @param activity the [FragmentActivity] used for showing Dialog Fragments.
  * @param walletApp the [WalletApplication] instance used for dependencies.
  * @param documentRequest a [DocumentRequest] instance defining a list of
- *      credential fields/data elements to obtain from the suitable [Document] in MdocCredential.
- * @param mdocCredential the object containing the [Document] and docType amongst other properties.
+ *      credential fields/data elements to obtain from the suitable [Document] in
+ *      SecureAreaBoundCredential.
+ * @param credential the object containing the [Document] and docType amongst other properties.
  * @param trustPoint if provided, identifies the Verifying party.
- * @param encodedSessionTranscript the bytes of `SessionTranscript` CBOR.
+ * @param signAndGenerate function called to sign using key data and generate the results
  * @return the [Document] CBOR bytes, else throws an exception.
  * @throws Exception for incorrect configurations, cannot find credentials or unsuccessful
  *      prompts because user cancelled or wasn't able to authenticate.
  */
-suspend fun showPresentmentFlow(
+private suspend fun showPresentmentFlowImpl(
     activity: FragmentActivity,
     walletApp: WalletApplication,
     documentRequest: DocumentRequest,
-    mdocCredential: MdocCredential,
+    credential: SecureAreaBoundCredential,
     trustPoint: TrustPoint?,
-    encodedSessionTranscript: ByteArray
+    signAndGenerate: (KeyUnlockData?) -> ByteArray
 ): ByteArray {
     // always show the Consent Prompt first
     showConsentPrompt(
         activity = activity,
         documentTypeRepository = walletApp.documentTypeRepository,
-        document = mdocCredential.document,
+        credential = credential,
+        document = credential.document,
         documentRequest = documentRequest,
         trustPoint = trustPoint
     ).let { resultSuccess ->
@@ -92,35 +96,16 @@ suspend fun showPresentmentFlow(
 
     while (true) {
         try {
-            // create the document generator for the suitable Document (of DocumentRequest)
-            val documentGenerator =
-                createDocumentGenerator(
-                    docRequest = documentRequest,
-                    document = mdocCredential.document,
-                    credential = mdocCredential,
-                    sessionTranscript = encodedSessionTranscript
-                )
-            // try signing the data of the document (or KeyLockedException is thrown)
-            documentGenerator.setDeviceNamespacesSignature(
-                NameSpacedData.Builder().build(),
-                mdocCredential.secureArea,
-                mdocCredential.alias,
-                keyUnlockData,
-                Algorithm.ES256
-            )
-            // increment the credential's usage count since it just finished signing the data successfully
-            mdocCredential.increaseUsageCount()
-            // finally add the document to the response generator and generate the bytes
-            return documentGenerator.generate()
+            return signAndGenerate(keyUnlockData)
         }
         // if KeyLockedException is raised show the corresponding Prompt to unlock
         // the auth key for a Credential's Secure Area
         catch (e: KeyLockedException) {
-            when (mdocCredential.secureArea) {
+            when (credential.secureArea) {
                 // show Biometric prompt
                 is AndroidKeystoreSecureArea -> {
                     val unlockData =
-                        AndroidKeystoreKeyUnlockData(mdocCredential.alias)
+                        AndroidKeystoreKeyUnlockData(credential.alias)
                     val cryptoObject =
                         unlockData.getCryptoObjectForSigning(Algorithm.ES256)
 
@@ -151,7 +136,7 @@ suspend fun showPresentmentFlow(
                     remainingPassphraseAttempts--
 
                     val softwareKeyInfo =
-                        mdocCredential.secureArea.getKeyInfo(mdocCredential.alias) as SoftwareKeyInfo
+                        credential.secureArea.getKeyInfo(credential.alias) as SoftwareKeyInfo
                     val constraints = softwareKeyInfo.passphraseConstraints!!
                     val title =
                         if (constraints.requireNumerical)
@@ -185,8 +170,8 @@ suspend fun showPresentmentFlow(
                 is CloudSecureArea -> {
                     if (keyUnlockData == null) {
                         keyUnlockData = CloudKeyUnlockData(
-                            mdocCredential.secureArea as CloudSecureArea,
-                            mdocCredential.alias,
+                            credential.secureArea as CloudSecureArea,
+                            credential.alias,
                         )
                     }
 
@@ -198,7 +183,7 @@ suspend fun showPresentmentFlow(
                             }
                             remainingPassphraseAttempts--
 
-                            val constraints = (mdocCredential.secureArea as CloudSecureArea).passphraseConstraints
+                            val constraints = (credential.secureArea as CloudSecureArea).passphraseConstraints
                             val title =
                                 if (constraints.requireNumerical)
                                     activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)
@@ -246,11 +231,100 @@ suspend fun showPresentmentFlow(
 
                 // for secure areas not yet implemented
                 else -> {
-                    throw IllegalStateException("No prompts implemented for Secure Area ${mdocCredential.secureArea.displayName}")
+                    throw IllegalStateException("No prompts implemented for Secure Area ${credential.secureArea.displayName}")
                 }
             }
         }
     }
+}
+
+suspend fun showMdocPresentmentFlow(
+    activity: FragmentActivity,
+    walletApp: WalletApplication,
+    documentRequest: DocumentRequest,
+    credential: MdocCredential,
+    trustPoint: TrustPoint?,
+    encodedSessionTranscript: ByteArray,
+): ByteArray {
+    return showPresentmentFlowImpl(
+                activity,
+                walletApp,
+                documentRequest,
+                credential,
+                trustPoint) { keyUnlockData: KeyUnlockData? ->
+        mdocSignAndGenerate(documentRequest, credential, encodedSessionTranscript!!, keyUnlockData)
+    }
+}
+
+suspend fun showSdJwtPresentmentFlow(
+    activity: FragmentActivity,
+    walletApp: WalletApplication,
+    documentRequest: DocumentRequest,
+    credential: SecureAreaBoundCredential,
+    trustPoint: TrustPoint?,
+    nonce: String,
+    clientId: String,
+): ByteArray {
+    return showPresentmentFlowImpl(
+            activity,
+            walletApp,
+            documentRequest,
+            credential,
+            trustPoint) { keyUnlockData: KeyUnlockData? ->
+        val sdJwt = SdJwtVerifiableCredential.fromString(
+            String(credential.issuerProvidedData, Charsets.US_ASCII))
+
+        val requestedAttributes = documentRequest.requestedDataElements.map { it.dataElementName }.toSet()
+        Logger.i(
+            TAG, "Filtering requested attributes (${requestedAttributes.joinToString()}) " +
+                    "from disclosed attributes (${sdJwt.disclosures.joinToString { it.key }})")
+        val filteredSdJwt = sdJwt.discloseOnly(requestedAttributes)
+        Logger.i(TAG, "Remaining disclosures: ${filteredSdJwt.disclosures.joinToString { it.key }}")
+        if (filteredSdJwt.disclosures.isEmpty()) {
+            // This is going to cause problems with the encoding and decoding. We should
+            // cancel the submission, since we can't fulfill any of the requested
+            // information.
+            // TODO: Handle this cancellation better.
+            Logger.e(TAG, "No disclosures remaining.")
+        }
+
+        filteredSdJwt.createPresentation(
+            credential.secureArea,
+            credential.alias,
+            keyUnlockData,
+            Algorithm.ES256,
+            nonce!!,
+            clientId!!
+        ).toString().toByteArray(Charsets.US_ASCII)
+    }
+}
+
+private fun mdocSignAndGenerate(
+    documentRequest: DocumentRequest,
+    credential: SecureAreaBoundCredential,
+    encodedSessionTranscript: ByteArray,
+    keyUnlockData: KeyUnlockData?
+): ByteArray {
+    // create the document generator for the suitable Document (of DocumentRequest)
+    val documentGenerator =
+        createDocumentGenerator(
+            docRequest = documentRequest,
+            document = credential.document,
+            credential = credential,
+            sessionTranscript = encodedSessionTranscript
+        )
+    // try signing the data of the document (or KeyLockedException is thrown)
+    documentGenerator.setDeviceNamespacesSignature(
+        NameSpacedData.Builder().build(),
+        credential.secureArea,
+        credential.alias,
+        keyUnlockData,
+        Algorithm.ES256
+    )
+    // increment the credential's usage count since it just finished signing the data successfully
+    credential.increaseUsageCount()
+    // finally add the document to the response generator and generate the bytes
+    return documentGenerator.generate()
 }
 
 /**
@@ -269,7 +343,7 @@ suspend fun showPresentmentFlow(
 private fun createDocumentGenerator(
     docRequest: DocumentRequest,
     document: Document,
-    credential: MdocCredential,
+    credential: Credential,
     sessionTranscript: ByteArray,
 ): DocumentGenerator {
     val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()

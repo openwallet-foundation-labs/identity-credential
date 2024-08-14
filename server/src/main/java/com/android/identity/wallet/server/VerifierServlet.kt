@@ -20,6 +20,8 @@ import com.android.identity.crypto.javaPublicKey
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Storage
 import com.android.identity.mdoc.response.DeviceResponseParser
+import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
+import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64
 import com.android.identity.util.toBase64
@@ -49,6 +51,10 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
@@ -71,14 +77,32 @@ enum class Protocol {
     MDOC_OPENID4VP,
 }
 
-enum class RequestType {
-    PID_MDOC_AGE_OVER_18,
-    PID_MDOC_MANDATORY,
-    PID_MDOC_FULL,
-    MDL_MDOC_AGE_OVER_18,
-    MDL_MDOC_AGE_OVER_21,
-    MDL_MDOC_MANDATORY,
-    MDL_MDOC_FULL,
+enum class ClaimCollection {
+    OVER_18,
+    OVER_21,
+    MANDATORY,
+    FULL,
+    MANDATORY_SDJWT,
+    FULL_SDJWT
+}
+
+enum class DocumentFormat {
+    MDOC,
+    SDJWT
+}
+
+enum class RequestType(
+    val format: DocumentFormat,
+    val claimCollection: ClaimCollection) {
+    PID_MDOC_AGE_OVER_18(DocumentFormat.MDOC, ClaimCollection.OVER_18),
+    PID_MDOC_MANDATORY(DocumentFormat.MDOC, ClaimCollection.MANDATORY),
+    PID_MDOC_FULL(DocumentFormat.MDOC, ClaimCollection.FULL),
+    PID_SDJWT_MANDATORY(DocumentFormat.SDJWT, ClaimCollection.MANDATORY_SDJWT),
+    PID_SDJWT_FULL(DocumentFormat.SDJWT, ClaimCollection.FULL_SDJWT),
+    MDL_MDOC_AGE_OVER_18(DocumentFormat.MDOC, ClaimCollection.OVER_18),
+    MDL_MDOC_AGE_OVER_21(DocumentFormat.MDOC, ClaimCollection.OVER_21),
+    MDL_MDOC_MANDATORY(DocumentFormat.MDOC, ClaimCollection.MANDATORY),
+    MDL_MDOC_FULL(DocumentFormat.MDOC, ClaimCollection.FULL),
 }
 
 @Serializable
@@ -421,6 +445,8 @@ class VerifierServlet : HttpServlet() {
             "pid_mdoc_age_over_18" -> RequestType.PID_MDOC_AGE_OVER_18
             "pid_mdoc_mandatory" -> RequestType.PID_MDOC_MANDATORY
             "pid_mdoc_full" -> RequestType.PID_MDOC_FULL
+            "pid_sdjwt_mandatory" -> RequestType.PID_SDJWT_MANDATORY
+            "pid_sdjwt_full" -> RequestType.PID_SDJWT_FULL
             "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
             "mdl_mdoc_age_over_21" -> RequestType.MDL_MDOC_AGE_OVER_21
             "mdl_mdoc_mandatory" -> RequestType.MDL_MDOC_MANDATORY
@@ -464,6 +490,7 @@ class VerifierServlet : HttpServlet() {
         resp.status = HttpServletResponse.SC_OK
         resp.outputStream.write(responseString.encodeToByteArray())
         resp.contentType = "application/json"
+        Logger.i(TAG, "Sending handleOpenID4VPBegin response: $responseString")
     }
 
     private fun handleOpenID4VPRequest(
@@ -516,6 +543,11 @@ class VerifierServlet : HttpServlet() {
             Base64.from(cert.encodedCertificate.toBase64())
         }
 
+        val presentationDefinition = when (session.requestType.format) {
+            DocumentFormat.MDOC -> mdocCalcPresentationDefinition(session.requestType)
+            DocumentFormat.SDJWT -> sdjwtCalcPresentationDefinition(session.requestType)
+        }
+
         val claimsSet = JWTClaimsSet.Builder()
             .claim("client_id", clientId)
             .claim("response_uri", responseUri)
@@ -523,9 +555,10 @@ class VerifierServlet : HttpServlet() {
             .claim("response_mode", "direct_post.jwt")
             .claim("nonce", session.nonce)
             .claim("state", session.id)
-            .claim("presentation_definition", mdocCalcPresentationDefinition(session.requestType))
+            .claim("presentation_definition", presentationDefinition)
             .claim("client_metadata", calcClientMetadata(session))
             .build()
+        Logger.i(TAG, "Sending OpenID4VPRequest claims set: $claimsSet")
 
         val signedJWT = SignedJWT(
             JWSHeader.Builder(JWSAlgorithm.ES256)
@@ -683,14 +716,28 @@ class VerifierServlet : HttpServlet() {
         }
         val session = Session.fromCbor(encodedSession.toByteArray())
 
-        val deviceResponse = try {
-            val parser = DeviceResponseParser(session.deviceResponse!!, session.sessionTranscript!!)
-            parser.parse()
+        try {
+            when (session.requestType.format) {
+                DocumentFormat.MDOC -> handleGetDataMdoc(session, resp)
+                DocumentFormat.SDJWT -> handleGetDataSdJwt(session, resp)
+            }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
             resp.status = HttpServletResponse.SC_BAD_REQUEST
             return
         }
+
+        resp.contentType = "application/json"
+        resp.status = HttpServletResponse.SC_OK
+    }
+
+    private fun handleGetDataMdoc(
+        session: Session,
+        resp: HttpServletResponse
+    ) {
+        val parser = DeviceResponseParser(session.deviceResponse!!, session.sessionTranscript!!)
+        val deviceResponse = parser.parse()
+        Logger.i(TAG, "Validated DeviceResponse!")
 
         // TODO: Add more sophistication in how we convey the result to the webpage, for example
         //  support the following value types
@@ -724,11 +771,74 @@ class VerifierServlet : HttpServlet() {
 
         val json = Json { ignoreUnknownKeys = true }
         resp.outputStream.write(json.encodeToString(OpenID4VPResultData(lines)).encodeToByteArray())
-
-        resp.contentType = "application/json"
-        resp.status = HttpServletResponse.SC_OK
     }
 
+    private fun handleGetDataSdJwt(
+        session: Session,
+        resp: HttpServletResponse,
+    ) {
+        val presentationString = session.deviceResponse!!.decodeToString()
+        Logger.d(TAG, "Handling SD-JWT: $presentationString")
+        val presentation = SdJwtVerifiablePresentation.fromString(presentationString)
+        val nonceStr = session.nonce
+
+        // on the verifier, check that the key binding can be verified with the
+        // key mentioned in the SD-JWT:
+        presentation.verifyKeyBinding(
+            checkAudience = { clientId == it },
+            checkNonce = { nonceStr == it },
+            checkCreationTime = { it < Clock.System.now() }
+        )
+
+        // also on the verifier, check the signature over the SD-JWT from the issuer
+        // TODO: We need to verify the issuer signature. Where do we get the public
+        // key of the issuer?
+        //presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
+
+        val lines = mutableListOf<OpenID4VPResultLine>()
+        for (disclosure in presentation.sdJwtVc.disclosures.sortedBy { it.key }) {
+            val valueToAdd = when (disclosure.value) {
+                is JsonPrimitive -> disclosure.value.jsonPrimitive.content
+                is JsonArray -> disclosure.value.jsonArray.toString()
+                else -> "Unknown Response Type: ${disclosure.value}"
+            }
+            lines.add(OpenID4VPResultLine(disclosure.key, valueToAdd))
+        }
+
+        // Check for the actual claims we requested, in addition to what was supplied
+        // in the response.
+        val requestedClaimsSet = requestedClaims[session.requestType.claimCollection]!!.toSet()
+        Logger.i(TAG, "Searching for requested claims: ${requestedClaimsSet.sorted().joinToString()}")
+        val disclosedClaims = presentation.sdJwtVc.disclosures.map { it.key }.toMutableSet()
+        // There are several special cases that aren't in the selective disclosures, which our
+        // JwtBody implementation copies into its properties:
+        val jwtBody = JwtBody.fromString(presentation.sdJwtVc.body)
+        val specialCases: Map<String, String?> = mapOf(
+            Pair("iss", jwtBody.issuer),
+            Pair("vct", jwtBody.docType),
+            Pair("iat", jwtBody.timeSigned?.toString()),
+            Pair("nbf", jwtBody.timeValidityBegin?.toString()),
+            Pair("exp", jwtBody.timeValidityEnd?.toString()),
+            Pair("cnf", jwtBody.publicKey?.asJwk.toString())
+        )
+        for (key in specialCases.keys) {
+            if (requestedClaimsSet.contains(key)) {
+                val value = specialCases[key] ?: continue
+                lines.add(OpenID4VPResultLine(key, value))
+                disclosedClaims.add(key)
+                Logger.i(TAG, "Adding special case $key: $value")
+            }
+        }
+
+        val missingClaims = requestedClaimsSet - disclosedClaims
+        for (missingClaim in missingClaims.sorted()) {
+            Logger.w(TAG, "Value not disclosed for key: $missingClaim")
+            lines.add(OpenID4VPResultLine("Value not disclosed:", missingClaim))
+        }
+
+        val json = Json { ignoreUnknownKeys = true }
+        resp.outputStream.write(json.encodeToString(OpenID4VPResultData(lines)).encodeToByteArray())
+    }
 }
 
 // defined in ISO 18013-7 Annex B
@@ -779,6 +889,138 @@ private data class MdocRequest(
     val namespaces: List<MdocRequestNamespace>
 )
 
+private val requestedClaims: Map<ClaimCollection, List<String>> = mapOf(
+    Pair(
+        ClaimCollection.OVER_18,
+        listOf(
+            "age_over_18"
+        )
+    ),
+    Pair(
+        ClaimCollection.OVER_21,
+        listOf(
+            "age_over_21"
+        )
+    ),
+    Pair(
+        ClaimCollection.MANDATORY,
+        listOf(
+            "family_name",
+            "given_name",
+            "birth_date",
+            "age_over_18",
+            "issuance_date",
+            "expiry_date",
+            "issuing_authority",
+            "issuing_country"
+        )
+    ),
+    Pair(
+        ClaimCollection.FULL,
+        listOf(
+            "family_name",
+            "given_name",
+            "birth_date",
+            "age_over_18",
+            "age_in_years",
+            "age_birth_year",
+            "family_name_birth",
+            "given_name_birth",
+            "birth_place",
+            "birth_country",
+            "birth_state",
+            "birth_city",
+            "resident_address",
+            "resident_country",
+            "resident_state",
+            "resident_city",
+            "resident_postal_code",
+            "resident_street",
+            "resident_house_number",
+            "gender",
+            "nationality",
+            "issuance_date",
+            "expiry_date",
+            "issuing_authority",
+            "document_number",
+            "administrative_number",
+            "issuing_country",
+            "issuing_jurisdiction",
+        )
+    ),
+    Pair(ClaimCollection.MANDATORY_SDJWT,
+        listOf(
+            "family_name",
+            "given_name",
+            "birth_date",
+            "age_over_18",
+            "issuance_date",
+            "expiry_date",
+            "issuing_authority",
+            "issuing_country",
+            // Some of the "mandatory" claims are missing from the sample
+            // data we're working with, but there are similar claims that look
+            // like they may contain the expected information. Request those
+            // claims, also:
+            "18", "birthdate", "iat", "iss", "exp", "country"
+        )
+    ),
+    Pair(ClaimCollection.FULL_SDJWT,
+        listOf(
+            "family_name",
+            "given_name",
+            "birth_date",
+            "age_over_18",
+            "age_in_years",
+            "age_birth_year",
+            "family_name_birth",
+            "given_name_birth",
+            "birth_place",
+            "birth_country",
+            "birth_state",
+            "birth_city",
+            "resident_address",
+            "resident_country",
+            "resident_state",
+            "resident_city",
+            "resident_postal_code",
+            "resident_street",
+            "resident_house_number",
+            "gender",
+            "nationality",
+            "issuance_date",
+            "expiry_date",
+            "issuing_authority",
+            "document_number",
+            "administrative_number",
+            "issuing_country",
+            "issuing_jurisdiction",
+            // Additional fields we've seen in sample data:
+            "birthdate",
+            "iat",
+            "iss",
+            "vct",
+            "nbf",
+            "cnf",
+            "exp",
+            "country",
+            "age_birth_year",
+            "age_in_years",
+            "birth_family_name",
+            "nationalities",
+            "12",
+            "14",
+            "16",
+            "18",
+            "21",
+            "65",
+            "locality",
+            "postal_code",
+            "street_address"
+        )
+    )
+)
+
 private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
     Pair(
         RequestType.PID_MDOC_AGE_OVER_18,
@@ -787,9 +1029,7 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "eu.europa.ec.eudi.pid.1",
-                    listOf(
-                        "age_over_18"
-                    )
+                    requestedClaims[ClaimCollection.OVER_18]!!
                 )
             )
         )
@@ -801,16 +1041,7 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "eu.europa.ec.eudi.pid.1",
-                    listOf(
-                        "family_name",
-                        "given_name",
-                        "birth_date",
-                        "age_over_18",
-                        "issuance_date",
-                        "expiry_date",
-                        "issuing_authority",
-                        "issuing_country"
-                    )
+                    requestedClaims[ClaimCollection.MANDATORY]!!
                 )
             )
         )
@@ -822,36 +1053,7 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "eu.europa.ec.eudi.pid.1",
-                    listOf(
-                        "family_name",
-                        "given_name",
-                        "birth_date",
-                        "age_over_18",
-                        "age_in_years",
-                        "age_birth_year",
-                        "family_name_birth",
-                        "given_name_birth",
-                        "birth_place",
-                        "birth_country",
-                        "birth_state",
-                        "birth_city",
-                        "resident_address",
-                        "resident_country",
-                        "resident_state",
-                        "resident_city",
-                        "resident_postal_code",
-                        "resident_street",
-                        "resident_house_number",
-                        "gender",
-                        "nationality",
-                        "issuance_date",
-                        "expiry_date",
-                        "issuing_authority",
-                        "document_number",
-                        "administrative_number",
-                        "issuing_country",
-                        "issuing_jurisdiction",
-                    )
+                    requestedClaims[ClaimCollection.FULL]!!
                 )
             )
         )
@@ -863,9 +1065,7 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "org.iso.18013.5.1",
-                    listOf(
-                        "age_over_18"
-                    )
+                    requestedClaims[ClaimCollection.OVER_18]!!
                 )
             )
         )
@@ -877,9 +1077,7 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "org.iso.18013.5.1",
-                    listOf(
-                        "age_over_21"
-                    )
+                    requestedClaims[ClaimCollection.OVER_21]!!
                 )
             )
         )
@@ -891,19 +1089,7 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "org.iso.18013.5.1",
-                    listOf(
-                        "family_name",
-                        "given_name",
-                        "birth_date",
-                        "issue_date",
-                        "expiry_date",
-                        "issuing_country",
-                        "issuing_authority",
-                        "document_number",
-                        "portrait",
-                        "driving_privileges",
-                        "un_distinguishing_sign",
-                    )
+                    requestedClaims[ClaimCollection.MANDATORY]!!
                 )
             )
         )
@@ -915,57 +1101,61 @@ private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
             listOf(
                 MdocRequestNamespace(
                     "org.iso.18013.5.1",
-                    listOf(
-                        "family_name",
-                        "given_name",
-                        "birth_date",
-                        "issue_date",
-                        "expiry_date",
-                        "issuing_country",
-                        "issuing_authority",
-                        "document_number",
-                        "portrait",
-                        "driving_privileges",
-                        "un_distinguishing_sign",
-                        "administrative_number",
-                        "sex",
-                        "height",
-                        "weight",
-                        "eye_colour",
-                        "hair_colour",
-                        "birth_place",
-                        "resident_address",
-                        "portrait_capture_date",
-                        "age_in_years",
-                        "age_birth_year",
-                        "age_over_13",
-                        "age_over_16",
-                        "age_over_18",
-                        "age_over_21",
-                        "age_over_25",
-                        "age_over_60",
-                        "age_over_62",
-                        "age_over_65",
-                        "age_over_68",
-                    )
+                    requestedClaims[ClaimCollection.FULL]!!
                 )
             )
         )
     ),
 )
 
+private data class SdJwtRequestClaims(
+    // Name is the JSON object that contains the requested elements, which is probably
+    // "credentialSubject" in most cases.
+    val name: String,
+    val dataElements: List<String>
+)
+
+private data class SdJwtRequest(
+    val requestedClaims: List<SdJwtRequestClaims>
+)
+
+private val knownSdJwtRequests: Map<RequestType, SdJwtRequest> = mapOf(
+    Pair(
+        RequestType.PID_SDJWT_MANDATORY,
+        SdJwtRequest(
+            listOf(
+                SdJwtRequestClaims(
+                    "credentialSubject",
+                    requestedClaims[ClaimCollection.MANDATORY_SDJWT]!!
+                )
+            )
+        )
+    ),
+    Pair(
+        RequestType.PID_SDJWT_FULL,
+        SdJwtRequest(
+            listOf(
+                SdJwtRequestClaims(
+                    "credentialSubject",
+                    requestedClaims[ClaimCollection.FULL_SDJWT]!!
+                )
+            )
+        )
+    )
+)
+
 private fun mdocCalcPresentationDefinition(requestType: RequestType): JSONObject {
+    val request = knownMdocRequests.get(requestType)
+    if (request == null) {
+        throw IllegalStateException("Unknown request type $requestType")
+    }
+
     val alg = JSONArray()
     alg.addAll(listOf("ES256"))
     val mso_mdoc = JSONObject()
     mso_mdoc.put("alg", alg)
     val format = JSONObject()
     format.put("mso_mdoc", mso_mdoc)
-
-    val request = knownMdocRequests.get(requestType)
-    if (request == null) {
-        throw IllegalStateException("Unknown request type $requestType")
-    }
 
     val fields = JSONArray()
     for (ns in request.namespaces) {
@@ -990,6 +1180,50 @@ private fun mdocCalcPresentationDefinition(requestType: RequestType): JSONObject
     input_descriptors.add(input_descriptor_0)
 
     val presentation_definition = JSONObject()
+    // TODO: Fill in a unique ID.
+    presentation_definition.put("id", "request-TODO-id")
+    presentation_definition.put("input_descriptors", input_descriptors)
+
+    return presentation_definition
+}
+
+private fun sdjwtCalcPresentationDefinition(requestType: RequestType): JSONObject {
+    val request = knownSdJwtRequests.get(requestType)
+    if (request == null) {
+        throw IllegalStateException("Unknown request type $requestType")
+    }
+
+    val alg = JSONArray()
+    alg.addAll(listOf("ES256"))
+    val algContainer = JSONObject()
+    algContainer.put("alg", alg)
+    val format = JSONObject()
+    format.put("jwt_vp", algContainer)
+
+    val fields = JSONArray()
+    for (ns in request.requestedClaims) {
+        for (de in ns.dataElements) {
+            var array = JSONArray()
+            array.add("\$['${ns.name}']['$de']")
+            val field = JSONObject()
+            field.put("path", array)
+            field.put("intent_to_retain", false)
+            fields.add(field)
+        }
+    }
+    val constraints = JSONObject()
+    constraints.put("limit_disclosure", "required")
+    constraints.put("fields", fields)
+
+    val input_descriptor_0 = JSONObject()
+    input_descriptor_0.put("id", "Example PID")
+    input_descriptor_0.put("format", format)
+    input_descriptor_0.put("constraints", constraints)
+    val input_descriptors = JSONArray()
+    input_descriptors.add(input_descriptor_0)
+
+    val presentation_definition = JSONObject()
+    // TODO: Fill in a unique ID.
     presentation_definition.put("id", "request-TODO-id")
     presentation_definition.put("input_descriptors", input_descriptors)
 

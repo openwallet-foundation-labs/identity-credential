@@ -209,9 +209,7 @@ class Document private constructor(
         var candidate: Credential? = null
         _certifiedCredentials.filter {
             it.domain == domain && (
-                    now != null
-                            && (now >= it.validFrom)
-                            && (now <= it.validUntil)
+                    now == null || (now >= it.validFrom && now <= it.validUntil)
                     )
         }.forEach { credential ->
             // If we already have a candidate, prefer this one if its usage count is lower

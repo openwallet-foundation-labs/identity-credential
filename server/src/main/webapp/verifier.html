@@ -27,6 +27,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pills-pid_sdjwt-tab" data-bs-toggle="pill" data-bs-target="#pills-pid_sdjwt" type="button" role="tab" aria-controls="pills-home" aria-selected="true">
+                    PID (SD-JWT VC)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pills-mdl_mdoc-tab" data-bs-toggle="pill" data-bs-target="#pills-mdl_mdoc" type="button" role="tab" aria-controls="pills-profile" aria-selected="false">
                     mDL (mdoc)
                 </button>
@@ -45,7 +50,16 @@
                         Request PID (Full)
                     </button>
                 </div>
-
+            </div>
+            <div class="tab-pane fade" id="pills-pid_sdjwt" role="tabpanel" aria-labelledby="pills-pid_sdjwt-tab" tabindex="0">
+                <div class="d-grid gap-2 mx-auto">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_mandatory')">
+                        Request PID (Mandatory Claims)
+                    </button>
+                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_full')">
+                        Request PID (Full)
+                    </button>
+                </div>
             </div>
             <div class="tab-pane fade" id="pills-mdl_mdoc" role="tabpanel" aria-labelledby="pills-mdl_mdoc-tab" tabindex="0">
                 <div class="d-grid gap-2 mx-auto">

@@ -6,11 +6,19 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.FragmentActivity
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.trustmanagement.TrustPoint
+import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -30,19 +38,28 @@ import kotlin.coroutines.resume
 suspend fun showConsentPrompt(
     activity: FragmentActivity,
     documentTypeRepository: DocumentTypeRepository,
+    credential: SecureAreaBoundCredential,
     document: Document,
     documentRequest: DocumentRequest,
     trustPoint: TrustPoint?
 ): Boolean =
     suspendCancellableCoroutine { continuation ->
+        var credentialFormat = when(credential) {
+            is MdocCredential -> CredentialFormat.MDOC_MSO
+            is SdJwtVcCredential -> CredentialFormat.SD_JWT_VC
+            else -> throw IllegalArgumentException("Unknown credential type")
+        }
+        val staticData = getStaticData(document, credential)
+
         // new instance of the ConsentPrompt bottom sheet dialog fragment but not shown yet
         val consentPrompt = ConsentPrompt(
             consentPromptEntryFieldData = ConsentPromptEntryFieldData(
                 credentialId = document.name,
                 documentName = document.documentConfiguration.displayName,
-                credentialData = document.documentConfiguration.mdocConfiguration!!.staticData,
+                credentialData = staticData,
+                credentialFormat = credentialFormat,
                 documentRequest = documentRequest,
-                docType = document.documentConfiguration.mdocConfiguration!!.docType,
+                docType = document.documentConfiguration.mdocConfiguration?.docType,
                 verifier = trustPoint,
             ),
             documentTypeRepository = documentTypeRepository,
@@ -54,6 +71,34 @@ suspend fun showConsentPrompt(
         consentPrompt.show(activity.supportFragmentManager, "consent_prompt")
     }
 
+private fun getStaticData(document: Document, credential: SecureAreaBoundCredential): NameSpacedData {
+    if (credential is MdocCredential) {
+        Logger.i("ConsentPrompt", "Getting static data for mdoc credential.")
+        return document.documentConfiguration.mdocConfiguration!!.staticData
+    }
+
+    Logger.i("ConsentPrompt", "Getting static data for SD-JWT credential.")
+    // This NameSpacedData is only used to display which attributes are being requested, and the
+    // value stored in the ByteArray is never used. Until we have a cleaner way to surface these
+    // attribute names, we're just filling these entries and leaving the ByteArray empty.
+    val namespace = "credentialSubject"
+    val builder = NameSpacedData.Builder()
+        .putEntry(namespace, "iss", ByteArray(0))
+        .putEntry(namespace, "vct", ByteArray(0))
+
+    val sdJwt = SdJwtVerifiableCredential.fromString(
+        String(credential.issuerProvidedData, Charsets.US_ASCII))
+    for (disclosure in sdJwt.disclosures) {
+        builder.putEntry(namespace, disclosure.key, ByteArray(0))
+    }
+
+    val bodyObj = JwtBody.fromString(sdJwt.body)
+    if (bodyObj.timeSigned != null) builder.putEntry(namespace, "iat", ByteArray(0))
+    if (bodyObj.timeValidityBegin != null) builder.putEntry(namespace, "nbf", ByteArray(0))
+    if (bodyObj.timeValidityEnd != null) builder.putEntry(namespace, "exp", ByteArray(0))
+    if (bodyObj.publicKey != null) builder.putEntry(namespace, "cnf", ByteArray(0))
+    return builder.build()
+}
 
 /**
  * ConsentPrompt Dialog Fragment class that renders Consent prompt via Composition for the purposes

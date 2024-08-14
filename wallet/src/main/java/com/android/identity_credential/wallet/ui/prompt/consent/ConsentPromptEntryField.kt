@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.identity.document.DocumentRequest
 import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.util.toImageBitmap
 import kotlinx.coroutines.launch
@@ -72,6 +74,77 @@ private enum class ConfirmButtonState {
     INIT
 }
 
+// Mapping of known attributes to display names.
+// TODO: It would be more consistent to implement a similar SD-JWT type to what we have for MDOC
+// in identity-doctypes/src/main/java/com/android/identity/documenttype/knowntypes/EUPersonalID.kt,
+// then grab the display names from there.
+val knownDisplayNames: Map<String, String> = mapOf(
+    Pair("12", "Older Than 12"),
+    Pair("14", "Older Than 14"),
+    Pair("16", "Older Than 16"),
+    Pair("18", "Older Than 18"),
+    Pair("21", "Older Than 21"),
+    Pair("65", "Older Than 65"),
+    Pair("family_name", "Family Name"),
+    Pair("given_name", "Given Names"),
+    Pair("birthdate", "Date of Birth"),
+    Pair("birth_date", "Date of Birth"),
+    Pair("age_in_years", "Age in Years"),
+    Pair("age_birth_year", "Year of Birth"),
+    Pair("age_over_18", "Older Than 18"),
+    Pair("age_over_21", "Older Than 21"),
+    Pair("nationalities", "Nationalities"),
+    Pair("locality", "Locality"),
+    Pair("country", "Country"),
+    Pair("family_name_birth", "Family Name at Birth"),
+    Pair("birth_family_name", "Family Name at Birth"),
+    Pair("given_name_birth", "First Name at Birth"),
+    Pair("birth_place", "Place of Birth"),
+    Pair("birth_country", "Country of Birth"),
+    Pair("birth_state", "State of Birth"),
+    Pair("birth_city", "City of Birth"),
+    Pair("resident_address", "Resident Address"),
+    Pair("resident_country", "Resident Country"),
+    Pair("resident_state", "Resident State"),
+    Pair("resident_city", "Resident City"),
+    Pair("resident_postal_code", "Resident Postal Code"),
+    Pair("postal_code", "Resident Postal Code"),
+    Pair("resident_street", "Resident Street"),
+    Pair("street_address", "Resident Street"),
+    Pair("resident_house_number", "Resident House Number"),
+    Pair("gender", "Gender"),
+    Pair("nationality", "Nationality"),
+    Pair("issuance_date", "Date of Issue"),
+    Pair("expiry_date", "Date of Expiry"),
+    Pair("issuing_authority", "Issuing Authority"),
+    Pair("iss", "Issuing Authority"),
+    Pair("document_number", "Document Number"),
+    Pair("administrative_number", "Administrative Number"),
+    Pair("issuing_jurisdiction", "Issuing Jurisdiction"),
+    Pair("issuing_country", "Issuing Country"),
+    Pair("vct", "Verifiable Credential Type"),
+    Pair("iat", "Issuance Time"),
+    Pair("nbf", "Valid Start Time"),
+    Pair("exp", "Expiration Time"),
+    Pair("cnf", "Public Certification Key")
+)
+
+/**
+ * Gets the display name for the given attribute, if we don't have a document type to draw from.
+ * This uses a simplified static mapping of attribute names for cases that aren't covered by an
+ * existing document type data stricture. For the moment, this is primarily used for SD-JWT.
+ */
+fun getKnownDisplayName(name: String): String {
+    val displayName = knownDisplayNames[name]
+    if (displayName == null) {
+        Logger.w("getKnownDisplayName", "Unknown display name for $name")
+        return name
+    } else {
+        Logger.i("getKnownDisplayName", "Found display name for $name: $displayName")
+    }
+    return displayName
+}
+
 /**
  * ConsentPromptEntryField is responsible for showing a bottom sheet modal dialog prompting the user
  * to consent to sending credential data to requesting party and user can cancel at any time.
@@ -93,13 +166,17 @@ fun ConsentPromptEntryField(
      */
     fun DocumentTypeRepository.getDataElementDisplayName(
         dataElement: DocumentRequest.DataElement,
-        docType: String
-    ) = getDocumentTypeForMdoc(docType)
-        ?.mdocDocumentType
-        ?.namespaces
-        ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
-        ?.attribute?.displayName
-        ?: dataElement.dataElementName
+        docType: String?,
+        credentialFormat: CredentialFormat
+    ) = when (credentialFormat) {
+        CredentialFormat.SD_JWT_VC -> getKnownDisplayName(dataElement.dataElementName)
+        CredentialFormat.MDOC_MSO -> getDocumentTypeForMdoc(docType!!)
+            ?.mdocDocumentType
+            ?.namespaces
+            ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
+            ?.attribute?.displayName
+            ?: dataElement.dataElementName
+    }
 
 
     // used for bottom sheet
@@ -116,7 +193,8 @@ fun ConsentPromptEntryField(
             .map { dataElement ->
                 val displayName = documentTypeRepository.getDataElementDisplayName(
                     dataElement = dataElement,
-                    docType = consentData.docType
+                    docType = consentData.docType,
+                    credentialFormat = consentData.credentialFormat
                 )
                 ConsentDataElement(displayName, dataElement)
             }
