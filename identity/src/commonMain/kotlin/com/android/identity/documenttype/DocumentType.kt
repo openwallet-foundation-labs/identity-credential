@@ -32,12 +32,14 @@ import com.android.identity.cbor.DataItem
  * no more than one paragraph.
  *
  * @param displayName the name suitable for display of the Document Type.
+ * @param sampleRequests sample [DocumentWellKnownRequest] for the Document Type.
  * @param mdocDocumentType metadata of an mDoc Document Type (optional).
  * @param vcDocumentType metadata of a W3C VC Document Type (optional).
  *
  */
 class DocumentType private constructor(
     val displayName: String,
+    val sampleRequests: List<DocumentWellKnownRequest>,
     val mdocDocumentType: MdocDocumentType?,
     val vcDocumentType: VcDocumentType?
 ) {
@@ -54,6 +56,8 @@ class DocumentType private constructor(
         var mdocBuilder: MdocDocumentType.Builder? = null,
         var vcBuilder: VcDocumentType.Builder? = null
     ) {
+        private val sampleRequests = mutableListOf<DocumentWellKnownRequest>()
+
         /**
          * Initialize the [mdocBuilder].
          *
@@ -183,8 +187,47 @@ class DocumentType private constructor(
         }
 
         /**
+         * Adds a sample request to the document.
+         *
+         * TODO: Add support for VC claims as well.
+         *
+         * @param displayName a short name explaining the request
+         * @param mdocDataElements the mdoc data elements in the request, per namespace. If
+         * the list of a namespace is empty, all defined data elements will be included.
+         */
+        fun addSampleRequest(
+            displayName: String,
+            mdocDataElements: Map<String, List<String>>?
+        ) = apply {
+            val mdocRequest = if (mdocDataElements == null) {
+                null
+            } else {
+                val nsRequests = mutableListOf<MdocNamespaceRequest>()
+                for ((namespace, dataElements) in mdocDataElements) {
+                    val mdocNsBuilder = mdocBuilder!!.namespaces[namespace]!!
+                    val deList = if (dataElements.isEmpty()) {
+                        mdocNsBuilder.dataElements.values.toList()
+                    } else {
+                        val list = mutableListOf<MdocDataElement>()
+                        for (dataElement in dataElements) {
+                            list.add(mdocNsBuilder.dataElements[dataElement]!!)
+                        }
+                        list
+                    }
+                    nsRequests.add(MdocNamespaceRequest(namespace, deList))
+                }
+                MdocRequest(mdocBuilder!!.docType, nsRequests)
+            }
+            sampleRequests.add(DocumentWellKnownRequest(displayName, mdocRequest))
+        }
+
+        /**
          * Build the [DocumentType].
          */
-        fun build() = DocumentType(displayName, mdocBuilder?.build(), vcBuilder?.build())
+        fun build() = DocumentType(
+            displayName,
+            sampleRequests,
+            mdocBuilder?.build(),
+            vcBuilder?.build())
     }
 }

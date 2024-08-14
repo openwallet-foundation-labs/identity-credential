@@ -9,6 +9,7 @@ import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.QrEngagementViewModel
+import com.android.identity_credential.wallet.ReaderModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
@@ -18,6 +19,7 @@ import com.android.identity_credential.wallet.ui.destination.document.Credential
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
+import com.android.identity_credential.wallet.ui.destination.reader.ReaderScreen
 import com.android.identity_credential.wallet.ui.destination.settings.SettingsScreen
 
 /**
@@ -31,7 +33,8 @@ fun WalletNavigation(
     permissionTracker: PermissionTracker,
     sharedPreferences: SharedPreferences,
     qrEngagementViewModel: QrEngagementViewModel,
-    documentModel: DocumentModel
+    documentModel: DocumentModel,
+    readerModel: ReaderModel,
 ) {
 
     // lambda navigateTo takes in a route string and navigates to the corresponding Screen
@@ -171,6 +174,16 @@ fun WalletNavigation(
             QrEngagementScreen(
                 qrEngagementViewModel = qrEngagementViewModel,
                 onNavigate = navigateTo
+            )
+        }
+
+        composable(WalletDestination.Reader.route) {
+            ReaderScreen(
+                model = readerModel,
+                docTypeRepo = application.documentTypeRepository,
+                settingsModel = application.settingsModel,
+                issuerTrustManager = application.issuerTrustManager,
+                onNavigate = navigateTo,
             )
         }
     }

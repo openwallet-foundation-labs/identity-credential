@@ -3,7 +3,6 @@ package com.android.identity_credential.wallet.presentation
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -45,7 +44,6 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -432,7 +430,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
         var trustPoint: TrustPoint? = null
         if (authorizationRequest.certificateChain != null) {
-            val trustResult = walletApp.trustManager.verify(authorizationRequest.certificateChain!!)
+            val trustResult = walletApp.readerTrustManager.verify(authorizationRequest.certificateChain!!)
             if (!trustResult.isTrusted) {
                 Logger.w(TAG, "Reader root not trusted")
                 if (trustResult.error != null) {

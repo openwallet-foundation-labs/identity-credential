@@ -344,7 +344,7 @@ class PresentationActivity : FragmentActivity() {
                                 // See if we recognize the reader/verifier
                                 var trustPoint: TrustPoint? = null
                                 if (docRequest.readerAuthenticated) {
-                                    val result = walletApp.trustManager.verify(
+                                    val result = walletApp.readerTrustManager.verify(
                                         docRequest.readerCertificateChain!!.javaX509Certificates,
                                         customValidators = emptyList()  // not needed for reader auth
                                     )
