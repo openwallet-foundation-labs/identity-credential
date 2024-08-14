@@ -16,7 +16,6 @@
 
 package com.android.identity_credential.wallet
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -27,32 +26,25 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
@@ -65,7 +57,6 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
-import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.request.DeviceRequestParser
@@ -76,13 +67,10 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showPresentmentFlow
-import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
-import com.android.identity_credential.wallet.util.inverse
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
 class PresentationActivity : FragmentActivity() {
@@ -92,14 +80,25 @@ class PresentationActivity : FragmentActivity() {
         private var handover: ByteArray?
         private var eDeviceKey: EcPrivateKey?
         private var deviceEngagement: ByteArray?
-        private var state = MutableLiveData<State>()
+        private var resultStringId: Int = 0
+        private var resultDrawableId: Int = 0
+        private var phase = MutableLiveData<Phase>()
 
         init {
-            state.value = State.NOT_CONNECTED
+            phase.value = Phase.NOT_CONNECTED
             transport = null
             handover = null
             eDeviceKey = null
             deviceEngagement = null
+        }
+
+        fun engagementDetected(context: Context) {
+            if (phase.value != Phase.NOT_CONNECTED) {
+                Logger.w(TAG, "nfcEngagementDetected: expected NOT_CONNECTED, is in " + phase.value)
+                return
+            }
+            launchPresentationActivity(context)
+            phase.value = Phase.ENGAGING
         }
 
         fun startPresentation(
@@ -112,8 +111,10 @@ class PresentationActivity : FragmentActivity() {
             this.deviceEngagement = deviceEngagement
             Logger.i(TAG, "engagement info set")
 
-            launchPresentationActivity(context)
-            state.value = State.CONNECTED
+            if (phase.value != Phase.ENGAGING) {
+                launchPresentationActivity(context)
+            }
+            phase.value = Phase.CONNECTED
         }
 
         private fun launchPresentationActivity(context: Context) {
@@ -121,21 +122,31 @@ class PresentationActivity : FragmentActivity() {
             launchAppIntent.addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_NO_HISTORY or
-                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION
             )
             context.startActivity(launchAppIntent)
         }
 
         fun isPresentationActive(): Boolean {
-            return state.value != State.NOT_CONNECTED
+            return phase.value != Phase.NOT_CONNECTED
+        }
+
+        fun stopPresentationReaderTimeout(context: Context) {
+            resultStringId = R.string.presentation_result_error_message_reader_timeout
+            resultDrawableId = R.drawable.presentment_result_status_error
+            phase.value = Phase.SHOW_RESULT
         }
     }
 
-    enum class State {
+    enum class Phase {
         NOT_CONNECTED,
+        ENGAGING,
         CONNECTED,
         REQUEST_AVAILABLE,
-        RESPONSE_SENT,
+        SHOW_RESULT,
+        POST_RESULT,
+        CANCELED,
     }
 
     // reference WalletApplication for obtaining dependencies
@@ -146,10 +157,6 @@ class PresentationActivity : FragmentActivity() {
     // device request bytes
     private var deviceRequestByteArray: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-
-    // TODO: add SD_JWT_VC support
-    // the supported formats for the Credentials of a Document
-    val supportedCredentialFormats = listOf(CredentialFormat.MDOC_MSO)
 
     // Listener for obtaining request bytes from NFC/QR presentation engagements
     val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
@@ -162,7 +169,7 @@ class PresentationActivity : FragmentActivity() {
             Logger.i(TAG, "onDeviceRequest")
 
             deviceRequestByteArray = deviceRequestBytes
-            state.value = State.REQUEST_AVAILABLE
+            phase.value = Phase.REQUEST_AVAILABLE
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
@@ -176,111 +183,95 @@ class PresentationActivity : FragmentActivity() {
         }
     }
 
-    /**
-     * Enum class defining the types of result statuses that a Presentment can yield to.
-     *
-     * @param messageResourceId the message to show for a status
-     * @param imageResourceId the image to show above the message
-     */
-    enum class ResultStatus(val messageResourceId: Int, val imageResourceId: Int) {
-        // All prompts were successful
-        SUCCESS(
-            R.string.presentation_result_success_message,
-            R.drawable.presentment_result_status_success
-        ),
 
-        // Something prevented success
-        ERROR(
-            R.string.presentation_result_error_message,
-            R.drawable.presentment_result_status_error
-        ),
-
-        // User tapped on the cancel button or outside of prompt (if permissible)
-        CANCEL(0, 0),
-
-        // For init of Flow
-        UNSET(0, 0)
-    }
-
-    private val _resultStatus = MutableStateFlow(ResultStatus.UNSET)
-    private val resultStatus: StateFlow<ResultStatus> = _resultStatus
-
-
-    /**
-     * Composable view that is shown at the end of the Presentation result to briefly update the user
-     * on the result of the Presentation Prompt - success, neutral, or error.
-     * @param resultStatus the [ResultStatus] object containing the result status data to show.
-     */
     @Composable
-    fun ResultStatus(resultStatus: ResultStatus) {
-        // show the result message if there's one to show
-        if (resultStatus == ResultStatus.UNSET) return
-
-        // used for finishing the Activity after briefly showing the result
-        val activity = LocalContext.current as? Activity
-        val coroutineScope = rememberCoroutineScope() // Get the coroutine scope
-        // whether we're showing the result status box
-        val resultIsVisible = remember { mutableStateOf(true) }
+    fun Result(phase: Phase) {
         AnimatedVisibility(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.Transparent)
-                // more padding here shrinks the status result box below
-                .padding(25.dp),
-            visible = resultIsVisible.value,
+            visible = phase == Phase.SHOW_RESULT,
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            Surface(
-                modifier = Modifier.shadow(
-                    elevation = 6.dp,
-                    shape = RoundedCornerShape(10.dp),
-                    // drop shadow color is inverse of colorScheme.surface
-                    spotColor = MaterialTheme.colorScheme.surface.inverse()
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.Center
             ) {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    if (resultDrawableId != 0) {
+                        Image(
+                            modifier = Modifier.padding(top = 30.dp),
+                            painter = painterResource(resultDrawableId),
+                            contentDescription = null,
+                            contentScale = ContentScale.None,
+                        )
+                    }
+                    if (resultStringId != 0) {
+                        Text(
+                            text = stringResource(resultStringId),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 20.dp, bottom = 40.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun ConnectingToReader(phase: Phase) {
+        AnimatedVisibility(
+            visible = phase == Phase.ENGAGING,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 32.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(elevation = 8.dp, shape = RoundedCornerShape(28.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.app_name),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 20.dp),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Image(
-                        modifier = Modifier.padding(
-                            top = if (resultStatus == ResultStatus.ERROR) {
-                                25.dp
-                            } else {
-                                0.dp
-                            }
-                        ),
-                        painter = painterResource(id = resultStatus.imageResourceId),
+                        modifier = Modifier.padding(top = 20.dp),
+                        painter = painterResource(id = R.drawable.waiting_for_reader),
                         contentDescription = null,
                         contentScale = ContentScale.None,
                     )
                     Text(
-                        text = stringResource(id = resultStatus.messageResourceId),
+                        text = stringResource(id = R.string.presentation_waiting_for_reader),
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(
-                                top = if (resultStatus == ResultStatus.ERROR) {
-                                    20.dp
-                                } else {
-                                    0.dp
-                                }, bottom = 40.dp
-                            ),
-                        fontSize = 36.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                            .padding(top = 20.dp, bottom = 40.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-            LaunchedEffect(resultStatus) {
-                // wait 1 sec so user can read the status message before starting the
-                // fade out animation
-                delay(1000)
-                resultIsVisible.value = false
-                coroutineScope.launch {
-                    // delay before finishing this Activity
-                    delay(500)
-                    activity?.finish()
                 }
             }
         }
@@ -290,31 +281,31 @@ class PresentationActivity : FragmentActivity() {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
         // ensure no external apps can take a peek of Presentment Prompts while viewing recent apps
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
 
         setContent {
-            IdentityCredentialTheme {
-                val resultStatus = resultStatus.collectAsState().value
-                if (resultStatus == ResultStatus.CANCEL) {
-                    finish()
-                } else {
-                    // show the Result Status message 100 dp from top of screen
-                    Column {
-                        Spacer(modifier = Modifier.height(100.dp))
-                        ResultStatus(resultStatus = resultStatus)
-                    }
-                }
-            }
+            val phaseState: Phase by phase.observeAsState(Phase.NOT_CONNECTED)
+            ConnectingToReader(phaseState)
+            Result(phaseState)
         }
 
-        state.observe(this as LifecycleOwner) { state ->
-            when (state!!) {
-                State.NOT_CONNECTED -> {
-                    Logger.i(TAG, "State: Not Connected")
+
+        phase.observe(this as LifecycleOwner) {
+            when (it!!) {
+                Phase.NOT_CONNECTED -> {
+                    Logger.i(TAG, "Phase: Not Connected")
+                    finish()
                 }
 
-                State.CONNECTED -> {
-                    Logger.i(TAG, "State: Connected")
+                Phase.ENGAGING -> {
+                    Logger.i(TAG, "Phase: Engaging")
+                }
+
+                Phase.CONNECTED -> {
+                    Logger.i(TAG, "Phase: Connected")
                     // on a new connected client, create a new DeviceRetrievalHelper
                     deviceRetrievalHelper = DeviceRetrievalHelper
                         .Builder(
@@ -327,8 +318,8 @@ class PresentationActivity : FragmentActivity() {
                         .build()
                 }
 
-                State.REQUEST_AVAILABLE -> {
-                    Logger.i(TAG, "State: Request Available")
+                Phase.REQUEST_AVAILABLE -> {
+                    Logger.i(TAG, "Phase: Request Available")
                     /**
                      * Device request bytes have been transmitted via device retrieval helper listener,
                      * Start the Presentment Flow where a Presentment is shown for every
@@ -380,24 +371,47 @@ class PresentationActivity : FragmentActivity() {
                                 )
                                 deviceResponseGenerator.addDocument(documentCborBytes)
                             }
-                            // send the response with all the Document CBOR bytes that succeeded Presentation Flows
-                            sendResponseToDevice(deviceResponseGenerator.generate())
-                            _resultStatus.value = ResultStatus.SUCCESS
-                        } catch (e: Exception) {
-                            if (e !is UserCanceledPromptException) {
-                                _resultStatus.value = ResultStatus.ERROR
-                                Logger.e(TAG, "Error while running the Presentment Flow", e)
+                            deviceRetrievalHelper?.sendDeviceResponse(
+                                deviceResponseGenerator.generate(),
+                                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                            )
+                            resultStringId = R.string.presentation_result_success_message
+                            resultDrawableId = R.drawable.presentment_result_status_success
+                            phase.value = Phase.SHOW_RESULT
+                        } catch (e: Throwable) {
+                            if (e is UserCanceledPromptException) {
+                                phase.value = Phase.CANCELED
                             } else {
-                                _resultStatus.value = ResultStatus.CANCEL
+                                Logger.e(TAG, "Error while running the Presentment Flow", e)
+                                resultStringId = R.string.presentation_result_error_message
+                                resultDrawableId = R.drawable.presentment_result_status_error
+                                phase.value = Phase.SHOW_RESULT
                             }
                         }
                     }
                 }
 
-                State.RESPONSE_SENT -> {
-                    Logger.i(TAG, "State: Response Sent")
-                    // cleanup
-                    disconnect()
+                Phase.SHOW_RESULT -> {
+                    Logger.i(TAG, "Phase: Showing result")
+                    lifecycleScope.launch {
+                        // the amount of time to show the result for
+                        delay(1500)
+                        phase.value = Phase.POST_RESULT
+                    }
+                }
+
+                Phase.POST_RESULT -> {
+                    Logger.i(TAG, "Phase: Post showing result")
+                    lifecycleScope.launch {
+                        // delay before finishing activity, to ensure the result is fading out
+                        delay(500)
+                        phase.value = Phase.NOT_CONNECTED
+                    }
+                }
+
+                Phase.CANCELED -> {
+                    Logger.i(TAG, "Phase: Canceled")
+                    phase.value = Phase.NOT_CONNECTED
                 }
             }
         }
@@ -410,64 +424,39 @@ class PresentationActivity : FragmentActivity() {
         super.onDestroy()
     }
 
+    private fun documentGetValidMdocCredentialIfAvailable(
+        document: Document,
+        docType: String,
+        now: Instant,
+    ): MdocCredential?  =
+        if (document.documentConfiguration.mdocConfiguration?.docType == docType) {
+            document.findCredential(
+                WalletApplication.CREDENTIAL_DOMAIN_MDOC,
+                now,
+            ) as MdocCredential
+        } else {
+            null
+        }
+
     /**
      * Find a suitable Document for the given [docRequest] else throw [IllegalStateException].
      * @param docRequest parsed from DeviceRequest CBOR.
      * @return a matching [MdocCredential] from either on-screen Document or [DocumentStore]
      *      or null if there are no matching MdocCredential
      */
-    fun findMdocCredentialForRequest(docRequest: DeviceRequestParser.DocRequest): MdocCredential? {
-
-        fun isDocumentSuitableForDocRequest(
-            document: Document,
-            docType: String,
-            supportedCredentialFormats: List<CredentialFormat> = listOf(CredentialFormat.MDOC_MSO)
-        ): Boolean {
-            /**
-             * Nested local function that returns whether the given [Document] matches the
-             * requested [docType] that also has at least one [Credential] with a [CredentialFormat]
-             * listed in the [supportedCredentialFormats]. This function is nested here for
-             * maintaining high cohesion and grouping this reusable function near the location of
-             * where it's used (directly underneath this function).
-             *
-             * @param document the [Document] being checked for suitability for a [DocumentRequest]
-             * @param docType the mDoc Document Type that the [document] should have for a match
-             * @param supportedCredentialFormats a list of [CredentialFormat]s that are supported
-             *      for authentication - this applies Credentials of a [Document].
-             * @return a Boolean, [true] if the [document] matches the requested [docType] and has
-             * at least one Credential where its [CredentialFormat] is supported/listed in
-             * param [supportedCredentialFormats].
-             */
-            // if the docType matches, proceed to iterate over the document's credentials
-            if (document.documentConfiguration.mdocConfiguration?.docType == docType) {
-                val documentInfo = walletApp.documentModel.getDocumentInfo(document.name)
-
-                // return true if there's at least 1 credential with a supported format
-                return documentInfo?.credentialInfos?.any {
-                    supportedCredentialFormats.contains(it.format)
-                }
-                // else encountered null getting DocumentInfo or CredentialInfos
-                    ?: throw IllegalStateException("Error validating suitability for Document ${document.name} having DocumentInfo $documentInfo and CredentialInfos ${documentInfo?.credentialInfos}")
-            }
-            // the specified Document does not have the requested docType
-            return false
-        }
-
-        var document: Document? = null
+    private fun findMdocCredentialForRequest(docRequest: DeviceRequestParser.DocRequest): MdocCredential? {
+        val now = Clock.System.now()
 
         // prefer the document that is on-screen if possible
-        walletApp.settingsModel.focusedCardId.value?.let onscreenloop@{ documentIdFromPager ->
+        walletApp.settingsModel.focusedCardId.value?.let { documentIdFromPager ->
             val pagerDocument = walletApp.documentStore.lookupDocument(documentIdFromPager)
             if (pagerDocument != null) {
-                val suitable = isDocumentSuitableForDocRequest(
-                    document = pagerDocument,
-                    docType = docRequest.docType,
-                    supportedCredentialFormats = supportedCredentialFormats
-                )
-
-                if (suitable) {
-                    document = pagerDocument
-                    return@onscreenloop
+                val mdocCredential = documentGetValidMdocCredentialIfAvailable(
+                    pagerDocument,
+                    docRequest.docType,
+                    now)
+                if (mdocCredential != null) {
+                    return mdocCredential
                 }
             }
         }
@@ -475,62 +464,35 @@ class PresentationActivity : FragmentActivity() {
         // no matches from above, check suitability with all Documents added to DocumentStore
         walletApp.documentStore.listDocuments().forEach storeloop@{ documentIdFromStore ->
             val storeDocument = walletApp.documentStore.lookupDocument(documentIdFromStore)!!
-            val suitable = isDocumentSuitableForDocRequest(
-                document = storeDocument,
-                docType = docRequest.docType,
-                supportedCredentialFormats = supportedCredentialFormats
-            )
-            if (suitable) {
-                document = storeDocument
-                return@storeloop
+            val mdocCredential = documentGetValidMdocCredentialIfAvailable(
+                storeDocument,
+                docRequest.docType,
+                now)
+            if (mdocCredential != null) {
+                return mdocCredential
             }
         }
 
-        if (document == null) {
-            return null
-        }
-
-        return document!!.findCredential(
-            WalletApplication.CREDENTIAL_DOMAIN_MDOC,
-            Clock.System.now()
-        ) as MdocCredential
+        return null
     }
 
-    /**
-     * Perform disconnect (via DeviceRetrievalHelper) and cleanup operations (nullifying vars) and
-     * a call to finish(). A new Engagement will result in a new Activity instance.
-     */
     private fun disconnect() {
         Logger.i(TAG, "disconnect")
         if (deviceRetrievalHelper == null) {
             Logger.i(TAG, "already closed")
             return
         }
-        if (state.value == State.REQUEST_AVAILABLE) {
-            val deviceResponseGenerator =
-                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
-            sendResponseToDevice(deviceResponseGenerator.generate())
-            _resultStatus.value = ResultStatus.ERROR
+        // If the connection to the reader is still open, let them know we're shutting down
+        // as required by ISO 18013-5.
+        if (phase.value == Phase.REQUEST_AVAILABLE) {
+            deviceRetrievalHelper?.sendDeviceResponse(
+                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR).generate(),
+                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+            )
         }
-        state.value = State.NOT_CONNECTED
         deviceRetrievalHelper?.disconnect()
         deviceRetrievalHelper = null
         transport = null
         handover = null
     }
-
-    /**
-     * Send response bytes to requesting party and updates state to [State.RESPONSE_SENT]
-     * @param deviceResponseBytes response bytes that may or may not have been processed (such as
-     * when sending an error)
-     */
-    private fun sendResponseToDevice(deviceResponseBytes: ByteArray) =
-        deviceRetrievalHelper?.run {
-            sendDeviceResponse(
-                deviceResponseBytes,
-                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
-            )
-            state.value = State.RESPONSE_SENT
-        }
-            ?: throw IllegalStateException("Unable to send response bytes, deviceRetrievalHelper is [null].")
 }
