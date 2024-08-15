@@ -83,7 +83,7 @@ building blocks
     issuing updates or refreshing a credential.
   - Additionally, each Credential has one or more _Authentication Keys_ which
     can be endorsed by the issuer and used at presentation time.
-  - Finally, namespaced data and arbritrary key/value pairs can be stored
+  - Finally, namespaced data and arbitrary key/value pairs can be stored
     in a _Credential_ which can be used for credential data and claims. This
     data is stored encrypted at rest.
 - Data structures and code for provisioning of mdoc/mDLs
