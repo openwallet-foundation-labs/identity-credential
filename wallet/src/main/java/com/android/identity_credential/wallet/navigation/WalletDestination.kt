@@ -42,6 +42,12 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                     nullable = true
                 }
             ),
+            ACTIVITIES( // Add a new argument for the "activities" section
+                navArgument("activities") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            ),
             CREDENTIALS( // this argument is optional, sections like 'credentials' can be passed
                 navArgument("section") {
                     type = NavType.StringType
@@ -176,6 +182,7 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     ADD_TO_WALLET("add_to_wallet"),
     DOCUMENT_INFO("document_info",
         "documentId={documentId}&section={section}&auth_required={auth_required}"),
+    ACTIVITY_LOG("activity_log","documentId={documentId}"),
     PROVISION_DOCUMENT("provision_document"),
     QR_ENGAGEMENT("qr_engagement"),
     READER("reader_select_request"),

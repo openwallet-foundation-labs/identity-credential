@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
     id("kotlin-android")
 }
 
@@ -79,6 +80,7 @@ android {
 }
 
 dependencies {
+    ksp(project(":processor"))
     implementation(project(":processor-annotations"))
     implementation(project(":identity"))
     implementation(project(":identity-doctypes"))

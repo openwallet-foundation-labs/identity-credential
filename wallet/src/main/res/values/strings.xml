@@ -134,6 +134,9 @@
     <string name="settings_screen_log_to_file_title">Logging</string>
     <string name="settings_screen_log_to_file_subtitle_on">Diagnostic messages are being logged</string>
     <string name="settings_screen_log_to_file_subtitle_off">Diagnostic messages are not being logged</string>
+    <string name="settings_screen_activities_logging_title">Show Activity</string>
+    <string name="settings_screen_activities_logging_subtitle_on">Activities are being logged</string>
+    <string name="settings_screen_activities_logging_subtitle_off">Activities are not being logged</string>
     <string name="settings_screen_log_to_file_clear_button">Clear log</string>
     <string name="settings_screen_log_to_file_share_button">Share log</string>
     <string name="settings_screen_log_to_file_chooser_title">Share Log</string>
@@ -202,6 +205,8 @@
     <string name="document_info_screen_menu_item_show_data">Show Data</string>
     <string name="document_info_screen_menu_item_show_credentials">Show Credentials</string>
     <string name="document_info_screen_menu_item_request_update">Request Update</string>
+    <string name="document_info_screen_menu_activities_log">Activities Log</string>
+    <string name="document_info_screen_menu_activities_log_screen_empty">No activities logged yet</string>
     <string name="document_info_screen_request_update_title">Request Update</string>
     <string name="document_info_screen_request_update_message">
         This is a Developer Mode feature to request a document update from the Issuing Authority.
@@ -496,5 +501,4 @@
     <string name="qr_alert_dialog_bt_disabled_text">Bluetooth must be enabled to share a QR connection code</string>
     <string name="qr_alert_dialog_bt_enable_button">Enable</string>
     <string name="presentation_result_no_matching_document_message">No available documents can fulfill the request.</string>
-
 </resources>

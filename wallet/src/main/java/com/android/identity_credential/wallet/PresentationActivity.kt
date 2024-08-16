@@ -61,13 +61,11 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
 import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -392,13 +390,25 @@ class PresentationActivity : FragmentActivity() {
                             if (deviceResponseGenerator.isEmpty()) {
                                 throw NoMatchingDocumentException("No documents found.")
                             }
+                            val deviceResponse = deviceResponseGenerator.generate()
                             deviceRetrievalHelper?.sendDeviceResponse(
-                                deviceResponseGenerator.generate(),
+                                deviceResponse,
                                 Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
                             )
                             showResult(
                                 R.string.presentation_result_success_message,
                                 R.drawable.presentment_result_status_success)
+                            resultStringId = R.string.presentation_result_success_message
+                            resultDrawableId = R.drawable.presentment_result_status_success
+                            phase.value = Phase.SHOW_RESULT
+
+                            // Add the PresentationActivity entry
+                            walletApp.eventLogger.addMDocPresentationEntry(
+                                walletApp.settingsModel.focusedCardId.value.toString(),
+                                deviceRetrievalHelper!!.sessionTranscript,
+                                deviceRequestByteArray!!,
+                                deviceResponse
+                            )
                         } catch (e: Throwable) {
                             if (e is UserCanceledPromptException) {
                                 phase.value = Phase.CANCELED

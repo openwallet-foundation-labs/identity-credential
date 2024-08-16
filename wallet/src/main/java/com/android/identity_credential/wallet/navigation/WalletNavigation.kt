@@ -16,6 +16,7 @@ import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWa
 import com.android.identity_credential.wallet.ui.destination.document.DocumentDetailsScreen
 import com.android.identity_credential.wallet.ui.destination.document.DocumentInfoScreen
 import com.android.identity_credential.wallet.ui.destination.document.CredentialInfoScreen
+import com.android.identity_credential.wallet.ui.destination.document.EventLogScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
@@ -133,6 +134,13 @@ fun WalletNavigation(
                         documentId = cardId,
                         documentModel = documentModel,
                         requireAuthentication = requireAuthentication,
+                        onNavigate = navigateTo,
+                    )
+                }
+                "activities" -> {
+                    EventLogScreen(
+                        documentId = cardId,
+                        documentModel = documentModel,
                         onNavigate = navigateTo,
                     )
                 }

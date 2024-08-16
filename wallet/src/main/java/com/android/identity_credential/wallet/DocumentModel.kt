@@ -41,6 +41,7 @@ import com.android.identity.issuance.KeyPossessionProof
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.sdjwt.vc.JwtBody
@@ -56,7 +57,9 @@ import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.credman.CredmanRegistry
+import com.android.identity_credential.wallet.logging.MdocPresentationEvent
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
+import com.android.identity_credential.wallet.ui.destination.document.formatDate
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
 import com.android.identity_credential.wallet.ui.prompt.passphrase.showPassphrasePrompt
 import kotlinx.coroutines.CoroutineScope
@@ -172,6 +175,50 @@ class DocumentModel(
 
     private fun getStr(getStrId: Int): String {
         return context.resources.getString(getStrId)
+    }
+
+    fun getEventInfos(documentId: String): List<EventInfo> {
+        val eventLogger = walletApplication.eventLogger
+        val events = eventLogger.getEntries(documentId)
+
+        return events.map { event ->
+            when (event) {
+                is MdocPresentationEvent -> {
+                    val parser = DeviceRequestParser(event.deviceRequestCbor, event.deviceResponseCbor)
+                    val deviceRequest = parser.parse()
+
+                    // Extract the requested fields as before
+                    val targetNamespaces = setOf("eu.europa.ec.eudi.pid.1", "org.iso.18013.5.1")
+                    val requestedFields = deviceRequest.docRequests.flatMap { docRequest ->
+                        targetNamespaces.flatMap { namespace ->
+                            if (docRequest.namespaces.contains(namespace)) {
+                                docRequest.getEntryNames(namespace)
+                            } else {
+                                emptyList()
+                            }
+                        }
+                    }.joinToString(", ")
+
+                    // Format timestamp and other UI-friendly data
+                    EventInfo(
+                        timestamp = formatDate(event.timestamp),
+                        requestedFields = requestedFields,
+                        // TODO: thumbnail to be populated instead of requestedFields
+                    )
+                }
+                else -> {
+                    EventInfo(
+                        timestamp = formatDate(event.timestamp),
+                        requestedFields = "Unknown event type"
+                    )
+                }
+            }
+        }
+    }
+
+    fun deleteEventInfos(documentId: String) {
+        val eventLogger = walletApplication.eventLogger
+        eventLogger.deleteEntriesForDocument(documentId)
     }
 
     private fun createCardForDocument(document: Document): DocumentInfo? {

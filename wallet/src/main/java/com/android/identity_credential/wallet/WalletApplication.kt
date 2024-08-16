@@ -47,6 +47,7 @@ import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.logging.EventLogger
 import com.android.identity_credential.wallet.util.toByteArray
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -106,6 +107,7 @@ class WalletApplication : Application() {
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
     lateinit var readerModel: ReaderModel
+    lateinit var eventLogger: EventLogger
     private lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
     private lateinit var softwareSecureArea: SoftwareSecureArea
     lateinit var walletServerProvider: WalletServerProvider
@@ -123,8 +125,6 @@ class WalletApplication : Application() {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
-        settingsModel = SettingsModel(this, sharedPreferences)
-
         // init documentTypeRepository
         documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
@@ -133,6 +133,11 @@ class WalletApplication : Application() {
         // init storage
         val storageFile = Path(applicationContext.noBackupFilesDir.path, "identity.bin")
         storageEngine = AndroidStorageEngine.Builder(applicationContext, storageFile).build()
+
+        // init EventLogger
+        eventLogger = EventLogger(storageEngine as AndroidStorageEngine)
+
+        settingsModel = SettingsModel(this, sharedPreferences)
 
         // init AndroidKeyStoreSecureArea
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(applicationContext, storageEngine)
