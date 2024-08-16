@@ -34,7 +34,7 @@ class WalletHttpTransport(private val baseUrl: String): HttpTransport {
         data: ByteString
     ): ByteString {
         val response = try {
-            client.post("$baseUrl/$url") {
+            client.post("$baseUrl/flow/$url") {
                 timeout {
                     requestTimeoutMillis = REQUEST_TIMEOUT_SECONDS.toLong()*1000
                 }

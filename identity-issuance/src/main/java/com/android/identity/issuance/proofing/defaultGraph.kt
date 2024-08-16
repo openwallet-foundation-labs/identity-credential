@@ -8,15 +8,18 @@ import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
+import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.toDataItem
 import kotlinx.io.bytestring.ByteString
+import java.net.URLEncoder
 
 fun defaultGraph(
     documentId: String,
     resources: Resources,
     developerModeEnabled: Boolean,
+    cloudSecureAreaUrl: String,
     tosText: String,
     tosAssets: Map<String, ByteString>
 ): ProofingGraph {
@@ -161,7 +164,7 @@ fun defaultGraph(
                 on(id = "devmode_sa_cloud", text = "Cloud Secure Area") {
                     setupCloudSecureArea(
                         "devmode_sa_cloud_setup_csa",
-                        cloudSecureAreaIdentifier = "CloudSecureArea?id=${documentId}&url=/csa",
+                        cloudSecureAreaIdentifier = "CloudSecureArea?id=${documentId}&url=${URLEncoder.encode(cloudSecureAreaUrl, "UTF-8")}",
                         passphraseConstraints = PassphraseConstraints.PIN_SIX_DIGITS,
                         message = "## Choose 6-digit PIN\n\nChoose the PIN to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else. $devNotice",
                         verifyMessage = "## Verify PIN\n\nEnter the PIN you chose in the previous screen. $devNotice",
@@ -455,9 +458,12 @@ fun defaultCredentialConfiguration(
             }
             // Cloud can do both ECDSA and ECDH
             val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
+            // Use cloud secure area setup when the evidence was collected! NB: settings may change
+            val cloudSecureAreaId = (collectedEvidence["devmode_sa_cloud_setup_csa"] as EvidenceResponseSetupCloudSecureArea)
+                .cloudSecureAreaIdentifier
             return CredentialConfiguration(
                 challenge,
-                "CloudSecureArea?id=${documentId}&url=/csa",
+                cloudSecureAreaId,
                 Cbor.encode(
                     CborMap.builder()
                         .put("passphraseRequired", true)

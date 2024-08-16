@@ -1,11 +1,11 @@
 package com.android.identity_credential.wallet.ui.destination.settings
 
 import android.content.Intent
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
@@ -14,13 +14,10 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -45,6 +42,7 @@ import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplicationConfiguration
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
+import com.android.identity_credential.wallet.ui.SettingSectionSubtitle
 import com.android.identity_credential.wallet.ui.SettingString
 import com.android.identity_credential.wallet.ui.SettingToggle
 
@@ -54,30 +52,28 @@ fun SettingsScreen(
     documentStore: DocumentStore,
     onNavigate: (String) -> Unit
 ) {
-    var showConfirmChangeWalletServerUrlDialog by remember { mutableStateOf("") }
-    if (showConfirmChangeWalletServerUrlDialog != "") {
+    var confirmServerChange by remember { mutableStateOf<ConfirmServerChange?>(null) }
+    if (confirmServerChange != null) {
         AlertDialog(
-            onDismissRequest = { showConfirmChangeWalletServerUrlDialog = "" },
-            title = { Text(text = stringResource(R.string.settings_screen_confirm_set_wallet_server_url_dialog_title)) },
-            text = {
-                Text(stringResource(R.string.settings_screen_confirm_set_wallet_server_url_dialog_message))
-            },
+            onDismissRequest = { confirmServerChange = null },
+            title = { Text(text = stringResource(confirmServerChange!!.title)) },
+            text = { Text(stringResource(confirmServerChange!!.message)) },
             confirmButton = {
                 Button(
                     onClick = {
                         for (documentId in documentStore.listDocuments()) {
                             documentStore.deleteDocument(documentId)
                         }
-                        settingsModel.walletServerUrl.value = showConfirmChangeWalletServerUrlDialog
-                        showConfirmChangeWalletServerUrlDialog = ""
+                        confirmServerChange!!.onConfirm()
+                        confirmServerChange = null
                     }) {
-                    Text(stringResource(R.string.settings_screen_confirm_set_wallet_server_url_dialog_confirm))
+                    Text(stringResource(R.string.settings_screen_confirm_set_server_url_dialog_confirm))
                 }
             },
             dismissButton = {
                 Button(
-                    onClick = { showConfirmChangeWalletServerUrlDialog = "" }) {
-                    Text(stringResource(R.string.settings_screen_confirm_set_wallet_server_url_dialog_dismiss))
+                    onClick = { confirmServerChange = null }) {
+                    Text(stringResource(R.string.settings_screen_confirm_set_server_url_dialog_dismiss))
                 }
             }
         )
@@ -90,7 +86,26 @@ fun SettingsScreen(
             onDismissed = { showSetWalletServerUrlDialog = false },
             onSet = { walletServerUrl ->
                 showSetWalletServerUrlDialog = false
-                showConfirmChangeWalletServerUrlDialog = walletServerUrl
+                confirmServerChange = object : ConfirmServerChange(
+                    title = R.string.settings_screen_confirm_set_wallet_server_url_dialog_title,
+                    message = R.string.settings_screen_confirm_set_wallet_server_url_dialog_message
+                ) {
+                    override fun onConfirm() {
+                        settingsModel.walletServerUrl.value = walletServerUrl
+                    }
+                }
+            }
+        )
+    }
+
+    var showSetCloudSecureAreaUrlDialog by remember { mutableStateOf(false) }
+    if (showSetCloudSecureAreaUrlDialog) {
+        SetCloudSecureAreaUrlDialog(
+            initialValue = settingsModel.cloudSecureAreaUrl.value!!,
+            onDismissed = { showSetCloudSecureAreaUrlDialog = false },
+            onSet = { cloudSecureAreaUrl ->
+                settingsModel.cloudSecureAreaUrl.value = cloudSecureAreaUrl
+                showSetCloudSecureAreaUrlDialog = false
             }
         )
     }
@@ -167,6 +182,14 @@ fun SettingsScreen(
                     onClicked = { showSetWalletServerUrlDialog = true }
                 )
             }
+            if (WalletApplicationConfiguration.CLOUD_SECURE_AREA_SETTING_AVAILABLE) {
+                SettingSectionSubtitle(title = stringResource(R.string.settings_screen_built_in_issuer_settings))
+                SettingString(
+                    title = stringResource(R.string.settings_screen_cloud_secure_area_title),
+                    subtitle = settingsModel.cloudSecureAreaUrl.observeAsState().value!!,
+                    onClicked = { showSetCloudSecureAreaUrlDialog = true }
+                )
+            }
         }
     }
 }
@@ -220,6 +243,53 @@ private fun SetWalletServerUrlDialog(
 }
 
 @Composable
+private fun SetCloudSecureAreaUrlDialog(
+    initialValue: String,
+    onDismissed: () -> Unit,
+    onSet: (cloudServerUrl: String) -> Unit
+) {
+    var url by remember { mutableStateOf(initialValue) }
+    AlertDialog(
+        onDismissRequest = { onDismissed() },
+        title = { Text(text = stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_title)) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_message))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        label = { Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_label)) }
+                    )
+                }
+                LinkText(stringResource(R.string.settings_screen_set_cloud_secure_area_url_link_emulator)) {
+                    url = "http://10.0.2.2:8080/server/csa"
+                }
+                LinkText(stringResource(R.string.settings_screen_set_cloud_secure_area_url_tunneled)) {
+                    url = "http://localhost:8080/server/csa"
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSet(url) }) {
+                Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_confirm_button))
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = { onDismissed() }) {
+                Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_dismiss_button))
+            }
+        }
+    )
+}
+
+@Composable
 private fun LinkText(
     text: String,
     onClicked: () -> Unit,
@@ -236,4 +306,11 @@ private fun LinkText(
     }) {
         onClicked()
     }
+}
+
+internal abstract class ConfirmServerChange(
+    @StringRes val title: Int,
+    @StringRes val message: Int
+) {
+    abstract fun onConfirm()
 }
