@@ -21,6 +21,7 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
 
     object QrEngagement : WalletDestination(Route.QR_ENGAGEMENT)
 
+    object Reader : WalletDestination(Route.READER)
 
     // Screens with arguments
     object DocumentInfo : WalletDestination(Route.DOCUMENT_INFO) {
@@ -177,6 +178,7 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
         "documentId={documentId}&section={section}&auth_required={auth_required}"),
     PROVISION_DOCUMENT("provision_document"),
     QR_ENGAGEMENT("qr_engagement"),
+    READER("reader_select_request"),
 
     // a Route for popping the back stack showing a different Screen
     POP_BACK_STACK("pop_back_stack"),

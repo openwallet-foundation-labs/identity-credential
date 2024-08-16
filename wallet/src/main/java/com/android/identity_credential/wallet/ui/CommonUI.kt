@@ -90,9 +90,13 @@ fun ScreenWithAppBarAndBackButton(
     onBackButtonClick: () -> Unit,
     scrollable: Boolean = true,
     actions: @Composable() (RowScope.() -> Unit) = {},
+    snackbarHost: @Composable () -> Unit = {},
     body: @Composable ColumnScope.() -> Unit,
 ) {
-    ScreenWithAppBar(title, navigationIcon = {
+    ScreenWithAppBar(
+        title,
+        snackbarHost = snackbarHost,
+        navigationIcon = {
         IconButton(onClick = { onBackButtonClick() }) {
             Icon(
                 imageVector = Icons.Filled.ArrowBack,

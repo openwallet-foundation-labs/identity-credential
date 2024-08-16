@@ -302,6 +302,36 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
+            .addSampleRequest(
+                displayName = "Age Over 18",
+                mdocDataElements = mapOf(
+                    Pair(EUPID_NAMESPACE, listOf(
+                        "age_over_18",
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                displayName = "Mandatory Data Elements",
+                mdocDataElements = mapOf(
+                    Pair(EUPID_NAMESPACE, listOf(
+                        "family_name",
+                        "given_name",
+                        "birth_date",
+                        "age_over_18",
+                        "issuance_date",
+                        "expiry_date",
+                        "issuing_authority",
+                        "issuing_country"
+                    ))
+                )
+            )
+            .addSampleRequest(
+                displayName = "All Data Elements",
+                mdocDataElements = mapOf(
+                    Pair(EUPID_NAMESPACE, listOf(
+                    ))
+                )
+            )
             .build()
     }
 }

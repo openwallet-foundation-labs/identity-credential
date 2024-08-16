@@ -25,9 +25,9 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-        jcenter() {
-            content {
-                includeGroup("com.budiyev.android")
+        maven("https://jitpack.io") {
+            mavenContent {
+                includeGroup("com.github.yuriy-budiyev")
             }
         }
     }

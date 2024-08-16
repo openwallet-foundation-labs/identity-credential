@@ -90,7 +90,8 @@ class MainActivity : FragmentActivity() {
                         permissionTracker = permissionTracker,
                         sharedPreferences = application.sharedPreferences,
                         qrEngagementViewModel = qrEngagementViewModel,
-                        documentModel = application.documentModel
+                        documentModel = application.documentModel,
+                        readerModel = application.readerModel,
                     )
                 }
             }

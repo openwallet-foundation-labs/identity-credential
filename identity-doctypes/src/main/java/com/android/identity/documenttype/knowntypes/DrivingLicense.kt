@@ -758,6 +758,59 @@ object DrivingLicense {
                 AAMVA_NAMESPACE,
                 null
             )
+            .addSampleRequest(
+                "US Transportation",
+                mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "sex",
+                        "portrait",
+                        "given_name",
+                        "issue_date",
+                        "expiry_date",
+                        "family_name",
+                        "document_number",
+                        "issuing_authority",
+                    )),
+                    Pair(AAMVA_NAMESPACE, listOf(
+                        "DHS_compliance",
+                        "EDL_credential"
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                "Age Over 21 + Portrait",
+                mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "age_over_21",
+                        "portrait"
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                "Mandatory Data Elements",
+                mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "family_name",
+                        "given_name",
+                        "birth_date",
+                        "issue_date",
+                        "expiry_date",
+                        "issuing_country",
+                        "issuing_authority",
+                        "document_number",
+                        "portrait",
+                        "driving_privileges",
+                        "un_distinguishing_sign",
+                    ))
+                )
+            )
+            .addSampleRequest(
+                "All Data Elements",
+                mapOf(
+                    Pair(MDL_NAMESPACE, listOf()),
+                    Pair(AAMVA_NAMESPACE, listOf())
+                )
+            )
             .build()
     }
 }

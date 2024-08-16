@@ -25,8 +25,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -116,6 +118,17 @@ fun MainScreen(
                         scope.launch {
                             drawerState.close()
                             onNavigate(WalletDestination.Settings.route)
+                        }
+                    }
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(imageVector = Icons.Filled.Fingerprint, contentDescription = null) },
+                    label = { Text(text = stringResource(R.string.wallet_drawer_identity_reader)) },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onNavigate(WalletDestination.Reader.route)
                         }
                     }
                 )

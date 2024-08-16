@@ -41,7 +41,6 @@ import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
-import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.StorageEngine
@@ -55,7 +54,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.io.files.Path
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.io.File
 import java.net.URLDecoder
 import java.security.Security
 import java.util.concurrent.TimeUnit
@@ -91,7 +89,8 @@ class WalletApplication : Application() {
 
 
     // immediate instantiations
-    val trustManager = TrustManager()
+    val readerTrustManager = TrustManager()
+    val issuerTrustManager = TrustManager()
 
     // lazy instantiations
     val sharedPreferences: SharedPreferences by lazy {
@@ -106,6 +105,7 @@ class WalletApplication : Application() {
     lateinit var documentStore: DocumentStore
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
+    lateinit var readerModel: ReaderModel
     private lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
     private lateinit var softwareSecureArea: SoftwareSecureArea
     lateinit var walletServerProvider: WalletServerProvider
@@ -193,16 +193,20 @@ class WalletApplication : Application() {
             { getWalletApplicationInformation() }
         )
 
-        // init TrustManager
-        trustManager.addTrustPoint(
+        // init TrustManagers
+        readerTrustManager.addTrustPoint(
             displayName = "OWF Identity Credential Reader",
             certificateResourceId = R.raw.owf_identity_credential_reader_cert,
+            displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
+        )
+        issuerTrustManager.addTrustPoint(
+            displayName = "OWF Identity Credential TEST IACA",
+            certificateResourceId = R.raw.owf_wallet_iaca_root,
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
 
         documentModel = DocumentModel(
             applicationContext,
-
             settingsModel,
             documentStore,
             secureAreaRepository,
@@ -210,6 +214,8 @@ class WalletApplication : Application() {
             walletServerProvider,
             this
         )
+
+        readerModel = ReaderModel(applicationContext, documentTypeRepository)
 
         val notificationChannel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,

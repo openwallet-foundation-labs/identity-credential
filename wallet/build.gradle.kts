@@ -26,7 +26,7 @@ android {
 
     defaultConfig {
         applicationId = "com.android.identity_credential.wallet"
-        minSdk = 27
+        minSdk = 29
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
         versionName = projectVersionName
@@ -131,6 +131,7 @@ dependencies {
     implementation(libs.androidx.material)
     implementation(libs.face.detection)
     implementation(libs.zxing.core)
+    implementation(libs.code.scanner)
 
     implementation(files("../third-party/play-services-identity-credentials-0.0.1-eap01.aar"))
     implementation(libs.bundles.google.play.services)

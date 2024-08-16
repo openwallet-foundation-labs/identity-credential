@@ -62,6 +62,7 @@
     <string name="wallet_drawer_title">Wallet</string>
     <string name="wallet_drawer_add">Add to Wallet</string>
     <string name="wallet_drawer_settings">Settings</string>
+    <string name="wallet_drawer_identity_reader">Identity Reader</string>
     <string name="wallet_drawer_about">About Wallet</string>
 
     <!-- Wallet screen -->
@@ -83,6 +84,47 @@
 
     <!-- About screen -->
     <string name="about_screen_title">About Wallet</string>
+
+    <!-- Reader screens -->
+    <string name="reader_screen_title">Identity Reader</string>
+    <string name="reader_screen_nfc_icon_content_description">NFC Icon</string>
+    <string name="reader_screen_nfc_presentation_instructions">Tap to read or scan code</string>
+    <string name="reader_screen_qr_icon_content_description">QR Icon</string>
+    <string name="reader_screen_scan_qr_button_text">Scan code</string>
+    <string name="reader_screen_identity_data_to_request">Identity Data to Request:</string>
+    <string name="reader_screen_scan_qr_dialog_title">Scan QR Code</string>
+    <string name="reader_screen_scan_qr_dialog_text">Scan QR code from identity holder\'s device</string>
+    <string name="reader_screen_scan_qr_dialog_dismiss_button">Close</string>
+    <string name="reader_screen_scan_qr_dialog_missing_permission_text">Camera permission is needed to scan QR code.</string>
+    <string name="reader_screen_scan_qr_dialog_request_permission_button">Request permission</string>
+    <string name="reader_screen_waiting_for_connection_title">Requesting Identity</string>
+    <string name="reader_screen_waiting_for_connection_text">Waiting for connection to be established</string>
+    <string name="reader_screen_waiting_for_response_title">Requesting Identity</string>
+    <string name="reader_screen_waiting_for_response_text">Waiting for response</string>
+    <string name="reader_result_screen_title">Identity Documents Received</string>
+    <string name="reader_result_screen_no_documents_returned">No Documents Returned</string>
+    <string name="reader_screen_error_title">Error Requesting Identity</string>
+    <string name="reader_screen_error_prefix">An error occurred: %1$s</string>
+    <string name="reader_result_screen_unverified_data_warning">UNVERIFIED DATA\nDO NOT USE</string>
+    <string name="reader_result_screen_document_number">Document Number</string>
+    <string name="reader_result_screen_document_n_of_m">%1$d of %2$d</string>
+    <string name="reader_result_screen_doctype">DocType</string>
+    <string name="reader_result_screen_valid_from">Valid From</string>
+    <string name="reader_result_screen_valid_until">Valid Until</string>
+    <string name="reader_result_screen_signed_at">Signed At</string>
+    <string name="reader_result_screen_expected_update">Expected Update</string>
+    <string name="reader_result_screen_expected_update_not_set">Not Set</string>
+    <string name="reader_result_screen_namespace">Namespace</string>
+    <string name="reader_result_screen_bitmap_missing_description">Unknown Data Element</string>
+    <string name="reader_model_info_in_trust_list">Document Issuer \'%1$s\' is in trust list.</string>
+    <string name="reader_model_warning_not_in_trust_list">Document Issuer \'%1$s\' is not in trust list.</string>
+    <string name="reader_model_warning_device_auth">Device Authentication failed.</string>
+    <string name="reader_model_warning_issuer_auth">Issuer Authentication failed.</string>
+    <string name="reader_model_warning_data_elem_auth">One or more issuer provided data elements failed to authenticate.</string>
+    <string name="reader_model_warning_validity_period">Document information is not valid at this point in time.</string>
+
+    <!-- Reader Show Error -->
+    <string name="reader_show_error_screen_title">Error Requesting</string>
 
     <!-- Settings screen -->
     <string name="settings_screen_title">Settings</string>

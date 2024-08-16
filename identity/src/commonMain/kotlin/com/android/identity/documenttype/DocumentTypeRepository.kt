@@ -53,4 +53,24 @@ class DocumentTypeRepository {
         _documentTypes.find {
             it.mdocDocumentType?.docType?.equals(mdocDocType) ?: false
         }
+
+    /**
+     * Gets the first [DocumentType] in [documentTypes] with a given mdoc namespace.
+     *
+     * @param mdocNamespace the mdoc namespace name.
+     * @return the [DocumentType] or null if not found.
+     */
+    fun getDocumentTypeForMdocNamespace(mdocNamespace: String): DocumentType? {
+        for (documentType in _documentTypes) {
+            if (documentType.mdocDocumentType == null) {
+                continue
+            }
+            for ((nsName, _) in documentType.mdocDocumentType.namespaces) {
+                if (nsName == mdocNamespace) {
+                    return documentType
+                }
+            }
+        }
+        return null
+    }
 }
