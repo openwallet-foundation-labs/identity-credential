@@ -3,7 +3,11 @@ import org.jetbrains.kotlin.konan.target.HostManager
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.ksp)
+    id("maven-publish")
 }
+
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
 
 kotlin {
     jvmToolchain(17)
@@ -99,3 +103,30 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
 tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
+
+tasks["iosX64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["iosArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["iosSimulatorArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["jvmSourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["sourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+
+group = "com.android.identity"
+version = projectVersionName
+
+publishing {
+    repositories {
+        maven {
+            url = uri("${rootProject.rootDir}/repo")
+        }
+    }
+    publications.withType(MavenPublication::class) {
+        pom {
+            licenses {
+                license {
+                    name = "Apache 2.0"
+                    url = "https://opensource.org/licenses/Apache-2.0"
+                }
+            }
+        }
+    }
+}

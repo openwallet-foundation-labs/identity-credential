@@ -1,6 +1,10 @@
 plugins {
     kotlin("multiplatform")
+    id("maven-publish")
 }
+
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
 
 kotlin {
     jvmToolchain(17)
@@ -28,4 +32,25 @@ kotlin {
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+group = "com.android.identity"
+version = projectVersionName
+
+publishing {
+    repositories {
+        maven {
+            url = uri("${rootProject.rootDir}/repo")
+        }
+    }
+    publications.withType(MavenPublication::class) {
+        pom {
+            licenses {
+                license {
+                    name = "Apache 2.0"
+                    url = "https://opensource.org/licenses/Apache-2.0"
+                }
+            }
+        }
+    }
 }
