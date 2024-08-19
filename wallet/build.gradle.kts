@@ -13,6 +13,7 @@ val projectVersionName: String by rootProject.extra
 buildConfig {
     packageName("com.android.identity_credential.wallet")
     buildConfigField("VERSION", projectVersionName)
+    buildConfigField("ENGAGEMENT_SIMULATOR_ENABLED", true)
     useKotlinOutput { internalVisibility = false }
 }
 
@@ -137,6 +138,7 @@ dependencies {
     implementation(libs.bundles.google.play.services)
 
     implementation(libs.bouncy.castle.bcprov)
+    implementation(libs.bouncy.castle.bcpkix)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutine.test)

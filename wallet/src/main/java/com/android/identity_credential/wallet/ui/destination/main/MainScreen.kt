@@ -22,13 +22,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,16 +37,18 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -69,13 +73,16 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.BuildConfig
 import com.android.identity_credential.wallet.DocumentModel
+import com.android.identity_credential.wallet.MainActivity
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
+import com.android.identity_credential.wallet.util.startEngagementSimulator
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.CoroutineScope
@@ -143,6 +150,66 @@ fun MainScreen(
                         }
                     }
                 )
+
+                if (settingsModel.developerModeEnabled.value == true && BuildConfig.ENGAGEMENT_SIMULATOR_ENABLED) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    Text(
+                        text = stringResource(id = R.string.wallet_drawer_engagement_sim),
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(16.dp)
+                    ) // Section header
+
+                    val options = listOf("Mandatory", "Full", "Transportation", "Micov")
+                    val (selectedOption, onOptionSelected) = remember { mutableStateOf(options[0]) }
+                    Column {
+                        options.forEach { text ->
+                            Row(Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = (text == selectedOption),
+                                    onClick = { onOptionSelected(text) }
+                                )
+                                .padding(horizontal = 16.dp)
+                            ) {
+                                RadioButton(
+                                    selected = (text == selectedOption),
+                                    onClick = null // null recommended for accessibility with `selectable`
+                                )
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(start = 16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    val mainActivity = LocalContext.current as MainActivity
+                    val walletApp = mainActivity.application as WalletApplication
+                    NavigationDrawerItem(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.AssignmentInd,
+                                contentDescription = null
+                            )
+                        },
+                        label = { Text(text = stringResource(R.string.wallet_drawer_engagement_sim_start)) },
+                        selected = false,
+                        onClick = {
+                            try {
+                                startEngagementSimulator(
+                                    mainActivity,
+                                    walletApp.documentTypeRepository,
+                                    selectedOption
+                                )
+                            } catch (e: Exception) {
+                                Logger.d(TAG, "Cannot simulate qr engagement presentment", e)
+                            }
+                        }
+                    )
+                }
+
             }
         },
     ) {

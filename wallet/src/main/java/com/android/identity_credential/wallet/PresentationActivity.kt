@@ -67,6 +67,9 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showPresentmentFlow
+import com.android.identity_credential.wallet.util.engagementSimulationStarted
+import com.android.identity_credential.wallet.util.getEngagementSimulationSessionTranscript
+import com.android.identity_credential.wallet.util.handleEngagementSimulation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -306,13 +309,18 @@ class PresentationActivity : FragmentActivity() {
 
                 Phase.CONNECTED -> {
                     Logger.i(TAG, "Phase: Connected")
+                    // if user previously started the Engagement Simulator then use the Session
+                    // Transcript CBOR bytes generated from the Engagement Simulator.
+                    val engagementSimulatorSessionTranscript = getEngagementSimulationSessionTranscript()
+
                     // on a new connected client, create a new DeviceRetrievalHelper
                     deviceRetrievalHelper = DeviceRetrievalHelper
                         .Builder(
                             applicationContext,
                             deviceRetrievalHelperListener,
                             ContextCompat.getMainExecutor(applicationContext),
-                            eDeviceKey!!
+                            eDeviceKey!!,
+                            engagementSimulatorSessionTranscript
                         )
                         .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
                         .build()
@@ -371,6 +379,11 @@ class PresentationActivity : FragmentActivity() {
                                 )
                                 deviceResponseGenerator.addDocument(documentCborBytes)
                             }
+                            if (engagementSimulationStarted()) {
+                                // let's not do it but say we did
+                                phase.value = Phase.SHOW_RESULT
+                                return@launch
+                            }
                             deviceRetrievalHelper?.sendDeviceResponse(
                                 deviceResponseGenerator.generate(),
                                 Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
@@ -415,6 +428,9 @@ class PresentationActivity : FragmentActivity() {
                 }
             }
         }
+
+        // if enabled (because of user invocation) "simulate" receiving the passed DeviceRequest CBOR bytes after 300 ms
+        handleEngagementSimulation(deviceRetrievalHelperListener)
     }
 
 

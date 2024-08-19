@@ -64,6 +64,8 @@
     <string name="wallet_drawer_settings">Settings</string>
     <string name="wallet_drawer_identity_reader">Identity Reader</string>
     <string name="wallet_drawer_about">About Wallet</string>
+    <string name="wallet_drawer_engagement_sim">Engagement Simulator</string>
+    <string name="wallet_drawer_engagement_sim_start">Simulate QR Engagement</string>
 
     <!-- Wallet screen -->
     <string name="wallet_screen_title">Wallet</string>
