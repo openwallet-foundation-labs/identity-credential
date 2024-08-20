@@ -19,6 +19,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcCurve
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
@@ -45,6 +46,7 @@ import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.KeyLockedException
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -254,10 +256,11 @@ class DocumentModel(
         credential: SecureAreaBoundCredential,
         kvPairs: MutableMap<String, String>
     ) {
+        // TODO: set up translations via strings.xml
         try {
             val deviceKeyInfo = credential.secureArea.getKeyInfo(credential.alias)
-            kvPairs.put("Device Key Curve", deviceKeyInfo.publicKey.curve.name)
-            kvPairs.put("Device Key Purposes", deviceKeyInfo.keyPurposes.toString())
+            kvPairs.put("Device Key Curve", deviceKeyInfo.publicKey.curve.humanReadableName)
+            kvPairs.put("Device Key Purposes", renderKeyPurposes(deviceKeyInfo.keyPurposes))
             kvPairs.put("Secure Area", credential.secureArea.displayName)
 
             if (deviceKeyInfo is AndroidKeystoreKeyInfo) {
@@ -274,7 +277,8 @@ class DocumentModel(
                             } else {
                                 "Every use"
                             }
-                        deviceKeyInfo.userAuthenticationTypes.toString() + " ($authTimeoutString)"
+                        renderUserAuthenticationTypes(deviceKeyInfo.userAuthenticationTypes) +
+                                " ($authTimeoutString)"
                     }
                 kvPairs.put("User Authentication", userAuthString)
                 val isStrongBoxBacked =
@@ -299,7 +303,8 @@ class DocumentModel(
                             } else {
                                 "Every use"
                             }
-                        deviceKeyInfo.userAuthenticationTypes.toString() + " ($authTimeoutString)"
+                        renderUserAuthenticationTypes(deviceKeyInfo.userAuthenticationTypes) +
+                                " ($authTimeoutString)"
                     }
                 kvPairs.put("User Authentication", userAuthString)
                 val isPassphraseRequired =
@@ -983,5 +988,50 @@ suspend fun signWithUnlock(
                 }
             }
         }
+    }
+}
+
+private val EcCurve.humanReadableName: String
+    get() {
+        return when (this) {
+            EcCurve.P256 -> "P-256"
+            EcCurve.P384 -> "P-384"
+            EcCurve.P521 -> "P-521"
+            EcCurve.BRAINPOOLP256R1 -> "BrainpoolP256r1"
+            EcCurve.BRAINPOOLP320R1 -> "BrainpoolP320r1"
+            EcCurve.BRAINPOOLP384R1 -> "BrainpoolP384r1"
+            EcCurve.BRAINPOOLP512R1 -> "BrainpoolP512r1"
+            EcCurve.ED25519 -> "Ed25519"
+            EcCurve.X25519 -> "X25519"
+            EcCurve.ED448 -> "Ed448"
+            EcCurve.X448 -> "X448"
+        }
+    }
+
+private fun renderKeyPurposes(purposes: Set<KeyPurpose>): String {
+    if (purposes.contains(KeyPurpose.AGREE_KEY) && purposes.contains(KeyPurpose.SIGN)) {
+        return "Signing and Key Agreement"
+    } else if (purposes.contains(KeyPurpose.AGREE_KEY)) {
+        return "Key Agreement"
+    } else if (purposes.contains(KeyPurpose.SIGN)) {
+        return "Signing"
+    } else if (purposes.isEmpty()) {
+        return "(No purposes set)"
+    } else {
+        throw IllegalStateException("Unexpected set of purposes")
+    }
+}
+
+private fun renderUserAuthenticationTypes(types: Set<UserAuthenticationType>): String {
+    if (types.contains(UserAuthenticationType.LSKF) && types.contains(UserAuthenticationType.BIOMETRIC)) {
+        return "PIN/Passphrase/Pattern or Biometrics"
+    } else if (types.contains(UserAuthenticationType.LSKF)) {
+        return "PIN/Passphrase/Pattern only"
+    } else if (types.contains(UserAuthenticationType.LSKF)) {
+        return "Biometrics only"
+    } else if (types.isEmpty()) {
+        return "None"
+    } else {
+        throw IllegalStateException("Unexpected set of user authentication types")
     }
 }
