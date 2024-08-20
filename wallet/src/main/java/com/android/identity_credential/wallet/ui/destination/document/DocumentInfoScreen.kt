@@ -219,6 +219,26 @@ fun DocumentInfoScreen(
                     }
                 )
                 DropdownMenuItem(
+                    text = { Text(text = stringResource(R.string.document_info_screen_menu_item_show_credentials)) },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.certificate_icon),
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        onNavigate(
+                            WalletDestination.DocumentInfo.getRouteWithArguments(
+                                listOf(
+                                    Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
+                                    Pair(WalletDestination.DocumentInfo.Argument.SECTION, "credentials")
+                                )
+                            )
+                        )
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_delete)) },
                     leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                     onClick = {
@@ -228,26 +248,6 @@ fun DocumentInfoScreen(
                 )
                 if (settingsModel.developerModeEnabled.value == true) {
                     Divider()
-                    DropdownMenuItem(
-                        text = { Text(text = stringResource(R.string.document_info_screen_menu_item_show_credentials)) },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.experiment_icon),
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            onNavigate(
-                                WalletDestination.DocumentInfo.getRouteWithArguments(
-                                    listOf(
-                                        Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
-                                        Pair(WalletDestination.DocumentInfo.Argument.SECTION, "credentials")
-                                    )
-                                )
-                            )
-                            showMenu = false
-                        }
-                    )
                     DropdownMenuItem(
                         text = { Text(text = stringResource(R.string.document_info_screen_menu_item_request_update)) },
                         leadingIcon = {
