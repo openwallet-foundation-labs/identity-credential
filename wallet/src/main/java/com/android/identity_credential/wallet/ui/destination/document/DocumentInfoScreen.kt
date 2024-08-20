@@ -2,6 +2,8 @@ package com.android.identity_credential.wallet.ui.destination.document
 
 import android.content.Context
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -266,6 +268,9 @@ fun DocumentInfoScreen(
         }
     ) {
 
+        // Hidden feature to cause a Doc Update: click the artwork five times
+        //
+        var imageNumClicks by remember { mutableStateOf(0) }
         Column(Modifier.padding(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -274,7 +279,30 @@ fun DocumentInfoScreen(
                 Image(
                     bitmap = documentInfo.documentArtwork.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.name),
-                    modifier = Modifier.height(200.dp).fillMaxSize()
+                    modifier = Modifier
+                        .height(200.dp).fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                imageNumClicks += 1
+                                if (imageNumClicks == 5) {
+                                    imageNumClicks = 0
+                                    Logger.i(TAG, "document art clicked 5 times!")
+                                    coroutineScope.launch {
+                                        try {
+                                            documentModel.developerModeRequestUpdate(
+                                                documentInfo,
+                                                false,
+                                                true
+                                            )
+                                        } catch (e: Throwable) {
+                                            showErrorMessage = "Unexpected exception: $e"
+                                        }
+                                    }
+                                }
+                            }
+                        )
                 )
             }
             Row(
