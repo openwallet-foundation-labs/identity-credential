@@ -47,7 +47,7 @@ class ReaderModel(
         COMPLETE,
     }
 
-    private val nfcAdapter = NfcAdapter.getDefaultAdapter(context)
+    private val nfcAdapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(context)
     private val vibrator = context.getSystemService(Vibrator::class.java)
 
     private var activityForNfcReaderMode: Activity? = null
@@ -61,22 +61,6 @@ class ReaderModel(
         verificationHelper?.nfcProcessOnTagDiscovered(tag)
     }
 
-    private fun disconnectVerificationHelper() {
-        if (verificationHelper != null) {
-            Logger.i(TAG, "Stopping VerificationHelper instance")
-            verificationHelper?.disconnect()
-            verificationHelper = null
-        }
-    }
-
-    private fun disableNfcReaderMode() {
-        if (activityForNfcReaderMode != null) {
-            Logger.i(TAG, "Disabling reader mode on NfcAdapter")
-            nfcAdapter.disableReaderMode(activityForNfcReaderMode)
-            activityForNfcReaderMode = null
-        }
-    }
-
     private fun releaseResources() {
         if (verificationHelper != null) {
             Logger.i(TAG, "Stopping VerificationHelper instance")
@@ -84,8 +68,10 @@ class ReaderModel(
             verificationHelper = null
         }
         if (activityForNfcReaderMode != null) {
-            Logger.i(TAG, "Disabling reader mode on NfcAdapter")
-            nfcAdapter.disableReaderMode(activityForNfcReaderMode)
+            if (nfcAdapter != null) {
+                Logger.i(TAG, "Disabling reader mode on NfcAdapter")
+                nfcAdapter.disableReaderMode(activityForNfcReaderMode)
+            }
             activityForNfcReaderMode = null
         }
     }
@@ -214,13 +200,17 @@ class ReaderModel(
             .setNegotiatedHandoverConnectionMethods(connectionMethods)
             .build()
         activityForNfcReaderMode = activity
-        nfcAdapter.enableReaderMode(
-            activityForNfcReaderMode, nfcReaderModeListener,
-            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-            null)
-
-        Logger.i(TAG, "Enabling reader mode on NfcAdapter")
+        if (nfcAdapter != null) {
+            nfcAdapter.enableReaderMode(
+                activityForNfcReaderMode, nfcReaderModeListener,
+                NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
+                        + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+                null
+            )
+            Logger.i(TAG, "Enabling reader mode on NfcAdapter")
+        } else {
+            Logger.i(TAG, "NfcAdapter not available")
+        }
         phase.value = Phase.WAITING_FOR_ENGAGEMENT
     }
 

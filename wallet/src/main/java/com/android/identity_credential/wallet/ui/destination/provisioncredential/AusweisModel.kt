@@ -146,7 +146,7 @@ class AusweisModel(
 
     private suspend fun runAusweisSdk() {
         var completed = false
-        val nfcAdapter = NfcAdapter.getDefaultAdapter(context)
+        val nfcAdapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(context)
         try {
             sdk.send(sessionId, """
                 {
@@ -284,13 +284,13 @@ class AusweisModel(
         }
     }
 
-    private fun enableCardScanning(nfcAdapter: NfcAdapter) {
+    private fun enableCardScanning(nfcAdapter: NfcAdapter?) {
         val options = Bundle()
         options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 300)
         val callback = NfcAdapter.ReaderCallback { tag ->
             sdk.updateNfcTag(sessionId, tag)
         }
-        nfcAdapter.enableReaderMode(
+        nfcAdapter?.enableReaderMode(
             context.getActivity(),
             callback,
             NfcAdapter.FLAG_READER_NFC_A or
@@ -303,7 +303,7 @@ class AusweisModel(
         )
     }
 
-    private fun disableCardScanning(nfcAdapter: NfcAdapter) {
-        nfcAdapter.disableReaderMode(context.getActivity())
+    private fun disableCardScanning(nfcAdapter: NfcAdapter?) {
+        nfcAdapter?.disableReaderMode(context.getActivity())
     }
 }
