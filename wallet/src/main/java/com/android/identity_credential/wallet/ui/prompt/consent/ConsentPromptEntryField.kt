@@ -3,6 +3,7 @@ package com.android.identity_credential.wallet.ui.prompt.consent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -210,18 +212,20 @@ private fun ConsentPromptHeader(consentData: ConsentPromptEntryFieldData) {
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center
     ) {
         // show icon if icon bytes are present
         consentData.verifier?.displayIcon?.let { iconBytes ->
             Icon(
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(50.dp),
                 // TODO: we're computing a bitmap every recomposition and this could be slow
                 bitmap = iconBytes.toImageBitmap(),
                 contentDescription = stringResource(id = R.string.consent_prompt_icon_description)
             )
-        }
+        } ?: Spacer(modifier = Modifier.width(24.dp))
         Text(
             text = title,
             modifier = Modifier.fillMaxWidth(),
@@ -265,6 +269,7 @@ private fun DataElementsListView(
             .fillMaxWidth()
             .fillMaxHeight()
             .focusGroup()
+            .padding(start=10.dp)
     ) {
         items(groupedElements.size) { index ->
             val pair = groupedElements[index]
@@ -333,7 +338,8 @@ private fun DataElementView(
         label = {
             Text(
                 text = "• ${documentElement.displayName}",
-                fontWeight = FontWeight.Normal
+                fontWeight = FontWeight.Normal,
+                style = MaterialTheme.typography.bodyLarge
             )
         },
     )
@@ -356,7 +362,9 @@ private fun ConsentPromptActions(
     Column(modifier = Modifier.fillMaxHeight()) {
 
         Row(
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.padding(horizontal = 10.dp)
+
         ) {
             // Cancel button
             Button(
@@ -366,7 +374,7 @@ private fun ConsentPromptActions(
                 Text(text = stringResource(id = R.string.consent_prompt_button_cancel))
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             // Confirm button
             Button(

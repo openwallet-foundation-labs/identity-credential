@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -123,13 +124,12 @@ fun PassphrasePinScreen(
         Spacer(modifier = Modifier.height(50.dp))
         PassphrasePinScreenHeader(title = title, content = content)
 
-        Spacer(modifier = Modifier.height(50.dp))
+        Spacer(modifier = Modifier.height(30.dp))
         // prevent the keyboard from showing up in PassphraseEntryField and set the text to show
-        PassphraseEntryField(
+        PassphrasePromptInputField(
             constraints = constraints,
-            disableKeyboard = true,
-            setText = currentPin.value,
-            onChanged = { _, _, _ -> /* will never get called */ },
+            setPin = currentPin.value,
+            onChanged = { _, _ -> /* will never get called */ },
         )
 
         Spacer(modifier = Modifier.height(50.dp))
@@ -180,10 +180,8 @@ private fun PassphrasePinScreenHeader(title: String, content: String) {
             modifier = Modifier.fillMaxWidth(),
             text = title,
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface
-
         )
 
         Text(
@@ -192,8 +190,7 @@ private fun PassphrasePinScreenHeader(title: String, content: String) {
                 .padding(top = 8.dp),
             text = content,
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
     }
@@ -235,48 +232,32 @@ private fun KeyPad(
 
 @Composable
 private fun KeyPadButtonView(button: KeyPadButton, onClick: (() -> Unit)? = null) {
-    Button(
-        modifier = Modifier
-            .size(100.dp)
-            .then(
-                if (button.isEmpty()) {
-                    Modifier.background(Color.Transparent)
-                } else {
-                    Modifier
-                    Modifier.background(
-                        color = if (isSystemInDarkTheme()) {
-                            MaterialTheme.colorScheme.surfaceBright
-                        } else {
-                            MaterialTheme.colorScheme.surfaceDim
-                        },
-                        shape = CircleShape
-                    )
-                }
-            ),
-        onClick = { onClick?.invoke() },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.scrim
-        )
-    ) {
-        if (button.number != null) {
-            Column(
-                modifier = Modifier.semantics(mergeDescendants = true, properties = {}),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = button.number.toString(),
-                    fontSize = 25.sp,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                    fontWeight = FontWeight.Bold
-                )
-                if (button.chars != null) {
+    if (button.isEmpty()) {
+        Spacer(modifier = Modifier.width(100.dp))
+    } else {
+        Button(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape),
+            onClick = { onClick?.invoke() },
+        ) {
+            if (button.number != null) {
+                Column(
+                    modifier = Modifier.semantics(mergeDescendants = true, properties = {}),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
-                        text = button.chars,
-                        modifier = Modifier.padding(top = 5.dp),
-                        color = MaterialTheme.colorScheme.onSecondary,
-                        fontSize = 14.sp
+                        text = button.number.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
+                    if (button.chars != null) {
+                        Text(
+                            text = button.chars,
+                            modifier = Modifier.padding(top = 5.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                    }
                 }
             }
         }

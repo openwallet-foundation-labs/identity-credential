@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -62,7 +61,6 @@ suspend fun showPassphrasePrompt(
     content: String,
 ): String? =
     suspendCancellableCoroutine { continuation ->
-
         val passphrasePrompt = PassphrasePrompt(
             constraints = constraints,
             title = title,
@@ -140,14 +138,6 @@ class PassphrasePrompt(
                 IdentityCredentialTheme {
                     var currPassphrase = ""
 
-                    // if fixed length, the IME action button shouldn't do anything because the user
-                    // needs to provide exactly the required number of characters; show an arrow icon
-                    // rather than a checkmark icon (since with fixed length, the user should not
-                    // have the option to "complete" the entry, rather it is completed inherently
-                    // when the required number of characters has been entered)
-                    val imeAction =
-                        if (constraints.isFixedLength()) ImeAction.Go else ImeAction.Done
-
                     /**
                      * Local function called to notify of passphrase submission.
                      */
@@ -194,10 +184,9 @@ class PassphrasePrompt(
                                         onCancel = { onCancel() }
                                     )
                                     PassphrasePromptHeader(title = title, content = content)
-                                    PassphraseEntryField(
+                                    PassphrasePromptInputField(
                                         constraints = constraints,
-                                        imeAction = imeAction,
-                                        onChanged = { passphrase, _, donePressed ->
+                                        onChanged = { passphrase, donePressed ->
                                             currPassphrase = passphrase
                                             if (!constraints.isFixedLength()) {
                                                 // notify of the typed passphrase when user taps 'Done' on the keyboard
@@ -231,7 +220,7 @@ class PassphrasePrompt(
                 modifier = Modifier.fillMaxWidth(),
                 text = title,
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -242,7 +231,7 @@ class PassphrasePrompt(
                     .padding(top = 8.dp),
                 text = content,
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
