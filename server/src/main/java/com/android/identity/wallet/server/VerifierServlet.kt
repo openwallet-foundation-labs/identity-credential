@@ -66,6 +66,7 @@ import java.security.interfaces.ECPublicKey
 import kotlin.random.Random
 
 enum class Protocol {
+    PLAIN_OPENID4VP,
     EUDI_OPENID4VP,
     MDOC_OPENID4VP,
 }
@@ -405,6 +406,7 @@ class VerifierServlet : HttpServlet() {
 
         val protocol = when (request.protocol) {
             // Keep in sync with verifier.html
+            "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
             else -> {
@@ -448,6 +450,7 @@ class VerifierServlet : HttpServlet() {
         }
 
         val uriScheme = when (session.protocol) {
+            Protocol.PLAIN_OPENID4VP -> "openid4vp://"
             Protocol.EUDI_OPENID4VP -> "eudi-openid4vp://"
             Protocol.MDOC_OPENID4VP -> "mdoc-openid4vp://"
         }
