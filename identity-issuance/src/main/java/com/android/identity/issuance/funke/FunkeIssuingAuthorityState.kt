@@ -70,21 +70,21 @@ class FunkeIssuingAuthorityState(
                 CredentialFormat.SD_JWT_VC -> "funkeSdJwtVc"
                 CredentialFormat.MDOC_MSO -> "funkeMdocMso"
             }
-            val issuingAuthorityName = when (credentialFormat) {
-                CredentialFormat.SD_JWT_VC -> "Funke PID Issuer (SD-JWT)"
-                CredentialFormat.MDOC_MSO -> "Funke PID Issuer (MDOC)"
+            val variant = when (credentialFormat) {
+                CredentialFormat.SD_JWT_VC -> "SD-JWT"
+                CredentialFormat.MDOC_MSO -> "mDoc"
             }
             return env.cache(IssuingAuthorityConfiguration::class, id) { configuration, resources ->
                 val logoPath = "funke/logo.png"
                 val logo = resources.getRawResource(logoPath)!!
-                val artPath = "funke/card_art.png"
+                val artPath = "funke/card_art_funke_generic.png"
                 val art = resources.getRawResource(artPath)!!
                 val requireUserAuthenticationToViewDocument = false
                 IssuingAuthorityConfiguration(
                     identifier = id,
-                    issuingAuthorityName = issuingAuthorityName,
+                    issuingAuthorityName = "SPRIND Funke EUDI Wallet Prototype PID Issuer",
                     issuingAuthorityLogo = logo.toByteArray(),
-                    issuingAuthorityDescription = "Funke",
+                    issuingAuthorityDescription = "Personal ID - $variant",
                     pendingDocumentInformation = DocumentConfiguration(
                         displayName = "Pending",
                         typeDisplayName = "EU Personal ID",
@@ -209,7 +209,8 @@ class FunkeIssuingAuthorityState(
         check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
         issuerDocument.state = DocumentCondition.READY
         if (issuerDocument.documentConfiguration == null) {
-            issuerDocument.documentConfiguration = generateDocumentConfiguration(env)
+            val isCloudSecureArea = issuerDocument.secureAreaIdentifier!!.startsWith("CloudSecureArea?")
+            issuerDocument.documentConfiguration = generateDocumentConfiguration(env, isCloudSecureArea)
         }
         updateIssuerDocument(env, documentId, issuerDocument)
         return issuerDocument.documentConfiguration!!
@@ -454,13 +455,18 @@ class FunkeIssuingAuthorityState(
     }
 
     private suspend fun generateDocumentConfiguration(
-        env: FlowEnvironment
+        env: FlowEnvironment,
+        isCloudSecureArea: Boolean
     ): DocumentConfiguration {
-        val artPath = "funke/card_art.png"
-        val art = env.getInterface(Resources::class)!!.getRawResource(artPath)!!
-
+        val resources = env.getInterface(Resources::class)!!
         return when (credentialFormat) {
-            CredentialFormat.SD_JWT_VC ->
+            CredentialFormat.SD_JWT_VC -> {
+                val art = resources.getRawResource(
+                    if (isCloudSecureArea) {
+                        "funke/card_art_funke_sdjwt_c1.png"
+                    } else {
+                        "funke/card_art_funke_sdjwt_c.png"
+                    })!!
                 DocumentConfiguration(
                     "Funke",
                     "Personal ID (SD-JWT)",
@@ -469,19 +475,28 @@ class FunkeIssuingAuthorityState(
                     null,
                     SdJwtVcDocumentConfiguration(FunkeUtil.SD_JWT_VCT)
                 )
-            CredentialFormat.MDOC_MSO -> DocumentConfiguration(
-                "Funke",
-                "Personal ID (MDOC)",
-                art.toByteArray(),
-                false,
-                MdocDocumentConfiguration(
-                    EUPersonalID.EUPID_DOCTYPE,
-                    staticData = fillInSampleData(
-                        documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)!!
-                    ).build()
-                ),
-                null
-            )
+            }
+            CredentialFormat.MDOC_MSO -> {
+                val art = resources.getRawResource(
+                    if (isCloudSecureArea) {
+                        "funke/card_art_funke_mdoc_c1.png"
+                    } else {
+                        "funke/card_art_funke_mdoc_c.png"
+                    })!!
+                DocumentConfiguration(
+                    "Funke",
+                    "Personal ID (MDOC)",
+                    art.toByteArray(),
+                    false,
+                    MdocDocumentConfiguration(
+                        EUPersonalID.EUPID_DOCTYPE,
+                        staticData = fillInSampleData(
+                            documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)!!
+                        ).build()
+                    ),
+                    null
+                )
+            }
         }
     }
 
