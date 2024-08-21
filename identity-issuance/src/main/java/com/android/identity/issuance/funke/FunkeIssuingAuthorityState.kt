@@ -24,6 +24,7 @@ import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.DocumentState
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
@@ -288,14 +289,14 @@ class FunkeIssuingAuthorityState(
             }
             CredentialFormat.MDOC_MSO -> {
                 request["format"] = JsonPrimitive("mso_mdoc")
-                request["doctype"] = JsonPrimitive("eu.europa.ec.eudi.pid.1")
+                request["doctype"] = JsonPrimitive(FunkeUtil.EU_PID_MDOC_DOCTYPE)
             }
             null -> throw IllegalStateException("Credential format was not specified")
         }
 
         val token = Json.parseToJsonElement(document.token!!) as JsonObject
         val accessToken = token["access_token"]!!.jsonPrimitive.content
-        val credentialUrl = "${FunkeUtil.BASE_URL}/c/credential"
+        val credentialUrl = "${FunkeUtil.BASE_URL}/credential"
         val dpop = FunkeUtil.generateDPoP(env, clientId, credentialUrl, document.dpopNonce!!, accessToken)
         val httpClient = env.getInterface(HttpClient::class)!!
         val credentialResponse = httpClient.post(credentialUrl) {
@@ -309,7 +310,13 @@ class FunkeIssuingAuthorityState(
         if (credentialResponse.status != HttpStatusCode.OK) {
             val responseText = String(credentialResponse.readBytes())
             Logger.e(TAG, "Credential request error: ${credentialResponse.status} $responseText")
-            throw IllegalStateException("Credential request error")
+
+            // Currently in Funke case this gets document in permanent bad state, notification
+            // is not needed as an exception will generate notification on the client side.
+            document.state = DocumentCondition.DELETION_REQUESTED
+            updateIssuerDocument(env, state.documentId, document, false)
+
+            throw IssuingAuthorityException("Error getting a credential issued")
         }
         Logger.i(TAG, "Got successful response for credential request")
         val responseText = String(credentialResponse.readBytes())
@@ -423,7 +430,7 @@ class FunkeIssuingAuthorityState(
             add("client_id", FunkeUtil.CLIENT_ID)
         }
         val httpClient = env.getInterface(HttpClient::class)!!
-        val response = httpClient.post("${FunkeUtil.BASE_URL}/c/par") {
+        val response = httpClient.post("${FunkeUtil.BASE_URL}/par") {
             headers {
                 append("Content-Type", "application/x-www-form-urlencoded")
             }
@@ -431,16 +438,16 @@ class FunkeIssuingAuthorityState(
         }
         if (response.status != HttpStatusCode.Created) {
             Logger.e(TAG, "PAR request error: ${response.status}")
-            throw IllegalStateException("PAR request error")
+            throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
         }
         val parsedResponse = Json.parseToJsonElement(String(response.readBytes())) as JsonObject
         val requestUri = parsedResponse["request_uri"]
         if (requestUri !is JsonPrimitive) {
             Logger.e(TAG, "PAR response error")
-            throw IllegalStateException("PAR response error")
+            throw IllegalStateException("PAR response syntax error")
         }
         Logger.i(TAG, "Request uri: $requestUri")
-        return "${FunkeUtil.BASE_URL}/c/authorize?" + FormUrlEncoder {
+        return "${FunkeUtil.BASE_URL}/authorize?" + FormUrlEncoder {
             add("client_id", FunkeUtil.CLIENT_ID)
             add("request_uri", requestUri.content)
         }

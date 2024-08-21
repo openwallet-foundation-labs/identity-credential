@@ -176,7 +176,8 @@ class WalletServerProvider(
     private suspend fun getWalletServerUnlocked(): WalletServer {
         val dispatcher: FlowDispatcher
         val notifier: FlowNotifier
-        val exceptionMap = FlowExceptionMap.Builder().build()
+        val exceptionMapBuilder = FlowExceptionMap.Builder()
+        WalletServerState.registerExceptions(exceptionMapBuilder)
         if (baseUrl == "dev:") {
             val builder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
@@ -186,7 +187,7 @@ class WalletServerProvider(
             dispatcher = WrapperFlowDispatcher(builder.build(
                 environment,
                 noopCipher,
-                exceptionMap
+                exceptionMapBuilder.build()
             ))
         } else {
             val httpClient = WalletHttpTransport(baseUrl)
@@ -195,7 +196,7 @@ class WalletServerProvider(
             CoroutineScope(Dispatchers.IO).launch {
                 notifier.loop()
             }
-            dispatcher = FlowDispatcherHttp(httpClient, exceptionMap)
+            dispatcher = FlowDispatcherHttp(httpClient, exceptionMapBuilder.build())
         }
 
         // "root" is the entry point for the server, see FlowState annotation on

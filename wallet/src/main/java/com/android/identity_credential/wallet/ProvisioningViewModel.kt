@@ -15,6 +15,7 @@ import com.android.identity.issuance.DocumentExtensions.refreshState
 import com.android.identity.issuance.DocumentExtensions.state
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthority
+import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel

@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
+import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
@@ -254,12 +255,17 @@ fun ProvisionDocumentScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
+                    val error = provisioningViewModel.error
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center,
-                        text = stringResource(R.string.provisioning_error,
-                            provisioningViewModel.error.toString())
+                        text = if (error is IssuingAuthorityException) {
+                            error.message!!  // Human-readable message from the server
+                        } else {
+                            stringResource(R.string.provisioning_error,
+                                provisioningViewModel.error.toString())
+                        }
                     )
                 }
             }

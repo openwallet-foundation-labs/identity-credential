@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,6 +60,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -480,6 +481,11 @@ fun MainScreenDocumentPager(
                     bitmap = card.documentArtwork.asImageBitmap(),
                     contentDescription =
                     stringResource(R.string.accessibility_artwork_for, card.name),
+                    colorFilter = if (card.attentionNeeded) {
+                        ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.1f) })
+                    } else {
+                        null
+                    },
                     modifier = Modifier.fillMaxSize().clickable(onClick = {
                         onNavigate(
                             WalletDestination.DocumentInfo

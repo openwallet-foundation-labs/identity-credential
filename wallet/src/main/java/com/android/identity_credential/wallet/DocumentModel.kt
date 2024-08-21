@@ -36,6 +36,7 @@ import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthority
+import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.KeyPossessionProof
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
@@ -230,7 +231,10 @@ class DocumentModel(
                 }
             }
 
-            DocumentCondition.DELETION_REQUESTED -> getStr(R.string.document_model_status_deletion_requested)
+            DocumentCondition.DELETION_REQUESTED -> {
+                attentionNeeded = true
+                getStr(R.string.document_model_status_deletion_requested)
+            }
         }
 
         return DocumentInfo(
@@ -599,9 +603,16 @@ class DocumentModel(
      *
      * @throws IllegalArgumentException if the issuer isn't known.
      */
-    private suspend fun syncDocumentWithIssuer(
-        document: Document
-    ) {
+    private suspend fun syncDocumentWithIssuer(document: Document) {
+        try {
+            syncDocumentWithIssuerCore(document)
+        } catch (e: IssuingAuthorityException) {
+            // IssuingAuthorityException contains human-readable message
+            walletApplication.postNotificationForDocument(document, e.message!!)
+        }
+    }
+
+    private suspend fun syncDocumentWithIssuerCore(document: Document) {
         Logger.i(TAG, "syncDocumentWithIssuer: Refreshing ${document.name}")
 
         val issuer = walletServerProvider.getIssuingAuthority(document.issuingAuthorityIdentifier)

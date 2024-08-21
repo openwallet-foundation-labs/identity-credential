@@ -59,7 +59,7 @@ class FunkeRequestCredentialsState(
             )).toString().toByteArray().toBase64()
             val body = JsonObject(mapOf(
                 "iss" to JsonPrimitive(FunkeUtil.CLIENT_ID),
-                "aud" to JsonPrimitive(FunkeUtil.BASE_URL + "/c"),
+                "aud" to JsonPrimitive(FunkeUtil.BASE_URL),
                 "iat" to JsonPrimitive(Clock.System.now().epochSeconds),
                 "nonce" to JsonPrimitive(nonce)
             )).toString().toByteArray().toBase64()
