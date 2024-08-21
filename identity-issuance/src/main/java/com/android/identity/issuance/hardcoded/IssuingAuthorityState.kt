@@ -42,6 +42,7 @@ import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.SdJwtVcDocumentConfiguration
+import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.common.cache
@@ -50,6 +51,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseGermanEidResolved
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
+import com.android.identity.issuance.fromCbor
 import com.android.identity.issuance.proofing.defaultCredentialConfiguration
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -60,6 +62,7 @@ import com.android.identity.sdjwt.Issuer
 import com.android.identity.sdjwt.SdJwtVcGenerator
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.util.Logger
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
@@ -223,7 +226,7 @@ class IssuingAuthorityState(
         issuerDocument.collectedEvidence.clear()
         // TODO: propagate developer mode
         val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
-        return ProofingState(documentId, authorityId, settings.developerMode)
+        return ProofingState(clientId, documentId, authorityId, settings.developerMode)
     }
 
     @FlowJoin
@@ -252,8 +255,20 @@ class IssuingAuthorityState(
         val issuerDocument = loadIssuerDocument(env, documentId)
         check(issuerDocument.state == DocumentCondition.READY)
 
+        val storage = env.getInterface(Storage::class)!!
+        val walletApplicationCapabilities = runBlocking {
+            storage.get(
+                "WalletApplicationCapabilities",
+                "",
+                clientId
+            )?.let {
+                WalletApplicationCapabilities.fromCbor(it.toByteArray())
+            } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
+        }
+
         val credentialConfiguration = defaultCredentialConfiguration(
             documentId,
+            walletApplicationCapabilities,
             issuerDocument.collectedEvidence
         )
         return RequestCredentialsState(

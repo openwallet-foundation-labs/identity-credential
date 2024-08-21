@@ -5,7 +5,9 @@ import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.evidence.EvidenceRequest
@@ -15,6 +17,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseGermanEidResolved
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
+import com.android.identity.issuance.fromCbor
 import com.android.identity.issuance.proofing.ProofingGraph
 import com.android.identity.issuance.proofing.defaultGraph
 import com.android.identity.issuance.tunnel.inProcessMrtdNfcTunnelFactory
@@ -22,6 +25,7 @@ import com.android.identity.mrtd.MrtdAccessDataCan
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
+import kotlinx.coroutines.runBlocking
 import java.net.URLEncoder
 
 /**
@@ -30,6 +34,7 @@ import java.net.URLEncoder
 @FlowState(flowInterface = ProofingFlow::class)
 @CborSerializable
 class ProofingState(
+    val clientId: String,
     val documentId: String = "",
     val issuingAuthorityId: String = "",
     val developerModeEnabled: Boolean = false,
@@ -124,12 +129,24 @@ class ProofingState(
     }
 
     private fun getGraph(env: FlowEnvironment): ProofingGraph {
+        val storage = env.getInterface(Storage::class)!!
+        val walletApplicationCapabilities = runBlocking {
+            storage.get(
+                "WalletApplicationCapabilities",
+                "",
+                clientId
+            )?.let {
+                WalletApplicationCapabilities.fromCbor(it.toByteArray())
+            } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
+        }
+
         val key = GraphKey(issuingAuthorityId, documentId, developerModeEnabled)
         return env.cache(ProofingGraph::class, key) { configuration, resources ->
             val cloudSecureAreaUrl = WalletServerSettings(configuration).cloudSecureAreaUrl
             defaultGraph(
                 documentId,
                 resources,
+                walletApplicationCapabilities,
                 developerModeEnabled,
                 cloudSecureAreaUrl,
                 resources.getStringResource("$issuingAuthorityId/tos.html")!!,

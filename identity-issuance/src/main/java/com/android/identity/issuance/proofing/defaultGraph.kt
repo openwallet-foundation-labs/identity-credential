@@ -5,6 +5,7 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.EcCurve
 import com.android.identity.flow.server.Resources
 import com.android.identity.issuance.CredentialConfiguration
+import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
@@ -18,6 +19,7 @@ import java.net.URLEncoder
 fun defaultGraph(
     documentId: String,
     resources: Resources,
+    walletApplicationCapabilities: WalletApplicationCapabilities,
     developerModeEnabled: Boolean,
     cloudSecureAreaUrl: String,
     tosText: String,
@@ -229,6 +231,7 @@ fun defaultGraph(
 
 fun defaultCredentialConfiguration(
     documentId: String,
+    walletApplicationCapabilities: WalletApplicationCapabilities,
     collectedEvidence: Map<String, EvidenceResponse>
 ): CredentialConfiguration {
     val challenge = byteArrayOf(1, 2, 3)
