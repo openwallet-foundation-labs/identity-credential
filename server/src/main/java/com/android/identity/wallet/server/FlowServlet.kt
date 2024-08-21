@@ -67,6 +67,8 @@ class FlowServlet : HttpServlet() {
 
             serverEnvironment = ServerEnvironment(servletConfig)
 
+            val exceptionMapBuilder = FlowExceptionMap.Builder()
+            WalletServerState.registerExceptions(exceptionMapBuilder)
             val dispatcherBuilder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(dispatcherBuilder)
             val storage = serverEnvironment.getInterface(Storage::class)!!
@@ -96,7 +98,7 @@ class FlowServlet : HttpServlet() {
             val localDispatcher = dispatcherBuilder.build(
                 serverEnvironment,
                 cipher,
-                FlowExceptionMap.Builder().build()
+                exceptionMapBuilder.build()
             )
 
             httpHandler = HttpHandler(localDispatcher, localPoll)

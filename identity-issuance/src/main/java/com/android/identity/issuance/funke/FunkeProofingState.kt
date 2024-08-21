@@ -5,6 +5,7 @@ import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.evidence.EvidenceRequest
@@ -118,7 +119,7 @@ class FunkeProofingState(
             // Error
             return
         }
-        val tokenUrl = "${FunkeUtil.BASE_URL}/c/token"
+        val tokenUrl = "${FunkeUtil.BASE_URL}/token"
         val dpop = FunkeUtil.generateDPoP(env, clientId, tokenUrl, dpopNonce)
         val tokenRequest = FormUrlEncoder {
             add("code", code)
@@ -135,7 +136,7 @@ class FunkeProofingState(
         }
         if (tokenResponse.status != HttpStatusCode.OK) {
             Logger.e(TAG, "Token request error: ${response.status}")
-            throw IllegalStateException("Token request error")
+            throw IssuingAuthorityException("eID card rejected by the issuer")
         }
         this.dpopNonce = tokenResponse.headers["DPoP-Nonce"]
         if (this.dpopNonce == null) {

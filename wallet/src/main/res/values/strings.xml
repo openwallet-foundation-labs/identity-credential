@@ -318,7 +318,7 @@
 
     <!-- eID reading -->
     <string name="eid_status_preparing">Initializing eID reading module</string>
-    <string name="eid_status_ready">Ready to read eID</string>
+    <string name="eid_status_ready">Ready to read eID card</string>
     <string name="eid_status_started">Initializing…</string>
     <string name="eid_start_workflow">Start</string>
     <string name="eid_start_workflow_with_simulator">Start using Simulator</string>

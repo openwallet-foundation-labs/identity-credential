@@ -5,12 +5,14 @@ import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.handler.FlowDispatcherLocal
+import com.android.identity.flow.handler.FlowExceptionMap
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
@@ -24,6 +26,7 @@ import com.android.identity.issuance.funke.FunkeProofingState
 import com.android.identity.issuance.funke.FunkeRegistrationState
 import com.android.identity.issuance.funke.FunkeRequestCredentialsState
 import com.android.identity.issuance.funke.register
+import com.android.identity.issuance.register
 import kotlinx.io.bytestring.buildByteString
 import kotlin.random.Random
 
@@ -60,6 +63,10 @@ class WalletServerState(
                 minCredentialValidityMillis = 30 * 24 * 3600L,
                 maxUsesPerCredentials = 1
             )
+        }
+
+        fun registerExceptions(exceptionMapBuilder: FlowExceptionMap.Builder) {
+            IssuingAuthorityException.register(exceptionMapBuilder)
         }
 
         fun registerAll(dispatcher: FlowDispatcherLocal.Builder) {

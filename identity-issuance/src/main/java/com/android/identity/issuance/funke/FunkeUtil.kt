@@ -3,7 +3,6 @@ package com.android.identity.issuance.funke
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.flow.server.FlowEnvironment
-import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
@@ -19,8 +18,15 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
 internal object FunkeUtil {
-    const val BASE_URL = "https://demo.pid-issuer.bundesdruckerei.de"
+    // Endpoint for PID issuer, could be /c or /c1
+    const val BASE_URL = "https://demo.pid-issuer.bundesdruckerei.de/c"
+
+    // client ID is from sample request/responses, this will need to be replaced with the
+    // registered client id once we have client attestation (probably should come from the
+    // attestation server).
     const val CLIENT_ID = "fed79862-af36-4fee-8e64-89e3c91091ed"
+
+    const val EU_PID_MDOC_DOCTYPE = "eu.europa.ec.eudi.pid.1"
     const val SD_JWT_VCT = "urn:eu.europa.ec.eudi:pid:1"
 
     private val keyCreationMutex = Mutex()
