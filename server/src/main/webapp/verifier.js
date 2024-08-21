@@ -1,6 +1,6 @@
 
 // Keep in sync with verifier.html
-var selectedProtocol = 'openid4vp_eudi'
+var selectedProtocol = 'openid4vp_plain'
 
 var openid4vpUri = ""
 
@@ -8,8 +8,13 @@ function onLoad() {
     const protocolDropdown = document.getElementById('protocolDropdown')
     protocolDropdown.addEventListener('hide.bs.dropdown', event => {
         var target = event.clickEvent.target
-        protocolDropdown.innerHTML = target.innerHTML
-        selectedProtocol = target.getAttribute('value')
+        var selected = target.getAttribute('value')
+        if (selected === 'openid4vp_plain' ||
+            selected === 'openid4vp_eudi' ||
+            selected === 'openid4vp_mdoc') {
+            selectedProtocol = selected
+            protocolDropdown.innerHTML = target.innerHTML
+        }
     })
 }
 
