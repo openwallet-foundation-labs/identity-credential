@@ -7,13 +7,16 @@ import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
+import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
+import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.securearea.PassphraseConstraints
@@ -37,6 +40,7 @@ class FunkeProofingState(
     val documentId: String,
     val tcTokenUrl: String,
     val pkceCodeVerifier: String,
+    val applicationCapabilities: WalletApplicationCapabilities,
     var dpopNonce: String? = null,
     var token: String? = null,
     var secureAreaIdentifier: String? = null,
@@ -52,15 +56,24 @@ class FunkeProofingState(
             listOf(EvidenceRequestGermanEid(tcTokenUrl, listOf()))
         } else if (secureAreaIdentifier == null) {
             listOf(
-                EvidenceRequestQuestionMultipleChoice(
-                    message = "Choose Secure Area",
-                    assets = emptyMap(),
-                    possibleValues = mapOf(
-                        "android" to "Android Secure Area (Option C)",
-                        "cloud" to "Cloud Secure Area (Option C')"
-                    ),
-                    acceptButtonText = "Continue"
-                )
+                if (applicationCapabilities.androidKeystoreStrongBoxAvailable) {
+                    EvidenceRequestQuestionMultipleChoice(
+                        message = "Choose Secure Area",
+                        assets = emptyMap(),
+                        possibleValues = mapOf(
+                            "android" to "Android StrongBox Secure Area (Option C)",
+                            "cloud" to "Cloud Secure Area (Option C')"
+                        ),
+                        acceptButtonText = "Continue"
+                    )
+                } else {
+                    EvidenceRequestMessage(
+                        message = "Your device does not have Android StrongBox available. Cloud Secure Area will be used (Option C').",
+                        acceptButtonText = "Continue",
+                        rejectButtonText = "Cancel",
+                        assets = emptyMap()
+                    )
+                }
             )
         } else if (secureAreaIdentifier!!.startsWith("CloudSecureArea?") && !secureAreaSetupDone) {
             listOf(
@@ -81,13 +94,15 @@ class FunkeProofingState(
     suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
         when (evidenceResponse) {
             is EvidenceResponseGermanEid -> processGermanEId(env, evidenceResponse)
+            is EvidenceResponseMessage -> {
+                if (!evidenceResponse.acknowledged) {
+                    throw IssuingAuthorityException("Issuance rejected")
+                }
+                secureAreaIdentifier = getCloudSecureAreaId(env)
+            }
             is EvidenceResponseQuestionMultipleChoice -> {
                 secureAreaIdentifier = if (evidenceResponse.answerId == "cloud") {
-                    val cloudSecureAreaUrl = URLEncoder.encode(
-                        WalletServerSettings(env.getInterface(Configuration::class)!!)
-                            .cloudSecureAreaUrl, "UTF-8"
-                    )
-                    "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
+                    getCloudSecureAreaId(env)
                 } else {
                     "AndroidKeystoreSecureArea"
                 }
@@ -97,6 +112,14 @@ class FunkeProofingState(
             }
             else -> throw IllegalArgumentException("Unexpected evidence type")
         }
+    }
+
+    private fun getCloudSecureAreaId(env: FlowEnvironment): String {
+        val cloudSecureAreaUrl = URLEncoder.encode(
+            WalletServerSettings(env.getInterface(Configuration::class)!!)
+                .cloudSecureAreaUrl, "UTF-8"
+        )
+        return "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
     }
 
     private suspend fun processGermanEId(
