@@ -29,8 +29,10 @@ import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.SdJwtVcDocumentConfiguration
+import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.common.cache
+import com.android.identity.issuance.fromCbor
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64
@@ -187,7 +189,16 @@ class FunkeIssuingAuthorityState(
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
         val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64()
         val tcTokenUrl = performPushedAuthorizationRequest(env, pkceCodeVerifier)
-        return FunkeProofingState(clientId, documentId, tcTokenUrl, pkceCodeVerifier)
+        val storage = env.getInterface(Storage::class)!!
+        val applicationCapabilities = storage.get(
+            "WalletApplicationCapabilities",
+            "",
+            clientId
+        )?.let {
+            WalletApplicationCapabilities.fromCbor(it.toByteArray())
+        } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
+        return FunkeProofingState(clientId, documentId, tcTokenUrl, pkceCodeVerifier,
+            applicationCapabilities)
     }
 
     @FlowJoin
@@ -247,6 +258,7 @@ class FunkeIssuingAuthorityState(
                     CborMap.builder()
                         .put("curve", EcCurve.P256.coseCurveIdentifier)
                         .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
+                        .put("useStrongBox", true)
                         .put("userAuthenticationRequired", true)
                         .put("userAuthenticationTimeoutMillis", 0L)
                         .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
