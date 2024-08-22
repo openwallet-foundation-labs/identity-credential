@@ -34,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.X509Cert
@@ -41,9 +42,9 @@ import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
-import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -316,13 +317,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         credentialFormat: CredentialFormat,
         docType: String
     ): Boolean {
-        val credential = walletApp.documentStore.lookupDocument(credentialId)!!
-        val issuingAuthorityIdentifier = credential.issuingAuthorityIdentifier
-//        if (!credentialFormats.contains(credentialFormat)) {
-//            return false
-//        }
-
-        return credential.documentConfiguration.mdocConfiguration?.docType == docType
+        val document = walletApp.documentStore.lookupDocument(credentialId)!!
+        val documentConfiguration = document.documentConfiguration
+        return when (credentialFormat) {
+            CredentialFormat.MDOC_MSO -> documentConfiguration.mdocConfiguration?.docType == docType
+            CredentialFormat.SD_JWT_VC -> documentConfiguration.sdJwtVcDocumentConfiguration != null
+        }
     }
 
     private suspend fun getKeySet(httpClient: HttpClient, clientMetadata: JsonObject): JWKSet {
@@ -348,6 +348,17 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         override val contentType: ContentType = ContentType.Application.FormUrlEncoded
 
         override fun bytes(): ByteArray = content
+    }
+
+    private fun getCredentialToUse(document: Document, credentialFormat: CredentialFormat, now: Instant): SecureAreaBoundCredential {
+        val credential = when(credentialFormat) {
+            CredentialFormat.MDOC_MSO -> document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
+            CredentialFormat.SD_JWT_VC -> document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC, now)
+        }
+        if (credential == null) {
+            throw IllegalStateException("No credentials available")
+        }
+        return credential as SecureAreaBoundCredential
     }
 
     // Returns `false` if canceled by the user
@@ -384,8 +395,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         val credentialFormat: CredentialFormat
         if (format.contains("mso_mdoc")) {
             credentialFormat = CredentialFormat.MDOC_MSO
+        } else if (format.contains("jwt_vp")) {
+            credentialFormat = CredentialFormat.SD_JWT_VC
         } else {
-            TODO("mso_mdoc only supported for now")
+            TODO("Only mso_mdoc and jwt_vp are supported for now")
         }
         val document = firstMatchingDocument(credentialFormat, docType)
             ?: run { throw IllegalStateException("No matching credentials in wallet for " +
@@ -395,12 +408,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         val secureRandom = Random.Default
         val bytes = ByteArray(16)
         secureRandom.nextBytes(bytes)
-        val mdocGeneratedNonce = Base64.UrlSafe.encode(bytes)
+        val generatedNonce = Base64.UrlSafe.encode(bytes)
         val sessionTranscript = createSessionTranscript(
             clientId = authorizationRequest.clientId,
             responseUri = authorizationRequest.responseUri,
             authorizationRequestNonce = authorizationRequest.nonce,
-            mdocGeneratedNonce = mdocGeneratedNonce
+            mdocGeneratedNonce = generatedNonce
         )
 
         if (authorizationRequest.clientMetadata["authorization_signed_response_alg"] != null) {
@@ -413,7 +426,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             ["authorization_encrypted_response_enc"]!!.toString()
             .run { substring(1, this.length - 1) })
         val apv = Base64URL.encode(authorizationRequest.nonce)
-        val apu = Base64URL.encode(mdocGeneratedNonce)
+        val apu = Base64URL.encode(generatedNonce)
         val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
             .apply {
                 apv?.let(::agreementPartyVInfo)
@@ -422,11 +435,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             .build()
 
         val now = Clock.System.now()
-        val credentialToUse: MdocCredential = (
-                document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
-                    ?: run {
-                        throw IllegalStateException("No credentials available")
-                    }) as MdocCredential
+        val credentialToUse = getCredentialToUse(document, credentialFormat, now)
 
         var trustPoint: TrustPoint? = null
         if (authorizationRequest.certificateChain != null) {
@@ -445,31 +454,15 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             }
         }
 
-        // TODO: Need to catch UserCanceledPromptException and tell the verifier that
-        //  the user declined to share data.
-        //
-        val documentResponse = showPresentmentFlow(
-            activity = this,
-            walletApp = walletApp,
-            documentRequest = documentRequest,
-            mdocCredential = credentialToUse,
-            trustPoint = trustPoint,
-            encodedSessionTranscript = sessionTranscript,
-        )
-
-        val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-        deviceResponseGenerator.addDocument(documentResponse)
-
-        // build response
-        val deviceResponseCbor = deviceResponseGenerator.generate()
-        val vpToken = Base64.UrlSafe.encode(deviceResponseCbor)
+        val vpTokenByteArray = generateVpToken(documentRequest, credentialToUse, trustPoint, authorizationRequest, sessionTranscript)
+        Logger.i(TAG, "Setting vp_token: ${vpTokenByteArray.decodeToString()}")
+        val vpToken = Base64.UrlSafe.encode(vpTokenByteArray)
         val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
             // put("id_token", idToken) // depends on response type, only supporting vp_token for now
             put("state", authorizationRequest.state)
             put("vp_token", vpToken)
             put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
         }))
-
 
         // encrypt
         val keySet = getKeySet(httpClient, authorizationRequest.clientMetadata)
@@ -508,6 +501,52 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 successRedirectUri = redirectUri
             }
             else -> Logger.d(TAG, "Response $response unexpected")
+        }
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private suspend fun generateVpToken(
+        documentRequest: DocumentRequest,
+        credential: SecureAreaBoundCredential,
+        trustPoint: TrustPoint?,
+        authorizationRequest: AuthorizationRequest,
+        sessionTranscript: ByteArray // TODO: Only needed for mdoc. Generate internally.
+    ): ByteArray {
+        // TODO: Need to catch UserCanceledPromptException and tell the verifier that
+        //  the user declined to share data.
+        //
+        return when (credential) {
+            is MdocCredential -> {
+                val documentResponse = showMdocPresentmentFlow(
+                    activity = this,
+                    walletApp = walletApp,
+                    documentRequest = documentRequest,
+                    credential = credential,
+                    trustPoint = trustPoint,
+                    encodedSessionTranscript = sessionTranscript,
+                )
+
+                val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+                deviceResponseGenerator.addDocument(documentResponse)
+
+                // build response
+                val deviceResponseCbor = deviceResponseGenerator.generate()
+                deviceResponseCbor
+            }
+            is SdJwtVcCredential -> {
+                showSdJwtPresentmentFlow(
+                    activity = this,
+                    walletApp = walletApp,
+                    documentRequest = documentRequest,
+                    credential = credential,
+                    trustPoint = trustPoint,
+                    nonce = authorizationRequest.nonce,
+                    clientId = authorizationRequest.clientId
+                )
+            }
+            else -> {
+                throw IllegalArgumentException("Unhandled credential type")
+            }
         }
     }
 }
@@ -699,6 +738,8 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
     }
 }
 
+private val validFormats = setOf("mso_mdoc", "jwt_vp")
+
 internal fun createPresentationSubmission(authRequest: AuthorizationRequest): PresentationSubmission {
     val descriptorMaps = ArrayList<DescriptorMap>()
     val inputDescriptors = authRequest.presentationDefinition["input_descriptors"]!!.jsonArray
@@ -706,9 +747,13 @@ internal fun createPresentationSubmission(authRequest: AuthorizationRequest): Pr
     for (inputDescriptor: JsonElement in inputDescriptors) {
         val inputDescriptorObj = inputDescriptor.jsonObject
         val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
+        val formatName = inputDescriptorObj["format"]?.jsonObject?.keys?.first() ?: "mso_mdoc"
+        if (!validFormats.contains(formatName)) {
+            throw IllegalArgumentException("Unexpected format ($formatName) in input_descriptors.")
+        }
         descriptorMaps.add(DescriptorMap(
             id = docType,
-            format = "mso_mdoc",
+            format = formatName,
             path = "$"
         ))
     }

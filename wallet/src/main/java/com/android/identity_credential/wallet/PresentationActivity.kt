@@ -66,7 +66,7 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
-import com.android.identity_credential.wallet.presentation.showPresentmentFlow
+import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -361,11 +361,11 @@ class PresentationActivity : FragmentActivity() {
 
                                 // show the Presentation Flow for and get the response bytes for
                                 // the generated Document
-                                val documentCborBytes = showPresentmentFlow(
+                                val documentCborBytes = showMdocPresentmentFlow(
                                     activity = this@PresentationActivity,
                                     walletApp = walletApp,
                                     documentRequest = MdocUtil.generateDocumentRequest(docRequest),
-                                    mdocCredential = mdocCredential,
+                                    credential = mdocCredential,
                                     trustPoint = trustPoint,
                                     encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
                                 )

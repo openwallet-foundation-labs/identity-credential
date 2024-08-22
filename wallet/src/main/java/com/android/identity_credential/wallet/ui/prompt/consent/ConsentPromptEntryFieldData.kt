@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.trustmanagement.TrustPoint
 
 /**
@@ -16,11 +17,13 @@ data class ConsentPromptEntryFieldData(
     // Object extracted from the document request
     val documentRequest: DocumentRequest,
     // Requested doc type
-    val docType: String,
+    val docType: String?,
     // Document name of credential being used to respond with requested data
     val documentName: String,
     // Data in the credential
     val credentialData: NameSpacedData,
+    // Credential format
+    val credentialFormat: CredentialFormat,
     // Id of credential that provides documentName - used after Consent Prompt succeeds
     val credentialId: String,
     // Party requesting to verify user's data
