@@ -104,11 +104,6 @@ class LocalDevelopmentEnvironment(
                         R.drawable.utopia_pid_card_art,
                         Bitmap.CompressFormat.PNG
                     )
-                "funke/card_art.png"  ->
-                    bitmapData(
-                        R.drawable.funke_card_art,
-                        Bitmap.CompressFormat.PNG
-                    )
                 "utopia_local/logo.png" ->
                     bitmapData(
                         R.drawable.utopia_dmv_issuing_authority_logo,
@@ -117,6 +112,31 @@ class LocalDevelopmentEnvironment(
                 "utopia_local_pid/logo.png" ->
                     bitmapData(
                         R.drawable.utopia_pid_issuing_authority_logo,
+                        Bitmap.CompressFormat.PNG
+                    )
+                "funke/card_art_funke_generic.png"  ->
+                    bitmapData(
+                        R.drawable.card_art_funke_generic,
+                        Bitmap.CompressFormat.PNG
+                    )
+                "funke/card_art_funke_mdoc_c.png"  ->
+                    bitmapData(
+                        R.drawable.card_art_funke_mdoc_c,
+                        Bitmap.CompressFormat.PNG
+                    )
+                "funke/card_art_funke_mdoc_c1.png"  ->
+                    bitmapData(
+                        R.drawable.card_art_funke_mdoc_c1,
+                        Bitmap.CompressFormat.PNG
+                    )
+                "funke/card_art_funke_sdjwt_c.png"  ->
+                    bitmapData(
+                        R.drawable.card_art_funke_sdjwt_c,
+                        Bitmap.CompressFormat.PNG
+                    )
+                "funke/card_art_funke_sdjwt_c1.png"  ->
+                    bitmapData(
+                        R.drawable.card_art_funke_sdjwt_c1,
                         Bitmap.CompressFormat.PNG
                     )
                 "funke/logo.png" -> bitmapData(
