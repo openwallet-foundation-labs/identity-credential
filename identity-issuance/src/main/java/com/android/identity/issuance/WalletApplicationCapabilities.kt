@@ -9,12 +9,14 @@ import kotlinx.datetime.Instant
  * @property generatedAt The point in time this data was generated.
  * @property androidKeystoreAttestKeyAvailable Whether Android Keystore supports attest keys.
  * @property androidKeystoreStrongBoxAvailable Whether StrongBox is available on the device.
+ * @property androidIsEmulator Whether the app is running on an emulator.
  */
 @CborSerializable
 data class WalletApplicationCapabilities(
     val generatedAt: Instant,
     val androidKeystoreAttestKeyAvailable: Boolean,
     val androidKeystoreStrongBoxAvailable: Boolean,
+    val androidIsEmulator: Boolean,
 ) {
     companion object
 }
