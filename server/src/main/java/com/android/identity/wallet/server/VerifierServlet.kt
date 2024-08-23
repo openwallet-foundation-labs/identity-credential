@@ -85,17 +85,22 @@ enum class Protocol {
     MDOC_OPENID4VP,
 }
 
-enum class RequestType {
-    PID_MDOC_AGE_OVER_18,
-    PID_MDOC_MANDATORY,
-    PID_MDOC_FULL,
-    PID_SDJWT_AGE_OVER_18,
-    PID_SDJWT_MANDATORY,
-    PID_SDJWT_FULL,
-    MDL_MDOC_AGE_OVER_18,
-    MDL_MDOC_AGE_OVER_21,
-    MDL_MDOC_MANDATORY,
-    MDL_MDOC_FULL,
+enum class DocumentFormat {
+    MDOC,
+    SDJWT
+}
+
+enum class RequestType(val format: DocumentFormat) {
+    PID_MDOC_AGE_OVER_18(DocumentFormat.MDOC),
+    PID_MDOC_MANDATORY(DocumentFormat.MDOC),
+    PID_MDOC_FULL(DocumentFormat.MDOC),
+    PID_SDJWT_AGE_OVER_18(DocumentFormat.SDJWT),
+    PID_SDJWT_MANDATORY(DocumentFormat.SDJWT),
+    PID_SDJWT_FULL(DocumentFormat.SDJWT),
+    MDL_MDOC_AGE_OVER_18(DocumentFormat.MDOC),
+    MDL_MDOC_AGE_OVER_21(DocumentFormat.MDOC),
+    MDL_MDOC_MANDATORY(DocumentFormat.MDOC),
+    MDL_MDOC_FULL(DocumentFormat.MDOC),
 }
 
 @Serializable
@@ -717,7 +722,7 @@ class VerifierServlet : HttpServlet() {
             .claim("nonce", session.nonce)
             .claim("state", session.id)
             .claim("presentation_definition", presentationDefinition)
-            .claim("client_metadata", calcClientMetadata(session))
+            .claim("client_metadata", calcClientMetadata(session, session.requestType.format))
             .build()
         Logger.i(TAG, "Sending OpenID4VPRequest claims set: $claimsSet")
 
@@ -1169,7 +1174,7 @@ private fun sdjwtCalcPresentationDefinition(
     val algContainer = JSONObject()
     algContainer.put("alg", alg)
     val format = JSONObject()
-    format.put("jwt_vp", algContainer)
+    format.put("jwt_vc", algContainer)
 
     val fields = JSONArray()
     for (claim in request.vcRequest!!.claimsToRequest) {
@@ -1200,13 +1205,36 @@ private fun sdjwtCalcPresentationDefinition(
     return presentation_definition
 }
 
-private fun calcClientMetadata(session: Session): JSONObject {
+private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONObject {
     val encPub = session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate
 
     val client_metadata = JSONObject()
     client_metadata.put("authorization_encrypted_response_alg", "ECDH-ES")
     client_metadata.put("authorization_encrypted_response_enc", "A128CBC-HS256")
     client_metadata.put("response_mode", "direct_post.jwt")
+
+    val vpFormats = when (format) {
+        DocumentFormat.SDJWT -> {
+            val vpFormats = JSONObject()
+            val algList = JSONArray()
+            algList.addAll(listOf("ES256"))
+            val algObj = JSONObject()
+            algObj.put("alg", algList)
+            vpFormats.put("jwt_vc", algObj)
+            vpFormats
+        }
+        DocumentFormat.MDOC -> {
+            val vpFormats = JSONObject()
+            val algList = JSONArray()
+            algList.addAll(listOf("ES256"))
+            val algObj = JSONObject()
+            algObj.put("alg", algList)
+            vpFormats.put("mso_mdoc", algObj)
+            vpFormats
+        }
+    }
+    client_metadata.put("vp_formats", vpFormats)
+    client_metadata.put("vp_formats_supported", vpFormats)
 
     val key = JSONObject()
     key.put("kty", "EC")

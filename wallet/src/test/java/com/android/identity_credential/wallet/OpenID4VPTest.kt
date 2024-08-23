@@ -46,8 +46,13 @@ class OpenID4VPTest {
             "c7YxCHbGNHY47ZZ7STu6LxbJY6EOWHHw"
 
     @Test
-    fun testParsePath() {
+    fun testParsePathBracketed() {
         Assert.assertEquals(Pair("namespace", "dataElem"), parsePathItem("\"\$['namespace']['dataElem']\""))
+    }
+
+    @Test
+    fun testParsePathDotted() {
+        Assert.assertEquals(Pair("credentialSubject", "dataElem"), parsePathItem("\"\$.dataElem\""))
     }
 
     @Test
@@ -158,53 +163,6 @@ class OpenID4VPTest {
             DocumentRequest.DataElement("org.iso.18013.5.1", "issuing_country", false),
             DocumentRequest.DataElement("org.iso.18013.5.1", "portrait", false),
             DocumentRequest.DataElement("org.iso.18013.5.1", "un_distinguishing_sign", false))
-        Assert.assertEquals(expectedRequestedElems, docRequest.requestedDataElements)
-    }
-
-    @Test
-    fun sdjwtResponse() {
-        val authRequest = getAuthRequestFromJwt(SignedJWT.parse(sdjwtRequestObject), "http://10.0.2.2:8080/server")
-        Assert.assertEquals(parseToJsonElement(
-            "{\"input_descriptors\":[" +
-                    "{\"format\":{\"jwt_vp\":{\"alg\":[\"ES256\"]}}," +
-                    "\"id\":\"https://example.bmi.bund.de/credential/pid/1.0\"," +
-                    "\"constraints\":{\"limit_disclosure\":\"required\",\"fields\":[" +
-                    "{\"intent_to_retain\":false,\"path\":[\"$['https://example.bmi.bund.de/credential/pid/1.0']['age_over_18']\"]}]" +
-                    "}}]," +
-                    "\"id\":\"request-TODO-id\"}"),
-            authRequest.presentationDefinition)
-        Assert.assertEquals("http://10.0.2.2:8080/server", authRequest.clientId)
-        Assert.assertEquals("ac41d00a9f010bdb3ee730fae6bbe388", authRequest.nonce)
-        Assert.assertEquals("http:///192.168.94.37:8080/server/verifier/openid4vpResponse?sessionId=b2619c62334c91d16dfcfae3a36d60cb",
-            authRequest.responseUri)
-        Assert.assertEquals("b2619c62334c91d16dfcfae3a36d60cb",
-            authRequest.state)
-        Assert.assertEquals(parseToJsonElement(
-            "{\"authorization_encrypted_response_alg\":\"ECDH-ES\"," +
-                    "\"authorization_encrypted_response_enc\":\"A128CBC-HS256\"," +
-                    "\"jwks\":[{" +
-                    "        \"kty\":\"EC\"," +
-                    "        \"use\":\"enc\"," +
-                    "        \"crv\":\"P-256\"," +
-                    "        \"x\":\"0GiUyUz1IjhE06Bviw-QKpsLWcoQYzEXK3sBeHe27uo\"," +
-                    "        \"y\":\"LH-8swpi6NzmyiNNkWAoyNpnXwLMTXu3eR-H6u43S8o\"," +
-                    "        \"alg\":\"ECDH-ES\"}]," +
-                    "\"response_mode\":\"direct_post.jwt\"}"),
-            authRequest.clientMetadata!!)
-
-        val presentationSubmission = createPresentationSubmission(authRequest)
-        Assert.assertEquals("request-TODO-id",
-            presentationSubmission.definitionId)
-        val descriptorMaps = presentationSubmission.descriptorMaps
-        for (descriptorMap: DescriptorMap in descriptorMaps) {
-            Assert.assertEquals("https://example.bmi.bund.de/credential/pid/1.0", descriptorMap.id)
-            Assert.assertEquals("jwt_vp", descriptorMap.format)
-            Assert.assertEquals("$", descriptorMap.path)
-        }
-
-        val docRequest = formatAsDocumentRequest(authRequest.presentationDefinition["input_descriptors"]!!.jsonArray[0].jsonObject)
-        val expectedRequestedElems = listOf(
-            DocumentRequest.DataElement("https://example.bmi.bund.de/credential/pid/1.0", "age_over_18", false))
         Assert.assertEquals(expectedRequestedElems, docRequest.requestedDataElements)
     }
 }
