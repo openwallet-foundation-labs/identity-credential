@@ -189,15 +189,18 @@ class DocumentType private constructor(
         /**
          * Adds a sample request to the document.
          *
-         * TODO: Add support for VC claims as well.
-         *
-         * @param displayName a short name explaining the request
+         * @param id an identifier for the request.
+         * @param displayName a short name explaining the request.
          * @param mdocDataElements the mdoc data elements in the request, per namespace. If
          * the list of a namespace is empty, all defined data elements will be included.
+         * @param vcClaims the VC claims in the request. If the list is empty, all defined
+         * claims will be included.
          */
         fun addSampleRequest(
+            id: String,
             displayName: String,
-            mdocDataElements: Map<String, List<String>>?
+            mdocDataElements: Map<String, List<String>>? = null,
+            vcClaims: List<String>? = null
         ) = apply {
             val mdocRequest = if (mdocDataElements == null) {
                 null
@@ -218,7 +221,21 @@ class DocumentType private constructor(
                 }
                 MdocRequest(mdocBuilder!!.docType, nsRequests)
             }
-            sampleRequests.add(DocumentWellKnownRequest(displayName, mdocRequest))
+            val vcRequest = if (vcClaims == null) {
+                null
+            } else {
+                val claims = if (vcClaims.isEmpty()) {
+                    vcBuilder!!.claims.values.toList()
+                } else {
+                    val list = mutableListOf<DocumentAttribute>()
+                    for (claimName in vcClaims) {
+                        list.add(vcBuilder!!.claims[claimName]!!)
+                    }
+                    list
+                }
+                VcRequest(claims)
+            }
+            sampleRequests.add(DocumentWellKnownRequest(id, displayName, mdocRequest, vcRequest))
         }
 
         /**

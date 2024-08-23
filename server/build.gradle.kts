@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":identity-csa"))
     implementation(project(":identity-mdoc"))
     implementation(project(":identity-sdjwt"))
+    implementation(project(":identity-doctypes"))
 
     implementation(libs.javax.servlet.api)
     implementation(libs.kotlinx.datetime)

@@ -2,6 +2,7 @@ package com.android.identity.wallet.server
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.annotation.CborSerializable
@@ -9,6 +10,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
@@ -17,6 +19,9 @@ import com.android.identity.crypto.X509CertificateExtension
 import com.android.identity.crypto.create
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Storage
 import com.android.identity.mdoc.response.DeviceResponseParser
@@ -24,6 +29,7 @@ import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64
+import com.android.identity.util.fromHex
 import com.android.identity.util.toBase64
 import com.android.identity.util.toHex
 import com.nimbusds.jose.JOSEObjectType
@@ -57,6 +63,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
+import net.minidev.json.JSONStyle
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage
 import org.bouncycastle.asn1.x509.Extension
@@ -72,37 +79,23 @@ import java.security.interfaces.ECPublicKey
 import kotlin.random.Random
 
 enum class Protocol {
+    W3C_DC_PREVIEW,
     PLAIN_OPENID4VP,
     EUDI_OPENID4VP,
     MDOC_OPENID4VP,
 }
 
-enum class ClaimCollection {
-    OVER_18,
-    OVER_21,
-    MANDATORY,
-    FULL,
-    MANDATORY_SDJWT,
-    FULL_SDJWT
-}
-
-enum class DocumentFormat {
-    MDOC,
-    SDJWT
-}
-
-enum class RequestType(
-    val format: DocumentFormat,
-    val claimCollection: ClaimCollection) {
-    PID_MDOC_AGE_OVER_18(DocumentFormat.MDOC, ClaimCollection.OVER_18),
-    PID_MDOC_MANDATORY(DocumentFormat.MDOC, ClaimCollection.MANDATORY),
-    PID_MDOC_FULL(DocumentFormat.MDOC, ClaimCollection.FULL),
-    PID_SDJWT_MANDATORY(DocumentFormat.SDJWT, ClaimCollection.MANDATORY_SDJWT),
-    PID_SDJWT_FULL(DocumentFormat.SDJWT, ClaimCollection.FULL_SDJWT),
-    MDL_MDOC_AGE_OVER_18(DocumentFormat.MDOC, ClaimCollection.OVER_18),
-    MDL_MDOC_AGE_OVER_21(DocumentFormat.MDOC, ClaimCollection.OVER_21),
-    MDL_MDOC_MANDATORY(DocumentFormat.MDOC, ClaimCollection.MANDATORY),
-    MDL_MDOC_FULL(DocumentFormat.MDOC, ClaimCollection.FULL),
+enum class RequestType {
+    PID_MDOC_AGE_OVER_18,
+    PID_MDOC_MANDATORY,
+    PID_MDOC_FULL,
+    PID_SDJWT_AGE_OVER_18,
+    PID_SDJWT_MANDATORY,
+    PID_SDJWT_FULL,
+    MDL_MDOC_AGE_OVER_18,
+    MDL_MDOC_AGE_OVER_21,
+    MDL_MDOC_MANDATORY,
+    MDL_MDOC_FULL,
 }
 
 @Serializable
@@ -150,6 +143,26 @@ data class Session(
 ) {
     companion object
 }
+
+@Serializable
+private data class DCBeginRequest(
+    val requestType: String,
+    val protocol: String
+)
+
+@Serializable
+private data class DCBeginResponse(
+    val sessionId: String,
+    val dcRequestString: String
+)
+
+@Serializable
+private data class DCGetDataRequest(
+    val sessionId: String,
+    val data: String,
+    val origin: String
+)
+
 
 /**
  * Verifier servlet.
@@ -270,6 +283,13 @@ class VerifierServlet : HttpServlet() {
                     }
             }
             KeyMaterial.fromCbor(keyMaterialBlob)
+        }
+
+        private val documentTypeRepo: DocumentTypeRepository by lazy {
+            val repo =  DocumentTypeRepository()
+            repo.addDocumentType(DrivingLicense.getDocumentType())
+            repo.addDocumentType(EUPersonalID.getDocumentType())
+            repo
         }
     }
 
@@ -392,12 +412,14 @@ class VerifierServlet : HttpServlet() {
 
         if (req.requestURI.endsWith("verifier/openid4vpBegin")) {
             handleOpenID4VPBegin(remoteHost, req, resp, requestData)
-
         } else if (req.requestURI.endsWith("verifier/openid4vpGetData")) {
             handleOpenID4VPGetData(remoteHost, req, resp, requestData)
-
         } else if (req.requestURI.endsWith("verifier/openid4vpResponse")) {
             return handleOpenID4VPResponse(remoteHost, req, resp, requestData)
+        } else if (req.requestURI.endsWith("verifier/dcBegin")) {
+            handleDcBegin(remoteHost, req, resp, requestData)
+        } else if (req.requestURI.endsWith("verifier/dcGetData")) {
+            handleDcGetData(remoteHost, req, resp, requestData)
         } else {
             Logger.w(TAG, "$remoteHost: Unexpected URI ${req.requestURI}")
             resp.status = HttpServletResponse.SC_BAD_REQUEST
@@ -419,17 +441,18 @@ class VerifierServlet : HttpServlet() {
         }
     }
 
-    private fun handleOpenID4VPBegin(
+    private fun handleDcBegin(
         remoteHost: String,
         req: HttpServletRequest,
         resp: HttpServletResponse,
         requestData: ByteArray
     ) {
         val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
-        val request = Json.decodeFromString<OpenID4VPBeginRequest>(requestString)
+        val request = Json.decodeFromString<DCBeginRequest>(requestString)
 
         val protocol = when (request.protocol) {
             // Keep in sync with verifier.html
+            "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -445,6 +468,127 @@ class VerifierServlet : HttpServlet() {
             "pid_mdoc_age_over_18" -> RequestType.PID_MDOC_AGE_OVER_18
             "pid_mdoc_mandatory" -> RequestType.PID_MDOC_MANDATORY
             "pid_mdoc_full" -> RequestType.PID_MDOC_FULL
+            "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
+            "mdl_mdoc_age_over_21" -> RequestType.MDL_MDOC_AGE_OVER_21
+            "mdl_mdoc_mandatory" -> RequestType.MDL_MDOC_MANDATORY
+            "mdl_mdoc_full" -> RequestType.MDL_MDOC_FULL
+            else -> {
+                Logger.w(TAG, "$remoteHost: Unknown or unsupported request type '${request.requestType}'")
+                resp.status = HttpServletResponse.SC_BAD_REQUEST
+                return
+            }
+        }
+
+        // Create a new session
+        val session = Session(
+            id = Random.Default.nextBytes(16).toHex(),
+            nonce = Random.Default.nextBytes(16).toHex(),
+            encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
+            requestType = requestType,
+            protocol = protocol
+        )
+        runBlocking {
+            storage.insert(
+                STORAGE_TABLE_NAME,
+                "",
+                ByteString(session.toCbor()),
+                session.id
+            )
+        }
+
+        val dcRequestString = mdocCalcDcRequestString(
+            documentTypeRepo,
+            requestType,
+            session.nonce.fromHex(),
+            session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate
+        )
+        val json = Json { ignoreUnknownKeys = true }
+        val responseString = json.encodeToString(DCBeginResponse(session.id, dcRequestString))
+        resp.status = HttpServletResponse.SC_OK
+        resp.outputStream.write(responseString.encodeToByteArray())
+        resp.contentType = "application/json"
+        Logger.i(TAG, "Sending handleDcBegin response: $responseString")
+    }
+
+    private fun handleDcGetData(
+        remoteHost: String,
+        req: HttpServletRequest,
+        resp: HttpServletResponse,
+        requestData: ByteArray
+    ) {
+        val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
+        val request = Json.decodeFromString<DCGetDataRequest>(requestString)
+
+        val encodedSession = runBlocking {
+            storage.get(
+                STORAGE_TABLE_NAME,
+                "",
+                request.sessionId
+            )
+        }
+        if (encodedSession == null) {
+            Logger.e(TAG, "$remoteHost: No session for sessionId ${request.sessionId}")
+            resp.status = HttpServletResponse.SC_BAD_REQUEST
+            return
+        }
+        val session = Session.fromCbor(encodedSession.toByteArray())
+
+        val token = request.data.fromBase64()
+        val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(token)
+
+        val uncompressed = (session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
+        session.sessionTranscript = generateBrowserSessionTranscript(
+            session.nonce.fromHex(),
+            request.origin,
+            Crypto.digest(Algorithm.SHA256, uncompressed)
+        )
+        session.deviceResponse = Crypto.hpkeDecrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            session.encryptionKey,
+            cipherText,
+            session.sessionTranscript!!,
+            encapsulatedPublicKey)
+
+        try {
+            handleGetDataMdoc(session, resp)
+        } catch (e: Throwable) {
+            Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
+            resp.status = HttpServletResponse.SC_BAD_REQUEST
+            return
+        }
+
+        resp.contentType = "application/json"
+        resp.status = HttpServletResponse.SC_OK
+    }
+
+    private fun handleOpenID4VPBegin(
+        remoteHost: String,
+        req: HttpServletRequest,
+        resp: HttpServletResponse,
+        requestData: ByteArray
+    ) {
+        val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
+        val request = Json.decodeFromString<OpenID4VPBeginRequest>(requestString)
+
+        val protocol = when (request.protocol) {
+            // Keep in sync with verifier.html
+            "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
+            "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
+            "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
+            "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
+            else -> {
+                Logger.w(TAG, "$remoteHost: Unknown protocol '$request.protocol'")
+                resp.status = HttpServletResponse.SC_BAD_REQUEST
+                return
+            }
+        }
+
+        val requestType = when (request.requestType) {
+            // Keep in sync with verifier.html
+            "pid_mdoc_age_over_18" -> RequestType.PID_MDOC_AGE_OVER_18
+            "pid_mdoc_mandatory" -> RequestType.PID_MDOC_MANDATORY
+            "pid_mdoc_full" -> RequestType.PID_MDOC_FULL
+            "pid_sdjwt_age_over_18" -> RequestType.PID_SDJWT_AGE_OVER_18
             "pid_sdjwt_mandatory" -> RequestType.PID_SDJWT_MANDATORY
             "pid_sdjwt_full" -> RequestType.PID_SDJWT_FULL
             "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
@@ -479,6 +623,11 @@ class VerifierServlet : HttpServlet() {
             Protocol.PLAIN_OPENID4VP -> "openid4vp://"
             Protocol.EUDI_OPENID4VP -> "eudi-openid4vp://"
             Protocol.MDOC_OPENID4VP -> "mdoc-openid4vp://"
+            else -> {
+                Logger.w(TAG, "$remoteHost: Unknown protocol '${session.protocol}'")
+                resp.status = HttpServletResponse.SC_BAD_REQUEST
+                return
+            }
         }
         val requestUri = baseUrl + "/verifier/openid4vpRequest?sessionId=${session.id}"
         val uri = uriScheme +
@@ -543,9 +692,21 @@ class VerifierServlet : HttpServlet() {
             Base64.from(cert.encodedCertificate.toBase64())
         }
 
-        val presentationDefinition = when (session.requestType.format) {
-            DocumentFormat.MDOC -> mdocCalcPresentationDefinition(session.requestType)
-            DocumentFormat.SDJWT -> sdjwtCalcPresentationDefinition(session.requestType)
+        val presentationDefinition = when (session.requestType) {
+            RequestType.PID_MDOC_AGE_OVER_18,
+            RequestType.PID_MDOC_MANDATORY,
+            RequestType.PID_MDOC_FULL,
+            RequestType.MDL_MDOC_AGE_OVER_18,
+            RequestType.MDL_MDOC_AGE_OVER_21,
+            RequestType.MDL_MDOC_MANDATORY,
+            RequestType.MDL_MDOC_FULL -> {
+                mdocCalcPresentationDefinition(documentTypeRepo, session.requestType)
+            }
+            RequestType.PID_SDJWT_AGE_OVER_18,
+            RequestType.PID_SDJWT_MANDATORY,
+            RequestType.PID_SDJWT_FULL -> {
+                sdjwtCalcPresentationDefinition(documentTypeRepo, session.requestType)
+            }
         }
 
         val claimsSet = JWTClaimsSet.Builder()
@@ -717,9 +878,21 @@ class VerifierServlet : HttpServlet() {
         val session = Session.fromCbor(encodedSession.toByteArray())
 
         try {
-            when (session.requestType.format) {
-                DocumentFormat.MDOC -> handleGetDataMdoc(session, resp)
-                DocumentFormat.SDJWT -> handleGetDataSdJwt(session, resp)
+            when (session.requestType) {
+                RequestType.PID_MDOC_AGE_OVER_18,
+                RequestType.PID_MDOC_MANDATORY,
+                RequestType.PID_MDOC_FULL,
+                RequestType.MDL_MDOC_AGE_OVER_18,
+                RequestType.MDL_MDOC_AGE_OVER_21,
+                RequestType.MDL_MDOC_MANDATORY,
+                RequestType.MDL_MDOC_FULL -> {
+                    handleGetDataMdoc(session, resp)
+                }
+                RequestType.PID_SDJWT_AGE_OVER_18,
+                RequestType.PID_SDJWT_MANDATORY,
+                RequestType.PID_SDJWT_FULL -> {
+                    handleGetDataSdJwt(session, resp)
+                }
             }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
@@ -807,8 +980,6 @@ class VerifierServlet : HttpServlet() {
 
         // Check for the actual claims we requested, in addition to what was supplied
         // in the response.
-        val requestedClaimsSet = requestedClaims[session.requestType.claimCollection]!!.toSet()
-        Logger.i(TAG, "Searching for requested claims: ${requestedClaimsSet.sorted().joinToString()}")
         val disclosedClaims = presentation.sdJwtVc.disclosures.map { it.key }.toMutableSet()
         // There are several special cases that aren't in the selective disclosures, which our
         // JwtBody implementation copies into its properties:
@@ -822,17 +993,10 @@ class VerifierServlet : HttpServlet() {
             Pair("cnf", jwtBody.publicKey?.asJwk.toString())
         )
         for (key in specialCases.keys) {
-            if (requestedClaimsSet.contains(key)) {
-                val value = specialCases[key] ?: continue
-                lines.add(OpenID4VPResultLine(key, value))
-                disclosedClaims.add(key)
-                Logger.i(TAG, "Adding special case $key: $value")
-            }
-        }
-
-        val missingClaims = requestedClaimsSet - disclosedClaims
-        for (missingClaim in missingClaims.sorted()) {
-            Logger.w(TAG, "Value not disclosed for key: $missingClaim")
+            val value = specialCases[key] ?: continue
+            lines.add(OpenID4VPResultLine(key, value))
+            disclosedClaims.add(key)
+            Logger.i(TAG, "Adding special case $key: $value")
         }
 
         val json = Json { ignoreUnknownKeys = true }
@@ -878,273 +1042,72 @@ private fun createSessionTranscriptOpenID4VP(
     )
 }
 
-private data class MdocRequestNamespace(
-    val name: String,
-    val dataElements: List<String>
-)
+private fun mdocCalcDcRequestString(
+    documentTypeRepository: DocumentTypeRepository,
+    requestType: RequestType,
+    nonce: ByteArray,
+    readerPublicKey: EcPublicKeyDoubleCoordinate
+): String {
+    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
+    val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
+    val request = when (requestType) {
+        RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
+        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18_and_portrait" }
+        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_18_and_portrait" }
+        RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
+        else -> null
+    }
+    if (request == null) {
+        throw IllegalStateException("Unknown request type $requestType")
+    }
 
-private data class MdocRequest(
-    val docType: String,
-    val namespaces: List<MdocRequestNamespace>
-)
+    val top = JSONObject()
 
-private val requestedClaims: Map<ClaimCollection, List<String>> = mapOf(
-    Pair(
-        ClaimCollection.OVER_18,
-        listOf(
-            "age_over_18"
-        )
-    ),
-    Pair(
-        ClaimCollection.OVER_21,
-        listOf(
-            "age_over_21"
-        )
-    ),
-    Pair(
-        ClaimCollection.MANDATORY,
-        listOf(
-            "family_name",
-            "given_name",
-            "birth_date",
-            "age_over_18",
-            "issuance_date",
-            "expiry_date",
-            "issuing_authority",
-            "issuing_country"
-        )
-    ),
-    Pair(
-        ClaimCollection.FULL,
-        listOf(
-            "family_name",
-            "given_name",
-            "birth_date",
-            "age_over_18",
-            "age_in_years",
-            "age_birth_year",
-            "family_name_birth",
-            "given_name_birth",
-            "birth_place",
-            "birth_country",
-            "birth_state",
-            "birth_city",
-            "resident_address",
-            "resident_country",
-            "resident_state",
-            "resident_city",
-            "resident_postal_code",
-            "resident_street",
-            "resident_house_number",
-            "gender",
-            "nationality",
-            "issuance_date",
-            "expiry_date",
-            "issuing_authority",
-            "document_number",
-            "administrative_number",
-            "issuing_country",
-            "issuing_jurisdiction",
-        )
-    ),
-    Pair(ClaimCollection.MANDATORY_SDJWT,
-        listOf(
-            "family_name",
-            "given_name",
-            "birth_date",
-            "age_over_18",
-            "issuance_date",
-            "expiry_date",
-            "issuing_authority",
-            "issuing_country",
-            // Some of the "mandatory" claims are missing from the sample
-            // data we're working with, but there are similar claims that look
-            // like they may contain the expected information. Request those
-            // claims, also:
-            "18", "birthdate", "iat", "iss", "exp", "country"
-        )
-    ),
-    Pair(ClaimCollection.FULL_SDJWT,
-        listOf(
-            "family_name",
-            "given_name",
-            "birth_date",
-            "age_over_18",
-            "age_in_years",
-            "age_birth_year",
-            "family_name_birth",
-            "given_name_birth",
-            "birth_place",
-            "birth_country",
-            "birth_state",
-            "birth_city",
-            "resident_address",
-            "resident_country",
-            "resident_state",
-            "resident_city",
-            "resident_postal_code",
-            "resident_street",
-            "resident_house_number",
-            "gender",
-            "nationality",
-            "issuance_date",
-            "expiry_date",
-            "issuing_authority",
-            "document_number",
-            "administrative_number",
-            "issuing_country",
-            "issuing_jurisdiction",
-            // Additional fields we've seen in sample data:
-            "birthdate",
-            "iat",
-            "iss",
-            "vct",
-            "nbf",
-            "cnf",
-            "exp",
-            "country",
-            "age_birth_year",
-            "age_in_years",
-            "birth_family_name",
-            "nationalities",
-            "12",
-            "14",
-            "16",
-            "18",
-            "21",
-            "65",
-            "locality",
-            "postal_code",
-            "street_address"
-        )
-    )
-)
+    val selector = JSONObject()
+    val format = JSONArray()
+    format.add("mdoc")
+    selector.put("format", format)
+    top.put("selector", selector)
 
-private val knownMdocRequests: Map<RequestType, MdocRequest> = mapOf(
-    Pair(
-        RequestType.PID_MDOC_AGE_OVER_18,
-        MdocRequest(
-            "eu.europa.ec.eudi.pid.1",
-            listOf(
-                MdocRequestNamespace(
-                    "eu.europa.ec.eudi.pid.1",
-                    requestedClaims[ClaimCollection.OVER_18]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.PID_MDOC_MANDATORY,
-        MdocRequest(
-            "eu.europa.ec.eudi.pid.1",
-            listOf(
-                MdocRequestNamespace(
-                    "eu.europa.ec.eudi.pid.1",
-                    requestedClaims[ClaimCollection.MANDATORY]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.PID_MDOC_FULL,
-        MdocRequest(
-            "eu.europa.ec.eudi.pid.1",
-            listOf(
-                MdocRequestNamespace(
-                    "eu.europa.ec.eudi.pid.1",
-                    requestedClaims[ClaimCollection.FULL]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.MDL_MDOC_AGE_OVER_18,
-        MdocRequest(
-            "org.iso.18013.5.1.mDL",
-            listOf(
-                MdocRequestNamespace(
-                    "org.iso.18013.5.1",
-                    requestedClaims[ClaimCollection.OVER_18]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.MDL_MDOC_AGE_OVER_21,
-        MdocRequest(
-            "org.iso.18013.5.1.mDL",
-            listOf(
-                MdocRequestNamespace(
-                    "org.iso.18013.5.1",
-                    requestedClaims[ClaimCollection.OVER_21]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.MDL_MDOC_MANDATORY,
-        MdocRequest(
-            "org.iso.18013.5.1.mDL",
-            listOf(
-                MdocRequestNamespace(
-                    "org.iso.18013.5.1",
-                    requestedClaims[ClaimCollection.MANDATORY]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.MDL_MDOC_FULL,
-        MdocRequest(
-            "org.iso.18013.5.1.mDL",
-            listOf(
-                MdocRequestNamespace(
-                    "org.iso.18013.5.1",
-                    requestedClaims[ClaimCollection.FULL]!!
-                )
-            )
-        )
-    ),
-)
+    selector.put("doctype", request.mdocRequest!!.docType)
 
-private data class SdJwtRequestClaims(
-    // Name is the JSON object that contains the requested elements, which is probably
-    // "credentialSubject" in most cases.
-    val name: String,
-    val dataElements: List<String>
-)
+    val fields = JSONArray()
+    for (ns in request.mdocRequest!!.namespacesToRequest) {
+        for (de in ns.dataElementsToRequest) {
+            val field = JSONObject()
+            field.put("namespace", ns.namespace)
+            field.put("name", de.attribute.identifier)
+            field.put("intentToRetain", false)
+            fields.add(field)
+        }
+    }
+    selector.put("fields", fields)
 
-private data class SdJwtRequest(
-    val requestedClaims: List<SdJwtRequestClaims>
-)
+    top.put("nonce", nonce.toBase64())
+    top.put("readerPublicKey", readerPublicKey.asUncompressedPointEncoding.toBase64())
 
-private val knownSdJwtRequests: Map<RequestType, SdJwtRequest> = mapOf(
-    Pair(
-        RequestType.PID_SDJWT_MANDATORY,
-        SdJwtRequest(
-            listOf(
-                SdJwtRequestClaims(
-                    "credentialSubject",
-                    requestedClaims[ClaimCollection.MANDATORY_SDJWT]!!
-                )
-            )
-        )
-    ),
-    Pair(
-        RequestType.PID_SDJWT_FULL,
-        SdJwtRequest(
-            listOf(
-                SdJwtRequestClaims(
-                    "credentialSubject",
-                    requestedClaims[ClaimCollection.FULL_SDJWT]!!
-                )
-            )
-        )
-    )
-)
+    return top.toString(JSONStyle.NO_COMPRESS)
+}
 
-private fun mdocCalcPresentationDefinition(requestType: RequestType): JSONObject {
-    val request = knownMdocRequests.get(requestType)
+private fun mdocCalcPresentationDefinition(
+    documentTypeRepository: DocumentTypeRepository,
+    requestType: RequestType
+): JSONObject {
+    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
+    val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
+    val request = when (requestType) {
+        RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
+        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18_and_portrait" }
+        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_18_and_portrait" }
+        RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
+        else -> null
+    }
     if (request == null) {
         throw IllegalStateException("Unknown request type $requestType")
     }
@@ -1157,10 +1120,10 @@ private fun mdocCalcPresentationDefinition(requestType: RequestType): JSONObject
     format.put("mso_mdoc", mso_mdoc)
 
     val fields = JSONArray()
-    for (ns in request.namespaces) {
-        for (de in ns.dataElements) {
+    for (ns in request.mdocRequest!!.namespacesToRequest) {
+        for (de in ns.dataElementsToRequest) {
             var array = JSONArray()
-            array.add("\$['${ns.name}']['$de']")
+            array.add("\$['${ns.namespace}']['${de.attribute.identifier}']")
             val field = JSONObject()
             field.put("path", array)
             field.put("intent_to_retain", false)
@@ -1172,7 +1135,7 @@ private fun mdocCalcPresentationDefinition(requestType: RequestType): JSONObject
     constraints.put("fields", fields)
 
     val input_descriptor_0 = JSONObject()
-    input_descriptor_0.put("id", request.docType)
+    input_descriptor_0.put("id", request.mdocRequest!!.docType)
     input_descriptor_0.put("format", format)
     input_descriptor_0.put("constraints", constraints)
     val input_descriptors = JSONArray()
@@ -1186,8 +1149,17 @@ private fun mdocCalcPresentationDefinition(requestType: RequestType): JSONObject
     return presentation_definition
 }
 
-private fun sdjwtCalcPresentationDefinition(requestType: RequestType): JSONObject {
-    val request = knownSdJwtRequests.get(requestType)
+private fun sdjwtCalcPresentationDefinition(
+    documentTypeRepository: DocumentTypeRepository,
+    requestType: RequestType
+): JSONObject {
+    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
+    val request = when (requestType) {
+        RequestType.PID_SDJWT_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.PID_SDJWT_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.PID_SDJWT_FULL -> pid?.sampleRequests?.first { it.id == "full" }
+        else -> null
+    }
     if (request == null) {
         throw IllegalStateException("Unknown request type $requestType")
     }
@@ -1200,15 +1172,14 @@ private fun sdjwtCalcPresentationDefinition(requestType: RequestType): JSONObjec
     format.put("jwt_vp", algContainer)
 
     val fields = JSONArray()
-    for (ns in request.requestedClaims) {
-        for (de in ns.dataElements) {
-            var array = JSONArray()
-            array.add("\$['${ns.name}']['$de']")
-            val field = JSONObject()
-            field.put("path", array)
-            field.put("intent_to_retain", false)
-            fields.add(field)
-        }
+    for (claim in request.vcRequest!!.claimsToRequest) {
+        var array = JSONArray()
+        // TODO: should not include namespace here
+        array.add("\$['${EUPersonalID.EUPID_NAMESPACE}']['${claim.identifier}']")
+        val field = JSONObject()
+        field.put("path", array)
+        field.put("intent_to_retain", false)
+        fields.add(field)
     }
     val constraints = JSONObject()
     constraints.put("limit_disclosure", "required")
@@ -1251,4 +1222,70 @@ private fun calcClientMetadata(session: Session): JSONObject {
     client_metadata.put("jwks", keys)
 
     return client_metadata
+}
+
+private const val BROWSER_HANDOVER_V1 = "BrowserHandoverv1"
+private const val ANDROID_CREDENTIAL_DOCUMENT_VERSION = "ANDROID-HPKE-v1"
+
+private fun parseCredentialDocument(encodedCredentialDocument: ByteArray
+): Pair<ByteArray, EcPublicKey> {
+    val map = Cbor.decode(encodedCredentialDocument)
+    val version = map["version"].asTstr
+    if (!version.equals(ANDROID_CREDENTIAL_DOCUMENT_VERSION)) {
+        throw IllegalArgumentException("Unexpected version $version")
+    }
+    val encryptionParameters = map["encryptionParameters"]
+    val pkEm = encryptionParameters["pkEm"].asBstr
+    val encapsulatedPublicKey =
+        EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(EcCurve.P256, pkEm)
+    val cipherText = map["cipherText"].asBstr
+    return Pair(cipherText, encapsulatedPublicKey)
+}
+
+//    SessionTranscript = [
+//      null, // DeviceEngagementBytes not available
+//      null, // EReaderKeyBytes not available
+//      AndroidHandover // defined below
+//    ]
+//
+//    From https://github.com/WICG/mobile-document-request-api
+//
+//    BrowserHandover = [
+//      "BrowserHandoverv1",
+//      nonce,
+//      OriginInfoBytes, // origin of the request as defined in ISO/IEC 18013-7
+//      RequesterIdentity, // ? (omitting)
+//      pkRHash
+//    ]
+private fun generateBrowserSessionTranscript(
+    nonce: ByteArray,
+    origin: String,
+    requesterIdHash: ByteArray
+): ByteArray {
+    // TODO: Instead of hand-rolling this, we should use OriginInfoDomain which
+    //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
+    //   calls for.
+    val originInfoBytes = Cbor.encode(
+        CborMap.builder()
+            .put("cat", 1)
+            .put("type", 1)
+            .putMap("details")
+            .put("baseUrl", origin)
+            .end()
+            .end()
+            .build()
+    )
+    return Cbor.encode(
+        CborArray.builder()
+            .add(Simple.NULL) // DeviceEngagementBytes
+            .add(Simple.NULL) // EReaderKeyBytes
+            .addArray() // BrowserHandover
+            .add(BROWSER_HANDOVER_V1)
+            .add(nonce)
+            .add(originInfoBytes)
+            .add(requesterIdHash)
+            .end()
+            .end()
+            .build()
+    )
 }

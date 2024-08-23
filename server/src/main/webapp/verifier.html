@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="origin-trial" content="AqrF+vKVQZS3y5OJ3K2wkWZ4yEVxroNpC0oQR3kFeRmnvjBw+T9NPftQV9reLYszk8kNYyF1Zw+u3UZ9PMuxFQIAAACBeyJvcmlnaW4iOiJodHRwczovL2RpZ2l0YWwtY3JlZGVudGlhbHMuZGV2OjQ0MyIsImZlYXR1cmUiOiJXZWJJZGVudGl0eURpZ2l0YWxDcmVkZW50aWFscyIsImV4cGlyeSI6MTc0NDc2MTU5OSwiaXNTdWJkb21haW4iOnRydWV9">
     <title>OWF Identity Credential Online Verifier</title>
     <link rel="icon" type="image/x-icon" href="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/fingerprint/default/24px.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
@@ -44,7 +45,7 @@
                         Request PID (Age Over 18)
                     </button>
                     <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_mdoc_mandatory')">
-                        Request PID (Mandatory Elements)
+                        Request PID (Mandatory)
                     </button>
                     <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_mdoc_full')">
                         Request PID (Full)
@@ -53,8 +54,11 @@
             </div>
             <div class="tab-pane fade" id="pills-pid_sdjwt" role="tabpanel" aria-labelledby="pills-pid_sdjwt-tab" tabindex="0">
                 <div class="d-grid gap-2 mx-auto">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_age_over_18')">
+                        Request PID (Age Over 18)
+                    </button>
                     <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_mandatory')">
-                        Request PID (Mandatory Claims)
+                        Request PID (Mandatory)
                     </button>
                     <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_full')">
                         Request PID (Full)
@@ -85,9 +89,12 @@
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle btn-lg" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false" id="protocolDropdown">
-                    OpenID4VP (openid4vp:// URI scheme)
+                    W3C Digital Credentials API (Preview)
                 </button>
                 <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" value="w3c_dc_preview" href="#">
+                        W3C Digital Credentials API (Preview)
+                    </a></li>
                     <li><a class="dropdown-item" value="openid4vp_plain" href="#">
                         OpenID4VP (openid4vp:// URI scheme)
                     </a></li>
@@ -106,6 +113,27 @@
         This identity verifier is part of the <a href="https://github.com/openwallet-foundation-labs/identity-credential">OWF Identity Credential</a> project
         and is considered experimental software. Use at your own risk. <a href="verifier/readerRootCert">Reader Root Certificate</a>.
     </footer>
+</div>
+
+<!-- DC Result Modal -->
+<div class="modal fade" id="dcResultModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">User Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ol class="list-group">
+
+                </ol>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
