@@ -29,6 +29,7 @@ import com.android.identity.documenttype.DocumentType
 object EUPersonalID {
     const val EUPID_DOCTYPE = "eu.europa.ec.eudi.pid.1"
     const val EUPID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
+    const val EUPID_VCT = "urn:eu.europa.ec.eudi:pid:1"
 
     /**
      * Build the EU Personal ID Document Type.
@@ -36,7 +37,8 @@ object EUPersonalID {
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("EU Personal ID")
             .addMdocDocumentType(EUPID_DOCTYPE)
-            .addMdocAttribute(
+            .addVcDocumentType("EuPersonalID")
+            .addAttribute(
                 DocumentAttributeType.String,
                 "family_name",
                 "Family Name",
@@ -45,7 +47,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.FAMILY_NAME.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "given_name",
                 "Given Names",
@@ -54,7 +56,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.GIVEN_NAME.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Date,
                 "birth_date",
                 "Date of Birth",
@@ -63,7 +65,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.birthDate.toDataItemFullDate()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Number,
                 "age_in_years",
                 "Age in Years",
@@ -72,7 +74,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.AGE_IN_YEARS.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Number,
                 "age_birth_year",
                 "Year of Birth",
@@ -81,7 +83,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.AGE_BIRTH_YEAR.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Boolean,
                 "age_over_18",
                 "Older Than 18",
@@ -90,7 +92,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.AGE_OVER_18.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Boolean,
                 "age_over_21",
                 "Older Than 21",
@@ -99,7 +101,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.AGE_OVER_21.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "family_name_birth",
                 "Family Name at Birth",
@@ -108,7 +110,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.FAMILY_NAME_BIRTH.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "given_name_birth",
                 "First Name at Birth",
@@ -117,7 +119,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.GIVEN_NAME_BIRTH.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "birth_place",
                 "Place of Birth",
@@ -126,7 +128,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.BIRTH_PLACE.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "birth_country",
                 "Country of Birth",
@@ -135,7 +137,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.BIRTH_COUNTRY.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "birth_state",
                 "State of Birth",
@@ -144,7 +146,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.BIRTH_STATE.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "birth_city",
                 "City of Birth",
@@ -153,7 +155,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.BIRTH_CITY.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "resident_address",
                 "Resident Address",
@@ -162,7 +164,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_ADDRESS.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "resident_country",
                 "Resident Country",
@@ -171,7 +173,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_COUNTRY.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "resident_state",
                 "Resident State",
@@ -180,7 +182,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_STATE.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "resident_city",
                 "Resident City",
@@ -189,7 +191,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_CITY.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "resident_postal_code",
                 "Resident Postal Code",
@@ -198,7 +200,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_POSTAL_CODE.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "resident_street",
                 "Resident Street",
@@ -207,7 +209,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_STREET.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "resident_house_number",
                 "Resident House Number",
@@ -216,7 +218,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.RESIDENT_HOUSE_NUMBER.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
                 "gender",
                 "Gender",
@@ -225,7 +227,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.SEX_ISO218.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "nationality",
                 "Nationality",
@@ -234,7 +236,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.NATIONALITY.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Date,
                 "issuance_date",
                 "Date of Issue",
@@ -243,7 +245,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.issueDate.toDataItemFullDate()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.Date,
                 "expiry_date",
                 "Date of Expiry",
@@ -252,7 +254,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.expiryDate.toDataItemFullDate()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "issuing_authority",
                 "Issuing Authority",
@@ -263,7 +265,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.ISSUING_AUTHORITY_EU_PID.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "document_number",
                 "Document Number",
@@ -272,7 +274,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.DOCUMENT_NUMBER.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "administrative_number",
                 "Administrative Number",
@@ -281,7 +283,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.ADMINISTRATIVE_NUMBER.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.String,
                 "issuing_jurisdiction",
                 "Issuing Jurisdiction",
@@ -292,7 +294,7 @@ object EUPersonalID {
                 EUPID_NAMESPACE,
                 SampleData.ISSUING_JURISDICTION.toDataItem()
             )
-            .addMdocAttribute(
+            .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "issuing_country",
                 "Issuing Country",
@@ -303,14 +305,17 @@ object EUPersonalID {
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
             .addSampleRequest(
+                id = "age_over_18",
                 displayName = "Age Over 18",
                 mdocDataElements = mapOf(
                     Pair(EUPID_NAMESPACE, listOf(
                         "age_over_18",
                     ))
                 ),
+                vcClaims = listOf("age_over_18")
             )
             .addSampleRequest(
+                id = "mandatory",
                 displayName = "Mandatory Data Elements",
                 mdocDataElements = mapOf(
                     Pair(EUPID_NAMESPACE, listOf(
@@ -323,14 +328,26 @@ object EUPersonalID {
                         "issuing_authority",
                         "issuing_country"
                     ))
+                ),
+                vcClaims = listOf(
+                    "family_name",
+                    "given_name",
+                    "birth_date",
+                    "age_over_18",
+                    "issuance_date",
+                    "expiry_date",
+                    "issuing_authority",
+                    "issuing_country"
                 )
             )
             .addSampleRequest(
+                id = "full",
                 displayName = "All Data Elements",
                 mdocDataElements = mapOf(
                     Pair(EUPID_NAMESPACE, listOf(
                     ))
-                )
+                ),
+                vcClaims = listOf()
             )
             .build()
     }

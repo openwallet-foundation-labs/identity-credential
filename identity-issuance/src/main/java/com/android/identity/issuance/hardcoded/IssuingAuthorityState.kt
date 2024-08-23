@@ -530,7 +530,7 @@ class IssuingAuthorityState(
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random.Default,
             payload = identityAttributes,
-            docType = "PersonalIdentificationDocument",
+            docType = EUPersonalID.EUPID_VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 

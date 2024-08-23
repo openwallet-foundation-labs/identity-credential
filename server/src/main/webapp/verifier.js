@@ -1,6 +1,6 @@
 
 // Keep in sync with verifier.html
-var selectedProtocol = 'openid4vp_plain'
+var selectedProtocol = 'w3c_dc_preview'
 
 var openid4vpUri = ""
 
@@ -9,7 +9,8 @@ function onLoad() {
     protocolDropdown.addEventListener('hide.bs.dropdown', event => {
         var target = event.clickEvent.target
         var selected = target.getAttribute('value')
-        if (selected === 'openid4vp_plain' ||
+        if (selected === 'w3c_dc_preview' ||
+            selected === 'openid4vp_plain' ||
             selected === 'openid4vp_eudi' ||
             selected === 'openid4vp_mdoc') {
             selectedProtocol = selected
@@ -46,15 +47,64 @@ function redirectClose() {
 async function requestDocument(type) {
     console.log('requestMdoc, type=' + type + ' protocol=' + selectedProtocol)
 
+    if (selectedProtocol.startsWith('openid4vp_')) {
+        const response = await callServer(
+            'openid4vpBegin',
+            {
+                requestType: type,
+                protocol: selectedProtocol,
+            }
+        )
+        console.log("URI " + response.uri)
+        window.open(response.uri, '_blank').focus()
+    } else if (selectedProtocol === "w3c_dc_preview") {
+        try {
+            const response = await callServer(
+                'dcBegin',
+                {
+                    requestType: type,
+                    protocol: selectedProtocol,
+                }
+            )
+            dcRequestCredential(response.sessionId, 'preview', JSON.parse(response.dcRequestString))
+        } catch (err) {
+            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+        }
+    }
+}
+
+async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
+    try {
+        const credentialResponse = await navigator.identity.get({
+            digital: {
+                providers: [{
+                    protocol: dcRequestProtocol,
+                    request: dcRequest
+                }]
+            },
+          })
+        dcProcessResponse(sessionId, credentialResponse)
+    } catch (err) {
+        alert(err)
+    }
+}
+
+async function dcProcessResponse(sessionId, credentialResponse) {
     const response = await callServer(
-        'openid4vpBegin',
+        'dcGetData',
         {
-            requestType: type,
-            protocol: selectedProtocol,
+            sessionId: sessionId,
+            data: JSON.parse(credentialResponse.data).token,
+            origin: location.origin,
         }
     )
-    console.log("URI " + response.uri)
-    window.open(response.uri, '_blank').focus()
+    var modalBody = document.getElementById('dcResultModal').querySelector('.list-group')
+    modalBody.innerHTML = ''
+    for (const line of response.lines) {
+        modalBody.innerHTML += '<li class="list-group-item d-flex justify-content-between align-items-start"><div class="ms-2 me-auto"><div class="fw-bold">' + line.key + '</div>' + line.value + '</div></li>'
+    }
+    var modal = new bootstrap.Modal(document.getElementById('dcResultModal'), {})
+    modal.show()
 }
 
 function openid4vpAuthenticateWithWallet() {

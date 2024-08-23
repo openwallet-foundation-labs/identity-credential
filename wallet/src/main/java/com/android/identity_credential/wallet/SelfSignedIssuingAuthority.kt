@@ -27,6 +27,7 @@ import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
@@ -134,7 +135,7 @@ abstract class SelfSignedIssuingAuthority(
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random(42),
             payload = identityAttributes,
-            docType = "PersonalIdentificationDocument",
+            docType = EUPersonalID.EUPID_VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 

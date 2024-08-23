@@ -759,8 +759,9 @@ object DrivingLicense {
                 null
             )
             .addSampleRequest(
-                "US Transportation",
-                mapOf(
+                id = "us-transportation",
+                displayName = "US Transportation",
+                mdocDataElements = mapOf(
                     Pair(MDL_NAMESPACE, listOf(
                         "sex",
                         "portrait",
@@ -778,8 +779,19 @@ object DrivingLicense {
                 ),
             )
             .addSampleRequest(
-                "Age Over 21 + Portrait",
-                mapOf(
+                id ="age_over_18_and_portrait",
+                displayName ="Age Over 18 + Portrait",
+                mdocDataElements = mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "age_over_18",
+                        "portrait"
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                id ="age_over_21_and_portrait",
+                displayName ="Age Over 21 + Portrait",
+                mdocDataElements = mapOf(
                     Pair(MDL_NAMESPACE, listOf(
                         "age_over_21",
                         "portrait"
@@ -787,8 +799,19 @@ object DrivingLicense {
                 ),
             )
             .addSampleRequest(
-                "Mandatory Data Elements",
-                mapOf(
+                id ="age_over_21_and_portrait",
+                displayName ="Age Over 21 + Portrait",
+                mdocDataElements = mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "age_over_21",
+                        "portrait"
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                id = "mandatory",
+                displayName = "Mandatory Data Elements",
+                mdocDataElements = mapOf(
                     Pair(MDL_NAMESPACE, listOf(
                         "family_name",
                         "given_name",
@@ -805,8 +828,9 @@ object DrivingLicense {
                 )
             )
             .addSampleRequest(
-                "All Data Elements",
-                mapOf(
+                id = "full",
+                displayName ="All Data Elements",
+                mdocDataElements = mapOf(
                     Pair(MDL_NAMESPACE, listOf()),
                     Pair(AAMVA_NAMESPACE, listOf())
                 )
