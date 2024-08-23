@@ -833,7 +833,6 @@ class VerifierServlet : HttpServlet() {
         val missingClaims = requestedClaimsSet - disclosedClaims
         for (missingClaim in missingClaims.sorted()) {
             Logger.w(TAG, "Value not disclosed for key: $missingClaim")
-            lines.add(OpenID4VPResultLine("Value not disclosed:", missingClaim))
         }
 
         val json = Json { ignoreUnknownKeys = true }
