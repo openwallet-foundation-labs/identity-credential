@@ -28,11 +28,14 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
+import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
+import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
 import org.json.JSONObject
 
 import com.google.android.gms.identitycredentials.GetCredentialResponse
@@ -75,7 +78,7 @@ class CredmanPresentationActivity : FragmentActivity() {
             Logger.i(TAG, "CredId: $credentialId ${cmrequest!!.credentialOptions.get(0).requestMatcher}")
             Logger.i(TAG, "Calling app $callingPackageName $callingOrigin")
 
-            val dataElements = mutableListOf<DocumentRequest.DataElement>()
+            val requestedData = mutableMapOf<String, MutableList<Pair<String, Boolean>>>()
 
             val json = JSONObject(cmrequest!!.credentialOptions.get(0).requestMatcher)
             val provider = json.getJSONArray("providers").getJSONObject(0)
@@ -110,14 +113,16 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val namespace = field.getString("namespace")
                     val intentToRetain = field.getBoolean("intentToRetain")
                     Logger.i(TAG, "Field $namespace $name $intentToRetain")
-                    dataElements.add(
-                        DocumentRequest.DataElement(
-                            namespace,
-                            name,
-                            intentToRetain
-                        )
-                    )
+                    requestedData.getOrPut(namespace) { mutableListOf() }
+                        .add(Pair(name, intentToRetain))
                 }
+                val mdocCredential = getMdocCredentialForCredentialId(credentialId)
+                val consentFields = MdocConsentField.generateConsentFields(
+                    docType,
+                    requestedData,
+                    walletApp.documentTypeRepository,
+                    mdocCredential
+                )
 
                 // Generate the Session Transcript
                 val encodedSessionTranscript = if (callingOrigin == null) {
@@ -135,8 +140,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                 }
                 lifecycleScope.launch {
                     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
-                        credentialId,
-                        dataElements,
+                        mdocCredential,
+                        consentFields,
                         encodedSessionTranscript
                     )
 
@@ -200,14 +205,17 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val name = st[3] as String
                     Logger.i(TAG, "namespace $namespace name $name")
                     val intentToRetain = field.getBoolean("intent_to_retain")
-                    dataElements.add(
-                        DocumentRequest.DataElement(
-                            namespace,
-                            name,
-                            intentToRetain
-                        )
-                    )
+                    requestedData.getOrPut(namespace) { mutableListOf() }
+                        .add(Pair(name, intentToRetain))
                 }
+                val mdocCredential = getMdocCredentialForCredentialId(credentialId)
+                val consentFields = MdocConsentField.generateConsentFields(
+                    docType,
+                    requestedData,
+                    walletApp.documentTypeRepository,
+                    mdocCredential
+                )
+
                 // Generate the Session Transcript
                 val encodedSessionTranscript = if (callingOrigin == null) {
                     CredmanUtil.generateAndroidSessionTranscript(
@@ -224,8 +232,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                 }
                 lifecycleScope.launch {
                     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
-                        credentialId,
-                        dataElements,
+                        mdocCredential,
+                        consentFields,
                         encodedSessionTranscript
                     )
                     // Create the openid4vp response
@@ -266,24 +274,23 @@ class CredmanPresentationActivity : FragmentActivity() {
     /**
      * Show the Presentment Flow and handle producing the DeviceResponse CBOR bytes.
      *
-     * @param credentialId the int index of [Document] in [DocumentStore]
-     * @param dataElements the list of requested data points of a credential
-     * @param encodedSessionTranscript CBOR bytes
-     * @return the DeviceResponse CBOR bytes containing the [Document] for the given [credentialId]
+     * @param mdocCredential the credential.
+     * @param consentFields the list of fields to request.
+     * @param encodedSessionTranscript CBOR bytes.
+     * @return the DeviceResponse CBOR bytes containing the [Document] for the given credential.
      */
     private suspend fun showPresentmentFlowAndGetDeviceResponse(
-        credentialId: Int,
-        dataElements: List<DocumentRequest.DataElement>,
+        mdocCredential: MdocCredential,
+        consentFields: List<ConsentField>,
         encodedSessionTranscript: ByteArray,
     ): ByteArray {
-        val mdocCredential = getMdocCredentialForCredentialId(credentialId)
         val documentCborBytes = showMdocPresentmentFlow(
             activity = this@CredmanPresentationActivity,
-            walletApp = walletApp,
-            documentRequest = DocumentRequest(dataElements),
-            credential = mdocCredential,
+            consentFields = consentFields,
+            documentName = mdocCredential.document.documentConfiguration.displayName,
             // TODO: Need to extend TrustManager with a verify() variants which takes a domain or appId
             trustPoint = null,
+            credential = mdocCredential,
             encodedSessionTranscript = encodedSessionTranscript,
         )
         // Create ISO DeviceResponse

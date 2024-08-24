@@ -105,7 +105,7 @@ fun Document.renderDocumentDetails(
     context: Context,
     documentTypeRepository: DocumentTypeRepository
 ): DocumentDetails {
-    // TODO: use DocumentConfiguration instead of pulling it out of a certified credential.
+    // TODO: maybe use DocumentConfiguration instead of pulling data out of a certified credential.
 
     if (certifiedCredentials.size == 0) {
         return DocumentDetails(null, null, mapOf())
@@ -117,7 +117,7 @@ fun Document.renderDocumentDetails(
             return renderDocumentDetailsForMdoc(context, documentTypeRepository, credential)
         }
         is SdJwtVcCredential -> {
-            return renderDocumentDetailsForSdJwt(context, credential)
+            return renderDocumentDetailsForSdJwt(documentTypeRepository, credential)
         }
         else -> {
             return DocumentDetails(
@@ -169,34 +169,30 @@ private fun Document.renderDocumentDetailsForMdoc(
 }
 
 private fun Document.renderDocumentDetailsForSdJwt(
-    context: Context,
+    documentTypeRepository: DocumentTypeRepository,
     credential: SdJwtVcCredential
 ): DocumentDetails {
     val kvPairs = mutableMapOf<String, String>()
+
+    val vcType = documentTypeRepository.getDocumentTypeForVc(credential.vct)?.vcDocumentType
 
     val sdJwt = SdJwtVerifiableCredential.fromString(
         String(credential.issuerProvidedData, Charsets.US_ASCII))
 
     for (disclosure in sdJwt.disclosures) {
-        // TODO: replace this ad-hoc mapping with document type based mapping like what is done
-        // for mdoc
         val content = if (disclosure.value is JsonPrimitive) {
             disclosure.value.jsonPrimitive.content
         } else {
             disclosure.value.toString()
         }
-        when (disclosure.key) {
-            "family_name" -> kvPairs["Family Name"] = content
-            "given_name" -> kvPairs["First Name"] = content
-            "birthdate" -> kvPairs["Date of Birth"] = content
-            "age_in_years" -> kvPairs["Age"] = content
-            "birth_family_name" -> kvPairs["Maiden Name"] = content
-            else -> if (disclosure.key.matches(Regex("^\\d+\$"))) {
-                kvPairs["Over ${disclosure.key}"] = content
-            } else {
-                kvPairs[disclosure.key] = content
-            }
-        }
+        val claimName = disclosure.key
+        val displayName = vcType
+            ?.claims
+            ?.get(claimName)
+            ?.displayName
+            ?: claimName
+
+        kvPairs[displayName] = content
     }
 
     return DocumentDetails(null, null, kvPairs)

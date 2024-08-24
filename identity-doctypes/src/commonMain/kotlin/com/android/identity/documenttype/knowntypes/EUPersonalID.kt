@@ -37,7 +37,7 @@ object EUPersonalID {
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("EU Personal ID")
             .addMdocDocumentType(EUPID_DOCTYPE)
-            .addVcDocumentType("EuPersonalID")
+            .addVcDocumentType(EUPID_VCT)
             .addAttribute(
                 DocumentAttributeType.String,
                 "family_name",

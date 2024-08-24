@@ -292,6 +292,65 @@ object MdocUtil {
         return issuerSignedData
     }
 
+    /**
+     * Combines document data with static authentication data for a given request.
+     *
+     * This goes through all data element name in a given set of name spaces and data elements
+     * and for each data element name, looks up `documentData` and `staticAuthData`
+     * for the value and if present, will include that in the result.
+     *
+     * The result is intended to mimic `IssuerNameSpaces` CBOR as defined
+     * in ISO 18013-5 except that the data is returned using a native maps and lists.
+     * The returned data is a map from name spaces into a list of the bytes of the
+     * `IssuerSignedItemBytes` CBOR.
+     *
+     * @param request a [DocumentRequest] indicating which name spaces and data
+     * element names to include in the result.
+     * @param documentData Document data, organized by name space.
+     * @param staticAuthData Static authentication data.
+     * @return A map described above.
+     */
+    fun mergeIssuerNamesSpaces(
+        dataElements: Map<String, List<String>>,
+        documentData: NameSpacedData,
+        staticAuthData: StaticAuthData
+    ): Map<String, MutableList<ByteArray>> {
+        val issuerSignedItemMap = calcIssuerSignedItemMap(staticAuthData.digestIdMapping)
+        val issuerSignedData: MutableMap<String, MutableList<ByteArray>> = LinkedHashMap()
+        for ((nameSpaceName, dataElementsInNamespace) in dataElements) {
+            for (dataElementName in dataElementsInNamespace) {
+                if (!documentData.hasDataElement(nameSpaceName, dataElementName)) {
+                    Logger.d(TAG,
+                        "No data element in document for nameSpace $nameSpaceName "
+                                + " dataElementName $dataElementName"
+                    )
+                    continue
+                }
+                val value = documentData.getDataElement(nameSpaceName, dataElementName)
+                val encodedIssuerSignedItemMaybeWithoutValue =
+                    lookupIssuerSignedMap(issuerSignedItemMap, nameSpaceName, dataElementName)
+                if (encodedIssuerSignedItemMaybeWithoutValue == null) {
+                    Logger.w(TAG, "No IssuerSignedItem for $nameSpaceName $dataElementName")
+                    continue
+                }
+                var encodedIssuerSignedItem: ByteArray?
+                encodedIssuerSignedItem =
+                    if (hasElementValue(encodedIssuerSignedItemMaybeWithoutValue)) {
+                        encodedIssuerSignedItemMaybeWithoutValue
+                    } else {
+                        issuerSignedItemSetValue(encodedIssuerSignedItemMaybeWithoutValue, value)
+                    }
+                val list = issuerSignedData.getOrPut(nameSpaceName) { ArrayList() }
+
+                // We need a tagged bstr here
+                val taggedEncodedIssuerSignedItem =
+                    Cbor.encode(Tagged(24, Bstr(encodedIssuerSignedItem)))
+                list.add(taggedEncodedIssuerSignedItem)
+            }
+        }
+        return issuerSignedData
+    }
+
     private fun hasElementValue(encodedIssuerSignedItem: ByteArray): Boolean =
         Cbor.decode(encodedIssuerSignedItem)["elementValue"] != Simple.NULL
 

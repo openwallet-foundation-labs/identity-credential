@@ -5,6 +5,8 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborInt
 import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.annotation.CborSerializable
@@ -510,7 +512,7 @@ class IssuingAuthorityState(
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
     ): ByteArray {
-        // For now, just use the mdoc data element names and only import tstr and numbers
+        // For now, just use the mdoc data element names and pretty print its value
         //
         val identityAttributes = buildJsonObject {
             for (nsName in documentConfiguration.mdocConfiguration!!.staticData.nameSpaceNames) {
@@ -518,10 +520,32 @@ class IssuingAuthorityState(
                     val value = Cbor.decode(
                         documentConfiguration.mdocConfiguration!!.staticData.getDataElement(nsName, deName)
                     )
+                    // TODO: This will need support for bstr once we support that in a DocumentType.
                     when (value) {
                         is Tstr -> put(deName, value.asTstr)
-                        is CborInt -> put(deName, value.asNumber.toString())
-                        else -> {} /* do nothing */
+                        is CborInt -> put(deName, value.asNumber)
+                        is Simple -> {
+                            if (value == Simple.TRUE) {
+                                put(deName, true)
+                            } else if (value == Simple.FALSE){
+                                put(deName, false)
+                            } else {
+                                put(deName, value.toString())
+                            }
+                        }
+                        else -> {
+                            put(
+                                deName,
+                                Cbor.toDiagnostics(
+                                    value,
+                                    setOf(
+                                        DiagnosticOption.PRETTY_PRINT,
+                                        DiagnosticOption.BSTR_PRINT_LENGTH,
+                                        DiagnosticOption.EMBEDDED_CBOR
+                                    )
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -706,7 +730,7 @@ class IssuingAuthorityState(
                 staticData = staticData,
             ),
             sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
-                "https://example.bmi.bund.de/credential/pid/1.0"
+                EUPersonalID.EUPID_VCT
             ),
         )
     }

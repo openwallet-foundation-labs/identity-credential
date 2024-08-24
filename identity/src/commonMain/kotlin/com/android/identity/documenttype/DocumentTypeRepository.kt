@@ -55,6 +55,17 @@ class DocumentTypeRepository {
         }
 
     /**
+     * Gets the first [DocumentType] in [documentTypes] with a given VC vct.
+     *
+     * @param vct the Verification Credential Type.
+     * @return the [DocumentType] or null if not found.
+     */
+    fun getDocumentTypeForVc(vct: String): DocumentType? =
+        _documentTypes.find {
+            it.vcDocumentType?.type?.equals(vct) ?: false
+        }
+
+    /**
      * Gets the first [DocumentType] in [documentTypes] with a given mdoc namespace.
      *
      * @param mdocNamespace the mdoc namespace name.
