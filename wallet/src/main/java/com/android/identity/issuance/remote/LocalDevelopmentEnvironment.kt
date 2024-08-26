@@ -169,6 +169,8 @@ class LocalDevelopmentEnvironment(
                     context.resources.getString(R.string.utopia_local_issuing_authority_tos)
                 "utopia_local_pid/tos.html" ->
                     context.resources.getString(R.string.utopia_local_issuing_authority_pid_tos)
+                "funke/tos.html" ->
+                    context.resources.getString(R.string.funke_issuing_authority_tos)
                 else -> null
             }
         }

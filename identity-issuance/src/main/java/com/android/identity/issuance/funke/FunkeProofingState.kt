@@ -5,6 +5,7 @@ import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.server.Resources
 import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.WalletApplicationCapabilities
@@ -12,11 +13,13 @@ import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
+import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
+import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.securearea.PassphraseConstraints
@@ -44,7 +47,9 @@ class FunkeProofingState(
     var dpopNonce: String? = null,
     var token: String? = null,
     var secureAreaIdentifier: String? = null,
-    var secureAreaSetupDone: Boolean = false
+    var secureAreaSetupDone: Boolean = false,
+    var tosAcknowleged: Boolean = false,
+    var notificationPermissonRequested: Boolean = false
 ) {
     companion object {
         private const val TAG = "FunkeProofingState"
@@ -53,7 +58,35 @@ class FunkeProofingState(
     @FlowMethod
     fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
         return if (token == null) {
-            listOf(EvidenceRequestGermanEid(tcTokenUrl, listOf()))
+            if (!tosAcknowleged) {
+                val message = env.getInterface(Resources::class)!!
+                    .getStringResource("funke/tos.html")!!
+                listOf(EvidenceRequestMessage(
+                    message = message,
+                    assets = emptyMap(),
+                    acceptButtonText = "Continue",
+                    rejectButtonText = "Cancel"
+                ))
+            } else if (!notificationPermissonRequested) {
+                listOf(EvidenceRequestNotificationPermission(
+                    permissionNotGrantedMessage = """
+                        ## Receive notifications?
+                        
+                        If there are updates to your document the issuer will send an updated document
+                        to your device. If you are interested, we can send a notification to make you aware
+                        of when this happens. This requires granting a permission.
+                        
+                        If you previously denied this permission, attempting to grant it again might not do
+                        anything and you may need to go into Settings and manually enable
+                        notifications for this application.
+                    """.trimIndent(),
+                    grantPermissionButtonText = "Grant Permission",
+                    continueWithoutPermissionButtonText = "No Thanks",
+                    assets = mapOf()
+                ))
+            } else {
+                listOf(EvidenceRequestGermanEid(tcTokenUrl, listOf()))
+            }
         } else if (secureAreaIdentifier == null) {
             listOf(
                 if (applicationCapabilities.androidKeystoreStrongBoxAvailable) {
@@ -98,7 +131,11 @@ class FunkeProofingState(
                 if (!evidenceResponse.acknowledged) {
                     throw IssuingAuthorityException("Issuance rejected")
                 }
-                secureAreaIdentifier = getCloudSecureAreaId(env)
+                if (tosAcknowleged) {
+                    secureAreaIdentifier = getCloudSecureAreaId(env)
+                } else {
+                    tosAcknowleged = true
+                }
             }
             is EvidenceResponseQuestionMultipleChoice -> {
                 secureAreaIdentifier = if (evidenceResponse.answerId == "cloud") {
@@ -109,6 +146,9 @@ class FunkeProofingState(
             }
             is EvidenceResponseSetupCloudSecureArea -> {
                 secureAreaSetupDone = true
+            }
+            is EvidenceResponseNotificationPermission -> {
+                notificationPermissonRequested = true
             }
             else -> throw IllegalArgumentException("Unexpected evidence type")
         }
