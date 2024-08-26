@@ -482,5 +482,6 @@
     <string name="qr_alert_dialog_bt_disabled_title">Bluetooth disabled</string>
     <string name="qr_alert_dialog_bt_disabled_text">Bluetooth must be enabled to share a QR connection code</string>
     <string name="qr_alert_dialog_bt_enable_button">Enable</string>
+    <string name="presentation_result_no_matching_document_message">No available documents can fulfill the request.</string>
 
 </resources>

@@ -145,6 +145,8 @@ internal data class AuthorizationRequest (
     var certificateChain: List<X509Certificate>?
 )
 
+class NoMatchingDocumentException(message: String): Exception(message) {}
+
 class OpenID4VPPresentationActivity : FragmentActivity() {
     companion object {
         private const val TAG = "OpenID4VPPresentationActivity"
@@ -163,6 +165,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
     private var resultStringId: Int = 0
     private var resultDrawableId: Int = 0
     private var successRedirectUri: Uri? = null
+    private var resultDelay: Long = 1500
 
     @Composable
     private fun Result(phase: Phase) {
@@ -243,6 +246,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             } catch (e: UserCanceledPromptException) {
                 Logger.e(TAG, "User canceled the prompt")
                 phase.value = Phase.CANCELED
+            } catch (e: NoMatchingDocumentException) {
+                Logger.e(TAG, "No matching document", e)
+                resultStringId = R.string.presentation_result_no_matching_document_message
+                resultDrawableId = R.drawable.presentment_result_status_error
+                resultDelay = 3000
+                phase.value = Phase.SHOW_RESULT
             } catch (e: Throwable) {
                 Logger.e(TAG, "Error presenting", e)
                 resultStringId = R.string.presentation_result_error_message
@@ -265,7 +274,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                     Logger.i(TAG, "Phase: Showing result")
                     lifecycleScope.launch {
                         // the amount of time to show the result for
-                        delay(1500)
+                        delay(resultDelay)
                         phase.value = Phase.POST_RESULT
                     }
                 }
@@ -309,7 +318,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         if (credentialIdFromPager != null
             && canDocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docType)
         ) {
-            return documentStore.lookupDocument(credentialIdFromPager)!!
+            return documentStore.lookupDocument(credentialIdFromPager)
         }
 
         val docId = documentStore.listDocuments().firstOrNull { credentialId ->
@@ -468,7 +477,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
 
         val document = firstMatchingDocument(credentialFormat, docType)
-            ?: run { throw IllegalStateException("No matching credentials in wallet for " +
+            ?: run { throw NoMatchingDocumentException("No matching credentials in wallet for " +
                     "docType $docType and credentialFormat $credentialFormat") }
 
         // begin collecting and creating data needed for the response
