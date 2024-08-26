@@ -433,6 +433,14 @@
     <string name="utopia_eu_pid_issuing_authority_pending_document_title">Utopia PID (pending)</string>
     <string name="utopia_eu_pid_issuing_authority_document_title">%1$s\'s PID</string>
 
+    <!-- Funke issuing authority TOS -->
+    <string name="funke_issuing_authority_tos"><![CDATA[
+        <h2>Provisioning a Personal Identification Data (PID) credential</h2>
+        <p>In the following screens, information will be collected for provisioning of a PID for
+        a fictional person used for testing only.</p>
+        <p>The PID is generated and signed on the government server. The created PID will be bound to
+        this device.</p>
+    ]]></string>
     <!-- Consent Prompt -->
     <string name="consent_prompt_button_cancel">Cancel</string>
     <string name="consent_prompt_button_confirm">Share</string>

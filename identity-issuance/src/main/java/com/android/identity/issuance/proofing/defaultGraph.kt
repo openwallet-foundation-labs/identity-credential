@@ -219,7 +219,7 @@ fun defaultGraph(
                 of when this happens. This requires granting a permission.
                 
                 If you previously denied this permission, attempting to grant it again might not do
-                anything and you may need to manually go into Settings and manually enable
+                anything and you may need to go into Settings and manually enable
                 notifications for this application.
             """.trimIndent(),
             grantPermissionButtonText = "Grant Permission",
