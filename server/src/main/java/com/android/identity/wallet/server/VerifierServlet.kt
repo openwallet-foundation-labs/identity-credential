@@ -1179,11 +1179,9 @@ private fun sdjwtCalcPresentationDefinition(
     val fields = JSONArray()
     for (claim in request.vcRequest!!.claimsToRequest) {
         var array = JSONArray()
-        // TODO: should not include namespace here
-        array.add("\$['${EUPersonalID.EUPID_NAMESPACE}']['${claim.identifier}']")
+        array.add("\$.${claim.identifier}")
         val field = JSONObject()
         field.put("path", array)
-        field.put("intent_to_retain", false)
         fields.add(field)
     }
     val constraints = JSONObject()

@@ -530,7 +530,9 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         val requestState: String? = authorizationRequest.state
         val response = httpClient.post(authorizationRequest.responseUri) {
             body = FormData(Parameters.build {
-                append("response", jwtResponse.serialize())
+                val serializedJwtResposne = jwtResponse.serialize()
+                Logger.i(TAG, "Sending serialized JWT response: $serializedJwtResposne")
+                append("response", serializedJwtResposne)
                 requestState?.let {
                     append("state", it)
                 }
