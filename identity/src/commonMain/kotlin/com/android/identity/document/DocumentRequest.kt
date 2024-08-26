@@ -37,6 +37,8 @@ package com.android.identity.document
  * to generate the resulting `DeviceResponse`. This CBOR can then be sent to the remote
  * reader.
  *
+ * TODO: Should be removed since this is now obsoleted by List<ConsentField> in the wallet app.
+ *
  * @param requestedDataElements A list of [DocumentRequest.DataElement] instances.
  */
 class DocumentRequest(

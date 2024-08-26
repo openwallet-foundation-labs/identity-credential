@@ -40,6 +40,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.X509Cert
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
+import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
@@ -50,6 +51,9 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
+import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
+import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
+import com.android.identity_credential.wallet.ui.prompt.consent.VcConsentField
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
 import com.nimbusds.jose.EncryptionMethod
@@ -352,15 +356,82 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         override fun bytes(): ByteArray = content
     }
 
-    private fun getCredentialToUse(document: Document, credentialFormat: CredentialFormat, now: Instant): SecureAreaBoundCredential {
-        val credential = when(credentialFormat) {
-            CredentialFormat.MDOC_MSO -> document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
-            CredentialFormat.SD_JWT_VC -> document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC, now)
+    private fun getCredentialAndConsentFields(
+        document: Document,
+        credentialFormat: CredentialFormat,
+        inputDescriptor: JsonObject,
+        now: Instant):
+            Pair<SecureAreaBoundCredential, List<ConsentField>> {
+        return when(credentialFormat) {
+            CredentialFormat.MDOC_MSO -> {
+                val credential =
+                    document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
+                        ?: throw IllegalStateException("No credentials available")
+                val (docType, requestedData) = parseInputDescriptorForMdoc(inputDescriptor)
+                val consentFields = MdocConsentField.generateConsentFields(
+                    docType,
+                    requestedData,
+                    walletApp.documentTypeRepository,
+                    credential as MdocCredential
+                )
+                return Pair(credential as SecureAreaBoundCredential, consentFields)
+            }
+            CredentialFormat.SD_JWT_VC -> {
+                val (vct, requestedClaims) = parseInputDescriptorForVc(inputDescriptor)
+                val credential =
+                    document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC, now)
+                        ?: throw IllegalStateException("No credentials available")
+                val consentFields = VcConsentField.generateConsentFields(
+                    vct,
+                    requestedClaims,
+                    walletApp.documentTypeRepository,
+                    credential as SdJwtVcCredential
+                )
+                return Pair(credential as SecureAreaBoundCredential, consentFields)
+            }
         }
-        if (credential == null) {
-            throw IllegalStateException("No credentials available")
+    }
+
+    private fun parseInputDescriptorForMdoc(
+        inputDescriptor: JsonObject
+    ): Pair<String, Map<String, List<Pair<String, Boolean>>>> {
+        val requestedData = mutableMapOf<String, MutableList<Pair<String, Boolean>>>()
+
+        val docType = inputDescriptor["id"]!!.jsonPrimitive.content
+        val constraints = inputDescriptor["constraints"]!!.jsonObject
+        val fields = constraints["fields"]!!.jsonArray
+
+        for (field: JsonElement in fields) {
+            val fieldObj = field.jsonObject
+            val path = fieldObj["path"]!!.jsonArray[0].toString()
+            val parsed = parsePathItem(path)
+            val nameSpaceName = parsed.first
+            val dataElementName = parsed.second
+            val intentToRetain = (fieldObj["intent_to_retain"].toString() == "true")
+
+            requestedData.getOrPut(nameSpaceName) { mutableListOf() }
+                .add(Pair(dataElementName, intentToRetain))
         }
-        return credential as SecureAreaBoundCredential
+
+        return Pair(docType, requestedData)
+    }
+
+    private fun parseInputDescriptorForVc(
+        inputDescriptor: JsonObject
+    ): Pair<String, List<String>> {
+        val requestedClaims = mutableListOf<String>()
+        val vct = EUPersonalID.EUPID_VCT  // TODO: extract from `inputDescriptor`
+
+        val constraints = inputDescriptor["constraints"]!!.jsonObject
+        val fields = constraints["fields"]!!.jsonArray
+        for (field: JsonElement in fields) {
+            val fieldObj = field.jsonObject
+            val path = fieldObj["path"]!!.jsonArray[0].toString()
+            val parsed = parsePathItem(path)
+            val claimName = parsed.second
+            requestedClaims.add(claimName)
+        }
+        return Pair(vct, requestedClaims)
     }
 
     // Returns `false` if canceled by the user
@@ -417,7 +488,11 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         }
 
         val now = Clock.System.now()
-        val credentialToUse = getCredentialToUse(document, credentialFormat, now)
+        val (credentialToUse, consentFields) = getCredentialAndConsentFields(
+            document,
+            credentialFormat,
+            inputDescriptorObj,
+            now)
 
         var trustPoint: TrustPoint? = null
         if (authorizationRequest.certificateChain != null) {
@@ -436,7 +511,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             }
         }
 
-        val vpTokenByteArray = generateVpToken(documentRequest, credentialToUse, trustPoint, authorizationRequest, sessionTranscript)
+        val vpTokenByteArray = generateVpToken(consentFields, credentialToUse, trustPoint, authorizationRequest, sessionTranscript)
         Logger.i(TAG, "Setting vp_token: ${vpTokenByteArray.decodeToString()}")
         val vpToken = Base64.UrlSafe.encode(vpTokenByteArray)
         val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
@@ -522,7 +597,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
     @OptIn(ExperimentalEncodingApi::class)
     private suspend fun generateVpToken(
-        documentRequest: DocumentRequest,
+        consentFields: List<ConsentField>,
         credential: SecureAreaBoundCredential,
         trustPoint: TrustPoint?,
         authorizationRequest: AuthorizationRequest,
@@ -535,10 +610,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             is MdocCredential -> {
                 val documentResponse = showMdocPresentmentFlow(
                     activity = this,
-                    walletApp = walletApp,
-                    documentRequest = documentRequest,
-                    credential = credential,
+                    consentFields = consentFields,
+                    documentName = credential.document.documentConfiguration.displayName,
                     trustPoint = trustPoint,
+                    credential = credential,
                     encodedSessionTranscript = sessionTranscript,
                 )
 
@@ -552,10 +627,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             is SdJwtVcCredential -> {
                 showSdJwtPresentmentFlow(
                     activity = this,
-                    walletApp = walletApp,
-                    documentRequest = documentRequest,
-                    credential = credential,
+                    consentFields = consentFields,
+                    documentName = credential.document.documentConfiguration.displayName,
                     trustPoint = trustPoint,
+                    credential = credential,
                     nonce = authorizationRequest.nonce,
                     clientId = authorizationRequest.clientId
                 )

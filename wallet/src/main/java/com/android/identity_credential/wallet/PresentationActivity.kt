@@ -67,6 +67,8 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
+import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
+import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -359,14 +361,20 @@ class PresentationActivity : FragmentActivity() {
                                     }
                                 }
 
+                                val consentFields = MdocConsentField.generateConsentFields(
+                                    docRequest,
+                                    walletApp.documentTypeRepository,
+                                    mdocCredential
+                                )
+
                                 // show the Presentation Flow for and get the response bytes for
                                 // the generated Document
                                 val documentCborBytes = showMdocPresentmentFlow(
                                     activity = this@PresentationActivity,
-                                    walletApp = walletApp,
-                                    documentRequest = MdocUtil.generateDocumentRequest(docRequest),
-                                    credential = mdocCredential,
+                                    consentFields = consentFields,
+                                    documentName = mdocCredential.document.documentConfiguration.displayName,
                                     trustPoint = trustPoint,
+                                    credential = mdocCredential,
                                     encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
                                 )
                                 deviceResponseGenerator.addDocument(documentCborBytes)
