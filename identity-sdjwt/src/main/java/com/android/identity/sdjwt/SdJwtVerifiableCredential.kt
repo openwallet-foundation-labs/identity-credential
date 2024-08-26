@@ -11,8 +11,8 @@ import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.sdjwt.vc.JwtHeader
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
-import com.android.identity.util.fromBase64
-import com.android.identity.util.toBase64
+import com.android.identity.util.fromBase64Url
+import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonElement
@@ -110,7 +110,7 @@ class SdJwtVerifiableCredential(
         val bodyObj = JwtBody.fromString(body)
 
         val toBeVerified = "$header.$body".toByteArray(Charsets.US_ASCII)
-        val signature = EcSignature.fromCoseEncoded(signature.fromBase64())
+        val signature = EcSignature.fromCoseEncoded(signature.fromBase64Url())
 
         if(!verify(headerObj, bodyObj, toBeVerified, signature)) {
             throw IllegalStateException("Signature verification failed")
@@ -140,12 +140,12 @@ class SdJwtVerifiableCredential(
 
         val keyBindingHeaderStr = KeyBindingHeader(alg).toString()
 
-        val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64()
+        val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64Url()
         val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
 
         val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".toByteArray(Charsets.US_ASCII)
         val signature = secureArea.sign(alias, alg, toBeSigned, keyUnlockData)
-        val signatureStr = signature.toCoseEncoded().toBase64()
+        val signatureStr = signature.toCoseEncoded().toBase64Url()
 
         return SdJwtVerifiablePresentation(
             this,

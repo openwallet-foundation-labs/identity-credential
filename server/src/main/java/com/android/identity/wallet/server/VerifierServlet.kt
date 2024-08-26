@@ -5,6 +5,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Simple
+import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
@@ -19,18 +20,20 @@ import com.android.identity.crypto.X509CertificateExtension
 import com.android.identity.crypto.create
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Storage
+import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.util.Logger
-import com.android.identity.util.fromBase64
+import com.android.identity.util.fromBase64Url
 import com.android.identity.util.fromHex
-import com.android.identity.util.toBase64
+import com.android.identity.util.toBase64Url
 import com.android.identity.util.toHex
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
@@ -80,6 +83,7 @@ import kotlin.random.Random
 
 enum class Protocol {
     W3C_DC_PREVIEW,
+    W3C_DC_ARF,
     PLAIN_OPENID4VP,
     EUDI_OPENID4VP,
     MDOC_OPENID4VP,
@@ -99,6 +103,7 @@ enum class RequestType(val format: DocumentFormat) {
     PID_SDJWT_FULL(DocumentFormat.SDJWT),
     MDL_MDOC_AGE_OVER_18(DocumentFormat.MDOC),
     MDL_MDOC_AGE_OVER_21(DocumentFormat.MDOC),
+    MDL_MDOC_AGE_OVER_21_AND_PORTRAIT(DocumentFormat.MDOC),
     MDL_MDOC_MANDATORY(DocumentFormat.MDOC),
     MDL_MDOC_FULL(DocumentFormat.MDOC),
 }
@@ -106,7 +111,8 @@ enum class RequestType(val format: DocumentFormat) {
 @Serializable
 private data class OpenID4VPBeginRequest(
     val requestType: String,
-    val protocol: String
+    val protocol: String,
+    val origin: String
 )
 
 @Serializable
@@ -141,6 +147,7 @@ data class Session(
     val requestType: RequestType,
     val protocol: Protocol,
     val nonce: String,
+    val origin: String,
     val encryptionKey: EcPrivateKey,
     var responseUri: String? = null,
     var deviceResponse: ByteArray? = null,
@@ -152,7 +159,8 @@ data class Session(
 @Serializable
 private data class DCBeginRequest(
     val requestType: String,
-    val protocol: String
+    val protocol: String,
+    val origin: String
 )
 
 @Serializable
@@ -164,10 +172,18 @@ private data class DCBeginResponse(
 @Serializable
 private data class DCGetDataRequest(
     val sessionId: String,
-    val data: String,
-    val origin: String
+    val credentialResponse: String
 )
 
+@Serializable
+private data class DCPreviewResponse(
+    val token: String
+)
+
+@Serializable
+private data class DCArfResponse(
+    val encryptedResponse: String
+)
 
 /**
  * Verifier servlet.
@@ -364,8 +380,8 @@ class VerifierServlet : HttpServlet() {
 
     private fun createSingleUseReaderKey(): Pair<EcPrivateKey, X509CertChain> {
         val now = Clock.System.now()
-        val validFrom = now
-        val validUntil = now.plus(DateTimePeriod(minutes = 5), TimeZone.currentSystemDefault())
+        val validFrom = now.plus(DateTimePeriod(minutes = -10), TimeZone.currentSystemDefault())
+        val validUntil = now.plus(DateTimePeriod(minutes = 10), TimeZone.currentSystemDefault())
         val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
         val extensions = mutableListOf<X509CertificateExtension>()
@@ -386,6 +402,56 @@ class VerifierServlet : HttpServlet() {
             )
         )
         val readerKeySubject = "CN=OWF IC Online Verifier Single-Use Reader Key"
+
+        // TODO: for now, instead of using the per-site Reader Root generated at first run, use the
+        //  well-know OWF IC Reader root checked into Git.
+        val owfIcReaderCert = X509Cert.fromPem("""
+            -----BEGIN CERTIFICATE-----
+            MIICCTCCAY+gAwIBAgIQMrJE21vV644Z1wKsQ0NmgDAKBggqhkjOPQQDAzA+MS8wLQYDVQQDDCZP
+            V0YgSWRlbnRpdHkgQ3JlZGVudGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCVVQwHhcNMjQw
+            MjI4MTQxMjMzWhcNMjkwMjI4MTQxMjMzWjA+MS8wLQYDVQQDDCZPV0YgSWRlbnRpdHkgQ3JlZGVu
+            dGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCVVQwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARP
+            rmdJRF5/4GX+60fo9G5r10EevRrJ9TkGmW1Oyw7tK5FTtsUzG+DhlARSW1czAEVZOPvEOb4KwSH4
+            Np4sgCtuZWrubLeXPwcxaF15DIv9F2mGqSB4vBIFIemMdXpl/HOjUjBQMB0GA1UdDgQWBBSh7AVU
+            ngz0Xayp0/hfn2xxaSAIhzAfBgNVHSMEGDAWgBSh7AVUngz0Xayp0/hfn2xxaSAIhzAOBgNVHQ8B
+            Af8EBAMCAQYwCgYIKoZIzj0EAwMDaAAwZQIxAPTyY0TzkxfnKdrcRttDBzMS8q/hF8l/odhk77lY
+            tJPVgt+aOPumHHFiJvhqvKmQmAIwGKSkPXc6menkG2GpQRQQV7xBlALPO4zSJMoF90hEEK+SK+Ts
+            u1Qtl0xtfSQC7wj0
+            -----END CERTIFICATE-----
+        """.trimIndent())
+
+        val owfIcReaderRoot = EcPrivateKey.fromPem("""
+            -----BEGIN PRIVATE KEY-----
+            MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDAeNZSqN2mQ01YWI04MplJvL01+eQhHylTY
+            STfsGrTqXzk0N7Ayx7OJOHnK5DkGV0agBwYFK4EEACI=
+            -----END PRIVATE KEY-----
+        """.trimIndent(),
+            owfIcReaderCert.ecPublicKey)
+        val owfIcReaderRootSignatureAlgorithm = Algorithm.ES384
+        val owfIcReaderRootIssuer = owfIcReaderCert.javaX509Certificate.issuerX500Principal.name
+
+        val readerKeyCertificate = X509Cert.create(
+            readerKey.publicKey,
+            owfIcReaderRoot,
+            owfIcReaderCert,
+            owfIcReaderRootSignatureAlgorithm,
+            "1",
+            readerKeySubject,
+            owfIcReaderRootIssuer,
+            validFrom,
+            validUntil,
+            setOf(
+                X509CertificateCreateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                X509CertificateCreateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE
+            ),
+            extensions
+        )
+        return Pair(
+            readerKey,
+            X509CertChain(listOf(readerKeyCertificate) + owfIcReaderCert)
+        )
+
+        /*
         val readerKeyCertificate = X509Cert.create(
             readerKey.publicKey,
             keyMaterial.readerRootKey,
@@ -406,6 +472,8 @@ class VerifierServlet : HttpServlet() {
             readerKey,
             X509CertChain(listOf(readerKeyCertificate) + keyMaterial.readerRootKeyCertificates.certificates)
         )
+
+         */
     }
 
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
@@ -458,6 +526,7 @@ class VerifierServlet : HttpServlet() {
         val protocol = when (request.protocol) {
             // Keep in sync with verifier.html
             "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
+            "w3c_dc_arf" -> Protocol.W3C_DC_ARF
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -475,6 +544,7 @@ class VerifierServlet : HttpServlet() {
             "pid_mdoc_full" -> RequestType.PID_MDOC_FULL
             "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
             "mdl_mdoc_age_over_21" -> RequestType.MDL_MDOC_AGE_OVER_21
+            "mdl_mdoc_age_over_21_and_portrait" -> RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT
             "mdl_mdoc_mandatory" -> RequestType.MDL_MDOC_MANDATORY
             "mdl_mdoc_full" -> RequestType.MDL_MDOC_FULL
             else -> {
@@ -488,6 +558,7 @@ class VerifierServlet : HttpServlet() {
         val session = Session(
             id = Random.Default.nextBytes(16).toHex(),
             nonce = Random.Default.nextBytes(16).toHex(),
+            origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
             requestType = requestType,
             protocol = protocol
@@ -501,18 +572,28 @@ class VerifierServlet : HttpServlet() {
             )
         }
 
+        val (readerAuthKey, readerAuthKeyCertification) = createSingleUseReaderKey()
+
+        // Uncomment when making test vectors...
+        //Logger.iCbor(TAG, "readerKey: ", Cbor.encode(session.encryptionKey.toCoseKey().toDataItem()))
+
         val dcRequestString = mdocCalcDcRequestString(
             documentTypeRepo,
             requestType,
+            session.protocol,
             session.nonce.fromHex(),
-            session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate
+            session.origin,
+            session.encryptionKey,
+            session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate,
+            readerAuthKey,
+            readerAuthKeyCertification
         )
+        Logger.i(TAG, "dcRequestString: $dcRequestString")
         val json = Json { ignoreUnknownKeys = true }
         val responseString = json.encodeToString(DCBeginResponse(session.id, dcRequestString))
         resp.status = HttpServletResponse.SC_OK
         resp.outputStream.write(responseString.encodeToByteArray())
         resp.contentType = "application/json"
-        Logger.i(TAG, "Sending handleDcBegin response: $responseString")
     }
 
     private fun handleDcGetData(
@@ -538,21 +619,19 @@ class VerifierServlet : HttpServlet() {
         }
         val session = Session.fromCbor(encodedSession.toByteArray())
 
-        val token = request.data.fromBase64()
-        val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(token)
+        Logger.i(TAG, "Data received from WC3 DC API: ${request.credentialResponse}")
 
-        val uncompressed = (session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
-        session.sessionTranscript = generateBrowserSessionTranscript(
-            session.nonce.fromHex(),
-            request.origin,
-            Crypto.digest(Algorithm.SHA256, uncompressed)
-        )
-        session.deviceResponse = Crypto.hpkeDecrypt(
-            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-            session.encryptionKey,
-            cipherText,
-            session.sessionTranscript!!,
-            encapsulatedPublicKey)
+        try {
+            when (session.protocol) {
+                Protocol.W3C_DC_PREVIEW ->handleDcGetDataPreview(session, request.credentialResponse)
+                Protocol.W3C_DC_ARF -> handleDcGetDataArf(session, request.credentialResponse)
+                else -> throw IllegalArgumentException("unsupported protocol ${session.protocol}")
+            }
+        } catch (e: Throwable) {
+            Logger.e(TAG, "$remoteHost: failed with", e)
+            e.printStackTrace()
+            resp.status = HttpServletResponse.SC_BAD_REQUEST
+        }
 
         try {
             handleGetDataMdoc(session, resp)
@@ -564,6 +643,78 @@ class VerifierServlet : HttpServlet() {
 
         resp.contentType = "application/json"
         resp.status = HttpServletResponse.SC_OK
+    }
+
+    private fun handleDcGetDataPreview(
+        session: Session,
+        credentialResponse: String
+    ) {
+        val tokenBase64 = Json.decodeFromString<DCPreviewResponse>(credentialResponse).token
+
+        val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(tokenBase64.fromBase64Url())
+        val uncompressed = (session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
+        session.sessionTranscript = generateBrowserSessionTranscript(
+            session.nonce.fromHex(),
+            session.origin,
+            Crypto.digest(Algorithm.SHA256, uncompressed)
+        )
+        session.deviceResponse = Crypto.hpkeDecrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            session.encryptionKey,
+            cipherText,
+            session.sessionTranscript!!,
+            encapsulatedPublicKey)
+    }
+
+    private fun handleDcGetDataArf(
+        session: Session,
+        credentialResponse: String
+    ) {
+        val encryptedResponseBase64 = Json.decodeFromString<DCArfResponse>(credentialResponse).encryptedResponse
+
+        val array = Cbor.decode(encryptedResponseBase64.fromBase64Url()).asArray
+        if (array.get(0).asTstr != "ARFencryptionv2") {
+            throw IllegalArgumentException("Excepted ARFencryptionv2 as first array element")
+        }
+        val encryptionParameters = array.get(1).asMap
+        val encapsulatedPublicKey = encryptionParameters[Tstr("pkEm")]!!.asCoseKey.ecPublicKey
+        val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
+
+        val arfEncryptionInfo = CborMap.builder()
+            .put("nonce", session.nonce.fromHex())
+            .put("readerPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
+            .end()
+            .build()
+        val encryptionInfo = CborArray.builder()
+            .add("ARFEncryptionv2")
+            .add(arfEncryptionInfo)
+            .end()
+            .build()
+        val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
+
+        session.sessionTranscript =
+            Cbor.encode(
+                CborArray.builder()
+                    .add(Simple.NULL) // DeviceEngagementBytes
+                    .add(Simple.NULL) // EReaderKeyBytes
+                    .addArray() // BrowserHandover
+                    .add("ARFHandoverv2")
+                    .add(base64EncryptionInfo)
+                    .add(session.origin)
+                    .end()
+                    .end()
+                    .build()
+            )
+
+        session.deviceResponse = Crypto.hpkeDecrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            session.encryptionKey,
+            cipherText,
+            session.sessionTranscript!!,
+            encapsulatedPublicKey)
+
+        Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
+        Logger.iCbor(TAG, "SessionTranscript", session.sessionTranscript!!)
     }
 
     private fun handleOpenID4VPBegin(
@@ -578,6 +729,7 @@ class VerifierServlet : HttpServlet() {
         val protocol = when (request.protocol) {
             // Keep in sync with verifier.html
             "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
+            "w3c_dc_arf" -> Protocol.W3C_DC_ARF
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -598,6 +750,7 @@ class VerifierServlet : HttpServlet() {
             "pid_sdjwt_full" -> RequestType.PID_SDJWT_FULL
             "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
             "mdl_mdoc_age_over_21" -> RequestType.MDL_MDOC_AGE_OVER_21
+            "mdl_mdoc_age_over_21_and_portrait" -> RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT
             "mdl_mdoc_mandatory" -> RequestType.MDL_MDOC_MANDATORY
             "mdl_mdoc_full" -> RequestType.MDL_MDOC_FULL
             else -> {
@@ -611,6 +764,7 @@ class VerifierServlet : HttpServlet() {
         val session = Session(
             id = Random.Default.nextBytes(16).toHex(),
             nonce = Random.Default.nextBytes(16).toHex(),
+            origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
             requestType = requestType,
             protocol = protocol
@@ -694,7 +848,7 @@ class VerifierServlet : HttpServlet() {
         )
 
         val readerX5c = singleUseReaderKeyCertChain.certificates.map { cert ->
-            Base64.from(cert.encodedCertificate.toBase64())
+            Base64.from(cert.encodedCertificate.toBase64Url())
         }
 
         val presentationDefinition = when (session.requestType) {
@@ -703,6 +857,7 @@ class VerifierServlet : HttpServlet() {
             RequestType.PID_MDOC_FULL,
             RequestType.MDL_MDOC_AGE_OVER_18,
             RequestType.MDL_MDOC_AGE_OVER_21,
+            RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT,
             RequestType.MDL_MDOC_MANDATORY,
             RequestType.MDL_MDOC_FULL -> {
                 mdocCalcPresentationDefinition(documentTypeRepo, session.requestType)
@@ -825,7 +980,7 @@ class VerifierServlet : HttpServlet() {
             encryptedJWT.decrypt(decrypter)
 
             val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
-            session.deviceResponse = vpToken.fromBase64()
+            session.deviceResponse = vpToken.fromBase64Url()
             session.sessionTranscript = createSessionTranscriptOpenID4VP(
                 clientId = clientId,
                 responseUri = session.responseUri!!,
@@ -889,6 +1044,7 @@ class VerifierServlet : HttpServlet() {
                 RequestType.PID_MDOC_FULL,
                 RequestType.MDL_MDOC_AGE_OVER_18,
                 RequestType.MDL_MDOC_AGE_OVER_21,
+                RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT,
                 RequestType.MDL_MDOC_MANDATORY,
                 RequestType.MDL_MDOC_FULL -> {
                     handleGetDataMdoc(session, resp)
@@ -1050,17 +1206,59 @@ private fun createSessionTranscriptOpenID4VP(
 private fun mdocCalcDcRequestString(
     documentTypeRepository: DocumentTypeRepository,
     requestType: RequestType,
+    protocol: Protocol,
     nonce: ByteArray,
-    readerPublicKey: EcPublicKeyDoubleCoordinate
+    origin: String,
+    readerKey: EcPrivateKey,
+    readerPublicKey: EcPublicKeyDoubleCoordinate,
+    readerAuthKey: EcPrivateKey,
+    readerAuthKeyCertification: X509CertChain
 ): String {
+    when (protocol) {
+        Protocol.W3C_DC_PREVIEW -> {
+            return mdocCalcDcRequestStringPreview(
+                documentTypeRepository,
+                requestType,
+                nonce,
+                origin,
+                readerPublicKey
+            )
+        }
+        Protocol.W3C_DC_ARF -> {
+            return mdocCalcDcRequestStringArf(
+                documentTypeRepository,
+                requestType,
+                nonce,
+                origin,
+                readerKey,
+                readerPublicKey,
+                readerAuthKey,
+                readerAuthKeyCertification
+            )
+        }
+        else -> {
+            throw IllegalStateException("Unsupported protocol $protocol")
+        }
+    }
+}
+
+private fun mdocCalcDcRequestStringPreview(
+        documentTypeRepository: DocumentTypeRepository,
+        requestType: RequestType,
+        nonce: ByteArray,
+        origin: String,
+        readerPublicKey: EcPublicKeyDoubleCoordinate
+    ): String {
+
     val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
     val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
     val request = when (requestType) {
         RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
         RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
         RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
-        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18_and_portrait" }
-        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
+        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21" }
+        RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
         RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
         RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
         else -> null
@@ -1091,9 +1289,87 @@ private fun mdocCalcDcRequestString(
     }
     selector.put("fields", fields)
 
-    top.put("nonce", nonce.toBase64())
-    top.put("readerPublicKey", readerPublicKey.asUncompressedPointEncoding.toBase64())
+    top.put("nonce", nonce.toBase64Url())
+    top.put("readerPublicKey", readerPublicKey.asUncompressedPointEncoding.toBase64Url())
 
+    return top.toString(JSONStyle.NO_COMPRESS)
+}
+
+private fun mdocCalcDcRequestStringArf(
+    documentTypeRepository: DocumentTypeRepository,
+    requestType: RequestType,
+    nonce: ByteArray,
+    origin: String,
+    readerKey: EcPrivateKey,
+    readerPublicKey: EcPublicKeyDoubleCoordinate,
+    readerAuthKey: EcPrivateKey,
+    readerAuthKeyCertification: X509CertChain
+): String {
+
+    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
+    val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
+    val request = when (requestType) {
+        RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
+        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21" }
+        RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
+        RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
+        RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
+        else -> null
+    }
+    if (request == null) {
+        throw IllegalStateException("Unknown request type $requestType")
+    }
+
+    val arfEncryptionInfo = CborMap.builder()
+        .put("nonce", nonce)
+        .put("readerPublicKey", readerPublicKey.toCoseKey().toDataItem())
+        .end()
+        .build()
+    val encryptionInfo = CborArray.builder()
+        .add("ARFEncryptionv2")
+        .add(arfEncryptionInfo)
+        .end()
+        .build()
+    val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
+
+    val sessionTranscript = Cbor.encode(
+        CborArray.builder()
+            .add(Simple.NULL) // DeviceEngagementBytes
+            .add(Simple.NULL) // EReaderKeyBytes
+            .addArray() // BrowserHandover
+            .add("ARFHandoverv2")
+            .add(base64EncryptionInfo)
+            .add(origin)
+            .end()
+            .end()
+            .build()
+    )
+
+    val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
+    for (ns in request.mdocRequest!!.namespacesToRequest) {
+        for (de in ns.dataElementsToRequest) {
+            itemsToRequest.getOrPut(ns.namespace) { mutableMapOf() }
+                .put(de.attribute.identifier, false)
+        }
+    }
+    val generator = DeviceRequestGenerator(sessionTranscript)
+    generator.addDocumentRequest(
+        docType = request.mdocRequest!!.docType,
+        itemsToRequest = itemsToRequest,
+        requestInfo = null,
+        readerKey = readerAuthKey,
+        signatureAlgorithm = Algorithm.ES256,
+        readerKeyCertificateChain = readerAuthKeyCertification,
+    )
+    val deviceRequest = generator.generate()
+    val base64DeviceRequest = deviceRequest.toBase64Url()
+
+    val top = JSONObject()
+    top.put("deviceRequest", base64DeviceRequest)
+    top.put("encryptionInfo", base64EncryptionInfo)
     return top.toString(JSONStyle.NO_COMPRESS)
 }
 
@@ -1107,8 +1383,9 @@ private fun mdocCalcPresentationDefinition(
         RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
         RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
         RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
-        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18_and_portrait" }
-        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
+        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18" }
+        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21" }
+        RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
         RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
         RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
         else -> null
@@ -1239,8 +1516,8 @@ private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONOb
     key.put("use", "enc")
     key.put("crv", "P-256")
     key.put("alg", "ECDH-ES")
-    key.put("x", encPub.x.toBase64())
-    key.put("y", encPub.y.toBase64())
+    key.put("x", encPub.x.toBase64Url())
+    key.put("y", encPub.y.toBase64Url())
 
     val keys = JSONArray()
     keys.add(key)

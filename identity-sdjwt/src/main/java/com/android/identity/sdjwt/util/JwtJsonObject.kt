@@ -1,7 +1,7 @@
 package com.android.identity.sdjwt.util
 
-import com.android.identity.util.fromBase64
-import com.android.identity.util.toBase64
+import com.android.identity.util.fromBase64Url
+import com.android.identity.util.toBase64Url
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -23,14 +23,14 @@ abstract class JwtJsonObject {
 
     private fun toJsonObject() = buildJsonObject(buildJson())
 
-    override fun toString() = toJsonObject().toString().toByteArray().toBase64()
+    override fun toString() = toJsonObject().toString().toByteArray().toBase64Url()
 
     protected companion object {
         @JvmStatic
         protected fun parse(input: String): JsonObject {
             return Json.decodeFromString(
                 JsonObject.serializer(),
-                String(input.fromBase64()))
+                String(input.fromBase64Url()))
         }
     }
 }
