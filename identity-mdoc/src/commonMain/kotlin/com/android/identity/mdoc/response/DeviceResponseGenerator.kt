@@ -154,6 +154,11 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
     }
 
     /**
+     * Checks if any documents have been added to the device response.
+     */
+    fun isEmpty(): Boolean = mDocumentsBuilder.isEmpty()
+
+    /**
      * Builds the `DeviceResponse` CBOR.
      *
      * @return the bytes of `DeviceResponse` CBOR.

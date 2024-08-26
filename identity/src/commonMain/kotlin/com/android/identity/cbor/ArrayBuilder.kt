@@ -161,4 +161,9 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
     fun add(value: Float) = apply {
         add(value.toDataItem())
     }
+
+    /**
+     * Checks if the array is empty.
+     */
+    fun isEmpty(): Boolean = array.items.isEmpty()
 }

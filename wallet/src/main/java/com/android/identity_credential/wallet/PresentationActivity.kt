@@ -74,6 +74,8 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
+class NoMatchingDocumentException(message: String): Exception(message) {}
+
 // using FragmentActivity in order to support androidx.biometric.BiometricPrompt
 class PresentationActivity : FragmentActivity() {
     companion object {
@@ -85,6 +87,7 @@ class PresentationActivity : FragmentActivity() {
         private var resultStringId: Int = 0
         private var resultDrawableId: Int = 0
         private var phase = MutableLiveData<Phase>()
+        private var resultDelay: Long = 1500
 
         init {
             phase.value = Phase.NOT_CONNECTED
@@ -135,8 +138,15 @@ class PresentationActivity : FragmentActivity() {
         }
 
         fun stopPresentationReaderTimeout(context: Context) {
-            resultStringId = R.string.presentation_result_error_message_reader_timeout
-            resultDrawableId = R.drawable.presentment_result_status_error
+            showResult(
+                R.string.presentation_result_error_message_reader_timeout,
+                R.drawable.presentment_result_status_error)
+        }
+
+        private fun showResult(stringId: Int, drawableId: Int, delay: Long = 1500) {
+            resultStringId = stringId
+            resultDrawableId = drawableId
+            resultDelay = delay
             phase.value = Phase.SHOW_RESULT
         }
     }
@@ -379,21 +389,30 @@ class PresentationActivity : FragmentActivity() {
                                 )
                                 deviceResponseGenerator.addDocument(documentCborBytes)
                             }
+                            if (deviceResponseGenerator.isEmpty()) {
+                                throw NoMatchingDocumentException("No documents found.")
+                            }
                             deviceRetrievalHelper?.sendDeviceResponse(
                                 deviceResponseGenerator.generate(),
                                 Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
                             )
-                            resultStringId = R.string.presentation_result_success_message
-                            resultDrawableId = R.drawable.presentment_result_status_success
-                            phase.value = Phase.SHOW_RESULT
+                            showResult(
+                                R.string.presentation_result_success_message,
+                                R.drawable.presentment_result_status_success)
                         } catch (e: Throwable) {
                             if (e is UserCanceledPromptException) {
                                 phase.value = Phase.CANCELED
+                            } else if (e is NoMatchingDocumentException) {
+                                Logger.e(TAG, "No matching document while running the Presentment Flow", e)
+                                showResult(
+                                    R.string.presentation_result_no_matching_document_message,
+                                    R.drawable.presentment_result_status_error,
+                                    3000)
                             } else {
                                 Logger.e(TAG, "Error while running the Presentment Flow", e)
-                                resultStringId = R.string.presentation_result_error_message
-                                resultDrawableId = R.drawable.presentment_result_status_error
-                                phase.value = Phase.SHOW_RESULT
+                                showResult(
+                                    R.string.presentation_result_error_message,
+                                    R.drawable.presentment_result_status_error)
                             }
                         }
                     }
@@ -403,7 +422,7 @@ class PresentationActivity : FragmentActivity() {
                     Logger.i(TAG, "Phase: Showing result")
                     lifecycleScope.launch {
                         // the amount of time to show the result for
-                        delay(1500)
+                        delay(resultDelay)
                         phase.value = Phase.POST_RESULT
                     }
                 }
