@@ -3,11 +3,11 @@ package com.android.identity_credential.wallet.ui.destination.provisioncredentia
 import android.Manifest
 import android.content.Context
 import android.os.Build
-import android.util.Size
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -34,20 +35,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
@@ -58,8 +57,8 @@ import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermiss
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
-import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
+import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
@@ -68,24 +67,20 @@ import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mrtd.MrtdNfc
 import com.android.identity.mrtd.MrtdNfcDataReader
 import com.android.identity.mrtd.MrtdNfcReader
-import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.FaceImageClassifier
-import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.RichTextSnippet
+import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.async
-import io.ktor.client.request.request
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -1127,24 +1122,41 @@ fun AusweisView(
                 }
                 val statusValue = status.value
                 if (statusValue is AusweisModel.AccessRights) {
-                    for (component in statusValue.components) {
-                        Text(
-                            when (component) {
-                                "GivenNames" -> stringResource(R.string.eid_access_right_first_name)
-                                "FamilyName" -> stringResource(R.string.eid_access_right_last_name)
-                                "BirthName" -> stringResource(R.string.eid_access_right_maiden_name)
-                                "DateOfBirth" -> stringResource(R.string.eid_access_right_date_of_birth)
-                                "Address" -> stringResource(R.string.eid_access_right_address)
-                                "Nationality" -> stringResource(R.string.eid_access_right_nationality)
-                                "PlaceOfBirth" -> stringResource(R.string.eid_access_right_place_of_birth)
-                                "Pseudonym" -> stringResource(R.string.eid_access_right_pseudonym)
-                                "AgeVerification" -> stringResource(R.string.eid_access_right_age_verification)
-                                // TODO: all others
-                                else -> "Item [$component]"
-                            },
-                            modifier = Modifier.padding(8.dp, 0.dp)
-                        )
+                    Spacer(modifier = Modifier.height(30.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            for (component in statusValue.components) {
+                                Text(
+                                    text = "• " +
+                                            when (component) {
+                                                "GivenNames" -> stringResource(R.string.eid_access_right_first_name)
+                                                "FamilyName" -> stringResource(R.string.eid_access_right_last_name)
+                                                "BirthName" -> stringResource(R.string.eid_access_right_maiden_name)
+                                                "DateOfBirth" -> stringResource(R.string.eid_access_right_date_of_birth)
+                                                "Address" -> stringResource(R.string.eid_access_right_address)
+                                                "Nationality" -> stringResource(R.string.eid_access_right_nationality)
+                                                "PlaceOfBirth" -> stringResource(R.string.eid_access_right_place_of_birth)
+                                                "Pseudonym" -> stringResource(R.string.eid_access_right_pseudonym)
+                                                "AgeVerification" -> stringResource(R.string.eid_access_right_age_verification)
+                                                // TODO: all others
+                                                else -> "Item [$component]"
+                                            },
+                                )
+                            }
+                        }
                     }
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
