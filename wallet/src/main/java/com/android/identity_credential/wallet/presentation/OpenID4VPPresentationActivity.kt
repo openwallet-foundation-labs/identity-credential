@@ -66,7 +66,9 @@ import com.nimbusds.jose.shaded.gson.Gson
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jose.util.X509CertUtils
 import com.nimbusds.jwt.EncryptedJWT
+import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.PlainJWT
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.BadJWTException
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
@@ -369,6 +371,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             install(ContentNegotiation) { json() }
             expectSuccess = true
         }
+        Logger.i(TAG, "authRequest: $authRequest")
 
         val uri = Uri.parse(authRequest)
         val authorizationRequest = getAuthorizationRequest(uri, httpClient)
@@ -389,17 +392,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         //
         val inputDescriptorObj = inputDescriptors[0].jsonObject
         val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
-        val format = inputDescriptorObj["format"]!!.jsonObject
+        // Get the requested format from the client metadata.
+        val credentialFormat = getFormat(authorizationRequest.clientMetadata)
         val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
 
-        val credentialFormat: CredentialFormat
-        if (format.contains("mso_mdoc")) {
-            credentialFormat = CredentialFormat.MDOC_MSO
-        } else if (format.contains("jwt_vp")) {
-            credentialFormat = CredentialFormat.SD_JWT_VC
-        } else {
-            TODO("Only mso_mdoc and jwt_vp are supported for now")
-        }
         val document = firstMatchingDocument(credentialFormat, docType)
             ?: run { throw IllegalStateException("No matching credentials in wallet for " +
                     "docType $docType and credentialFormat $credentialFormat") }
@@ -419,20 +415,6 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         if (authorizationRequest.clientMetadata["authorization_signed_response_alg"] != null) {
             TODO("Support signing the authorization response")
         }
-        val responseEncryptionAlg = JWEAlgorithm.parse(authorizationRequest.clientMetadata
-            ["authorization_encrypted_response_alg"]!!.toString()
-            .run { substring(1, this.length - 1) })
-        val responseEncryptionMethod = EncryptionMethod.parse(authorizationRequest.clientMetadata
-            ["authorization_encrypted_response_enc"]!!.toString()
-            .run { substring(1, this.length - 1) })
-        val apv = Base64URL.encode(authorizationRequest.nonce)
-        val apu = Base64URL.encode(generatedNonce)
-        val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
-            .apply {
-                apv?.let(::agreementPartyVInfo)
-                apu?.let(::agreementPartyUInfo)
-            }
-            .build()
 
         val now = Clock.System.now()
         val credentialToUse = getCredentialToUse(document, credentialFormat, now)
@@ -464,25 +446,22 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
         }))
 
-        // encrypt
-        val keySet = getKeySet(httpClient, authorizationRequest.clientMetadata)
-        val jweEncrypter: ECDHEncrypter? = keySet.keys.mapNotNull { key ->
-            runCatching { ECDHEncrypter(key as ECKey) }.getOrNull()
-                ?.let { encrypter -> key to encrypter }
-        }
-            .toMap().firstNotNullOfOrNull { it.value }
-        val encrypted = EncryptedJWT(jweHeader, claimSet).apply { encrypt(jweEncrypter) }
+        // If the request provided the right fields so we can encrypt the response, encrypt it.
+        val jwtResponse =
+            maybeEncryptJwtResponse(claimSet, authorizationRequest, generatedNonce, httpClient)
 
         // send response
+        Logger.i(TAG, "Sending response to ${authorizationRequest.responseUri}")
         val requestState: String? = authorizationRequest.state
         val response = httpClient.post(authorizationRequest.responseUri) {
             body = FormData(Parameters.build {
-                append("response", encrypted.serialize())
+                append("response", jwtResponse.serialize())
                 requestState?.let {
                     append("state", it)
                 }
             })
         }
+        Logger.i(TAG, "Response: $response")
 
         // receive redirectUri and launch with browser
         when (response.status) {
@@ -501,6 +480,43 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 successRedirectUri = redirectUri
             }
             else -> Logger.d(TAG, "Response $response unexpected")
+        }
+    }
+
+    private suspend fun maybeEncryptJwtResponse(
+        claimSet: JWTClaimsSet?,
+        authorizationRequest: AuthorizationRequest,
+        generatedNonce: String,
+        httpClient: HttpClient
+    ): JWT {
+        val encryptedResponseAlg =
+            authorizationRequest.clientMetadata["authorization_encrypted_response_alg"]
+                ?.toString()
+                ?.run { substring(1, this.length - 1) }
+        return if (encryptedResponseAlg == null) {
+            PlainJWT(claimSet)
+        } else {
+            val apv = Base64URL.encode(authorizationRequest.nonce)
+            val apu = Base64URL.encode(generatedNonce)
+            val responseEncryptionAlg = JWEAlgorithm.parse(encryptedResponseAlg)
+            val responseEncryptionMethod =
+                EncryptionMethod.parse(
+                    authorizationRequest.clientMetadata
+                        ["authorization_encrypted_response_enc"]!!.toString()
+                        .run { substring(1, this.length - 1) })
+            val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
+                .apply {
+                    apv?.let(::agreementPartyVInfo)
+                    apu?.let(::agreementPartyUInfo)
+                }
+                .build()
+            val keySet = getKeySet(httpClient, authorizationRequest.clientMetadata)
+            val jweEncrypter: ECDHEncrypter? = keySet.keys.mapNotNull { key ->
+                runCatching { ECDHEncrypter(key as ECKey) }.getOrNull()
+                    ?.let { encrypter -> key to encrypter }
+            }
+                .toMap().firstNotNullOfOrNull { it.value }
+            EncryptedJWT(jweHeader, claimSet).apply { encrypt(jweEncrypter) }
         }
     }
 
@@ -553,10 +569,20 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
 // returns <namespace, dataElem>
 internal fun parsePathItem(item: String): Pair<String, String> {
-    // format: "$['namespace']['dataElem']"
-    val spacer = item.indexOf("']['")
-    val namespace = item.substring(4, spacer)
-    val dataElem = item.substring(spacer + 4, item.length - 3)
+    // formats can be
+    // bracketed: "$['namespace']['dataElem']"
+    // bracketed direct: "$['dataElem']"
+    // or dotted direct: "$.dataElem"
+    val regex = Regex(
+        "(?:\"\\$(?:\\['(?<namespace>.+?)'\\])?\\['(?<dataElem1>.+?)'\\]\")|" +
+        "(?:\"\\$\\.(?<dataElem2>.+)\")")
+    val groups = regex.matchEntire(item)?.groups as? MatchNamedGroupCollection
+    if (groups == null) {
+        throw IllegalArgumentException("Unable to parse path item: $item")
+    }
+    // TODO: Remove the fake credentialSubject namespace that's needed for the consent screen.
+    val namespace = groups.get("namespace")?.value ?: "credentialSubject"
+    val dataElem = groups.get("dataElem1")?.value ?: groups.get("dataElem2")?.value!!
     return Pair(namespace, dataElem)
 }
 
@@ -617,7 +643,7 @@ private suspend fun getAuthorizationRequest(
         )
     }
 
-    val clientId = requestUri.getQueryParameter("client_id")!!
+    val clientId = requestUri.getQueryParameter("client_id")
     val requestValue = requestUri.getQueryParameter("request")
     if (requestValue != null) {
         return getAuthRequestFromJwt(SignedJWT.parse(requestValue), clientId)
@@ -632,14 +658,20 @@ private suspend fun getAuthorizationRequest(
         accept(ContentType.parse("application/oauth-authz-req+jwt"))
         accept(ContentType.parse("application/jwt"))
     }.body<String>()
+    Logger.i(TAG, "Signed JWT response: $httpResponse")
 
-    return getAuthRequestFromJwt(SignedJWT.parse(httpResponse), clientId)
+    val signedJwt = SignedJWT.parse(httpResponse)
+    Logger.i(TAG, "SignedJWT header: ${signedJwt.header}")
+    Logger.i(TAG, "SignedJWT payload: ${signedJwt.payload}")
+    return getAuthRequestFromJwt(signedJwt, clientId)
 }
 
-internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String): AuthorizationRequest {
-    if (signedJWT.jwtClaimsSet.getStringClaim("client_id") != clientId) {
+internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String?): AuthorizationRequest {
+    if (clientId != null &&
+        signedJWT.jwtClaimsSet.getStringClaim("client_id") != clientId) {
         throw IllegalArgumentException("Client ID doesn't match")
     }
+    Logger.i(TAG, "signedJWT client_id: ${signedJWT.jwtClaimsSet.getStringClaim("client_id")}")
     val x5c = signedJWT.header?.x509CertChain ?: throw IllegalArgumentException("Error retrieving cert chain")
     val pubCertChain = x5c.mapNotNull { runCatching { X509CertUtils.parse(it.decode()) }.getOrNull() }
     if (pubCertChain.isEmpty()) {
@@ -662,29 +694,50 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String): Auth
         }
         jwtProcessor.process(signedJWT, null)
     } catch (e: Throwable) {
+        e.printStackTrace()
         throw RuntimeException(e)
     }
 
     // build auth request
     val jsonStr = Gson().toJson(signedJWT.jwtClaimsSet.getJSONObjectClaim("presentation_definition"))
     val presentationDefinition = Json.parseToJsonElement(jsonStr).jsonObject
+    Logger.i(TAG, "presentation_definition: $jsonStr")
+    Logger.i(TAG, "Claims Set: ${signedJWT.jwtClaimsSet}")
 
-    if (signedJWT.jwtClaimsSet.getStringClaim("response_mode") != "direct_post.jwt") { // required as part of mdoc profile; NOTE that sd-jwt profile requires direct_post
-        throw IllegalArgumentException("Response modes other than direct_post.jwt are unsupported.")
+    // Check the response mode. This is required as part of mdoc profile; NOTE that sd-jwt profile
+    // requires direct_post.
+    val responseMode = signedJWT.jwtClaimsSet.getStringClaim("response_mode")
+    val allowedResponseModes = setOf("direct_post", "direct_post.jwt")
+    if (!allowedResponseModes.contains(responseMode)) {
+        throw IllegalArgumentException("Response mode $responseMode is unsupported. " +
+                "Supported modes are: ${allowedResponseModes.sorted().joinToString()}")
     }
     if (signedJWT.jwtClaimsSet.getStringClaim("response_type") != "vp_token") { // not supporting id_token atm
         throw IllegalArgumentException("Response types other than vp_token are unsupported.")
     }
 
+    val responseUri = getResponseUri(signedJWT.jwtClaimsSet)
     return AuthorizationRequest(
         presentationDefinition = presentationDefinition,
         clientId = signedJWT.jwtClaimsSet.getStringClaim("client_id"),
         nonce = signedJWT.jwtClaimsSet.getStringClaim("nonce"),
-        responseUri = signedJWT.jwtClaimsSet.getStringClaim("response_uri"),
+        responseUri = responseUri,
         state = signedJWT.jwtClaimsSet.getStringClaim("state"),
         clientMetadata = Json.parseToJsonElement(Gson().toJson(signedJWT.jwtClaimsSet.getJSONObjectClaim("client_metadata"))).jsonObject,
         certificateChain = pubCertChain
     )
+}
+
+private fun getResponseUri(claimsSet: JWTClaimsSet): String {
+    val uri = claimsSet.getStringClaim("response_uri") ?:
+        claimsSet.getStringClaim("redirect_uri")
+    if (!uri.startsWith("http://") &&
+        !uri.startsWith("https://")) {
+        // TODO: This is overly permissive, but it's required for some verifiers. Remove it?
+        Logger.w(TAG, "Response URI is not absolute. Modifying to add https://")
+        return "https://$uri"
+    }
+    return uri
 }
 
 private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
@@ -697,7 +750,7 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
         if (expiration != null) {
             exp = Instant.fromEpochMilliseconds(expiration.time)
             if (exp >= now) {
-                throw BadJWTException("Expired JWT")
+                throw BadJWTException("Expired JWT ($exp >= $now)")
             }
         }
 
@@ -706,12 +759,12 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
         if (issuance != null) {
             iat = Instant.fromEpochMilliseconds(issuance.time)
             if (now <= iat) {
-                throw BadJWTException("JWT issued in the future")
+                throw BadJWTException("JWT issued in the future ($now <= $iat)")
             }
 
             if (exp != null) {
                 if (exp <= iat) {
-                    throw BadJWTException("JWT issued after expiration")
+                    throw BadJWTException("JWT issued after expiration ($exp <= $iat")
                 }
             }
         }
@@ -720,25 +773,43 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
         if (notBefore != null) {
             val nbf = Instant.fromEpochMilliseconds(notBefore.time)
             if (nbf >= now) {
-                throw BadJWTException("JWT not yet active")
+                throw BadJWTException("JWT not yet active ($nbf >= $now)")
             }
 
             if (exp != null) {
                 if (nbf >= exp) {
-                    throw BadJWTException("JWT active after expiration")
+                    throw BadJWTException("JWT active after expiration ($nbf >= $exp)")
                 }
             }
 
             if (iat != null) {
-                if (nbf <= iat) {
-                    throw BadJWTException("JWT active before issuance")
+                if (nbf < iat) {
+                    throw BadJWTException("JWT active before issuance ($nbf < $iat)")
                 }
             }
         }
     }
 }
 
-private val validFormats = setOf("mso_mdoc", "jwt_vp")
+private fun getFormat(clientMetadata: JsonObject): CredentialFormat {
+    // Search for these strings, in order.
+    val acceptedFormats = listOf(
+        "mso_mdoc" to CredentialFormat.MDOC_MSO,
+        "jwt_vc" to CredentialFormat.SD_JWT_VC,
+        "vc+sd-jwt" to CredentialFormat.SD_JWT_VC)
+    clientMetadata["vp_formats"]?.let {
+        val vpFormats = it.jsonObject.keys
+        for ((format, credentialFormat) in acceptedFormats) {
+            if (vpFormats.contains(format)) {
+                return credentialFormat
+            }
+        }
+        throw IllegalArgumentException("No supported formats found in: ${vpFormats.sorted().joinToString()}")
+    }
+    throw IllegalArgumentException("No vp_formats found in client_metadata")
+}
+
+private val validFormats = setOf("mso_mdoc", "jwt_vc", "vc+sd-jwt")
 
 internal fun createPresentationSubmission(authRequest: AuthorizationRequest): PresentationSubmission {
     val descriptorMaps = ArrayList<DescriptorMap>()
