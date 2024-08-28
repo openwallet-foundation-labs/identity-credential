@@ -80,7 +80,7 @@ internal object FunkeUtil {
         env: FlowEnvironment,
         clientId: String,
         requestUrl: String,
-        dpopNonce: String,
+        dpopNonce: String?,
         accessToken: String? = null
     ): String {
         val keyInfo = communicationKey(env, clientId)
@@ -89,17 +89,19 @@ internal object FunkeUtil {
             put("alg", JsonPrimitive(keyInfo.publicKey.curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier))
             put("jwk", keyInfo.publicKey.toJson(clientId))
         }.toString().toByteArray().toBase64()
-        val bodyMap = mutableMapOf(
-            "htm" to JsonPrimitive("POST"),
-            "htu" to JsonPrimitive(requestUrl),
-            "iat" to JsonPrimitive(Clock.System.now().epochSeconds),
-            "nonce" to JsonPrimitive(dpopNonce),
-            "jti" to JsonPrimitive(Random.Default.nextBytes(15).toBase64())
-        )
-        if (accessToken != null) {
-            bodyMap["ath"] = JsonPrimitive(Crypto.digest(Algorithm.SHA256, accessToken.toByteArray()).toBase64())
+        val bodyObj = buildJsonObject {
+            put("htm", JsonPrimitive("POST"))
+            put("htu", JsonPrimitive(requestUrl))
+            put("iat", JsonPrimitive(Clock.System.now().epochSeconds))
+            if (dpopNonce != null) {
+                put("nonce", JsonPrimitive(dpopNonce))
+            }
+            put("jti", JsonPrimitive(Random.Default.nextBytes(15).toBase64()))
+            if (accessToken != null) {
+                put("ath", JsonPrimitive(Crypto.digest(Algorithm.SHA256, accessToken.toByteArray()).toBase64()))
+            }
         }
-        val body = JsonObject(bodyMap).toString().toByteArray().toBase64()
+        val body = bodyObj.toString().toByteArray().toBase64()
         val message = "$header.$body"
         val signature = communicationSign(env, clientId, message.toByteArray()).toBase64()
         return "$message.$signature"

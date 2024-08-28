@@ -53,6 +53,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 @FlowState(
     flowInterface = IssuingAuthority::class
@@ -121,7 +122,6 @@ class FunkeIssuingAuthorityState(
                 null,
                 null,
                 null,
-                null,
                 mutableListOf(),
                 mutableListOf()
             )
@@ -137,10 +137,9 @@ class FunkeIssuingAuthorityState(
             FunkeIssuerDocument(
                 registrationState.response!!,
                 DocumentCondition.PROOFING_REQUIRED,
-                null,
                 null, // no evidence yet
-                null,  // no initial document configuration
                 null,
+                null,  // no initial document configuration
                 mutableListOf(),
                 mutableListOf()           // cpoRequests - initially empty
             ))
@@ -161,9 +160,8 @@ class FunkeIssuingAuthorityState(
 
         val issuerDocument = loadIssuerDocument(env, documentId)
 
-        val token = issuerDocument.token
-        if (issuerDocument.state == DocumentCondition.PROOFING_PROCESSING && token != null) {
-            issuerDocument.state = if (token.isNotEmpty()) {
+        if (issuerDocument.state == DocumentCondition.PROOFING_PROCESSING) {
+            issuerDocument.state = if (issuerDocument.access != null) {
                 DocumentCondition.CONFIGURATION_AVAILABLE
             } else {
                 DocumentCondition.PROOFING_FAILED
@@ -205,8 +203,7 @@ class FunkeIssuingAuthorityState(
     suspend fun completeProof(env: FlowEnvironment, state: FunkeProofingState) {
         val issuerDocument = loadIssuerDocument(env, state.documentId)
         issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
-        issuerDocument.dpopNonce = state.dpopNonce
-        issuerDocument.token = state.token
+        issuerDocument.access = state.access
         issuerDocument.secureAreaIdentifier = state.secureAreaIdentifier
         updateIssuerDocument(env, state.documentId, issuerDocument)
     }
@@ -233,8 +230,10 @@ class FunkeIssuingAuthorityState(
         documentId: String
     ): FunkeRequestCredentialsState {
         val document = loadIssuerDocument(env, documentId)
-        val token = Json.parseToJsonElement(document.token!!) as JsonObject
-        val cNonce = token["c_nonce"]!!.jsonPrimitive.content
+
+        refreshAccessIfNeeded(env, documentId, document)
+
+        val cNonce = document.access!!.cNonce!!
         val configuration = if (document.secureAreaIdentifier!!.startsWith("CloudSecureArea?")) {
             val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
             CredentialConfiguration(
@@ -307,22 +306,36 @@ class FunkeIssuingAuthorityState(
             null -> throw IllegalStateException("Credential format was not specified")
         }
 
-        val token = Json.parseToJsonElement(document.token!!) as JsonObject
-        val accessToken = token["access_token"]!!.jsonPrimitive.content
         val credentialUrl = "${FunkeUtil.BASE_URL}/credential"
-        val dpop = FunkeUtil.generateDPoP(env, clientId, credentialUrl, document.dpopNonce!!, accessToken)
+        val access = document.access!!
+        val dpop = FunkeUtil.generateDPoP(
+            env,
+            clientId,
+            credentialUrl,
+            access.dpopNonce,
+            access.accessToken
+        )
         val httpClient = env.getInterface(HttpClient::class)!!
         val credentialResponse = httpClient.post(credentialUrl) {
             headers {
-                append("Authorization", "DPoP $accessToken")
+                append("Authorization", "DPoP ${access.accessToken}")
                 append("DPoP", dpop)
                 append("Content-Type", "application/json")
             }
             setBody(JsonObject(request).toString())
         }
+        access.cNonce = null  // used up
+
+        if (credentialResponse.headers.contains("DPoP-Nonce")) {
+            access.dpopNonce = credentialResponse.headers["DPoP-Nonce"]!!
+        }
+
         if (credentialResponse.status != HttpStatusCode.OK) {
-            val responseText = String(credentialResponse.readBytes())
-            Logger.e(TAG, "Credential request error: ${credentialResponse.status} $responseText")
+            val errResponseText = String(credentialResponse.readBytes())
+            Logger.e(
+                TAG,
+                "Credential request error: ${credentialResponse.status} $errResponseText"
+            )
 
             // Currently in Funke case this gets document in permanent bad state, notification
             // is not needed as an exception will generate notification on the client side.
@@ -526,5 +539,72 @@ class FunkeIssuingAuthorityState(
             }
         }
         return builder
+    }
+
+    private suspend fun refreshAccessIfNeeded(
+        env: FlowEnvironment,
+        documentId: String,
+        document: FunkeIssuerDocument
+    ) {
+        var access = document.access!!
+        val nowPlusSlack = Clock.System.now() + 10.seconds
+        if (access.cNonce != null && nowPlusSlack < access.accessTokenExpiration) {
+            // No need to refresh.
+            return
+        }
+        val tokenUrl = "${FunkeUtil.BASE_URL}/token"
+        val httpClient = env.getInterface(HttpClient::class)!!
+        // NB: currently, refresh token is only issued for Option C'
+        val refreshToken = access.refreshToken
+            ?: throw IssuingAuthorityException("No refresh token, new credentials cannot be issued")
+        var dpopNonce: String? = null
+        // This loop will run twice, first request will return with error, but will provide fresh
+        // dpop nonce and the second request will get fresh access data.
+        while (true) {
+            val dpop = FunkeUtil.generateDPoP(env, clientId, tokenUrl, dpopNonce, null)
+            val tokenRequest = FormUrlEncoder {
+                add("grant_type", "refresh_token")
+                add("refresh_token", refreshToken)
+                add("client_id", FunkeUtil.CLIENT_ID)
+                // TODO: It's arbitrary in our case, right?
+                add("redirect_uri", "https://secure.redirect.com")
+            }
+            val tokenResponse = httpClient.post(tokenUrl) {
+                headers {
+                    if (dpopNonce != null) {
+                        append("Authorization", "DPoP ${access.accessToken}")
+                    }
+                    append("DPoP", dpop)
+                    append("Content-Type", "application/x-www-form-urlencoded")
+                }
+                setBody(tokenRequest.toString())
+            }
+            if (tokenResponse.status != HttpStatusCode.OK) {
+                val errResponseText = String(tokenResponse.readBytes())
+                if (dpopNonce == null && tokenResponse.headers.contains("DPoP-Nonce")) {
+                    Logger.e(TAG, "DPoP nonce refreshed: $errResponseText")
+                    dpopNonce = tokenResponse.headers["DPoP-Nonce"]!!
+                    continue
+                }
+                Logger.e(TAG, "Token request error: ${tokenResponse.status} $errResponseText")
+                throw IssuingAuthorityException("Refresh token (seed credential) rejected by the issuer")
+            }
+            access = try {
+                FunkeAccess.parseResponse(tokenResponse)
+            } catch (err: IllegalArgumentException) {
+                val tokenString = String(tokenResponse.readBytes())
+                Logger.e(TAG, "Invalid token response: ${err.message}: $tokenString")
+                throw IssuingAuthorityException("Invalid response from the issuer")
+            }
+            check(access.cNonce != null)
+            document.access = access
+            Logger.i(TAG, "Refreshed access tokens")
+            if (access.refreshToken == null) {
+                Logger.w(TAG, "Kept original refresh token (no updated refresh token received)")
+                access.refreshToken = refreshToken
+            }
+            updateIssuerDocument(env, documentId, document, false)
+            break
+        }
     }
 }

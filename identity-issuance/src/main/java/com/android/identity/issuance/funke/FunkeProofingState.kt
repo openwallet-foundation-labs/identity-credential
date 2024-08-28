@@ -44,8 +44,7 @@ class FunkeProofingState(
     val tcTokenUrl: String,
     val pkceCodeVerifier: String,
     val applicationCapabilities: WalletApplicationCapabilities,
-    var dpopNonce: String? = null,
-    var token: String? = null,
+    var access: FunkeAccess? = null,
     var secureAreaIdentifier: String? = null,
     var secureAreaSetupDone: Boolean = false,
     var tosAcknowleged: Boolean = false,
@@ -57,7 +56,7 @@ class FunkeProofingState(
 
     @FlowMethod
     fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
-        return if (token == null) {
+        return if (access == null) {
             if (!tosAcknowleged) {
                 val message = env.getInterface(Resources::class)!!
                     .getStringResource("funke/tos.html")!!
@@ -166,7 +165,6 @@ class FunkeProofingState(
         env: FlowEnvironment,
         evidenceResponse: EvidenceResponseGermanEid
     ) {
-        token = ""
         if (evidenceResponse.url == null) {
             // Error
             return
@@ -198,15 +196,16 @@ class FunkeProofingState(
             setBody(tokenRequest.toString())
         }
         if (tokenResponse.status != HttpStatusCode.OK) {
-            Logger.e(TAG, "Token request error: ${response.status}")
+            Logger.e(TAG, "Token request error: ${tokenResponse.status}")
             throw IssuingAuthorityException("eID card rejected by the issuer")
         }
-        this.dpopNonce = tokenResponse.headers["DPoP-Nonce"]
-        if (this.dpopNonce == null) {
-            Logger.e(TAG, "No DPoP nonce in token response")
-            throw IllegalStateException("No DPoP nonce in token response")
+        this.access = try {
+            FunkeAccess.parseResponse(tokenResponse)
+        } catch (err: IllegalArgumentException) {
+            val tokenString = String(tokenResponse.readBytes())
+            Logger.e(TAG,"Invalid token response: ${err.message}: $tokenString")
+            throw IssuingAuthorityException("Invalid response from the issuer")
         }
-        this.token = String(tokenResponse.readBytes())
-        Logger.i(TAG, "Token request: got DPoP nonce and a token")
+        Logger.i(TAG, "Token request: success")
     }
 }

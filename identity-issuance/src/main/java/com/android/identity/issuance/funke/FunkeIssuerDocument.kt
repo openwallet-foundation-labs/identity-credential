@@ -8,13 +8,13 @@ import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.securearea.SecureArea
+import kotlinx.datetime.Instant
 
 @CborSerializable
 data class FunkeIssuerDocument(
     val registrationResponse: RegistrationResponse,
     var state: DocumentCondition,
-    var dpopNonce: String?,
-    var token: String?,
+    var access: FunkeAccess?,
     var documentConfiguration: DocumentConfiguration?,
     var secureAreaIdentifier: String?,
     val credentialRequests: MutableList<FunkeCredentialRequest>,
