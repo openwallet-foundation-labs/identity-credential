@@ -960,5 +960,10 @@ class CborTests {
         assertEquals(
             "0(\"2001-09-09T01:46:40Z\")",
             Cbor.toDiagnostics(Instant.fromEpochMilliseconds(1000000000000).toDataItemDateTimeString()))
+
+        // Check that fractions of a second is printed (only) if the fraction is non-zero.
+        assertEquals(
+            "0(\"1970-01-01T00:16:40.500Z\")",
+            Cbor.toDiagnostics(Instant.fromEpochSeconds(1000, 500000000).toDataItemDateTimeString()))
     }
 }

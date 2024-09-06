@@ -439,10 +439,13 @@ class IssuingAuthorityState(
         val prefix = "issuingAuthority.$authorityId"
         val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
 
-        // Create AuthKeys and MSOs, make sure they're valid for a long time
-        val timeSigned = now
-        val validFrom = now
-        val validUntil = Instant.fromEpochMilliseconds(validFrom.toEpochMilliseconds() + 365*24*3600*1000L)
+        // Create AuthKeys and MSOs, make sure they're valid for 30 days. Also make
+        // sure to not use fractional seconds as 18013-5 calls for this (clauses 7.1
+        // and 9.1.2.4)
+        //
+        val timeSigned = Instant.fromEpochSeconds(now.epochSeconds, 0)
+        val validFrom = Instant.fromEpochSeconds(now.epochSeconds, 0)
+        val validUntil = validFrom + 30.days
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val docType = if (type == TYPE_EU_PID) EUPID_DOCTYPE else MDL_DOCTYPE

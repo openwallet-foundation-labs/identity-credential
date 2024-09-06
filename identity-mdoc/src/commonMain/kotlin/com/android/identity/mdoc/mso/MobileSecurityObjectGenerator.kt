@@ -20,6 +20,7 @@ import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
 
 /**
@@ -37,6 +38,10 @@ class MobileSecurityObjectGenerator(
     docType: String,
     deviceKey: EcPublicKey
 ) {
+    companion object {
+        private const val TAG = "MobileSecurityObjectGenerator"
+    }
+
     private val mDigestAlgorithm: String
     private val mDocType: String
     private val mDeviceKey: EcPublicKey
@@ -197,10 +202,24 @@ class MobileSecurityObjectGenerator(
         require(validUntil > validFrom) {
             "The validUntil timestamp should be later than the validFrom timestamp"
         }
-        mSigned = signed
-        mValidFrom = validFrom
-        mValidUntil = validUntil
-        mExpectedUpdate = expectedUpdate
+
+        // 18013-5 clause 9.1.2.4 also says to not use fractional seconds so drop those
+        if (signed.nanosecondsOfSecond != 0 ) {
+            Logger.w(TAG, "Dropping non-zero fractional seconds for timestamp signed")
+        }
+        if (validFrom.nanosecondsOfSecond != 0 ) {
+            Logger.w(TAG, "Dropping non-zero fractional seconds for timestamp validFrom")
+        }
+        if (validUntil.nanosecondsOfSecond != 0 ) {
+            Logger.w(TAG, "Dropping non-zero fractional seconds for timestamp validUntil")
+        }
+        if (expectedUpdate?.nanosecondsOfSecond != 0 ) {
+            Logger.w(TAG, "Dropping non-zero fractional seconds for timestamp expectedUpdate")
+        }
+        mSigned = Instant.fromEpochSeconds(signed.epochSeconds, 0)
+        mValidFrom = Instant.fromEpochSeconds(validFrom.epochSeconds, 0)
+        mValidUntil = Instant.fromEpochSeconds(validUntil.epochSeconds, 0)
+        mExpectedUpdate = expectedUpdate?.let { Instant.fromEpochSeconds(it.epochSeconds, 0) }
     }
 
     private fun generateDeviceKeyBuilder(): CborBuilder {
