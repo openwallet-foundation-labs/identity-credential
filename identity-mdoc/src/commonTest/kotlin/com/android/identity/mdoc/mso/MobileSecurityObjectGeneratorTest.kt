@@ -30,6 +30,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class MobileSecurityObjectGeneratorTest {
+    companion object {
+        private const val HALF_SEC_IN_NANOSECONDS = 1000000000/2
+    }
+
     private fun getDigestAlg(digestAlgorithm: String): Algorithm {
         return when (digestAlgorithm) {
             "SHA-256" -> Algorithm.SHA256
@@ -352,5 +356,38 @@ class MobileSecurityObjectGeneratorTest {
                 )
                 .generate()
         }
+    }
+
+    // Checks that fractional parts of timestamps are dropped by MobileSecurityObjectGenerator, as
+    // required by 18013-5 clause 9.1.2.4
+    @Test
+    fun testNoFractionalSeconds() {
+        val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
+            EcCurve.P256,
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex(),
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex()
+        )
+        val signedTimestamp = Instant.fromEpochSeconds(1800, HALF_SEC_IN_NANOSECONDS)
+        val validFromTimestamp = Instant.fromEpochSeconds(3600, HALF_SEC_IN_NANOSECONDS)
+        val validUntilTimestamp = Instant.fromEpochSeconds(7200, HALF_SEC_IN_NANOSECONDS)
+        val expectedUpdateTimestamp = Instant.fromEpochSeconds(7100, HALF_SEC_IN_NANOSECONDS)
+
+        val signedTimestampWholeSeconds = Instant.fromEpochSeconds(1800, 0)
+        val validFromTimestampWholeSeconds = Instant.fromEpochSeconds(3600, 0)
+        val validUntilTimestampWholeSeconds = Instant.fromEpochSeconds(7200, 0)
+        val expectedUpdateTimestampWholeSeconds = Instant.fromEpochSeconds(7100, 0)
+
+        val encodedMSO = MobileSecurityObjectGenerator(
+            "SHA-256",
+            "org.iso.18013.5.1.mDL", deviceKeyFromVector
+        )
+            .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, expectedUpdateTimestamp)
+            .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest("SHA-256"))
+            .generate()
+        val mso = MobileSecurityObjectParser(encodedMSO).parse()
+        assertEquals(signedTimestampWholeSeconds, mso.signed)
+        assertEquals(validUntilTimestampWholeSeconds, mso.validUntil)
+        assertEquals(validFromTimestampWholeSeconds, mso.validFrom)
+        assertEquals(expectedUpdateTimestampWholeSeconds, mso.expectedUpdate)
     }
 }

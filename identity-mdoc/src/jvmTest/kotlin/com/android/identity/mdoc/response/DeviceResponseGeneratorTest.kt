@@ -124,10 +124,10 @@ class DeviceResponseGeneratorTest {
 
         // Create an authentication key... make sure the authKey used supports both
         // mdoc ECDSA and MAC authentication.
-        val nowMillis = Clock.System.now().toEpochMilliseconds()
-        timeSigned = Instant.fromEpochMilliseconds(nowMillis)
-        timeValidityBegin = Instant.fromEpochMilliseconds(nowMillis + 3600 * 1000)
-        timeValidityEnd = Instant.fromEpochMilliseconds(nowMillis + 10 * 86400 * 1000)
+        val nowSeconds = Clock.System.now().epochSeconds
+        timeSigned = Instant.fromEpochSeconds(nowSeconds)
+        timeValidityBegin = Instant.fromEpochSeconds(nowSeconds + 3600)
+        timeValidityEnd = Instant.fromEpochSeconds(nowSeconds + 10*86400)
         mdocCredential = MdocCredential(
             document,
             null,
