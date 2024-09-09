@@ -29,6 +29,7 @@ import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
+import com.android.identity.testapp.ui.PassphrasePromptScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
@@ -38,6 +39,7 @@ import identitycredential.samples.testapp.generated.resources.android_keystore_s
 import identitycredential.samples.testapp.generated.resources.back_button
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.passphrase_prompt
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
@@ -56,6 +58,7 @@ enum class Screen(val title: StringResource) {
     SecureEnclaveSecureArea(title = Res.string.secure_enclave_secure_area_screen_title),
     PassphraseEntryField(title = Res.string.passphrase_entry_field_screen_title),
     CloudSecureArea(title = Res.string.cloud_secure_area_screen_title),
+    PassphrasePrompt(title = Res.string.passphrase_prompt)
 }
 
 class App {
@@ -119,6 +122,9 @@ class App {
                     }
                     composable(route = Screen.CloudSecureArea.name) {
                         CloudSecureAreaScreen(showToast = { message -> showToast(message) })
+                    }
+                    composable(route = Screen.PassphrasePrompt.name) {
+                        PassphrasePromptScreen(showToast = { message -> showToast(message) })
                     }
                 }
             }

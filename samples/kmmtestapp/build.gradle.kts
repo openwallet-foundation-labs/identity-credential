@@ -1,0 +1,125 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.buildconfig)
+}
+
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
+
+buildConfig {
+    packageName("com.android.identity.kmmtestapp")
+    buildConfigField("VERSION", projectVersionName)
+    useKotlinOutput { internalVisibility = false }
+}
+
+kotlin {
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+
+        iosTarget.binaries.framework {
+            baseName = "kmmtestapp"
+            isStatic = true
+
+            // Cinterop configuration is now within the framework block
+//            export("dev.icerock.moko:mvvm-core:0.16.1") // Example export
+        }
+//        iosTarget.cinterop("shared") {
+//            // Specify the header file(s) to import
+//            defFile(project.file("src/iosMain/c_interop/shared.def"))
+//        }
+
+    }
+
+    sourceSets {
+
+        androidMain.dependencies {
+            implementation(compose.preview)
+//            implementation(libs.androidx.activity.compose)
+            implementation(libs.bouncy.castle.bcprov)
+            implementation(libs.androidx.biometrics)
+            implementation(libs.androidx.material)
+
+            implementation(project(":identity-android"))
+            implementation(project(":identity-android-csa"))
+        }
+
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(compose.components.uiToolingPreview)
+            implementation(compose.materialIconsExtended)
+            implementation(libs.jetbrains.navigation.compose)
+            implementation(libs.jetbrains.navigation.runtime)
+
+            implementation(project(":identity"))
+            implementation(project(":identity-mdoc"))
+            implementation(project(":identity-appsupport"))
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.io.core)
+        }
+    }
+}
+
+android {
+    namespace = "com.android.identity.kmmtestapp"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    sourceSets["main"].res.srcDirs("src/androidMain/res")
+    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
+
+    defaultConfig {
+        applicationId = "com.android.identity.kmmtestapp"
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        versionCode = projectVersionCode
+        versionName = projectVersionName
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            setProguardFiles(
+                listOf(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    buildFeatures {
+        compose = true
+    }
+    dependencies {
+        debugImplementation(compose.uiTooling)
+    }
+}

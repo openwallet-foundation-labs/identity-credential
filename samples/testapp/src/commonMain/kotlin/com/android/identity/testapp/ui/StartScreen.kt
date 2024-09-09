@@ -19,6 +19,7 @@ import identitycredential.samples.testapp.generated.resources.about_screen_title
 import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.passphrase_prompt
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import org.jetbrains.compose.resources.stringResource
@@ -94,6 +95,17 @@ fun StartScreen(navController: NavHostController) {
                     }
                 ) {
                     Text(stringResource(Res.string.passphrase_entry_field_screen_title))
+                }
+            }
+
+            // passphrase prompt row
+            item {
+                TextButton(
+                    onClick = {
+                        navController.navigate(route = Screen.PassphrasePrompt.name)
+                    }
+                ) {
+                    Text(stringResource(Res.string.passphrase_prompt))
                 }
             }
 
