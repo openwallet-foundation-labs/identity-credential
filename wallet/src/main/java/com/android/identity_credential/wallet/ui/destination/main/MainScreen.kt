@@ -247,17 +247,7 @@ fun MainScreenContent(
                 TextButton(
                     onClick = {
                         showBluetoothDisabled = false
-                        Logger.i(TAG, "Opening Bluetooth enablement dialog")
-                        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                        enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        try {
-                            context.startActivity(enableBtIntent)
-                        } catch (e: SecurityException) {
-                            // The linter complains if we don't handle this exception. We check for
-                            // permissions before bringing up this warning, but maybe we'll hit this
-                            // if the code changes or there's an unexpected race condition.
-                            Logger.e(TAG, "Permission failure trying to open BT enablement: $e")
-                        }
+                        openBluetoothSettings(context)
                     }
                 ) {
                     Text(stringResource(R.string.qr_alert_dialog_bt_enable_button))
@@ -327,6 +317,29 @@ fun MainScreenContent(
                     }
                 }
             }
+            // Display a snackbar notification about bluetooth, if it's disabled. Note that we won't
+            // display it if the proximity presentations permissions are not granted (covered by the
+            // snackbar notification above), because we can't trigger the Bluetooth Enable intent if
+            // we haven't been granted BLUETOOTH_CONNECT permission.
+            if (!isBluetoothEnabled(context) &&
+                hasProximityPresentationPermissions.allPermissionsGranted &&
+                !settingsModel.hideMissingBluetoothPermissionsWarning.value!!) {
+                LaunchedEffect(snackbarHostState) {
+                    when (snackbarHostState.showSnackbar(
+                        message = "Bluetooth must be enabled for proximity presentations",
+                        actionLabel = context.getString(R.string.proximity_permissions_snackbar_action_label),
+                        duration = SnackbarDuration.Indefinite,
+                        withDismissAction = true
+                    )) {
+                        SnackbarResult.Dismissed -> {
+                            settingsModel.hideMissingBluetoothPermissionsWarning.value = true
+                        }
+                        SnackbarResult.ActionPerformed -> {
+                            openBluetoothSettings(context)
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.weight(0.25f))
 
@@ -391,6 +404,20 @@ fun MainScreenContent(
                 }
             }
         }
+    }
+}
+
+private fun openBluetoothSettings(context: Context) {
+    Logger.i(TAG, "Opening Bluetooth enablement dialog")
+    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+    enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        context.startActivity(enableBtIntent)
+    } catch (e: SecurityException) {
+        // The linter complains if we don't handle this exception. We check for
+        // permissions before bringing up this warning, but maybe we'll hit this
+        // if the code changes or there's an unexpected race condition.
+        Logger.e(TAG, "Permission failure trying to open BT enablement.", e)
     }
 }
 
