@@ -45,10 +45,10 @@ object IdentityCtl {
      * @param subject the value to use for subject and issuer, e.g. "CN=Test IACA,C=UT".
      * @param validFrom the point in time the certificate should be valid from.
      * @param validUntil the point in time the certificate should be valid until.
-     * @param issuerAltName the issuer alternative name (see RFC 5280 section 4.2.1.7),
+     * @param issuerAltNameUrl the issuer alternative name (see RFC 5280 section 4.2.1.7),
      * e.g. "http://issuer.example.com/informative/web/page".
      * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
-     * @return a [Certificate] with all the required extensions.
+     * @return a [X509Cert] with all the required extensions.
      */
     @JvmStatic
     fun generateIacaCertificate(
@@ -56,7 +56,7 @@ object IdentityCtl {
         subject: String,
         validFrom: Instant,
         validUntil: Instant,
-        issuerAltName: String,
+        issuerAltNameUrl: String,
         crlUrl: String
     ): X509Cert {
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
@@ -90,12 +90,13 @@ object IdentityCtl {
         )
 
         // From 18013-5 table B.1: non-critical, Email or URL
-
         extensions.add(
             X509CertificateExtension(
                 Extension.issuerAlternativeName.toString(),
                 false,
-                GeneralName(GeneralName.uniformResourceIdentifier, issuerAltName).encoded
+                GeneralNames(
+                    GeneralName(GeneralName.uniformResourceIdentifier, issuerAltNameUrl)
+                ).encoded
             )
         )
 
@@ -156,10 +157,7 @@ object IdentityCtl {
      * @param subject the value to use for subject, e.g. "CN=Test DS,C=UT".
      * @param validFrom the point in time the certificate should be valid from.
      * @param validUntil the point in time the certificate should be valid until.
-     * @param issuerAltName the issuer alternative name (see RFC 5280 section 4.2.1.7),
-     * e.g. "http://issuer.example.com/informative/web/page".
-     * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
-     * @return a [Certificate] with all the required extensions.
+     * @return a [X509Cert] with all the required extensions.
      */
     @JvmStatic
     fun generateDsCertificate(
@@ -283,8 +281,8 @@ object IdentityCtl {
 
         val iacaKey = Crypto.createEcPrivateKey(curve)
 
-        val issuerAltName = getArg(args,
-            "issuer_alt_name",
+        val issuerAltNameUrl = getArg(args,
+            "issuer_alt_name_url",
             "https://github.com/openwallet-foundation-labs/identity-credential"
         )
 
@@ -299,7 +297,7 @@ object IdentityCtl {
             subjectAndIssuer,
             validFrom,
             validUntil,
-            issuerAltName,
+            issuerAltNameUrl,
             crlUrl
         )
 
@@ -454,17 +452,21 @@ Generate an IACA certificate and corresponding private key:
         [--subject_and_issuer 'CN=Utopia TEST IACA,C=UT']
         [--validity_in_years 5]
         [--curve P384]
-        [--issuer_alt_name https://issuer.example.com/website]
+        [--issuer_alt_name_url https://issuer.example.com/website]
         [--crl_url https://issuer.example.com/crl.crl]
+
+Generate an DS certificate and corresponding private key:
 
     identityctl generateDs
         --iaca_certificate iaca_certificate.pem
         --iaca_private_key iaca_private_key.pem
         [--out_certificate ds_certificate.pem]
         [--out_private_key ds_private_key.pem]
-        [--subject_and_issuer 'CN=Utopia TEST DS,C=UT']
+        [--subject 'CN=Utopia TEST DS,C=UT']
         [--validity_in_years 1]
         [--curve P256]
+
+Generate an reader root and corresponding private key:
 
     identityctl generateReaderRoot
         [--out_certificate reader_root_certificate.pem]
