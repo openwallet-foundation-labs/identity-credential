@@ -28,7 +28,6 @@ expect suspend fun showPassphrasePrompt(
     content: String
 ): String?
 
-
 @Composable
 fun PassphrasePromptScreen(
     showToast: (message: String) -> Unit
