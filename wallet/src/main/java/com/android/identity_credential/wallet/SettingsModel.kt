@@ -28,6 +28,7 @@ class SettingsModel(
     // Non visible in the Settings screen
     val focusedCardId = MutableLiveData("")
     val hideMissingProximityPermissionsWarning = MutableLiveData(false)
+    val hideMissingBluetoothPermissionsWarning = MutableLiveData(false)
 
     val screenLockIsSetup = MutableLiveData(false)
 
