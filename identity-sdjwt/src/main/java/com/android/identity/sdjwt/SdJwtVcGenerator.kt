@@ -7,7 +7,7 @@ import com.android.identity.crypto.EcSignature
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.sdjwt.vc.JwtHeader
-import com.android.identity.util.toBase64
+import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlin.random.Random
@@ -86,7 +86,7 @@ class SdJwtVcGenerator(
 
         val toBeSigned = "$headerStr.$bodyStr".toByteArray(Charsets.US_ASCII)
         val signature = sign(toBeSigned, issuer)
-        val signatureStr = (signature.r + signature.s).toBase64()
+        val signatureStr = (signature.r + signature.s).toBase64Url()
 
         return SdJwtVerifiableCredential(
             headerStr,

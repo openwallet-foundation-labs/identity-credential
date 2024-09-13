@@ -22,16 +22,23 @@ import android.util.Base64
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.Simple
+import com.android.identity.cbor.Tstr
 import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.document.DocumentRequest
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import com.android.identity.util.fromBase64Url
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
@@ -142,6 +149,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
                         mdocCredential,
                         consentFields,
+                        null,
                         encodedSessionTranscript
                     )
 
@@ -175,6 +183,114 @@ class CredmanPresentationActivity : FragmentActivity() {
                     finish()
                 }
 
+            } else if (protocol == "austroads-request-forwarding-v2") {
+                val arfRequest = JSONObject(request)
+                val deviceRequestBase64 = arfRequest.getString("deviceRequest")
+                val encryptionInfoBase64 = arfRequest.getString("encryptionInfo")
+                Logger.i(TAG, "origin: ${callingOrigin!!}")
+                Logger.iCbor(TAG, "deviceRequest", deviceRequestBase64.fromBase64Url())
+                Logger.iCbor(TAG, "encryptionInfo", encryptionInfoBase64.fromBase64Url())
+
+                val encodedSessionTranscript =
+                    Cbor.encode(
+                        CborArray.builder()
+                            .add(Simple.NULL) // DeviceEngagementBytes
+                            .add(Simple.NULL) // EReaderKeyBytes
+                            .addArray() // BrowserHandover
+                            .add("ARFHandoverv2")
+                            .add(encryptionInfoBase64)
+                            .add(callingOrigin!!)
+                            .end()
+                            .end()
+                            .build()
+                    )
+
+                // For now we only consider the first document request
+                val docRequest = DeviceRequestParser(
+                    deviceRequestBase64.fromBase64Url(),
+                    encodedSessionTranscript
+                ).parse().docRequests[0]
+
+                val mdocCredential = getMdocCredentialForCredentialId(credentialId)
+                val consentFields = MdocConsentField.generateConsentFields(
+                    docRequest,
+                    walletApp.documentTypeRepository,
+                    mdocCredential
+                )
+
+                val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
+                if (encryptionInfo.asArray.get(0).asTstr != "ARFEncryptionv2") {
+                    throw IllegalArgumentException("Malformed EncryptionInfo")
+                }
+                val nonce = encryptionInfo.asArray.get(1).asMap.get(Tstr("nonce"))!!.asBstr
+                val readerPublicKey = encryptionInfo.asArray.get(1).asMap.get(Tstr
+                    ("readerPublicKey"))!!.asCoseKey.ecPublicKey
+
+                // See if we recognize the reader/verifier
+                var trustPoint: TrustPoint? = null
+                if (docRequest.readerAuthenticated) {
+                    val result = walletApp.readerTrustManager.verify(
+                        docRequest.readerCertificateChain!!.javaX509Certificates,
+                        customValidators = emptyList()  // not needed for reader auth
+                    )
+                    if (result.isTrusted && result.trustPoints.isNotEmpty()) {
+                        trustPoint = result.trustPoints.first()
+                    } else if (result.error != null) {
+                        Logger.w(
+                            TAG,
+                            "Error finding TrustPoint for reader auth",
+                            result.error!!
+                        )
+                    }
+                }
+                Logger.i(TAG, "TrustPoint: $trustPoint")
+
+                lifecycleScope.launch {
+                    val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
+                        mdocCredential,
+                        consentFields,
+                        trustPoint,
+                        encodedSessionTranscript,
+                    )
+
+                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
+                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                        readerPublicKey,
+                        deviceResponse,
+                        encodedSessionTranscript
+                    )
+                    val encryptedResponse =
+                        Cbor.encode(
+                            CborArray.builder()
+                                .add("ARFencryptionv2")
+                                .addMap()
+                                .put("pkEm", encapsulatedPublicKey.toCoseKey().toDataItem())
+                                .put("cipherText", cipherText)
+                                .end()
+                                .end()
+                                .build()
+                        )
+
+                    // Create the preview response
+                    val responseJson = JSONObject()
+                    responseJson.put(
+                        "encryptedResponse",
+                        Base64.encodeToString(
+                            encryptedResponse,
+                            Base64.NO_WRAP or Base64.URL_SAFE
+                        )
+                    )
+                    val response = responseJson.toString(2)
+
+                    // Send result back to credman
+                    val resultData = Intent()
+                    IntentHelper.setGetCredentialResponse(
+                        resultData,
+                        createGetCredentialResponse(response)
+                    )
+                    setResult(RESULT_OK, resultData)
+                    finish()
+                }
             } else if (protocol == "openid4vp") {
                 val openid4vpRequest = JSONObject(request)
                 val clientID = openid4vpRequest.getString("client_id")
@@ -234,6 +350,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
                         mdocCredential,
                         consentFields,
+                        null,
                         encodedSessionTranscript
                     )
                     // Create the openid4vp response
@@ -282,6 +399,7 @@ class CredmanPresentationActivity : FragmentActivity() {
     private suspend fun showPresentmentFlowAndGetDeviceResponse(
         mdocCredential: MdocCredential,
         consentFields: List<ConsentField>,
+        trustPoint: TrustPoint?,
         encodedSessionTranscript: ByteArray,
     ): ByteArray {
         val documentCborBytes = showMdocPresentmentFlow(
@@ -289,7 +407,7 @@ class CredmanPresentationActivity : FragmentActivity() {
             consentFields = consentFields,
             documentName = mdocCredential.document.documentConfiguration.displayName,
             // TODO: Need to extend TrustManager with a verify() variants which takes a domain or appId
-            trustPoint = null,
+            trustPoint = trustPoint,
             credential = mdocCredential,
             encodedSessionTranscript = encodedSessionTranscript,
         )

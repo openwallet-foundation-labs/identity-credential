@@ -35,8 +35,8 @@ import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.fromCbor
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.util.Logger
-import com.android.identity.util.fromBase64
-import com.android.identity.util.toBase64
+import com.android.identity.util.fromBase64Url
+import com.android.identity.util.toBase64Url
 import io.ktor.client.HttpClient
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
@@ -185,7 +185,7 @@ class FunkeIssuingAuthorityState(
 
     @FlowMethod
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
-        val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64()
+        val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
         val tcTokenUrl = performPushedAuthorizationRequest(env, pkceCodeVerifier)
         val storage = env.getInterface(Storage::class)!!
         val applicationCapabilities = storage.get(
@@ -364,7 +364,7 @@ class FunkeIssuingAuthorityState(
                 CredentialFormat.SD_JWT_VC ->
                     CredentialData(publicKey, now, expiration, CredentialFormat.SD_JWT_VC, credential.toByteArray())
                 CredentialFormat.MDOC_MSO ->
-                    CredentialData(publicKey, now, expiration, CredentialFormat.MDOC_MSO, credential.fromBase64())
+                    CredentialData(publicKey, now, expiration, CredentialFormat.MDOC_MSO, credential.fromBase64Url())
             }
         })
         updateIssuerDocument(env, state.documentId, document, true)
@@ -443,7 +443,7 @@ class FunkeIssuingAuthorityState(
     }
 
     private suspend fun performPushedAuthorizationRequest(env: FlowEnvironment, pkceCodeVerifier: String): String {
-        val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64()
+        val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
         val assertion = FunkeUtil.createParJwtAssertion(env, clientId)
         val req = FormUrlEncoder {
             add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")

@@ -4,8 +4,8 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.crypto.EcPublicKeyOkp
-import com.android.identity.util.fromBase64
-import com.android.identity.util.toBase64
+import com.android.identity.util.fromBase64Url
+import com.android.identity.util.toBase64Url
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
@@ -56,13 +56,13 @@ class JsonWebKey {
                 is EcPublicKeyOkp -> {
                     put("kty", JsonPrimitive("OKP"))
                     put("crv", JsonPrimitive(pubKey.curve.jwkName))
-                    put("x", JsonPrimitive(pubKey.x.toBase64()))
+                    put("x", JsonPrimitive(pubKey.x.toBase64Url()))
                 }
                 is EcPublicKeyDoubleCoordinate -> {
                     put("kty", JsonPrimitive("EC"))
                     put("crv", JsonPrimitive(pubKey.curve.jwkName))
-                    put("x", JsonPrimitive(pubKey.x.toBase64()))
-                    put("y", JsonPrimitive(pubKey.y.toBase64()))
+                    put("x", JsonPrimitive(pubKey.x.toBase64Url()))
+                    put("y", JsonPrimitive(pubKey.y.toBase64Url()))
                 }
                 else -> throw IllegalStateException("Unsupported key $pubKey")
             }
@@ -78,14 +78,14 @@ class JsonWebKey {
                 "OKP" -> {
                     EcPublicKeyOkp(
                         EcCurve.fromJwkName(key.getString("crv")),
-                        key.getString("x").fromBase64()
+                        key.getString("x").fromBase64Url()
                     )
                 }
                 "EC" -> {
                     EcPublicKeyDoubleCoordinate(
                         EcCurve.fromJwkName(key.getString("crv")),
-                        key.getString("x").fromBase64(),
-                        key.getString("y").fromBase64()
+                        key.getString("x").fromBase64Url(),
+                        key.getString("y").fromBase64Url()
                     )
                 }
                 else -> throw IllegalArgumentException("Not supporting key type $kty")

@@ -779,7 +779,25 @@ object DrivingLicense {
                 ),
             )
             .addSampleRequest(
-                id ="age_over_18_and_portrait",
+                id = "age_over_18",
+                displayName ="Age Over 18",
+                mdocDataElements = mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "age_over_18",
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                id = "age_over_21",
+                displayName ="Age Over 21",
+                mdocDataElements = mapOf(
+                    Pair(MDL_NAMESPACE, listOf(
+                        "age_over_21",
+                    ))
+                ),
+            )
+            .addSampleRequest(
+                id = "age_over_18_and_portrait",
                 displayName ="Age Over 18 + Portrait",
                 mdocDataElements = mapOf(
                     Pair(MDL_NAMESPACE, listOf(
@@ -789,17 +807,7 @@ object DrivingLicense {
                 ),
             )
             .addSampleRequest(
-                id ="age_over_21_and_portrait",
-                displayName ="Age Over 21 + Portrait",
-                mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "age_over_21",
-                        "portrait"
-                    ))
-                ),
-            )
-            .addSampleRequest(
-                id ="age_over_21_and_portrait",
+                id = "age_over_21_and_portrait",
                 displayName ="Age Over 21 + Portrait",
                 mdocDataElements = mapOf(
                     Pair(MDL_NAMESPACE, listOf(

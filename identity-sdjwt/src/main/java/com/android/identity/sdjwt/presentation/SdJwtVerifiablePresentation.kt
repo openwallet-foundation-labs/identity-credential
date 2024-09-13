@@ -5,8 +5,8 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.vc.JwtBody
-import com.android.identity.util.fromBase64
-import com.android.identity.util.toBase64
+import com.android.identity.util.fromBase64Url
+import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Instant
 
 /**
@@ -35,13 +35,13 @@ class SdJwtVerifiablePresentation(
         val keyBindingBodyObj = KeyBindingBody.fromString(keyBindingBody)
 
         // compare the hash of the VC against what's in the key binding JWT
-        val sdHash = Crypto.digest(sdJwtVc.sdHashAlg, sdJwtVc.toString().toByteArray()).toBase64()
+        val sdHash = Crypto.digest(sdJwtVc.sdHashAlg, sdJwtVc.toString().toByteArray()).toBase64Url()
         if (sdHash != keyBindingBodyObj.sdHash) {
             throw IllegalStateException("hash in key binding JWT didn't match SD-JWT")
         }
 
         val toBeVerified = "$keyBindingHeader.$keyBindingBody".toByteArray(Charsets.US_ASCII)
-        val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64())
+        val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64Url())
 
         if (!Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signature)) {
             throw IllegalStateException("Signature verification failed")

@@ -2,7 +2,7 @@
 // Keep in sync with verifier.html
 var selectedProtocol = 'w3c_dc_preview'
 
-var openid4vpUri = ""
+var openid4vpUri = ''
 
 function onLoad() {
     const protocolDropdown = document.getElementById('protocolDropdown')
@@ -10,6 +10,7 @@ function onLoad() {
         var target = event.clickEvent.target
         var selected = target.getAttribute('value')
         if (selected === 'w3c_dc_preview' ||
+            selected === 'w3c_dc_arf' ||
             selected === 'openid4vp_plain' ||
             selected === 'openid4vp_eudi' ||
             selected === 'openid4vp_mdoc') {
@@ -53,6 +54,7 @@ async function requestDocument(type) {
             {
                 requestType: type,
                 protocol: selectedProtocol,
+                origin: location.origin,
             }
         )
         console.log("URI " + response.uri)
@@ -64,9 +66,24 @@ async function requestDocument(type) {
                 {
                     requestType: type,
                     protocol: selectedProtocol,
+                    origin: location.origin,
                 }
             )
             dcRequestCredential(response.sessionId, 'preview', JSON.parse(response.dcRequestString))
+        } catch (err) {
+            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+        }
+    } else if (selectedProtocol === "w3c_dc_arf") {
+        try {
+            const response = await callServer(
+                'dcBegin',
+                {
+                    requestType: type,
+                    protocol: selectedProtocol,
+                    origin: location.origin,
+                }
+            )
+            dcRequestCredential(response.sessionId, 'austroads-request-forwarding-v2', JSON.parse(response.dcRequestString))
         } catch (err) {
             alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
         }
@@ -94,8 +111,7 @@ async function dcProcessResponse(sessionId, credentialResponse) {
         'dcGetData',
         {
             sessionId: sessionId,
-            data: JSON.parse(credentialResponse.data).token,
-            origin: location.origin,
+            credentialResponse: credentialResponse.data
         }
     )
     var modalBody = document.getElementById('dcResultModal').querySelector('.list-group')
