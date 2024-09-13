@@ -11,16 +11,6 @@
         <load-on-startup>0</load-on-startup>
 
         <init-param>
-            <!--
-                This is initial admin password. Login at the servlet root page and change it.
-                Once changed, new password is written into the database and new deployments will
-                read it from there.
-             -->
-            <param-name>initialAdminPassword</param-name>
-            <param-value>FeelingLucky!</param-value>
-        </init-param>
-
-        <init-param>
             <param-name>developerMode</param-name>
             <param-value>true</param-value>
         </init-param>
@@ -147,6 +137,31 @@
     <servlet-mapping>
         <servlet-name>FlowServlet</servlet-name>
         <url-pattern>/flow/*</url-pattern>
+    </servlet-mapping>
+
+
+    <servlet>
+        <display-name>AdminServlet</display-name>
+        <servlet-name>AdminServlet</servlet-name>
+        <servlet-class>com.android.identity.wallet.server.AdminServlet</servlet-class>
+
+        <!-- must be loaded after FlowServlet in order to use FlowNotifications! -->
+        <load-on-startup>1</load-on-startup>
+
+        <init-param>
+            <!--
+                This is initial admin password. Login at the servlet root page and change it.
+                Once changed, new password is written into the database and new deployments will
+                read it from there.
+             -->
+            <param-name>initialAdminPassword</param-name>
+            <param-value>FeelingLucky!</param-value>
+        </init-param>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>AdminServlet</servlet-name>
+        <url-pattern>/admin/*</url-pattern>
     </servlet-mapping>
 
     <servlet>

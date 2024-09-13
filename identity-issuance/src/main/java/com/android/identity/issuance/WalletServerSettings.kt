@@ -23,15 +23,6 @@ class WalletServerSettings(private val conf: Configuration) {
     val androidRequireAppSignatureCertificateDigests: List<String>
         get() = getStringList("androidRequireAppSignatureCertificateDigests")
 
-    val databaseConnection: String?
-        get() = getString("databaseConnection")
-
-    val databaseUser: String?
-        get() = getString("databaseUser")
-
-    val databasePassword: String?
-        get() = getString("databasePassword")
-
     val cloudSecureAreaEnabled: Boolean
         get() = getBool("cloudSecureAreaEnabled", false)
 

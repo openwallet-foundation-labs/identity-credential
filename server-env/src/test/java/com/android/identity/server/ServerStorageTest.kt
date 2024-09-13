@@ -1,4 +1,4 @@
-package com.android.identity.wallet.server
+package com.android.identity.server
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
@@ -8,7 +8,7 @@ import org.junit.Test
 class ServerStorageTest {
     // NB: this in-memory database is shared across tests. If a particular test requires
     // empty database, create on specifically for that test using test name as database name.
-    val storage = ServerStorage("jdbc:hsqldb:mem:sharedDb")
+    private val storage = ServerStorage("jdbc:hsqldb:mem:sharedDb")
 
     @Test
     fun testInsertAndQuery() {

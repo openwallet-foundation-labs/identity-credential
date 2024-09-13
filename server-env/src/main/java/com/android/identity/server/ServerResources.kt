@@ -1,10 +1,9 @@
-package com.android.identity.wallet.server
+package com.android.identity.server
 
 import com.android.identity.flow.server.Resources
 import kotlinx.io.bytestring.ByteString
-import java.io.File
 
-class ServerResources: Resources {
+internal object ServerResources: Resources {
     override fun getRawResource(name: String): ByteString? {
         val stream = javaClass.getResourceAsStream("/resources/$name")
         return if (stream != null) ByteString(stream.readBytes()) else null
@@ -14,5 +13,4 @@ class ServerResources: Resources {
         val stream = javaClass.getResourceAsStream("/resources/$name")
         return stream?.bufferedReader()?.readText()
     }
-
 }

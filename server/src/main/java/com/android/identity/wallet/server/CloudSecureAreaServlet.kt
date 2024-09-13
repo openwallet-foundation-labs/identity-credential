@@ -10,16 +10,16 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.create
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.securearea.cloud.CloudSecureAreaServer
 import com.android.identity.securearea.cloud.SimplePassphraseFailureEnforcer
-import com.android.identity.util.Logger
+import com.android.identity.server.BaseHttpServlet
 import com.android.identity.util.fromHex
-import jakarta.servlet.ServletConfig
 import kotlinx.coroutines.runBlocking
-import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.datetime.Clock
@@ -37,7 +37,7 @@ import kotlin.time.Duration.Companion.seconds
  *
  * This is using the configuration and storage interfaces from [ServerEnvironment].
  */
-class CloudSecureAreaServlet : HttpServlet() {
+class CloudSecureAreaServlet : BaseHttpServlet() {
 
     data class KeyMaterial(
         val serverSecureAreaBoundKey: ByteArray,
@@ -142,42 +142,27 @@ class CloudSecureAreaServlet : HttpServlet() {
     companion object {
         private const val TAG = "CloudSecureAreaServlet"
 
-        private lateinit var serverEnvironment: ServerEnvironment
+        private lateinit var cloudSecureArea: CloudSecureAreaServer
+        private lateinit var keyMaterial: KeyMaterial
 
-        @Synchronized
-        private fun initialize(servletConfig: ServletConfig) {
-            if (this::serverEnvironment.isInitialized) {
-                return
+        private fun createKeyMaterial(serverEnvironment: FlowEnvironment): KeyMaterial {
+            val storage = serverEnvironment.getInterface(Storage::class)!!
+            val keyMaterialBlob = runBlocking {
+                storage.get("RootState", "", "cloudSecureAreaKeyMaterial")?.toByteArray()
+                    ?: let {
+                        val blob = KeyMaterial.createKeyMaterial().toCbor()
+                        storage.insert(
+                            "RootState",
+                            "",
+                            ByteString(blob),
+                            "cloudSecureAreaKeyMaterial")
+                        blob
+                    }
             }
-
-            serverEnvironment = ServerEnvironment(servletConfig)
-
-
+            return KeyMaterial.fromCbor(keyMaterialBlob)
         }
 
-        private val cloudSecureArea: CloudSecureAreaServer by lazy {
-            createCloudSecureArea()
-        }
-
-        private val keyMaterial: KeyMaterial
-            get() {
-                val storage = serverEnvironment.getInterface(Storage::class)!!
-                val keyMaterialBlob = runBlocking {
-                    storage.get("RootState", "", "cloudSecureAreaKeyMaterial")?.toByteArray()
-                        ?: let {
-                            val blob = KeyMaterial.createKeyMaterial().toCbor()
-                            storage.insert(
-                                "RootState",
-                                "",
-                                ByteString(blob),
-                                "cloudSecureAreaKeyMaterial")
-                            blob
-                        }
-                }
-                return KeyMaterial.fromCbor(keyMaterialBlob)
-            }
-
-        private fun createCloudSecureArea(): CloudSecureAreaServer {
+        private fun createCloudSecureArea(serverEnvironment: FlowEnvironment): CloudSecureAreaServer {
             Security.addProvider(BouncyCastleProvider())
 
             val settings = WalletServerSettings(serverEnvironment.getInterface(Configuration::class)!!)
@@ -204,22 +189,10 @@ class CloudSecureAreaServlet : HttpServlet() {
         }
     }
 
-    @Override
-    override fun init() {
-        super.init()
-
-        Security.addProvider(BouncyCastleProvider())
-
-        initialize(servletConfig)
-    }
-
-    private fun getRemoteHost(req: HttpServletRequest): String {
-        var remoteHost = req.remoteHost
-        val forwardedFor = req.getHeader("X-Forwarded-For")
-        if (forwardedFor != null) {
-            remoteHost = forwardedFor
-        }
-        return remoteHost
+    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+        keyMaterial = createKeyMaterial(env)
+        cloudSecureArea = createCloudSecureArea(env)
+        return null
     }
 
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
