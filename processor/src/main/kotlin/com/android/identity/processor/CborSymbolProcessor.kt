@@ -30,6 +30,7 @@ class CborSymbolProcessor(
         const val CBOR_TYPE = "com.android.identity.cbor.Cbor"
         const val BSTR_TYPE = "com.android.identity.cbor.Bstr"
         const val TSTR_TYPE = "com.android.identity.cbor.Tstr"
+        const val SIMPLE_TYPE = "com.android.identity.cbor.Simple"
         const val CBOR_MAP_TYPE = "com.android.identity.cbor.CborMap"
         const val CBOR_ARRAY_TYPE = "com.android.identity.cbor.CborArray"
         const val DATA_ITEM_CLASS = "com.android.identity.cbor.DataItem"
@@ -316,6 +317,15 @@ class CborSymbolProcessor(
                     codeBuilder.importQualifiedName(qualifiedName)
                     return type.declaration.simpleName.asString()
                 }
+            }
+        }
+
+        fun typeRefNullable(codeBuilder: CodeBuilder, type: KSType): String {
+            val typeStr = typeRef(codeBuilder, type)
+            return if (type.isMarkedNullable) {
+                "$typeStr?"
+            } else {
+                typeStr
             }
         }
     }

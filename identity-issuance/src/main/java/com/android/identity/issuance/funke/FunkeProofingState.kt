@@ -16,20 +16,18 @@ import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
+import com.android.identity.issuance.evidence.EvidenceRequestWeb
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
+import com.android.identity.issuance.evidence.EvidenceResponseWeb
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.util.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
 import java.net.URLEncoder
 
@@ -40,9 +38,9 @@ import java.net.URLEncoder
 @CborSerializable
 class FunkeProofingState(
     val clientId: String,
+    val issuanceClientId: String,
     val documentId: String,
-    val tcTokenUrl: String,
-    val pkceCodeVerifier: String,
+    val proofingInfo: ProofingInfo,
     val applicationCapabilities: WalletApplicationCapabilities,
     var access: FunkeAccess? = null,
     var secureAreaIdentifier: String? = null,
@@ -83,8 +81,10 @@ class FunkeProofingState(
                     continueWithoutPermissionButtonText = "No Thanks",
                     assets = mapOf()
                 ))
+            } else if (FunkeUtil.USE_AUSWEIS_SDK) {
+                listOf(EvidenceRequestGermanEid(proofingInfo.authorizeUrl, listOf()))
             } else {
-                listOf(EvidenceRequestGermanEid(tcTokenUrl, listOf()))
+                listOf(EvidenceRequestWeb(proofingInfo.authorizeUrl, proofingInfo.landingUrl))
             }
         } else if (secureAreaIdentifier == null) {
             listOf(
@@ -125,7 +125,10 @@ class FunkeProofingState(
     @FlowMethod
     suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
         when (evidenceResponse) {
-            is EvidenceResponseGermanEid -> processGermanEId(env, evidenceResponse)
+            is EvidenceResponseGermanEid -> if (evidenceResponse.url != null) {
+                processRedirectUrl(env, evidenceResponse.url)
+            }
+            is EvidenceResponseWeb -> obtainTokenUsingCode(env, evidenceResponse.response, null)
             is EvidenceResponseMessage -> {
                 if (!evidenceResponse.acknowledged) {
                     throw IssuingAuthorityException("Issuance rejected")
@@ -161,51 +164,44 @@ class FunkeProofingState(
         return "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
     }
 
-    private suspend fun processGermanEId(
+    private suspend fun processRedirectUrl(
         env: FlowEnvironment,
-        evidenceResponse: EvidenceResponseGermanEid
+        url: String
     ) {
-        if (evidenceResponse.url == null) {
-            // Error
-            return
-        }
         val httpClient = env.getInterface(HttpClient::class)!!
-        val response = httpClient.get(evidenceResponse.url) {
-
-        }
-        val dpopNonce = response.headers["DPoP-Nonce"]
-        val location = response.headers["Location"]
-        val code = location!!.substring(location.indexOf("code=") + 5)
-        if (dpopNonce == null) {
-            // Error
-            return
-        }
-        val tokenUrl = "${FunkeUtil.BASE_URL}/token"
-        val dpop = FunkeUtil.generateDPoP(env, clientId, tokenUrl, dpopNonce)
-        val tokenRequest = FormUrlEncoder {
-            add("code", code)
-            add("grant_type", "authorization_code")
-            add("redirect_uri", "https://secure.redirect.com")  // TODO: It's arbitrary in our case, right?
-            add("code_verifier", pkceCodeVerifier)
-        }
-        val tokenResponse = httpClient.post(tokenUrl) {
-            headers {
-                append("DPoP", dpop)
-                append("Content-Type", "application/x-www-form-urlencoded")
-            }
-            setBody(tokenRequest.toString())
-        }
-        if (tokenResponse.status != HttpStatusCode.OK) {
-            Logger.e(TAG, "Token request error: ${tokenResponse.status}")
+        val response = httpClient.get(url) {}
+        if (response.status != HttpStatusCode.Found && response.status != HttpStatusCode.SeeOther) {
+            Logger.e(TAG, "Authentication error: ${response.status}")
             throw IssuingAuthorityException("eID card rejected by the issuer")
         }
-        this.access = try {
-            FunkeAccess.parseResponse(tokenResponse)
-        } catch (err: IllegalArgumentException) {
-            val tokenString = String(tokenResponse.readBytes())
-            Logger.e(TAG,"Invalid token response: ${err.message}: $tokenString")
-            throw IssuingAuthorityException("Invalid response from the issuer")
+        val dpopNonce = response.headers["DPoP-Nonce"]
+        if (dpopNonce == null) {
+            // Error
+            Logger.e(TAG, "No DPoP nonce in authentication response")
+            throw IllegalStateException("No DPoP nonce in authentication response")
         }
+        obtainTokenUsingCode(env, response.headers["Location"]!!, dpopNonce)
+    }
+
+    private suspend fun obtainTokenUsingCode(
+        env: FlowEnvironment,
+        location: String,
+        dpopNonce: String?
+    ) {
+        val index = location.indexOf("code=")
+        if (index < 0) {
+            throw IllegalStateException("No code after web authorization")
+        }
+        val code = location.substring(index + 5)
+        this.access = FunkeUtil.obtainToken(
+            env = env,
+            tokenUrl = "${FunkeUtil.BASE_URL}/token",
+            clientId = clientId,
+            issuanceClientId = issuanceClientId,
+            authorizationCode = code,
+            codeVerifier = proofingInfo.pkceCodeVerifier,
+            dpopNonce = dpopNonce
+        )
         Logger.i(TAG, "Token request: success")
     }
 }

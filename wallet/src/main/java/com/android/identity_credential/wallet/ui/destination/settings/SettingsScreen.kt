@@ -100,12 +100,30 @@ fun SettingsScreen(
 
     var showSetCloudSecureAreaUrlDialog by remember { mutableStateOf(false) }
     if (showSetCloudSecureAreaUrlDialog) {
-        SetCloudSecureAreaUrlDialog(
+        SetUrlDialog(
             initialValue = settingsModel.cloudSecureAreaUrl.value!!,
+            dialogTitle = stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_title),
+            dialogMessage = stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_message),
+            urlSuffix = "/csa",
             onDismissed = { showSetCloudSecureAreaUrlDialog = false },
             onSet = { cloudSecureAreaUrl ->
                 settingsModel.cloudSecureAreaUrl.value = cloudSecureAreaUrl
                 showSetCloudSecureAreaUrlDialog = false
+            }
+        )
+    }
+
+    var showMinServerUrlDialog by remember { mutableStateOf(false) }
+    if (showMinServerUrlDialog) {
+        SetUrlDialog(
+            initialValue = settingsModel.minServerUrl.value!!,
+            dialogTitle = stringResource(R.string.settings_screen_set_min_server_url_dialog_title),
+            dialogMessage = stringResource(R.string.settings_screen_set_min_server_url_dialog_message),
+            urlSuffix = "",
+            onDismissed = { showMinServerUrlDialog = false },
+            onSet = { minServerUrl ->
+                settingsModel.minServerUrl.value = minServerUrl
+                showMinServerUrlDialog = false
             }
         )
     }
@@ -182,12 +200,24 @@ fun SettingsScreen(
                     onClicked = { showSetWalletServerUrlDialog = true }
                 )
             }
-            if (WalletApplicationConfiguration.CLOUD_SECURE_AREA_SETTING_AVAILABLE) {
+            if (WalletApplicationConfiguration.CLOUD_SECURE_AREA_SETTING_AVAILABLE ||
+                WalletApplicationConfiguration.WALLET_SERVER_SETTING_AVAILABLE) {
                 SettingSectionSubtitle(title = stringResource(R.string.settings_screen_built_in_issuer_settings))
+            }
+            if (WalletApplicationConfiguration.CLOUD_SECURE_AREA_SETTING_AVAILABLE) {
                 SettingString(
+                    modifier = Modifier.padding(top = 4.dp),
                     title = stringResource(R.string.settings_screen_cloud_secure_area_title),
                     subtitle = settingsModel.cloudSecureAreaUrl.observeAsState().value!!,
                     onClicked = { showSetCloudSecureAreaUrlDialog = true }
+                )
+            }
+            if (WalletApplicationConfiguration.WALLET_SERVER_SETTING_AVAILABLE) {
+                SettingString(
+                    modifier = Modifier.padding(top = 4.dp),
+                    title = stringResource(R.string.settings_screen_min_server_title),
+                    subtitle = settingsModel.minServerUrl.observeAsState().value!!,
+                    onClicked = { showMinServerUrlDialog = true }
                 )
             }
         }
@@ -243,47 +273,50 @@ private fun SetWalletServerUrlDialog(
 }
 
 @Composable
-private fun SetCloudSecureAreaUrlDialog(
+private fun SetUrlDialog(
     initialValue: String,
+    dialogTitle: String,
+    dialogMessage: String,
+    urlSuffix: String,
     onDismissed: () -> Unit,
     onSet: (cloudServerUrl: String) -> Unit
 ) {
     var url by remember { mutableStateOf(initialValue) }
     AlertDialog(
         onDismissRequest = { onDismissed() },
-        title = { Text(text = stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_title)) },
+        title = { Text(text = dialogTitle) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_message))
+                Text(dialogMessage)
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextField(
                         value = url,
                         onValueChange = { url = it },
-                        label = { Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_label)) }
+                        label = { Text(stringResource(R.string.settings_screen_set_server_url_label)) }
                     )
                 }
-                LinkText(stringResource(R.string.settings_screen_set_cloud_secure_area_url_link_emulator)) {
-                    url = "http://10.0.2.2:8080/server/csa"
+                LinkText(stringResource(R.string.settings_screen_set_server_url_link_emulator)) {
+                    url = "http://10.0.2.2:8080/server$urlSuffix"
                 }
-                LinkText(stringResource(R.string.settings_screen_set_cloud_secure_area_url_tunneled)) {
-                    url = "http://localhost:8080/server/csa"
+                LinkText(stringResource(R.string.settings_screen_set_server_url_tunneled)) {
+                    url = "http://localhost:8080/server$urlSuffix"
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = { onSet(url) }) {
-                Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_confirm_button))
+                Text(stringResource(R.string.settings_screen_set_server_url_dialog_confirm_button))
             }
         },
         dismissButton = {
             Button(
                 onClick = { onDismissed() }) {
-                Text(stringResource(R.string.settings_screen_set_cloud_secure_area_url_dialog_dismiss_button))
+                Text(stringResource(R.string.settings_screen_set_server_url_dialog_dismiss_button))
             }
         }
     )

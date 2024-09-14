@@ -14,6 +14,14 @@ interface WalletServer: FlowBase {
     suspend fun authenticate(): AuthenticationFlow
 
     /**
+     * General-purpose server-side application support.
+     *
+     * This is the only interface supported by the minimal wallet server.
+     */
+    @FlowMethod
+    suspend fun applicationSupport(): ApplicationSupport
+
+    /**
      * Static information about the available Issuing Authorities.
      *
      * Queried from all issuing authorities at initialization time.

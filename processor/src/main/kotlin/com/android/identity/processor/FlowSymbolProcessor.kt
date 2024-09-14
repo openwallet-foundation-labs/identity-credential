@@ -473,9 +473,15 @@ class FlowSymbolProcessor(
                 line("checkFlowNotComplete()")
                 val parameters = op.parameters.map { parameter ->
                     if (parameter.flowTypeInfo == null) {
-                        CborSymbolProcessor.serializeValue(
+                        val serialization = CborSymbolProcessor.serializeValue(
                             this, parameter.name, parameter.type
                         )
+                        if (parameter.type.isMarkedNullable) {
+                            importQualifiedName(CborSymbolProcessor.SIMPLE_TYPE)
+                            "if (${parameter.name} == null) { Simple.NULL } else { $serialization }"
+                        } else {
+                            serialization
+                        }
                     } else {
                         "${parameter.name}.flowState"
                     }
@@ -533,9 +539,13 @@ class FlowSymbolProcessor(
                     }
                     line("return result")
                 } else if (op.type != null) {
-                    val result = CborSymbolProcessor.deserializeValue(
+                    var result = CborSymbolProcessor.deserializeValue(
                         this, "flowMethodResponse[2]", op.type
                     )
+                    if (op.type.isMarkedNullable) {
+                        importQualifiedName(CborSymbolProcessor.SIMPLE_TYPE)
+                        result = "if (flowMethodResponse[2] == Simple.NULL) { null } else { $result }"
+                    }
                     line("return $result")
                 }
             }
@@ -628,7 +638,7 @@ class FlowSymbolProcessor(
                 codeBuilder.importQualifiedName(op.flowTypeInfo.qualifiedInterfaceName)
                 op.flowTypeInfo.simpleInterfaceName
             } else {
-                CborSymbolProcessor.typeRef(codeBuilder, op.type)
+                CborSymbolProcessor.typeRefNullable(codeBuilder, op.type)
             }
             return "${op.name}($signature): $type"
         }
@@ -644,7 +654,7 @@ class FlowSymbolProcessor(
                 codeBuilder.importQualifiedName(parameter.flowTypeInfo.qualifiedInterfaceName)
                 parameter.flowTypeInfo.simpleInterfaceName
             } else {
-                CborSymbolProcessor.typeRef(codeBuilder, parameter.type)
+                CborSymbolProcessor.typeRefNullable(codeBuilder, parameter.type)
             }
             builder.append("${parameter.name}: $type")
         }
@@ -719,17 +729,28 @@ class FlowSymbolProcessor(
                                     val simpleName = declaration.simpleName.asString()
                                     "dispatcher.decodeStateParameter($param) as $simpleName"
                                 } else {
-                                    CborSymbolProcessor.deserializeValue(
+                                    val deserialized = CborSymbolProcessor.deserializeValue(
                                         this, param, parameter.type
                                     )
+                                    if (parameter.type.isMarkedNullable) {
+                                        importQualifiedName(CborSymbolProcessor.SIMPLE_TYPE)
+                                        "if ($param == Simple.NULL) { null } else { $deserialized }"
+                                    } else {
+                                        deserialized
+                                    }
                                 }
+
                             }
                             val resVal = if (op.type == null) "" else "val result = "
                             line("${resVal}flowState.${op.name}(")
                             withIndent {
-                                line("dispatcher.environment,")
-                                params.forEach {
-                                    line("$it, ")
+                                if (params.isEmpty()) {
+                                    line("dispatcher.environment")
+                                } else {
+                                    line("dispatcher.environment,")
+                                    params.forEach {
+                                        line("$it, ")
+                                    }
                                 }
                             }
                             line(")")
@@ -739,10 +760,16 @@ class FlowSymbolProcessor(
                                 val joinPath = op.flowTypeInfo.joinPath ?: ""
                                 line("dispatcher.encodeStateResult(result, \"$joinPath\")")
                             } else {
+                                val serialization = CborSymbolProcessor.serializeValue(
+                                    this, "result", op.type
+                                )
                                 line(
-                                    CborSymbolProcessor.serializeValue(
-                                        this, "result", op.type
-                                    )
+                                    if (op.type.isMarkedNullable) {
+                                        importQualifiedName(CborSymbolProcessor.SIMPLE_TYPE)
+                                        "if (result == null) { Simple.NULL } else { $serialization }"
+                                    } else {
+                                        serialization
+                                    }
                                 )
                             }
                         }

@@ -242,25 +242,6 @@ class WalletApplication : Application() {
                 ExistingPeriodicWorkPolicy.KEEP,
                 workRequest
             )
-
-        // If we previously connected to a Wallet Server we know whether it supports
-        // [WalletServer.waitForNotification]. If it does, make sure we make a connection
-        // at application startup so we can start getting notifications.
-        try {
-            if (walletServerProvider.walletServerCapabilities.waitForNotificationSupported) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        walletServerProvider.getWalletServer()
-                    } catch (e: Throwable) {
-                        Logger.e(TAG, "Error doing initial call to Wallet Server", e)
-                    }
-                }
-            }
-        } catch (e: Throwable) {
-            // Do nothing, this happens if we have never successfully connected to a wallet server
-            // in which case the getter for [WalletServerProvider.walletServerCapabilities]
-            // throws.
-        }
     }
 
     class SyncCredentialWithIssuerWorker(

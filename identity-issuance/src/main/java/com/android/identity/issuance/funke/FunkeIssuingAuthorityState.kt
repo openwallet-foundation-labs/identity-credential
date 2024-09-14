@@ -16,6 +16,7 @@ import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
+import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialData
 import com.android.identity.issuance.CredentialFormat
@@ -33,6 +34,7 @@ import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.fromCbor
+import com.android.identity.issuance.wallet.ApplicationSupportState
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
@@ -50,6 +52,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -61,7 +64,8 @@ import kotlin.time.Duration.Companion.seconds
 @CborSerializable
 class FunkeIssuingAuthorityState(
     val clientId: String,
-    val credentialFormat: CredentialFormat
+    val credentialFormat: CredentialFormat,
+    var issuanceClientId: String = ""  // client id in OpenID4VCI protocol
 ) : AbstractIssuingAuthorityState() {
     companion object {
         private const val TAG = "FunkeIssuingAuthorityState"
@@ -185,8 +189,7 @@ class FunkeIssuingAuthorityState(
 
     @FlowMethod
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
-        val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
-        val tcTokenUrl = performPushedAuthorizationRequest(env, pkceCodeVerifier)
+        val proofingInfo = performPushedAuthorizationRequest(env)
         val storage = env.getInterface(Storage::class)!!
         val applicationCapabilities = storage.get(
             "WalletApplicationCapabilities",
@@ -195,8 +198,13 @@ class FunkeIssuingAuthorityState(
         )?.let {
             WalletApplicationCapabilities.fromCbor(it.toByteArray())
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
-        return FunkeProofingState(clientId, documentId, tcTokenUrl, pkceCodeVerifier,
-            applicationCapabilities)
+        return FunkeProofingState(
+            clientId = clientId,
+            issuanceClientId = issuanceClientId,
+            documentId = documentId,
+            proofingInfo = proofingInfo,
+            applicationCapabilities = applicationCapabilities
+        )
     }
 
     @FlowJoin
@@ -265,7 +273,7 @@ class FunkeIssuingAuthorityState(
                 )
             )
         }
-        return FunkeRequestCredentialsState(documentId, configuration, cNonce)
+        return FunkeRequestCredentialsState(issuanceClientId, documentId, configuration, cNonce)
     }
 
     @FlowJoin
@@ -442,18 +450,43 @@ class FunkeIssuingAuthorityState(
         }
     }
 
-    private suspend fun performPushedAuthorizationRequest(env: FlowEnvironment, pkceCodeVerifier: String): String {
+    private suspend fun performPushedAuthorizationRequest(
+        env: FlowEnvironment,
+    ): ProofingInfo {
+        val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
         val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
-        val assertion = FunkeUtil.createParJwtAssertion(env, clientId)
+
+        // NB: applicationSupport will only be non-null when running this code locally in the
+        // Android Wallet app.
+        val applicationSupport = env.getInterface(ApplicationSupport::class)
+        val parRedirectUrl: String
+        val landingUrl: String
+        if (FunkeUtil.USE_AUSWEIS_SDK) {
+            landingUrl = ""
+            // Does not matter, but must be https
+            parRedirectUrl = "https://secure.redirect.com"
+        } else {
+            landingUrl = applicationSupport?.createLandingUrl() ?:
+                ApplicationSupportState(clientId).createLandingUrl(env)
+            // TODO: use real server's base URL
+            parRedirectUrl = "http://localhost:8080/server/$landingUrl"
+        }
+
+        val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
+        val clientAssertion = applicationSupport?.createJwtClientAssertion(clientKeyInfo.attestation, FunkeUtil.BASE_URL) ?:
+                ApplicationSupportState(clientId).createJwtClientAssertion(env, clientKeyInfo.publicKey, FunkeUtil.BASE_URL )
+
+        issuanceClientId = extractIssuanceClientId(clientAssertion)
+
         val req = FormUrlEncoder {
             add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")
             add("scope", "pid")
             add("response_type", "code")
             add("code_challenge_method", "S256")
-            add("redirect_uri", "https://secure.redirect.com")  // TODO: It's arbitrary in our case, right?
-            add("client_assertion", assertion)
+            add("redirect_uri", parRedirectUrl)
+            add("client_assertion", clientAssertion)
             add("code_challenge", codeChallenge)
-            add("client_id", FunkeUtil.CLIENT_ID)
+            add("client_id", issuanceClientId)
         }
         val httpClient = env.getInterface(HttpClient::class)!!
         val response = httpClient.post("${FunkeUtil.BASE_URL}/par") {
@@ -463,7 +496,8 @@ class FunkeIssuingAuthorityState(
             setBody(req.toString())
         }
         if (response.status != HttpStatusCode.Created) {
-            Logger.e(TAG, "PAR request error: ${response.status}")
+            val responseText = String(response.readBytes())
+            Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
             throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
         }
         val parsedResponse = Json.parseToJsonElement(String(response.readBytes())) as JsonObject
@@ -473,10 +507,23 @@ class FunkeIssuingAuthorityState(
             throw IllegalStateException("PAR response syntax error")
         }
         Logger.i(TAG, "Request uri: $requestUri")
-        return "${FunkeUtil.BASE_URL}/authorize?" + FormUrlEncoder {
-            add("client_id", FunkeUtil.CLIENT_ID)
-            add("request_uri", requestUri.content)
+        return ProofingInfo(
+            authorizeUrl = "${FunkeUtil.BASE_URL}/authorize?" + FormUrlEncoder {
+                add("client_id", issuanceClientId)
+                add("request_uri", requestUri.content)
+            },
+            pkceCodeVerifier = pkceCodeVerifier,
+            landingUrl = landingUrl
+        )
+    }
+
+    private fun extractIssuanceClientId(jwtAssertion: String): String {
+        val jwtParts = jwtAssertion.split('.')
+        if (jwtParts.size != 3) {
+            throw IllegalStateException("Invalid client assertion")
         }
+        val body = Json.parseToJsonElement(String(jwtParts[1].fromBase64Url())).jsonObject
+        return body["iss"]!!.jsonPrimitive.content
     }
 
     private suspend fun generateDocumentConfiguration(
@@ -552,59 +599,23 @@ class FunkeIssuingAuthorityState(
             // No need to refresh.
             return
         }
-        val tokenUrl = "${FunkeUtil.BASE_URL}/token"
-        val httpClient = env.getInterface(HttpClient::class)!!
-        // NB: currently, refresh token is only issued for Option C'
+
         val refreshToken = access.refreshToken
-            ?: throw IssuingAuthorityException("No refresh token, new credentials cannot be issued")
-        var dpopNonce: String? = null
-        // This loop will run twice, first request will return with error, but will provide fresh
-        // dpop nonce and the second request will get fresh access data.
-        while (true) {
-            val dpop = FunkeUtil.generateDPoP(env, clientId, tokenUrl, dpopNonce, null)
-            val tokenRequest = FormUrlEncoder {
-                add("grant_type", "refresh_token")
-                add("refresh_token", refreshToken)
-                add("client_id", FunkeUtil.CLIENT_ID)
-                // TODO: It's arbitrary in our case, right?
-                add("redirect_uri", "https://secure.redirect.com")
-            }
-            val tokenResponse = httpClient.post(tokenUrl) {
-                headers {
-                    if (dpopNonce != null) {
-                        append("Authorization", "DPoP ${access.accessToken}")
-                    }
-                    append("DPoP", dpop)
-                    append("Content-Type", "application/x-www-form-urlencoded")
-                }
-                setBody(tokenRequest.toString())
-            }
-            if (tokenResponse.status != HttpStatusCode.OK) {
-                val errResponseText = String(tokenResponse.readBytes())
-                if (dpopNonce == null && tokenResponse.headers.contains("DPoP-Nonce")) {
-                    Logger.e(TAG, "DPoP nonce refreshed: $errResponseText")
-                    dpopNonce = tokenResponse.headers["DPoP-Nonce"]!!
-                    continue
-                }
-                Logger.e(TAG, "Token request error: ${tokenResponse.status} $errResponseText")
-                throw IssuingAuthorityException("Refresh token (seed credential) rejected by the issuer")
-            }
-            access = try {
-                FunkeAccess.parseResponse(tokenResponse)
-            } catch (err: IllegalArgumentException) {
-                val tokenString = String(tokenResponse.readBytes())
-                Logger.e(TAG, "Invalid token response: ${err.message}: $tokenString")
-                throw IssuingAuthorityException("Invalid response from the issuer")
-            }
-            check(access.cNonce != null)
-            document.access = access
-            Logger.i(TAG, "Refreshed access tokens")
-            if (access.refreshToken == null) {
-                Logger.w(TAG, "Kept original refresh token (no updated refresh token received)")
-                access.refreshToken = refreshToken
-            }
-            updateIssuerDocument(env, documentId, document, false)
-            break
+        access = FunkeUtil.obtainToken(
+            env = env,
+            clientId = clientId,
+            issuanceClientId = issuanceClientId,
+            tokenUrl = "${FunkeUtil.BASE_URL}/token",
+            refreshToken = refreshToken,
+            accessToken = access.accessToken
+        )
+        check(access.cNonce != null)
+        document.access = access
+        Logger.i(TAG, "Refreshed access tokens")
+        if (access.refreshToken == null) {
+            Logger.w(TAG, "Kept original refresh token (no updated refresh token received)")
+            access.refreshToken = refreshToken
         }
+        updateIssuerDocument(env, documentId, document, false)
     }
 }

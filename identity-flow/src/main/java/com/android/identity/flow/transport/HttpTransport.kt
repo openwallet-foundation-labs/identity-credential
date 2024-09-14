@@ -55,12 +55,12 @@ interface HttpTransport {
     }
 
     companion object {
-        fun processStatus(status: Int, statusText: String) {
+        fun processStatus(url: String, status: Int, statusText: String) {
             when (status) {
                 200 -> {}  // noop
-                404 -> throw UnsupportedOperationException(statusText)
-                405 -> throw IllegalStateException(statusText)
-                else -> throw RemoteException("$status $statusText")
+                404 -> throw UnsupportedOperationException("$url [$statusText]")
+                405 -> throw IllegalStateException("$url [$statusText]")
+                else -> throw RemoteException("$url [$status $statusText]")
             }
         }
     }

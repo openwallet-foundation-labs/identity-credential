@@ -105,8 +105,7 @@ class AuthenticationState(
             )
         }
         return WalletServerCapabilities(
-            Clock.System.now(),
-            settings.getBool("waitForNotificationSupported", false)
+            Clock.System.now()
         )
     }
 }

@@ -38,7 +38,7 @@ fun extractAttestationSequence(chain: X509CertChain): ASN1Sequence {
 
 fun validateKeyAttestation(
     chain: X509CertChain,
-    clientId: String,
+    clientId: String?,
     requireGmsAttestation: Boolean,
     requireVerifiedBootGreen: Boolean,
     requireAppSignatureCertificateDigests: List<String>,
@@ -69,7 +69,7 @@ fun validateKeyAttestation(
         val parser = AndroidAttestationExtensionParser(x509certs[0])
 
         // Challenge must match...
-        check(clientId.toByteArray() contentEquals parser.attestationChallenge)
+        check(clientId == null || clientId.toByteArray() contentEquals parser.attestationChallenge)
         { "Challenge didn't match what was expected" }
 
         if (requireVerifiedBootGreen) {

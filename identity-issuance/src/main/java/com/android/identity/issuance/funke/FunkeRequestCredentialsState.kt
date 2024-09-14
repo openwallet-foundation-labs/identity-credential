@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonPrimitive
 )
 @CborSerializable
 class FunkeRequestCredentialsState(
+    val issuanceClientId: String,
     val documentId: String = "",
     val credentialConfiguration: CredentialConfiguration,
     val nonce: String,
@@ -53,7 +54,7 @@ class FunkeRequestCredentialsState(
                 "jwk" to request.secureAreaBoundKeyAttestation.publicKey.toJson(null)
             )).toString().toByteArray().toBase64Url()
             val body = JsonObject(mapOf(
-                "iss" to JsonPrimitive(FunkeUtil.CLIENT_ID),
+                "iss" to JsonPrimitive(issuanceClientId),
                 "aud" to JsonPrimitive(FunkeUtil.BASE_URL),
                 "iat" to JsonPrimitive(Clock.System.now().epochSeconds),
                 "nonce" to JsonPrimitive(nonce)

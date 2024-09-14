@@ -16,20 +16,17 @@ import com.android.identity.flow.handler.FlowNotifierPoll
 import com.android.identity.flow.handler.FlowPollHttp
 import com.android.identity.flow.handler.SimpleCipher
 import com.android.identity.flow.transport.HttpTransport
+import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.ClientAuthentication
 import com.android.identity.issuance.ClientChallenge
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerImpl
-import com.android.identity.issuance.WalletServerCapabilities
 import com.android.identity.issuance.authenticationMessage
 import com.android.identity.issuance.extractAttestationSequence
-import com.android.identity.issuance.fromCbor
 import com.android.identity.issuance.wallet.WalletServerState
-import com.android.identity.issuance.toCbor
 import com.android.identity.securearea.KeyInfo
-import com.android.identity.securearea.SecureArea
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.SettingsModel
@@ -48,6 +45,22 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  * An object used to connect to a remote wallet server.
+ *
+ * Wallet app can function in two modes: full wallet server mode and minimalistic server mode.
+ *
+ * In full wallet server mode, wallet app communicates to the wallet server and the wallet server
+ * communicates to the actual issuing authority server(s). The advantage of this mode is that
+ * the system tends to be much more robust when the app needs to communicate to its own server
+ * only. In particular this allows wallet app vendor to decouple evolution of the wallet app from
+ * the evolution of the multitude of the issuing authority servers. Also, wallet server
+ * functionality only needs to be implemented once and not for every client/mobile platform.
+ *
+ * In minimalistic server mode, the bulk of the "wallet server" functionality runs on the client
+ * and thus the wallet app communicates to the issuing authority servers directly. Only the
+ * functionality that cannot be done on the client is delegated on the server. The advantage of
+ * this mode is that it tends to be easier to set up and use for development. Also, this mode
+ * has less potential privacy issues, in particular if proofing data and credentials are not
+ * end-to-end encrypted.
  */
 class WalletServerProvider(
     private val context: Context,
@@ -59,24 +72,10 @@ class WalletServerProvider(
     private val instanceLock = Mutex()
     private var instance: WalletServer? = null
     private val issuingAuthorityMap = mutableMapOf<String, IssuingAuthority>()
-
-    private var _walletServerCapabilities: WalletServerCapabilities? = null
+    private var applicationSupport: ApplicationSupport? = null
 
     private var notificationsJob: Job? = null
-
-    /**
-     * Information about the wallet server that the application is connected to.
-     *
-     * @throws IllegalStateException if called if we have never previously communicated
-     * with the wallet-server
-     */
-    val walletServerCapabilities: WalletServerCapabilities
-        get() {
-            if (_walletServerCapabilities == null) {
-                throw IllegalStateException("Don't call before getWalletServer()")
-            }
-            return _walletServerCapabilities!!
-        }
+    private var resetListeners = mutableListOf<()->Unit>()
 
     companion object {
         private const val TAG = "WalletServerProvider"
@@ -99,18 +98,46 @@ class WalletServerProvider(
         get() = settingsModel.walletServerUrl.value!!
 
     init {
-        _walletServerCapabilities = storageEngine.get("WalletServerCapabilities")?.let {
-            WalletServerCapabilities.fromCbor(it)
-        }
         settingsModel.walletServerUrl.observeForever {
-            runBlocking {
-                instanceLock.withLock {
-                    notificationsJob?.cancel()
-                    notificationsJob = null
-                    instance = null
-                }
+            clearInstance()
+        }
+        settingsModel.minServerUrl.observeForever {
+            if (settingsModel.walletServerUrl.value == "dev:") {
+                clearInstance()
             }
         }
+    }
+
+    private fun clearInstance() {
+        if (instance == null) {
+            // Nothing to do, and we don't want to notify reset listeners
+            return
+        }
+        runBlocking {
+            instanceLock.withLock {
+                Logger.i(TAG, "Resetting wallet server...")
+                try {
+                    for (issuingAuthority in issuingAuthorityMap.values) {
+                        issuingAuthority.complete()
+                    }
+                    applicationSupport?.complete()
+                    instance?.complete()
+                } catch (err: Exception) {
+                    Logger.e(TAG, "Error shutting down Wallet Server connection", err)
+                }
+                issuingAuthorityMap.clear()
+                applicationSupport = null
+                instance = null
+                notificationsJob?.cancel()
+                notificationsJob = null
+                Logger.i(TAG, "Done resetting wallet server")
+            }
+            resetListeners.forEach { it() }
+        }
+    }
+
+    fun addResetListener(listener: () -> Unit) {
+        resetListeners.add(listener)
     }
 
     /**
@@ -130,10 +157,11 @@ class WalletServerProvider(
     suspend fun getWalletServer(): WalletServer {
         instanceLock.withLock {
             if (instance == null) {
-                instance = getWalletServerUnlocked()
-                Logger.i(TAG, "Created new WalletServer instance (URL $baseUrl)")
+                Logger.i(TAG, "Creating new WalletServer instance: $baseUrl")
+                instance = getWalletServerUnlocked(baseUrl)
+                Logger.i(TAG, "Created new WalletServer instance: $baseUrl")
             } else {
-                Logger.i(TAG, "Reusing existing WalletServer instance (URL $baseUrl)")
+                Logger.i(TAG, "Reusing existing WalletServer instance: $baseUrl")
             }
             return instance!!
         }
@@ -173,7 +201,16 @@ class WalletServerProvider(
         }
     }
 
-    private suspend fun getWalletServerUnlocked(): WalletServer {
+    /**
+     * Gets ApplicationSupport object. It always comes from the server (either full wallet server
+     * or minimal wallet server).
+     */
+    suspend fun getApplicationSupport(): ApplicationSupport {
+        getWalletServer()
+        return applicationSupport!!
+    }
+
+    private suspend fun getWalletServerUnlocked(baseUrl: String): WalletServer {
         val dispatcher: FlowDispatcher
         val notifier: FlowNotifier
         val exceptionMapBuilder = FlowExceptionMap.Builder()
@@ -182,8 +219,13 @@ class WalletServerProvider(
             val builder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
             notifier = FlowNotificationsLocal(noopCipher)
+            if (applicationSupport == null) {
+                // this will initialize applicationSupport object
+                getWalletServerUnlocked(settingsModel.minServerUrl.value!!)
+                check(applicationSupport != null)
+            }
             val environment = LocalDevelopmentEnvironment(
-                context, settingsModel, secureArea, notifier)
+                context, settingsModel, secureArea, notifier, applicationSupport!!)
             dispatcher = WrapperFlowDispatcher(builder.build(
                 environment,
                 noopCipher,
@@ -193,7 +235,7 @@ class WalletServerProvider(
             val httpClient = WalletHttpTransport(baseUrl)
             val poll = FlowPollHttp(httpClient)
             notifier = FlowNotifierPoll(poll)
-            CoroutineScope(Dispatchers.IO).launch {
+            notificationsJob = CoroutineScope(Dispatchers.IO).launch {
                 notifier.loop()
             }
             dispatcher = FlowDispatcherHttp(httpClient, exceptionMapBuilder.build())
@@ -237,7 +279,7 @@ class WalletServerProvider(
             keyInfo = secureArea.getKeyInfo(alias)
         }
         val message = authenticationMessage(challenge!!.clientId, challenge.nonce)
-        _walletServerCapabilities = authentication.authenticate(ClientAuthentication(
+        authentication.authenticate(ClientAuthentication(
             secureArea.sign(alias, Algorithm.ES256, message.toByteArray(), null),
             if (newClient) {
                 keyInfo!!.attestation.certChain!!
@@ -245,7 +287,10 @@ class WalletServerProvider(
             getWalletApplicationCapabilities()
         ))
         authentication.complete()
-        storageEngine.put("WalletServerCapabilities", _walletServerCapabilities!!.toCbor())
+
+        if (baseUrl != "dev:") {
+            applicationSupport = walletServer.applicationSupport()
+        }
 
         return walletServer
     }

@@ -51,7 +51,7 @@ class WalletHttpTransport(private val baseUrl: String): HttpTransport {
         } catch (e: Throwable) {
             throw HttpTransport.ConnectionException("Error", e)
         }
-        HttpTransport.processStatus(response.status.value, response.status.description)
+        HttpTransport.processStatus(url, response.status.value, response.status.description)
         return ByteString(response.readBytes())
     }
 }

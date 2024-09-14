@@ -22,8 +22,9 @@ class SettingsModel(
     // Settings that are visible in the Settings screen
     val developerModeEnabled = MutableLiveData(false)
     val loggingEnabled = MutableLiveData(false)
-    val walletServerUrl = MutableLiveData<String>(WalletApplicationConfiguration.WALLET_SERVER_DEFAULT_URL)
-    val cloudSecureAreaUrl = MutableLiveData<String>(WalletApplicationConfiguration.CLOUD_SECURE_AREA_DEFAULT_URL)
+    val walletServerUrl = MutableLiveData(WalletApplicationConfiguration.WALLET_SERVER_DEFAULT_URL)
+    val minServerUrl = MutableLiveData(WalletApplicationConfiguration.MIN_SERVER_DEFAULT_URL)
+    val cloudSecureAreaUrl = MutableLiveData(WalletApplicationConfiguration.CLOUD_SECURE_AREA_DEFAULT_URL)
 
     // Non visible in the Settings screen
     val focusedCardId = MutableLiveData("")
@@ -38,6 +39,7 @@ class SettingsModel(
         private const val PREFERENCE_DEVELOPER_MODE_ENABLED = "developer_mode_enabled"
         private const val PREFERENCE_LOGGING_ENABLED = "logging_enabled"
         private const val PREFERENCE_WALLET_SERVER_URL = "wallet_server_url"
+        private const val PREFERENCE_MIN_SERVER_URL = "min_server_url"
         private const val PREFERENCE_CLOUD_SECURE_AREA_URL = "cloud_secure_area_url"
 
         private const val PREFERENCE_FOCUSED_CARD_ID = "focused_card_id"
@@ -76,6 +78,13 @@ class SettingsModel(
             WalletApplicationConfiguration.CLOUD_SECURE_AREA_DEFAULT_URL)
         cloudSecureAreaUrl.observeForever { value ->
             sharedPreferences.edit { putString(PREFERENCE_CLOUD_SECURE_AREA_URL, value) }
+        }
+
+        minServerUrl.value = sharedPreferences.getString(
+            PREFERENCE_MIN_SERVER_URL,
+            WalletApplicationConfiguration.MIN_SERVER_DEFAULT_URL)
+        minServerUrl.observeForever { value ->
+            sharedPreferences.edit { putString(PREFERENCE_MIN_SERVER_URL, value) }
         }
 
         Logger.setLogPrinter(AndroidLogPrinter())

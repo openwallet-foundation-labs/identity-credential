@@ -10,6 +10,7 @@ import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.handler.FlowNotifications
+import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.securearea.SecureArea
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
@@ -30,7 +31,8 @@ class LocalDevelopmentEnvironment(
     context: Context,
     settingsModel: SettingsModel,
     private val secureArea: SecureArea,
-    private val notifications: FlowNotifications
+    private val notifications: FlowNotifications,
+    private val applicationSupport: ApplicationSupport
 ) : FlowEnvironment {
     private var configuration = ConfigurationImpl(context, settingsModel)
     private val storage = StorageImpl(context, "dev_local_data")
@@ -56,6 +58,7 @@ class LocalDevelopmentEnvironment(
             FlowNotifications::class -> notifications
             HttpClient::class -> httpClient
             SecureArea::class -> secureArea
+            ApplicationSupport::class -> applicationSupport
             else -> return null
         })
     }

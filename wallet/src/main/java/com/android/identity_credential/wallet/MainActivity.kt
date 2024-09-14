@@ -31,7 +31,6 @@ import com.android.identity_credential.wallet.navigation.WalletNavigation
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 
 class MainActivity : FragmentActivity() {
-
     companion object {
         private const val TAG = "MainActivity"
     }
