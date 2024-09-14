@@ -62,6 +62,10 @@ interface SolverFactoryFlow: FlowBase {
 
     @FlowMethod
     suspend fun getCount(): Int
+
+    // Just to test nullable parameters and return values
+    @FlowMethod
+    suspend fun nullableIdentity(value: String?): String?
 }
 
 // The following definitions are server-side (although we can patch them to run on the client
@@ -193,6 +197,9 @@ data class SolverFactoryState(
 
     @FlowMethod
     fun getCount(env: FlowEnvironment): Int = totalCount
+
+    @FlowMethod
+    fun nullableIdentity(env: FlowEnvironment, value: String?): String? = value
 }
 
 // FlowHandlerLocal handles flow calls that executed locally. It is for use on the server,
@@ -250,6 +257,16 @@ class FlowProcessorTest {
     fun remoteMock() {
         testFlow("Mock", remoteFactory())
     }
+
+    @Test
+    fun nullable() {
+        runBlocking {
+            val factory = remoteFactory()
+            Assert.assertEquals("Foo", factory.nullableIdentity("Foo"))
+            Assert.assertNull(factory.nullableIdentity(null))
+        }
+    }
+
 
     @Test
     fun remoteUnexpectedNameException() {

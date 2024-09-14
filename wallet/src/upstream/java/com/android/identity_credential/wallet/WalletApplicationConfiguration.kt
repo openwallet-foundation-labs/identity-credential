@@ -13,7 +13,8 @@ object WalletApplicationConfiguration {
     const val DEVELOPER_MODE_TOGGLE_AVAILABLE = true
 
     /**
-     * If `true`, the Settings screen will allow the user to configure the Wallet Server URL.
+     * If `true`, the Settings screen will allow the user to configure the Wallet Server URL
+     * and Minimal Wallet Server URL.
      */
     const val WALLET_SERVER_SETTING_AVAILABLE = true
 
@@ -21,6 +22,11 @@ object WalletApplicationConfiguration {
      * The default Wallet Server URL.
      */
     const val WALLET_SERVER_DEFAULT_URL = "dev:"
+
+    /**
+     * The minimal Wallet Server URL (only important when wallet server URL is set to "dev:").
+     */
+    const val MIN_SERVER_DEFAULT_URL = "http://localhost:8080/server"
 
     /**
      * If `true`, the Settings screen will allow the user to configure the Cloud Secure Area URL.

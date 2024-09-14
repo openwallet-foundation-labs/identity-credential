@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":identity-sdjwt"))
     implementation(project(":identity-doctypes"))
     implementation(project(":server-env"))
+    implementation(project(":server-openid4vci"))
 
     implementation(libs.javax.servlet.api)
     implementation(libs.kotlinx.datetime)

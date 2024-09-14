@@ -53,7 +53,7 @@ internal class ServerStorage(
     @OptIn(ExperimentalEncodingApi::class)
     override suspend fun insert(table: String, peerId: String, data: ByteString, key: String): String {
         val safeTable = sanitizeTable(table)
-        val recordKey = key.ifEmpty { Base64.encode(Random.Default.nextBytes(18)) }
+        val recordKey = key.ifEmpty { Base64.UrlSafe.encode(Random.Default.nextBytes(18)) }
         val connection = acquireConnection()
         ensureTable(connection, safeTable)
         val statement = connection.prepareStatement("INSERT INTO $safeTable VALUES(?, ?, ?)")

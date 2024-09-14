@@ -9,10 +9,12 @@ import com.android.identity.flow.handler.FlowExceptionMap
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthorityException
+import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
@@ -67,10 +69,12 @@ class WalletServerState(
 
         fun registerExceptions(exceptionMapBuilder: FlowExceptionMap.Builder) {
             IssuingAuthorityException.register(exceptionMapBuilder)
+            LandingUrlUnknownException.register(exceptionMapBuilder)
         }
 
         fun registerAll(dispatcher: FlowDispatcherLocal.Builder) {
             WalletServerState.register(dispatcher)
+            ApplicationSupportState.register(dispatcher)
             AuthenticationState.register(dispatcher)
             IssuingAuthorityState.register(dispatcher)
             ProofingState.register(dispatcher)
@@ -93,6 +97,17 @@ class WalletServerState(
         check(authenticationState.authenticated)
         check(authenticationState.clientId.isNotEmpty())
         this.clientId = authenticationState.clientId
+    }
+
+    @FlowMethod
+    fun applicationSupport(env: FlowEnvironment): ApplicationSupportState {
+        check(clientId.isNotEmpty())
+        if (env.getInterface(ApplicationSupport::class) != null) {
+            // If this interface resolves, it means we are running in-app. But ApplicationSupport
+            // is not going to work properly when run in-app.
+            throw IllegalStateException("Only server-side ApplicationSupport must be used")
+        }
+        return ApplicationSupportState(clientId)
     }
 
     @FlowMethod

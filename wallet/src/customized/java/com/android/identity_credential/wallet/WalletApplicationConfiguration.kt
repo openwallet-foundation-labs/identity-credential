@@ -25,6 +25,15 @@ object WalletApplicationConfiguration {
     const val WALLET_SERVER_DEFAULT_URL = "https://ws.example.com/server"
 
     /**
+     * See the description in the "upstream version" of this class.
+     * (upstream/com/android/identity_credential/wallet/WalletApplicationConfiguration.kt).
+     *
+     * In customized configuration, this is not used, unless [WALLET_SERVER_DEFAULT_URL] is set to
+     * "dev:".
+     */
+    const val MIN_SERVER_DEFAULT_URL = "https://ws.example.com/server"
+
+    /**
      * If `true`, the Settings screen will allow the user to configure the Cloud Secure Area URL.
      */
     const val CLOUD_SECURE_AREA_SETTING_AVAILABLE = false

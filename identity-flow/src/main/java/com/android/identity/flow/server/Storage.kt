@@ -26,7 +26,8 @@ interface Storage {
     /**
      * Inserts a new record.
      *
-     * If the [key] is empty, a new unique key is generated.
+     * If the [key] is empty, a new unique key is generated. New key is guaranteed to only use
+     * URL-safe characters.
      */
     suspend fun insert(table: String, peerId: String, data: ByteString, key: String = ""): String
 

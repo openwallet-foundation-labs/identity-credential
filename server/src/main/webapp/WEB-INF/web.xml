@@ -165,6 +165,18 @@
     </servlet-mapping>
 
     <servlet>
+        <display-name>LandingServlet</display-name>
+        <servlet-name>LandingServlet</servlet-name>
+        <servlet-class>com.android.identity.wallet.server.LandingServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>LandingServlet</servlet-name>
+        <url-pattern>/landing/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <display-name>CsaServlet</display-name>
         <servlet-name>CsaServlet</servlet-name>
         <servlet-class>com.android.identity.wallet.server.CloudSecureAreaServlet</servlet-class>
@@ -229,6 +241,68 @@
     <servlet-mapping>
         <servlet-name>default</servlet-name>
         <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- openid4vci server components -->
+
+    <servlet>
+        <display-name>ParServlet</display-name>
+        <servlet-name>ParServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.ParServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>ParServlet</servlet-name>
+        <url-pattern>/openid4vci/par</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <display-name>AuthorizeServlet</display-name>
+        <servlet-name>AuthorizeServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.AuthorizeServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>AuthorizeServlet</servlet-name>
+        <url-pattern>/openid4vci/authorize</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <display-name>FinishAuthorizationServlet</display-name>
+        <servlet-name>FinishAuthorizationServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.FinishAuthorizationServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>FinishAuthorizationServlet</servlet-name>
+        <url-pattern>/openid4vci/finish_authorization</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <display-name>TokenServlet</display-name>
+        <servlet-name>TokenServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.TokenServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>TokenServlet</servlet-name>
+        <url-pattern>/openid4vci/token</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <display-name>CredentialServlet</display-name>
+        <servlet-name>CredentialServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.CredentialServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>CredentialServlet</servlet-name>
+        <url-pattern>/openid4vci/credential</url-pattern>
     </servlet-mapping>
 
 </web-app>

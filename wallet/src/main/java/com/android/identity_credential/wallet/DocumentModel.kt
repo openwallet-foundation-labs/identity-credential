@@ -62,6 +62,7 @@ import com.android.identity_credential.wallet.ui.prompt.passphrase.showPassphras
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -93,6 +94,7 @@ class DocumentModel(
 
     val documentInfos = mutableStateListOf<DocumentInfo>()
     var activity: FragmentActivity? = null
+    private var updateJob: Job? = null
 
     fun getDocumentInfo(cardId: String): DocumentInfo? {
         for (card in documentInfos) {
@@ -442,15 +444,21 @@ class DocumentModel(
     }
 
     init {
+        reset()
+        walletServerProvider.addResetListener(this::reset)
+    }
+
+    private fun reset() {
         // This keeps our `cards` property in sync with the contents of `documentStore`.
         //
         // Since DOCUMENT_UPDATED is very chatty (an event for every single property
         // change in the Document) we want to coalesce many calls in a short timeframe into
         // timed chunks and process those in batches (at most one per second).
         //
+        updateJob?.cancel()
         val batchDuration = 1.seconds
         val batchedUpdateFlow = MutableSharedFlow<String>()
-        CoroutineScope(Dispatchers.IO).launch {
+        updateJob = CoroutineScope(Dispatchers.IO).launch {
             val issuingAuthorityIdSet = documentStore.listDocuments().mapNotNull { documentId ->
                 documentStore.lookupDocument(documentId)?.issuingAuthorityIdentifier
             }.toMutableSet()

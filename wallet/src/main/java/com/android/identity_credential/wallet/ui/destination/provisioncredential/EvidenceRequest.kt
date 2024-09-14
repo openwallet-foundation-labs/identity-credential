@@ -2,8 +2,9 @@ package com.android.identity_credential.wallet.ui.destination.provisioncredentia
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
-import android.util.Size
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.camera.view.PreviewView
@@ -24,6 +25,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -34,21 +36,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.document.DocumentStore
+import com.android.identity.issuance.ApplicationSupport
+import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
@@ -58,36 +60,36 @@ import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermiss
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
-import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
+import com.android.identity.issuance.evidence.EvidenceRequestWeb
+import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceResponseSelfieVideo
+import com.android.identity.issuance.evidence.EvidenceResponseWeb
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mrtd.MrtdNfc
 import com.android.identity.mrtd.MrtdNfcDataReader
 import com.android.identity.mrtd.MrtdNfcReader
-import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.FaceImageClassifier
-import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.RichTextSnippet
+import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.async
-import io.ktor.client.request.request
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 
 private const val TAG = "EvidenceRequest"
@@ -1241,4 +1243,93 @@ fun AusweisView(
             }
         }
     }
+}
+
+@Composable
+fun EvidenceRequestWebView(
+    evidenceRequest: EvidenceRequestWeb,
+    provisioningViewModel: ProvisioningViewModel,
+    walletServerProvider: WalletServerProvider,
+    documentStore: DocumentStore
+) {
+    val context = LocalContext.current
+    val url = Uri.parse(evidenceRequest.url)
+    val redirectUri = evidenceRequest.redirectUri
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(url, redirectUri) {
+        // NB: these scopes will be cancelled when navigating outside of this screen.
+        val appSupport = walletServerProvider.getApplicationSupport()
+        scope.launch {
+            // Wait for notifications
+            appSupport.notifications.collectLatest { notification ->
+                if (notification.baseUrl == redirectUri) {
+                    handleLanding(appSupport, redirectUri, provisioningViewModel,
+                        walletServerProvider, documentStore)
+                }
+            }
+        }
+
+        // Launch the browser
+        // TODO: use Chrome Custom Tabs instead?
+        val browserIntent = Intent(Intent.ACTION_VIEW, url)
+        context.startActivity(browserIntent)
+
+        // Poll as a fallback
+        do {
+            delay(10.seconds)
+        } while(handleLanding(appSupport, redirectUri, provisioningViewModel,
+                walletServerProvider, documentStore))
+    }
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = stringResource(
+                        R.string.browser_continue
+                    ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+    }
+}
+
+private suspend fun handleLanding(
+    appSupport: ApplicationSupport,
+    redirectUri: String,
+    provisioningViewModel: ProvisioningViewModel,
+    walletServerProvider: WalletServerProvider,
+    documentStore: DocumentStore
+): Boolean {
+    val resp = try {
+        appSupport.getLandingUrlStatus(redirectUri)
+    } catch (err: LandingUrlUnknownException) {
+        Logger.e(
+            "EvidenceRequestWebView",
+            "landing: $redirectUri unknown: $err"
+        )
+        provisioningViewModel.provideEvidence(
+            evidence = EvidenceResponseWeb(""),
+            walletServerProvider = walletServerProvider,
+            documentStore = documentStore
+        )
+        return false
+    }
+    Logger.e(
+        "EvidenceRequestWebView",
+        "landing: $redirectUri status: $resp"
+    )
+    if (resp == null) {
+        // Landing url not navigated to yet.
+        return true
+    }
+    provisioningViewModel.provideEvidence(
+        evidence = EvidenceResponseWeb(resp),
+        walletServerProvider = walletServerProvider,
+        documentStore = documentStore
+    )
+    return false
 }

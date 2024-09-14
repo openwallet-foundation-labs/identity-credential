@@ -141,6 +141,7 @@
     <string name="settings_screen_wallet_server_built_in">Built-in Wallet Server (dev:)</string>
     <string name="settings_screen_built_in_issuer_settings">Built-in Issuer Settings</string>
     <string name="settings_screen_cloud_secure_area_title">Cloud Secure Area</string>
+    <string name="settings_screen_min_server_title">Minimal Wallet Server</string>
 
     <!-- Set Wallet Server URL dialog -->
     <string name="settings_screen_set_wallet_server_url_dialog_title">Wallet Server</string>
@@ -156,17 +157,26 @@
     <string name="settings_screen_set_wallet_server_url_tunneled">Wallet Server tunneled to device with \'adb reverse tcp:8080 tcp:8080\'</string>
 
     <!-- Set Cloud Secure Area URL dialog -->
-    <string name="settings_screen_set_cloud_secure_area_url_dialog_title">Wallet Server</string>
+    <string name="settings_screen_set_cloud_secure_area_url_dialog_title">Cloud Secure Area</string>
     <string name="settings_screen_set_cloud_secure_area_url_dialog_message">
         This is a developer-focused setting for specifying the URL of the Cloud Secure Area instance
         the application should connect to.\n\nSome popular options are included in the links below.
     </string>
-    <string name="settings_screen_set_cloud_secure_area_url_dialog_confirm_button">Set</string>
-    <string name="settings_screen_set_cloud_secure_area_url_dialog_dismiss_button">Cancel</string>
-    <string name="settings_screen_set_cloud_secure_area_url_label">URL</string>
-    <string name="settings_screen_set_cloud_secure_area_url_wallet_server">Use Cloud Secure Area service of Wallet Server (won\'t work with Built-in Wallet Server)</string>
-    <string name="settings_screen_set_cloud_secure_area_url_link_emulator">Emulator with Cloud Secure Area running on developer host</string>
-    <string name="settings_screen_set_cloud_secure_area_url_tunneled">Cloud Secure Area tunneled to device with \'adb reverse tcp:8080 tcp:8080\'</string>
+
+    <!-- Set Minimal Wallet Server URL dialog -->
+    <string name="settings_screen_set_min_server_url_dialog_title">Minimal Wallet Server</string>
+    <string name="settings_screen_set_min_server_url_dialog_message">
+        This is a developer-focused setting for specifying the URL of the Minimal Wallet Server
+        instance the application should connect to.\n\nSome popular options are included in the
+        links below.
+    </string>
+
+    <!-- Generic set URL dialog (both Cloud Secure Area and Minimal Wallet Server) -->
+    <string name="settings_screen_set_server_url_dialog_confirm_button">Set</string>
+    <string name="settings_screen_set_server_url_dialog_dismiss_button">Cancel</string>
+    <string name="settings_screen_set_server_url_label">URL</string>
+    <string name="settings_screen_set_server_url_link_emulator">Emulator with server running on developer host</string>
+    <string name="settings_screen_set_server_url_tunneled">Server tunneled to device with \'adb reverse tcp:8080 tcp:8080\'</string>
 
     <!-- Confirmation dialog for setting wallet server url -->
     <string name="settings_screen_confirm_set_wallet_server_url_dialog_title">Confirm setting Wallet Server URL</string>
@@ -338,6 +348,9 @@
     <string name="eid_network_error">Error establishing network connection</string>
     <string name="eid_generic_error">Error scanning or processing the card</string>
     <string name="eid_try_again">Try again</string>
+
+    <!-- External browser -->
+    <string name="browser_continue">Launching browser, continue there…</string>
 
     <!-- Accessibility -->
     <string name="accessibility_go_back_icon">Go back</string>

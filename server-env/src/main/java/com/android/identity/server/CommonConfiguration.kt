@@ -14,16 +14,17 @@ object CommonConfiguration : Configuration {
     private val values: Map<String, String>
 
     init {
-        val jsonText = ServerResources.getStringResource("common_configuration.json")
-            ?: throw IllegalStateException("Resource file common_configuration.json must be present")
-        val json = Json.parseToJsonElement(jsonText) as JsonObject
         val map = mutableMapOf<String, String>()
-        for (entry in json) {
-            val value = entry.value
-            map[entry.key] = if (value is JsonPrimitive) {
-                value.content
-            } else {
-                value.toString()
+        val jsonText = ServerResources.getStringResource("common_configuration.json")
+        if (jsonText != null) {
+            val json = Json.parseToJsonElement(jsonText) as JsonObject
+            for (entry in json) {
+                val value = entry.value
+                map[entry.key] = if (value is JsonPrimitive) {
+                    value.content
+                } else {
+                    value.toString()
+                }
             }
         }
         values = map.toMap()
