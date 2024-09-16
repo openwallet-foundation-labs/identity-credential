@@ -980,7 +980,12 @@ class VerifierServlet : HttpServlet() {
             encryptedJWT.decrypt(decrypter)
 
             val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
-            session.deviceResponse = vpToken.fromBase64Url()
+            if (session.requestType.format == DocumentFormat.MDOC) {
+                session.deviceResponse = vpToken.fromBase64Url()
+            } else {
+                session.deviceResponse = vpToken.toByteArray()
+            }
+
             session.sessionTranscript = createSessionTranscriptOpenID4VP(
                 clientId = clientId,
                 responseUri = session.responseUri!!,
@@ -1522,7 +1527,10 @@ private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONOb
     val keys = JSONArray()
     keys.add(key)
 
-    client_metadata.put("jwks", keys)
+    val keys_map = JSONObject()
+    keys_map.put("keys", keys)
+
+    client_metadata.put("jwks", keys_map)
 
     return client_metadata
 }
