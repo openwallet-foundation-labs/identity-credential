@@ -343,7 +343,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
     private suspend fun getKeySet(httpClient: HttpClient, clientMetadata: JsonObject): JWKSet {
         val jwks = clientMetadata["jwks"]
         if (jwks != null) {
-            return JWKSet.parse("{\"keys\": " + Json.encodeToString(jwks) + "}")
+            return JWKSet.parse(Json.encodeToString(jwks))
         }
         val jwksUri = clientMetadata["jwks_uri"].toString().run { substring(1, this.length - 1) }
         val unparsed = httpClient.get(Url(jwksUri)).body<String>()
@@ -522,7 +522,9 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
         val vpTokenByteArray = generateVpToken(consentFields, credentialToUse, trustPoint, authorizationRequest, sessionTranscript)
         Logger.i(TAG, "Setting vp_token: ${vpTokenByteArray.decodeToString()}")
-        val vpToken = Base64.UrlSafe.encode(vpTokenByteArray)
+        val vpToken = if (credentialToUse is MdocCredential) {
+            Base64.UrlSafe.encode(vpTokenByteArray).replace("=", "")
+        } else vpTokenByteArray.decodeToString()
         val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
             // put("id_token", idToken) // depends on response type, only supporting vp_token for now
             put("state", authorizationRequest.state)
