@@ -42,7 +42,7 @@ object IdentityCtl {
      * Generates a self-signed IACA certificate according to ISO/IEC 18013-5:2021 Annex B.1.2.
      *
      * @param iacaKey the private key.
-     * @param subject the value to use for subject and issuer, e.g. "CN=Test IACA,C=UT".
+     * @param subject the value to use for subject and issuer, e.g. "CN=Test IACA,C=ZZ".
      * @param validFrom the point in time the certificate should be valid from.
      * @param validUntil the point in time the certificate should be valid until.
      * @param issuerAltNameUrl the issuer alternative name (see RFC 5280 section 4.2.1.7),
@@ -154,7 +154,7 @@ object IdentityCtl {
      * @param iacaCert the IACA certificate the DS certificate.
      * @param iacaKey the private key for the IACA certificate.
      * @param dsKey the public part of the DS key.
-     * @param subject the value to use for subject, e.g. "CN=Test DS,C=UT".
+     * @param subject the value to use for subject, e.g. "CN=Test DS,C=ZZ".
      * @param validFrom the point in time the certificate should be valid from.
      * @param validUntil the point in time the certificate should be valid until.
      * @return a [X509Cert] with all the required extensions.
@@ -266,7 +266,7 @@ object IdentityCtl {
         //
         val subjectAndIssuer =
             getArg(args,"subject_and_issuer",
-                "CN=OWF Identity Credential TEST IACA,C=UT")
+                "CN=OWF Identity Credential TEST IACA,C=ZZ")
 
         // From 18013-5 Annex B: 3-5 years is recommended
         //                       Maximum of 20 years after “Not before” date
@@ -336,7 +336,7 @@ object IdentityCtl {
 
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
-        val subject = getArg(args,"subject", "CN=OWF Identity Credential TEST DS,C=UT")
+        val subject = getArg(args,"subject", "CN=OWF Identity Credential TEST DS,C=ZZ")
 
         val validityInYears = getArg(args,"validity_in_years","1").toInt()
         val now = Clock.System.now()
@@ -381,7 +381,7 @@ object IdentityCtl {
 
         val subjectAndIssuer =
             getArg(args,"subject_and_issuer",
-                "CN=OWF Identity Credential TEST Reader CA,C=UT")
+                "CN=OWF Identity Credential TEST Reader CA,C=ZZ")
 
         // From 18013-5 Annex B: 3-5 years is recommended
         //                       Maximum of 20 years after “Not before” date
@@ -449,7 +449,7 @@ Generate an IACA certificate and corresponding private key:
     identityctl generateIaca
         [--out_certificate iaca_certificate.pem]
         [--out_private_key iaca_private_key.pem]
-        [--subject_and_issuer 'CN=Utopia TEST IACA,C=UT']
+        [--subject_and_issuer 'CN=Utopia TEST IACA,C=ZZ']
         [--validity_in_years 5]
         [--curve P384]
         [--issuer_alt_name_url https://issuer.example.com/website]
@@ -462,7 +462,7 @@ Generate an DS certificate and corresponding private key:
         --iaca_private_key iaca_private_key.pem
         [--out_certificate ds_certificate.pem]
         [--out_private_key ds_private_key.pem]
-        [--subject 'CN=Utopia TEST DS,C=UT']
+        [--subject 'CN=Utopia TEST DS,C=ZZ']
         [--validity_in_years 1]
         [--curve P256]
 
@@ -471,7 +471,7 @@ Generate an reader root and corresponding private key:
     identityctl generateReaderRoot
         [--out_certificate reader_root_certificate.pem]
         [--out_private_key reader_root_private_key.pem]
-        [--subject_and_issuer 'CN=Utopia TEST Reader CA,C=UT']
+        [--subject_and_issuer 'CN=Utopia TEST Reader CA,C=ZZ']
         [--validity_in_years 3]
         [--curve P384]
 

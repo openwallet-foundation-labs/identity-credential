@@ -242,7 +242,7 @@ class SelfSignedEuPidIssuingAuthority(
                 .putEntryString(EUPID_NAMESPACE, "issuing_authority",
                     resourceString(R.string.utopia_eu_pid_issuing_authority_name))
                 .putEntryString(EUPID_NAMESPACE, "issuing_country",
-                    "UT")
+                    "ZZ")
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
                 .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")

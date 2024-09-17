@@ -22,10 +22,10 @@ internal object SampleData {
     const val FAMILY_NAME_NATIONAL_CHARACTER = "Бабіак"
 
     val birthDate = LocalDate.parse("1971-09-01")
-    const val BIRTH_COUNTRY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val BIRTH_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
     val issueDate = LocalDate.parse("2024-03-15")
     val expiryDate = LocalDate.parse("2028-09-01")
-    const val ISSUING_COUNTRY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val ISSUING_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
     const val ISSUING_AUTHORITY_MDL = "Utopia Department of Motor Vehicles"
     const val ISSUING_AUTHORITY_EU_PID = "Utopia Central Registry"
     const val DOCUMENT_NUMBER = "987654321"
@@ -52,13 +52,13 @@ internal object SampleData {
     const val AGE_OVER_65 = false
     const val AGE_OVER_68 = false
     const val ISSUING_JURISDICTION = "State of Utopia"
-    const val NATIONALITY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val NATIONALITY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
     const val RESIDENT_STREET = "Sample Street"
     const val RESIDENT_HOUSE_NUMBER = "123"
     const val RESIDENT_POSTAL_CODE = "12345"
     const val RESIDENT_CITY = "Sample City"
     const val RESIDENT_STATE = "Sample State"
-    const val RESIDENT_COUNTRY = "UT"  // Note: UT doesn't exist in ISO-3166-1 Alpha-2
+    const val RESIDENT_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
 
     // TODO
     //val portrait

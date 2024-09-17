@@ -453,7 +453,7 @@ class SelfSignedMdlIssuingAuthority(
                 )
                 .putEntryString(MDL_NAMESPACE, "issuing_authority",
                     resourceString(R.string.utopia_mdl_issuing_authority_name),)
-                .putEntryString(MDL_NAMESPACE, "issuing_country", "UT")
+                .putEntryString(MDL_NAMESPACE, "issuing_country", "ZZ")
                 .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
                 .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(MDL_NAMESPACE, "administrative_number", "123456789")
