@@ -24,12 +24,15 @@ import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Storage
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
 import com.android.identity.sdjwt.vc.JwtBody
+import com.android.identity.server.BaseHttpServlet
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.fromHex
@@ -47,8 +50,6 @@ import com.nimbusds.jose.util.Base64
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import jakarta.servlet.ServletConfig
-import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
@@ -72,11 +73,9 @@ import org.bouncycastle.asn1.x509.ExtendedKeyUsage
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.asn1.x509.KeyPurposeId
 import org.bouncycastle.asn1.x509.KeyUsage
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.URLEncoder
-import java.security.Security
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.random.Random
@@ -190,7 +189,7 @@ private data class DCArfResponse(
  *
  * This is using the configuration and storage interfaces from [ServerEnvironment].
  */
-class VerifierServlet : HttpServlet() {
+class VerifierServlet : BaseHttpServlet() {
 
     data class KeyMaterial(
         val readerRootKey: EcPrivateKey,
@@ -273,22 +272,11 @@ class VerifierServlet : HttpServlet() {
 
         private const val STORAGE_TABLE_NAME = "VerifierSessions"
 
-        private lateinit var serverEnvironment: ServerEnvironment
-        private lateinit var storage: Storage
+        private lateinit var keyMaterial: KeyMaterial
         private lateinit var configuration: Configuration
+        private lateinit var storage: Storage
 
-        @Synchronized
-        private fun initialize(servletConfig: ServletConfig) {
-            if (this::serverEnvironment.isInitialized) {
-                return
-            }
-
-            serverEnvironment = ServerEnvironment(servletConfig)
-            storage = serverEnvironment.getInterface(Storage::class)!!
-            configuration = serverEnvironment.getInterface(Configuration::class)!!
-        }
-
-        private val keyMaterial: KeyMaterial by lazy {
+        private fun createKeyMaterial(serverEnvironment: FlowEnvironment): KeyMaterial {
             val storage = serverEnvironment.getInterface(Storage::class)!!
             val keyMaterialBlob = runBlocking {
                 storage.get("RootState", "", "verifierKeyMaterial")?.toByteArray()
@@ -303,7 +291,7 @@ class VerifierServlet : HttpServlet() {
                         blob
                     }
             }
-            KeyMaterial.fromCbor(keyMaterialBlob)
+            return KeyMaterial.fromCbor(keyMaterialBlob)
         }
 
         private val documentTypeRepo: DocumentTypeRepository by lazy {
@@ -314,22 +302,11 @@ class VerifierServlet : HttpServlet() {
         }
     }
 
-    @Override
-    override fun init() {
-        super.init()
-
-        Security.addProvider(BouncyCastleProvider())
-
-        initialize(servletConfig)
-    }
-
-    private fun getRemoteHost(req: HttpServletRequest): String {
-        var remoteHost = req.remoteHost
-        val forwardedFor = req.getHeader("X-Forwarded-For")
-        if (forwardedFor != null) {
-            remoteHost = forwardedFor
-        }
-        return remoteHost
+    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+        configuration = env.getInterface(Configuration::class)!!
+        storage = env.getInterface(Storage::class)!!
+        keyMaterial = createKeyMaterial(env)
+        return null
     }
 
     // Helper to get the local IP address used...

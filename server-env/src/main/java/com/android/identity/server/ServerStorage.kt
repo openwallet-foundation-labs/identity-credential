@@ -1,22 +1,25 @@
-package com.android.identity.wallet.server
+package com.android.identity.server
 
 import com.android.identity.flow.server.Storage
 import kotlinx.io.bytestring.ByteString
+import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
-class ServerStorage(
+internal class ServerStorage(
     private val jdbc: String,
-    private var user: String = "",
+    private val user: String = "",
     private val password: String = ""
 ): Storage {
-    private val createdTables = mutableSetOf<String>()
+    private val createdTables = ConcurrentHashMap<String, Boolean>()
     private val blobType: String
 
     init {
+
         // initialize appropriate drives (this also ensures that dependencies don't get
         // stripped when building WAR file).
         if (jdbc.startsWith("jdbc:hsqldb:")) {
@@ -122,7 +125,7 @@ class ServerStorage(
                     data $blobType
                 )
             """.trimIndent())
-            createdTables.add(safeTable)
+            createdTables[safeTable] = true
         }
     }
 
@@ -136,5 +139,20 @@ class ServerStorage(
 
     private fun sanitizeTable(table: String): String {
         return "Wt$table"
+    }
+
+    companion object {
+        fun defaultDatabase(): String {
+            val dbFile = File("environment/db/db.hsqldb").absoluteFile
+            if (!dbFile.canRead()) {
+                val parent = File(dbFile.parent)
+                if (!parent.exists()) {
+                    if (!parent.mkdirs()) {
+                        throw Exception("Cannot create database folder ${parent.absolutePath}")
+                    }
+                }
+            }
+            return "jdbc:hsqldb:file:${dbFile.absolutePath}"
+        }
     }
 }
