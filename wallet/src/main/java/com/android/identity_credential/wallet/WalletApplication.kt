@@ -201,7 +201,7 @@ class WalletApplication : Application() {
         )
         issuerTrustManager.addTrustPoint(
             displayName = "OWF Identity Credential TEST IACA",
-            certificateResourceId = R.raw.owf_wallet_iaca_root,
+            certificateResourceId = R.raw.iaca_certificate,
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
 

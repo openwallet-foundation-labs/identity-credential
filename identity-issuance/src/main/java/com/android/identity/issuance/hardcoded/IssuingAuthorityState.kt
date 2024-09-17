@@ -650,7 +650,7 @@ class IssuingAuthorityState(
                 // birth_state, birth_city, resident_address, resident_country, resident_state,
                 // resident_city, resident_postal_code, resident_street, resident_house_number,
                 // issuing_jurisdiction,
-                .putEntryString(EUPID_NAMESPACE, "nationality", "UT")
+                .putEntryString(EUPID_NAMESPACE, "nationality", "ZZ")
                 .putEntry(EUPID_NAMESPACE, "issuance_date",
                     Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(EUPID_NAMESPACE, "expiry_date",
@@ -660,7 +660,7 @@ class IssuingAuthorityState(
                     issuingAuthorityName)
                 .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
-                .putEntryString(EUPID_NAMESPACE, "issuing_country", "UT")
+                .putEntryString(EUPID_NAMESPACE, "issuing_country", "ZZ")
                 .build()
         } else { // todo
             val icaoPassiveData = collectedEvidence["passive"]
@@ -707,7 +707,7 @@ class IssuingAuthorityState(
                 // resident_city, resident_postal_code, resident_street, resident_house_number,
                 // issuing_jurisdiction,
                 .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
-                .putEntryString(EUPID_NAMESPACE, "nationality", "UT")
+                .putEntryString(EUPID_NAMESPACE, "nationality", "ZZ")
                 .putEntry(EUPID_NAMESPACE, "issuance_date",
                     Cbor.encode(issueDate.toDataItemDateTimeString()))
                 .putEntry(EUPID_NAMESPACE, "expiry_date",
@@ -717,7 +717,7 @@ class IssuingAuthorityState(
                     issuingAuthorityName)
                 .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
-                .putEntryString(EUPID_NAMESPACE, "issuing_country", "UT")
+                .putEntryString(EUPID_NAMESPACE, "issuing_country", "ZZ")
                 .build()
         }
 
@@ -795,7 +795,7 @@ class IssuingAuthorityState(
                 // TODO
                 .putEntryString(MDL_NAMESPACE, "issuing_authority",
                     issuingAuthorityName)
-                .putEntryString(MDL_NAMESPACE, "issuing_country", "UT")
+                .putEntryString(MDL_NAMESPACE, "issuing_country", "ZZ")
                 .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
                 .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(MDL_NAMESPACE, "administrative_number", "123456789")
@@ -859,7 +859,7 @@ class IssuingAuthorityState(
                 // TODO
                 .putEntryString(MDL_NAMESPACE, "issuing_authority",
                     issuingAuthorityName)
-                .putEntryString(MDL_NAMESPACE, "issuing_country", "UT")
+                .putEntryString(MDL_NAMESPACE, "issuing_country", "ZZ")
                 .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
                 .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(MDL_NAMESPACE, "administrative_number", "123456789")

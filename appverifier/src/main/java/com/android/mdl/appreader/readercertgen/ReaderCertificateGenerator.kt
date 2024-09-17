@@ -52,7 +52,7 @@ object ReaderCertificateGenerator {
         readerRootKey: EcPrivateKey // issuerPrivateKey: PrivateKey
     ): java.security.cert.X509Certificate {
         val data = DataMaterial(
-            subjectDN = "C=UT, CN=OWF Identity Credential mDoc Reader",
+            subjectDN = "C=ZZ, CN=OWF Identity Credential mDoc Reader",
 
             // must match DN of issuer character-by-character
             // TODO change for other generators

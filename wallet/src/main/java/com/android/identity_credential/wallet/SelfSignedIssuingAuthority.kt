@@ -251,10 +251,6 @@ abstract class SelfSignedIssuingAuthority(
         // - Wrote private key to ds_private_key.pem
         // - Wrote DS certificate to ds_certificate.pem
         //
-        // $ mv identityctl/iaca_*.pem wallet/src/main/res/raw/
-        // $ cp wallet/src/main/res/raw/iaca_certificate.pem appverifier/src/main/res/raw/owf_wallet_iaca_root.pem
-        // $ mv identityctl/ds_*.pem wallet/src/main/res/raw/
-        //
 
         documentSigningKeyCert = X509Cert.fromPem(
             getRawResourceAsString(R.raw.ds_certificate)
