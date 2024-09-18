@@ -51,6 +51,11 @@ class OpenID4VPTest {
     }
 
     @Test
+    fun testParsePathList() {
+        Assert.assertEquals(Pair("ns", "dataEl"), parsePathItem("\"\$['ns', 'dataEl']\""))
+    }
+
+    @Test
     fun testParsePathDotted() {
         Assert.assertEquals(Pair("credentialSubject", "dataElem"), parsePathItem("\"\$.dataElem\""))
     }

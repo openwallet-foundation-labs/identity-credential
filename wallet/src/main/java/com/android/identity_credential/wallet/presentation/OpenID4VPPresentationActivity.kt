@@ -656,19 +656,28 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 // returns <namespace, dataElem>
 internal fun parsePathItem(item: String): Pair<String, String> {
     // formats can be
+    // list of names: "$['namespace', 'dataElem']"
     // bracketed: "$['namespace']['dataElem']"
     // bracketed direct: "$['dataElem']"
     // or dotted direct: "$.dataElem"
-    val regex = Regex(
-        "(?:\"\\$(?:\\['(?<namespace>.+?)'\\])?\\['(?<dataElem1>.+?)'\\]\")|" +
-        "(?:\"\\$\\.(?<dataElem2>.+)\")")
+    val regex = Regex(pattern=
+        "(?:\"\\$(?:\\['(?<namespace2>.+?)',\\s*'(?<dataElem2>.+?)'\\])\")|" +
+        "(?:\"\\$(?:\\['(?<namespace1>.+?)'\\])?\\['(?<dataElem1>.+?)'\\]\")|" +
+        "(?:\"\\$\\.(?<dataElem3>.+)\")"
+    )
     val groups = regex.matchEntire(item)?.groups as? MatchNamedGroupCollection
     if (groups == null) {
         throw IllegalArgumentException("Unable to parse path item: $item")
     }
     // TODO: Remove the fake credentialSubject namespace that's needed for the consent screen.
-    val namespace = groups.get("namespace")?.value ?: "credentialSubject"
-    val dataElem = groups.get("dataElem1")?.value ?: groups.get("dataElem2")?.value!!
+    val namespace =
+        groups["namespace1"]?.value ?:
+        groups["namespace2"]?.value ?:
+        "credentialSubject"
+    val dataElem =
+        groups["dataElem1"]?.value ?:
+        groups["dataElem2"]?.value ?:
+        groups["dataElem3"]?.value!!
     return Pair(namespace, dataElem)
 }
 
