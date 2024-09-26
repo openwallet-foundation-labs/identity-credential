@@ -16,6 +16,7 @@ import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
@@ -27,12 +28,12 @@ import kotlin.reflect.cast
  * This implementation of [FlowEnvironment] can be used to run wallet server locally in the app,
  * which is useful for development, but should never be done in production.
  */
-class LocalDevelopmentEnvironment(
+internal class LocalDevelopmentEnvironment(
     context: Context,
     settingsModel: SettingsModel,
     private val secureArea: SecureArea,
     private val notifications: FlowNotifications,
-    private val applicationSupport: ApplicationSupport
+    private val applicationSupportSupplier: WalletServerProvider.ApplicationSupportSupplier
 ) : FlowEnvironment {
     private var configuration = ConfigurationImpl(context, settingsModel)
     private val storage = StorageImpl(context, "dev_local_data")
@@ -58,7 +59,13 @@ class LocalDevelopmentEnvironment(
             FlowNotifications::class -> notifications
             HttpClient::class -> httpClient
             SecureArea::class -> secureArea
-            ApplicationSupport::class -> applicationSupport
+            ApplicationSupport::class -> runBlocking {
+                // We do not want to attempt to obtain applicationSupport ahead of time
+                // as there may be connection problems and we want to deal with them only
+                // if we have to, thus runBlocking is used. But this code is only used for
+                // "dev:" Wallet Server.
+                applicationSupportSupplier.getApplicationSupport()
+            }
             else -> return null
         })
     }
