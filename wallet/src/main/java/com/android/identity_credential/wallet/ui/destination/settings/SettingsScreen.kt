@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
@@ -189,6 +190,13 @@ fun SettingsScreen(
                 isChecked = settingsModel.loggingEnabled.observeAsState(false).value,
                 onCheckedChange = { settingsModel.loggingEnabled.value = it }
             )
+            SettingToggle(
+                title = stringResource(R.string.settings_screen_activities_logging_title),
+                subtitleOn = stringResource(R.string.settings_screen_activities_logging_subtitle_on),
+                subtitleOff = stringResource(R.string.settings_screen_activities_logging_subtitle_off),
+                isChecked = settingsModel.activityLoggingEnabled.observeAsState(false).value,
+                onCheckedChange = { settingsModel.activityLoggingEnabled.value = it }
+            )
             if (WalletApplicationConfiguration.WALLET_SERVER_SETTING_AVAILABLE) {
                 SettingString(
                     title = stringResource(R.string.settings_screen_wallet_server_title),
@@ -347,3 +355,4 @@ internal abstract class ConfirmServerChange(
 ) {
     abstract fun onConfirm()
 }
+

@@ -1,8 +1,8 @@
 package com.android.identity_credential.wallet.ui.destination.document
 
 import android.content.Context
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,11 +50,17 @@ import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.durationFromNowText
+import com.android.identity_credential.wallet.util.asFormattedDateTimeInCurrentTimezone
 import kotlinx.coroutines.launch
-import java.util.Locale
+import kotlinx.datetime.Instant
+import java.util.*
 
 
 private const val TAG = "DocumentInfoScreen"
+
+fun formatDate(timestamp: Instant): String {
+    return timestamp.asFormattedDateTimeInCurrentTimezone
+}
 
 @Composable
 fun DocumentInfoScreen(
@@ -182,19 +188,12 @@ fun DocumentInfoScreen(
         title = stringResource(R.string.document_info_screen_title),
         onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
         actions = {
-            IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Default.Menu, contentDescription = null)
-            }
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
+            IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.Menu, contentDescription = null) }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_check_for_update)) },
                     leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                     onClick = {
-                        showMenu = false
-
                         coroutineScope.launch {
                             try {
                                 documentModel.refreshCard(documentInfo)
@@ -243,10 +242,23 @@ fun DocumentInfoScreen(
                     }
                 )
                 DropdownMenuItem(
+                    text = { Text(text = stringResource(R.string.document_info_screen_menu_activities_log)) },
+                    leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                    onClick = {
+                        onNavigate(WalletDestination.DocumentInfo.getRouteWithArguments(
+                            listOf(
+                                Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
+                                Pair(WalletDestination.DocumentInfo.Argument.SECTION, "activities")
+                            )
+                        ))
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_delete)) },
                     leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                     onClick = {
-                        showMenu = false
+                        showMenu = false;
                         showDeleteConfirmationDialog = true
                     }
                 )
@@ -323,17 +335,13 @@ fun DocumentInfoScreen(
                     modifier = Modifier.padding(8.dp)
                 )
             }
-            Spacer(modifier = Modifier.weight(0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
             KeyValuePairText(stringResource(R.string.document_info_screen_data_name), documentInfo.name)
             KeyValuePairText(stringResource(R.string.document_info_screen_data_issuer), documentInfo.issuerName)
             KeyValuePairText(stringResource(R.string.document_info_screen_data_status), documentInfo.status)
             KeyValuePairText(
                 stringResource(R.string.document_info_screen_data_last_update_check),
-                durationFromNowText(documentInfo.lastRefresh).replaceFirstChar {
-                    if (it.isLowerCase()) it.titlecase(
-                        Locale.US
-                    ) else it.toString()
-                }
+                durationFromNowText(documentInfo.lastRefresh).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),

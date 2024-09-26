@@ -22,6 +22,7 @@ class SettingsModel(
     // Settings that are visible in the Settings screen
     val developerModeEnabled = MutableLiveData(false)
     val loggingEnabled = MutableLiveData(false)
+    val activityLoggingEnabled = MutableLiveData(false)
     val walletServerUrl = MutableLiveData(WalletApplicationConfiguration.WALLET_SERVER_DEFAULT_URL)
     val minServerUrl = MutableLiveData(WalletApplicationConfiguration.MIN_SERVER_DEFAULT_URL)
     val cloudSecureAreaUrl = MutableLiveData(WalletApplicationConfiguration.CLOUD_SECURE_AREA_DEFAULT_URL)
@@ -35,9 +36,9 @@ class SettingsModel(
 
     companion object {
         private const val TAG = "SettingsModel"
-        
         private const val PREFERENCE_DEVELOPER_MODE_ENABLED = "developer_mode_enabled"
         private const val PREFERENCE_LOGGING_ENABLED = "logging_enabled"
+        private const val PREFERENCE_ACTIVITY_LOGGING_ENABLED = "activity_logging_enabled"
         private const val PREFERENCE_WALLET_SERVER_URL = "wallet_server_url"
         private const val PREFERENCE_MIN_SERVER_URL = "min_server_url"
         private const val PREFERENCE_CLOUD_SECURE_AREA_URL = "cloud_secure_area_url"
@@ -96,7 +97,7 @@ class SettingsModel(
             if (logToFile) {
                 SystemFileSystem.createDirectories(logDir)
                 Logger.startLoggingToFile(logFile)
-                Logger.i(TAG, "Started logging to a file")
+                Logger.i(TAG, "Started logging to a file $logFile")
             } else {
                 Logger.i(TAG, "Stopped logging to a file")
                 Logger.stopLoggingToFile()
@@ -124,6 +125,18 @@ class SettingsModel(
             }
         }
 
+        // Observe changes to Activity Logging and save to SharedPreferences
+        this.activityLoggingEnabled.value = sharedPreferences.getBoolean(PREFERENCE_ACTIVITY_LOGGING_ENABLED, true)
+        this.activityLoggingEnabled.observeForever { activityLogging ->
+            sharedPreferences.edit {
+                putBoolean(PREFERENCE_ACTIVITY_LOGGING_ENABLED, activityLogging)
+            }
+            if (activityLogging) {
+                walletApplication.eventLogger.startLoggingEvents()
+            } else {
+                walletApplication.eventLogger.stopLoggingEvents()
+            }
+        }
         updateScreenLockIsSetup()
     }
 
