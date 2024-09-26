@@ -27,7 +27,6 @@ import com.android.identity.issuance.authenticationMessage
 import com.android.identity.issuance.extractAttestationSequence
 import com.android.identity.issuance.wallet.WalletServerState
 import com.android.identity.securearea.KeyInfo
-import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.SettingsModel
 import kotlinx.coroutines.CoroutineScope
@@ -66,13 +65,12 @@ class WalletServerProvider(
     private val context: Context,
     private val secureArea: AndroidKeystoreSecureArea,
     private val settingsModel: SettingsModel,
-    private val storageEngine: StorageEngine,
     private val getWalletApplicationCapabilities: suspend () -> WalletApplicationCapabilities
 ) {
     private val instanceLock = Mutex()
     private var instance: WalletServer? = null
     private val issuingAuthorityMap = mutableMapOf<String, IssuingAuthority>()
-    private var applicationSupport: ApplicationSupport? = null
+    private var applicationSupportSupplier: ApplicationSupportSupplier? = null
 
     private var notificationsJob: Job? = null
     private var resetListeners = mutableListOf<()->Unit>()
@@ -120,13 +118,13 @@ class WalletServerProvider(
                     for (issuingAuthority in issuingAuthorityMap.values) {
                         issuingAuthority.complete()
                     }
-                    applicationSupport?.complete()
+                    applicationSupportSupplier?.release()
                     instance?.complete()
                 } catch (err: Exception) {
                     Logger.e(TAG, "Error shutting down Wallet Server connection", err)
                 }
                 issuingAuthorityMap.clear()
-                applicationSupport = null
+                applicationSupportSupplier = null
                 instance = null
                 notificationsJob?.cancel()
                 notificationsJob = null
@@ -158,7 +156,9 @@ class WalletServerProvider(
         instanceLock.withLock {
             if (instance == null) {
                 Logger.i(TAG, "Creating new WalletServer instance: $baseUrl")
-                instance = getWalletServerUnlocked(baseUrl)
+                val server = getWalletServerUnlocked(baseUrl)
+                instance = server.first
+                applicationSupportSupplier = server.second
                 Logger.i(TAG, "Created new WalletServer instance: $baseUrl")
             } else {
                 Logger.i(TAG, "Reusing existing WalletServer instance: $baseUrl")
@@ -207,25 +207,27 @@ class WalletServerProvider(
      */
     suspend fun getApplicationSupport(): ApplicationSupport {
         getWalletServer()
-        return applicationSupport!!
+        return applicationSupportSupplier!!.getApplicationSupport()
     }
 
-    private suspend fun getWalletServerUnlocked(baseUrl: String): WalletServer {
+    private suspend fun getWalletServerUnlocked(
+        baseUrl: String
+    ): Pair<WalletServer, ApplicationSupportSupplier> {
         val dispatcher: FlowDispatcher
         val notifier: FlowNotifier
         val exceptionMapBuilder = FlowExceptionMap.Builder()
+        var applicationSupportSupplier: ApplicationSupportSupplier? = null
         WalletServerState.registerExceptions(exceptionMapBuilder)
         if (baseUrl == "dev:") {
             val builder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
             notifier = FlowNotificationsLocal(noopCipher)
-            if (applicationSupport == null) {
-                // this will initialize applicationSupport object
-                getWalletServerUnlocked(settingsModel.minServerUrl.value!!)
-                check(applicationSupport != null)
+            applicationSupportSupplier = ApplicationSupportSupplier() {
+                val minServer = getWalletServerUnlocked(settingsModel.minServerUrl.value!!)
+                minServer.second.getApplicationSupport()
             }
             val environment = LocalDevelopmentEnvironment(
-                context, settingsModel, secureArea, notifier, applicationSupport!!)
+                context, settingsModel, secureArea, notifier, applicationSupportSupplier)
             dispatcher = WrapperFlowDispatcher(builder.build(
                 environment,
                 noopCipher,
@@ -288,11 +290,13 @@ class WalletServerProvider(
         ))
         authentication.complete()
 
-        if (baseUrl != "dev:") {
-            applicationSupport = walletServer.applicationSupport()
+        if (applicationSupportSupplier == null) {
+            applicationSupportSupplier = ApplicationSupportSupplier {
+                walletServer.applicationSupport()
+            }
         }
 
-        return walletServer
+        return Pair(walletServer, applicationSupportSupplier)
     }
 
     /**
@@ -322,6 +326,21 @@ class WalletServerProvider(
 
         private fun durationText(durationNano: Long): String {
             return (durationNano/1000000).toString().padEnd(4, ' ')
+        }
+    }
+
+    internal class ApplicationSupportSupplier(val factory: suspend () -> ApplicationSupport) {
+        private var applicationSupport: ApplicationSupport? = null
+
+        suspend fun getApplicationSupport(): ApplicationSupport {
+            if (applicationSupport == null) {
+                applicationSupport = factory()
+            }
+            return applicationSupport!!
+        }
+
+        suspend fun release() {
+            applicationSupport?.complete()
         }
     }
 }

@@ -188,10 +188,10 @@ class WalletApplication : Application() {
             this,
             this.
             androidKeystoreSecureArea,
-            settingsModel,
-            storageEngine,
-            { getWalletApplicationInformation() }
-        )
+            settingsModel
+        ) {
+            getWalletApplicationInformation()
+        }
 
         // init TrustManagers
         readerTrustManager.addTrustPoint(
