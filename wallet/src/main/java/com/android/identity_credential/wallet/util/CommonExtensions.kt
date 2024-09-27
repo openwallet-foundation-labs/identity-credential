@@ -14,6 +14,10 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.io.ByteArrayOutputStream
+import java.net.MalformedURLException
+import java.net.URI
+import java.net.URISyntaxException
+import java.net.URLDecoder
 
 /**
  * Convert the given context to a ComponentActivity
@@ -58,3 +62,38 @@ val Instant.asFormattedDateTimeInCurrentTimezone: String
  * Get the inverse Color of an androidx.compose.ui.graphics.Color.
  */
 fun Color.inverse() = Color(1f - red, 1f - green, 1f - blue, alpha)
+
+/**
+ * Return the Url Query of a given a url having a custom scheme (non-standard http/https).
+ * Called when handling Urls from a deep link or Qr code code which requires decoding the [url]
+ * and the custom [urlScheme], such as openid-credential-offer://, throws an exception by [URLDecoder.decode]:
+ * " java.net.MalformedURLException: unknown protocol: openid-credential-offer"
+ *
+ * This function [getUrlQueryFromCustomSchemeUrl] avoids the exception from being thrown by attempting
+ * to convert the provided [url] String to a [URI] and return the [query] property.
+ *
+ * If the [url] does not contain an authority, an Exception will be thrown when trying to convert the
+ * Url to a [URI], so placeholder authority is provided for the sake of creating a valid Uri and
+ * obtaining the query value successfully.
+ */
+fun getUrlQueryFromCustomSchemeUrl(url: String): String {
+    val urlParts = url.split("://")
+    // ensure url scheme is defined
+    if (urlParts.size == 1) {
+        throw MalformedURLException("Invalid url '$url'")
+    }
+    // extract the scheme
+    val scheme = urlParts[0]
+    val decodedUri = try {
+        URI(url)
+    } catch (e: URISyntaxException) {
+        //java.net.URISyntaxException: Expected authority at index 26: openid-credential-offer://
+        // Exception is thrown when authority is missing from the Uri, ie: www.google.com?
+        // add a placeholder authority for the purposes of creating a valid Uri and extracting the query.
+        val restOfEncodedUrl = urlParts[1]
+        val placeholderAuthority = "www.placeholder.com/"
+        val placeholderAuthorityUri = "$scheme://$placeholderAuthority${restOfEncodedUrl}"
+        URI(placeholderAuthorityUri)
+    }
+    return decodedUri.query
+}

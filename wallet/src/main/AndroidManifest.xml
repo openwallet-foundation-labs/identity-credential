@@ -41,6 +41,7 @@
         tools:replace="android:name">
         <activity
             android:name=".MainActivity"
+            android:launchMode="singleTop"
             android:exported="true"
             android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize"
@@ -49,7 +50,14 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="openwallet" android:host="callback" />
+                <!-- Wallet server callback scheme "openwallet://" for handling callbacks from the
+                Wallet server via Url format "openwallet://callback" that is paired with host "*"
+                declared below -->
+                <data android:scheme="openwallet"/>
+                <!--  OpenId Credential Offer scheme (OID4VCI) -->
+                <data android:scheme="openid-credential-offer"/>
+                <!-- Accept all hosts for any of the defined schemes above -->
+                <data android:host="*"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

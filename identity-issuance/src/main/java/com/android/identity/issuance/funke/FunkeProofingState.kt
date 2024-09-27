@@ -46,7 +46,8 @@ class FunkeProofingState(
     var secureAreaIdentifier: String? = null,
     var secureAreaSetupDone: Boolean = false,
     var tosAcknowleged: Boolean = false,
-    var notificationPermissonRequested: Boolean = false
+    var notificationPermissonRequested: Boolean = false,
+    val credentialIssuerUri:String,
 ) {
     companion object {
         private const val TAG = "FunkeProofingState"
@@ -195,7 +196,7 @@ class FunkeProofingState(
         val code = location.substring(index + 5)
         this.access = FunkeUtil.obtainToken(
             env = env,
-            tokenUrl = "${FunkeUtil.BASE_URL}/token",
+            tokenUrl = "${credentialIssuerUri}/token",
             clientId = clientId,
             issuanceClientId = issuanceClientId,
             authorizationCode = code,

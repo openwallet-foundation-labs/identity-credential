@@ -2,6 +2,7 @@ package com.android.identity_credential.wallet.navigation
 
 import android.content.SharedPreferences
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,15 +14,43 @@ import com.android.identity_credential.wallet.ReaderModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
+import com.android.identity_credential.wallet.ui.destination.document.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.document.DocumentDetailsScreen
 import com.android.identity_credential.wallet.ui.destination.document.DocumentInfoScreen
-import com.android.identity_credential.wallet.ui.destination.document.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.document.EventLogScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
 import com.android.identity_credential.wallet.ui.destination.reader.ReaderScreen
 import com.android.identity_credential.wallet.ui.destination.settings.SettingsScreen
+
+/**
+ * Function that takes in a NavController and route string and navigates to the corresponding
+ * composable Screen or perform a pop of the back stack.
+ */
+fun navigateTo(navController: NavController, routeWithArgs: String) {
+    if (routeWithArgs.startsWith(Route.POP_BACK_STACK.routeName)) {
+        // check to see if a route to pop back to was passed in
+        val routeToPopBackTo =
+            WalletDestination.PopBackStack
+                .Argument.ROUTE
+                .extractFromRouteString(routeWithArgs)
+        if (routeToPopBackTo == null) { // no route specified, simple pop back to
+            navController.popBackStack()
+        } else { // a route was specified, check for 2 more arguments
+            val inclusive = WalletDestination.PopBackStack
+                .Argument.INCLUSIVE
+                .extractFromRouteString(routeWithArgs).toBoolean()
+            val saveState = WalletDestination.PopBackStack
+                .Argument.SAVE_STATE
+                .extractFromRouteString(routeWithArgs).toBoolean()
+            // pop back stack with 3 args, 1 of which is optional (save state)
+            navController.popBackStack(routeToPopBackTo, inclusive, saveState)
+        }
+    } else { // navigate to a Screen/Dialog destination
+        navController.navigate(routeWithArgs)
+    }
+}
 
 /**
  * Defines the correlation of WalletDestination routes to composable screens
@@ -37,33 +66,7 @@ fun WalletNavigation(
     documentModel: DocumentModel,
     readerModel: ReaderModel,
 ) {
-
-    // lambda navigateTo takes in a route string and navigates to the corresponding Screen
-    // or perform a pop of the back stack
-    val navigateTo: (String) -> Unit = { routeWithArgs ->
-        if (routeWithArgs.startsWith(Route.POP_BACK_STACK.routeName)) {
-            // check to see if a route to pop back to was passed in
-            val routeToPopBackTo =
-                WalletDestination.PopBackStack
-                    .Argument.ROUTE
-                    .extractFromRouteString(routeWithArgs)
-            if (routeToPopBackTo == null) { // no route specified, simple pop back to
-                navController.popBackStack()
-            } else { // a route was specified, check for 2 more arguments
-                val inclusive = WalletDestination.PopBackStack
-                    .Argument.INCLUSIVE
-                    .extractFromRouteString(routeWithArgs).toBoolean()
-                val saveState = WalletDestination.PopBackStack
-                    .Argument.SAVE_STATE
-                    .extractFromRouteString(routeWithArgs).toBoolean()
-                // pop back stack with 3 args, 1 of which is optional (save state)
-                navController.popBackStack(routeToPopBackTo, inclusive, saveState)
-            }
-        } else { // navigate to a Screen/Dialog destination
-            navController.navigate(routeWithArgs)
-        }
-    }
-
+    val onNavigate = { routeWithArgs: String -> navigateTo(navController, routeWithArgs) }
     val credentialStore = application.documentStore
     NavHost(
         navController = navController,
@@ -74,7 +77,7 @@ fun WalletNavigation(
          */
         composable(WalletDestination.Main.route) {
             MainScreen(
-                onNavigate = navigateTo,
+                onNavigate = onNavigate,
                 qrEngagementViewModel = qrEngagementViewModel,
                 documentModel = documentModel,
                 settingsModel = application.settingsModel,
@@ -86,7 +89,7 @@ fun WalletNavigation(
          * About Screen
          */
         composable(WalletDestination.About.route) {
-            AboutScreen(onNavigate = navigateTo)
+            AboutScreen(onNavigate = onNavigate)
         }
 
         /**
@@ -96,7 +99,7 @@ fun WalletNavigation(
             SettingsScreen(
                 settingsModel = application.settingsModel,
                 documentStore = application.documentStore,
-                onNavigate = navigateTo
+                onNavigate = onNavigate
             )
         }
 
@@ -107,7 +110,7 @@ fun WalletNavigation(
             AddToWalletScreen(
                 documentModel = documentModel,
                 provisioningViewModel = provisioningViewModel,
-                onNavigate = navigateTo,
+                onNavigate = onNavigate,
                 documentStore = application.documentStore,
                 walletServerProvider = application.walletServerProvider,
                 settingsModel = application.settingsModel,
@@ -134,21 +137,21 @@ fun WalletNavigation(
                         documentId = cardId,
                         documentModel = documentModel,
                         requireAuthentication = requireAuthentication,
-                        onNavigate = navigateTo,
+                        onNavigate = onNavigate,
                     )
                 }
                 "activities" -> {
                     EventLogScreen(
                         documentId = cardId,
                         documentModel = documentModel,
-                        onNavigate = navigateTo,
+                        onNavigate = onNavigate,
                     )
                 }
                 "credentials" -> {
                     CredentialInfoScreen(
                         documentId = cardId,
                         documentModel = documentModel,
-                        onNavigate = navigateTo,
+                        onNavigate = onNavigate,
                     )
                 }
                 else -> {
@@ -157,7 +160,7 @@ fun WalletNavigation(
                         documentId = cardId,
                         documentModel = documentModel,
                         settingsModel = application.settingsModel,
-                        onNavigate = navigateTo,
+                        onNavigate = onNavigate,
                     )
                 }
             }
@@ -171,7 +174,7 @@ fun WalletNavigation(
                 context = application.applicationContext,
                 secureAreaRepository = application.secureAreaRepository,
                 provisioningViewModel = provisioningViewModel,
-                onNavigate = navigateTo,
+                onNavigate = onNavigate,
                 permissionTracker = permissionTracker,
                 walletServerProvider = application.walletServerProvider,
                 documentStore = application.documentStore
@@ -181,7 +184,7 @@ fun WalletNavigation(
         composable(WalletDestination.QrEngagement.route) {
             QrEngagementScreen(
                 qrEngagementViewModel = qrEngagementViewModel,
-                onNavigate = navigateTo
+                onNavigate = onNavigate
             )
         }
 
@@ -191,7 +194,7 @@ fun WalletNavigation(
                 docTypeRepo = application.documentTypeRepository,
                 settingsModel = application.settingsModel,
                 issuerTrustManager = application.issuerTrustManager,
-                onNavigate = navigateTo,
+                onNavigate = onNavigate,
             )
         }
     }

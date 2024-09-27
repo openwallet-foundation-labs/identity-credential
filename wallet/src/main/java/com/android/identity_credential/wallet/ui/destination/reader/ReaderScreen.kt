@@ -1,9 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.reader
 
-import android.Manifest
 import android.app.Activity
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,12 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -26,10 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +35,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -70,7 +61,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.android.identity.cbor.Cbor
@@ -81,7 +71,6 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.trustmanagement.TrustManager
-import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ReaderDocument
 import com.android.identity_credential.wallet.ReaderModel
@@ -90,15 +79,9 @@ import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
-import com.budiyev.android.codescanner.CodeScanner
-import com.budiyev.android.codescanner.CodeScannerView
-import com.budiyev.android.codescanner.DecodeCallback
-import com.budiyev.android.codescanner.ErrorCallback
-import com.budiyev.android.codescanner.ScanMode
+import com.android.identity_credential.wallet.ui.qrscanner.ScanQrDialog
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -188,7 +171,11 @@ private fun WaitForEngagement(
     var dropdownSelected = remember { mutableStateOf(availableRequests[0]) }
 
     if (showQrScannerDialog.value) {
-        ScanQrDialog(model, showQrScannerDialog)
+        ScanQrDialog(title = stringResource(R.string.reader_screen_scan_qr_dialog_title),
+            description = stringResource(R.string.reader_screen_scan_qr_dialog_text),
+            onScannedQrCode = { qrCodeText -> model.setQrCode(qrCodeText) },
+            onClose = { showQrScannerDialog.value = false }
+        )
     }
 
     val hasProximityPresentationPermissions = rememberMultiplePermissionsState(
@@ -362,120 +349,6 @@ private fun QrScannerButton(
         }
     }
 
-}
-
-@Composable
-private fun ScanQrDialog(
-    model: ReaderModel,
-    showQrScannerDialog: MutableState<Boolean>
-) {
-    AlertDialog(
-        icon = {
-            Icon(
-                Icons.Filled.QrCode,
-                contentDescription = stringResource(R.string.reader_screen_qr_icon_content_description)
-            )
-        },
-        title = {
-            Text(text = stringResource(R.string.reader_screen_scan_qr_dialog_title))
-        },
-        text = {
-            QrScanner(model)
-        },
-        onDismissRequest = {
-            showQrScannerDialog.value = false
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    showQrScannerDialog.value = false
-                }
-            ) {
-                Text(stringResource(R.string.reader_screen_scan_qr_dialog_dismiss_button))
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun QrScanner(
-    model: ReaderModel
-) {
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
-    if (!cameraPermissionState.status.isGranted) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    modifier = Modifier.padding(20.dp),
-                    text = stringResource(R.string.reader_screen_scan_qr_dialog_missing_permission_text)
-                )
-                Button(
-                    onClick = {
-                        cameraPermissionState.launchPermissionRequest()
-                    }
-                ) {
-                    Text(stringResource(R.string.reader_screen_scan_qr_dialog_request_permission_button))
-                }
-            }
-        }
-    } else {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    modifier = Modifier.padding(8.dp),
-                    text = stringResource(R.string.reader_screen_scan_qr_dialog_text)
-                )
-                Row(
-                    modifier = Modifier
-                        .width(300.dp)
-                        .height(300.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        factory = { context ->
-                            CodeScannerView(context).apply {
-                                val codeScanner = CodeScanner(context, this).apply {
-                                    layoutParams = LinearLayout.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    isAutoFocusEnabled = true
-                                    isAutoFocusButtonVisible = false
-                                    scanMode = ScanMode.SINGLE
-                                    decodeCallback = DecodeCallback { result ->
-                                        model.setQrCode(result.text)
-                                        releaseResources()
-                                    }
-                                    errorCallback = ErrorCallback { error ->
-                                        Logger.w(TAG, "Error scanning QR", error)
-                                        releaseResources()
-                                    }
-                                    camera = CodeScanner.CAMERA_BACK
-                                    isFlashEnabled = false
-                                }
-                                codeScanner.startPreview()
-                            }
-                        },
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable

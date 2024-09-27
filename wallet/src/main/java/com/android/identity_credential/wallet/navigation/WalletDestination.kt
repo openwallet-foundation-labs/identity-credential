@@ -6,7 +6,11 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 
 
-sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
+sealed class WalletDestination(val routeEnum: Route) {
+    /**
+     * Can be overriden by any Destination's inner class using its Argument enum to return arguments.
+     */
+    open fun getArguments(): List<NamedNavArgument> = listOf()
 
     // String representation of this Destination's route
     val route = routeEnum.routeName
@@ -167,9 +171,6 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
 }
 
 
-abstract class DestinationArguments {
-    open fun getArguments(): List<NamedNavArgument> = listOf()
-}
 
 /**
  * A Route is used to define identifiers of Screens that can be navigated to. A Route can also be used

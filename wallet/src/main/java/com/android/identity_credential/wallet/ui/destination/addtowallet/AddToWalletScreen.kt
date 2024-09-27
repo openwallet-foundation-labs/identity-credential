@@ -6,10 +6,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,8 +37,13 @@ import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
+import com.android.identity_credential.wallet.WalletApplication
+import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
+import com.android.identity_credential.wallet.credentialoffer.initiateCredentialOfferIssuance
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
+import com.android.identity_credential.wallet.ui.qrscanner.ScanQrDialog
+import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUrl
 
 private const val TAG = "AddToWalletScreen"
 
@@ -75,6 +84,10 @@ fun AddToWalletScreen(
     val loadingIssuerDisplayDatas = remember { mutableStateOf(true) }
     val loadingIssuerDisplayError = remember { mutableStateOf<Throwable?>(null) }
     val issuerDisplayDatas = remember { mutableStateListOf<IssuerDisplayData>() }
+    // whether to show the ScanQrDialog composable
+    val showQrScannerDialog = remember { mutableStateOf(false) }
+    // force a navigation recomposition after processing the Qr code and onNavigate(route) does not work
+    val navigateToOnComposable = remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         issuerDisplayDatas.clear()
         try {
@@ -87,6 +100,16 @@ fun AddToWalletScreen(
         loadingIssuerDisplayDatas.value = false
     }
 
+    // perform a navigateTo (hoisted navigation) from ScanQrDialog to run now after being requested
+    // to navigate after scanning a Qr code
+    navigateToOnComposable.value?.let { route -> onNavigate(route) }
+
+    /**
+     * Helper function for hiding [ScanQrDialog] from current view.
+     */
+    fun dismissScanQrDialog() {
+        showQrScannerDialog.value = false
+    }
 
     ScreenWithAppBarAndBackButton(
         title = stringResource(R.string.add_screen_title),
@@ -100,17 +123,56 @@ fun AddToWalletScreen(
                 Logger.e(TAG, "Error loading issuers", loadingIssuerDisplayError.value!!)
                 AddToWalletScreenLoadingError(loadingIssuerDisplayError.value!!)
             } else {
-                AddToWalletScreenWithIssuerDisplayDatas(
-                    provisioningViewModel,
-                    onNavigate,
-                    documentStore,
-                    walletServerProvider,
-                    settingsModel,
-                    issuerDisplayDatas,
-                )
+                // compose ScanQrDialog when user taps on "Scan Credential Offer"
+                if (showQrScannerDialog.value) {
+                    ScanQrDialog(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .fillMaxHeight(0.6f),
+                        title = stringResource(R.string.credential_offer_scan),
+                        description = stringResource(id = R.string.credential_offer_details),
+                        onScannedQrCode = { qrCodeTextUrl ->
+                            // filter only for OID4VCI Url schemes.
+                            if (qrCodeTextUrl.startsWith(WalletApplication.OID4VCI_CREDENTIAL_OFFER_URL_SCHEME)) {
+                                // scanned text is expected to be an encoded Url
+                                val decodedQuery = getUrlQueryFromCustomSchemeUrl(qrCodeTextUrl)
+                                // extract Credential Issuer Uri (issuing authority path) and credential id (pid-mso-mdoc, pid-sd-jwt)
+                                extractCredentialIssuerData(decodedQuery).let { (credentialIssuerUri, credentialConfigurationId) ->
+                                    // initiate getting issuing authority dynamically from specified Issuer Uri and Credential Id
+                                    initiateCredentialOfferIssuance(
+                                        walletServerProvider = walletServerProvider,
+                                        provisioningViewModel = provisioningViewModel,
+                                        settingsModel = settingsModel,
+                                        documentStore = documentStore,
+                                        onNavigate = { route ->
+                                            // hoist the actual navigation on the parent composable
+                                            // because calling onNavigate.invoke(route) does not
+                                            // trigger a recomposition
+                                            navigateToOnComposable.value = route
+                                        },
+                                        credentialIssuerUri = credentialIssuerUri,
+                                        credentialIssuerConfigurationId = credentialConfigurationId,
+                                    )
+                                }
+                            }
+                        },
+                        onClose = { dismissScanQrDialog() }
+                    )
+                } else { // not showing [ScanQrDialog]
+                    AddToWalletScreenWithIssuerDisplayDatas(
+                        provisioningViewModel,
+                        onNavigate,
+                        documentStore,
+                        walletServerProvider,
+                        settingsModel,
+                        issuerDisplayDatas,
+                        onShowScanQrDialog = {
+                            showQrScannerDialog.value = true
+                        }
+                    )
+                }
             }
         }
-
     }
 }
 
@@ -164,6 +226,7 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
     walletServerProvider: WalletServerProvider,
     settingsModel: SettingsModel,
     issuerDisplayDatas: SnapshotStateList<IssuerDisplayData>,
+    onShowScanQrDialog: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -179,7 +242,9 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
 
     for (issuerDisplayData in issuerDisplayDatas) {
         FilledTonalButton(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
             shape = RoundedCornerShape(8.dp),
             onClick = {
                 provisioningViewModel.reset()
@@ -200,7 +265,9 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
                         R.string.accessibility_artwork_for,
                         issuerDisplayData.configuration.issuingAuthorityName
                     ),
-                    modifier = Modifier.size(48.dp).padding(4.dp)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .padding(4.dp)
                 )
                 Column(
                     modifier = Modifier.align(Alignment.CenterVertically)
@@ -215,6 +282,48 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
                         color = MaterialTheme.colorScheme.secondary
                     )
                 }
+            }
+        }
+    }
+
+    // Scan Credential Offer
+    FilledTonalButton(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+
+        colors = ButtonColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            disabledContainerColor = Color.Green,
+            disabledContentColor = Color.Green
+        ),
+        shape = RoundedCornerShape(8.dp),
+        onClick = onShowScanQrDialog
+    ) {
+        Row {
+            Image(
+                painter = painterResource(id = R.drawable.qr_icon),
+                contentDescription = stringResource(
+                    R.string.accessibility_artwork_for,
+                    stringResource(id = R.string.credential_offer_scan)
+                ),
+                modifier = Modifier
+                    .size(48.dp)
+                    .padding(4.dp)
+            )
+            Column(
+                modifier = Modifier.align(Alignment.CenterVertically)
+            ) {
+                Text(
+                    text = stringResource(id = R.string.credential_offer_scan),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Text(
+                    text = stringResource(id = R.string.credential_offer_details),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
             }
         }
     }
