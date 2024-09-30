@@ -654,7 +654,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             throw IllegalArgumentException("Excepted ARFencryptionv2 as first array element")
         }
         val encryptionParameters = array.get(1).asMap
-        val encapsulatedPublicKey = encryptionParameters[Tstr("pkEm")]!!.asCoseKey.ecPublicKey
+        val encapsulatedPublicKey = encryptionParameters[Tstr("pkEM")]!!.asCoseKey.ecPublicKey
         val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
 
         val arfEncryptionInfo = CborMap.builder()

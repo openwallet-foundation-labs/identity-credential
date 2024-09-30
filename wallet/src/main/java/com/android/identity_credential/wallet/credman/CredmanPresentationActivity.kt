@@ -264,7 +264,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                             CborArray.builder()
                                 .add("ARFencryptionv2")
                                 .addMap()
-                                .put("pkEm", encapsulatedPublicKey.toCoseKey().toDataItem())
+                                .put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
                                 .put("cipherText", cipherText)
                                 .end()
                                 .end()
