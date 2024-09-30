@@ -4,7 +4,7 @@ var selectedProtocol = 'w3c_dc_preview'
 
 var openid4vpUri = ''
 
-function onLoad() {
+async function onLoad() {
     const protocolDropdown = document.getElementById('protocolDropdown')
     protocolDropdown.addEventListener('hide.bs.dropdown', event => {
         var target = event.clickEvent.target
@@ -18,6 +18,52 @@ function onLoad() {
             protocolDropdown.innerHTML = target.innerHTML
         }
     })
+
+    // Ask server what document types / requests are available and use this to
+    // dynamically generate the UI..
+    //
+    const response = await callServer(
+        'getAvailableRequests', {}
+    )
+    var active = true
+    for (const dtwr of response.documentTypesWithRequests) {
+      if (dtwr.mdocDocType != null) {
+          var tabId = "mdoc-" + dtwr.mdocDocType
+          addTab(dtwr.documentDisplayName + " (mdoc)", "mdoc", dtwr.mdocDocType, dtwr.sampleRequests, active)
+          active = false
+      }
+      if (dtwr.vcVct != null) {
+          var tabId = "vc-" + dtwr.vcVct
+          addTab(dtwr.documentDisplayName + " (VC)", "vc", dtwr.vcVct, dtwr.sampleRequests, active)
+          active = false
+      }
+    }
+}
+
+function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
+    var tabId = mdocOrVc + '-' + docTypeOrVct
+    var activeStr = active ? "active" : ""
+    $('<li class="nav-item" role="presentation">' +
+    '<button class="nav-link ' + activeStr + '" data-bs-toggle="pill" id="pills-tab-' + tabId + '" data-bs-target="#pills-' + tabId + '" type="button" role="tab" aria-controls="pills-home" aria-selected="true">' +
+      tabName +
+    '</button>' +
+    '</li>')
+    .appendTo('#pills-tab')
+
+    var str = '<div class="tab-pane fade show ' + activeStr + '" '
+    str += 'id="pills-' + tabId + '" role="tabpanel" '
+    str += 'aria-labelledby="pills-tab-' + tabId + '" tabindex="0"> '
+    str += '  <div class="d-grid gap-2 mx-auto"> '
+    for (sr of sampleRequests) {
+        str += '    <button type="button" class="btn btn-primary btn-lg" '
+        str += 'onclick="requestDocument(\'' + mdocOrVc + '\', \'' + docTypeOrVct + '\', \'' + sr.id + '\')" >'
+        str += sr.displayName
+        str += '    </button> '
+    }
+    str += '  </div> '
+    str += '</div> '
+
+    $(str).appendTo('#pills-tabContent')
 }
 
 async function onLoadRedirect() {
@@ -45,14 +91,15 @@ function redirectClose() {
     window.close()
 }
 
-async function requestDocument(type) {
-    console.log('requestMdoc, type=' + type + ' protocol=' + selectedProtocol)
-
+async function requestDocument(format, docType, requestId) {
+    console.log('requestDocument, format=' + format + ' docType=' + docType + ' requestId=' + requestId + ' protocol=' + selectedProtocol)
     if (selectedProtocol.startsWith('openid4vp_')) {
         const response = await callServer(
             'openid4vpBegin',
             {
-                requestType: type,
+                format: format,
+                docType: docType,
+                requestId: requestId,
                 protocol: selectedProtocol,
                 origin: location.origin,
             }
@@ -64,7 +111,9 @@ async function requestDocument(type) {
             const response = await callServer(
                 'dcBegin',
                 {
-                    requestType: type,
+                    format: format,
+                    docType: docType,
+                    requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
                 }
@@ -78,7 +127,9 @@ async function requestDocument(type) {
             const response = await callServer(
                 'dcBegin',
                 {
-                    requestType: type,
+                    format: format,
+                    docType: docType,
+                    requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
                 }
