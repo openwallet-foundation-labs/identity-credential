@@ -26,6 +26,7 @@ package com.android.identity.documenttype
  * for inputting or displaying documents attributes.
  */
 sealed class DocumentAttributeType {
+    object Blob : DocumentAttributeType()
     object String : DocumentAttributeType()
     object Number : DocumentAttributeType()
     object Date : DocumentAttributeType()

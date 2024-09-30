@@ -78,7 +78,7 @@ internal class LocalDevelopmentEnvironment(
                 "androidRequireGmsAttestation" -> "false"
                 "androidRequireVerifiedBootGreen" -> "false"
                 "androidRequireAppSignatureCertificateDigests" -> ""
-                "issuingAuthorityList" -> "utopia_local utopia_local_pid"
+                "issuingAuthorityList" -> "utopia_local utopia_local_pid utopia_local_photoid"
                 "issuingAuthority.utopia_local.name" -> "Utopia DMV (Local)"
                 "issuingAuthority.utopia_local.type" -> "DrivingLicense"
                 "issuingAuthority.utopia_local.description" -> "Utopia Driver's License (Local)"
@@ -91,6 +91,12 @@ internal class LocalDevelopmentEnvironment(
                 "issuingAuthority.utopia_local_pid.logo" -> "utopia_local_pid/logo.png"
                 "issuingAuthority.utopia_local_pid.cardArt" -> "utopia_local_pid/card_art.png"
                 "issuingAuthority.utopia_local_pid.requireUserAuthenticationToViewDocument" -> "false"
+                "issuingAuthority.utopia_local_photoid.name" -> "Utopia Gov (Local)"
+                "issuingAuthority.utopia_local_photoid.type" -> "PhotoId"
+                "issuingAuthority.utopia_local_photoid.description" -> "Utopia Photo ID (Local)"
+                "issuingAuthority.utopia_local_photoid.logo" -> "utopia_local_photoid/logo.png"
+                "issuingAuthority.utopia_local_photoid.cardArt" -> "utopia_local_photoid/card_art.png"
+                "issuingAuthority.utopia_local_photoid.requireUserAuthenticationToViewDocument" -> "false"
                 "cloudSecureAreaUrl" -> settingsModel.cloudSecureAreaUrl.value
                 else -> null
             }
@@ -114,12 +120,22 @@ internal class LocalDevelopmentEnvironment(
                         R.drawable.utopia_pid_card_art,
                         Bitmap.CompressFormat.PNG
                     )
+                "utopia_local_photoid/card_art.png" ->
+                    bitmapData(
+                        R.drawable.utopia_photoid_card_art,
+                        Bitmap.CompressFormat.PNG
+                    )
                 "utopia_local/logo.png" ->
                     bitmapData(
                         R.drawable.utopia_dmv_issuing_authority_logo,
                         Bitmap.CompressFormat.PNG
                     )
                 "utopia_local_pid/logo.png" ->
+                    bitmapData(
+                        R.drawable.utopia_pid_issuing_authority_logo,
+                        Bitmap.CompressFormat.PNG
+                    )
+                "utopia_local_photoid/logo.png" ->
                     bitmapData(
                         R.drawable.utopia_pid_issuing_authority_logo,
                         Bitmap.CompressFormat.PNG
@@ -179,6 +195,8 @@ internal class LocalDevelopmentEnvironment(
                     context.resources.getString(R.string.utopia_local_issuing_authority_tos)
                 "utopia_local_pid/tos.html" ->
                     context.resources.getString(R.string.utopia_local_issuing_authority_pid_tos)
+                "utopia_local_photoid/tos.html" ->
+                    context.resources.getString(R.string.utopia_local_issuing_authority_photoid_tos)
                 "funke/tos.html" ->
                     context.resources.getString(R.string.funke_issuing_authority_tos)
                 else -> null

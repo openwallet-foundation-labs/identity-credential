@@ -261,6 +261,15 @@ class SelfSignedDetailsFragment : Fragment() {
                     getTitleView(field.id + 500, field.label)
                 )
             }
+
+            is DocumentAttributeType.Blob -> {
+                binding.layoutSelfSignedDetails.addView(
+                    getTextView(field.id + 500, field.label)
+                )
+                binding.layoutSelfSignedDetails.addView(
+                    getEditView(field.id, field.value.toString(), null)
+                )
+            }
         }
     }
 

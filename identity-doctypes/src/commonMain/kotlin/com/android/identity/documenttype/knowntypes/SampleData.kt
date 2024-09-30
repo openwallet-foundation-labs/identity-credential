@@ -28,7 +28,9 @@ internal object SampleData {
     const val ISSUING_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
     const val ISSUING_AUTHORITY_MDL = "Utopia Department of Motor Vehicles"
     const val ISSUING_AUTHORITY_EU_PID = "Utopia Central Registry"
+    const val ISSUING_AUTHORITY_PHOTO_ID = "Utopia Central Registry"
     const val DOCUMENT_NUMBER = "987654321"
+    const val PERSON_ID = "24601"
 
     const val UN_DISTINGUISHING_SIGN = "UTO"
     const val ADMINISTRATIVE_NUMBER = "123456789"

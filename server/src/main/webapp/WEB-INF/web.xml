@@ -36,6 +36,7 @@
             <param-value>
                 utopia
                 utopia_pid
+                utopia_photoid
                 eldorado
             </param-value>
         </init-param>
@@ -87,6 +88,31 @@
         </init-param>
         <init-param>
             <param-name>issuingAuthority.utopia_pid.requireUserAuthenticationToViewDocument</param-name>
+            <param-value>true</param-value>
+        </init-param>
+
+        <init-param>
+            <param-name>issuingAuthority.utopia_photoid.name</param-name>
+            <param-value>Utopia Gov</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_photoid.type</param-name>
+            <param-value>PhotoId</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_photoid.logo</param-name>
+            <param-value>utopia_photoid/logo.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_photoid.description</param-name>
+            <param-value>Utopia Photo ID</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_photoid.cardArt</param-name>
+            <param-value>utopia_photoid/card_art.png</param-value>
+        </init-param>
+        <init-param>
+            <param-name>issuingAuthority.utopia_photoid.requireUserAuthenticationToViewDocument</param-name>
             <param-value>true</param-value>
         </init-param>
 

@@ -79,6 +79,7 @@ import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.DocumentWellKnownRequest
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
@@ -120,6 +121,9 @@ fun ReaderScreen(
     }
     for (req in docTypeRepo.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)?.sampleRequests!!) {
         availableRequests.add(Pair("EU PID: ${req.displayName}", req))
+    }
+    for (req in docTypeRepo.getDocumentTypeForMdoc(PhotoID.PHOTO_ID_DOCTYPE)?.sampleRequests!!) {
+        availableRequests.add(Pair("Photo ID: ${req.displayName}", req))
     }
 
     // Make sure we start scanning when entering this screen and stop scanning when
