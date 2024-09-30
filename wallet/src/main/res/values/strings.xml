@@ -421,6 +421,20 @@
     ]]>
     </string>
 
+    <string name="utopia_local_issuing_authority_photoid_tos"><![CDATA[
+        <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Government\'/>
+        <h2>Provisioning a Photo ID</h2>
+        <p>In the following screens, information will be collected for provisioning of a Photo ID.</p>
+        <p>The Photo ID can either contain hard-coded data for fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the Issuing Authority the Photo ID is generated and signed on-device.
+        In other versions the collected evidence are conveyed securely and privately to an issuance
+        server for evaluation and signing of the Photo ID.</p>
+        <p>The created Photo ID will be bound to this device.</p>
+    ]]>
+    </string>
+
     <!-- SelfSignedEuPidIssuingAuthority -->
     <string name="utopia_eu_pid_issuing_authority_description">Utopia Personal Information Document</string>
     <string name="utopia_eu_pid_issuing_authority_name">Utopia Central Registry</string>

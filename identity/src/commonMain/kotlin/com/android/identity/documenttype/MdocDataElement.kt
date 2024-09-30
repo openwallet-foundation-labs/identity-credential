@@ -76,6 +76,8 @@ data class MdocDataElement(
                         trueFalseStrings.first
                 }
 
+                DocumentAttributeType.Blob -> Cbor.toDiagnostics(value, diagnosticsOptions)
+
                 DocumentAttributeType.ComplexType -> Cbor.toDiagnostics(value)
 
                 DocumentAttributeType.Date -> {

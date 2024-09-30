@@ -321,6 +321,7 @@ object SampleDataProvider {
 
     private fun defaultValue(type: DocumentAttributeType): Any? {
         return when (type) {
+            is DocumentAttributeType.Blob -> byteArrayOf()
             is DocumentAttributeType.String -> "-"
             is DocumentAttributeType.Number -> 0
             is DocumentAttributeType.Date,

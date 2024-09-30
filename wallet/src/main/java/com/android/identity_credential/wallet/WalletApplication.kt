@@ -36,6 +36,7 @@ import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.X509Cert
+import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.remote.WalletServerProvider
@@ -129,6 +130,7 @@ class WalletApplication : Application() {
         documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
+        documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
 
         // init storage
         val storageFile = Path(applicationContext.noBackupFilesDir.path, "identity.bin")

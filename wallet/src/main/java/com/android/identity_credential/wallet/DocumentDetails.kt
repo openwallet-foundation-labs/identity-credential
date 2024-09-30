@@ -9,6 +9,7 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.MdocDocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.jpeg2k.Jpeg2kConverter
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
@@ -82,6 +83,15 @@ private fun visitNamespace(
 
                     "signature_usual_mark" -> {
                         signatureOrUsualMark = elementValue.asBstr
+                        continue
+                    }
+                }
+            }
+            if (mdocDataElement.attribute.type == DocumentAttributeType.Picture &&
+                namespaceName == PhotoID.PHOTO_ID_NAMESPACE) {
+                when (mdocDataElement.attribute.identifier) {
+                    "portrait" -> {
+                        portrait = elementValue.asBstr
                         continue
                     }
                 }
