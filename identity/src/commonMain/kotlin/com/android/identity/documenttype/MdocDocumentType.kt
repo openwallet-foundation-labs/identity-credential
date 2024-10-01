@@ -47,6 +47,7 @@ class MdocDocumentType private constructor(
          * @param displayName the name suitable for display of the attribute.
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
+         * @param icon the icon, if available.
          * @param sampleValue a sample value for the attribute, if available.
          */
         fun addDataElement(
@@ -56,6 +57,7 @@ class MdocDocumentType private constructor(
             displayName: String,
             description: String,
             mandatory: Boolean,
+            icon: Icon? = null,
             sampleValue: DataItem? = null,
         ) = apply {
             if (!namespaces.containsKey(namespace)) {
@@ -67,6 +69,7 @@ class MdocDocumentType private constructor(
                 displayName,
                 description,
                 mandatory,
+                icon,
                 sampleValue
             )
         }

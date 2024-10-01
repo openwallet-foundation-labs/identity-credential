@@ -23,6 +23,7 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
+import com.android.identity.documenttype.Icon
 import com.android.identity.documenttype.IntegerOption
 import com.android.identity.documenttype.StringOption
 
@@ -52,6 +53,7 @@ object DrivingLicense {
                 "Last name, surname, or primary identifier, of the mDL holder.",
                 true,
                 MDL_NAMESPACE,
+                Icon.PERSON,
                 SampleData.FAMILY_NAME.toDataItem()
             )
             .addAttribute(
@@ -61,6 +63,7 @@ object DrivingLicense {
                 "First name(s), other name(s), or secondary identifier, of the mDL holder",
                 true,
                 MDL_NAMESPACE,
+                Icon.PERSON,
                 SampleData.GIVEN_NAME.toDataItem()
             )
             .addAttribute(
@@ -70,6 +73,7 @@ object DrivingLicense {
                 "Day, month and year on which the mDL holder was born. If unknown, approximate date of birth",
                 true,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.birthDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -79,6 +83,7 @@ object DrivingLicense {
                 "Date when mDL was issued",
                 true,
                 MDL_NAMESPACE,
+                Icon.DATE_RANGE,
                 SampleData.issueDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -88,6 +93,7 @@ object DrivingLicense {
                 "Date when mDL expires",
                 true,
                 MDL_NAMESPACE,
+                Icon.CALENDAR_CLOCK,
                 SampleData.expiryDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -97,6 +103,7 @@ object DrivingLicense {
                 "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s country or territory",
                 true,
                 MDL_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
             .addAttribute(
@@ -106,6 +113,7 @@ object DrivingLicense {
                 "Issuing authority name.",
                 true,
                 MDL_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_AUTHORITY_MDL.toDataItem()
             )
             .addAttribute(
@@ -115,6 +123,7 @@ object DrivingLicense {
                 "The number assigned or calculated by the issuing authority.",
                 true,
                 MDL_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.DOCUMENT_NUMBER.toDataItem()
             )
             .addAttribute(
@@ -124,6 +133,7 @@ object DrivingLicense {
                 "A reproduction of the mDL holder’s portrait.",
                 true,
                 MDL_NAMESPACE,
+                Icon.ACCOUNT_BOX,
                 null // TODO: include img_erika_portrait.jpg
             )
             .addAttribute(
@@ -133,6 +143,7 @@ object DrivingLicense {
                 "Driving privileges of the mDL holder",
                 true,
                 MDL_NAMESPACE,
+                Icon.DIRECTIONS_CAR,
                 CborArray.builder()
                     .addMap()
                     .put("vehicle_category_code", "A")
@@ -154,6 +165,7 @@ object DrivingLicense {
                 "Distinguishing sign of the issuing country",
                 true,
                 MDL_NAMESPACE,
+                Icon.LANGUAGE,
                 SampleData.UN_DISTINGUISHING_SIGN.toDataItem()
             )
             .addAttribute(
@@ -163,6 +175,7 @@ object DrivingLicense {
                 "An audit control number assigned by the issuing authority",
                 false,
                 MDL_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.ADMINISTRATIVE_NUMBER.toDataItem()
             )
             .addAttribute(
@@ -172,6 +185,7 @@ object DrivingLicense {
                 "mDL holder’s sex",
                 false,
                 MDL_NAMESPACE,
+                Icon.EMERGENCY,
                 SampleData.SEX_ISO218.toDataItem()
             )
             .addAttribute(
@@ -181,6 +195,7 @@ object DrivingLicense {
                 "mDL holder’s height in centimetres",
                 false,
                 MDL_NAMESPACE,
+                Icon.EMERGENCY,
                 SampleData.HEIGHT_CM.toDataItem()
             )
             .addAttribute(
@@ -190,6 +205,7 @@ object DrivingLicense {
                 "mDL holder’s weight in kilograms",
                 false,
                 MDL_NAMESPACE,
+                Icon.EMERGENCY,
                 SampleData.WEIGHT_KG.toDataItem()
             )
             .addAttribute(
@@ -213,6 +229,7 @@ object DrivingLicense {
                 "mDL holder’s eye color",
                 false,
                 MDL_NAMESPACE,
+                Icon.PERSON,
                 "blue".toDataItem()
             )
             .addAttribute(
@@ -236,6 +253,7 @@ object DrivingLicense {
                 "mDL holder’s hair color",
                 false,
                 MDL_NAMESPACE,
+                Icon.PERSON,
                 "blond".toDataItem()
             )
             .addAttribute(
@@ -245,6 +263,7 @@ object DrivingLicense {
                 "Country and municipality or state/province where the mDL holder was born",
                 false,
                 MDL_NAMESPACE,
+                Icon.PLACE,
                 SampleData.BIRTH_PLACE.toDataItem()
             )
             .addAttribute(
@@ -254,6 +273,7 @@ object DrivingLicense {
                 "The place where the mDL holder resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
                 MDL_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_ADDRESS.toDataItem()
             )
             .addAttribute(
@@ -263,6 +283,7 @@ object DrivingLicense {
                 "Date when portrait was taken",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.portraitCaptureDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -272,6 +293,7 @@ object DrivingLicense {
                 "The age of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_IN_YEARS.toDataItem()
             )
             .addAttribute(
@@ -281,6 +303,7 @@ object DrivingLicense {
                 "The year when the mDL holder was born",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_BIRTH_YEAR.toDataItem()
             )
             .addMdocAttribute(
@@ -290,6 +313,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 13",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_13.toDataItem()
             )
             .addMdocAttribute(
@@ -299,6 +323,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 16",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_16.toDataItem()
             )
             .addAttribute(
@@ -308,6 +333,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 18",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_18.toDataItem()
             )
             .addAttribute(
@@ -317,6 +343,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 21",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_21.toDataItem()
             )
             .addAttribute(
@@ -326,6 +353,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 25",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_25.toDataItem()
             )
             .addAttribute(
@@ -335,6 +363,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 60",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_60.toDataItem()
             )
             .addAttribute(
@@ -344,6 +373,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 62",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_62.toDataItem()
             )
             .addAttribute(
@@ -353,6 +383,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 65",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_65.toDataItem()
             )
             .addAttribute(
@@ -362,6 +393,7 @@ object DrivingLicense {
                 "Indication whether the mDL holder is as old or older than 68",
                 false,
                 MDL_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_68.toDataItem()
             )
             .addAttribute(
@@ -371,6 +403,7 @@ object DrivingLicense {
                 "Country subdivision code of the jurisdiction that issued the mDL",
                 false,
                 MDL_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_JURISDICTION.toDataItem()
             )
             .addAttribute(
@@ -380,6 +413,7 @@ object DrivingLicense {
                 "Nationality of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.LANGUAGE,
                 SampleData.NATIONALITY.toDataItem()
             )
             .addAttribute(
@@ -389,6 +423,7 @@ object DrivingLicense {
                 "The city where the mDL holder lives",
                 false,
                 MDL_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_CITY.toDataItem()
             )
             .addAttribute(
@@ -398,6 +433,7 @@ object DrivingLicense {
                 "The state/province/district where the mDL holder lives",
                 false,
                 MDL_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_STATE.toDataItem()
             )
             .addAttribute(
@@ -407,6 +443,7 @@ object DrivingLicense {
                 "The postal code of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_POSTAL_CODE.toDataItem()
             )
             .addAttribute(
@@ -416,6 +453,7 @@ object DrivingLicense {
                 "The country where the mDL holder lives",
                 false,
                 MDL_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_COUNTRY.toDataItem()
             )
             .addAttribute(
@@ -425,6 +463,7 @@ object DrivingLicense {
                 "The family name of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.PERSON,
                 SampleData.FAMILY_NAME_NATIONAL_CHARACTER.toDataItem()
             )
             .addAttribute(
@@ -434,6 +473,7 @@ object DrivingLicense {
                 "The given name of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.PERSON,
                 SampleData.GIVEN_NAMES_NATIONAL_CHARACTER.toDataItem()
             )
             .addAttribute(
@@ -443,6 +483,7 @@ object DrivingLicense {
                 "Image of the signature or usual mark of the mDL holder,",
                 false,
                 MDL_NAMESPACE,
+                Icon.SIGNATURE,
                 null  // TODO: include img_erika_signature.jpg
             )
             .addAttribute(
@@ -453,6 +494,7 @@ object DrivingLicense {
                 "Vehicle types the license holder is authorized to operate",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.DIRECTIONS_CAR,
                 null
             )
             .addAttribute(
@@ -463,7 +505,8 @@ object DrivingLicense {
                 "Name suffix of the individual that has been issued the driver license or identification document.",
                 false,
                 AAMVA_NAMESPACE,
-                null,
+                Icon.PERSON,
+                null
             )
             .addAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -478,6 +521,7 @@ object DrivingLicense {
                 "An indicator that denotes whether the credential holder is an organ donor.",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.EMERGENCY,
                 1.toDataItem()
             )
             .addAttribute(
@@ -493,6 +537,7 @@ object DrivingLicense {
                 "An indicator that denotes whether the credential holder is a veteran.",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.MILITARY_TECH,
                 null
             )
             .addAttribute(
@@ -510,6 +555,7 @@ object DrivingLicense {
                 "A code that indicates whether the field has been truncated",
                 true,
                 AAMVA_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addAttribute(
@@ -527,6 +573,7 @@ object DrivingLicense {
                 "A code that indicates whether either the first name or the middle name(s) have been truncated",
                 true,
                 AAMVA_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addAttribute(
@@ -537,6 +584,7 @@ object DrivingLicense {
                 "Other family name by which credential holder is known.",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addAttribute(
@@ -547,6 +595,7 @@ object DrivingLicense {
                 "Other given name by which credential holder is known.",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addAttribute(
@@ -557,6 +606,7 @@ object DrivingLicense {
                 "Other suffix by which credential holder is known.",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addAttribute(
@@ -581,6 +631,7 @@ object DrivingLicense {
                 "Indicates the approximate weight range of the cardholder",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.EMERGENCY,
                 3.toDataItem()
             )
             .addAttribute(
@@ -602,6 +653,7 @@ object DrivingLicense {
                 "Codes for race or ethnicity of the cardholder",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.EMERGENCY,
                 "W".toDataItem()
             )
             .addAttribute(
@@ -618,6 +670,7 @@ object DrivingLicense {
                 "DHS required field that indicates compliance",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.STARS,
                 "F".toDataItem()
             )
             .addAttribute(
@@ -633,6 +686,7 @@ object DrivingLicense {
                 "DHS required field that denotes whether the credential holder has temporary lawful status. 1: Temporary lawful status",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.STARS,
                 null
             )
             .addAttribute(
@@ -649,6 +703,7 @@ object DrivingLicense {
                 "Present if the credential is an EDL",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.DIRECTIONS_CAR,
                 1.toDataItem()
             )
             .addAttribute(
@@ -659,6 +714,7 @@ object DrivingLicense {
                 "The 3-digit county code of the county where the mDL holder lives",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.PLACE,
                 null
             )
             .addAttribute(
@@ -669,6 +725,7 @@ object DrivingLicense {
                 "Date on which the hazardous material endorsement granted by the document is no longer valid.",
                 true,
                 AAMVA_NAMESPACE,
+                Icon.CALENDAR_CLOCK,
                 null
             )
             .addAttribute(
@@ -679,6 +736,7 @@ object DrivingLicense {
                 "mDL holder’s sex",
                 true,
                 AAMVA_NAMESPACE,
+                Icon.EMERGENCY,
                 SampleData.SEX_ISO218.toDataItem()
             )
             /*
@@ -691,6 +749,7 @@ object DrivingLicense {
                 "Facial biometric information of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.FACE,
                 null
             )
             .addMdocAttribute(
@@ -700,6 +759,7 @@ object DrivingLicense {
                 "Fingerprint of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.FINGERPRINT,
                 null
             )
             .addMdocAttribute(
@@ -709,6 +769,7 @@ object DrivingLicense {
                 "Signature/sign of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.SIGNATURE,
                 null
             )
             .addMdocAttribute(
@@ -718,6 +779,7 @@ object DrivingLicense {
                 "Iris of the mDL holder",
                 false,
                 MDL_NAMESPACE,
+                Icon.EYE_TRACKING,
                 null
             )
             /*
@@ -730,6 +792,7 @@ object DrivingLicense {
                 "FMCSA required field that denotes whether the credential is a 'Commercial " +
                         "Driver’s License' or a 'Commercial Learner’s Permit'. This field is " +
                         "either absent or has value '1' (Commercial Driver’s License).",
+                Icon.AIRPORT_SHUTTLE,
                 null
             )
             .addVcAttribute(
@@ -738,6 +801,7 @@ object DrivingLicense {
                 "Non-REAL ID Credential Text",
                 "Text, agreed on between the Issuing Authority and DHS, appearing on credentials " +
                         "not meeting REAL ID requirements.",
+                Icon.STARS,
                 null
             )
             .addAttribute(
@@ -747,6 +811,7 @@ object DrivingLicense {
                 "A string of letters and/or numbers that identifies when, where, and by whom the credential was initially provisioned.",
                 false,
                 AAMVA_NAMESPACE,
+                Icon.STARS,
                 null
             )
             .addAttribute(
@@ -756,6 +821,7 @@ object DrivingLicense {
                 "A number identifying the version of the AAMVA mDL data element set",
                 true,
                 AAMVA_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addSampleRequest(
