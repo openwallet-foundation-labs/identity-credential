@@ -126,9 +126,11 @@ class CredentialServlet : BaseServlet() {
         state: IssuanceState,
         authenticationKey: EcPublicKey
     ): String {
+
+        val data = state.credentialData!!
         val identityAttributes = buildJsonObject {
-            put("given_name", JsonPrimitive(state.credentialData!!.firstName))
-            put("family_name", JsonPrimitive(state.credentialData!!.lastName))
+            put("given_name", JsonPrimitive(data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "given_name")))
+            put("family_name", JsonPrimitive(data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "family_name")))
         }
 
         val sdJwtVcGenerator = SdJwtVcGenerator(
@@ -183,14 +185,9 @@ class CredentialServlet : BaseServlet() {
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
 
-        val credentialData = NameSpacedData.Builder()
-            .putEntryString(EUPersonalID.EUPID_NAMESPACE, "family_name", state.credentialData!!.lastName!!)
-            .putEntryString(EUPersonalID.EUPID_NAMESPACE, "given_name", state.credentialData!!.firstName!!)
-            .build()
-
         val randomProvider = Random.Default
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            credentialData,
+            state.credentialData!!,
             randomProvider,
             16,
             null
