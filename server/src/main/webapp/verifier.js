@@ -99,6 +99,7 @@ async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
                     request: dcRequest
                 }]
             },
+            mediation: 'required',
           })
         dcProcessResponse(sessionId, credentialResponse)
     } catch (err) {
