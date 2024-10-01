@@ -22,8 +22,10 @@ import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.DocumentWellKnownRequest
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
@@ -88,28 +90,11 @@ enum class Protocol {
     MDOC_OPENID4VP,
 }
 
-enum class DocumentFormat {
-    MDOC,
-    SDJWT
-}
-
-enum class RequestType(val format: DocumentFormat) {
-    PID_MDOC_AGE_OVER_18(DocumentFormat.MDOC),
-    PID_MDOC_MANDATORY(DocumentFormat.MDOC),
-    PID_MDOC_FULL(DocumentFormat.MDOC),
-    PID_SDJWT_AGE_OVER_18(DocumentFormat.SDJWT),
-    PID_SDJWT_MANDATORY(DocumentFormat.SDJWT),
-    PID_SDJWT_FULL(DocumentFormat.SDJWT),
-    MDL_MDOC_AGE_OVER_18(DocumentFormat.MDOC),
-    MDL_MDOC_AGE_OVER_21(DocumentFormat.MDOC),
-    MDL_MDOC_AGE_OVER_21_AND_PORTRAIT(DocumentFormat.MDOC),
-    MDL_MDOC_MANDATORY(DocumentFormat.MDOC),
-    MDL_MDOC_FULL(DocumentFormat.MDOC),
-}
-
 @Serializable
 private data class OpenID4VPBeginRequest(
-    val requestType: String,
+    val format: String,
+    val docType: String,
+    val requestId: String,
     val protocol: String,
     val origin: String
 )
@@ -143,7 +128,9 @@ private data class OpenID4VPResultLine(
 @CborSerializable
 data class Session(
     val id: String,
-    val requestType: RequestType,
+    val requestFormat: String,      // "mdoc" or "vc"
+    val requestDocType: String,     // mdoc DocType or VC vct
+    val requestId: String,          // DocumentWellKnownRequest.id
     val protocol: Protocol,
     val nonce: String,
     val origin: String,
@@ -156,8 +143,31 @@ data class Session(
 }
 
 @Serializable
+private data class AvailableRequests(
+    val documentTypesWithRequests: List<DocumentTypeWithRequests>
+)
+
+@Serializable
+private data class DocumentTypeWithRequests(
+    val documentDisplayName: String,
+    val mdocDocType: String?,
+    val vcVct: String?,
+    val sampleRequests: List<SampleRequest>
+)
+
+@Serializable
+private data class SampleRequest(
+    val id: String,
+    val displayName: String,
+    val supportsMdoc: Boolean,
+    val supportsVc: Boolean
+)
+
+@Serializable
 private data class DCBeginRequest(
-    val requestType: String,
+    val format: String,
+    val docType: String,
+    val requestId: String,
     val protocol: String,
     val origin: String
 )
@@ -298,6 +308,7 @@ class VerifierServlet : BaseHttpServlet() {
             val repo =  DocumentTypeRepository()
             repo.addDocumentType(DrivingLicense.getDocumentType())
             repo.addDocumentType(EUPersonalID.getDocumentType())
+            repo.addDocumentType(PhotoID.getDocumentType())
             repo
         }
     }
@@ -460,7 +471,9 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         val requestLength = req.contentLength
         val requestData = req.inputStream.readNBytes(requestLength)
 
-        if (req.requestURI.endsWith("verifier/openid4vpBegin")) {
+        if (req.requestURI.endsWith("verifier/getAvailableRequests")) {
+            handleGetAvailableRequests(remoteHost, req, resp, requestData)
+        } else if (req.requestURI.endsWith("verifier/openid4vpBegin")) {
             handleOpenID4VPBegin(remoteHost, req, resp, requestData)
         } else if (req.requestURI.endsWith("verifier/openid4vpGetData")) {
             handleOpenID4VPGetData(remoteHost, req, resp, requestData)
@@ -491,6 +504,60 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         }
     }
 
+    private fun handleGetAvailableRequests(
+        remoteHost: String,
+        req: HttpServletRequest,
+        resp: HttpServletResponse,
+        requestData: ByteArray
+    ) {
+        val requests = mutableListOf<DocumentTypeWithRequests>()
+        for (dt in documentTypeRepo.documentTypes) {
+            if (!dt.sampleRequests.isEmpty()) {
+                val sampleRequests = mutableListOf<SampleRequest>()
+                var dtSupportsMdoc = false
+                var dtSupportsVc = false
+                for (sr in dt.sampleRequests) {
+                    sampleRequests.add(SampleRequest(
+                        sr.id,
+                        sr.displayName,
+                        sr.mdocRequest != null,
+                        sr.vcRequest != null,
+                    ))
+                    if (sr.mdocRequest != null) {
+                        dtSupportsMdoc = true
+                    }
+                    if (sr.vcRequest != null) {
+                        dtSupportsVc = true
+                    }
+                }
+                requests.add(DocumentTypeWithRequests(
+                    dt.displayName,
+                    if (dtSupportsMdoc) dt.mdocDocumentType!!.docType else null,
+                    if (dtSupportsVc) dt.vcDocumentType!!.type else null,
+                    sampleRequests
+                ))
+            }
+        }
+
+        val json = Json { ignoreUnknownKeys = true }
+        val responseString = json.encodeToString(AvailableRequests(requests))
+        resp.status = HttpServletResponse.SC_OK
+        resp.outputStream.write(responseString.encodeToByteArray())
+        resp.contentType = "application/json"
+    }
+
+    private fun lookupWellknownRequest(
+        format: String,
+        docType: String,
+        requestId: String
+    ): DocumentWellKnownRequest {
+        return when (format) {
+            "mdoc" -> documentTypeRepo.getDocumentTypeForMdoc(docType)!!.sampleRequests.first { it.id == requestId}
+            "vc" -> documentTypeRepo.getDocumentTypeForVc(docType)!!.sampleRequests.first { it.id == requestId}
+            else -> throw IllegalArgumentException("Unknown format $format")
+        }
+    }
+
     private fun handleDcBegin(
         remoteHost: String,
         req: HttpServletRequest,
@@ -514,30 +581,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             }
         }
 
-        val requestType = when (request.requestType) {
-            // Keep in sync with verifier.html
-            "pid_mdoc_age_over_18" -> RequestType.PID_MDOC_AGE_OVER_18
-            "pid_mdoc_mandatory" -> RequestType.PID_MDOC_MANDATORY
-            "pid_mdoc_full" -> RequestType.PID_MDOC_FULL
-            "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
-            "mdl_mdoc_age_over_21" -> RequestType.MDL_MDOC_AGE_OVER_21
-            "mdl_mdoc_age_over_21_and_portrait" -> RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT
-            "mdl_mdoc_mandatory" -> RequestType.MDL_MDOC_MANDATORY
-            "mdl_mdoc_full" -> RequestType.MDL_MDOC_FULL
-            else -> {
-                Logger.w(TAG, "$remoteHost: Unknown or unsupported request type '${request.requestType}'")
-                resp.status = HttpServletResponse.SC_BAD_REQUEST
-                return
-            }
-        }
-
         // Create a new session
         val session = Session(
             id = Random.Default.nextBytes(16).toHex(),
             nonce = Random.Default.nextBytes(16).toHex(),
             origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
-            requestType = requestType,
+            requestFormat = request.format,
+            requestDocType = request.docType,
+            requestId = request.requestId,
             protocol = protocol
         )
         runBlocking {
@@ -556,7 +608,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         val dcRequestString = mdocCalcDcRequestString(
             documentTypeRepo,
-            requestType,
+            lookupWellknownRequest(session.requestFormat, session.requestDocType, session.requestId),
             session.protocol,
             session.nonce.fromHex(),
             session.origin,
@@ -717,33 +769,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             }
         }
 
-        val requestType = when (request.requestType) {
-            // Keep in sync with verifier.html
-            "pid_mdoc_age_over_18" -> RequestType.PID_MDOC_AGE_OVER_18
-            "pid_mdoc_mandatory" -> RequestType.PID_MDOC_MANDATORY
-            "pid_mdoc_full" -> RequestType.PID_MDOC_FULL
-            "pid_sdjwt_age_over_18" -> RequestType.PID_SDJWT_AGE_OVER_18
-            "pid_sdjwt_mandatory" -> RequestType.PID_SDJWT_MANDATORY
-            "pid_sdjwt_full" -> RequestType.PID_SDJWT_FULL
-            "mdl_mdoc_age_over_18" -> RequestType.MDL_MDOC_AGE_OVER_18
-            "mdl_mdoc_age_over_21" -> RequestType.MDL_MDOC_AGE_OVER_21
-            "mdl_mdoc_age_over_21_and_portrait" -> RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT
-            "mdl_mdoc_mandatory" -> RequestType.MDL_MDOC_MANDATORY
-            "mdl_mdoc_full" -> RequestType.MDL_MDOC_FULL
-            else -> {
-                Logger.w(TAG, "$remoteHost: Unknown request type '${request.requestType}'")
-                resp.status = HttpServletResponse.SC_BAD_REQUEST
-                return
-            }
-        }
-
         // Create a new session
         val session = Session(
             id = Random.Default.nextBytes(16).toHex(),
             nonce = Random.Default.nextBytes(16).toHex(),
             origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
-            requestType = requestType,
+            requestFormat = request.format,
+            requestDocType = request.docType,
+            requestId = request.requestId,
             protocol = protocol
         )
         runBlocking {
@@ -828,22 +862,11 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             Base64.from(cert.encodedCertificate.toBase64Url())
         }
 
-        val presentationDefinition = when (session.requestType) {
-            RequestType.PID_MDOC_AGE_OVER_18,
-            RequestType.PID_MDOC_MANDATORY,
-            RequestType.PID_MDOC_FULL,
-            RequestType.MDL_MDOC_AGE_OVER_18,
-            RequestType.MDL_MDOC_AGE_OVER_21,
-            RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT,
-            RequestType.MDL_MDOC_MANDATORY,
-            RequestType.MDL_MDOC_FULL -> {
-                mdocCalcPresentationDefinition(documentTypeRepo, session.requestType)
-            }
-            RequestType.PID_SDJWT_AGE_OVER_18,
-            RequestType.PID_SDJWT_MANDATORY,
-            RequestType.PID_SDJWT_FULL -> {
-                sdjwtCalcPresentationDefinition(documentTypeRepo, session.requestType)
-            }
+        val request = lookupWellknownRequest(session.requestFormat, session.requestDocType, session.requestId)
+        val presentationDefinition = when (session.requestFormat) {
+            "mdoc" -> mdocCalcPresentationDefinition(documentTypeRepo, request)
+            "vc" -> sdjwtCalcPresentationDefinition(documentTypeRepo, request)
+            else -> throw IllegalArgumentException("Unknown format ${session.requestFormat}")
         }
 
         val claimsSet = JWTClaimsSet.Builder()
@@ -854,7 +877,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             .claim("nonce", session.nonce)
             .claim("state", session.id)
             .claim("presentation_definition", presentationDefinition)
-            .claim("client_metadata", calcClientMetadata(session, session.requestType.format))
+            .claim("client_metadata", calcClientMetadata(session, session.requestFormat))
             .build()
         Logger.i(TAG, "Sending OpenID4VPRequest claims set: $claimsSet")
 
@@ -957,7 +980,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             encryptedJWT.decrypt(decrypter)
 
             val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
-            if (session.requestType.format == DocumentFormat.MDOC) {
+            if (session.requestFormat == "mdoc") {
                 session.deviceResponse = vpToken.fromBase64Url()
             } else {
                 session.deviceResponse = vpToken.toByteArray()
@@ -1020,22 +1043,9 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         val session = Session.fromCbor(encodedSession.toByteArray())
 
         try {
-            when (session.requestType) {
-                RequestType.PID_MDOC_AGE_OVER_18,
-                RequestType.PID_MDOC_MANDATORY,
-                RequestType.PID_MDOC_FULL,
-                RequestType.MDL_MDOC_AGE_OVER_18,
-                RequestType.MDL_MDOC_AGE_OVER_21,
-                RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT,
-                RequestType.MDL_MDOC_MANDATORY,
-                RequestType.MDL_MDOC_FULL -> {
-                    handleGetDataMdoc(session, resp)
-                }
-                RequestType.PID_SDJWT_AGE_OVER_18,
-                RequestType.PID_SDJWT_MANDATORY,
-                RequestType.PID_SDJWT_FULL -> {
-                    handleGetDataSdJwt(session, resp)
-                }
+            when (session.requestFormat) {
+                "mdoc" -> handleGetDataMdoc(session, resp)
+                "vc" -> handleGetDataSdJwt(session, resp)
             }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
@@ -1187,7 +1197,7 @@ private fun createSessionTranscriptOpenID4VP(
 
 private fun mdocCalcDcRequestString(
     documentTypeRepository: DocumentTypeRepository,
-    requestType: RequestType,
+    request: DocumentWellKnownRequest,
     protocol: Protocol,
     nonce: ByteArray,
     origin: String,
@@ -1200,7 +1210,7 @@ private fun mdocCalcDcRequestString(
         Protocol.W3C_DC_PREVIEW -> {
             return mdocCalcDcRequestStringPreview(
                 documentTypeRepository,
-                requestType,
+                request,
                 nonce,
                 origin,
                 readerPublicKey
@@ -1209,7 +1219,7 @@ private fun mdocCalcDcRequestString(
         Protocol.W3C_DC_ARF -> {
             return mdocCalcDcRequestStringArf(
                 documentTypeRepository,
-                requestType,
+                request,
                 nonce,
                 origin,
                 readerKey,
@@ -1226,29 +1236,11 @@ private fun mdocCalcDcRequestString(
 
 private fun mdocCalcDcRequestStringPreview(
         documentTypeRepository: DocumentTypeRepository,
-        requestType: RequestType,
+        request: DocumentWellKnownRequest,
         nonce: ByteArray,
         origin: String,
         readerPublicKey: EcPublicKeyDoubleCoordinate
     ): String {
-
-    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
-    val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
-    val request = when (requestType) {
-        RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
-        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21" }
-        RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
-        RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
-        else -> null
-    }
-    if (request == null) {
-        throw IllegalStateException("Unknown request type $requestType")
-    }
-
     val top = JSONObject()
 
     val selector = JSONObject()
@@ -1279,7 +1271,7 @@ private fun mdocCalcDcRequestStringPreview(
 
 private fun mdocCalcDcRequestStringArf(
     documentTypeRepository: DocumentTypeRepository,
-    requestType: RequestType,
+    request: DocumentWellKnownRequest,
     nonce: ByteArray,
     origin: String,
     readerKey: EcPrivateKey,
@@ -1287,24 +1279,6 @@ private fun mdocCalcDcRequestStringArf(
     readerAuthKey: EcPrivateKey,
     readerAuthKeyCertification: X509CertChain
 ): String {
-
-    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
-    val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
-    val request = when (requestType) {
-        RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
-        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21" }
-        RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
-        RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
-        else -> null
-    }
-    if (request == null) {
-        throw IllegalStateException("Unknown request type $requestType")
-    }
-
     val arfEncryptionInfo = CborMap.builder()
         .put("nonce", nonce)
         .put("readerPublicKey", readerPublicKey.toCoseKey().toDataItem())
@@ -1357,25 +1331,8 @@ private fun mdocCalcDcRequestStringArf(
 
 private fun mdocCalcPresentationDefinition(
     documentTypeRepository: DocumentTypeRepository,
-    requestType: RequestType
+    request: DocumentWellKnownRequest
 ): JSONObject {
-    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
-    val mdl = documentTypeRepository.getDocumentTypeForMdoc(DrivingLicense.MDL_DOCTYPE)
-    val request = when (requestType) {
-        RequestType.PID_MDOC_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.PID_MDOC_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.PID_MDOC_FULL -> pid?.sampleRequests?.first { it.id == "full" }
-        RequestType.MDL_MDOC_AGE_OVER_18 -> mdl?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.MDL_MDOC_AGE_OVER_21 -> mdl?.sampleRequests?.first { it.id == "age_over_21" }
-        RequestType.MDL_MDOC_AGE_OVER_21_AND_PORTRAIT -> mdl?.sampleRequests?.first { it.id == "age_over_21_and_portrait" }
-        RequestType.MDL_MDOC_MANDATORY -> mdl?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.MDL_MDOC_FULL -> mdl?.sampleRequests?.first { it.id == "full" }
-        else -> null
-    }
-    if (request == null) {
-        throw IllegalStateException("Unknown request type $requestType")
-    }
-
     val alg = JSONArray()
     alg.addAll(listOf("ES256"))
     val mso_mdoc = JSONObject()
@@ -1415,19 +1372,8 @@ private fun mdocCalcPresentationDefinition(
 
 private fun sdjwtCalcPresentationDefinition(
     documentTypeRepository: DocumentTypeRepository,
-    requestType: RequestType
+    request: DocumentWellKnownRequest
 ): JSONObject {
-    val pid = documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)
-    val request = when (requestType) {
-        RequestType.PID_SDJWT_AGE_OVER_18 -> pid?.sampleRequests?.first { it.id == "age_over_18" }
-        RequestType.PID_SDJWT_MANDATORY -> pid?.sampleRequests?.first { it.id == "mandatory" }
-        RequestType.PID_SDJWT_FULL -> pid?.sampleRequests?.first { it.id == "full" }
-        else -> null
-    }
-    if (request == null) {
-        throw IllegalStateException("Unknown request type $requestType")
-    }
-
     val alg = JSONArray()
     alg.addAll(listOf("ES256"))
     val algContainer = JSONObject()
@@ -1462,7 +1408,7 @@ private fun sdjwtCalcPresentationDefinition(
     return presentation_definition
 }
 
-private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONObject {
+private fun calcClientMetadata(session: Session, format: String): JSONObject {
     val encPub = session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate
 
     val client_metadata = JSONObject()
@@ -1471,7 +1417,7 @@ private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONOb
     client_metadata.put("response_mode", "direct_post.jwt")
 
     val vpFormats = when (format) {
-        DocumentFormat.SDJWT -> {
+        "vc" -> {
             val vpFormats = JSONObject()
             val algList = JSONArray()
             algList.addAll(listOf("ES256"))
@@ -1480,7 +1426,7 @@ private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONOb
             vpFormats.put("jwt_vc", algObj)
             vpFormats
         }
-        DocumentFormat.MDOC -> {
+        "mdoc" -> {
             val vpFormats = JSONObject()
             val algList = JSONArray()
             algList.addAll(listOf("ES256"))
@@ -1489,6 +1435,8 @@ private fun calcClientMetadata(session: Session, format: DocumentFormat): JSONOb
             vpFormats.put("mso_mdoc", algObj)
             vpFormats
         }
+
+        else -> throw IllegalArgumentException("Unknown format $format")
     }
     client_metadata.put("vp_formats", vpFormats)
     client_metadata.put("vp_formats_supported", vpFormats)

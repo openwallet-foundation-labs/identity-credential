@@ -7,6 +7,7 @@
     <title>OWF Identity Credential Online Verifier</title>
     <link rel="icon" type="image/x-icon" href="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/fingerprint/default/24px.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="verifier.js"></script>
 </head>
 <body onload="onLoad()">
@@ -22,68 +23,10 @@
         <p class="fs-5 col-md-8">Request a verified identity document such as a Mobile Driving License (mDL) or EU PID</p>
 
         <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="pills-pid_mdoc-tab" data-bs-toggle="pill" data-bs-target="#pills-pid_mdoc" type="button" role="tab" aria-controls="pills-home" aria-selected="true">
-                    PID (mdoc)
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pills-pid_sdjwt-tab" data-bs-toggle="pill" data-bs-target="#pills-pid_sdjwt" type="button" role="tab" aria-controls="pills-home" aria-selected="true">
-                    PID (SD-JWT VC)
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pills-mdl_mdoc-tab" data-bs-toggle="pill" data-bs-target="#pills-mdl_mdoc" type="button" role="tab" aria-controls="pills-profile" aria-selected="false">
-                    mDL (mdoc)
-                </button>
-            </li>
+            <!-- Dynamically populated, see addTab() -->
         </ul>
         <div class="tab-content" id="pills-tabContent">
-            <div class="tab-pane fade show active" id="pills-pid_mdoc" role="tabpanel" aria-labelledby="pills-pid_mdoc-tab" tabindex="0">
-                <div class="d-grid gap-2 mx-auto">
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_mdoc_age_over_18')">
-                        Request PID (Age Over 18)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_mdoc_mandatory')">
-                        Request PID (Mandatory)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_mdoc_full')">
-                        Request PID (Full)
-                    </button>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="pills-pid_sdjwt" role="tabpanel" aria-labelledby="pills-pid_sdjwt-tab" tabindex="0">
-                <div class="d-grid gap-2 mx-auto">
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_age_over_18')">
-                        Request PID (Age Over 18)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_mandatory')">
-                        Request PID (Mandatory)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('pid_sdjwt_full')">
-                        Request PID (Full)
-                    </button>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="pills-mdl_mdoc" role="tabpanel" aria-labelledby="pills-mdl_mdoc-tab" tabindex="0">
-                <div class="d-grid gap-2 mx-auto">
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('mdl_mdoc_age_over_18')">
-                        Request mDL (Age Over 18)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('mdl_mdoc_age_over_21')">
-                        Request mDL (Age Over 21)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('mdl_mdoc_age_over_21_and_portrait')">
-                        Request mDL (Age Over 21 + Portrait)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('mdl_mdoc_mandatory')">
-                        Request mDL (Mandatory Elements)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg" onclick="requestDocument('mdl_mdoc_full')">
-                        Request mDL (Full)
-                    </button>
-                </div>
-            </div>
+            <!-- Dynamically populated, see addTab() -->
         </div>
 
         Selected protocol for retrieval:
