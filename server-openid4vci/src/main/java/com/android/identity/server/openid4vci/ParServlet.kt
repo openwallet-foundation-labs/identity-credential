@@ -105,7 +105,7 @@ class ParServlet : BaseServlet() {
         }
 
         // Format the result (session identifying information).
-        val expirationSeconds = 60
+        val expirationSeconds = 600
         val code = idToCode(OpaqueIdType.PAR_CODE, id, expirationSeconds.seconds)
         resp.status = 201  // Created
         resp.outputStream.write(

@@ -331,4 +331,16 @@
         <url-pattern>/openid4vci/credential</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <display-name>CredentialRequestServlet</display-name>
+        <servlet-name>CredentialRequestServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.CredentialRequestServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>CredentialRequestServlet</servlet-name>
+        <url-pattern>/openid4vci/credential_request</url-pattern>
+    </servlet-mapping>
+
 </web-app>

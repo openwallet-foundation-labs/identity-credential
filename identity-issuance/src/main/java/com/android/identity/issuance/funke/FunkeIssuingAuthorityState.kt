@@ -13,6 +13,7 @@ import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
+import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
@@ -468,8 +469,9 @@ class FunkeIssuingAuthorityState(
         } else {
             landingUrl = applicationSupport?.createLandingUrl() ?:
                 ApplicationSupportState(clientId).createLandingUrl(env)
-            // TODO: use real server's base URL
-            parRedirectUrl = "http://localhost:8080/server/$landingUrl"
+            val configuration = env.getInterface(Configuration::class)!!
+            val baseUrl = configuration.getValue("base_url")
+            parRedirectUrl = "$baseUrl/$landingUrl"
         }
 
         val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
