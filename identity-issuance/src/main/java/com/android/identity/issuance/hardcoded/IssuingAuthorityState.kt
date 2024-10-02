@@ -94,6 +94,7 @@ private const val EUPID_NAMESPACE = EUPersonalID.EUPID_NAMESPACE
 
 private const val PHOTO_ID_DOCTYPE = PhotoID.PHOTO_ID_DOCTYPE
 private const val PHOTO_ID_NAMESPACE = PhotoID.PHOTO_ID_NAMESPACE
+private const val ISO_23220_2_NAMESPACE = PhotoID.ISO_23220_2_NAMESPACE
 
 /**
  * State of [IssuingAuthority] RPC implementation.
@@ -1018,31 +1019,31 @@ class IssuingAuthorityState(
             // Make sure we set at least all the mandatory data elements
             //
             staticData = NameSpacedData.Builder()
-                .putEntryString(PHOTO_ID_NAMESPACE, "given_name_unicode", firstName)
-                .putEntryString(PHOTO_ID_NAMESPACE, "family_name_unicode", lastName)
-                .putEntry(PHOTO_ID_NAMESPACE, "birthdate",
+                .putEntryString(ISO_23220_2_NAMESPACE, "given_name_unicode", firstName)
+                .putEntryString(ISO_23220_2_NAMESPACE, "family_name_unicode", lastName)
+                .putEntry(ISO_23220_2_NAMESPACE, "birthdate",
                     Cbor.encode(dateOfBirth.toDataItemFullDate()))
-                .putEntryByteString(PHOTO_ID_NAMESPACE, "portrait", portrait.toByteArray())
-                .putEntryNumber(PHOTO_ID_NAMESPACE, "sex", sex)
-                .putEntry(PHOTO_ID_NAMESPACE, "issue_date",
+                .putEntryByteString(ISO_23220_2_NAMESPACE, "portrait", portrait.toByteArray())
+                .putEntryNumber(ISO_23220_2_NAMESPACE, "sex", sex)
+                .putEntry(ISO_23220_2_NAMESPACE, "issue_date",
                     Cbor.encode(issueDate.toDataItemDateTimeString()))
-                .putEntry(PHOTO_ID_NAMESPACE, "expiry_date",
+                .putEntry(ISO_23220_2_NAMESPACE, "expiry_date",
                     Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
-                .putEntryString(PHOTO_ID_NAMESPACE, "issuing_authority_unicode",
+                .putEntryString(ISO_23220_2_NAMESPACE, "issuing_authority_unicode",
                     issuingAuthorityName)
-                .putEntryString(PHOTO_ID_NAMESPACE, "issuing_country", "ZZ")
-                .putEntryString(PHOTO_ID_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(ISO_23220_2_NAMESPACE, "issuing_country", "ZZ")
+                .putEntryString(ISO_23220_2_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(PHOTO_ID_NAMESPACE, "administrative_number", "123456789")
                 .putEntryString(PHOTO_ID_NAMESPACE, "person_id", "24601")
-                .putEntryBoolean(PHOTO_ID_NAMESPACE, "age_over_18", ageOver18)
-                .putEntryBoolean(PHOTO_ID_NAMESPACE, "age_over_21", ageOver21)
+                .putEntryBoolean(ISO_23220_2_NAMESPACE, "age_over_18", ageOver18)
+                .putEntryBoolean(ISO_23220_2_NAMESPACE, "age_over_21", ageOver21)
                 .build()
 
             // TODO: add ICAO 9303 data groups and other stuff to DTC_NAMESPACE
         }
 
-        val firstName = staticData.getDataElementString(PHOTO_ID_NAMESPACE, "given_name_unicode")
+        val firstName = staticData.getDataElementString(ISO_23220_2_NAMESPACE, "given_name_unicode")
         return DocumentConfiguration(
             displayName = "$firstName's Photo ID",
             typeDisplayName = "Photo ID",
@@ -1113,7 +1114,7 @@ class IssuingAuthorityState(
                 "img_erika_portrait.jpg"
             })!!.toByteArray()
             builder
-                .putEntryByteString(PHOTO_ID_NAMESPACE, "portrait", portrait)
+                .putEntryByteString(ISO_23220_2_NAMESPACE, "portrait", portrait)
         }
 
         return builder
