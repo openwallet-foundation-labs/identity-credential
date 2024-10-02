@@ -41,6 +41,7 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.mdoc.vical.SignedVical
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
@@ -200,17 +201,59 @@ class WalletApplication : Application() {
             getWalletApplicationInformation()
         }
 
-        // init TrustManagers
+        // init TrustManager for readers (used in consent dialog)
+        //
         readerTrustManager.addTrustPoint(
             displayName = "OWF Identity Credential Reader",
             certificateResourceId = R.raw.owf_identity_credential_reader_cert,
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
+        for (certResourceId in listOf(
+            R.raw.austroad_test_event_reader_credence_id,
+            R.raw.austroad_test_event_reader_fast_enterprises,
+            R.raw.austroad_test_event_reader_fime_reader_ca1,
+            R.raw.austroad_test_event_reader_fime_reader_ca2,
+            R.raw.austroad_test_event_reader_idemia,
+            R.raw.austroad_test_event_reader_mattr_labs,
+            R.raw.austroad_test_event_reader_nist,
+            R.raw.austroad_test_event_reader_panasonic_root,
+            R.raw.austroad_test_event_reader_panasonic_remote_root,
+            R.raw.austroad_test_event_reader_scytales,
+            R.raw.austroad_test_event_reader_snsw_labs,
+            R.raw.austroad_test_event_reader_thales_root,
+            R.raw.austroad_test_event_reader_zetes,
+        )) {
+            val cert = X509Cert(resources.openRawResource(certResourceId).readBytes())
+            readerTrustManager.addTrustPoint(
+                TrustPoint(
+                    cert.javaX509Certificate,
+                    null,
+                    null,
+                )
+            )
+        }
+
+        // init TrustManager for issuers (used in reader)
+        //
         issuerTrustManager.addTrustPoint(
             displayName = "OWF Identity Credential TEST IACA",
             certificateResourceId = R.raw.iaca_certificate,
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
+        val signedVical = SignedVical.parse(
+            resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
+        )
+        for (certInfo in signedVical.vical.certificateInfos) {
+            val cert = X509Cert(certInfo.certificate)
+            issuerTrustManager.addTrustPoint(
+                TrustPoint(
+                    cert.javaX509Certificate,
+                    null,
+                    null
+                )
+            )
+        }
+
 
         documentModel = DocumentModel(
             applicationContext,

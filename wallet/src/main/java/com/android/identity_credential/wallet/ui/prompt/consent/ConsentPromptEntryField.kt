@@ -172,9 +172,11 @@ private fun ConsentPromptHeader(
     // title of dialog, if verifier is null or verifier.displayName is null, use default text
     val title = if (verifier == null) {
         LocalContext.current.getString(R.string.consent_prompt_title, documentName)
-    } else { // title is based on TrustPoint's displayName
+    } else { // title is based on TrustPoint's displayName, if available
+        val verifierDisplayName = verifier.displayName
+            ?: "Trusted Verifier (${verifier.certificate.subjectX500Principal.name})"
         LocalContext.current.getString(
-            R.string.consent_prompt_title_verifier, verifier.displayName,
+            R.string.consent_prompt_title_verifier, verifierDisplayName,
             documentName
         )
     }

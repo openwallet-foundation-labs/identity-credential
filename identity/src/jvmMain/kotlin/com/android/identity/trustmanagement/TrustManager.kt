@@ -89,20 +89,20 @@ class TrustManager {
     fun verify(
         chain: List<X509Certificate>,
         customValidators: List<PKIXCertPathChecker> = emptyList()
-    ): TrustResult =
+    ): TrustResult {
         try {
             val trustPoints = getAllTrustPoints(chain)
             val completeChain = chain.plus(trustPoints.map { it.certificate })
             try {
                 validateCertificationTrustPath(completeChain, customValidators)
-                TrustResult(
+                return TrustResult(
                     isTrusted = true,
                     trustPoints = trustPoints,
                     trustChain = completeChain
                 )
             } catch (e: Throwable) {
                 // there are validation errors, but the trust chain could be built.
-                TrustResult(
+                return TrustResult(
                     isTrusted = false,
                     trustPoints = trustPoints,
                     trustChain = completeChain,
@@ -110,13 +110,31 @@ class TrustManager {
                 )
             }
         } catch (e: Throwable) {
+            // No CA certificate found for the passed in chain.
+            //
+            // However, handle the case where the passed in chain _is_ a trust point. This won't
+            // happen for mdoc issuer auth (the IACA cert is never part of the chain) but can happen
+            // with mdoc reader auth, especially at mDL test events where each participant
+            // just submits a certificate for the key that their reader will be using.
+            //
+            if (chain.size == 1) {
+                val trustPoint = certificates[TrustManagerUtil.getSubjectKeyIdentifier(chain[0])]
+                if (trustPoint != null) {
+                    return TrustResult(
+                        isTrusted = true,
+                        trustChain = chain,
+                        listOf(trustPoint),
+                        error = null
+                    )
+                }
+            }
             // no CA certificate could be found.
-            TrustResult(
+            return TrustResult(
                 isTrusted = false,
                 error = e
             )
         }
-
+    }
 
     private fun getAllTrustPoints(chain: List<X509Certificate>): List<TrustPoint> {
         val result = mutableListOf<TrustPoint>()

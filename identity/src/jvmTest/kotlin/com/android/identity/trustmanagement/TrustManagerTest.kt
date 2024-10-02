@@ -226,6 +226,25 @@ class TrustManagerTest {
         )
     }
 
+    // Test the case where the Root certificate is used to sign with. While discouraged
+    // this is indeed allowed for mdoc reader authentication and happens frequently at
+    // mDL test events.
+    //
+    @Test
+    fun testTrustManagerNoChain() {
+        // arrange (start with a TrustManager without certificates)
+        val trustManager = TrustManager()
+
+        // act (add certificate and verify chain)
+        trustManager.addTrustPoint(TrustPoint(mdlCaCertificate))
+        val result = trustManager.verify(listOf(mdlCaCertificate))
+
+        // assert
+        Assert.assertTrue("Root Certificate is trusted", result.isTrusted)
+        Assert.assertEquals("Trust chain contains 1 certificate", 1, result.trustChain.size)
+        Assert.assertEquals("Error is empty", result.error, null)
+    }
+
     private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
         return CertificateFactory.getInstance("X509")
             .generateCertificate(ByteArrayInputStream(certificateBytes)) as X509Certificate
