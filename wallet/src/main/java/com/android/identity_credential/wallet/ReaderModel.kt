@@ -261,7 +261,9 @@ class ReaderModel(
                 )
                 if (trustResult.isTrusted) {
                     val trustPoint = trustResult.trustPoints[0]
-                    infoTexts.add(res.getString(R.string.reader_model_info_in_trust_list, trustPoint.displayName))
+                    val displayName = trustPoint.displayName
+                        ?: trustPoint.certificate.subjectX500Principal.name
+                    infoTexts.add(res.getString(R.string.reader_model_info_in_trust_list, displayName))
                 } else {
                     val dsCert = readerAuthChain[0]
                     val displayName = dsCert.issuerX500Principal.name
