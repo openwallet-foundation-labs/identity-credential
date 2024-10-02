@@ -4,11 +4,14 @@ import android.app.Application
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.util.Logger
 import androidx.preference.PreferenceManager
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.VaccinationDocument
 import com.android.identity.documenttype.knowntypes.VehicleRegistration
+import com.android.identity.mdoc.vical.SignedVical
 import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
@@ -61,6 +64,21 @@ class VerifierApp : Application() {
         KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
             trustManagerInstance.addTrustPoint(TrustPoint(it))
         }
+        val signedVical = SignedVical.parse(
+            resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
+        )
+        for (certInfo in signedVical.vical.certificateInfos) {
+            val cert = X509Cert(certInfo.certificate)
+            trustManagerInstance.addTrustPoint(
+                TrustPoint(
+                    cert.javaX509Certificate,
+                    null,
+                    null
+                )
+            )
+        }
+
+
         documentTypeRepositoryInstance = documentTypeRepository
         documentTypeRepositoryInstance.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepositoryInstance.addDocumentType(VehicleRegistration.getDocumentType())
