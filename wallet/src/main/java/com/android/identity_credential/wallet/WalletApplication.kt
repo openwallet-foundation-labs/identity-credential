@@ -235,11 +235,6 @@ class WalletApplication : Application() {
 
         // init TrustManager for issuers (used in reader)
         //
-        issuerTrustManager.addTrustPoint(
-            displayName = "OWF Identity Credential TEST IACA",
-            certificateResourceId = R.raw.iaca_certificate,
-            displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
-        )
         val signedVical = SignedVical.parse(
             resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
         )
@@ -253,6 +248,11 @@ class WalletApplication : Application() {
                 )
             )
         }
+        issuerTrustManager.addTrustPoint(
+            displayName = "OWF Identity Credential TEST IACA",
+            certificateResourceId = R.raw.iaca_certificate,
+            displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
+        )
 
 
         documentModel = DocumentModel(

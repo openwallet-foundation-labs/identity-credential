@@ -671,7 +671,7 @@ object PhotoID {
             .addMdocAttribute(
                 DocumentAttributeType.Blob,
                 "dg_content_info",
-                "",
+                "eMRTD Content Info",
                 "Binary data of the DTCContentInfo",
                 false,
                 DTC_NAMESPACE,
