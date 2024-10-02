@@ -14,6 +14,7 @@ import com.android.identity.documenttype.knowntypes.EUPersonalID.EUPID_VCT
  */
 object PhotoID {
     const val PHOTO_ID_DOCTYPE = "org.iso.23220.photoid.1"
+    const val ISO_23220_2_NAMESPACE = "org.iso.23220.1"
     const val PHOTO_ID_NAMESPACE = "org.iso.23220.photoid.1"
     const val DTC_NAMESPACE = "org.iso.23220.dtc.1"
 
@@ -31,7 +32,7 @@ object PhotoID {
                 "Family Name",
                 "Last name, surname, or primary identifier, of the document holder",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PERSON,
                 SampleData.FAMILY_NAME.toDataItem()
             )
@@ -41,7 +42,7 @@ object PhotoID {
                 "Given Names",
                 "First name(s), other name(s), or secondary identifier, of the document holder",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PERSON,
                 SampleData.GIVEN_NAME.toDataItem()
             )
@@ -64,7 +65,7 @@ object PhotoID {
                 "Date of Birth",
                 "Day, month and year on which the document holder was born. If unknown, approximate date of birth",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 CborMap.builder()
                     .put("birth_date", SampleData.birthDate.toDataItemFullDate())
@@ -77,7 +78,7 @@ object PhotoID {
                 "Photo of Holder",
                 "A reproduction of the document holder’s portrait.",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.ACCOUNT_BOX,
                 null // TODO: include img_erika_portrait.jpg
             )
@@ -87,7 +88,7 @@ object PhotoID {
                 "Date of Issue",
                 "Date when document was issued",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.DATE_RANGE,
                 SampleData.issueDate.toDataItemFullDate()
             )
@@ -97,7 +98,7 @@ object PhotoID {
                 "Date of Expiry",
                 "Date when document expires",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
                 SampleData.expiryDate.toDataItemFullDate()
             )
@@ -107,7 +108,7 @@ object PhotoID {
                 "Issuing Authority",
                 "Issuing authority name.",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_AUTHORITY_PHOTO_ID.toDataItem()
             )
@@ -117,7 +118,7 @@ object PhotoID {
                 "Issuing Country",
                 "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s country or territory",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
@@ -127,7 +128,7 @@ object PhotoID {
                 "Older Than 18 Years",
                 "Indication whether the document holder is as old or older than 18",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_18.toDataItem()
             )
@@ -137,7 +138,7 @@ object PhotoID {
                 "Age in Years",
                 "The age of the document holder",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_IN_YEARS.toDataItem()
             )
@@ -147,7 +148,7 @@ object PhotoID {
                 "Older Than 13 Years",
                 "Indication whether the document holder is as old or older than 13",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_13.toDataItem()
             )
@@ -157,7 +158,7 @@ object PhotoID {
                 "Older Than 16 Years",
                 "Indication whether the document holder is as old or older than 16",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_16.toDataItem()
             )
@@ -167,7 +168,7 @@ object PhotoID {
                 "Older Than 18 Years",
                 "Indication whether the document holder is as old or older than 18",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_18.toDataItem()
             )
@@ -177,7 +178,7 @@ object PhotoID {
                 "Older Than 21 Years",
                 "Indication whether the document holder is as old or older than 21",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_21.toDataItem()
             )
@@ -187,7 +188,7 @@ object PhotoID {
                 "Older Than 25 Years",
                 "Indication whether the document holder is as old or older than 25",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_25.toDataItem()
             )
@@ -197,7 +198,7 @@ object PhotoID {
                 "Older Than 60 Years",
                 "Indication whether the document holder is as old or older than 60",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_60.toDataItem()
             )
@@ -207,7 +208,7 @@ object PhotoID {
                 "Older Than 62 Years",
                 "Indication whether the document holder is as old or older than 62",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_62.toDataItem()
             )
@@ -217,7 +218,7 @@ object PhotoID {
                 "Older Than 65 Years",
                 "Indication whether the document holder is as old or older than 65",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_65.toDataItem()
             )
@@ -227,7 +228,7 @@ object PhotoID {
                 "Older Than 68 Years",
                 "Indication whether the document holder is as old or older than 68",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_OVER_68.toDataItem()
             )
@@ -237,7 +238,7 @@ object PhotoID {
                 "Year of Birth",
                 "The year when the document holder was born",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.AGE_BIRTH_YEAR.toDataItem()
             )
@@ -247,7 +248,7 @@ object PhotoID {
                 "Portrait Image Timestamp",
                 "Date when portrait was taken",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 SampleData.portraitCaptureDate.toDataItemFullDate()
             )
@@ -257,7 +258,7 @@ object PhotoID {
                 "Place of Birth",
                 "Country and municipality or state/province where the document holder was born",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PLACE,
                 SampleData.BIRTH_PLACE.toDataItem()
             )
@@ -267,7 +268,7 @@ object PhotoID {
                 "Name at Birth",
                 "The name(s) which holder was born.",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PERSON,
                 null
             )
@@ -277,7 +278,7 @@ object PhotoID {
                 "Resident Address",
                 "The place where the document holder resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PLACE,
                 SampleData.RESIDENT_ADDRESS.toDataItem()
             )
@@ -287,7 +288,7 @@ object PhotoID {
                 "Resident City",
                 "The city where the document holder lives",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PLACE,
                 SampleData.RESIDENT_CITY.toDataItem()
             )
@@ -297,7 +298,7 @@ object PhotoID {
                 "Resident Postal Code",
                 "The postal code of the document holder",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PLACE,
                 SampleData.RESIDENT_POSTAL_CODE.toDataItem()
             )
@@ -307,7 +308,7 @@ object PhotoID {
                 "Resident Country",
                 "The country where the document holder lives",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PLACE,
                 SampleData.RESIDENT_COUNTRY.toDataItem()
             )
@@ -317,7 +318,7 @@ object PhotoID {
                 "Resident City",
                 "The city where the document holder lives, in Latin 1 characters",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PLACE,
                 null
             )
@@ -327,7 +328,7 @@ object PhotoID {
                 "Sex",
                 "document holder’s sex",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.EMERGENCY,
                 SampleData.SEX_ISO218.toDataItem()
             )
@@ -337,7 +338,7 @@ object PhotoID {
                 "Nationality",
                 "Nationality of the document holder",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.LANGUAGE,
                 SampleData.NATIONALITY.toDataItem()
             )
@@ -347,7 +348,7 @@ object PhotoID {
                 "License Number",
                 "The number assigned or calculated by the issuing authority.",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.NUMBERS,
                 SampleData.DOCUMENT_NUMBER.toDataItem()
             )
@@ -359,7 +360,7 @@ object PhotoID {
                         "the mobile eID document or within which the issuing " +
                         "authority is located.",
                 false,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_JURISDICTION.toDataItem()
             )
@@ -369,7 +370,7 @@ object PhotoID {
                 "Family Name (Latin 1)",
                 "Last name, surname, or primary identifier, of the document holder. In Latin 1",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PERSON,
                 null
             )
@@ -379,7 +380,7 @@ object PhotoID {
                 "Given Names (Latin 1)",
                 "First name(s), other name(s), or secondary identifier, of the document holder. In Latin 1",
                 true,
-                PHOTO_ID_NAMESPACE,
+                ISO_23220_2_NAMESPACE,
                 Icon.PERSON,
                 null
             )
@@ -685,7 +686,7 @@ object PhotoID {
                 displayName ="Age Over 18",
                 mdocDataElements = mapOf(
                     Pair(
-                        PHOTO_ID_NAMESPACE, listOf(
+                        ISO_23220_2_NAMESPACE, listOf(
                         "age_over_18",
                     ))
                 ),
@@ -695,7 +696,7 @@ object PhotoID {
                 displayName ="Age Over 18 + Portrait",
                 mdocDataElements = mapOf(
                     Pair(
-                        PHOTO_ID_NAMESPACE, listOf(
+                        ISO_23220_2_NAMESPACE, listOf(
                         "age_over_18",
                         "portrait"
                     ))
@@ -706,7 +707,7 @@ object PhotoID {
                 displayName = "Mandatory Data Elements",
                 mdocDataElements = mapOf(
                     Pair(
-                        PHOTO_ID_NAMESPACE, listOf(
+                        ISO_23220_2_NAMESPACE, listOf(
                             "family_name_unicode",
                             "given_name_unicode",
                             "birth_date",
@@ -723,6 +724,7 @@ object PhotoID {
                 id = "full",
                 displayName ="All Data Elements",
                 mdocDataElements = mapOf(
+                    Pair(ISO_23220_2_NAMESPACE, listOf()),
                     Pair(PHOTO_ID_NAMESPACE, listOf()),
                     Pair(DTC_NAMESPACE, listOf())
                 )
