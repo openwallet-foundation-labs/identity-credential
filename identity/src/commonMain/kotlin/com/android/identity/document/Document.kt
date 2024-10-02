@@ -239,16 +239,26 @@ class Document private constructor(
      */
     fun deleteInvalidatedCredentials() {
         for (pendingCredential in pendingCredentials) {
-            if (pendingCredential.isInvalidated) {
-                Logger.i(TAG, "Deleting invalidated pending credential  ${pendingCredential.identifier}")
-                pendingCredential.delete()
-            }
+            deleteIfInvalidated(pendingCredential, "pending credential")
         }
         for (credential in certifiedCredentials) {
+            deleteIfInvalidated(credential)
+        }
+    }
+
+    private fun deleteIfInvalidated(credential: Credential, credentialType: String = "credential") {
+        try {
             if (credential.isInvalidated) {
-                Logger.i(TAG, "Deleting invalidated credential ${credential.identifier}")
+                Logger.i(TAG, "Deleting invalidated $credentialType ${credential.identifier}")
                 credential.delete()
             }
+        } catch (err: IllegalArgumentException) {
+            // TODO: watch this and figure out what causes this state (race condition?)
+            // Once we are in this state, there is no other good way to recover. It is important
+            // that secure area implementations do not use IllegalArgumentException for transient
+            // errors (like server connections).
+            Logger.e(TAG, "Error accessing $credentialType ${credential.identifier}, deleting it", err)
+            credential.delete()
         }
     }
 
