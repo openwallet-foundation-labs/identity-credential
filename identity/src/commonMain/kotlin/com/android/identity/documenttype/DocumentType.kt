@@ -85,6 +85,7 @@ class DocumentType private constructor(
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
+         * @param icon the icon, if available.
          * @param sampleValue a sample value for the attribute, if available.
          */
         fun addAttribute(
@@ -94,11 +95,12 @@ class DocumentType private constructor(
             description: String,
             mandatory: Boolean,
             mdocNamespace: String,
+            icon: Icon? = null,
             sampleValue: DataItem? = null,
         ) = apply {
             addMdocAttribute(type, identifier, displayName, description, mandatory,
-                mdocNamespace, sampleValue)
-            addVcAttribute(type, identifier, displayName, description, sampleValue)
+                mdocNamespace, icon, sampleValue)
+            addVcAttribute(type, identifier, displayName, description, icon, sampleValue)
         }
 
         /**
@@ -111,6 +113,7 @@ class DocumentType private constructor(
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
+         * @param icon the icon, if available.
          * @param sampleValue a sample value for the attribute, if available.
          */
         fun addAttribute(
@@ -121,6 +124,7 @@ class DocumentType private constructor(
             description: String,
             mandatory: Boolean,
             mdocNamespace: String,
+            icon: Icon? = null,
             sampleValue: DataItem? = null
         ) = apply {
             addMdocAttribute(
@@ -130,9 +134,10 @@ class DocumentType private constructor(
                 description,
                 mandatory,
                 mdocNamespace,
+                icon,
                 sampleValue
             )
-            addVcAttribute(type, vcIdentifier, displayName, description, sampleValue)
+            addVcAttribute(type, vcIdentifier, displayName, description, icon, sampleValue)
         }
 
         /**
@@ -144,6 +149,7 @@ class DocumentType private constructor(
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
+         * @param icon the icon, if available.
          * @param sampleValue a sample value for the attribute, if available.
          */
         fun addMdocAttribute(
@@ -153,6 +159,7 @@ class DocumentType private constructor(
             description: String,
             mandatory: Boolean,
             mdocNamespace: String,
+            icon: Icon? = null,
             sampleValue: DataItem? = null
         ) = apply {
             mdocBuilder?.addDataElement(
@@ -162,6 +169,7 @@ class DocumentType private constructor(
                 displayName,
                 description,
                 mandatory,
+                icon,
                 sampleValue
             ) ?: throw Exception("The mDoc Document Type was not initialized")
         }
@@ -173,6 +181,7 @@ class DocumentType private constructor(
          * @param identifier the identifier of this attribute.
          * @param displayName a name suitable for display of the attribute.
          * @param description a description of the attribute.
+         * @param icon the icon, if available.
          * @param sampleValue a sample value for the attribute, if available.
          */
         fun addVcAttribute(
@@ -180,9 +189,10 @@ class DocumentType private constructor(
             identifier: String,
             displayName: String,
             description: String,
+            icon: Icon? = null,
             sampleValue: DataItem? = null
         ) = apply {
-            vcBuilder?.addClaim(type, identifier, displayName, description, sampleValue)
+            vcBuilder?.addClaim(type, identifier, displayName, description, icon, sampleValue)
                 ?: throw Exception("The VC Document Type was not initialized")
         }
 

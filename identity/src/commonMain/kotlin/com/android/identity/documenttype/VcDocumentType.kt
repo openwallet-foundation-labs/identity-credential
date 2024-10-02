@@ -40,17 +40,19 @@ class VcDocumentType private constructor(
          * @param identifier the identifier of this claim.
          * @param displayName a name suitable for display of the claim.
          * @param description a description of the claim.
-         * @param sampleValue a sample value for the attribute.
+         * @param icon the icon, if available.
+         * @param sampleValue a sample value for the attribute, if available.
          */
         fun addClaim(
             type: DocumentAttributeType,
             identifier: String,
             displayName: String,
             description: String,
+            icon: Icon? = null,
             sampleValue: DataItem? = null
         ) = apply {
             claims[identifier] = DocumentAttribute(
-                type, identifier, displayName, description, sampleValue
+                type, identifier, displayName, description, icon, sampleValue
             )
         }
 

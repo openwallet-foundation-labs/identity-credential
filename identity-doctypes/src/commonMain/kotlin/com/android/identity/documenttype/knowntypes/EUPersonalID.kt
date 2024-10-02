@@ -20,6 +20,7 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
+import com.android.identity.documenttype.Icon
 
 /**
  * Object containing the metadata of the EU Personal ID Document Type.
@@ -45,6 +46,7 @@ object EUPersonalID {
                 "Current last name(s), surname(s), or primary identifier of the PID holder",
                 true,
                 EUPID_NAMESPACE,
+                Icon.PERSON,
                 SampleData.FAMILY_NAME.toDataItem()
             )
             .addAttribute(
@@ -54,6 +56,7 @@ object EUPersonalID {
                 "Current first name(s), other name(s), or secondary identifier of the PID holder",
                 true,
                 EUPID_NAMESPACE,
+                Icon.PERSON,
                 SampleData.GIVEN_NAME.toDataItem()
             )
             .addAttribute(
@@ -63,6 +66,7 @@ object EUPersonalID {
                 "Day, month, and year on which the PID holder was born. If unknown, approximate date of birth.",
                 true,
                 EUPID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.birthDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -72,6 +76,7 @@ object EUPersonalID {
                 "The age of the PID holder in years",
                 false,
                 EUPID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_IN_YEARS.toDataItem()
             )
             .addAttribute(
@@ -81,6 +86,7 @@ object EUPersonalID {
                 "The year when the PID holder was born",
                 false,
                 EUPID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_BIRTH_YEAR.toDataItem()
             )
             .addAttribute(
@@ -90,6 +96,7 @@ object EUPersonalID {
                 "Age over 18?",
                 false,
                 EUPID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_18.toDataItem()
             )
             .addAttribute(
@@ -99,6 +106,7 @@ object EUPersonalID {
                 "Age over 21?",
                 false,
                 EUPID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_21.toDataItem()
             )
             .addAttribute(
@@ -108,6 +116,7 @@ object EUPersonalID {
                 "Last name(s), surname(s), or primary identifier of the PID holder at birth",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PERSON,
                 SampleData.FAMILY_NAME_BIRTH.toDataItem()
             )
             .addAttribute(
@@ -117,6 +126,7 @@ object EUPersonalID {
                 "First name(s), other name(s), or secondary identifier of the PID holder at birth",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PERSON,
                 SampleData.GIVEN_NAME_BIRTH.toDataItem()
             )
             .addAttribute(
@@ -126,6 +136,7 @@ object EUPersonalID {
                 "Country and municipality or state/province where the PID holder was born",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.BIRTH_PLACE.toDataItem()
             )
             .addAttribute(
@@ -135,6 +146,7 @@ object EUPersonalID {
                 "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.BIRTH_COUNTRY.toDataItem()
             )
             .addAttribute(
@@ -144,6 +156,7 @@ object EUPersonalID {
                 "The state, province, district, or local area where the PID User was born",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.BIRTH_STATE.toDataItem()
             )
             .addAttribute(
@@ -153,6 +166,7 @@ object EUPersonalID {
                 "The municipality, city, town, or village where the PID User was born",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.BIRTH_CITY.toDataItem()
             )
             .addAttribute(
@@ -162,6 +176,7 @@ object EUPersonalID {
                 "The full address of the place where the PID holder currently resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_ADDRESS.toDataItem()
             )
             .addAttribute(
@@ -171,6 +186,7 @@ object EUPersonalID {
                 "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_COUNTRY.toDataItem()
             )
             .addAttribute(
@@ -180,6 +196,7 @@ object EUPersonalID {
                 "The state, province, district, or local area where the PID User currently resides.",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_STATE.toDataItem()
             )
             .addAttribute(
@@ -189,6 +206,7 @@ object EUPersonalID {
                 "The city where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_CITY.toDataItem()
             )
             .addAttribute(
@@ -198,6 +216,7 @@ object EUPersonalID {
                 "The postal code of the place where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_POSTAL_CODE.toDataItem()
             )
             .addAttribute(
@@ -207,6 +226,7 @@ object EUPersonalID {
                 "The name of the street where the PID User currently resides.",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_STREET.toDataItem()
             )
             .addAttribute(
@@ -216,6 +236,7 @@ object EUPersonalID {
                 "The house number where the PID User currently resides, including any affix or suffix",
                 false,
                 EUPID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_HOUSE_NUMBER.toDataItem()
             )
             .addAttribute(
@@ -225,6 +246,7 @@ object EUPersonalID {
                 "PID holder’s gender",
                 false,
                 EUPID_NAMESPACE,
+                Icon.EMERGENCY,
                 SampleData.SEX_ISO218.toDataItem()
             )
             .addAttribute(
@@ -234,6 +256,7 @@ object EUPersonalID {
                 "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User.",
                 true,
                 EUPID_NAMESPACE,
+                Icon.LANGUAGE,
                 SampleData.NATIONALITY.toDataItem()
             )
             .addAttribute(
@@ -243,6 +266,7 @@ object EUPersonalID {
                 "Date (and possibly time) when the PID was issued.",
                 true,
                 EUPID_NAMESPACE,
+                Icon.DATE_RANGE,
                 SampleData.issueDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -252,6 +276,7 @@ object EUPersonalID {
                 "Date (and possibly time) when the PID will expire.",
                 true,
                 EUPID_NAMESPACE,
+                Icon.CALENDAR_CLOCK,
                 SampleData.expiryDate.toDataItemFullDate()
             )
             .addAttribute(
@@ -263,6 +288,7 @@ object EUPersonalID {
                         "no separate authority authorized to issue PIDs.",
                 true,
                 EUPID_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_AUTHORITY_EU_PID.toDataItem()
             )
             .addAttribute(
@@ -272,6 +298,7 @@ object EUPersonalID {
                 "A number for the PID, assigned by the PID Provider.",
                 false,
                 EUPID_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.DOCUMENT_NUMBER.toDataItem()
             )
             .addAttribute(
@@ -281,6 +308,7 @@ object EUPersonalID {
                 "A number assigned by the PID Provider for audit control or other purposes.",
                 false,
                 EUPID_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.ADMINISTRATIVE_NUMBER.toDataItem()
             )
             .addAttribute(
@@ -292,6 +320,7 @@ object EUPersonalID {
                         "as the value for issuing_country.",
                 false,
                 EUPID_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_JURISDICTION.toDataItem()
             )
             .addAttribute(
@@ -302,6 +331,7 @@ object EUPersonalID {
                         "country or territory",
                 true,
                 EUPID_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
             .addSampleRequest(

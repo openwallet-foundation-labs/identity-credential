@@ -25,6 +25,7 @@ import com.android.identity.cbor.DataItem
  * @param identifier the identifier of this attribute.
  * @param displayName the name suitable for display of the attribute.
  * @param description a description of the attribute.
+ * @param icon the icon for the attribute, if available.
  * @param sampleValue a sample value for the attribute, if available.
  */
 class DocumentAttribute(
@@ -32,5 +33,6 @@ class DocumentAttribute(
     val identifier: String,
     val displayName: String,
     val description: String,
-    val sampleValue: DataItem?,
+    val icon: Icon?,
+    val sampleValue: DataItem?
 )

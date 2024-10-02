@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.identity.appsupport.ui.getOutlinedImageVector
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.util.toImageBitmap
@@ -296,10 +297,17 @@ private fun DataElementView(
 
         onClick = {},
         label = {
+            if (consentField.attribute?.icon != null) {
+                Icon(
+                    consentField.attribute!!.icon!!.getOutlinedImageVector(),
+                    contentDescription = "${consentField.attribute!!.icon!!.iconName} icon"
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             Text(
-                text = "• ${consentField.displayName}",
+                text = "${consentField.displayName}",
                 fontWeight = FontWeight.Normal,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodySmall
             )
         },
     )

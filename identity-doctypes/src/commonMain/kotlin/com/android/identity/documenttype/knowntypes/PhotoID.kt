@@ -5,6 +5,7 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
+import com.android.identity.documenttype.Icon
 import com.android.identity.documenttype.knowntypes.EUPersonalID.EUPID_VCT
 
 /**
@@ -31,6 +32,7 @@ object PhotoID {
                 "Last name, surname, or primary identifier, of the document holder",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.PERSON,
                 SampleData.FAMILY_NAME.toDataItem()
             )
             .addMdocAttribute(
@@ -40,6 +42,7 @@ object PhotoID {
                 "First name(s), other name(s), or secondary identifier, of the document holder",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.PERSON,
                 SampleData.GIVEN_NAME.toDataItem()
             )
             // Note, this is more complicated than mDL and EU PID, according to ISO/IEC 23220-2
@@ -62,6 +65,7 @@ object PhotoID {
                 "Day, month and year on which the document holder was born. If unknown, approximate date of birth",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 CborMap.builder()
                     .put("birth_date", SampleData.birthDate.toDataItemFullDate())
                     .end()
@@ -74,6 +78,7 @@ object PhotoID {
                 "A reproduction of the document holder’s portrait.",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.ACCOUNT_BOX,
                 null // TODO: include img_erika_portrait.jpg
             )
             .addMdocAttribute(
@@ -83,6 +88,7 @@ object PhotoID {
                 "Date when document was issued",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.DATE_RANGE,
                 SampleData.issueDate.toDataItemFullDate()
             )
             .addMdocAttribute(
@@ -92,6 +98,7 @@ object PhotoID {
                 "Date when document expires",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.CALENDAR_CLOCK,
                 SampleData.expiryDate.toDataItemFullDate()
             )
             .addMdocAttribute(
@@ -101,6 +108,7 @@ object PhotoID {
                 "Issuing authority name.",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_AUTHORITY_PHOTO_ID.toDataItem()
             )
             .addMdocAttribute(
@@ -110,6 +118,7 @@ object PhotoID {
                 "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s country or territory",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
             .addMdocAttribute(
@@ -119,6 +128,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 18",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_18.toDataItem()
             )
             .addMdocAttribute(
@@ -128,6 +138,7 @@ object PhotoID {
                 "The age of the document holder",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_IN_YEARS.toDataItem()
             )
             .addMdocAttribute(
@@ -137,6 +148,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 13",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_13.toDataItem()
             )
             .addMdocAttribute(
@@ -146,6 +158,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 16",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_16.toDataItem()
             )
             .addMdocAttribute(
@@ -155,6 +168,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 18",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_18.toDataItem()
             )
             .addMdocAttribute(
@@ -164,6 +178,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 21",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_21.toDataItem()
             )
             .addMdocAttribute(
@@ -173,6 +188,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 25",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_25.toDataItem()
             )
             .addMdocAttribute(
@@ -182,6 +198,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 60",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_60.toDataItem()
             )
             .addMdocAttribute(
@@ -191,6 +208,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 62",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_62.toDataItem()
             )
             .addMdocAttribute(
@@ -200,6 +218,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 65",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_65.toDataItem()
             )
             .addMdocAttribute(
@@ -209,6 +228,7 @@ object PhotoID {
                 "Indication whether the document holder is as old or older than 68",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_OVER_68.toDataItem()
             )
             .addMdocAttribute(
@@ -218,6 +238,7 @@ object PhotoID {
                 "The year when the document holder was born",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.AGE_BIRTH_YEAR.toDataItem()
             )
             .addMdocAttribute(
@@ -227,6 +248,7 @@ object PhotoID {
                 "Date when portrait was taken",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.TODAY,
                 SampleData.portraitCaptureDate.toDataItemFullDate()
             )
             .addMdocAttribute(
@@ -236,6 +258,7 @@ object PhotoID {
                 "Country and municipality or state/province where the document holder was born",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.BIRTH_PLACE.toDataItem()
             )
             .addMdocAttribute(
@@ -245,6 +268,7 @@ object PhotoID {
                 "The name(s) which holder was born.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addMdocAttribute(
@@ -254,6 +278,7 @@ object PhotoID {
                 "The place where the document holder resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_ADDRESS.toDataItem()
             )
             .addMdocAttribute(
@@ -263,6 +288,7 @@ object PhotoID {
                 "The city where the document holder lives",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_CITY.toDataItem()
             )
             .addMdocAttribute(
@@ -272,6 +298,7 @@ object PhotoID {
                 "The postal code of the document holder",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_POSTAL_CODE.toDataItem()
             )
             .addMdocAttribute(
@@ -281,6 +308,7 @@ object PhotoID {
                 "The country where the document holder lives",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_COUNTRY.toDataItem()
             )
             .addMdocAttribute(
@@ -290,6 +318,7 @@ object PhotoID {
                 "The city where the document holder lives, in Latin 1 characters",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 null
             )
             .addMdocAttribute(
@@ -299,6 +328,7 @@ object PhotoID {
                 "document holder’s sex",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.EMERGENCY,
                 SampleData.SEX_ISO218.toDataItem()
             )
             .addMdocAttribute(
@@ -308,6 +338,7 @@ object PhotoID {
                 "Nationality of the document holder",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.LANGUAGE,
                 SampleData.NATIONALITY.toDataItem()
             )
             .addMdocAttribute(
@@ -317,6 +348,7 @@ object PhotoID {
                 "The number assigned or calculated by the issuing authority.",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.DOCUMENT_NUMBER.toDataItem()
             )
             .addMdocAttribute(
@@ -328,6 +360,7 @@ object PhotoID {
                         "authority is located.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.ACCOUNT_BALANCE,
                 SampleData.ISSUING_JURISDICTION.toDataItem()
             )
             .addMdocAttribute(
@@ -337,6 +370,7 @@ object PhotoID {
                 "Last name, surname, or primary identifier, of the document holder. In Latin 1",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.PERSON,
                 null
             )
             .addMdocAttribute(
@@ -346,6 +380,7 @@ object PhotoID {
                 "First name(s), other name(s), or secondary identifier, of the document holder. In Latin 1",
                 true,
                 PHOTO_ID_NAMESPACE,
+                Icon.PERSON,
                 null
             )
 
@@ -358,6 +393,7 @@ object PhotoID {
                 "Person identifier of the Photo ID holder.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.PERSON_ID.toDataItem()
             )
             .addMdocAttribute(
@@ -368,6 +404,7 @@ object PhotoID {
                         "Alpha-2 country code as specified in ISO 3166-1.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 null
             )
             .addMdocAttribute(
@@ -378,6 +415,7 @@ object PhotoID {
                         "Photo ID holder was born.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 null
             )
             .addMdocAttribute(
@@ -388,6 +426,7 @@ object PhotoID {
                         "ID holder was born.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 null
             )
             .addMdocAttribute(
@@ -398,6 +437,7 @@ object PhotoID {
                         "control or other purposes.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.NUMBERS,
                 SampleData.ADMINISTRATIVE_NUMBER.toDataItem()
             )
             .addMdocAttribute(
@@ -408,6 +448,7 @@ object PhotoID {
                         "currently resides.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_STREET.toDataItem()
             )
             .addMdocAttribute(
@@ -418,6 +459,7 @@ object PhotoID {
                         "resides, including any affix or suffix.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_HOUSE_NUMBER.toDataItem()
             )
             .addMdocAttribute(
@@ -429,6 +471,7 @@ object PhotoID {
                         "document).",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -438,6 +481,7 @@ object PhotoID {
                 "The state/province/district where the Photo ID holder lives.",
                 false,
                 PHOTO_ID_NAMESPACE,
+                Icon.PLACE,
                 SampleData.RESIDENT_STATE.toDataItem()
             )
 
@@ -450,6 +494,7 @@ object PhotoID {
                 "Version of the DTC-VC definition",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -459,6 +504,7 @@ object PhotoID {
                 "Binary data of the eMRTD Document Security Object",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -468,6 +514,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 1",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -477,6 +524,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 2",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -486,6 +534,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 3",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -495,6 +544,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 4",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -504,6 +554,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 5",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -513,6 +564,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 6",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -522,6 +574,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 7",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -531,6 +584,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 8",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -540,6 +594,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 9",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -549,6 +604,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 10",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -558,6 +614,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 11",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -567,6 +624,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 12",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -576,6 +634,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 13",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -585,6 +644,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 14",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -594,6 +654,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 15",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -603,6 +664,7 @@ object PhotoID {
                 "Binary data of the eMRTD Data Group 16",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
             .addMdocAttribute(
@@ -612,6 +674,7 @@ object PhotoID {
                 "Binary data of the DTCContentInfo",
                 false,
                 DTC_NAMESPACE,
+                Icon.NUMBERS,
                 null
             )
 

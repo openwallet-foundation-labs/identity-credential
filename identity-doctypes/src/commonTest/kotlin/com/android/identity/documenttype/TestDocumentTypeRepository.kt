@@ -131,6 +131,7 @@ class TestDocumentTypeRepository {
                     "",
                     "",
                     "",
+                    null,
                     null
                 ),
                 false
@@ -150,6 +151,7 @@ class TestDocumentTypeRepository {
                         "",
                         "",
                         "",
+                        null,
                         null
                     ),
                     false
