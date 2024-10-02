@@ -1014,33 +1014,46 @@ class IssuingAuthorityState(
             val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
             val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
             val portrait = decoded.photo ?: resources.getRawResource("img_erika_portrait.jpg")!!
-            val signatureOrUsualMark = decoded.signature ?: resources.getRawResource("img_erika_signature.jpg")!!
+            val signatureOrUsualMark =
+                decoded.signature ?: resources.getRawResource("img_erika_signature.jpg")!!
 
             // Make sure we set at least all the mandatory data elements
             //
-            staticData = NameSpacedData.Builder()
-                .putEntryString(ISO_23220_2_NAMESPACE, "given_name_unicode", firstName)
-                .putEntryString(ISO_23220_2_NAMESPACE, "family_name_unicode", lastName)
-                .putEntry(ISO_23220_2_NAMESPACE, "birthdate",
-                    Cbor.encode(dateOfBirth.toDataItemFullDate()))
-                .putEntryByteString(ISO_23220_2_NAMESPACE, "portrait", portrait.toByteArray())
-                .putEntryNumber(ISO_23220_2_NAMESPACE, "sex", sex)
-                .putEntry(ISO_23220_2_NAMESPACE, "issue_date",
-                    Cbor.encode(issueDate.toDataItemDateTimeString()))
-                .putEntry(ISO_23220_2_NAMESPACE, "expiry_date",
+            staticData = NameSpacedData.Builder().apply {
+                putEntryString(ISO_23220_2_NAMESPACE, "given_name_unicode", firstName)
+                putEntryString(ISO_23220_2_NAMESPACE, "family_name_unicode", lastName)
+                putEntry(
+                    ISO_23220_2_NAMESPACE, "birthdate",
+                    Cbor.encode(dateOfBirth.toDataItemFullDate())
+                )
+                putEntryByteString(ISO_23220_2_NAMESPACE, "portrait", portrait.toByteArray())
+                putEntryNumber(ISO_23220_2_NAMESPACE, "sex", sex)
+                putEntry(
+                    ISO_23220_2_NAMESPACE, "issue_date",
+                    Cbor.encode(issueDate.toDataItemDateTimeString())
+                )
+                putEntry(
+                    ISO_23220_2_NAMESPACE, "expiry_date",
                     Cbor.encode(expiryDate.toDataItemDateTimeString())
                 )
-                .putEntryString(ISO_23220_2_NAMESPACE, "issuing_authority_unicode",
-                    issuingAuthorityName)
-                .putEntryString(ISO_23220_2_NAMESPACE, "issuing_country", "ZZ")
-                .putEntryString(ISO_23220_2_NAMESPACE, "document_number", "1234567890")
-                .putEntryString(PHOTO_ID_NAMESPACE, "administrative_number", "123456789")
-                .putEntryString(PHOTO_ID_NAMESPACE, "person_id", "24601")
-                .putEntryBoolean(ISO_23220_2_NAMESPACE, "age_over_18", ageOver18)
-                .putEntryBoolean(ISO_23220_2_NAMESPACE, "age_over_21", ageOver21)
-                .build()
-
-            // TODO: add ICAO 9303 data groups and other stuff to DTC_NAMESPACE
+                putEntryString(
+                    ISO_23220_2_NAMESPACE, "issuing_authority_unicode",
+                    issuingAuthorityName
+                )
+                putEntryString(ISO_23220_2_NAMESPACE, "issuing_country", "ZZ")
+                putEntryString(ISO_23220_2_NAMESPACE, "document_number", "1234567890")
+                putEntryString(PHOTO_ID_NAMESPACE, "administrative_number", "123456789")
+                putEntryString(PHOTO_ID_NAMESPACE, "person_id", "24601")
+                putEntryBoolean(ISO_23220_2_NAMESPACE, "age_over_18", ageOver18)
+                putEntryBoolean(ISO_23220_2_NAMESPACE, "age_over_21", ageOver21)
+                for (entry in mrtdData.dataGroups) {
+                    putEntryByteString(
+                        PhotoID.DTC_NAMESPACE,
+                        "dtc_dg${entry.key}",
+                        entry.value.toByteArray())
+                }
+                putEntryByteString(PhotoID.DTC_NAMESPACE, "dtc_sod", mrtdData.sod.toByteArray())
+            }.build()
         }
 
         val firstName = staticData.getDataElementString(ISO_23220_2_NAMESPACE, "given_name_unicode")
