@@ -159,11 +159,17 @@ async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
 }
 
 async function dcProcessResponse(sessionId, credentialResponse) {
+    var dataStr
+    if (typeof(credentialResponse.data) == 'string') {
+	dataStr = credentialResponse.data
+    } else {
+	dataStr = JSON.stringify(credentialResponse.data)
+    }
     const response = await callServer(
         'dcGetData',
         {
             sessionId: sessionId,
-            credentialResponse: credentialResponse.data
+            credentialResponse: dataStr
         }
     )
     var modalBody = document.getElementById('dcResultModal').querySelector('.list-group')
