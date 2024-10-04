@@ -1,7 +1,9 @@
 package com.android.identity.cbor
 
 import com.android.identity.util.fromHex
+import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -599,6 +601,32 @@ class CborTests {
                 .build()
                 .toString()
         )
+    }
+
+    private fun encodeBstrLength(length: ULong): ByteArray {
+        val b = ByteStringBuilder()
+        Cbor.encodeLength(b, MajorType.BYTE_STRING, length)
+        return b.toByteString().toByteArray()
+    }
+
+    // This checks we are using the fewest possible bytes for encoding lengths. This is required for
+    // Preferred Serialization according to RFC 8949 4.2.1. Core Deterministic Encoding Requirements
+    @Test
+    fun lengthEncodings() {
+        assertEquals("40", encodeBstrLength(0UL).toHex())
+        assertEquals("41", encodeBstrLength(1UL).toHex())
+        assertEquals("57", encodeBstrLength(23UL).toHex())
+        assertEquals("5818", encodeBstrLength(24UL).toHex())
+        assertEquals("5819", encodeBstrLength(25UL).toHex())
+        assertEquals("58ff", encodeBstrLength((1UL shl 8) - 1UL).toHex())
+        assertEquals("590100", encodeBstrLength((1UL shl 8)).toHex())
+        assertEquals("590101", encodeBstrLength((1UL shl 8) + 1UL).toHex())
+        assertEquals("59ffff", encodeBstrLength((1UL shl 16) - 1UL).toHex())
+        assertEquals("5a00010000", encodeBstrLength((1UL shl 16)).toHex())
+        assertEquals("5a00010001", encodeBstrLength((1UL shl 16) + 1UL).toHex())
+        assertEquals("5affffffff", encodeBstrLength((1UL shl 32) - 1UL).toHex())
+        assertEquals("5b0000000100000000", encodeBstrLength((1UL shl 32)).toHex())
+        assertEquals("5b0000000100000001", encodeBstrLength((1UL shl 32) + 1UL).toHex())
     }
 
     data class TestVector(

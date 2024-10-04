@@ -202,6 +202,9 @@ class DeviceResponseParser(
                                 "No digestID MSO entry for ID $digestId in namespace $nameSpace"
                             )
                         val digestMatch = expectedDigest contentEquals digest
+                        if (!digestMatch) {
+                            Logger.w(TAG, "hash mismatch for data element $nameSpace $elementName")
+                        }
                         builder.addIssuerEntry(
                             nameSpace, elementName,
                             Cbor.encode(elementValue),
