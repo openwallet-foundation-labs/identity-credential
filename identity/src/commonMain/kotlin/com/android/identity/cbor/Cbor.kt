@@ -28,14 +28,14 @@ object Cbor {
         builder.apply {
             if (length < 24U) {
                 append(majorTypeShifted.or(length.toByte()))
-            } else if (length < (1U shl 8)) {
+            } else if (length < (1UL shl 8)) {
                 append(majorTypeShifted.or(24))
                 append(length.toByte())
-            } else if (length < (1U shl 16)) {
+            } else if (length < (1UL shl 16)) {
                 append(majorTypeShifted.or(25))
                 append((length shr 8).and(0xffU).toByte())
                 append((length shr 0).and(0xffU).toByte())
-            } else if (length < (1U shl 32)) {
+            } else if (length < (1UL shl 32)) {
                 append(majorTypeShifted.or(26))
                 append((length shr 24).and(0xffU).toByte())
                 append((length shr 16).and(0xffU).toByte())
