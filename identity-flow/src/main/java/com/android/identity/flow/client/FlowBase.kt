@@ -8,6 +8,9 @@ import com.android.identity.cbor.DataItem
  * [com.android.identity.flow.annotation.FlowInterface] annotation
  */
 interface FlowBase {
+    /** Flow path. Only needed in generated code, do not use. */
+    val flowPath: String
+
     /** Opaque flow data accessor. Only needed in generated code, do not use. */
     val flowState: DataItem
 

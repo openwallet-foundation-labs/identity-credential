@@ -9,6 +9,7 @@ class SimpleIssuingAuthorityRegistrationFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
     private val documentId: String
 ) : RegistrationFlow {
+
     override suspend fun getDocumentRegistrationConfiguration(): RegistrationConfiguration {
         return RegistrationConfiguration(documentId)
     }
@@ -20,6 +21,12 @@ class SimpleIssuingAuthorityRegistrationFlow(
     override suspend fun complete() {
         // noop
     }
+
+    // Unused in client implementations
+    override val flowPath: String
+        get() {
+            throw UnsupportedOperationException("Unexpected call")
+        }
 
     // Unused in client implementations
     override val flowState: DataItem

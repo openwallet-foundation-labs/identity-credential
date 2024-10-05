@@ -68,6 +68,12 @@ class SimpleIssuingAuthorityProofingFlow(
     }
 
     // Unused in client implementations
+    override val flowPath: String
+        get() {
+            throw UnsupportedOperationException("Unexpected call")
+        }
+
+    // Unused in client implementations
     override val flowState: DataItem
         get() {
             throw UnsupportedOperationException("Unexpected call")
