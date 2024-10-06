@@ -828,85 +828,125 @@ object DrivingLicense {
                 id = "us-transportation",
                 displayName = "US Transportation",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "sex",
-                        "portrait",
-                        "given_name",
-                        "issue_date",
-                        "expiry_date",
-                        "family_name",
-                        "document_number",
-                        "issuing_authority",
-                    )),
-                    Pair(AAMVA_NAMESPACE, listOf(
-                        "DHS_compliance",
-                        "EDL_credential"
-                    ))
-                ),
+                    MDL_NAMESPACE to mapOf(
+                        "sex" to false,
+                        "portrait" to false,
+                        "given_name" to false,
+                        "issue_date" to false,
+                        "expiry_date" to false,
+                        "family_name" to false,
+                        "document_number" to false,
+                        "issuing_authority" to false
+                    ),
+                    AAMVA_NAMESPACE to mapOf(
+                        "DHS_compliance" to false,
+                        "EDL_credential" to false
+                    ),
+                )
             )
             .addSampleRequest(
                 id = "age_over_18",
                 displayName ="Age Over 18",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "age_over_18",
-                    ))
+                    MDL_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                    )
                 ),
             )
             .addSampleRequest(
                 id = "age_over_21",
                 displayName ="Age Over 21",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "age_over_21",
-                    ))
+                    MDL_NAMESPACE to mapOf(
+                        "age_over_21" to false,
+                    )
                 ),
             )
             .addSampleRequest(
                 id = "age_over_18_and_portrait",
                 displayName ="Age Over 18 + Portrait",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "age_over_18",
-                        "portrait"
-                    ))
+                    MDL_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                        "portrait" to false
+                    )
                 ),
             )
             .addSampleRequest(
                 id = "age_over_21_and_portrait",
                 displayName ="Age Over 21 + Portrait",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "age_over_21",
-                        "portrait"
-                    ))
+                    MDL_NAMESPACE to mapOf(
+                        "age_over_21" to false,
+                        "portrait" to false
+                    )
                 ),
             )
             .addSampleRequest(
                 id = "mandatory",
                 displayName = "Mandatory Data Elements",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf(
-                        "family_name",
-                        "given_name",
-                        "birth_date",
-                        "issue_date",
-                        "expiry_date",
-                        "issuing_country",
-                        "issuing_authority",
-                        "document_number",
-                        "portrait",
-                        "driving_privileges",
-                        "un_distinguishing_sign",
-                    ))
+                    MDL_NAMESPACE to mapOf(
+                        "family_name" to false,
+                        "given_name" to false,
+                        "birth_date" to false,
+                        "issue_date" to false,
+                        "expiry_date" to false,
+                        "issuing_country" to false,
+                        "issuing_authority" to false,
+                        "document_number" to false,
+                        "portrait" to false,
+                        "driving_privileges" to false,
+                        "un_distinguishing_sign" to false,
+                    )
                 )
             )
             .addSampleRequest(
                 id = "full",
                 displayName ="All Data Elements",
                 mdocDataElements = mapOf(
-                    Pair(MDL_NAMESPACE, listOf()),
-                    Pair(AAMVA_NAMESPACE, listOf())
+                    MDL_NAMESPACE to mapOf(),
+                    AAMVA_NAMESPACE to mapOf()
+                )
+            )
+            .addSampleRequest(
+                id = "name-and-address-partially-stored",
+                displayName = "Name and Address (Partially Stored)",
+                mdocDataElements = mapOf(
+                    MDL_NAMESPACE to mapOf(
+                        "family_name" to true,
+                        "given_name" to true,
+                        "issuing_authority" to false,
+                        "portrait" to false,
+                        "resident_address" to true,
+                        "resident_city" to true,
+                        "resident_state" to true,
+                        "resident_postal_code" to true,
+                        "resident_country" to true,
+                    ),
+                    AAMVA_NAMESPACE to mapOf(
+                        "resident_county" to true,
+                    )
+                )
+            )
+            .addSampleRequest(
+                id = "name-and-address-all-stored",
+                displayName = "Name and Address (All Stored)",
+                mdocDataElements = mapOf(
+                    MDL_NAMESPACE to mapOf(
+                        "family_name" to true,
+                        "given_name" to true,
+                        "issuing_authority" to true,
+                        "portrait" to true,
+                        "resident_address" to true,
+                        "resident_city" to true,
+                        "resident_state" to true,
+                        "resident_postal_code" to true,
+                        "resident_country" to true,
+                    ),
+                    AAMVA_NAMESPACE to mapOf(
+                        "resident_county" to true,
+                    )
                 )
             )
             .build()

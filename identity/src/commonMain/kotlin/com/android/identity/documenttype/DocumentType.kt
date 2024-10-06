@@ -201,15 +201,16 @@ class DocumentType private constructor(
          *
          * @param id an identifier for the request.
          * @param displayName a short name explaining the request.
-         * @param mdocDataElements the mdoc data elements in the request, per namespace. If
-         * the list of a namespace is empty, all defined data elements will be included.
+         * @param mdocDataElements the mdoc data elements in the request, per namespace, with
+         * the intent to retain value. If the list of a namespace is empty, all defined data
+         * elements will be included with intent to retain set to false.
          * @param vcClaims the VC claims in the request. If the list is empty, all defined
          * claims will be included.
          */
         fun addSampleRequest(
             id: String,
             displayName: String,
-            mdocDataElements: Map<String, List<String>>? = null,
+            mdocDataElements: Map<String, Map<String, Boolean>>? = null,
             vcClaims: List<String>? = null
         ) = apply {
             val mdocRequest = if (mdocDataElements == null) {
@@ -218,16 +219,15 @@ class DocumentType private constructor(
                 val nsRequests = mutableListOf<MdocNamespaceRequest>()
                 for ((namespace, dataElements) in mdocDataElements) {
                     val mdocNsBuilder = mdocBuilder!!.namespaces[namespace]!!
-                    val deList = if (dataElements.isEmpty()) {
-                        mdocNsBuilder.dataElements.values.toList()
+                    val map = mutableMapOf<MdocDataElement, Boolean>()
+                    if (dataElements.isEmpty()) {
+                        mdocNsBuilder.dataElements.values.map { map.put(it, false) }
                     } else {
-                        val list = mutableListOf<MdocDataElement>()
-                        for (dataElement in dataElements) {
-                            list.add(mdocNsBuilder.dataElements[dataElement]!!)
+                        for ((dataElement, intentToRetain) in dataElements) {
+                            map.put(mdocNsBuilder.dataElements[dataElement]!!, intentToRetain)
                         }
-                        list
                     }
-                    nsRequests.add(MdocNamespaceRequest(namespace, deList))
+                    nsRequests.add(MdocNamespaceRequest(namespace, map))
                 }
                 MdocRequest(mdocBuilder!!.docType, nsRequests)
             }

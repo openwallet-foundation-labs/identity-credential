@@ -22,6 +22,7 @@ import android.util.Base64
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
+import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
@@ -41,8 +42,9 @@ import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
-import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
+import com.android.identity.appsupport.ui.consent.ConsentField
+import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
+import com.android.identity.appsupport.ui.consent.MdocConsentField
 import org.json.JSONObject
 
 import com.google.android.gms.identitycredentials.GetCredentialResponse
@@ -150,6 +152,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                         mdocCredential,
                         consentFields,
                         null,
+                        callingOrigin,
                         encodedSessionTranscript
                     )
 
@@ -250,6 +253,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                         mdocCredential,
                         consentFields,
                         trustPoint,
+                        callingOrigin,
                         encodedSessionTranscript,
                     )
 
@@ -351,6 +355,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                         mdocCredential,
                         consentFields,
                         null,
+                        callingOrigin,
                         encodedSessionTranscript
                     )
                     // Create the openid4vp response
@@ -393,6 +398,8 @@ class CredmanPresentationActivity : FragmentActivity() {
      *
      * @param mdocCredential the credential.
      * @param consentFields the list of fields to request.
+     * @param trustPoint The trust point, if known.
+     * @param websiteOrigin the Website Origin, if known.
      * @param encodedSessionTranscript CBOR bytes.
      * @return the DeviceResponse CBOR bytes containing the [Document] for the given credential.
      */
@@ -400,14 +407,18 @@ class CredmanPresentationActivity : FragmentActivity() {
         mdocCredential: MdocCredential,
         consentFields: List<ConsentField>,
         trustPoint: TrustPoint?,
+        websiteOrigin: String?,
         encodedSessionTranscript: ByteArray,
     ): ByteArray {
         val documentCborBytes = showMdocPresentmentFlow(
             activity = this@CredmanPresentationActivity,
             consentFields = consentFields,
-            documentName = mdocCredential.document.documentConfiguration.displayName,
-            // TODO: Need to extend TrustManager with a verify() variants which takes a domain or appId
-            trustPoint = trustPoint,
+            document = ConsentDocument(
+                name = mdocCredential.document.documentConfiguration.displayName,
+                description = mdocCredential.document.documentConfiguration.typeDisplayName,
+                cardArt = mdocCredential.document.documentConfiguration.cardArt,
+            ),
+            relyingParty = ConsentRelyingParty(trustPoint, websiteOrigin),
             credential = mdocCredential,
             encodedSessionTranscript = encodedSessionTranscript,
         )

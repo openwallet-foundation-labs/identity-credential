@@ -13,6 +13,7 @@ import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -220,8 +221,8 @@ class ReaderModel(
         val namespacesToRequest = mutableMapOf<String, Map<String, Boolean>>()
         for (ns in mdocRequest.namespacesToRequest) {
             val dataElementsToRequest = mutableMapOf<String, Boolean>()
-            for (de in ns.dataElementsToRequest) {
-                dataElementsToRequest[de.attribute.identifier] = false
+            for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                dataElementsToRequest[de.attribute.identifier] = intentToRetain
             }
             namespacesToRequest[ns.namespace] = dataElementsToRequest
         }
@@ -262,7 +263,7 @@ class ReaderModel(
                 if (trustResult.isTrusted) {
                     val trustPoint = trustResult.trustPoints[0]
                     val displayName = trustPoint.displayName
-                        ?: trustPoint.certificate.subjectX500Principal.name
+                        ?: trustPoint.certificate.javaX509Certificate.subjectX500Principal.name
                     infoTexts.add(res.getString(R.string.reader_model_info_in_trust_list, displayName))
                 } else {
                     val dsCert = readerAuthChain[0]

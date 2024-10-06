@@ -1,5 +1,6 @@
 package com.android.identity.trustmanagement
 
+import com.android.identity.crypto.X509Cert
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.BasicConstraints
 import org.bouncycastle.asn1.x509.Extension
@@ -168,7 +169,7 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add certificate and verify chain)
-        trustManager.addTrustPoint(TrustPoint(mdlCaCertificate))
+        trustManager.addTrustPoint(TrustPoint(X509Cert(mdlCaCertificate.encoded)))
         val result = trustManager.verify(listOf(mdlDsCertificate))
 
         // assert
@@ -183,8 +184,8 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add intermediate and CA certificate and verify chain)
-        trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
-        trustManager.addTrustPoint(TrustPoint(caCertificate))
+        trustManager.addTrustPoint(TrustPoint(X509Cert(intermediateCertificate.encoded)))
+        trustManager.addTrustPoint(TrustPoint(X509Cert(caCertificate.encoded)))
         val result = trustManager.verify(listOf(dsCertificate))
 
         // assert
@@ -199,7 +200,7 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add intermediate certificate (without CA) and verify chain)
-        trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
+        trustManager.addTrustPoint(TrustPoint(X509Cert(intermediateCertificate.encoded)))
         val result = trustManager.verify(listOf(dsCertificate))
 
         // assert
@@ -236,7 +237,7 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add certificate and verify chain)
-        trustManager.addTrustPoint(TrustPoint(mdlCaCertificate))
+        trustManager.addTrustPoint(TrustPoint(X509Cert(mdlCaCertificate.encoded)))
         val result = trustManager.verify(listOf(mdlCaCertificate))
 
         // assert

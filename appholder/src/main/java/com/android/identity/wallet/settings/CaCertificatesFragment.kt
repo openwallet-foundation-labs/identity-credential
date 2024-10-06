@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.android.identity.crypto.X509Cert
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.theme.HolderAppTheme
@@ -77,7 +78,7 @@ class CaCertificatesFragment : Fragment() {
             this.requireContext().contentResolver.openInputStream(uri).use { inputStream ->
                 if (inputStream != null) {
                     val certificate = parseCertificate(inputStream.readBytes())
-                    HolderApp.trustManagerInstance.addTrustPoint(TrustPoint(certificate))
+                    HolderApp.trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
                     HolderApp.certificateStorageEngineInstance.put(
                         certificate.getSubjectKeyIdentifier(),
                         certificate.encoded
@@ -102,7 +103,7 @@ class CaCertificatesFragment : Fragment() {
             }
             val text = clipboard.primaryClip?.getItemAt(0)?.text!!
             val certificate = parseCertificate(text.toString().toByteArray())
-            HolderApp.trustManagerInstance.addTrustPoint(TrustPoint(certificate))
+            HolderApp.trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
             HolderApp.certificateStorageEngineInstance.put(
                 certificate.getSubjectKeyIdentifier(),
                 certificate.encoded

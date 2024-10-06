@@ -1,5 +1,9 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
 }
@@ -8,6 +12,13 @@ kotlin {
     jvmToolchain(17)
 
     jvm()
+
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
 
     listOf(
         iosX64(),
@@ -41,9 +52,51 @@ kotlin {
                 implementation(libs.jetbrains.navigation.runtime)
 
                 implementation(project(":identity"))
+                implementation(project(":identity-mdoc"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)
             }
+        }
+
+        val jvmMain by getting {
+            dependencies {
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
+                implementation(libs.tink)
+            }
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
+                implementation(libs.tink)
+            }
+        }
+    }
+}
+
+android {
+    namespace = "com.android.identity.appsupport"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    dependencies {
+        debugImplementation(compose.uiTooling)
+    }
+
+    packaging {
+        resources {
+            excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
+            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
     }
 }

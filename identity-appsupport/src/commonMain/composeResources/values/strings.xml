@@ -2,4 +2,22 @@
     <!-- PassphraseEntryField -->
     <string name="passphrase_entry_field_pin_is_weak">PIN is weak, please choose another</string>
     <string name="passphrase_entry_field_passphrase_is_weak">Passphrase is weak, please choose another</string>
+
+    <!-- ConsentModalBottomSheet -->
+    <string name="consent_modal_bottom_sheet_button_cancel">Cancel</string>
+    <string name="consent_modal_bottom_sheet_button_more">More</string>
+    <string name="consent_modal_bottom_sheet_button_share">Share</string>
+    <string name="consent_modal_bottom_sheet_headline_share_with_known_requester">Share with %1$s</string>
+    <string name="consent_modal_bottom_sheet_headline_share_with_unknown_requester">Share with Unknown requester</string>
+    <string name="consent_modal_bottom_sheet_share_with_known_requester">The following information will be shared with %1$s:</string>
+    <string name="consent_modal_bottom_sheet_share_with_unknown_requester">The following information will be shared:</string>
+    <string name="consent_modal_bottom_sheet_share_and_stored_by_known_requester">The following information will be shared with and stored by %1$s:</string>
+    <string name="consent_modal_bottom_sheet_share_and_stored_by_unknown_requester">The following information will be shared with and stored by the requester:</string>
+    <string name="consent_modal_bottom_sheet_wallet_privacy_policy">The OWF Identity Credential Website describes how your data is being handled</string>
+    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list">The verifier requesting this data is not in a trust list. Make sure you are comfortable sharing this data with them.</string>
+    <string name="consent_modal_bottom_sheet_card_art_description">Card Art</string>
+    <string name="consent_modal_bottom_sheet_verifier_icon_description">Verifier Icon</string>
+    <string name="consent_modal_bottom_sheet_data_element_icon_description">Data Element Icon</string>
+    <string name="consent_modal_bottom_sheet_warning_icon_description">Warning Icon</string>
+
 </resources>

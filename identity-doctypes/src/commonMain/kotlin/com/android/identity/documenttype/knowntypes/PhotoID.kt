@@ -685,48 +685,45 @@ object PhotoID {
                 id = "age_over_18",
                 displayName ="Age Over 18",
                 mdocDataElements = mapOf(
-                    Pair(
-                        ISO_23220_2_NAMESPACE, listOf(
-                        "age_over_18",
-                    ))
+                    ISO_23220_2_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                    )
                 ),
             )
             .addSampleRequest(
                 id = "age_over_18_and_portrait",
                 displayName ="Age Over 18 + Portrait",
                 mdocDataElements = mapOf(
-                    Pair(
-                        ISO_23220_2_NAMESPACE, listOf(
-                        "age_over_18",
-                        "portrait"
-                    ))
+                    ISO_23220_2_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                        "portrait" to false
+                    )
                 ),
             )
             .addSampleRequest(
                 id = "mandatory",
                 displayName = "Mandatory Data Elements",
                 mdocDataElements = mapOf(
-                    Pair(
-                        ISO_23220_2_NAMESPACE, listOf(
-                            "family_name_unicode",
-                            "given_name_unicode",
-                            "birth_date",
-                            "portrait",
-                            "issue_date",
-                            "expiry_date",
-                            "issuing_authority_unicode",
-                            "issuing_country",
-                            "age_over_18",
-                    ))
+                    ISO_23220_2_NAMESPACE to mapOf(
+                            "family_name_unicode" to false,
+                            "given_name_unicode" to false,
+                            "birth_date" to false,
+                            "portrait" to false,
+                            "issue_date" to false,
+                            "expiry_date" to false,
+                            "issuing_authority_unicode" to false,
+                            "issuing_country" to false,
+                            "age_over_18" to false,
+                    )
                 )
             )
             .addSampleRequest(
                 id = "full",
                 displayName ="All Data Elements",
                 mdocDataElements = mapOf(
-                    Pair(ISO_23220_2_NAMESPACE, listOf()),
-                    Pair(PHOTO_ID_NAMESPACE, listOf()),
-                    Pair(DTC_NAMESPACE, listOf())
+                    ISO_23220_2_NAMESPACE to mapOf(),
+                    PHOTO_ID_NAMESPACE to mapOf(),
+                    DTC_NAMESPACE to mapOf()
                 )
             )
             .build()
