@@ -396,7 +396,7 @@ class FlowSymbolProcessor(
             emptyLine()
             line("class $baseName(")
             withIndent {
-                line("private val flowPath: String,")
+                line("override val flowPath: String,")
                 line("override var flowState: DataItem,")
                 line("private val flowDispatcher: FlowDispatcher,")
                 line("private val flowNotifier: FlowNotifier,")
@@ -483,7 +483,7 @@ class FlowSymbolProcessor(
                             serialization
                         }
                     } else {
-                        "${parameter.name}.flowState"
+                        "CborArray(mutableListOf(Tstr(${parameter.name}.flowPath), ${parameter.name}.flowState))"
                     }
                 }
                 line("val flowParameters = listOf<DataItem>(")

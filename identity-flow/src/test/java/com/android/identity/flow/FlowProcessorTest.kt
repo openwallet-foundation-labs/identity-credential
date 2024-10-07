@@ -66,6 +66,10 @@ interface SolverFactoryFlow: FlowBase {
     // Just to test nullable parameters and return values
     @FlowMethod
     suspend fun nullableIdentity(value: String?): String?
+
+    // Test passing flows as parameters
+    @FlowMethod
+    suspend fun examineSolver(solver: QuadraticSolverFlow): String
 }
 
 // The following definitions are server-side (although we can patch them to run on the client
@@ -129,6 +133,8 @@ data class DirectQuadraticSolverState(
     }
 
     override fun finalCount(): Int = count
+
+    override fun toString(): String = "DirectQuadraticSolverState[$count]"
 }
 
 @CborSerializable
@@ -155,6 +161,8 @@ class MockQuadraticSolverState : AbstractSolverState() {
     }
 
     override fun finalCount(): Int = 2
+
+    override fun toString(): String = "MockQuadraticSolverState"
 }
 
 @CborSerializable
@@ -200,6 +208,11 @@ data class SolverFactoryState(
 
     @FlowMethod
     fun nullableIdentity(env: FlowEnvironment, value: String?): String? = value
+
+    @FlowMethod
+    fun examineSolver(env: FlowEnvironment, solver: AbstractSolverState): String {
+        return solver.toString()
+    }
 }
 
 // FlowHandlerLocal handles flow calls that executed locally. It is for use on the server,
@@ -267,6 +280,20 @@ class FlowProcessorTest {
         }
     }
 
+    @Test
+    fun flowParameter() {
+        runBlocking {
+            val factory = localFactory()
+            Assert.assertEquals(
+                "MockQuadraticSolverState",
+                factory.examineSolver(factory.createQuadraticSolver("Mock"))
+            )
+            Assert.assertEquals(
+                "DirectQuadraticSolverState[0]",
+                factory.examineSolver(factory.createQuadraticSolver("Direct"))
+            )
+        }
+    }
 
     @Test
     fun remoteUnexpectedNameException() {
