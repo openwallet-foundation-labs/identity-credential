@@ -66,7 +66,8 @@ import kotlin.time.Duration.Companion.seconds
 class FunkeIssuingAuthorityState(
     val clientId: String,
     val credentialFormat: CredentialFormat,
-    var issuanceClientId: String = ""  // client id in OpenID4VCI protocol
+    var issuanceClientId: String = "", // client id in OpenID4VCI protocol
+    val credentialIssuerUri: String, // credential offer issuing authority path
 ) : AbstractIssuingAuthorityState() {
     companion object {
         private const val TAG = "FunkeIssuingAuthorityState"
@@ -204,7 +205,8 @@ class FunkeIssuingAuthorityState(
             issuanceClientId = issuanceClientId,
             documentId = documentId,
             proofingInfo = proofingInfo,
-            applicationCapabilities = applicationCapabilities
+            applicationCapabilities = applicationCapabilities,
+            credentialIssuerUri = credentialIssuerUri
         )
     }
 
@@ -274,7 +276,13 @@ class FunkeIssuingAuthorityState(
                 )
             )
         }
-        return FunkeRequestCredentialsState(issuanceClientId, documentId, configuration, cNonce)
+        return FunkeRequestCredentialsState(
+            issuanceClientId,
+            documentId,
+            configuration,
+            cNonce,
+            credentialIssuerUri = credentialIssuerUri
+        )
     }
 
     @FlowJoin
@@ -315,7 +323,7 @@ class FunkeIssuingAuthorityState(
             null -> throw IllegalStateException("Credential format was not specified")
         }
 
-        val credentialUrl = "${FunkeUtil.BASE_URL}/credential"
+        val credentialUrl = "${credentialIssuerUri}/credential"
         val access = document.access!!
         val dpop = FunkeUtil.generateDPoP(
             env,
@@ -475,8 +483,14 @@ class FunkeIssuingAuthorityState(
         }
 
         val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
-        val clientAssertion = applicationSupport?.createJwtClientAssertion(clientKeyInfo.attestation, FunkeUtil.BASE_URL) ?:
-                ApplicationSupportState(clientId).createJwtClientAssertion(env, clientKeyInfo.publicKey, FunkeUtil.BASE_URL )
+        val clientAssertion = applicationSupport?.createJwtClientAssertion(
+            clientKeyInfo.attestation,
+            credentialIssuerUri
+        ) ?: ApplicationSupportState(clientId).createJwtClientAssertion(
+            env,
+            clientKeyInfo.publicKey,
+            credentialIssuerUri
+        )
 
         issuanceClientId = extractIssuanceClientId(clientAssertion)
 
@@ -491,7 +505,7 @@ class FunkeIssuingAuthorityState(
             add("client_id", issuanceClientId)
         }
         val httpClient = env.getInterface(HttpClient::class)!!
-        val response = httpClient.post("${FunkeUtil.BASE_URL}/par") {
+        val response = httpClient.post("${credentialIssuerUri}/par") {
             headers {
                 append("Content-Type", "application/x-www-form-urlencoded")
             }
@@ -510,7 +524,7 @@ class FunkeIssuingAuthorityState(
         }
         Logger.i(TAG, "Request uri: $requestUri")
         return ProofingInfo(
-            authorizeUrl = "${FunkeUtil.BASE_URL}/authorize?" + FormUrlEncoder {
+            authorizeUrl = "${credentialIssuerUri}/authorize?" + FormUrlEncoder {
                 add("client_id", issuanceClientId)
                 add("request_uri", requestUri.content)
             },
@@ -607,7 +621,7 @@ class FunkeIssuingAuthorityState(
             env = env,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
-            tokenUrl = "${FunkeUtil.BASE_URL}/token",
+            tokenUrl = "${credentialIssuerUri}/token",
             refreshToken = refreshToken,
             accessToken = access.accessToken
         )

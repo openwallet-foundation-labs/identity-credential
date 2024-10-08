@@ -26,7 +26,8 @@ class FunkeRequestCredentialsState(
     val credentialConfiguration: CredentialConfiguration,
     val nonce: String,
     var format: CredentialFormat? = null,
-    var credentialRequests: List<FunkeCredentialRequest>? = null
+    var credentialRequests: List<FunkeCredentialRequest>? = null,
+    val credentialIssuerUri:String,
 ) {
     companion object
 
@@ -55,7 +56,7 @@ class FunkeRequestCredentialsState(
             )).toString().toByteArray().toBase64Url()
             val body = JsonObject(mapOf(
                 "iss" to JsonPrimitive(issuanceClientId),
-                "aud" to JsonPrimitive(FunkeUtil.BASE_URL),
+                "aud" to JsonPrimitive(credentialIssuerUri),
                 "iat" to JsonPrimitive(Clock.System.now().epochSeconds),
                 "nonce" to JsonPrimitive(nonce)
             )).toString().toByteArray().toBase64Url()

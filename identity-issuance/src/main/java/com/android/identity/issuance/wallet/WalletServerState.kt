@@ -7,8 +7,8 @@ import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.handler.FlowDispatcherLocal
 import com.android.identity.flow.handler.FlowExceptionMap
 import com.android.identity.flow.server.Configuration
-import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.server.Resources
 import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentConfiguration
@@ -18,16 +18,16 @@ import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
-import com.android.identity.issuance.hardcoded.IssuingAuthorityState
-import com.android.identity.issuance.hardcoded.ProofingState
-import com.android.identity.issuance.hardcoded.RegistrationState
-import com.android.identity.issuance.hardcoded.RequestCredentialsState
-import com.android.identity.issuance.hardcoded.register
 import com.android.identity.issuance.funke.FunkeIssuingAuthorityState
 import com.android.identity.issuance.funke.FunkeProofingState
 import com.android.identity.issuance.funke.FunkeRegistrationState
 import com.android.identity.issuance.funke.FunkeRequestCredentialsState
 import com.android.identity.issuance.funke.register
+import com.android.identity.issuance.hardcoded.IssuingAuthorityState
+import com.android.identity.issuance.hardcoded.ProofingState
+import com.android.identity.issuance.hardcoded.RegistrationState
+import com.android.identity.issuance.hardcoded.RequestCredentialsState
+import com.android.identity.issuance.hardcoded.register
 import com.android.identity.issuance.register
 import kotlinx.io.bytestring.buildByteString
 import kotlin.random.Random
@@ -43,6 +43,8 @@ class WalletServerState(
 ) {
     companion object {
         private const val TAG = "WalletServerState"
+        // Hard-coded Funke endpoint for PID issuer, could be /c or /c1
+        private const val FUNKE_BASE_URL = "https://demo.pid-issuer.bundesdruckerei.de/c"
 
         private fun devConfig(env: FlowEnvironment): IssuingAuthorityConfiguration {
             val resources = env.getInterface(Resources::class)!!
@@ -132,9 +134,47 @@ class WalletServerState(
     fun getIssuingAuthority(env: FlowEnvironment, identifier: String): AbstractIssuingAuthorityState {
         check(clientId.isNotEmpty())
         return when (identifier) {
-            "funkeSdJwtVc" -> FunkeIssuingAuthorityState(clientId, CredentialFormat.SD_JWT_VC)
-            "funkeMdocMso" -> FunkeIssuingAuthorityState(clientId, CredentialFormat.MDOC_MSO)
+            "funkeSdJwtVc" -> FunkeIssuingAuthorityState(
+                clientId = clientId,
+                credentialFormat = CredentialFormat.SD_JWT_VC,
+                credentialIssuerUri = FUNKE_BASE_URL
+            )
+
+            "funkeMdocMso" -> FunkeIssuingAuthorityState(
+                clientId = clientId,
+                credentialFormat = CredentialFormat.MDOC_MSO,
+                credentialIssuerUri = FUNKE_BASE_URL
+            )
+
             else -> IssuingAuthorityState(clientId, identifier)
+        }
+    }
+
+    /**
+     * Returns the Issuing Authority State [AbstractIssuingAuthorityState] created with a specific
+     * issuing authority Uri for mdoc or sd-jwt credential, such as from OID4VCI credential offer
+     * deep link / Qr code.
+     */
+    @FlowMethod
+    fun createIssuingAuthorityByUri(
+        env: FlowEnvironment,
+        credentialIssuerUri: String,
+        credentialConfigurationId: String
+    ): AbstractIssuingAuthorityState {
+        return when (credentialConfigurationId) {
+            "pid-sd-jwt" -> FunkeIssuingAuthorityState(
+                clientId = clientId,
+                credentialFormat = CredentialFormat.SD_JWT_VC,
+                credentialIssuerUri = credentialIssuerUri
+            )
+
+            "pid-mso-mdoc" -> FunkeIssuingAuthorityState(
+                clientId = clientId,
+                credentialFormat = CredentialFormat.MDOC_MSO,
+                credentialIssuerUri = credentialIssuerUri
+            )
+
+            else -> IssuingAuthorityState(clientId, credentialConfigurationId)
         }
     }
 }

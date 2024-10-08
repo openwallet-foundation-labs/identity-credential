@@ -473,6 +473,11 @@
         <p>The PID is generated and signed on the government server. The created PID will be bound to
         this device.</p>
     ]]></string>
+
+    <!-- Credential Offer -->
+    <string name="credential_offer_scan">Scan Credential Offer</string>
+    <string name="credential_offer_details">QR code for OpenID for Verifiable Credential Issuance (draft #14)</string>
+
     <!-- Consent Prompt -->
     <string name="consent_prompt_button_cancel">Cancel</string>
     <string name="consent_prompt_button_confirm">Share</string>

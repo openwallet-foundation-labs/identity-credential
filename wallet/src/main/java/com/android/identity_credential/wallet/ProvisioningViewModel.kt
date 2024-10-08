@@ -6,17 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
-import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.documentIdentifier
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.DocumentExtensions.refreshState
-import com.android.identity.issuance.DocumentExtensions.state
-import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthority
-import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceResponse
@@ -24,7 +21,9 @@ import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.buildByteString
@@ -50,6 +49,31 @@ class ProvisioningViewModel : ViewModel() {
 
     private lateinit var issuer: IssuingAuthority
 
+    /*
+     Backing field + StateFlow that is observed on MainActivity's composable whose value is updated
+     from onNewIntent() when a OID4VCI Credential Offer deep link is intercepted in MainActivity.
+     */
+    private val _newCredentialOfferIntentReceived = MutableStateFlow<Pair<String, String>?>(null)
+    val newCredentialOfferIntentReceived: StateFlow<Pair<String, String>?> =
+        _newCredentialOfferIntentReceived.asStateFlow()
+
+    /**
+     * Trigger a recomposition of MainActivity from onNewIntent() after an OID4VCI deep link is
+     * intercepted. If both [credentialIssuerUri] and [credentialConfigurationId] are [null] then
+     * set observable value to [null] rather than Pair(null,null).
+     */
+    fun onNewCredentialOfferIntent(
+        credentialIssuerUri: String?,
+        credentialConfigurationId: String?
+    ) {
+        if (credentialIssuerUri != null && credentialConfigurationId != null) {
+            _newCredentialOfferIntentReceived.value =
+                Pair(credentialIssuerUri, credentialConfigurationId)
+        } else {
+            _newCredentialOfferIntentReceived.value = null
+        }
+    }
+
     fun reset() {
         state.value = State.IDLE
         error = null
@@ -69,13 +93,23 @@ class ProvisioningViewModel : ViewModel() {
     fun start(
         walletServerProvider: WalletServerProvider,
         documentStore: DocumentStore,
-        issuerIdentifier: String,
         settingsModel: SettingsModel,
+        // PID-based mdoc or sd-jwt
+        issuerIdentifier: String?,
+        // OID4VCI credential offer
+        credentialIssuerUri: String? = null,
+        credentialIssuerConfigurationId: String? = null,
     ) {
-
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                issuer = walletServerProvider.getIssuingAuthority(issuerIdentifier)
+                if (credentialIssuerUri != null) {
+                    issuer = walletServerProvider.createIssuingAuthorityByUri(
+                        credentialIssuerUri,
+                        credentialIssuerConfigurationId!!
+                    )
+                } else {
+                    issuer = walletServerProvider.getIssuingAuthority(issuerIdentifier!!)
+                }
                 val issuerConfiguration = issuer.getConfiguration()
 
                 state.value = State.CREDENTIAL_REGISTRATION

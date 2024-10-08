@@ -75,6 +75,8 @@ class WalletApplication : Application() {
         const val CREDENTIAL_DOMAIN_MDOC = "mdoc/MSO"
         const val CREDENTIAL_DOMAIN_SD_JWT_VC = "SD-JWT"
 
+        // OID4VCI url scheme used for filtering OID4VCI Urls from all incoming URLs (deep links or QR)
+        const val OID4VCI_CREDENTIAL_OFFER_URL_SCHEME = "openid-credential-offer://"
         // The permissions needed to perform 18013-5 presentations. This only include the
         // BLE permissions because that's the only transport we currently support in the
         // application.

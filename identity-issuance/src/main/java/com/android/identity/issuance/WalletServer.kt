@@ -38,4 +38,16 @@ interface WalletServer: FlowBase {
      */
     @FlowMethod
     suspend fun getIssuingAuthority(identifier: String): IssuingAuthority
+
+    /**
+     * Create the Issuing Authority from the payload of an OpenId Credential Offer (OID4VCI) that
+     * produces a credential issuer Uri and Credential config Id (such as pid-mso-mdoc or pid-sd-jwt).
+     *
+     * Like above, do not call this method directly, use WalletServerProvider that maintains a cache.
+     */
+    @FlowMethod
+    suspend fun createIssuingAuthorityByUri(
+        credentialIssuerUri: String,
+        credentialConfigurationId: String
+    ): IssuingAuthority
 }

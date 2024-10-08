@@ -23,11 +23,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlin.random.Random
 
 internal object FunkeUtil {
-    // To use generic OpenID4VCI issuer, switch USE_AUSWEIS_SDK to false
-    //const val BASE_URL = "http://localhost:8080/server/openid4vci"
-
-    const val BASE_URL = "https://demo.pid-issuer.bundesdruckerei.de/c"
-
     const val TAG = "FunkeUtil"
 
     const val EU_PID_MDOC_DOCTYPE = "eu.europa.ec.eudi.pid.1"

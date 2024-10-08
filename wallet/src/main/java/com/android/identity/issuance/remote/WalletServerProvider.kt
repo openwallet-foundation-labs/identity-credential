@@ -202,6 +202,22 @@ class WalletServerProvider(
     }
 
     /**
+     * Creates an Issuing Authority by the [credentialIssuerUri] and [credentialConfigurationId],
+     * caching instances. If unable to connect, suspend and wait until connecting is possible.
+     */
+    suspend fun createIssuingAuthorityByUri(credentialIssuerUri:String, credentialConfigurationId: String): IssuingAuthority {
+        val instance = waitForWalletServer()
+        instanceLock.withLock {
+            var issuingAuthority = issuingAuthorityMap[credentialConfigurationId]
+            if (issuingAuthority == null) {
+                issuingAuthority = instance.createIssuingAuthorityByUri(credentialIssuerUri, credentialConfigurationId)
+                issuingAuthorityMap[credentialConfigurationId] = issuingAuthority
+            }
+            return issuingAuthority
+        }
+    }
+
+    /**
      * Gets ApplicationSupport object. It always comes from the server (either full wallet server
      * or minimal wallet server).
      */
