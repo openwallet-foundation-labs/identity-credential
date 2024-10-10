@@ -333,7 +333,7 @@ class DataTransportBleCentralClientMode(
         if (bluetoothLeAdvertiser != null) {
             Logger.d(TAG, "Stopping advertising UUID $serviceUuid")
             try {
-                bluetoothLeAdvertiser!!.stopAdvertising(advertiseCallback)
+                bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback)
             } catch (e: SecurityException) {
                 Logger.e(TAG, "Caught SecurityException while shutting down", e)
             }
