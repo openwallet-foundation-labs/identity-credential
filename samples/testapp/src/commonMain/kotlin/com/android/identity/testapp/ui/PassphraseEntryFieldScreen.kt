@@ -99,10 +99,10 @@ fun PassphraseEntryFieldScreen(
 }
 
 @Composable
-fun ShowEntry(constraints: PassphraseConstraints,
-              checkWeakPassphrase: Boolean,
-              onDismissRequest: () -> Unit,
-              onPassphraseEntered: (passphrase: String) -> Unit) {
+private fun ShowEntry(constraints: PassphraseConstraints,
+                      checkWeakPassphrase: Boolean,
+                      onDismissRequest: () -> Unit,
+                      onPassphraseEntered: (passphrase: String) -> Unit) {
     // Is only non-null if the passphrase meets requirements.
     val curPassphrase = remember { mutableStateOf<String?>(null) }
     Dialog(onDismissRequest = { onDismissRequest() }) {

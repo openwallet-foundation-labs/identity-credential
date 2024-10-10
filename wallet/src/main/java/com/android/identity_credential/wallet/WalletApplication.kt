@@ -51,9 +51,6 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.logging.EventLogger
 import com.android.identity_credential.wallet.util.toByteArray
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.io.files.Path
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -228,7 +225,7 @@ class WalletApplication : Application() {
             val cert = X509Cert(resources.openRawResource(certResourceId).readBytes())
             readerTrustManager.addTrustPoint(
                 TrustPoint(
-                    cert.javaX509Certificate,
+                    cert,
                     null,
                     null,
                 )
@@ -244,7 +241,7 @@ class WalletApplication : Application() {
             val cert = X509Cert(certInfo.certificate)
             issuerTrustManager.addTrustPoint(
                 TrustPoint(
-                    cert.javaX509Certificate,
+                    cert,
                     null,
                     null
                 )
@@ -330,7 +327,7 @@ class WalletApplication : Application() {
                 String(
                     resources.openRawResource(certificateResourceId).readBytes()
                 )
-            ).javaX509Certificate,
+            ),
             displayName = displayName,
             displayIcon = displayIconResourceId?.let { iconId ->
                 ResourcesCompat.getDrawable(resources, iconId, null)?.toByteArray()

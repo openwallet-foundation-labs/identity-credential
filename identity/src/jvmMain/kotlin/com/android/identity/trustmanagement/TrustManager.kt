@@ -15,6 +15,7 @@
  */
 package com.android.identity.trustmanagement
 
+import com.android.identity.crypto.javaX509Certificate
 import java.security.cert.CertificateException
 import java.security.cert.PKIXCertPathChecker
 import java.security.cert.X509Certificate
@@ -50,7 +51,7 @@ class TrustManager {
      * Add a [TrustPoint] to the [TrustManager].
      */
     fun addTrustPoint(trustPoint: TrustPoint) =
-        TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate).also { key ->
+        TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate.javaX509Certificate).also { key ->
             if (key.isNotEmpty()) {
                 certificates[key] = trustPoint
             }
@@ -66,7 +67,7 @@ class TrustManager {
      * Remove a [TrustPoint] from the [TrustManager].
      */
     fun removeTrustPoint(trustPoint: TrustPoint) =
-        TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate).also { key ->
+        TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate.javaX509Certificate).also { key ->
             certificates.remove(key)
         }
 
@@ -92,7 +93,7 @@ class TrustManager {
     ): TrustResult {
         try {
             val trustPoints = getAllTrustPoints(chain)
-            val completeChain = chain.plus(trustPoints.map { it.certificate })
+            val completeChain = chain.plus(trustPoints.map { it.certificate.javaX509Certificate })
             try {
                 validateCertificationTrustPath(completeChain, customValidators)
                 return TrustResult(
@@ -143,8 +144,8 @@ class TrustManager {
         var caCertificate: TrustPoint? = findCaCertificate(chain)
             ?: throw CertificateException("No trusted root certificate could not be found")
         result.add(caCertificate!!)
-        while (caCertificate != null && !TrustManagerUtil.isSelfSigned(caCertificate.certificate)) {
-            caCertificate = findCaCertificate(listOf(caCertificate.certificate))
+        while (caCertificate != null && !TrustManagerUtil.isSelfSigned(caCertificate.certificate.javaX509Certificate)) {
+            caCertificate = findCaCertificate(listOf(caCertificate.certificate.javaX509Certificate))
             if (caCertificate != null) {
                 result.add(caCertificate)
             }

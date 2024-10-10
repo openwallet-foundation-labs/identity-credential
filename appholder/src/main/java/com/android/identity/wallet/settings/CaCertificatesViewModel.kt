@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.trustmanagement.getSubjectKeyIdentifier
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,9 @@ class CaCertificatesViewModel() : ViewModel() {
     fun deleteCertificate() {
         _currentCertificateItem.value?.trustPoint?.let {
             HolderApp.trustManagerInstance.removeTrustPoint(it)
-            HolderApp.certificateStorageEngineInstance.delete(it.certificate.getSubjectKeyIdentifier())
+            HolderApp.certificateStorageEngineInstance.delete(
+                it.certificate.javaX509Certificate.getSubjectKeyIdentifier()
+            )
         }
     }
 

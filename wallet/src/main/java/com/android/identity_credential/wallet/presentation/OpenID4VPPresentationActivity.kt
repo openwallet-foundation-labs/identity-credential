@@ -31,6 +31,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
@@ -40,20 +41,23 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.X509Cert
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
-import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
-import com.android.identity_credential.wallet.ui.prompt.consent.VcConsentField
+import com.android.identity.appsupport.ui.consent.ConsentField
+import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
+import com.android.identity.appsupport.ui.consent.MdocConsentField
+import com.android.identity.appsupport.ui.consent.VcConsentField
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
 import com.nimbusds.jose.EncryptionMethod
@@ -390,7 +394,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 val credential =
                     document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC, now)
                         ?: throw IllegalStateException("No credentials available")
-                val consentFields = VcConsentField.generateConsentFields(
+                val consentFields = VcConsentField.Companion.generateConsentFields(
                     vct,
                     requestedClaims,
                     walletApp.documentTypeRepository,
@@ -624,8 +628,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 val documentResponse = showMdocPresentmentFlow(
                     activity = this,
                     consentFields = consentFields,
-                    documentName = credential.document.documentConfiguration.displayName,
-                    trustPoint = trustPoint,
+                    document = ConsentDocument(
+                        name = credential.document.documentConfiguration.displayName,
+                        description = credential.document.documentConfiguration.typeDisplayName,
+                        cardArt = credential.document.documentConfiguration.cardArt,
+                    ),
+                    relyingParty = ConsentRelyingParty(trustPoint),
                     credential = credential,
                     encodedSessionTranscript = sessionTranscript,
                 )
@@ -641,8 +649,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 showSdJwtPresentmentFlow(
                     activity = this,
                     consentFields = consentFields,
-                    documentName = credential.document.documentConfiguration.displayName,
-                    trustPoint = trustPoint,
+                    document = ConsentDocument(
+                        name = credential.document.documentConfiguration.displayName,
+                        description = credential.document.documentConfiguration.typeDisplayName,
+                        cardArt = credential.document.documentConfiguration.cardArt,
+                    ),
+                    relyingParty = ConsentRelyingParty(trustPoint),
                     credential = credential,
                     nonce = authorizationRequest.nonce,
                     clientId = authorizationRequest.clientId
@@ -941,4 +953,55 @@ internal fun formatAsDocumentRequest(inputDescriptor: JsonObject): DocumentReque
         ))
     }
     return DocumentRequest(requestedDataElements)
+}
+
+/**
+ * Helper function to generate a list of entries for the consent prompt for VCs.
+ *
+ * TODO: Move to VcConsentField when making identity-sdjwt a Kotlin Multiplatform library.
+ *
+ * @param vct the Verifiable Credential Type.
+ * @param claims the list of claims.
+ * @param documentTypeRepository a [DocumentTypeRepository] used to determine the display name.
+ * @param vcCredential if set, the returned list is filtered so it only references claims
+ *     available in the credential.
+ */
+private fun VcConsentField.Companion.generateConsentFields(
+    vct: String,
+    claims: List<String>,
+    documentTypeRepository: DocumentTypeRepository,
+    vcCredential: SdJwtVcCredential?,
+): List<VcConsentField> {
+    val vcType = documentTypeRepository.getDocumentTypeForVc(vct)?.vcDocumentType
+    val ret = mutableListOf<VcConsentField>()
+    for (claimName in claims) {
+        val attribute = vcType?.claims?.get(claimName)
+        ret.add(
+            VcConsentField(
+                attribute?.displayName ?: claimName,
+                attribute,
+                claimName
+            )
+        )
+    }
+    return filterConsentFields(ret, vcCredential)
+}
+
+private fun filterConsentFields(
+    list: List<VcConsentField>,
+    credential: SdJwtVcCredential?
+): List<VcConsentField> {
+    if (credential == null) {
+        return list
+    }
+    val sdJwt = SdJwtVerifiableCredential.fromString(
+        String(credential.issuerProvidedData, Charsets.US_ASCII))
+
+    val availableClaims = mutableSetOf<String>()
+    for (disclosure in sdJwt.disclosures) {
+        availableClaims.add(disclosure.key)
+    }
+    return list.filter { vcConsentField ->
+        availableClaims.contains(vcConsentField.claimName)
+    }
 }

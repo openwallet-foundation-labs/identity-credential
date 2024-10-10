@@ -1,4 +1,4 @@
-package com.android.identity_credential.wallet.ui.prompt.consent
+package com.android.identity.appsupport.ui.consent
 
 import com.android.identity.documenttype.DocumentAttribute
 

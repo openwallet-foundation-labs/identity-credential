@@ -52,6 +52,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.appsupport.ui.consent.ConsentDocument
+import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificates
@@ -66,7 +68,7 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
-import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
+import com.android.identity.appsupport.ui.consent.MdocConsentField
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -380,8 +382,12 @@ class PresentationActivity : FragmentActivity() {
                                 val documentCborBytes = showMdocPresentmentFlow(
                                     activity = this@PresentationActivity,
                                     consentFields = consentFields,
-                                    documentName = mdocCredential.document.documentConfiguration.displayName,
-                                    trustPoint = trustPoint,
+                                    document = ConsentDocument(
+                                        name = mdocCredential.document.documentConfiguration.displayName,
+                                        description = mdocCredential.document.documentConfiguration.typeDisplayName,
+                                        cardArt = mdocCredential.document.documentConfiguration.cardArt,
+                                    ),
+                                    relyingParty = ConsentRelyingParty(trustPoint),
                                     credential = mdocCredential,
                                     encodedSessionTranscript = deviceRetrievalHelper!!.sessionTranscript
                                 )

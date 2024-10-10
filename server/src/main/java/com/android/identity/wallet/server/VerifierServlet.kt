@@ -1253,11 +1253,11 @@ private fun mdocCalcDcRequestStringPreview(
 
     val fields = JSONArray()
     for (ns in request.mdocRequest!!.namespacesToRequest) {
-        for (de in ns.dataElementsToRequest) {
+        for ((de, intentToRetain) in ns.dataElementsToRequest) {
             val field = JSONObject()
             field.put("namespace", ns.namespace)
             field.put("name", de.attribute.identifier)
-            field.put("intentToRetain", false)
+            field.put("intentToRetain", intentToRetain)
             fields.add(field)
         }
     }
@@ -1306,9 +1306,9 @@ private fun mdocCalcDcRequestStringArf(
 
     val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
     for (ns in request.mdocRequest!!.namespacesToRequest) {
-        for (de in ns.dataElementsToRequest) {
+        for ((de, intentToRetain) in ns.dataElementsToRequest) {
             itemsToRequest.getOrPut(ns.namespace) { mutableMapOf() }
-                .put(de.attribute.identifier, false)
+                .put(de.attribute.identifier, intentToRetain)
         }
     }
     val generator = DeviceRequestGenerator(sessionTranscript)
@@ -1342,12 +1342,12 @@ private fun mdocCalcPresentationDefinition(
 
     val fields = JSONArray()
     for (ns in request.mdocRequest!!.namespacesToRequest) {
-        for (de in ns.dataElementsToRequest) {
+        for ((de, intentToRetain) in ns.dataElementsToRequest) {
             var array = JSONArray()
             array.add("\$['${ns.namespace}']['${de.attribute.identifier}']")
             val field = JSONObject()
             field.put("path", array)
-            field.put("intent_to_retain", false)
+            field.put("intent_to_retain", intentToRetain)
             fields.add(field)
         }
     }

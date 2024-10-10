@@ -59,10 +59,10 @@ class VerifierApp : Application() {
         certificateStorageEngineInstance = certificateStorageEngine
         certificateStorageEngineInstance.enumerate().forEach {
             val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!)
-            trustManagerInstance.addTrustPoint(TrustPoint(certificate))
+            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
         }
         KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
-            trustManagerInstance.addTrustPoint(TrustPoint(it))
+            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(it.encoded)))
         }
         val signedVical = SignedVical.parse(
             resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
@@ -71,7 +71,7 @@ class VerifierApp : Application() {
             val cert = X509Cert(certInfo.certificate)
             trustManagerInstance.addTrustPoint(
                 TrustPoint(
-                    cert.javaX509Certificate,
+                    cert,
                     null,
                     null
                 )

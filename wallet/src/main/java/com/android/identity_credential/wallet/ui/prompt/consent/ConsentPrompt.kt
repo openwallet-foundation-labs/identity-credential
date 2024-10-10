@@ -4,9 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.trustmanagement.TrustPoint
+import com.android.identity.appsupport.ui.consent.ConsentField
+import com.android.identity.appsupport.ui.consent.ConsentModalBottomSheet
+import com.android.identity.appsupport.ui.consent.ConsentDocument
+import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -20,16 +26,16 @@ import kotlin.coroutines.resume
  */
 suspend fun showConsentPrompt(
     activity: FragmentActivity,
-    documentName: String,
-    consentFields: List<ConsentField>,
-    trustPoint: TrustPoint?
+    document: ConsentDocument,
+    relyingParty: ConsentRelyingParty,
+    consentFields: List<ConsentField>
 ): Boolean =
     suspendCancellableCoroutine { continuation ->
         // new instance of the ConsentPrompt bottom sheet dialog fragment but not shown yet
         val consentPrompt = ConsentPrompt(
             consentFields = consentFields,
-            documentName = documentName,
-            verifier = trustPoint,
+            document = document,
+            relyingParty = relyingParty,
             onConsentPromptResult = { promptWasSuccessful ->
                 continuation.resume(promptWasSuccessful)
             }
@@ -47,14 +53,15 @@ suspend fun showConsentPrompt(
  */
 class ConsentPrompt(
     private val consentFields: List<ConsentField>,
-    private val documentName: String,
-    private val verifier: TrustPoint?,
+    private val document: ConsentDocument,
+    private val relyingParty: ConsentRelyingParty,
     private val onConsentPromptResult: (Boolean) -> Unit,
 ) : BottomSheetDialogFragment() {
     /**
-     * Define the composable [ConsentPromptEntryField] and issue callbacks to [onConsentPromptResult]
+     * Define the composable [ConsentModalBottomSheet] and issue callbacks to [onConsentPromptResult]
      * based on which button is tapped.
      */
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -63,11 +70,20 @@ class ConsentPrompt(
         ComposeView(requireContext()).apply {
             setContent {
                 IdentityCredentialTheme {
+                    // TODO: use sheetGesturesEnabled=false when available instead of confirmValueChanged
+                    //  hack - see https://issuetracker.google.com/issues/288211587 for details
+                    //
+                    val sheetState = rememberModalBottomSheetState(
+                        skipPartiallyExpanded = true,
+                        confirmValueChange = { it != SheetValue.Hidden }
+                    )
+
                     // define the ConsentPromptComposable (and show)
-                    ConsentPromptEntryField(
+                    ConsentModalBottomSheet(
+                        sheetState = sheetState,
                         consentFields = consentFields,
-                        documentName = documentName,
-                        verifier = verifier,
+                        document = document,
+                        relyingParty = relyingParty,
                         // user accepted to send requested credential data
                         onConfirm = {
                             // notify that the user tapped on the 'Confirm' button

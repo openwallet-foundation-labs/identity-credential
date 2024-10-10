@@ -6,6 +6,7 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.credential.CredentialFactory
+import com.android.identity.crypto.X509Cert
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
@@ -64,10 +65,10 @@ class HolderApp: Application() {
         certificateStorageEngineInstance = certificateStorageEngine
         certificateStorageEngineInstance.enumerate().forEach {
             val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!)
-            trustManagerInstance.addTrustPoint(TrustPoint(certificate))
+            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
         }
         KeysAndCertificates.getTrustedReaderCertificates(this).forEach {
-            trustManagerInstance.addTrustPoint(TrustPoint(it))
+            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(it.encoded)))
         }
     }
 

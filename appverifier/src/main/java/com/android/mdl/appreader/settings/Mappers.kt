@@ -1,5 +1,6 @@
 package com.android.mdl.appreader.settings
 
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.trustmanagement.getCommonName
@@ -10,16 +11,16 @@ import java.lang.StringBuilder
 import java.security.MessageDigest
 
 fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): CertificateItem {
-    val subject = this.certificate.subjectX500Principal
-    val issuer = this.certificate.issuerX500Principal
+    val subject = this.certificate.javaX509Certificate.subjectX500Principal
+    val issuer = this.certificate.javaX509Certificate.issuerX500Principal
     val sha255Fingerprint = hexWithSpaces(
         MessageDigest.getInstance("SHA-256").digest(
-            this.certificate.encoded
+            this.certificate.encodedCertificate
         )
     )
     val sha1Fingerprint = hexWithSpaces(
         MessageDigest.getInstance("SHA-1").digest(
-            this.certificate.encoded
+            this.certificate.encodedCertificate
         )
     )
     val defaultValue = "<Not part of certificate>"
@@ -32,12 +33,14 @@ fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): Certific
         commonNameIssuer = issuer.getCommonName(defaultValue),
         organisationIssuer = issuer.getOrganisation(defaultValue),
         organisationalUnitIssuer = issuer.organisationalUnit(defaultValue),
-        notBefore = this.certificate.notBefore,
-        notAfter = this.certificate.notAfter,
+        notBefore = this.certificate.javaX509Certificate.notBefore,
+        notAfter = this.certificate.javaX509Certificate.notAfter,
         sha255Fingerprint = sha255Fingerprint,
         sha1Fingerprint = sha1Fingerprint,
         docTypes = docTypes,
-        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(this.certificate.getSubjectKeyIdentifier()) != null ,
+        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(
+            this.certificate.javaX509Certificate.getSubjectKeyIdentifier()
+        ) != null,
         trustPoint = this
     )
 }

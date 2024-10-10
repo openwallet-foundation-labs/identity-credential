@@ -54,7 +54,7 @@ class CredentialRequestServlet : BaseServlet() {
                     })
                     put("fields", buildJsonArray {
                         for (namespace in fullPid.mdocRequest!!.namespacesToRequest) {
-                            for (dataElement in namespace.dataElementsToRequest) {
+                            for ((dataElement, _) in namespace.dataElementsToRequest) {
                                 add(buildJsonObject {
                                     put("intentToRetain", JsonPrimitive(false))
                                     put("namespace", JsonPrimitive(namespace.namespace))

@@ -338,9 +338,9 @@ object EUPersonalID {
                 id = "age_over_18",
                 displayName = "Age Over 18",
                 mdocDataElements = mapOf(
-                    Pair(EUPID_NAMESPACE, listOf(
-                        "age_over_18",
-                    ))
+                    EUPID_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                    )
                 ),
                 vcClaims = listOf("age_over_18")
             )
@@ -348,16 +348,16 @@ object EUPersonalID {
                 id = "mandatory",
                 displayName = "Mandatory Data Elements",
                 mdocDataElements = mapOf(
-                    Pair(EUPID_NAMESPACE, listOf(
-                        "family_name",
-                        "given_name",
-                        "birth_date",
-                        "age_over_18",
-                        "issuance_date",
-                        "expiry_date",
-                        "issuing_authority",
-                        "issuing_country"
-                    ))
+                    EUPID_NAMESPACE to mapOf(
+                        "family_name" to false,
+                        "given_name" to false,
+                        "birth_date" to false,
+                        "age_over_18" to false,
+                        "issuance_date" to false,
+                        "expiry_date" to false,
+                        "issuing_authority" to false,
+                        "issuing_country" to false
+                    )
                 ),
                 vcClaims = listOf(
                     "family_name",
@@ -374,8 +374,7 @@ object EUPersonalID {
                 id = "full",
                 displayName = "All Data Elements",
                 mdocDataElements = mapOf(
-                    Pair(EUPID_NAMESPACE, listOf(
-                    ))
+                    EUPID_NAMESPACE to mapOf()
                 ),
                 vcClaims = listOf()
             )

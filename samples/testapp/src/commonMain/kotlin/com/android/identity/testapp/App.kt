@@ -13,7 +13,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -25,38 +25,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.android.identity.appsupport.ui.AppTheme
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
+import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
+import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
+import com.android.identity.testapp.ui.VerifierType
 import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.about_screen_title
-import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.back_button
-import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
-import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
-import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
-import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
-import identitycredential.samples.testapp.generated.resources.start_screen_title
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-
-enum class Screen(val title: StringResource) {
-    About(title = Res.string.about_screen_title),
-    Start(title = Res.string.start_screen_title),
-    SoftwareSecureArea(title = Res.string.software_secure_area_screen_title),
-    AndroidKeystoreSecureArea(title = Res.string.android_keystore_secure_area_screen_title),
-    SecureEnclaveSecureArea(title = Res.string.secure_enclave_secure_area_screen_title),
-    PassphraseEntryField(title = Res.string.passphrase_entry_field_screen_title),
-    CloudSecureArea(title = Res.string.cloud_secure_area_screen_title),
-}
 
 class App {
 
@@ -69,20 +55,21 @@ class App {
     @Composable
     @Preview
     fun Content(navController: NavHostController = rememberNavController()) {
+
         // Get current back stack entry
         val backStackEntry by navController.currentBackStackEntryAsState()
         // Get the name of the current screen
-        val currentScreen = Screen.valueOf(
-            backStackEntry?.destination?.route ?: Screen.Start.name
-        )
+        val currentDestination = appDestinations.find {
+            it.route == backStackEntry?.destination?.route
+        } ?: StartDestination
 
         snackbarHostState = remember { SnackbarHostState() }
-        MaterialTheme {
+        AppTheme {
             // A surface container using the 'background' color from the theme
             Scaffold(
                 topBar = {
                     AppBar(
-                        currentScreen = currentScreen,
+                        currentDestination = currentDestination as Destination,
                         canNavigateBack = navController.previousBackStackEntry != null,
                         navigateUp = { navController.navigateUp() }
                     )
@@ -90,35 +77,69 @@ class App {
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             ) { innerPadding ->
 
-
                 NavHost(
                     navController = navController,
-                    startDestination = Screen.Start.name,
+                    startDestination = StartDestination.route,
                     modifier = Modifier
                         .fillMaxSize()
                         //.verticalScroll(rememberScrollState())
                         .padding(innerPadding)
                 ) {
-                    composable(route = Screen.About.name) {
+                    composable(route = StartDestination.route) {
+                        StartScreen(
+                            onClickAbout = { navController.navigate(AboutDestination.route) },
+                            onClickSoftwareSecureArea = { navController.navigate(SoftwareSecureAreaDestination.route) },
+                            onClickAndroidKeystoreSecureArea = { navController.navigate(AndroidKeystoreSecureAreaDestination.route) },
+                            onClickCloudSecureArea = { navController.navigate(CloudSecureAreaDestination.route) },
+                            onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
+                            onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
+                            onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
+                        )
+                    }
+                    composable(route = AboutDestination.route) {
                         AboutScreen()
                     }
-                    composable(route = Screen.Start.name) {
-                        StartScreen(navController)
-                    }
-                    composable(route = Screen.SoftwareSecureArea.name) {
+                    composable(route = SoftwareSecureAreaDestination.route) {
                         SoftwareSecureAreaScreen(showToast = { message -> showToast(message) })
                     }
-                    composable(route = Screen.AndroidKeystoreSecureArea.name) {
+                    composable(route = AndroidKeystoreSecureAreaDestination.route) {
                         AndroidKeystoreSecureAreaScreen(showToast = { message -> showToast(message) })
                     }
-                    composable(route = Screen.SecureEnclaveSecureArea.name) {
+                    composable(route = SecureEnclaveSecureAreaDestination.route) {
                         SecureEnclaveSecureAreaScreen(showToast = { message -> showToast(message) })
                     }
-                    composable(route = Screen.PassphraseEntryField.name) {
+                    composable(route = CloudSecureAreaDestination.route) {
+                        CloudSecureAreaScreen(showToast = { message -> showToast(message) })
+                    }
+                    composable(route = PassphraseEntryFieldDestination.route) {
                         PassphraseEntryFieldScreen(showToast = { message -> showToast(message) })
                     }
-                    composable(route = Screen.CloudSecureArea.name) {
-                        CloudSecureAreaScreen(showToast = { message -> showToast(message) })
+                    composable(route = ConsentModalBottomSheetListDestination.route) {
+                        ConsentModalBottomSheetListScreen(
+                            onConsentModalBottomSheetClicked =
+                            { mdlSampleRequest, verifierType ->
+                                navController.navigate(
+                                    ConsentModalBottomSheetDestination.route + "/$mdlSampleRequest/$verifierType")
+                            }
+                        )
+                    }
+                    composable(
+                        route = ConsentModalBottomSheetDestination.routeWithArgs,
+                        arguments = ConsentModalBottomSheetDestination.arguments
+                    ) { navBackStackEntry ->
+                        val mdlSampleRequest = navBackStackEntry.arguments?.getString(
+                            ConsentModalBottomSheetDestination.mdlSampleRequestArg
+                        )!!
+                        val verifierType = VerifierType.valueOf(navBackStackEntry.arguments?.getString(
+                            ConsentModalBottomSheetDestination.verifierTypeArg
+                        )!!)
+                        ConsentModalBottomSheetScreen(
+                            mdlSampleRequest = mdlSampleRequest,
+                            verifierType = verifierType,
+                            showToast = { message -> showToast(message) },
+                            onSheetConfirmed = { navController.popBackStack() },
+                            onSheetDismissed = { navController.popBackStack() },
+                        )
                     }
                 }
             }
@@ -148,13 +169,13 @@ class App {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppBar(
-    currentScreen: Screen,
+    currentDestination: Destination,
     canNavigateBack: Boolean,
     navigateUp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
-        title = { Text(stringResource(currentScreen.title)) },
+        title = { Text(stringResource(currentDestination.title)) },
         colors = TopAppBarDefaults.mediumTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
@@ -163,7 +184,7 @@ fun AppBar(
             if (canNavigateBack) {
                 IconButton(onClick = navigateUp) {
                     Icon(
-                        imageVector = Icons.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(Res.string.back_button)
                     )
                 }

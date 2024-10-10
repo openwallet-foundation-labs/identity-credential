@@ -478,14 +478,6 @@
     <string name="credential_offer_scan">Scan Credential Offer</string>
     <string name="credential_offer_details">QR code for OpenID for Verifiable Credential Issuance (draft #14)</string>
 
-    <!-- Consent Prompt -->
-    <string name="consent_prompt_button_cancel">Cancel</string>
-    <string name="consent_prompt_button_confirm">Share</string>
-    <string name="consent_prompt_text_scroll_to_bottom">Scroll to bottom</string>
-    <string name="consent_prompt_title">The following information is being requested from \"%1$s\"</string>
-    <string name="consent_prompt_title_verifier">%1$s is requesting information from \"%2$s\"</string>
-    <string name="consent_prompt_icon_description">Verifier Icon</string>
-
     <!-- Biometric Prompt -->
     <string name="biometric_prompt_negative_btn_lskf">Use PIN</string>
     <string name="biometric_prompt_negative_btn_no_lskf">Cancel</string>

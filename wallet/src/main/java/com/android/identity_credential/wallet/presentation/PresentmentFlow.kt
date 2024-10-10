@@ -7,6 +7,7 @@ import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.securearea.cloud.CloudKeyLockedException
 import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
 import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
@@ -29,9 +30,10 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import com.android.identity_credential.wallet.ui.prompt.consent.ConsentField
-import com.android.identity_credential.wallet.ui.prompt.consent.MdocConsentField
-import com.android.identity_credential.wallet.ui.prompt.consent.VcConsentField
+import com.android.identity.appsupport.ui.consent.ConsentField
+import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
+import com.android.identity.appsupport.ui.consent.MdocConsentField
+import com.android.identity.appsupport.ui.consent.VcConsentField
 import com.android.identity_credential.wallet.ui.prompt.consent.showConsentPrompt
 import com.android.identity_credential.wallet.ui.prompt.passphrase.showPassphrasePrompt
 
@@ -41,17 +43,17 @@ const val MAX_PASSPHRASE_ATTEMPTS = 3
 private suspend fun showPresentmentFlowImpl(
     activity: FragmentActivity,
     consentFields: List<ConsentField>,
-    documentName: String,
-    trustPoint: TrustPoint?,
+    document: ConsentDocument,
+    relyingParty: ConsentRelyingParty,
     credential: SecureAreaBoundCredential,
     signAndGenerate: (KeyUnlockData?) -> ByteArray
 ): ByteArray {
     // always show the Consent Prompt first
     showConsentPrompt(
         activity = activity,
-        documentName = documentName,
+        document = document,
+        relyingParty = relyingParty,
         consentFields = consentFields,
-        trustPoint = trustPoint
     ).let { resultSuccess ->
         // throw exception if user canceled the Prompt
         if (!resultSuccess){
@@ -210,16 +212,16 @@ private suspend fun showPresentmentFlowImpl(
 suspend fun showMdocPresentmentFlow(
     activity: FragmentActivity,
     consentFields: List<ConsentField>,
-    documentName: String,
-    trustPoint: TrustPoint?,
+    document: ConsentDocument,
+    relyingParty: ConsentRelyingParty,
     credential: MdocCredential,
     encodedSessionTranscript: ByteArray,
 ): ByteArray {
     return showPresentmentFlowImpl(
         activity,
         consentFields,
-        documentName,
-        trustPoint,
+        document,
+        relyingParty,
         credential
     ) { keyUnlockData: KeyUnlockData? ->
         mdocSignAndGenerate(consentFields, credential, encodedSessionTranscript!!, keyUnlockData)
@@ -229,17 +231,17 @@ suspend fun showMdocPresentmentFlow(
 suspend fun showSdJwtPresentmentFlow(
     activity: FragmentActivity,
     consentFields: List<ConsentField>,
-    documentName: String,
+    document: ConsentDocument,
+    relyingParty: ConsentRelyingParty,
     credential: SecureAreaBoundCredential,
-    trustPoint: TrustPoint?,
     nonce: String,
     clientId: String,
 ): ByteArray {
     return showPresentmentFlowImpl(
         activity,
         consentFields,
-        documentName,
-        trustPoint,
+        document,
+        relyingParty,
         credential
     ) { keyUnlockData: KeyUnlockData? ->
         val sdJwt = SdJwtVerifiableCredential.fromString(
