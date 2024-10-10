@@ -5,6 +5,7 @@ import com.android.identity.cbor.Uint
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.flow.handler.AesGcmCipher
 import com.android.identity.flow.handler.FlowNotifications
+import com.android.identity.flow.handler.InvalidRequestException
 import com.android.identity.flow.handler.SimpleCipher
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Storage
@@ -12,7 +13,6 @@ import com.android.identity.server.BaseHttpServlet
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
@@ -95,21 +95,6 @@ abstract class BaseServlet: BaseHttpServlet() {
     }
 
     /**
-     * Formats error response as JSON.
-     */
-    protected fun errorResponse(
-        resp: HttpServletResponse,
-        mnemonics: String,
-        message: String
-    ) {
-        val json = Json.encodeToString(ErrorMessage.serializer(), ErrorMessage(mnemonics, message))
-        println("Error: $json")
-        resp.status = 400
-        resp.contentType = "application/json"
-        resp.outputStream.write(json.toByteArray())
-    }
-
-    /**
      * DPoP Authorization validation.
      */
     protected fun authorizeWithDpop(
@@ -121,32 +106,32 @@ abstract class BaseServlet: BaseHttpServlet() {
         val auth = req.getHeader("Authorization")
         if (accessToken == null) {
             if (auth != null) {
-                throw IllegalArgumentException("Unexpected authorization header")
+                throw InvalidRequestException("Unexpected authorization header")
             }
         } else {
             if (auth == null) {
-                throw IllegalArgumentException("Authorization header required")
+                throw InvalidRequestException("Authorization header required")
             }
             if (auth.substring(0, 5).lowercase() != "dpop ") {
-                throw IllegalArgumentException("DPoP authorization required")
+                throw InvalidRequestException("DPoP authorization required")
             }
             if (auth.substring(5) != accessToken) {
-                throw IllegalArgumentException("Stale or invalid access token")
+                throw InvalidRequestException("Stale or invalid access token")
             }
         }
         val dpop = req.getHeader("DPoP")
-            ?: throw IllegalArgumentException("DPoP header required")
+            ?: throw InvalidRequestException("DPoP header required")
         val parts = dpop.split('.')
         if (parts.size != 3) {
-            throw IllegalArgumentException("DPoP invalid")
+            throw InvalidRequestException("DPoP invalid")
         }
         checkJwtSignature(publicKey, dpop)
         val json = Json.parseToJsonElement(String(parts[1].fromBase64Url())) as JsonObject
         if (json["nonce"]?.jsonPrimitive?.content != dpopNonce) {
-            throw IllegalArgumentException("Stale or invalid DPoP nonce")
+            throw InvalidRequestException("Stale or invalid DPoP nonce")
         }
         if (json["htu"]?.jsonPrimitive?.content != req.requestURL.toString()) {
-            throw IllegalArgumentException("Incorrect request URI: ${req.requestURL}")
+            throw InvalidRequestException("Incorrect request URI: ${req.requestURL}")
         }
     }
 }

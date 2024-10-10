@@ -18,6 +18,12 @@ class FlowExceptionMap private constructor(
         private val byClass = mutableMapOf<KClass<out Throwable>, Item<*>>()
         private val byId = mutableMapOf<String, Item<*>>()
 
+        init {
+            // This exception is the part of the framework and is always supported.
+            // TODO: consider adding some Kotlin exceptions (they'd need cbor serialization).
+            InvalidRequestException.register(this)
+        }
+
         fun <ExceptionT : Throwable> addException(
             exceptionId: String,
             serializer: (ExceptionT) -> DataItem,

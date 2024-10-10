@@ -1,10 +1,9 @@
 package com.android.identity.server.openid4vci
 
-import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.X509Cert
+import com.android.identity.flow.handler.InvalidRequestException
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.common.cache
-import com.android.identity.issuance.wallet.ClientAttestationData
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.util.fromBase64Url
 import jakarta.servlet.http.HttpServletRequest
@@ -39,37 +38,25 @@ class ParServlet : BaseServlet() {
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
         // Read all parameters
         if (req.getParameter("client_assertion_type") != ASSERTION_TYPE) {
-            errorResponse(resp, "invalid_request",
-                "invalid parameter 'client_assertion_type'")
-            return
+            throw InvalidRequestException("invalid parameter 'client_assertion_type'")
         }
         if (req.getParameter("scope") != "pid") {
-            errorResponse(resp, "invalid_request", "invalid parameter 'pid'")
-            return
+            throw InvalidRequestException("invalid parameter 'pid'")
         }
         if (req.getParameter("response_type") != "code") {
-            errorResponse(resp, "invalid_request", "invalid parameter 'response_type'")
-            return
+            throw InvalidRequestException("invalid parameter 'response_type'")
         }
         if (req.getParameter("code_challenge_method") != "S256") {
-            errorResponse(resp, "invalid_request", "invalid parameter 'code_challenge_method'")
-            return
+            throw InvalidRequestException("invalid parameter 'code_challenge_method'")
         }
         val redirectUri = req.getParameter("redirect_uri")
-        if (redirectUri == null) {
-            errorResponse(resp, "invalid_request", "missing parameter 'redirect_uri'")
-            return
-        }
+            ?: throw InvalidRequestException("missing parameter 'redirect_uri'")
         val clientId = req.getParameter("client_id")
-        if (clientId == null) {
-            errorResponse(resp, "invalid_request", "missing parameter 'client_id'")
-            return
-        }
+            ?: throw InvalidRequestException("missing parameter 'client_id'")
         val codeChallenge = try {
             ByteString(req.getParameter("code_challenge").fromBase64Url())
         } catch (err: Exception) {
-            errorResponse(resp, "invalid_request", "invalid parameter 'code_challenge'")
-            return
+            throw InvalidRequestException("invalid parameter 'code_challenge'")
         }
         val clientAssertion = req.getParameter("client_assertion")
 
@@ -91,8 +78,7 @@ class ParServlet : BaseServlet() {
         // Extract session key (used in DPoP authorization for subsequent requests).
         val parts = sequence[0].split(".")
         if (parts.size != 3) {
-            errorResponse(resp, "invalid_assertion", "invalid JWT")
-            return
+            throw InvalidRequestException("invalid JWT assertion")
         }
         val assertionBody = Json.parseToJsonElement(String(parts[1].fromBase64Url(), Charsets.UTF_8))
         val dpopKey = JsonWebKey((assertionBody as JsonObject)["cnf"] as JsonObject).asEcPublicKey
@@ -117,6 +103,6 @@ class ParServlet : BaseServlet() {
                 )
             ).toByteArray())
     }
-}
 
-data class ClientCertificate(val certificate: X509Cert)
+    private data class ClientCertificate(val certificate: X509Cert)
+}
