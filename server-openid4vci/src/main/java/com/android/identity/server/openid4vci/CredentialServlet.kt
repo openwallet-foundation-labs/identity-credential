@@ -13,10 +13,12 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.flow.handler.InvalidRequestException
+import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
+import com.android.identity.issuance.common.cache
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -35,7 +37,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -52,8 +56,7 @@ class CredentialServlet : BaseServlet() {
         println("credential")
         val authorization = req.getHeader("Authorization")
         if (authorization == null || authorization.substring(0, 5).lowercase() != "dpop ") {
-            errorResponse(resp, "invalid_request", "Authorization header invalid or missing")
-            return
+            throw InvalidRequestException("Authorization header invalid or missing")
         }
         val accessToken = authorization.substring(5)
         val id = codeToId(OpaqueIdType.ACCESS_TOKEN, accessToken)
@@ -61,65 +64,126 @@ class CredentialServlet : BaseServlet() {
         val state = runBlocking {
             IssuanceState.fromCbor(storage.get("IssuanceState", "", id)!!.toByteArray())
         }
-        try {
-            authorizeWithDpop(state.dpopKey, req, state.dpopNonce!!.toByteArray().toBase64Url(), accessToken)
-        } catch (err: IllegalArgumentException) {
-            println("bad DPoP authorization: $err")
-            errorResponse(resp, "authorization", err.message ?: "unknown")
-            return
-        }
+        authorizeWithDpop(state.dpopKey, req, state.dpopNonce!!.toByteArray().toBase64Url(), accessToken)
+        val nonce = state.cNonce!!.toByteArray().toBase64Url()  // credential nonce
         state.dpopNonce = null
         state.cNonce = null
         runBlocking {
             storage.update("IssuanceState", "", id, ByteString(state.toCbor()))
         }
-        val requestData = req.inputStream.readNBytes(req.contentLength)
-        val json = Json.parseToJsonElement(String(requestData)) as JsonObject
-        val proof = json["proof"]?.jsonObject
-        if (proof == null) {
-            errorResponse(resp, "invalid_request", "'proof.jwt' parameter missing")
-            return
+        val requestString = String(req.inputStream.readNBytes(req.contentLength))
+        println("Request: $requestString")
+        val json = Json.parseToJsonElement(requestString) as JsonObject
+        var proofs = json["proofs"]?.jsonArray
+        val singleProof = proofs == null
+        if (proofs == null) {
+            val proof = json["proof"]
+                ?: throw InvalidRequestException("neither 'proof' or 'proofs' parameter provided")
+            proofs = buildJsonArray { add(proof) }
+        } else if (proofs.size == 0) {
+            throw InvalidRequestException("'proofs' is empty")
         }
-        val jwt = proof["jwt"]?.jsonPrimitive?.content
-        if (jwt == null) {
-            errorResponse(resp, "invalid_request", "'proof.jwt' parameter missing")
-            return
+
+        val proofType = proofs[0].jsonObject["proof_type"]?.jsonPrimitive?.content
+        val authenticationKeys = when (proofType) {
+            "attestation" -> {
+                val keyAttestationCertificate = environment.cache(
+                    KeyAttestationCertificate::class,
+                    state.clientId
+                ) { configuration, resources ->
+                    // By default using the same key/certificate as for client attestation
+                    val certificateName =
+                        configuration.getValue("openid4vci.key-attestation.certificate")
+                            ?: "attestation/certificate.pem"
+                    val certificate =
+                        X509Cert.fromPem(resources.getStringResource(certificateName)!!)
+                    KeyAttestationCertificate(certificate)
+                }
+
+                proofs.flatMap { proof ->
+                    val keyAttestation = proof.jsonObject["attestation"]!!.jsonPrimitive.content
+                    checkJwtSignature(
+                        keyAttestationCertificate.certificate.ecPublicKey,
+                        keyAttestation
+                    )
+                    val parts = keyAttestation.split(".")
+
+                    if (parts.size != 3) {
+                        throw InvalidRequestException("invalid value for 'proof(s).attestation' parameter")
+                    }
+                    val body = Json.parseToJsonElement(String(parts[1].fromBase64Url())).jsonObject
+                    if (body["nonce"]?.jsonPrimitive?.content != nonce) {
+                        throw InvalidRequestException("invalid nonce in 'proof(s).attestation' parameter")
+                    }
+                    body["attested_keys"]!!.jsonArray.map { key ->
+                        JsonWebKey(buildJsonObject {
+                            put("jwk", key)
+                        }).asEcPublicKey
+                    }
+                }
+            }
+            "jwt" -> {
+                val requireKeyAttestation = environment.getInterface(Configuration::class)
+                    ?.getValue("openid4vci.key-attestation.required")
+                if (requireKeyAttestation != "false") {
+                    throw InvalidRequestException("jwt proofs are not accepted by this server")
+                }
+                proofs.map { proof ->
+                    val jwt = proof.jsonObject["jwt"]?.jsonPrimitive?.content
+                        ?: throw InvalidRequestException("either 'proof.attestation' or 'proof.jwt' parameter is required")
+                    val parts = jwt.split(".")
+                    if (parts.size != 3) {
+                        throw InvalidRequestException("invalid value for 'proof.jwt' parameter")
+                    }
+                    val head =
+                        Json.parseToJsonElement(String(parts[0].fromBase64Url())) as JsonObject
+                    val authenticationKey = JsonWebKey(head).asEcPublicKey
+                    checkJwtSignature(authenticationKey, jwt)
+                    authenticationKey
+                }
+            }
+            else -> {
+                throw InvalidRequestException("unsupported proof type")
+            }
         }
-        val parts = jwt.split(".")
-        if (parts.size != 3) {
-            errorResponse(resp, "invalid_request", "invalid value for 'proof.jwt' parameter")
-            return
-        }
-        val head = Json.parseToJsonElement(String(parts[0].fromBase64Url())) as JsonObject
-        val authenticationKey = JsonWebKey(head).asEcPublicKey
         val format = json["format"]?.jsonPrimitive?.content
-        if (format == "vc+sd-jwt") {
-            val vct = json["vct"]?.jsonPrimitive?.content
-            if (vct != EUPersonalID.EUPID_VCT) {
-                errorResponse(resp, "invalid_request", "invalid value for 'vct' parameter")
-                return
+        val credentials = when (format) {
+            "vc+sd-jwt" -> {
+                val vct = json["vct"]?.jsonPrimitive?.content
+                if (vct != EUPersonalID.EUPID_VCT) {
+                    throw InvalidRequestException("invalid value for 'vct' parameter")
+                }
+                authenticationKeys.map { key ->
+                    createCredentialSdJwt(state, key)
+                }
             }
-            val result = buildJsonObject {
-                put("credential", createCredentialSdJwt(state, authenticationKey))
+            "mso_mdoc" -> {
+                val vct = json["doctype"]?.jsonPrimitive?.content
+                if (vct != EUPersonalID.EUPID_DOCTYPE) {
+                    throw InvalidRequestException("invalid value for 'doctype' parameter")
+                }
+                authenticationKeys.map { key ->
+                    createCredentialMdoc(state, key).toBase64Url()
+                }
             }
-            resp.contentType = "application/json"
-            resp.writer.write(Json.encodeToString(result))
-            return
+            else -> {
+                throw InvalidRequestException("invalid value for 'format' parameter")
+            }
         }
-        if (format == "mso_mdoc") {
-            val vct = json["doctype"]?.jsonPrimitive?.content
-            if (vct != EUPersonalID.EUPID_DOCTYPE) {
-                errorResponse(resp, "invalid_request", "invalid value for 'doctype' parameter")
-                return
+        val result = if (singleProof && credentials.size == 1) {
+            buildJsonObject {
+                put("credential", credentials[0])
             }
-            val result = buildJsonObject {
-                put("credential", createCredentialMdoc(state, authenticationKey).toBase64Url())
+        } else {
+            buildJsonObject {
+                put("credentials", buildJsonArray {
+                    for (credential in credentials) {
+                        add(JsonPrimitive(credential))
+                    }
+                })
             }
-            resp.contentType = "application/json"
-            resp.writer.write(Json.encodeToString(result))
-            return
         }
-        errorResponse(resp, "invalid_request", "invalid value for 'format' parameter")
+        resp.writer.write(Json.encodeToString(result))
     }
 
     private fun createCredentialSdJwt(
@@ -239,4 +303,6 @@ class CredentialServlet : BaseServlet() {
 
         return issuerProvidedAuthenticationData
     }
+
+    private data class KeyAttestationCertificate(val certificate: X509Cert)
 }

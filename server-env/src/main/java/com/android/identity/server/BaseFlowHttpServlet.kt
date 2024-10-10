@@ -90,24 +90,27 @@ abstract class BaseFlowHttpServlet : BaseHttpServlet() {
                 )
             }
             Logger.i(TAG, "$prefix: POST response status 200 (${bytes.size} bytes)")
-            resp.contentType = "application/cbor"
             resp.outputStream.write(bytes.toByteArray())
         } catch (e: UnsupportedOperationException) {
-            Logger.i(TAG, "$prefix: POST response status 404")
+            Logger.e(TAG, "$prefix: POST response status 404", e)
             resp.sendError(404, e.message)
         } catch (e: SimpleCipher.DataTamperedException) {
-            Logger.i(TAG, "$prefix: POST response status 405")
+            Logger.e(TAG, "$prefix: POST response status 405", e)
             resp.sendError(405, "State tampered")
         } catch (e: IllegalStateException) {
-            Logger.i(TAG, "$prefix: POST response status 405")
+            Logger.e(TAG, "$prefix: POST response status 405", e)
             resp.sendError(405, "IllegalStateException")
         } catch (e: Throwable) {
-            Logger.i(TAG, "$prefix: POST response status 500: ${e::class.simpleName}: ${e.message}")
             // NotificationTimeoutError happens frequently, don't need a stack trace for this...
-            if (e !is HttpTransport.TimeoutException) {
-                e.printStackTrace()
+            if (e is HttpTransport.TimeoutException) {
+                Logger.e(TAG, "$prefix: POST response status 500 (TimeoutException)")
+            } else {
+                Logger.e(TAG, "$prefix: POST response status 500", e)
             }
             resp.sendError(500, e.message)
         }
     }
+
+    override val outputFormat: String
+        get() = "application/cbor"
 }
