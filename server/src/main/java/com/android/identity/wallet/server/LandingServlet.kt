@@ -1,6 +1,7 @@
 package com.android.identity.wallet.server
 
 import com.android.identity.flow.handler.FlowNotifications
+import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
@@ -53,8 +54,11 @@ class LandingServlet: BaseHttpServlet() {
                 val record = LandingRecord.fromCbor(recordData.toByteArray())
                 record.resolved = req.queryString ?: ""
                 storage.update("Landing", "", id, ByteString(record.toCbor()))
+                val configuration = environment.getInterface(Configuration::class)!!
+                val baseUrl = configuration.getValue("base_url")
+                val landingUrl = "$baseUrl/${ApplicationSupportState.URL_PREFIX}$id"
                 ApplicationSupportState(record.clientId).emit(environment,
-                    LandingUrlNotification("landing/$id"))
+                    LandingUrlNotification(landingUrl))
                 resp.contentType = "text/html"
                 val resources = environment.getInterface(Resources::class)!!
                 resp.outputStream.write(

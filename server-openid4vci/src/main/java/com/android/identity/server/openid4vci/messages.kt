@@ -12,12 +12,6 @@ import kotlinx.serialization.Serializable
 //------------ JSON-formatted replies from various OpenID4VCI servlets
 
 @Serializable
-data class ErrorMessage(
-    val error: String,
-    @SerialName("error_description") val description: String
-)
-
-@Serializable
 data class ParResponse(
     @SerialName("request_uri") val requestUri: String,
     @SerialName("expires_in") val expiresIn: Int

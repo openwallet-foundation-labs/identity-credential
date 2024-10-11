@@ -20,15 +20,15 @@ import kotlinx.serialization.json.JsonPrimitive
     flowInterface = RequestCredentialsFlow::class
 )
 @CborSerializable
-class FunkeRequestCredentialsState(
+class RequestCredentialsUsingProofOfPossession(
     val issuanceClientId: String,
-    val documentId: String = "",
-    val credentialConfiguration: CredentialConfiguration,
-    val nonce: String,
-    var format: CredentialFormat? = null,
-    var credentialRequests: List<FunkeCredentialRequest>? = null,
-    val credentialIssuerUri:String,
-) {
+    documentId: String,
+    credentialConfiguration: CredentialConfiguration,
+    nonce: String,
+    val credentialIssuerUri: String,
+    format: CredentialFormat? = null,
+    var credentialRequests: List<ProofOfPossessionCredentialRequest>? = null,
+) : AbstractRequestCredentials(documentId, credentialConfiguration, nonce, format) {
     companion object
 
     @FlowMethod
@@ -60,7 +60,7 @@ class FunkeRequestCredentialsState(
                 "iat" to JsonPrimitive(Clock.System.now().epochSeconds),
                 "nonce" to JsonPrimitive(nonce)
             )).toString().toByteArray().toBase64Url()
-            FunkeCredentialRequest(request, format!!, "$header.$body")
+            ProofOfPossessionCredentialRequest(request, format!!, "$header.$body")
         }
         credentialRequests = requests
         return requests.map {

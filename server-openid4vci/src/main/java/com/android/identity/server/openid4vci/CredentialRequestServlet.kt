@@ -5,6 +5,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.flow.handler.InvalidRequestException
 import com.android.identity.flow.server.Storage
 import com.android.identity.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
@@ -31,10 +32,7 @@ class CredentialRequestServlet : BaseServlet() {
         val requestData = req.inputStream.readNBytes(requestLength)
         val params = Json.parseToJsonElement(String(requestData)) as JsonObject
         val code = params["code"]?.jsonPrimitive?.content
-        if (code == null) {
-            errorResponse(resp, "invalid_request", "missing parameter 'code'")
-            return
-        }
+            ?: throw InvalidRequestException("missing parameter 'code'")
         val id = codeToId(OpaqueIdType.PID_READING, code)
         val storage = environment.getInterface(Storage::class)!!
         runBlocking {

@@ -21,7 +21,8 @@ import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.funke.FunkeIssuingAuthorityState
 import com.android.identity.issuance.funke.FunkeProofingState
 import com.android.identity.issuance.funke.FunkeRegistrationState
-import com.android.identity.issuance.funke.FunkeRequestCredentialsState
+import com.android.identity.issuance.funke.RequestCredentialsUsingKeyAttestation
+import com.android.identity.issuance.funke.RequestCredentialsUsingProofOfPossession
 import com.android.identity.issuance.funke.register
 import com.android.identity.issuance.hardcoded.IssuingAuthorityState
 import com.android.identity.issuance.hardcoded.ProofingState
@@ -85,7 +86,8 @@ class WalletServerState(
             FunkeIssuingAuthorityState.register(dispatcher)
             FunkeProofingState.register(dispatcher)
             FunkeRegistrationState.register(dispatcher)
-            FunkeRequestCredentialsState.register(dispatcher)
+            RequestCredentialsUsingProofOfPossession.register(dispatcher)
+            RequestCredentialsUsingKeyAttestation.register(dispatcher)
         }
     }
 
