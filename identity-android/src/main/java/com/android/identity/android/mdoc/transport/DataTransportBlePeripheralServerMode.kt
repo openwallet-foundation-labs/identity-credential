@@ -194,6 +194,8 @@ class DataTransportBlePeripheralServerMode(
                 reportError(error)
             }
         }
+        gattClient!!.clearCache = options.bleClearCache
+        gattClient!!.connect(device)
     }
 
     override fun setEDeviceKeyBytes(encodedEDeviceKeyBytes: ByteArray) {
