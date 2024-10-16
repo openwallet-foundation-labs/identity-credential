@@ -264,7 +264,11 @@ class WalletApplication : Application() {
             this
         )
 
-        readerModel = ReaderModel(applicationContext, documentTypeRepository)
+        readerModel = ReaderModel(
+            applicationContext,
+            documentTypeRepository,
+            settingsModel
+        )
 
         val notificationChannel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,

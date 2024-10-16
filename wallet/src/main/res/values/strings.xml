@@ -145,6 +145,23 @@
     <string name="settings_screen_built_in_issuer_settings">Built-in Issuer Settings</string>
     <string name="settings_screen_cloud_secure_area_title">Cloud Secure Area</string>
     <string name="settings_screen_min_server_title">Minimal Wallet Server</string>
+    <string name="settings_screen_proximity_sharing_button_title">Proximity Sharing Settings</string>
+    <string name="settings_screen_proximity_sharing_button_subtitle">Settings related to in-person presentment</string>
+
+    <string name="settings_proximity_sharing_screen_title">Proximity Sharing Settings</string>
+    <string name="settings_proximity_sharing_screen_device_engagement_settings_title">Device Engagement</string>
+    <string name="settings_proximity_sharing_screen_device_engagement_settings_explanation">Configure whether to use static or negotiated handover when engaging with a mdoc reader over NFC.</string>
+    <string name="settings_proximity_sharing_screen_nfc_static_handover_title">NFC Static Handover</string>
+    <string name="settings_proximity_sharing_screen_nfc_negotiated_handover_title">NFC Negotiated Handover</string>
+
+    <string name="settings_proximity_sharing_screen_device_retrieval_title">Device Retrieval</string>
+    <string name="settings_proximity_sharing_screen_device_retrieval_explanation">When using QR or NFC static handover, these are the device retrieval methods offered to the mdoc reader. When acting as a mdoc reader and using NFC negotiated handover, these are the device retrieval methods offered to the mdoc.</string>
+    <string name="settings_proximity_sharing_screen_device_retrieval_ble_mdoc_central_client_mode_title">BLE mdoc central client mode</string>
+    <string name="settings_proximity_sharing_screen_device_retrieval_ble_mdoc_peripheral_server_mode_title">BLE mdoc peripheral server mode</string>
+
+    <string name="settings_proximity_sharing_screen_options_title">Options</string>
+    <string name="settings_proximity_sharing_screen_options_explanation">Configure options which affect device retrieval.</string>
+    <string name="settings_proximity_sharing_screen_options_ble_l2cap_enabled_title">BLE L2CAP support</string>
 
     <!-- Set Wallet Server URL dialog -->
     <string name="settings_screen_set_wallet_server_url_dialog_title">Wallet Server</string>
