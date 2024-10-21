@@ -31,6 +31,7 @@ import kotlinx.datetime.Clock
 class ReaderModel(
     val context: Context,
     val documentTypeRepository: DocumentTypeRepository,
+    val settingsModel: SettingsModel
 ) {
     companion object {
         private const val TAG = "ReaderModel"
@@ -136,15 +137,8 @@ class ReaderModel(
         trustManagerToUse = trustManager
         phase.value = Phase.WAITING_FOR_ENGAGEMENT
 
-        val connectionMethods = mutableListOf<ConnectionMethod>()
-        val bleUuid = UUID.randomUUID()
-        connectionMethods.add(
-            ConnectionMethodBle(
-                false,
-                true,
-                null,
-                bleUuid)
-        )
+        val (connectionMethods, dataTransportOptions) =
+            settingsModel.createConnectionMethodsAndOptions()
 
         val listener = object : VerificationHelper.Listener {
             override fun onReaderEngagementReady(readerEngagement: ByteArray) {
@@ -197,7 +191,7 @@ class ReaderModel(
         }
 
         verificationHelper = VerificationHelper.Builder(context, listener, context.mainExecutor)
-            .setDataTransportOptions(DataTransportOptions.Builder().build())
+            .setDataTransportOptions(dataTransportOptions)
             .setNegotiatedHandoverConnectionMethods(connectionMethods)
             .build()
         activityForNfcReaderMode = activity

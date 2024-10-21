@@ -9,14 +9,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
-import com.android.identity.util.UUID
 import kotlinx.coroutines.launch
 
 class QrEngagementViewModel(val context: Application) : AndroidViewModel(context)  {
@@ -75,17 +71,9 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
                     }
                 }
 
-                val options = DataTransportOptions.Builder().build()
-                val connectionMethods = mutableListOf<ConnectionMethod>()
-                val bleUuid = UUID.randomUUID()
-                connectionMethods.add(
-                    ConnectionMethodBle(
-                        false,
-                        true,
-                        null,
-                        bleUuid
-                    )
-                )
+                val walletApplication = context as WalletApplication
+                val (connectionMethods, options) = walletApplication.settingsModel
+                    .createConnectionMethodsAndOptions()
                 qrEngagementHelper = QrEngagementHelper.Builder(
                     context,
                     eDeviceKey!!.publicKey,

@@ -176,26 +176,35 @@ fun ColumnWithPortrait(
 fun SettingToggle(
     modifier: Modifier = Modifier,
     title: String,
-    subtitleOn: String,
-    subtitleOff: String,
-    isChecked: Boolean,
+    subtitleOn: String? = null,
+    subtitleOff: String? = null,
+    isChecked: Boolean = false,
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            val subtitle = if (isChecked) subtitleOn else subtitleOff
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (subtitleOn != null && subtitleOff != null) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                val subtitle = if (isChecked) subtitleOn else subtitleOff
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Normal,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
         Switch(
             checked = isChecked,
