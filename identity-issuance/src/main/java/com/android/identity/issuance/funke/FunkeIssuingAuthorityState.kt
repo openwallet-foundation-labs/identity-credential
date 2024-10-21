@@ -6,6 +6,7 @@ import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -13,7 +14,6 @@ import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
@@ -52,7 +52,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
@@ -102,9 +104,16 @@ class FunkeIssuingAuthorityState(
                         mdocConfiguration = null,
                         sdJwtVcDocumentConfiguration = null
                     ),
-                    numberOfCredentialsToRequest = 1,
+                    // Without key attestation user has to do biometrics approval for every
+                    // credential being issued, so request only one. With key attestation we can
+                    // use batch issuance (useful for unlinkability).
+                    numberOfCredentialsToRequest =
+                        if (FunkeUtil.USE_KEY_ATTESTATION) { 3 } else { 1 },
+                    // With key attestation credentials can be requested in the background as they
+                    // are used up, so direct wallet to avoid reusing them (for unlinkability).
+                    maxUsesPerCredentials =
+                        if (FunkeUtil.USE_KEY_ATTESTATION) { 1 } else { Int.MAX_VALUE },
                     minCredentialValidityMillis = 30 * 24 * 3600L,
-                    maxUsesPerCredentials = Int.MAX_VALUE,
                 )
             }
         }
@@ -122,15 +131,7 @@ class FunkeIssuingAuthorityState(
     @FlowMethod
     suspend fun register(env: FlowEnvironment): FunkeRegistrationState {
         val documentId = createIssuerDocument(env,
-            FunkeIssuerDocument(
-                RegistrationResponse(false),
-                DocumentCondition.PROOFING_REQUIRED,
-                null,
-                null,
-                null,
-                mutableListOf(),
-                mutableListOf()
-            )
+            FunkeIssuerDocument(RegistrationResponse(false))
         )
         return FunkeRegistrationState(documentId)
     }
@@ -140,15 +141,7 @@ class FunkeIssuingAuthorityState(
         updateIssuerDocument(
             env,
             registrationState.documentId,
-            FunkeIssuerDocument(
-                registrationState.response!!,
-                DocumentCondition.PROOFING_REQUIRED,
-                null, // no evidence yet
-                null,
-                null,  // no initial document configuration
-                mutableListOf(),
-                mutableListOf()           // cpoRequests - initially empty
-            ))
+            FunkeIssuerDocument(registrationState.response!!))
     }
 
     @FlowMethod
@@ -239,7 +232,7 @@ class FunkeIssuingAuthorityState(
     suspend fun requestCredentials(
         env: FlowEnvironment,
         documentId: String
-    ): FunkeRequestCredentialsState {
+    ): AbstractRequestCredentials {
         val document = loadIssuerDocument(env, documentId)
 
         refreshAccessIfNeeded(env, documentId, document)
@@ -276,54 +269,33 @@ class FunkeIssuingAuthorityState(
                 )
             )
         }
-        return FunkeRequestCredentialsState(
-            issuanceClientId,
-            documentId,
-            configuration,
-            cNonce,
-            credentialIssuerUri = credentialIssuerUri
-        )
+        return if (FunkeUtil.USE_KEY_ATTESTATION) {
+            RequestCredentialsUsingKeyAttestation(documentId, configuration, cNonce)
+        } else {
+            RequestCredentialsUsingProofOfPossession(
+                issuanceClientId,
+                documentId,
+                configuration,
+                cNonce,
+                credentialIssuerUri = credentialIssuerUri
+            )
+        }
     }
 
     @FlowJoin
-    suspend fun completeRequestCredentials(env: FlowEnvironment, state: FunkeRequestCredentialsState) {
+    suspend fun completeRequestCredentials(env: FlowEnvironment, state: AbstractRequestCredentials) {
+        // Create appropriate request to OpenID4VCI issuer to issue credential(s)
+        val (request, publicKeys) = when (state) {
+            is RequestCredentialsUsingProofOfPossession ->
+                createRequestUsingProofOfPossession(state)
+            is RequestCredentialsUsingKeyAttestation ->
+                createRequestUsingKeyAttestation(env, state)
+            else -> throw IllegalStateException("Unsupported RequestCredential type")
+        }
+
+        // Send the request
         val document = loadIssuerDocument(env, state.documentId)
-
-        val proofs = state.credentialRequests!!.map {
-            JsonPrimitive(it.proofOfPossessionJwtHeaderAndBody + "." + it.proofOfPossessionJwtSignature)
-        }
-
-        val request = mutableMapOf<String, JsonElement>(
-            if (proofs.size == 1) {
-                "proof" to JsonObject(
-                    mapOf(
-                        "jwt" to proofs[0],
-                        "proof_type" to JsonPrimitive("jwt")
-                    )
-                )
-            } else {
-                "proofs" to JsonObject(
-                    mapOf(
-                        "jwt" to JsonArray(proofs)
-                    )
-                )
-            }
-        )
-
-        val format = state.format
-        when (format) {
-            CredentialFormat.SD_JWT_VC -> {
-                request["format"] = JsonPrimitive("vc+sd-jwt")
-                request["vct"] = JsonPrimitive(FunkeUtil.SD_JWT_VCT)
-            }
-            CredentialFormat.MDOC_MSO -> {
-                request["format"] = JsonPrimitive("mso_mdoc")
-                request["doctype"] = JsonPrimitive(FunkeUtil.EU_PID_MDOC_DOCTYPE)
-            }
-            null -> throw IllegalStateException("Credential format was not specified")
-        }
-
-        val credentialUrl = "${credentialIssuerUri}/credential"
+        val credentialUrl = "$credentialIssuerUri/credential"
         val access = document.access!!
         val dpop = FunkeUtil.generateDPoP(
             env,
@@ -332,6 +304,8 @@ class FunkeIssuingAuthorityState(
             access.dpopNonce,
             access.accessToken
         )
+        Logger.e(TAG,"Credential request: $request")
+
         val httpClient = env.getInterface(HttpClient::class)!!
         val credentialResponse = httpClient.post(credentialUrl) {
             headers {
@@ -339,7 +313,7 @@ class FunkeIssuingAuthorityState(
                 append("DPoP", dpop)
                 append("Content-Type", "application/json")
             }
-            setBody(JsonObject(request).toString())
+            setBody(request.toString())
         }
         access.cNonce = null  // used up
 
@@ -349,10 +323,7 @@ class FunkeIssuingAuthorityState(
 
         if (credentialResponse.status != HttpStatusCode.OK) {
             val errResponseText = String(credentialResponse.readBytes())
-            Logger.e(
-                TAG,
-                "Credential request error: ${credentialResponse.status} $errResponseText"
-            )
+            Logger.e(TAG,"Credential request error: ${credentialResponse.status} $errResponseText")
 
             // Currently in Funke case this gets document in permanent bad state, notification
             // is not needed as an exception will generate notification on the client side.
@@ -365,19 +336,19 @@ class FunkeIssuingAuthorityState(
         val responseText = String(credentialResponse.readBytes())
 
         val response = Json.parseToJsonElement(responseText) as JsonObject
-        val credentials = if (proofs.size == 1) {
+        val credentials = if (response.contains("credential")) {
             JsonArray(listOf(response["credential"]!!))
         } else {
             response["credentials"] as JsonArray
         }
-        check(credentials.size == state.credentialRequests!!.size)
-        document.credentials.addAll(credentials.zip(state.credentialRequests!!).map {
+        check(credentials.size == publicKeys.size)
+        document.credentials.addAll(credentials.zip(publicKeys).map {
             val credential = it.first.jsonPrimitive.content
-            val publicKey = it.second.request.secureAreaBoundKeyAttestation.publicKey
+            val publicKey = it.second
             val now = Clock.System.now()
-            // TODO: where do we get this in SD-JWT world?
+            // TODO: where do we get this from? Get the real data from the credential
             val expiration = Clock.System.now() + 14.days
-            when (format) {
+            when (state.format!!) {
                 CredentialFormat.SD_JWT_VC ->
                     CredentialData(publicKey, now, expiration, CredentialFormat.SD_JWT_VC, credential.toByteArray())
                 CredentialFormat.MDOC_MSO ->
@@ -385,6 +356,61 @@ class FunkeIssuingAuthorityState(
             }
         })
         updateIssuerDocument(env, state.documentId, document, true)
+    }
+
+    private fun createRequestUsingProofOfPossession(
+        state: RequestCredentialsUsingProofOfPossession
+    ): Pair<JsonObject, List<EcPublicKey>> {
+        val proofs = state.credentialRequests!!.map {
+            JsonPrimitive(it.proofOfPossessionJwtHeaderAndBody + "." + it.proofOfPossessionJwtSignature)
+        }
+        val publicKeys = state.credentialRequests!!.map {
+            it.request.secureAreaBoundKeyAttestation.publicKey
+        }
+
+        val request = buildJsonObject {
+            if (proofs.size == 1) {
+                put("proof", buildJsonObject {
+                    put("jwt", proofs[0])
+                    put("proof_type", JsonPrimitive("jwt"))
+                })
+            } else {
+                put("proofs", buildJsonObject {
+                    put("jwt", JsonArray(proofs))
+                })
+            }
+            putFormat(state.format)
+        }
+
+        return Pair(request, publicKeys)
+    }
+
+    private suspend fun createRequestUsingKeyAttestation(
+        env: FlowEnvironment,
+        state: RequestCredentialsUsingKeyAttestation
+    ): Pair<JsonObject, List<EcPublicKey>> {
+        // NB: applicationSupport will only be non-null in the environment when running this code
+        // locally in the Android Wallet app.
+        val applicationSupport = env.getInterface(ApplicationSupport::class)
+
+        val platformAttestations =
+            state.credentialRequests!!.map { it.secureAreaBoundKeyAttestation }
+
+        val keyAttestation =
+            applicationSupport?.createJwtKeyAttestation(platformAttestations, state.nonce)
+                ?: ApplicationSupportState(clientId).createJwtKeyAttestation(
+                    env, platformAttestations, state.nonce
+                )
+
+        val request = buildJsonObject {
+            put("proof", buildJsonObject {
+                put("attestation", JsonPrimitive(keyAttestation))
+                put("proof_type", JsonPrimitive("attestation"))
+            })
+            putFormat(state.format)
+        }
+
+        return Pair(request, platformAttestations.map { it.publicKey })
     }
 
     @FlowMethod
@@ -477,9 +503,7 @@ class FunkeIssuingAuthorityState(
         } else {
             landingUrl = applicationSupport?.createLandingUrl() ?:
                 ApplicationSupportState(clientId).createLandingUrl(env)
-            val configuration = env.getInterface(Configuration::class)!!
-            val baseUrl = configuration.getValue("base_url")
-            parRedirectUrl = "$baseUrl/$landingUrl"
+            parRedirectUrl = landingUrl
         }
 
         val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
@@ -522,7 +546,7 @@ class FunkeIssuingAuthorityState(
             Logger.e(TAG, "PAR response error")
             throw IllegalStateException("PAR response syntax error")
         }
-        Logger.i(TAG, "Request uri: $requestUri")
+        Logger.i(TAG, "Request uri: ${requestUri.content}")
         return ProofingInfo(
             authorizeUrl = "${credentialIssuerUri}/authorize?" + FormUrlEncoder {
                 add("client_id", issuanceClientId)
@@ -633,5 +657,19 @@ class FunkeIssuingAuthorityState(
             access.refreshToken = refreshToken
         }
         updateIssuerDocument(env, documentId, document, false)
+    }
+}
+
+private fun JsonObjectBuilder.putFormat(format: CredentialFormat?) {
+    when (format) {
+        CredentialFormat.SD_JWT_VC -> {
+            put("format", JsonPrimitive("vc+sd-jwt"))
+            put("vct", JsonPrimitive(FunkeUtil.SD_JWT_VCT))
+        }
+        CredentialFormat.MDOC_MSO -> {
+            put("format", JsonPrimitive("mso_mdoc"))
+            put("doctype", JsonPrimitive(FunkeUtil.EU_PID_MDOC_DOCTYPE))
+        }
+        null -> throw IllegalStateException("Credential format was not specified")
     }
 }

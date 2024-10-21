@@ -510,7 +510,10 @@ class CborSymbolProcessor(
                         return@forEach
                     }
                     val name = varName(fieldName)
-                    constructorParameters.add(name)
+                    // Always use field names (and require constructor to use them as parameter
+                    // names!), because the order of parameters in the constructor sometimes have
+                    // to differ from the order of the fields (esp. when using inheritance).
+                    constructorParameters.add("$fieldName = $name")
                     if (findAnnotation(property, ANNOTATION_MERGE) != null) {
                         if (type.declaration.qualifiedName!!.asString() == "kotlin.collections.Map") {
                             line("val $name = mutableMapOf<${typeArguments(this, type)}>()")
@@ -533,19 +536,13 @@ class CborSymbolProcessor(
                         }
                     }
                 }
-                line {
-                    append("return $baseName(")
-                    var first = true
+                line("return $baseName(")
+                withIndent {
                     constructorParameters.forEach { parameter ->
-                        if (first) {
-                            first = false
-                        } else {
-                            append(", ")
-                        }
-                        append(parameter)
+                        line("$parameter,")
                     }
-                    append(")")
                 }
+                line(")")
             }
 
             if (hadMergedMap) {
