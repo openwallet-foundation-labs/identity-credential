@@ -343,4 +343,27 @@
         <url-pattern>/openid4vci/credential_request</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <display-name>WellKnownOpenidCredentialIssuanceServlet</display-name>
+        <servlet-name>WellKnownOpenidCredentialIssuanceServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.WellKnownOpenidCredentialIssuerServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>WellKnownOpenidCredentialIssuanceServlet</servlet-name>
+        <url-pattern>/openid4vci/.well-known/openid-credential-issuer</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <display-name>WellKnownOauthAuthorizationServlet</display-name>
+        <servlet-name>WellKnownOauthAuthorizationServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.WellKnownOauthAuthorizationServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>WellKnownOauthAuthorizationServlet</servlet-name>
+        <url-pattern>/openid4vci/.well-known/oauth-authorization-server</url-pattern>
+    </servlet-mapping>
 </web-app>

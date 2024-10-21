@@ -25,18 +25,6 @@ import kotlin.random.Random
 internal object FunkeUtil {
     const val TAG = "FunkeUtil"
 
-    const val EU_PID_MDOC_DOCTYPE = "eu.europa.ec.eudi.pid.1"
-
-    // Was changed recently, it seems
-    // TODO: read this from openid4vci server metadata (which we are yet to read).
-    const val SD_JWT_VCT = "https://example.bmi.bund.de/credential/pid/1.0"
-
-    const val USE_AUSWEIS_SDK = true
-
-    // Determines if key attestation or of proof of possession should be used.
-    // TODO: decide this based on the openid4vci server metadata (which we are yet to read).
-    const val USE_KEY_ATTESTATION = false
-
     private val keyCreationMutex = Mutex()
 
     suspend fun communicationKey(env: FlowEnvironment, clientId: String): KeyInfo {

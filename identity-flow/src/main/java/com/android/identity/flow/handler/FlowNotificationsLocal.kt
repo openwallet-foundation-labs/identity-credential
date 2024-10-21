@@ -35,10 +35,17 @@ class FlowNotificationsLocal(
         // TODO: it is not quite clear if we should delay notifications. It might make
         // sense to actually remove this and ensure that everything works as expected,
         // as the need for the delay is an indication of a race condition somewhere
+        // Update: it seems that we start listening for notifications a bit later than
+        // they are emitted.
         CoroutineScope(Dispatchers.IO).launch {
             delay(200.milliseconds)
-            Logger.i(TAG, "Notification emitted for $flowName")
-            lock.withLock { flowMap[ref] }?.emit(notification)
+            val flow = lock.withLock { flowMap[ref] };
+            if (flow == null) {
+                Logger.i(TAG, "Notification has been dropped for $flowName [$notification]}")
+            } else {
+                Logger.i(TAG, "Notification is being emitted for $flowName [$notification]")
+                flow.emit(notification)
+            }
         }
     }
 
@@ -66,7 +73,6 @@ class FlowNotificationsLocal(
         val deserializer: (DataItem) -> NotificationT
     ) {
         suspend fun emit(dataItem: DataItem) {
-            Logger.i(TAG, "Dispatch notification to the listener")
             flow.emit(deserializer(dataItem))
         }
     }

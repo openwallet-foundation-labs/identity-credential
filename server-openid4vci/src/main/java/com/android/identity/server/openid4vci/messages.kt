@@ -32,6 +32,7 @@ data class TokenResponse(
 @CborSerializable
 data class IssuanceState(
     val clientId: String,
+    val scope: String,
     val dpopKey: EcPublicKey,
     var redirectUri: String?,
     var codeChallenge: ByteString?,

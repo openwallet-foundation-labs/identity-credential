@@ -21,6 +21,7 @@ import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.funke.FunkeIssuingAuthorityState
 import com.android.identity.issuance.funke.FunkeProofingState
 import com.android.identity.issuance.funke.FunkeRegistrationState
+import com.android.identity.issuance.funke.Openid4VciIssuerMetadata
 import com.android.identity.issuance.funke.RequestCredentialsUsingKeyAttestation
 import com.android.identity.issuance.funke.RequestCredentialsUsingProofOfPossession
 import com.android.identity.issuance.funke.register
@@ -30,6 +31,7 @@ import com.android.identity.issuance.hardcoded.RegistrationState
 import com.android.identity.issuance.hardcoded.RequestCredentialsState
 import com.android.identity.issuance.hardcoded.register
 import com.android.identity.issuance.register
+import com.android.identity.util.Logger
 import kotlinx.io.bytestring.buildByteString
 import kotlin.random.Random
 
@@ -115,7 +117,7 @@ class WalletServerState(
     }
 
     @FlowMethod
-    fun getIssuingAuthorityConfigurations(env: FlowEnvironment): List<IssuingAuthorityConfiguration> {
+    suspend fun getIssuingAuthorityConfigurations(env: FlowEnvironment): List<IssuingAuthorityConfiguration> {
         check(clientId.isNotEmpty())
         val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
         val issuingAuthorityList = settings.getStringList("issuingAuthorityList")
@@ -126,57 +128,44 @@ class WalletServerState(
                 IssuingAuthorityState.getConfiguration(env, idElem)
             }
         }
-        return fromConfig + listOf(
-            FunkeIssuingAuthorityState.getConfiguration(env, CredentialFormat.SD_JWT_VC),
-            FunkeIssuingAuthorityState.getConfiguration(env, CredentialFormat.MDOC_MSO)
-        )
-    }
-
-    @FlowMethod
-    fun getIssuingAuthority(env: FlowEnvironment, identifier: String): AbstractIssuingAuthorityState {
-        check(clientId.isNotEmpty())
-        return when (identifier) {
-            "funkeSdJwtVc" -> FunkeIssuingAuthorityState(
-                clientId = clientId,
-                credentialFormat = CredentialFormat.SD_JWT_VC,
-                credentialIssuerUri = FUNKE_BASE_URL
-            )
-
-            "funkeMdocMso" -> FunkeIssuingAuthorityState(
-                clientId = clientId,
-                credentialFormat = CredentialFormat.MDOC_MSO,
-                credentialIssuerUri = FUNKE_BASE_URL
-            )
-
-            else -> IssuingAuthorityState(clientId, identifier)
+        try {
+            // Add everything that Funke server exposes
+            val funkeMetadata = Openid4VciIssuerMetadata.get(env, FUNKE_BASE_URL)
+            val fromFunkeServer = funkeMetadata.credentialConfigurations.keys.map { id ->
+                FunkeIssuingAuthorityState.getConfiguration(env, FUNKE_BASE_URL, id)
+            }
+            return fromConfig + fromFunkeServer
+        } catch (err: Exception) {
+            Logger.e(TAG, "Could not reach server $FUNKE_BASE_URL", err)
+            return fromConfig
         }
     }
 
-    /**
-     * Returns the Issuing Authority State [AbstractIssuingAuthorityState] created with a specific
-     * issuing authority Uri for mdoc or sd-jwt credential, such as from OID4VCI credential offer
-     * deep link / Qr code.
-     */
     @FlowMethod
-    fun createIssuingAuthorityByUri(
+    suspend fun getIssuingAuthority(
         env: FlowEnvironment,
-        credentialIssuerUri: String,
-        credentialConfigurationId: String
+        identifier: String
     ): AbstractIssuingAuthorityState {
-        return when (credentialConfigurationId) {
-            "pid-sd-jwt" -> FunkeIssuingAuthorityState(
+        check(clientId.isNotEmpty())
+        if (identifier.startsWith("openid4vci#")) {
+            val parts = identifier.split("#")
+            if (parts.size != 3) {
+                throw IllegalStateException("Invalid openid4vci id")
+            }
+            val credentialIssuerUri = parts[1]
+            val credentialConfigurationId = parts[2]
+            // NB: applicationSupport will only be non-null when running this code locally in the
+            // Android Wallet app.
+            val applicationSupport = env.getInterface(ApplicationSupport::class)
+            val issuanceClientId = applicationSupport?.getClientAssertionId(credentialIssuerUri)
+                ?: ApplicationSupportState(clientId).getClientAssertionId(env, credentialIssuerUri)
+            return FunkeIssuingAuthorityState(
                 clientId = clientId,
-                credentialFormat = CredentialFormat.SD_JWT_VC,
-                credentialIssuerUri = credentialIssuerUri
+                credentialIssuerUri = credentialIssuerUri,
+                credentialConfigurationId = credentialConfigurationId,
+                issuanceClientId = issuanceClientId
             )
-
-            "pid-mso-mdoc" -> FunkeIssuingAuthorityState(
-                clientId = clientId,
-                credentialFormat = CredentialFormat.MDOC_MSO,
-                credentialIssuerUri = credentialIssuerUri
-            )
-
-            else -> IssuingAuthorityState(clientId, credentialConfigurationId)
         }
+        return IssuingAuthorityState(clientId, identifier)
     }
 }

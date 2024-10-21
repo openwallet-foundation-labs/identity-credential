@@ -49,7 +49,7 @@ class ProofingState(
     }
 
     @FlowMethod
-    fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
+    suspend fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
         if (done) {
             return listOf()
         }
@@ -128,7 +128,7 @@ class ProofingState(
         }
     }
 
-    private fun getGraph(env: FlowEnvironment): ProofingGraph {
+    private suspend fun getGraph(env: FlowEnvironment): ProofingGraph {
         val storage = env.getInterface(Storage::class)!!
         val walletApplicationCapabilities = runBlocking {
             storage.get(

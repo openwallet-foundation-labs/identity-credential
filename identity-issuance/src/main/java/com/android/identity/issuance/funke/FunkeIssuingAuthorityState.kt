@@ -10,7 +10,9 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
@@ -41,21 +43,20 @@ import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
 import io.ktor.client.HttpClient
+import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -66,40 +67,96 @@ import kotlin.time.Duration.Companion.seconds
 )
 @CborSerializable
 class FunkeIssuingAuthorityState(
+    // NB: since this object is used to emit notifications, it cannot change, as its state
+    // serves as notification key. So it generally should not have var members, only val.
     val clientId: String,
-    val credentialFormat: CredentialFormat,
-    var issuanceClientId: String = "", // client id in OpenID4VCI protocol
     val credentialIssuerUri: String, // credential offer issuing authority path
+    val credentialConfigurationId: String,
+    val issuanceClientId: String // client id in OpenID4VCI protocol
 ) : AbstractIssuingAuthorityState() {
+
+    init {
+        // It should not be possible, but double-check.
+        check(credentialIssuerUri.indexOf('#') < 0)
+        check(credentialConfigurationId.indexOf('#') < 0)
+    }
+
     companion object {
         private const val TAG = "FunkeIssuingAuthorityState"
 
         private const val DOCUMENT_TABLE = "FunkeIssuerDocument"
 
-        fun getConfiguration(env: FlowEnvironment, credentialFormat: CredentialFormat): IssuingAuthorityConfiguration {
-            val id = when (credentialFormat) {
-                CredentialFormat.SD_JWT_VC -> "funkeSdJwtVc"
-                CredentialFormat.MDOC_MSO -> "funkeMdocMso"
-            }
-            val variant = when (credentialFormat) {
-                CredentialFormat.SD_JWT_VC -> "SD-JWT"
-                CredentialFormat.MDOC_MSO -> "mDoc"
-            }
-            return env.cache(IssuingAuthorityConfiguration::class, id) { configuration, resources ->
-                val logoPath = "funke/logo.png"
-                val logo = resources.getRawResource(logoPath)!!
-                val artPath = "funke/card_art_funke_generic.png"
-                val art = resources.getRawResource(artPath)!!
+        suspend fun getConfiguration(
+            env: FlowEnvironment,
+            issuerUrl: String,
+            credentialConfigurationId: String
+        ): IssuingAuthorityConfiguration {
+            val id = "openid4vci#$issuerUrl#$credentialConfigurationId"
+            return env.cache(IssuingAuthorityConfiguration::class, id) { _, resources ->
+                val metadata = Openid4VciIssuerMetadata.get(env, issuerUrl)
+                val config = metadata.credentialConfigurations[credentialConfigurationId]
+                    ?: throw IllegalArgumentException("Unknown configuration '$credentialConfigurationId' at '$issuerUrl'")
+                if (!config.isSupported) {
+                    throw IllegalArgumentException("Unsupported configuration '$credentialConfigurationId' at '$issuerUrl'")
+                }
+                val httpClient = env.getInterface(HttpClient::class)!!
+                val display = if (metadata.display.isEmpty()) null else metadata.display[0]
+                val configDisplay = if (config.display.isEmpty()) null else config.display[0]
+                var logo: ByteArray? = null
+                if (display?.logoUrl != null) {
+                    val logoRequest = httpClient.get(display.logoUrl) {}
+                    if (logoRequest.status == HttpStatusCode.OK &&
+                        logoRequest.contentType()?.contentType == "image") {
+                        logo = logoRequest.readBytes()
+                    } else {
+                        Logger.e(TAG, "Could not fetch logo from '${display.logoUrl}")
+                    }
+                }
+                if (logo == null) {
+                    val logoPath = "funke/logo.png"
+                    logo = resources.getRawResource(logoPath)!!.toByteArray()
+                }
+
+                val docType = documentTypeRepository.documentTypes.firstOrNull { documentType ->
+                    return@firstOrNull when (config.format) {
+                        is Openid4VciFormatMdoc ->
+                            documentType.mdocDocumentType?.docType == config.format.docType
+                        is Openid4VciFormatSdJwt ->
+                            documentType.vcDocumentType?.type == config.format.vct
+                        null -> false
+                    }
+                }
+
+                val documentType = docType?.displayName ?: "Generic EAA"
+                val documentDescription = configDisplay?.text ?: documentType
+                val issuingAuthorityDescription = "$documentDescription (${config.format?.id})"
+
+                var cardArt: ByteArray? = null
+                if (configDisplay?.logoUrl != null) {
+                    val artRequest = httpClient.get(configDisplay.logoUrl) {}
+                    if (artRequest.status == HttpStatusCode.OK &&
+                        artRequest.contentType()?.contentType == "image") {
+                        cardArt = artRequest.readBytes()
+                    } else {
+                        Logger.e(TAG,
+                            "Could not fetch credential image from '${configDisplay.logoUrl}")
+                    }
+                }
+                if (cardArt == null) {
+                    val artPath = "funke/card_art_funke_generic.png"
+                    cardArt = resources.getRawResource(artPath)!!.toByteArray()
+                }
                 val requireUserAuthenticationToViewDocument = false
+                val keyAttestation = config.proofType is Openid4VciProofTypeKeyAttestation
                 IssuingAuthorityConfiguration(
                     identifier = id,
-                    issuingAuthorityName = "SPRIND Funke EUDI Wallet Prototype PID Issuer",
-                    issuingAuthorityLogo = logo.toByteArray(),
-                    issuingAuthorityDescription = "Personal ID - $variant",
+                    issuingAuthorityName = display?.text ?: issuerUrl,
+                    issuingAuthorityLogo = logo,
+                    issuingAuthorityDescription = issuingAuthorityDescription,
                     pendingDocumentInformation = DocumentConfiguration(
-                        displayName = "Pending",
-                        typeDisplayName = "EU Personal ID",
-                        cardArt = art.toByteArray(),
+                        displayName = documentDescription,
+                        typeDisplayName = documentType,
+                        cardArt = cardArt,
                         requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
                         mdocConfiguration = null,
                         sdJwtVcDocumentConfiguration = null
@@ -108,11 +165,11 @@ class FunkeIssuingAuthorityState(
                     // credential being issued, so request only one. With key attestation we can
                     // use batch issuance (useful for unlinkability).
                     numberOfCredentialsToRequest =
-                        if (FunkeUtil.USE_KEY_ATTESTATION) { 3 } else { 1 },
+                        if (keyAttestation) { 3 } else { 1 },
                     // With key attestation credentials can be requested in the background as they
                     // are used up, so direct wallet to avoid reusing them (for unlinkability).
                     maxUsesPerCredentials =
-                        if (FunkeUtil.USE_KEY_ATTESTATION) { 1 } else { Int.MAX_VALUE },
+                        if (keyAttestation) { 1 } else { Int.MAX_VALUE },
                     minCredentialValidityMillis = 30 * 24 * 3600L,
                 )
             }
@@ -120,12 +177,14 @@ class FunkeIssuingAuthorityState(
 
         val documentTypeRepository = DocumentTypeRepository().apply {
             addDocumentType(EUPersonalID.getDocumentType())
+            addDocumentType(DrivingLicense.getDocumentType())
+            addDocumentType(PhotoID.getDocumentType())
         }
     }
 
     @FlowMethod
-    fun getConfiguration(env: FlowEnvironment): IssuingAuthorityConfiguration {
-        return getConfiguration(env, credentialFormat)
+    suspend fun getConfiguration(env: FlowEnvironment): IssuingAuthorityConfiguration {
+        return getConfiguration(env, credentialIssuerUri, credentialConfigurationId)
     }
 
     @FlowMethod
@@ -185,6 +244,8 @@ class FunkeIssuingAuthorityState(
     @FlowMethod
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
         val proofingInfo = performPushedAuthorizationRequest(env)
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val authorizationMetadata = metadata.authorizationServers[0]
         val storage = env.getInterface(Storage::class)!!
         val applicationCapabilities = storage.get(
             "WalletApplicationCapabilities",
@@ -199,7 +260,10 @@ class FunkeIssuingAuthorityState(
             documentId = documentId,
             proofingInfo = proofingInfo,
             applicationCapabilities = applicationCapabilities,
-            credentialIssuerUri = credentialIssuerUri
+            tokenUri = authorizationMetadata.tokenEndpoint,
+            useGermanEId = authorizationMetadata.useGermanEId,
+            // Don't show TOS when using browser API
+            tosAcknowleged = !authorizationMetadata.useGermanEId
         )
     }
 
@@ -221,8 +285,16 @@ class FunkeIssuingAuthorityState(
         check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
         issuerDocument.state = DocumentCondition.READY
         if (issuerDocument.documentConfiguration == null) {
-            val isCloudSecureArea = issuerDocument.secureAreaIdentifier!!.startsWith("CloudSecureArea?")
-            issuerDocument.documentConfiguration = generateDocumentConfiguration(env, isCloudSecureArea)
+            val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+            if (metadata.authorizationServers[0].useGermanEId) {
+                val isCloudSecureArea =
+                    issuerDocument.secureAreaIdentifier!!.startsWith("CloudSecureArea?")
+                issuerDocument.documentConfiguration =
+                    generateFunkeDocumentConfiguration(env, isCloudSecureArea)
+            } else {
+                issuerDocument.documentConfiguration =
+                    generateGenericDocumentConfiguration(env)
+            }
         }
         updateIssuerDocument(env, documentId, issuerDocument)
         return issuerDocument.documentConfiguration!!
@@ -234,6 +306,8 @@ class FunkeIssuingAuthorityState(
         documentId: String
     ): AbstractRequestCredentials {
         val document = loadIssuerDocument(env, documentId)
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
 
         refreshAccessIfNeeded(env, documentId, document)
 
@@ -269,7 +343,7 @@ class FunkeIssuingAuthorityState(
                 )
             )
         }
-        return if (FunkeUtil.USE_KEY_ATTESTATION) {
+        return if (credentialConfiguration.proofType is Openid4VciProofTypeKeyAttestation) {
             RequestCredentialsUsingKeyAttestation(documentId, configuration, cNonce)
         } else {
             RequestCredentialsUsingProofOfPossession(
@@ -285,29 +359,31 @@ class FunkeIssuingAuthorityState(
     @FlowJoin
     suspend fun completeRequestCredentials(env: FlowEnvironment, state: AbstractRequestCredentials) {
         // Create appropriate request to OpenID4VCI issuer to issue credential(s)
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
+
         val (request, publicKeys) = when (state) {
             is RequestCredentialsUsingProofOfPossession ->
-                createRequestUsingProofOfPossession(state)
+                createRequestUsingProofOfPossession(state, credentialConfiguration)
             is RequestCredentialsUsingKeyAttestation ->
-                createRequestUsingKeyAttestation(env, state)
+                createRequestUsingKeyAttestation(env, state, credentialConfiguration)
             else -> throw IllegalStateException("Unsupported RequestCredential type")
         }
 
         // Send the request
         val document = loadIssuerDocument(env, state.documentId)
-        val credentialUrl = "$credentialIssuerUri/credential"
         val access = document.access!!
         val dpop = FunkeUtil.generateDPoP(
             env,
             clientId,
-            credentialUrl,
+            metadata.credentialEndpoint,
             access.dpopNonce,
             access.accessToken
         )
         Logger.e(TAG,"Credential request: $request")
 
         val httpClient = env.getInterface(HttpClient::class)!!
-        val credentialResponse = httpClient.post(credentialUrl) {
+        val credentialResponse = httpClient.post(metadata.credentialEndpoint) {
             headers {
                 append("Authorization", "DPoP ${access.accessToken}")
                 append("DPoP", dpop)
@@ -348,18 +424,20 @@ class FunkeIssuingAuthorityState(
             val now = Clock.System.now()
             // TODO: where do we get this from? Get the real data from the credential
             val expiration = Clock.System.now() + 14.days
-            when (state.format!!) {
-                CredentialFormat.SD_JWT_VC ->
+            when (credentialConfiguration.format) {
+                is Openid4VciFormatSdJwt ->
                     CredentialData(publicKey, now, expiration, CredentialFormat.SD_JWT_VC, credential.toByteArray())
-                CredentialFormat.MDOC_MSO ->
+                is Openid4VciFormatMdoc ->
                     CredentialData(publicKey, now, expiration, CredentialFormat.MDOC_MSO, credential.fromBase64Url())
+                null -> throw IllegalStateException("Unexpected credential format")
             }
         })
         updateIssuerDocument(env, state.documentId, document, true)
     }
 
     private fun createRequestUsingProofOfPossession(
-        state: RequestCredentialsUsingProofOfPossession
+        state: RequestCredentialsUsingProofOfPossession,
+        configuration: Openid4VciCredentialConfiguration
     ): Pair<JsonObject, List<EcPublicKey>> {
         val proofs = state.credentialRequests!!.map {
             JsonPrimitive(it.proofOfPossessionJwtHeaderAndBody + "." + it.proofOfPossessionJwtSignature)
@@ -379,7 +457,7 @@ class FunkeIssuingAuthorityState(
                     put("jwt", JsonArray(proofs))
                 })
             }
-            putFormat(state.format)
+            putFormat(configuration.format!!)
         }
 
         return Pair(request, publicKeys)
@@ -387,7 +465,8 @@ class FunkeIssuingAuthorityState(
 
     private suspend fun createRequestUsingKeyAttestation(
         env: FlowEnvironment,
-        state: RequestCredentialsUsingKeyAttestation
+        state: RequestCredentialsUsingKeyAttestation,
+        configuration: Openid4VciCredentialConfiguration
     ): Pair<JsonObject, List<EcPublicKey>> {
         // NB: applicationSupport will only be non-null in the environment when running this code
         // locally in the Android Wallet app.
@@ -407,7 +486,7 @@ class FunkeIssuingAuthorityState(
                 put("attestation", JsonPrimitive(keyAttestation))
                 put("proof_type", JsonPrimitive("attestation"))
             })
-            putFormat(state.format)
+            putFormat(configuration.format!!)
         }
 
         return Pair(request, platformAttestations.map { it.publicKey })
@@ -481,6 +560,7 @@ class FunkeIssuingAuthorityState(
         val bytes = document.toCbor()
         storage.update(DOCUMENT_TABLE, clientId, documentId, ByteString(bytes))
         if (emitNotification) {
+            Logger.i(TAG, "Emitting notification for $documentId")
             emit(env, IssuingAuthorityNotification(documentId))
         }
     }
@@ -488,6 +568,10 @@ class FunkeIssuingAuthorityState(
     private suspend fun performPushedAuthorizationRequest(
         env: FlowEnvironment,
     ): ProofingInfo {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val config = metadata.credentialConfigurations[credentialConfigurationId]!!
+        val authorizationMetadata = metadata.authorizationServers[0]
+
         val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
         val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
 
@@ -496,7 +580,7 @@ class FunkeIssuingAuthorityState(
         val applicationSupport = env.getInterface(ApplicationSupport::class)
         val parRedirectUrl: String
         val landingUrl: String
-        if (FunkeUtil.USE_AUSWEIS_SDK) {
+        if (authorizationMetadata.useGermanEId) {
             landingUrl = ""
             // Does not matter, but must be https
             parRedirectUrl = "https://secure.redirect.com"
@@ -516,11 +600,11 @@ class FunkeIssuingAuthorityState(
             credentialIssuerUri
         )
 
-        issuanceClientId = extractIssuanceClientId(clientAssertion)
-
         val req = FormUrlEncoder {
             add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")
-            add("scope", "pid")
+            if (config.scope != null) {
+                add("scope", config.scope)
+            }
             add("response_type", "code")
             add("code_challenge_method", "S256")
             add("redirect_uri", parRedirectUrl)
@@ -529,7 +613,7 @@ class FunkeIssuingAuthorityState(
             add("client_id", issuanceClientId)
         }
         val httpClient = env.getInterface(HttpClient::class)!!
-        val response = httpClient.post("${credentialIssuerUri}/par") {
+        val response = httpClient.post(authorizationMetadata.pushedAuthorizationRequestEndpoint) {
             headers {
                 append("Content-Type", "application/x-www-form-urlencoded")
             }
@@ -548,7 +632,7 @@ class FunkeIssuingAuthorityState(
         }
         Logger.i(TAG, "Request uri: ${requestUri.content}")
         return ProofingInfo(
-            authorizeUrl = "${credentialIssuerUri}/authorize?" + FormUrlEncoder {
+            authorizeUrl = "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
                 add("client_id", issuanceClientId)
                 add("request_uri", requestUri.content)
             },
@@ -557,22 +641,15 @@ class FunkeIssuingAuthorityState(
         )
     }
 
-    private fun extractIssuanceClientId(jwtAssertion: String): String {
-        val jwtParts = jwtAssertion.split('.')
-        if (jwtParts.size != 3) {
-            throw IllegalStateException("Invalid client assertion")
-        }
-        val body = Json.parseToJsonElement(String(jwtParts[1].fromBase64Url())).jsonObject
-        return body["iss"]!!.jsonPrimitive.content
-    }
-
-    private suspend fun generateDocumentConfiguration(
+    private suspend fun generateFunkeDocumentConfiguration(
         env: FlowEnvironment,
         isCloudSecureArea: Boolean
     ): DocumentConfiguration {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val config = metadata.credentialConfigurations[credentialConfigurationId]!!
         val resources = env.getInterface(Resources::class)!!
-        return when (credentialFormat) {
-            CredentialFormat.SD_JWT_VC -> {
+        return when (config.format) {
+            is Openid4VciFormatSdJwt -> {
                 val art = resources.getRawResource(
                     if (isCloudSecureArea) {
                         "funke/card_art_funke_sdjwt_c1.png"
@@ -585,10 +662,10 @@ class FunkeIssuingAuthorityState(
                     art.toByteArray(),
                     false,
                     null,
-                    SdJwtVcDocumentConfiguration(FunkeUtil.SD_JWT_VCT)
+                    SdJwtVcDocumentConfiguration(config.format.vct)
                 )
             }
-            CredentialFormat.MDOC_MSO -> {
+            is Openid4VciFormatMdoc -> {
                 val art = resources.getRawResource(
                     if (isCloudSecureArea) {
                         "funke/card_art_funke_mdoc_c1.png"
@@ -601,14 +678,51 @@ class FunkeIssuingAuthorityState(
                     art.toByteArray(),
                     false,
                     MdocDocumentConfiguration(
-                        EUPersonalID.EUPID_DOCTYPE,
+                        config.format.docType,
                         staticData = fillInSampleData(
-                            documentTypeRepository.getDocumentTypeForMdoc(EUPersonalID.EUPID_DOCTYPE)!!
+                            documentTypeRepository.getDocumentTypeForMdoc(config.format.docType)!!
                         ).build()
                     ),
                     null
                 )
             }
+            else -> throw IllegalStateException("Invalid credential format")
+        }
+    }
+
+    private suspend fun generateGenericDocumentConfiguration(
+        env: FlowEnvironment
+    ): DocumentConfiguration {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val config = metadata.credentialConfigurations[credentialConfigurationId]!!
+        val base = getConfiguration(env).pendingDocumentInformation
+        return when (config.format) {
+            is Openid4VciFormatSdJwt -> {
+                DocumentConfiguration(
+                    base.displayName,
+                    base.typeDisplayName,
+                    base.cardArt,
+                    base.requireUserAuthenticationToViewDocument,
+                    null,
+                    SdJwtVcDocumentConfiguration(config.format.vct)
+                )
+            }
+            is Openid4VciFormatMdoc -> {
+                DocumentConfiguration(
+                    base.displayName,
+                    base.typeDisplayName,
+                    base.cardArt,
+                    base.requireUserAuthenticationToViewDocument,
+                    MdocDocumentConfiguration(
+                        config.format.docType,
+                        staticData = fillInSampleData(
+                            documentTypeRepository.getDocumentTypeForMdoc(config.format.docType)!!
+                        ).build()
+                    ),
+                    null
+                )
+            }
+            else -> throw IllegalStateException("Invalid credential format")
         }
     }
 
@@ -633,8 +747,10 @@ class FunkeIssuingAuthorityState(
         documentId: String,
         document: FunkeIssuerDocument
     ) {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val authorizationMetadata = metadata.authorizationServers[0]
         var access = document.access!!
-        val nowPlusSlack = Clock.System.now() + 10.seconds
+        val nowPlusSlack = Clock.System.now() + 30.seconds
         if (access.cNonce != null && nowPlusSlack < access.accessTokenExpiration) {
             // No need to refresh.
             return
@@ -645,7 +761,7 @@ class FunkeIssuingAuthorityState(
             env = env,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
-            tokenUrl = "${credentialIssuerUri}/token",
+            tokenUrl = authorizationMetadata.tokenEndpoint,
             refreshToken = refreshToken,
             accessToken = access.accessToken
         )
@@ -657,19 +773,5 @@ class FunkeIssuingAuthorityState(
             access.refreshToken = refreshToken
         }
         updateIssuerDocument(env, documentId, document, false)
-    }
-}
-
-private fun JsonObjectBuilder.putFormat(format: CredentialFormat?) {
-    when (format) {
-        CredentialFormat.SD_JWT_VC -> {
-            put("format", JsonPrimitive("vc+sd-jwt"))
-            put("vct", JsonPrimitive(FunkeUtil.SD_JWT_VCT))
-        }
-        CredentialFormat.MDOC_MSO -> {
-            put("format", JsonPrimitive("mso_mdoc"))
-            put("doctype", JsonPrimitive(FunkeUtil.EU_PID_MDOC_DOCTYPE))
-        }
-        null -> throw IllegalStateException("Credential format was not specified")
     }
 }

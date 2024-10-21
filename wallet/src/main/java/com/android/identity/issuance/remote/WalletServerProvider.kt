@@ -191,13 +191,24 @@ class WalletServerProvider(
      */
     suspend fun getIssuingAuthority(issuingAuthorityId: String): IssuingAuthority {
         val instance = waitForWalletServer()
-        instanceLock.withLock {
-            var issuingAuthority = issuingAuthorityMap[issuingAuthorityId]
-            if (issuingAuthority == null) {
-                issuingAuthority = instance.getIssuingAuthority(issuingAuthorityId)
-                issuingAuthorityMap[issuingAuthorityId] = issuingAuthority
+        var delay = RECONNECT_DELAY_INITIAL
+        while (true) {
+            try {
+                instanceLock.withLock {
+                    var issuingAuthority = issuingAuthorityMap[issuingAuthorityId]
+                    if (issuingAuthority == null) {
+                        issuingAuthority = instance.getIssuingAuthority(issuingAuthorityId)
+                        issuingAuthorityMap[issuingAuthorityId] = issuingAuthority
+                    }
+                    return issuingAuthority
+                }
+            } catch (err: HttpTransport.ConnectionException) {
+                delay(delay)
+                delay *= 2
+                if (delay > RECONNECT_DELAY_MAX) {
+                    delay = RECONNECT_DELAY_MAX
+                }
             }
-            return issuingAuthority
         }
     }
 
@@ -205,16 +216,15 @@ class WalletServerProvider(
      * Creates an Issuing Authority by the [credentialIssuerUri] and [credentialConfigurationId],
      * caching instances. If unable to connect, suspend and wait until connecting is possible.
      */
-    suspend fun createIssuingAuthorityByUri(credentialIssuerUri:String, credentialConfigurationId: String): IssuingAuthority {
-        val instance = waitForWalletServer()
-        instanceLock.withLock {
-            var issuingAuthority = issuingAuthorityMap[credentialConfigurationId]
-            if (issuingAuthority == null) {
-                issuingAuthority = instance.createIssuingAuthorityByUri(credentialIssuerUri, credentialConfigurationId)
-                issuingAuthorityMap[credentialConfigurationId] = issuingAuthority
-            }
-            return issuingAuthority
-        }
+    suspend fun createOpenid4VciIssuingAuthorityByUri(
+        credentialIssuerUri:String,
+        credentialConfigurationId: String
+    ): IssuingAuthority {
+        // Not allowed per spec, but double-check, so there are no surprises.
+        check(credentialIssuerUri.indexOf('#') < 0)
+        check(credentialConfigurationId.indexOf('#') < 0)
+        val id = "openid4vci#$credentialIssuerUri#$credentialConfigurationId"
+        return getIssuingAuthority(id)
     }
 
     /**

@@ -103,7 +103,7 @@ class ProvisioningViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (credentialIssuerUri != null) {
-                    issuer = walletServerProvider.createIssuingAuthorityByUri(
+                    issuer = walletServerProvider.createOpenid4VciIssuingAuthorityByUri(
                         credentialIssuerUri,
                         credentialIssuerConfigurationId!!
                     )

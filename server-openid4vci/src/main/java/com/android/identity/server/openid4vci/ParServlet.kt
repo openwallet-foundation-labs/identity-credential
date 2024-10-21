@@ -40,8 +40,9 @@ class ParServlet : BaseServlet() {
         if (req.getParameter("client_assertion_type") != ASSERTION_TYPE) {
             throw InvalidRequestException("invalid parameter 'client_assertion_type'")
         }
-        if (req.getParameter("scope") != "pid") {
-            throw InvalidRequestException("invalid parameter 'pid'")
+        val scope = req.getParameter("scope") ?: ""
+        if (!CredentialFactory.supportedScopes.contains(scope)) {
+            throw InvalidRequestException("invalid parameter 'scope'")
         }
         if (req.getParameter("response_type") != "code") {
             throw InvalidRequestException("invalid parameter 'response_type'")
@@ -62,16 +63,18 @@ class ParServlet : BaseServlet() {
 
         // Check that client assertion is signed by the trusted client.
         val sequence = clientAssertion.split("~")
-        val clientCertificate = environment.cache(
-            ClientCertificate::class,
-            clientId
-        ) { configuration, resources ->
-            // So in real life this should be parameterized by clientId, as different clients will
-            // have different public keys.
-            val certificateName = configuration.getValue("attestation.certificate")
-                ?: "attestation/certificate.pem"
-            val certificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
-            ClientCertificate(certificate)
+        val clientCertificate = runBlocking {
+            environment.cache(
+                ClientCertificate::class,
+                clientId
+            ) { configuration, resources ->
+                // So in real life this should be parameterized by clientId, as different clients will
+                // have different public keys.
+                val certificateName = configuration.getValue("attestation.certificate")
+                    ?: "attestation/certificate.pem"
+                val certificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
+                ClientCertificate(certificate)
+            }
         }
         checkJwtSignature(clientCertificate.certificate.ecPublicKey, sequence[0])
 
@@ -85,7 +88,7 @@ class ParServlet : BaseServlet() {
 
         // Create a session
         val storage = environment.getInterface(Storage::class)!!
-        val state = IssuanceState(clientId, dpopKey, redirectUri, codeChallenge)
+        val state = IssuanceState(clientId, scope, dpopKey, redirectUri, codeChallenge)
         val id = runBlocking {
             storage.insert("IssuanceState", "", ByteString(state.toCbor()))
         }
