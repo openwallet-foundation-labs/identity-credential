@@ -16,10 +16,10 @@ import kotlin.reflect.cast
  * This method is thread-safe. The same object is returned for all threads, however, when the
  * object is being created, multiple copies might be created if there is a race condition.
  */
-fun<ResourceT : Any> FlowEnvironment.cache(
+suspend fun<ResourceT : Any> FlowEnvironment.cache(
     clazz: KClass<ResourceT>,
     key: Any = "",
-    factory: (Configuration, Resources) -> ResourceT): ResourceT {
+    factory: suspend (Configuration, Resources) -> ResourceT): ResourceT {
     val configuration = getInterface(Configuration::class)!!
     val resources = getInterface(Resources::class)!!
     return cache
@@ -37,12 +37,12 @@ private val cache = WeakHashMap<Configuration, WeakHashMap<Resources, Environmen
 private class EnvironmentCache {
     val map = mutableMapOf<KClass<out Any>, MutableMap<Any, Any>>()
 
-    fun<ResourceT : Any> obtain(
+    suspend fun<ResourceT : Any> obtain(
         configuration: Configuration,
         resources: Resources,
         clazz: KClass<ResourceT>,
         key: Any,
-        factory: (Configuration, Resources) -> ResourceT
+        factory: suspend (Configuration, Resources) -> ResourceT
     ): ResourceT {
         synchronized(map) {
             val submap = map[clazz]

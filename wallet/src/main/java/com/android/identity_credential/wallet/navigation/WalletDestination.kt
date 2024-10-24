@@ -4,6 +4,9 @@ import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.nio.charset.Charset
 
 
 sealed class WalletDestination(val routeEnum: Route) {
@@ -121,7 +124,7 @@ sealed class WalletDestination(val routeEnum: Route) {
                 argsStrList.forEach { argPairStr ->
                     // find matching pair and return the string value
                     if (argPairStr.startsWith("${argument.name}=")) {
-                        return argPairStr.split("=")[1]
+                        return URLDecoder.decode(argPairStr.split("=")[1], "UTF-8")
                     }
                 }
                 return null
@@ -147,7 +150,7 @@ sealed class WalletDestination(val routeEnum: Route) {
                 if (argumentValue is List<*>) {
                     argumentValue.joinToString()
                 } else {
-                    argumentValue
+                    argumentValue.toString()
                 }
             val argName = when (this) {
                 is DocumentInfo -> {
@@ -164,7 +167,8 @@ sealed class WalletDestination(val routeEnum: Route) {
                     throw Exception("Error! Attempted to pass argument '$enumArgumentObj' to WalletDestination '$this' but the Argument object is not defined in 'getRouteWithArguments'")
                 }
             }
-            ret += "$argName=$argVal&"
+            val encodedArg = URLEncoder.encode(argVal, "UTF-8")
+            ret += "$argName=$encodedArg&"
         }
         return ret
     }

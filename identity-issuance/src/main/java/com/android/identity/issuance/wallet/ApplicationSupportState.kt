@@ -75,7 +75,7 @@ class ApplicationSupportState(
     }
 
     @FlowMethod
-    fun createJwtClientAssertion(
+    suspend fun createJwtClientAssertion(
         env: FlowEnvironment, attestation: KeyAttestation, targetIssuanceUrl: String
     ): String {
         val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
@@ -93,7 +93,12 @@ class ApplicationSupportState(
     }
 
     @FlowMethod
-    fun createJwtKeyAttestation(
+    fun getClientAssertionId(env: FlowEnvironment, targetIssuanceUrl: String): String {
+        return FUNKE_CLIENT_ID
+    }
+
+    @FlowMethod
+    suspend fun createJwtKeyAttestation(
         env: FlowEnvironment,
         keyAttestations: List<KeyAttestation>,
         nonce: String
@@ -165,7 +170,7 @@ class ApplicationSupportState(
     }
 
     // Not exposed as RPC!
-    fun createJwtClientAssertion(
+    suspend fun createJwtClientAssertion(
         env: FlowEnvironment,
         clientPublicKey: EcPublicKey,
         targetIssuanceUrl: String

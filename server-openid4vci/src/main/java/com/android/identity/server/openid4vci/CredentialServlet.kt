@@ -16,6 +16,7 @@ import com.android.identity.crypto.X509CertChain
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.flow.handler.InvalidRequestException
 import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.common.cache
@@ -35,6 +36,7 @@ import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -74,34 +76,56 @@ class CredentialServlet : BaseServlet() {
         val requestString = String(req.inputStream.readNBytes(req.contentLength))
         println("Request: $requestString")
         val json = Json.parseToJsonElement(requestString) as JsonObject
-        var proofs = json["proofs"]?.jsonArray
-        val singleProof = proofs == null
-        if (proofs == null) {
+        val format = Openid4VciFormat.fromJson(json)
+        val factory = CredentialFactory.byOfferId.values.find { factory ->
+            factory.format == format && factory.scope == state.scope
+        }
+        if (factory == null) {
+            throw IllegalStateException(
+                "No credential can be created for scope '${state.scope}' and the given format")
+        }
+        val proofsObj = json["proofs"]?.jsonObject
+        val singleProof = proofsObj == null
+        val proofs: JsonArray
+        val proofType: String
+        if (proofsObj == null) {
             val proof = json["proof"]
                 ?: throw InvalidRequestException("neither 'proof' or 'proofs' parameter provided")
-            proofs = buildJsonArray { add(proof) }
-        } else if (proofs.size == 0) {
-            throw InvalidRequestException("'proofs' is empty")
+            proofType = proof.jsonObject["proof_type"]?.jsonPrimitive?.content!!
+            proofs = buildJsonArray { add(proof.jsonObject[proofType]!!) }
+        } else {
+            proofType = if (proofsObj.containsKey("jwt")) {
+                "jwt"
+            } else if (proofsObj.containsKey("attestation")) {
+                "attestation"
+            } else {
+                throw InvalidRequestException("Unsupported proof type")
+            }
+            proofs = proofsObj[proofType]!!.jsonArray
+            if (proofs.size == 0) {
+                throw InvalidRequestException("'proofs' is empty")
+            }
         }
 
-        val proofType = proofs[0].jsonObject["proof_type"]?.jsonPrimitive?.content
         val authenticationKeys = when (proofType) {
             "attestation" -> {
-                val keyAttestationCertificate = environment.cache(
-                    KeyAttestationCertificate::class,
-                    state.clientId
-                ) { configuration, resources ->
-                    // By default using the same key/certificate as for client attestation
-                    val certificateName =
-                        configuration.getValue("openid4vci.key-attestation.certificate")
-                            ?: "attestation/certificate.pem"
-                    val certificate =
-                        X509Cert.fromPem(resources.getStringResource(certificateName)!!)
-                    KeyAttestationCertificate(certificate)
+                val keyAttestationCertificate = runBlocking {
+                    environment.cache(
+                        KeyAttestationCertificate::class,
+                        state.clientId
+                    ) { configuration, resources ->
+                        // By default using the same key/certificate as for client attestation
+                        val certificateName =
+                            configuration.getValue("openid4vci.key-attestation.certificate")
+                                ?: "attestation/certificate.pem"
+                        val certificate =
+                            X509Cert.fromPem(resources.getStringResource(certificateName)!!)
+                        KeyAttestationCertificate(certificate)
+                    }
                 }
 
                 proofs.flatMap { proof ->
-                    val keyAttestation = proof.jsonObject["attestation"]!!.jsonPrimitive.content
+                    val keyAttestation = proof.jsonPrimitive.content
                     checkJwtSignature(
                         keyAttestationCertificate.certificate.ecPublicKey,
                         keyAttestation
@@ -123,9 +147,7 @@ class CredentialServlet : BaseServlet() {
                 }
             }
             "jwt" -> {
-                val requireKeyAttestation = environment.getInterface(Configuration::class)
-                    ?.getValue("openid4vci.key-attestation.required")
-                if (requireKeyAttestation != "false") {
+                if (!isStandaloneProofOfPossessionAccepted(environment)) {
                     throw InvalidRequestException("jwt proofs are not accepted by this server")
                 }
                 proofs.map { proof ->
@@ -146,30 +168,14 @@ class CredentialServlet : BaseServlet() {
                 throw InvalidRequestException("unsupported proof type")
             }
         }
-        val format = json["format"]?.jsonPrimitive?.content
-        val credentials = when (format) {
-            "vc+sd-jwt" -> {
-                val vct = json["vct"]?.jsonPrimitive?.content
-                if (vct != EUPersonalID.EUPID_VCT) {
-                    throw InvalidRequestException("invalid value for 'vct' parameter")
-                }
+
+        val credentials =
+            runBlocking {
                 authenticationKeys.map { key ->
-                    createCredentialSdJwt(state, key)
+                    factory.makeCredential(environment, state, key)
                 }
             }
-            "mso_mdoc" -> {
-                val vct = json["doctype"]?.jsonPrimitive?.content
-                if (vct != EUPersonalID.EUPID_DOCTYPE) {
-                    throw InvalidRequestException("invalid value for 'doctype' parameter")
-                }
-                authenticationKeys.map { key ->
-                    createCredentialMdoc(state, key).toBase64Url()
-                }
-            }
-            else -> {
-                throw InvalidRequestException("invalid value for 'format' parameter")
-            }
-        }
+
         val result = if (singleProof && credentials.size == 1) {
             buildJsonObject {
                 put("credential", credentials[0])
@@ -305,4 +311,23 @@ class CredentialServlet : BaseServlet() {
     }
 
     private data class KeyAttestationCertificate(val certificate: X509Cert)
+
+    companion object {
+        /**
+         * Checks if this server accepts proof of possession **without** key attestation.
+         *
+         * Our code does not support proof of possession with key attestation (only standalone
+         * key attestation or standalone proof of possession). Standalone proof of possession
+         * is disabled by default, as it does not really guarantee where the private key is
+         * stored. Don't enable this unless you are sure you understand the tradeoffs involved!
+         *
+         * NB: Proof of possession **with** key attestation, if implemented, could be just enabled
+         * unconditionally, as it does not have this issue (as long as key attestation is required).
+         */
+        internal fun isStandaloneProofOfPossessionAccepted(environment: FlowEnvironment): Boolean {
+            val allowProofOfPossession = environment.getInterface(Configuration::class)
+                ?.getValue("openid4vci.allow-proof-of-possession")
+            return allowProofOfPossession == "true"
+        }
+    }
 }

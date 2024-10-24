@@ -22,7 +22,7 @@ class FinishAuthorizationServlet : BaseServlet() {
         val storage = environment.getInterface(Storage::class)!!
         runBlocking {
             val state = IssuanceState.fromCbor(storage.get("IssuanceState", "", id)!!.toByteArray())
-            val redirectUri = state.redirectUri ?: ""
+            val redirectUri = state.redirectUri ?: throw IllegalStateException("No redirect url")
             if (!redirectUri.startsWith("http://") && !redirectUri.startsWith("https://")) {
                 resp.writer.write(
                     """

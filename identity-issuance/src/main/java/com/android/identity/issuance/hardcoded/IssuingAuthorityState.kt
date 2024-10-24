@@ -114,7 +114,7 @@ class IssuingAuthorityState(
         private const val TYPE_DRIVING_LICENSE = "DrivingLicense"
         private const val TYPE_PHOTO_ID = "PhotoId"
 
-        fun getConfiguration(env: FlowEnvironment, id: String): IssuingAuthorityConfiguration {
+        suspend fun getConfiguration(env: FlowEnvironment, id: String): IssuingAuthorityConfiguration {
             return env.cache(IssuingAuthorityConfiguration::class, id) { configuration, resources ->
                 val settings = WalletServerSettings(configuration)
                 val prefix = "issuingAuthority.$id"

@@ -42,12 +42,13 @@ class FunkeProofingState(
     val documentId: String,
     val proofingInfo: ProofingInfo,
     val applicationCapabilities: WalletApplicationCapabilities,
+    val tokenUri:String,
+    val useGermanEId: Boolean,
     var access: FunkeAccess? = null,
     var secureAreaIdentifier: String? = null,
     var secureAreaSetupDone: Boolean = false,
     var tosAcknowleged: Boolean = false,
     var notificationPermissonRequested: Boolean = false,
-    val credentialIssuerUri:String,
 ) {
     companion object {
         private const val TAG = "FunkeProofingState"
@@ -82,7 +83,7 @@ class FunkeProofingState(
                     continueWithoutPermissionButtonText = "No Thanks",
                     assets = mapOf()
                 ))
-            } else if (FunkeUtil.USE_AUSWEIS_SDK) {
+            } else if (useGermanEId) {
                 listOf(EvidenceRequestGermanEid(proofingInfo.authorizeUrl, listOf()))
             } else {
                 listOf(EvidenceRequestWeb(proofingInfo.authorizeUrl, proofingInfo.landingUrl))
@@ -196,7 +197,7 @@ class FunkeProofingState(
         val code = location.substring(index + 5)
         this.access = FunkeUtil.obtainToken(
             env = env,
-            tokenUrl = "${credentialIssuerUri}/token",
+            tokenUrl = tokenUri,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
             authorizationCode = code,

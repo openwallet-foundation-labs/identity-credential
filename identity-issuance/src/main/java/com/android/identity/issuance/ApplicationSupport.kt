@@ -28,7 +28,17 @@ interface ApplicationSupport : FlowNotifiable<LandingUrlNotification> {
     suspend fun getLandingUrlStatus(landingUrl: String): String?
 
     /**
-     * Creates OAuth JWT client assertion based on the mobile-platform-specific [KeyAttestation].
+     * Looks up OAuth client id for the given OpenId4VCI issuance server [targetIssuanceUrl].
+     *
+     * This is the same client id that would be used in client assertion created using
+     * [createJwtClientAssertion].
+     */
+    @FlowMethod
+    suspend fun getClientAssertionId(targetIssuanceUrl: String): String
+
+    /**
+     * Creates OAuth JWT client assertion based on the mobile-platform-specific [KeyAttestation]
+     * for the given OpenId4VCI issuance server [targetIssuanceUrl].
      */
     @FlowMethod
     suspend fun createJwtClientAssertion(
