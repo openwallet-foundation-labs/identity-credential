@@ -30,7 +30,11 @@ import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.util.NfcUtil
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.util.Logger
+import com.android.identity.util.UUID
 
 class NfcEngagementHandler : HostApduService() {
     companion object {
@@ -100,8 +104,9 @@ class NfcEngagementHandler : HostApduService() {
             // for more information about background launching
             //
             PresentationActivity.engagementDetected(application.applicationContext)
-
-            val options = DataTransportOptions.Builder().build()
+            val walletApplication = application as WalletApplication
+            val (connectionMethods, options) = walletApplication.settingsModel
+                .createConnectionMethodsAndOptions()
             val builder = NfcEngagementHelper.Builder(
                 applicationContext,
                 eDeviceKey.publicKey,
@@ -109,7 +114,12 @@ class NfcEngagementHandler : HostApduService() {
                 nfcEngagementListener,
                 ContextCompat.getMainExecutor(applicationContext)
             )
-            builder.useNegotiatedHandover()
+
+            if (walletApplication.settingsModel.nfcStaticHandoverEnabled.value == true) {
+                builder.useStaticHandover(connectionMethods)
+            } else {
+                builder.useNegotiatedHandover()
+            }
             engagementHelper = builder.build()
         }
     }

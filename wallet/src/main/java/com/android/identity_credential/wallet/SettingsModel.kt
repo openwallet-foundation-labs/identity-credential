@@ -8,9 +8,14 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.lifecycle.MutableLiveData
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.util.AndroidLogPrinter
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.util.Logger
 import com.android.identity.mrtd.mrtdSetLogger
+import com.android.identity.util.UUID
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import java.io.File
@@ -27,6 +32,12 @@ class SettingsModel(
     val minServerUrl = MutableLiveData(WalletApplicationConfiguration.MIN_SERVER_DEFAULT_URL)
     val cloudSecureAreaUrl = MutableLiveData(WalletApplicationConfiguration.CLOUD_SECURE_AREA_DEFAULT_URL)
 
+    // Settings that are visible in the Proximity Sharing Settings screen
+    val nfcStaticHandoverEnabled = MutableLiveData(false)
+    val bleCentralClientMode = MutableLiveData(false)
+    val blePeripheralServerMode = MutableLiveData(false)
+    val bleL2CAP = MutableLiveData(false)
+
     // Non visible in the Settings screen
     val focusedCardId = MutableLiveData("")
     val hideMissingProximityPermissionsWarning = MutableLiveData(false)
@@ -42,6 +53,11 @@ class SettingsModel(
         private const val PREFERENCE_WALLET_SERVER_URL = "wallet_server_url"
         private const val PREFERENCE_MIN_SERVER_URL = "min_server_url"
         private const val PREFERENCE_CLOUD_SECURE_AREA_URL = "cloud_secure_area_url"
+
+        private const val PREFERENCE_NFC_STATIC_HANDOVER_ENABLED = "nfc_static_handover_enabled"
+        private const val PREFERENCE_BLE_CENTRAL_CLIENT_MODE_ENABLED = "ble_central_client_mode_enabled"
+        private const val PREFERENCE_BLE_PERIPHERAL_SERVER_MODE_ENABLED = "ble_peripheral_server_mode_enabled"
+        private const val PREFERENCE_BLE_L2CAP_ENABLED = "ble_l2cap_enabled"
 
         private const val PREFERENCE_FOCUSED_CARD_ID = "focused_card_id"
         private const val PREFERENCE_HIDE_MISSING_PROXIMITY_PERMISSIONS_WARNING =
@@ -138,6 +154,24 @@ class SettingsModel(
             }
         }
         updateScreenLockIsSetup()
+
+        bindBoolean(nfcStaticHandoverEnabled, PREFERENCE_NFC_STATIC_HANDOVER_ENABLED, false)
+        bindBoolean(bleCentralClientMode, PREFERENCE_BLE_CENTRAL_CLIENT_MODE_ENABLED, true)
+        bindBoolean(blePeripheralServerMode, PREFERENCE_BLE_PERIPHERAL_SERVER_MODE_ENABLED, false)
+        bindBoolean(bleL2CAP, PREFERENCE_BLE_L2CAP_ENABLED, false)
+    }
+
+    private fun bindBoolean(
+        liveData: MutableLiveData<Boolean>,
+        setting: String,
+        defaultValue: Boolean
+    ) {
+        liveData.value = sharedPreferences.getBoolean(setting, defaultValue)
+        liveData.observeForever { enabled ->
+            sharedPreferences.edit {
+                putBoolean(setting, enabled)
+            }
+        }
     }
 
     // Can be called when entering the application's main activity to update `screenLockIsSetup`.
@@ -175,5 +209,26 @@ class SettingsModel(
         sharingIntent.putExtra(Intent.EXTRA_STREAM, shareUri)
         sharingIntent.putExtra(Intent.EXTRA_SUBJECT, "identity_credential.wallet log")
         return sharingIntent
+    }
+
+    fun createConnectionMethodsAndOptions(): Pair<List<ConnectionMethod>, DataTransportOptions> {
+        val connectionMethods = mutableListOf<ConnectionMethod>()
+        if (bleCentralClientMode.value == true && blePeripheralServerMode.value == true) {
+            val bleUuid = UUID.randomUUID()
+            connectionMethods.add(ConnectionMethodBle(true, true, bleUuid, bleUuid))
+        } else if (bleCentralClientMode.value == true) {
+            val bleUuid = UUID.randomUUID()
+            connectionMethods.add(ConnectionMethodBle(false, true, null, bleUuid))
+        } else if (blePeripheralServerMode.value == true) {
+            val bleUuid = UUID.randomUUID()
+            connectionMethods.add(ConnectionMethodBle(true, false, bleUuid, null))
+        }
+
+        val optionsBuilder = DataTransportOptions.Builder()
+        if (bleL2CAP.value == true) {
+            optionsBuilder.setBleUseL2CAP(true)
+            optionsBuilder.setExperimentalBleL2CAPPsmInEngagement(true)
+        }
+        return Pair(connectionMethods, optionsBuilder.build())
     }
 }

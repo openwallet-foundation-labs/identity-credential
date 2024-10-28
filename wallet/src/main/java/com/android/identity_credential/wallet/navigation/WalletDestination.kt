@@ -23,6 +23,7 @@ sealed class WalletDestination(val routeEnum: Route) {
     object Main : WalletDestination(Route.MAIN)
     object About : WalletDestination(Route.ABOUT)
     object Settings : WalletDestination(Route.SETTINGS)
+    object SettingsProximitySharing : WalletDestination(Route.SETTINGS_PROXIMITY_SHARING)
     object AddToWallet : WalletDestination(Route.ADD_TO_WALLET)
     object ProvisionDocument : WalletDestination(Route.PROVISION_DOCUMENT)
 
@@ -184,6 +185,7 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     MAIN("main"),
     ABOUT("about"),
     SETTINGS("settings"),
+    SETTINGS_PROXIMITY_SHARING("settings_proximity_sharing"),
     ADD_TO_WALLET("add_to_wallet"),
     DOCUMENT_INFO("document_info",
         "documentId={documentId}&section={section}&auth_required={auth_required}"),

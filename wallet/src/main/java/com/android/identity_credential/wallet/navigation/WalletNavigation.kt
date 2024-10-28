@@ -22,6 +22,7 @@ import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
 import com.android.identity_credential.wallet.ui.destination.reader.ReaderScreen
+import com.android.identity_credential.wallet.ui.destination.settings.SettingsProximitySharingScreen
 import com.android.identity_credential.wallet.ui.destination.settings.SettingsScreen
 
 /**
@@ -97,6 +98,17 @@ fun WalletNavigation(
          */
         composable(WalletDestination.Settings.route) {
             SettingsScreen(
+                settingsModel = application.settingsModel,
+                documentStore = application.documentStore,
+                onNavigate = onNavigate
+            )
+        }
+
+        /**
+         * Settings Proximity Sharing Screen
+         */
+        composable(WalletDestination.SettingsProximitySharing.route) {
+            SettingsProximitySharingScreen(
                 settingsModel = application.settingsModel,
                 documentStore = application.documentStore,
                 onNavigate = onNavigate

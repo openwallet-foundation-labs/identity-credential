@@ -208,6 +208,13 @@ fun SettingsScreen(
                     onClicked = { showSetWalletServerUrlDialog = true }
                 )
             }
+            if (settingsModel.developerModeEnabled.value == true) {
+                SettingString(
+                    title = stringResource(R.string.settings_screen_proximity_sharing_button_title),
+                    subtitle = stringResource(R.string.settings_screen_proximity_sharing_button_subtitle),
+                    onClicked = { onNavigate(WalletDestination.SettingsProximitySharing.route) }
+                )
+            }
             if (WalletApplicationConfiguration.CLOUD_SECURE_AREA_SETTING_AVAILABLE ||
                 WalletApplicationConfiguration.WALLET_SERVER_SETTING_AVAILABLE) {
                 SettingSectionSubtitle(title = stringResource(R.string.settings_screen_built_in_issuer_settings))
