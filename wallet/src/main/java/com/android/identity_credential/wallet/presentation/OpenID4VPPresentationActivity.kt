@@ -320,6 +320,9 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         // prefer the credential which is on-screen if possible
         val credentialIdFromPager: String? = settingsModel.focusedCardId.value
         if (credentialIdFromPager != null
+            // Sometimes the focused card ID references an old deleted card, in which case
+            // lookupDocument will return null, so we still need to check for that:
+            && walletApp.documentStore.lookupDocument(credentialIdFromPager) != null
             && canDocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docType)
         ) {
             return documentStore.lookupDocument(credentialIdFromPager)
