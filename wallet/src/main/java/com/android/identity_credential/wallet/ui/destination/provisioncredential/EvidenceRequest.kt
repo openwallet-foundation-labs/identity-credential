@@ -57,6 +57,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
+import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
@@ -66,6 +67,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
+import com.android.identity.issuance.evidence.EvidenceResponseOpenid4Vp
 import com.android.identity.issuance.evidence.EvidenceResponseSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceResponseWeb
 import com.android.identity.issuance.remote.WalletServerProvider
@@ -80,11 +82,14 @@ import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -122,8 +127,7 @@ fun EvidenceRequestMessageView(
                 onClick = {
                     provisioningViewModel.provideEvidence(
                         evidence = EvidenceResponseMessage(false),
-                        walletServerProvider = walletServerProvider,
-                        documentStore = documentStore
+                        walletServerProvider = walletServerProvider
                     )
             }) {
                 Text(rejectButtonText)
@@ -134,8 +138,7 @@ fun EvidenceRequestMessageView(
             onClick = {
                 provisioningViewModel.provideEvidence(
                     evidence = EvidenceResponseMessage(true),
-                    walletServerProvider = walletServerProvider,
-                    documentStore = documentStore
+                    walletServerProvider = walletServerProvider
                 )
         }) {
             Text(evidenceRequest.acceptButtonText)
@@ -158,8 +161,7 @@ fun EvidenceRequestNotificationPermissionView(
         SideEffect {
             provisioningViewModel.provideEvidence(
                 evidence = EvidenceResponseNotificationPermission(true),
-                walletServerProvider = walletServerProvider,
-                documentStore = documentStore
+                walletServerProvider = walletServerProvider
             )
         }
         return
@@ -169,8 +171,7 @@ fun EvidenceRequestNotificationPermissionView(
     if (postNotificationsPermissionState.status.isGranted) {
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseNotificationPermission(true),
-            walletServerProvider = walletServerProvider,
-            documentStore = documentStore
+            walletServerProvider = walletServerProvider
         )
     } else {
         Column {
@@ -198,8 +199,7 @@ fun EvidenceRequestNotificationPermissionView(
                     onClick = {
                         provisioningViewModel.provideEvidence(
                             evidence = EvidenceResponseNotificationPermission(false),
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore
+                            walletServerProvider = walletServerProvider
                         )
                     }) {
                     Text(evidenceRequest.continueWithoutPermissionButtonText)
@@ -637,8 +637,7 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
     ) { nfcData ->
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod),
-            walletServerProvider = walletServerProvider,
-            documentStore = documentStore
+            walletServerProvider = walletServerProvider
         )
     }
 }
@@ -850,8 +849,7 @@ fun EvidenceRequestSelfieVideoView(
                 } else {
                     provisioningViewModel.provideEvidence(
                         evidence = EvidenceResponseSelfieVideo(selfieResult),
-                        walletServerProvider = walletServerProvider,
-                        documentStore = documentStore
+                        walletServerProvider = walletServerProvider
                     )
                 }
             },
@@ -1038,8 +1036,7 @@ fun EvidenceRequestEIdView(
     ) { evidence ->
         provisioningViewModel.provideEvidence(
             evidence = evidence,
-            walletServerProvider = walletServerProvider,
-            documentStore = documentStore
+            walletServerProvider = walletServerProvider
         )
     }
 }
@@ -1291,8 +1288,65 @@ fun EvidenceRequestWebView(
                     ),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(8.dp),
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.bodyLarge
             )
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestOpenid4Vp(
+    evidenceRequest: EvidenceRequestOpenid4Vp,
+    provisioningViewModel: ProvisioningViewModel,
+    walletServerProvider: WalletServerProvider,
+    application: WalletApplication
+) {
+    val cx = LocalContext.current
+    val credential = provisioningViewModel.selectedOpenid4VpCredential.value!!
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.presentation_evidence_message
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        )  {
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = {
+                val activity = getFragmentActivity(cx)
+                CoroutineScope(Dispatchers.Main).launch {
+                    val response = openid4VpPresentation(
+                        credential,
+                        application,
+                        activity,
+                        evidenceRequest.originUri,
+                        evidenceRequest.request
+                    )
+                    provisioningViewModel.provideEvidence(
+                        evidence = EvidenceResponseOpenid4Vp(response),
+                        walletServerProvider = walletServerProvider
+                    )
+                }
+            }) {
+                Text(text = stringResource(id = R.string.presentation_evidence_ok))
+            }
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = {provisioningViewModel.moveToNextEvidenceRequest()}
+            ) {
+                Text(text = stringResource(id = R.string.presentation_evidence_cancel))
+            }
         }
     }
 }
@@ -1313,8 +1367,7 @@ private suspend fun handleLanding(
         )
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseWeb(""),
-            walletServerProvider = walletServerProvider,
-            documentStore = documentStore
+            walletServerProvider = walletServerProvider
         )
         return false
     }
@@ -1328,8 +1381,7 @@ private suspend fun handleLanding(
     }
     provisioningViewModel.provideEvidence(
         evidence = EvidenceResponseWeb(resp),
-        walletServerProvider = walletServerProvider,
-        documentStore = documentStore
+        walletServerProvider = walletServerProvider
     )
     return false
 }

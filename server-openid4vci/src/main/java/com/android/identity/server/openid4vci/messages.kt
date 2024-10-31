@@ -1,6 +1,5 @@
 package com.android.identity.server.openid4vci
 
-import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
@@ -39,6 +38,7 @@ data class IssuanceState(
     var dpopNonce: ByteString? = null,
     var cNonce: ByteString? = null,
     var pidReadingKey: EcPrivateKey? = null,
+    var pidNonce: String? = null,
     var credentialData: NameSpacedData? = null
 ) {
     companion object
@@ -54,5 +54,9 @@ enum class OpaqueIdType {
     REDIRECT,
     ACCESS_TOKEN,
     REFRESH_TOKEN,
-    PID_READING
+    PID_READING,
+    AUTH_SESSION,  // for use in /authorize_challenge
+    OPENID4VP_CODE,  // send to /authorize when we want openid4vp request
+    OPENID4VP_STATE,  // for state field in openid4vp
+    OPENID4VP_PRESENTATION  // for use in presentation_during_issuance_session
 }
