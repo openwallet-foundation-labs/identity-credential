@@ -1,17 +1,15 @@
 package com.android.identity_credential.wallet.ui
 
-import android.content.ContentValues
 import android.content.Context
-import android.os.Build
-import android.provider.MediaStore
+import android.graphics.Bitmap
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.MirrorMode.MIRROR_MODE_ON_FRONT_ONLY
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.MediaStoreOutputOptions
-import androidx.camera.video.OutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
@@ -24,6 +22,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.FaceImageClassifier
 import kotlinx.coroutines.guava.await
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
 
@@ -47,6 +46,7 @@ class SelfieRecorder(
     private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var videoCapture: VideoCapture<Recorder>
     private var recording: Recording? = null
+    private var savedFrontImage: ByteArray? = null
     var faceClassifier: FaceImageClassifier? = null
 
     /**
@@ -72,7 +72,15 @@ class SelfieRecorder(
             .build()
 
         // Configure face classifier:
-        faceClassifier = FaceImageClassifier(onStateChange, context)
+        faceClassifier = FaceImageClassifier({ recognitionState, pose ->
+            if (recognitionState == FaceImageClassifier.RecognitionState.POSE_RECOGNIZED &&
+                pose == EvidenceRequestSelfieVideo.Poses.FRONT) {
+                // The user is looking directly toward the camera. Save this image so we can send
+                // it to the issuer.
+                saveFrontImage()
+            }
+            onStateChange(recognitionState, pose)
+        }, context)
 
         // Unbind any existing use cases and bind our own:
         cameraProvider.unbindAll()
@@ -130,24 +138,20 @@ class SelfieRecorder(
                                 TAG,
                                 "Selfie recorded: ${recordEvent.outputResults.outputUri}"
                             )
-                            val inputStream = context.contentResolver.openInputStream(
-                                recordEvent.outputResults.outputUri)
-                            // TODO(kdeus): readAllBytes is new in API level 33. For older versions,
-                            //  implement this ourselves. Or find a way to avoid loading the file
-                            //  into memory.
-                            val videoContents = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                inputStream!!.readAllBytes()
-                            } else {
-                                TODO("VERSION.SDK_INT < TIRAMISU")
-                                ByteArray(0)
-                            }
-                            inputStream?.close()
-                            Logger.i(TAG, "Loaded video file into memory (${videoContents.size} bytes)")
-                            onFinished(videoContents)
-
-                            // Now that the file has been sent, we don't need it on disk anymore.
+                            // The current implementation isn't using the saved video file. Delete
+                            // it. An alternate implementation could send the video file instead
+                            // if the front-facing selfie image, if the issuer wants to review the
+                            // full video instead of a single image.
                             Logger.i(TAG, "Deleting file ${recordEvent.outputResults.outputUri}")
                             File(recordEvent.outputResults.outputUri.path!!).delete()
+
+                            val selfieImage = savedFrontImage ?: run {
+                                Logger.e(
+                                    TAG,
+                                    "Selfie recording finished without saving a front image.")
+                                ByteArray(0)
+                            }
+                            onFinished(selfieImage)
                         }
                     }
                 }
@@ -167,4 +171,28 @@ class SelfieRecorder(
 
         cameraProvider.unbindAll()
     }
+
+    /**
+     * Saves a snapshot of the current camera image to memory.
+     */
+    private fun saveFrontImage() {
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+
+        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
+            val stream = ByteArrayOutputStream()
+            val bitmap = imageProxy.toBitmap()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+            savedFrontImage = stream.toByteArray()
+            Logger.i(TAG, "Saved selfie image from front pose.")
+
+            imageProxy.close()
+            imageAnalysis.clearAnalyzer()
+        }
+
+        cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA,
+            imageAnalysis)
+    }
+
 }

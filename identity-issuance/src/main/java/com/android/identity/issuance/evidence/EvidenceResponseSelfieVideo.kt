@@ -1,6 +1,6 @@
 package com.android.identity.issuance.evidence
 
-data class EvidenceResponseSelfieVideo(val video: ByteArray)
+data class EvidenceResponseSelfieVideo(val selfieImage: ByteArray)
     : EvidenceResponse() {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -8,10 +8,10 @@ data class EvidenceResponseSelfieVideo(val video: ByteArray)
 
         other as EvidenceResponseSelfieVideo
 
-        return video.contentEquals(other.video)
+        return selfieImage.contentEquals(other.selfieImage)
     }
 
     override fun hashCode(): Int {
-        return video.contentHashCode()
+        return selfieImage.contentHashCode()
     }
 }
