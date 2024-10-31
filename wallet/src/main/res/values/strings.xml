@@ -374,6 +374,14 @@
     <!-- External browser -->
     <string name="browser_continue">Launching browser, continue there…</string>
 
+    <!-- Presentation while issuing evidence -->
+    <string name="presentation_evidence_message">
+        The Issuing Authority requires you to authenticate yourself.
+        You can do this by presenting the eID you have in your wallet.
+    </string>
+    <string name="presentation_evidence_ok">Present eID</string>
+    <string name="presentation_evidence_cancel">Cancel</string>
+
     <!-- Accessibility -->
     <string name="accessibility_go_back_icon">Go back</string>
     <string name="accessibility_menu_icon">Menu</string>

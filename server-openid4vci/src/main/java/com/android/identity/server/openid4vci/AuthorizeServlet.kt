@@ -3,8 +3,6 @@ package com.android.identity.server.openid4vci
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
-import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tstr
 import com.android.identity.crypto.Algorithm
@@ -13,13 +11,11 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.document.NameSpacedData
-import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.handler.InvalidRequestException
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.util.fromBase64Url
-import com.android.identity.util.fromHex
-import com.android.identity.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
@@ -28,29 +24,40 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
-import java.net.URL
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Process the request to run web-based authorization. This is typically the second request
- * (after [ParServlet] request) and it is sent from the browser.
+ * Initialize authorization workflow of some sort, based on `request_uri` parameter.
  *
- * Specifics of how the web authorization session is run actually do not matter much for the
- * Wallet App and Wallet Server, as long as the session results in redirecting (or resolving)
- * redirect_uri supplied to [ParServlet] on the previous step.
+ * When `request_uri` starts with `urn:ietf:params:oauth:request_uri:` run web-based authorization.
+ * In this case the request is typically sent from the browser. Specifics of how the web
+ * authorization session is run actually do not matter much for the Wallet App and Wallet Server,
+ * as long as the session results in redirecting (or resolving) `redirect_uri` supplied
+ * to [ParServlet] on the previous step.
  */
 class AuthorizeServlet : BaseServlet() {
     companion object {
         const val RESOURCE_BASE = "openid4vci"
+
+        const val OAUTH_REQUEST_URI_PREFIX = "urn:ietf:params:oauth:request_uri:"
+        const val OPENID4VP_REQUEST_URI_PREFIX = "https://rp.example.com/oidc/request/"
     }
 
-    /**
-     * Create a simple web page for the user to authorize the credential issuance.
-     */
     override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {
+        val requestUri = req.getParameter("request_uri") ?: ""
+        if (requestUri.startsWith(OAUTH_REQUEST_URI_PREFIX)) {
+            // Create a simple web page for the user to authorize the credential issuance.
+            getHtml(requestUri.substring(OAUTH_REQUEST_URI_PREFIX.length), resp)
+        } else if (requestUri.startsWith(OPENID4VP_REQUEST_URI_PREFIX)) {
+            // Request a presentation using openid4vp
+            getOpenid4Vp(requestUri.substring(OPENID4VP_REQUEST_URI_PREFIX.length), resp)
+        } else {
+            throw InvalidRequestException("Invalid or missing 'request_uri' parameter")
+        }
+    }
+
+    private fun getHtml(code: String, resp: HttpServletResponse) {
         val resources = environment.getInterface(Resources::class)!!
-        val requestUri = req.getParameter("request_uri")
-        val code = requestUri.substring(requestUri.lastIndexOf(":") + 1)
         val id = codeToId(OpaqueIdType.PAR_CODE, code)
         val authorizationCode = idToCode(OpaqueIdType.AUTHORIZATION_STATE, id, 20.minutes)
         val pidReadingCode = idToCode(OpaqueIdType.PID_READING, id, 20.minutes)
@@ -59,7 +66,25 @@ class AuthorizeServlet : BaseServlet() {
         resp.writer.print(
             authorizeHtml
                 .replace("\$authorizationCode", authorizationCode)
-                .replace("\$pidReadingCode", pidReadingCode))
+                .replace("\$pidReadingCode", pidReadingCode)
+        )
+    }
+
+    private fun getOpenid4Vp(code: String, resp: HttpServletResponse) {
+        val id = codeToId(OpaqueIdType.OPENID4VP_CODE, code)
+        val stateRef = idToCode(OpaqueIdType.OPENID4VP_STATE, id, 5.minutes)
+        val storage = environment.getInterface(Storage::class)!!
+        val responseUri = "$baseUrl/openid4vp-response"
+        val jwt = runBlocking {
+            val state = IssuanceState.fromCbor(storage.get("IssuanceState", "", id)!!.toByteArray())
+            val session = initiateOpenid4Vp(state.clientId, responseUri, stateRef)
+            state.pidReadingKey = session.privateKey
+            state.pidNonce = session.nonce
+            storage.update("IssuanceState", "", id, ByteString(state.toCbor()))
+            session.jwt
+        }
+        resp.contentType = "application/oauth-authz-req+jwt"
+        resp.writer.write(jwt)
     }
 
     /**
@@ -71,7 +96,7 @@ class AuthorizeServlet : BaseServlet() {
         val extraInfo = req.getParameter("extraInfo")
         val id = codeToId(OpaqueIdType.AUTHORIZATION_STATE, code)
         val storage = environment.getInterface(Storage::class)!!
-        val configuration = environment.getInterface(Configuration::class)!!
+        val baseUri = URI(this.baseUrl)
 
         val tokenData = Json.parseToJsonElement(pidData).jsonObject["token"]!!
             .jsonPrimitive.content.fromBase64Url()
@@ -79,7 +104,6 @@ class AuthorizeServlet : BaseServlet() {
         val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(tokenData)
 
         runBlocking {
-            val baseUri = URI(configuration.getValue("base_url")!!)
             val origin = baseUri.scheme + "://" + baseUri.authority
             val state = IssuanceState.fromCbor(storage.get("IssuanceState", "", id)!!.toByteArray())
             val encodedKey = (state.pidReadingKey!!.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding

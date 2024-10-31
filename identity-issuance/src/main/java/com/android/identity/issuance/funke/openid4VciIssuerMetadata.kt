@@ -123,9 +123,12 @@ internal data class Openid4VciIssuerMetadata(
                 SUPPORTED_SIGNATURE_ALGORITHMS
             ) ?: return null
             val authorizationEndpoint = jsonObject["authorization_endpoint"]!!.jsonPrimitive.content
+            val authorizationChallengeEndpoint =
+                jsonObject["authorization_challenge_endpoint"]?.jsonPrimitive?.content
             return Openid4VciAuthorizationMetadata(
                 pushedAuthorizationRequestEndpoint = jsonObject["pushed_authorization_request_endpoint"]!!.jsonPrimitive.content,
                 authorizationEndpoint = authorizationEndpoint,
+                authorizationChallengeEndpoint = authorizationChallengeEndpoint,
                 tokenEndpoint = jsonObject["token_endpoint"]!!.jsonPrimitive.content,
                 responseType = responseType,
                 codeChallengeMethod = codeChallengeMethod,
@@ -178,6 +181,7 @@ internal data class Openid4VciIssuerMetadata(
 internal data class Openid4VciAuthorizationMetadata(
     val pushedAuthorizationRequestEndpoint: String,
     val authorizationEndpoint: String,
+    val authorizationChallengeEndpoint: String?,
     val tokenEndpoint: String,
     val responseType: String,
     val codeChallengeMethod: String,

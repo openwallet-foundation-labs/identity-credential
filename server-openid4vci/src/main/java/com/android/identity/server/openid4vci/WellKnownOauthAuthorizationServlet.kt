@@ -9,11 +9,13 @@ import kotlinx.serialization.json.buildJsonObject
 
 class WellKnownOauthAuthorizationServlet : BaseServlet() {
     override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {
-        val configuration = environment.getInterface(Configuration::class)!!
-        val baseUrl = configuration.getValue("base_url") + "/openid4vci"
+        val baseUrl = this.baseUrl
         resp.writer.write(buildJsonObject {
             put("issuer", JsonPrimitive(baseUrl))
             put("authorization_endpoint", JsonPrimitive("$baseUrl/authorize"))
+            // OAuth for First-Party Apps (FiPA)
+            put("authorization_challenge_endpoint",
+                JsonPrimitive("$baseUrl/authorize-challenge"))
             put("token_endpoint", JsonPrimitive("$baseUrl/token"))
             put("pushed_authorization_request_endpoint", JsonPrimitive("$baseUrl/par"))
             put("require_pushed_authorization_requests", JsonPrimitive(true))

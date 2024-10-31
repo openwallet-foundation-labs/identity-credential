@@ -246,6 +246,14 @@ class FunkeIssuingAuthorityState(
         val proofingInfo = performPushedAuthorizationRequest(env)
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
         val authorizationMetadata = metadata.authorizationServers[0]
+        var openid4VpRequest: String? = null
+        if (proofingInfo.authSession != null && proofingInfo.openid4VpPresentation != null) {
+            val httpClient = env.getInterface(HttpClient::class)!!
+            val presentationResponse = httpClient.get(proofingInfo.openid4VpPresentation) {}
+            if (presentationResponse.status == HttpStatusCode.OK) {
+                openid4VpRequest = String(presentationResponse.readBytes())
+            }
+        }
         val storage = env.getInterface(Storage::class)!!
         val applicationCapabilities = storage.get(
             "WalletApplicationCapabilities",
@@ -255,15 +263,15 @@ class FunkeIssuingAuthorityState(
             WalletApplicationCapabilities.fromCbor(it.toByteArray())
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
         return FunkeProofingState(
+            credentialIssuerUri = credentialIssuerUri,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
             documentId = documentId,
             proofingInfo = proofingInfo,
             applicationCapabilities = applicationCapabilities,
-            tokenUri = authorizationMetadata.tokenEndpoint,
-            useGermanEId = authorizationMetadata.useGermanEId,
             // Don't show TOS when using browser API
-            tosAcknowleged = !authorizationMetadata.useGermanEId
+            tosAcknowleged = !authorizationMetadata.useGermanEId,
+            openid4VpRequest = openid4VpRequest
         )
     }
 
@@ -566,7 +574,7 @@ class FunkeIssuingAuthorityState(
     }
 
     private suspend fun performPushedAuthorizationRequest(
-        env: FlowEnvironment,
+        env: FlowEnvironment
     ): ProofingInfo {
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
         val config = metadata.credentialConfigurations[credentialConfigurationId]!!
@@ -613,31 +621,48 @@ class FunkeIssuingAuthorityState(
             add("client_id", issuanceClientId)
         }
         val httpClient = env.getInterface(HttpClient::class)!!
-        val response = httpClient.post(authorizationMetadata.pushedAuthorizationRequestEndpoint) {
+        // Use authorization challenge if available, as we want to try it first before falling
+        // back to web-based authorization.
+        val (endpoint, expectedResponseStatus) =
+            if (authorizationMetadata.authorizationChallengeEndpoint != null) {
+                Pair(
+                    authorizationMetadata.authorizationChallengeEndpoint,
+                    HttpStatusCode.BadRequest
+                )
+            } else {
+                Pair(
+                    authorizationMetadata.pushedAuthorizationRequestEndpoint,
+                    HttpStatusCode.Created
+                )
+            }
+        val response = httpClient.post(endpoint) {
             headers {
                 append("Content-Type", "application/x-www-form-urlencoded")
             }
             setBody(req.toString())
         }
-        if (response.status != HttpStatusCode.Created) {
-            val responseText = String(response.readBytes())
+        val responseText = String(response.readBytes())
+        if (response.status != expectedResponseStatus) {
             Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
             throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
         }
-        val parsedResponse = Json.parseToJsonElement(String(response.readBytes())) as JsonObject
-        val requestUri = parsedResponse["request_uri"]
-        if (requestUri !is JsonPrimitive) {
-            Logger.e(TAG, "PAR response error")
-            throw IllegalStateException("PAR response syntax error")
+        val parsedResponse = Json.parseToJsonElement(responseText) as JsonObject
+        if (response.status == HttpStatusCode.BadRequest) {
+            val errorCode = parsedResponse["error"]
+            if (errorCode !is JsonPrimitive || errorCode.content != "insufficient_authorization") {
+                Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
+                throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
+            }
         }
-        Logger.i(TAG, "Request uri: ${requestUri.content}")
+        val authSession = parsedResponse["auth_session"]
+        val requestUri = parsedResponse["request_uri"]
+        val presentation = parsedResponse["presentation"]
         return ProofingInfo(
-            authorizeUrl = "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
-                add("client_id", issuanceClientId)
-                add("request_uri", requestUri.content)
-            },
+            requestUri = requestUri?.jsonPrimitive?.content,
+            authSession = authSession?.jsonPrimitive?.content,
             pkceCodeVerifier = pkceCodeVerifier,
-            landingUrl = landingUrl
+            landingUrl = landingUrl,
+            openid4VpPresentation = presentation?.jsonPrimitive?.content
         )
     }
 

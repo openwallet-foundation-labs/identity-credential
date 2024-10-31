@@ -183,7 +183,7 @@ fun WalletNavigation(
          */
         composable(WalletDestination.ProvisionDocument.route) {
             ProvisionDocumentScreen(
-                context = application.applicationContext,
+                application = application,
                 secureAreaRepository = application.secureAreaRepository,
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = onNavigate,

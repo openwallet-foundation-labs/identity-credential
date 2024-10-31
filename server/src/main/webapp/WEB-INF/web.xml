@@ -296,6 +296,30 @@
     </servlet-mapping>
 
     <servlet>
+        <display-name>AuthorizeChallengeServlet</display-name>
+        <servlet-name>AuthorizeChallengeServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.AuthorizeChallengeServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>AuthorizeChallengeServlet</servlet-name>
+        <url-pattern>/openid4vci/authorize-challenge</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <display-name>Openid4VpResponseServlet</display-name>
+        <servlet-name>Openid4VpResponseServlet</servlet-name>
+        <servlet-class>com.android.identity.server.openid4vci.Openid4VpResponseServlet</servlet-class>
+        <load-on-startup>10</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>Openid4VpResponseServlet</servlet-name>
+        <url-pattern>/openid4vci/openid4vp-response</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <display-name>FinishAuthorizationServlet</display-name>
         <servlet-name>FinishAuthorizationServlet</servlet-name>
         <servlet-class>com.android.identity.server.openid4vci.FinishAuthorizationServlet</servlet-class>

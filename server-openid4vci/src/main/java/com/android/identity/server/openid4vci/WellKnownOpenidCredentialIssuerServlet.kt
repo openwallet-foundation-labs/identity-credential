@@ -14,7 +14,7 @@ class WellKnownOpenidCredentialIssuerServlet : BaseServlet() {
     }
     override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {
         val configuration = environment.getInterface(Configuration::class)!!
-        val baseUrl = configuration.getValue("base_url") + "/openid4vci"
+        val baseUrl = this.baseUrl
         resp.writer.write(buildJsonObject {
             put("credential_issuer", JsonPrimitive(baseUrl))
             put("credential_endpoint", JsonPrimitive("$baseUrl/credential"))

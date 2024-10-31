@@ -7,6 +7,7 @@ import com.android.identity.flow.handler.AesGcmCipher
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.handler.InvalidRequestException
 import com.android.identity.flow.handler.SimpleCipher
+import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Storage
 import com.android.identity.server.BaseHttpServlet
@@ -48,6 +49,10 @@ abstract class BaseServlet: BaseHttpServlet() {
         cipher = AesGcmCipher(encryptionKey)
         return null
     }
+
+    protected val baseUrl: String
+        get() = environment.getInterface(Configuration::class)!!
+                    .getValue("base_url") + "/openid4vci"
 
     /**
      * Creates an opaque session id ("code") that can be safely given to the client. On the server
