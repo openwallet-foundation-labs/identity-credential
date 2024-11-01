@@ -32,6 +32,7 @@ import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
+import com.android.identity.testapp.ui.QrCodesScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
@@ -94,6 +95,7 @@ class App {
                             onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
+                            onClickQrCodes = { navController.navigate(QrCodesDestination.route) }
                         )
                     }
                     composable(route = AboutDestination.route) {
@@ -139,6 +141,11 @@ class App {
                             showToast = { message -> showToast(message) },
                             onSheetConfirmed = { navController.popBackStack() },
                             onSheetDismissed = { navController.popBackStack() },
+                        )
+                    }
+                    composable(route = QrCodesDestination.route) {
+                        QrCodesScreen(
+                            showToast = { message -> showToast(message) }
                         )
                     }
                 }

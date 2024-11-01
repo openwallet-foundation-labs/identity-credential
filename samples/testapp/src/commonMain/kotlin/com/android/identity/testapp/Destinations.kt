@@ -9,6 +9,7 @@ import identitycredential.samples.testapp.generated.resources.cloud_secure_area_
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_list_screen_title
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_screen_title
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
+import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
@@ -71,6 +72,11 @@ data object ConsentModalBottomSheetDestination : Destination {
     )
 }
 
+data object QrCodesDestination : Destination {
+    override val route = "qr_codes"
+    override val title = Res.string.qr_codes_screen_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     AboutDestination,
@@ -80,5 +86,6 @@ val appDestinations = listOf(
     CloudSecureAreaDestination,
     PassphraseEntryFieldDestination,
     ConsentModalBottomSheetListDestination,
-    ConsentModalBottomSheetDestination
+    ConsentModalBottomSheetDestination,
+    QrCodesDestination,
 )

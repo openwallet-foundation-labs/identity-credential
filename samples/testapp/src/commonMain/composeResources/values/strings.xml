@@ -12,5 +12,6 @@
     <string name="passphrase_entry_field_screen_title">PassphraseEntryField use-cases</string>
     <string name="consent_modal_bottom_sheet_screen_title">ConsentModalBottomSheet</string>
     <string name="consent_modal_bottom_sheet_list_screen_title">ConsentModalBottomSheet use-cases</string>
+    <string name="qr_codes_screen_title">QR code generation and scanning</string>
 
 </resources>

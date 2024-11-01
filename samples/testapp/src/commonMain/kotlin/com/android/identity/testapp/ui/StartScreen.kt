@@ -18,6 +18,7 @@ import identitycredential.samples.testapp.generated.resources.android_keystore_s
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_list_screen_title
+import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import org.jetbrains.compose.resources.stringResource
@@ -31,6 +32,7 @@ fun StartScreen(
     onClickSecureEnclaveSecureArea: () -> Unit = {},
     onClickPassphraseEntryField: () -> Unit = {},
     onClickConsentSheetList: () -> Unit = {},
+    onClickQrCodes: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -83,6 +85,12 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickConsentSheetList) {
                     Text(stringResource(Res.string.consent_modal_bottom_sheet_list_screen_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickQrCodes) {
+                    Text(stringResource(Res.string.qr_codes_screen_title))
                 }
             }
         }
