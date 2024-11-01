@@ -20,4 +20,7 @@
     <string name="consent_modal_bottom_sheet_data_element_icon_description">Data Element Icon</string>
     <string name="consent_modal_bottom_sheet_warning_icon_description">Warning Icon</string>
 
+    <!-- ShowQrCodeDialog -->
+    <string name="show_qr_code_dialog_qr_content_description">QR code image</string>
+
 </resources>
