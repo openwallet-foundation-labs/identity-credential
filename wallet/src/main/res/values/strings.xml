@@ -307,18 +307,25 @@
 
     <!-- Evidence screens -->
     <string name="evidence_question_label_answer">Answer</string>
-    <string name="evidence_camera_scan_mrz_title">Scan your document using camera</string>
+    <string name="evidence_camera_scan_mrz_title">Take a photo of your document</string>
     <string name="evidence_camera_scan_mrz_instruction">
-        Scan the main page of your passport or machine-readable area of your card. When scanning
-        succeeds, the next screen will appear automatically.
+        Center the main page of your Passport or Machine Readable Zone (MRZ) of your Id card. Upon successfully
+        recognizing the document Id, you will progress to the next screen.
     </string>
-    <string name="evidence_nfc_scan_title">Scan your document using NFC</string>
+
+    <string name="evidence_nfc_scan_title">Scan the NFC chip on your document</string>
+    <string name="evidence_nfc_scan_info">Move your phone over the document to start scanning.
+        Confirmation will appear when successful.</string>
+    <string name="evidence_nfc_scan_passport_symbol_check">Check your document for any chip or NFC-\n
+        related symbols to ensure it is scannable</string>
+    <string name="evidence_nfc_scan_passport_symbol_accesibility_description">Biometric Passport Symbol</string>
     <string name="evidence_create_passphrase_label_passphrase">Passphrase</string>
     <string name="evidence_create_passphrase_label_pin">PIN</string>
     <string name="evidence_create_passphrase_next">Next</string>
     <string name="evidence_create_passphrase_confirm">Confirm</string>
     <string name="evidence_create_passphrase_no_match">The passphrase didn\'t match, please try again</string>
     <string name="evidence_create_passphrase_no_match_pin">The PIN didn\'t match, please try again</string>
+    <string name="evidence_nfc_scan_successful_title">Document Scanning Successful</string>
 
     <!-- Passphrase Prompt -->
     <string name="passphrase_prompt_next">Next</string>
@@ -335,17 +342,9 @@
     <string name="passphrase_prompt_csa_passphrase_content">Enter the Wallet Passphrase chosen when document was set up</string>
 
     <!-- NFC status -->
-    <string name="nfc_status_initial">Establishing NFC connection</string>
-    <string name="nfc_status_connected">NFC connected</string>
-    <string name="nfc_status_attempting_pace">Attempting PACE authorization</string>
-    <string name="nfc_status_pace_succeeded">Authorized through PACE</string>
-    <string name="nfc_status_pace_not_supported">PACE authorization is not supported</string>
-    <string name="nfc_status_pace_failed">PACE authorization failed</string>
-    <string name="nfc_status_attempting_bac">Attempting BAC authorization</string>
-    <string name="nfc_status_bac_succeeded">Authorized through BAC</string>
-    <string name="nfc_status_reading_data">Reading data: %1$d%%</string>
-    <string name="nfc_status_tunnel_authenticating">Establishing secure tunnel: %1$d%%</string>
-    <string name="nfc_status_tunnel_reading_data">Reading data through tunnel: %1$d%%</string>
+    <string name="nfc_status_initializing">Initializing...</string>
+    <string name="nfc_status_pace_unable_to_initialize">Unable to initialize</string>
+    <string name="nfc_status_reading_data">Reading... %1$d%%</string>
     <string name="nfc_status_finished">Finished</string>
 
     <!-- eID reading -->

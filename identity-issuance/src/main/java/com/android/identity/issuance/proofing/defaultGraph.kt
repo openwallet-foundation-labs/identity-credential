@@ -199,15 +199,13 @@ fun defaultGraph(
                 }
             }
         }
-        message(
-            "message",
-            message = """
-                Your application is about to be sent the ID issuer for verification. You will
-                get notified when the application is approved.
-            """.trimIndent(),
+        completionMessage(
+            id = "detailedMessage",
+            messageTitle = "Document Scanning Complete",
+            message = "Your application is now under ID issuer verification. This process might take a few hours.",
             assets = mapOf(),
-            acceptButtonText = "Continue",
-            null
+            acceptButtonText = "Done",
+            rejectButtonText = null
         )
         requestNotificationPermission(
             "notificationPermission",
