@@ -1,6 +1,7 @@
 package com.android.identity.util
 
 import kotlin.io.encoding.Base64
+import kotlin.io.encoding.Base64.PaddingOption
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
@@ -17,4 +18,6 @@ fun ByteArray.toBase64Url(): String = Base64.UrlSafe.encode(this).trimEnd('=')
  * This works for both strings with or without padding.
  */
 @OptIn(ExperimentalEncodingApi::class)
-fun String.fromBase64Url(): ByteArray = Base64.UrlSafe.decode(this)
+fun String.fromBase64Url(): ByteArray {
+    return Base64.UrlSafe.withPadding(PaddingOption.ABSENT_OPTIONAL).decode(this)
+}

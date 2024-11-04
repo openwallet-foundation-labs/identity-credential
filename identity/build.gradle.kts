@@ -58,10 +58,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
             }
-            languageSettings {
-                languageVersion = "1.9"
-                apiVersion = "1.9"
-            }
         }
 
         val commonTest by getting {
@@ -70,10 +66,6 @@ kotlin {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutine.test)
             }
-            languageSettings {
-                languageVersion = "1.9"
-                apiVersion = "1.9"
-            }
         }
 
         val jvmMain by getting {
@@ -81,10 +73,6 @@ kotlin {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
-            }
-            languageSettings {
-                languageVersion = "1.9"
-                apiVersion = "1.9"
             }
         }
     }
