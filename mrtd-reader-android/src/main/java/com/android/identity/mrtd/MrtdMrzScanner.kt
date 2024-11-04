@@ -6,8 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -46,10 +49,20 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
         val previewUseCase = Preview.Builder().build()
         previewUseCase.setSurfaceProvider(surfaceProvider)
 
-        val analysisBuilder = ImageAnalysis.Builder()
         // we take the portrait format of the Image.
-        analysisBuilder.setTargetResolution(Size(4 * 480, 4 * 640))
-        val analysisUseCase = analysisBuilder.build()
+        val analysisUseCase = ImageAnalysis.Builder()
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            Size(4 * 480, 4 * 640),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                        )
+                    )
+                    .build()
+            )
+            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
+            .build()
         val executor = Executors.newFixedThreadPool(1)!!
         return suspendCoroutine { continuation ->
             analysisUseCase.setAnalyzer(

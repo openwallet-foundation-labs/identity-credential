@@ -9,17 +9,30 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -35,11 +48,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -51,6 +71,7 @@ import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.LandingUrlUnknownException
+import com.android.identity.issuance.evidence.EvidenceRequestCompletionMessage
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
@@ -85,6 +106,7 @@ import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.android.identity_credential.wallet.ui.SelfieRecorder
+import com.android.identity_credential.wallet.util.inverse
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -95,7 +117,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
-
 
 private const val TAG = "EvidenceRequest"
 
@@ -142,6 +163,91 @@ fun EvidenceRequestMessageView(
                 )
         }) {
             Text(evidenceRequest.acceptButtonText)
+        }
+    }
+
+}
+
+/**
+ * Show the "Document Scanning Complete" screen after completing all steps of for evidence gathering.
+ * Since it occupies the entire visible screen real estate, this function can be appropriately
+ * classified as a "Screen" (rather than a generic "View").
+ */
+@Composable
+fun EvidenceRequestCompletedScreen(
+    evidenceRequest: EvidenceRequestCompletionMessage,
+    provisioningViewModel: ProvisioningViewModel,
+    walletServerProvider: WalletServerProvider,
+    documentStore: DocumentStore
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.id_card),
+            tint = MaterialTheme.colorScheme.background.inverse(),
+            contentDescription = stringResource(
+                R.string.accessibility_artwork_for,
+                evidenceRequest.messageTitle
+            ),
+            modifier = Modifier
+                .size(48.dp)
+                .padding(start = 16.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = evidenceRequest.messageTitle,
+                modifier = Modifier.padding(16.dp),
+                textAlign = TextAlign.Left,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineLarge
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Absolute.Left
+        ) {
+            Text(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                text = evidenceRequest.message,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 200.dp, bottom = 150.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.check_circled),
+                tint = colorResource(id = R.color.success_green),
+                modifier = Modifier.size(100.dp),
+                contentDescription = stringResource(
+                    R.string.accessibility_artwork_for,
+                    evidenceRequest.messageTitle
+                )
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = {
+                    provisioningViewModel.provideEvidence(
+                        evidence = EvidenceResponseMessage(true),
+                        walletServerProvider = walletServerProvider,
+                    )
+                }) {
+                Text(evidenceRequest.acceptButtonText)
+            }
         }
     }
 }
@@ -646,8 +752,10 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
 fun EvidenceRequestIcaoNfcTunnelView(
     evidenceRequest: EvidenceRequestIcaoNfcTunnel,
     provisioningViewModel: ProvisioningViewModel,
-    permissionTracker: PermissionTracker
+    permissionTracker: PermissionTracker,
+    developerMode: Boolean = false
 ) {
+    var showSuccessfulScanningScreen by remember { mutableStateOf(false) }
     val tunnelScanner = NfcTunnelScanner(provisioningViewModel)
     // Start with the camera scan only if it was requested
     val initialRoute =
@@ -659,8 +767,89 @@ fun EvidenceRequestIcaoNfcTunnelView(
             // data scanned from passport MRZ strip.
             IcaoMrtdCommunicationModel.Route.CAMERA_SCAN
         }
-    EvidenceRequestIcaoView(tunnelScanner, permissionTracker, initialRoute) {
-        provisioningViewModel.finishTunnel()
+
+    // If developer mode not enabled, simply show the MRZ or NFC screen without briefly showing
+    // transitional success screen after successfully scanning an NFC document.
+    if (!developerMode){
+        EvidenceRequestIcaoView(tunnelScanner, permissionTracker, initialRoute) {
+            // upon completion of nfc scanning, finish the tunneling process
+            provisioningViewModel.finishTunnel()
+        }
+    } else { // developer mode is enabled
+        // if user has not successfully scanned an NFC document, show the MRZ or NFC screen
+        if (!showSuccessfulScanningScreen) {
+            EvidenceRequestIcaoView(tunnelScanner, permissionTracker, initialRoute) {
+                // upon completion of nfc scanning, show a transitional "Success" screen
+                showSuccessfulScanningScreen = true
+            }
+        } else { // user successfully scanned an NFC document
+            // briefly (1 sec) show a transitional success screen then finish the tunneling process
+            DocumentSuccessfullyScannedScreen(pauseDurationMs = 1000L) {
+                provisioningViewModel.finishTunnel()
+            }
+        }
+    }
+}
+
+/**
+ * Briefly show the "Document Scanning Successful" screen before moving to the next screen/step
+ * of evidence request (automatically after waiting for [pauseDurationMs]).
+ */
+@Composable
+fun DocumentSuccessfullyScannedScreen(pauseDurationMs: Long, onFinishedShowingScreen: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.id_card),
+            tint = MaterialTheme.colorScheme.background.inverse(),
+            contentDescription = stringResource(
+                R.string.accessibility_artwork_for,
+                stringResource(id = R.string.evidence_nfc_scan_successful_title)
+            ),
+            modifier = Modifier
+                .size(48.dp)
+                .padding(start = 16.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = stringResource(R.string.evidence_nfc_scan_successful_title),
+                modifier = Modifier.padding(16.dp),
+                textAlign = TextAlign.Left,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineLarge
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 100.dp, bottom = 200.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Column(
+                modifier = Modifier.padding(top = 80.dp, bottom = 50.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.check_circled),
+                    tint = colorResource(id = R.color.success_green),
+                    modifier = Modifier.size(100.dp),
+                    contentDescription = stringResource(
+                        R.string.accessibility_artwork_for,
+                        stringResource(id = R.string.evidence_nfc_scan_successful_title)
+                    )
+                )
+            }
+        }
+    }
+    LaunchedEffect(key1 = true) {
+        delay(pauseDurationMs)
+        onFinishedShowingScreen.invoke()
     }
 }
 
@@ -679,9 +868,24 @@ fun <ResultT> EvidenceRequestIcaoView(
     permissionTracker.PermissionCheck(requiredPermissions) {
         val navController = rememberNavController()
         val icaoCommunication = rememberIcaoMrtdCommunicationModel(reader, navController, onResult)
-        NavHost(navController = navController, startDestination = initialRoute.route ) {
+        NavHost(navController = navController, startDestination = initialRoute.route) {
             composable(IcaoMrtdCommunicationModel.Route.CAMERA_SCAN.route) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 10.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.id_card),
+                        tint = MaterialTheme.colorScheme.background.inverse(),
+                        contentDescription = stringResource(
+                            R.string.accessibility_artwork_for,
+                            stringResource(id = R.string.evidence_camera_scan_mrz_title)
+                        ),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(start = 16.dp)
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -689,13 +893,15 @@ fun <ResultT> EvidenceRequestIcaoView(
                         Text(
                             text = stringResource(R.string.evidence_camera_scan_mrz_title),
                             modifier = Modifier.padding(16.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.titleLarge
+                            textAlign = TextAlign.Left,
+                            style = MaterialTheme.typography.headlineLarge
                         )
                     }
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 5.dp),
+                        horizontalArrangement = Arrangement.Absolute.Left
                     ) {
                         Text(
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp),
@@ -705,89 +911,279 @@ fun <ResultT> EvidenceRequestIcaoView(
                     }
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(),
+                            .fillMaxSize()
+                            .padding(vertical = 10.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        AndroidView(
-                            modifier = Modifier.padding(16.dp),
-                            factory = { context ->
-                                PreviewView(context).apply {
-                                    layoutParams = LinearLayout.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    scaleType = PreviewView.ScaleType.FILL_START
-                                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                                    post {
-                                        icaoCommunication.launchCameraScan(surfaceProvider)
+                        Column {
+                            AndroidView(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = 16.dp)
+                                    .clip(RoundedCornerShape(32.dp))
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                    ),
+                                factory = { context ->
+                                    PreviewView(context).apply {
+                                        layoutParams = LinearLayout.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                                        implementationMode =
+                                            PreviewView.ImplementationMode.COMPATIBLE
+                                        post {
+                                            icaoCommunication.launchCameraScan(surfaceProvider)
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
 
             composable(IcaoMrtdCommunicationModel.Route.NFC_SCAN.route) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 10.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.id_card),
+                        tint = MaterialTheme.colorScheme.background.inverse(),
+                        contentDescription = stringResource(
+                            R.string.accessibility_artwork_for,
+                            stringResource(id = R.string.evidence_camera_scan_mrz_title)
+                        ),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(start = 16.dp)
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = stringResource(R.string.evidence_nfc_scan_title),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.titleLarge
+                            modifier = Modifier.padding(16.dp),
+                            textAlign = TextAlign.Left,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineLarge
                         )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Absolute.Left
                     ) {
                         Text(
-                            style = MaterialTheme.typography.bodyLarge,
-                            text = when (icaoCommunication.status.value) {
-                                is MrtdNfc.Initial -> stringResource(R.string.nfc_status_initial)
-                                is MrtdNfc.Connected -> stringResource(R.string.nfc_status_connected)
-                                is MrtdNfc.AttemptingPACE -> stringResource(R.string.nfc_status_attempting_pace)
-                                is MrtdNfc.PACESucceeded -> stringResource(R.string.nfc_status_pace_succeeded)
-                                is MrtdNfc.PACENotSupported -> stringResource(R.string.nfc_status_pace_not_supported)
-                                is MrtdNfc.PACEFailed -> stringResource(R.string.nfc_status_pace_failed)
-                                is MrtdNfc.AttemptingBAC -> stringResource(R.string.nfc_status_attempting_bac)
-                                is MrtdNfc.BACSucceeded -> stringResource(R.string.nfc_status_bac_succeeded)
-                                is MrtdNfc.ReadingData -> {
-                                    val s = icaoCommunication.status.value as MrtdNfc.ReadingData
-                                    stringResource(
-                                        R.string.nfc_status_reading_data,
-                                        s.progressPercent
-                                    )
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                            text = stringResource(R.string.evidence_nfc_scan_info),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 30.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(top = 80.dp, bottom = 50.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            val icaoStatusValue = icaoCommunication.status.value
+                            NfcHeartbeatAnimation(
+                                NfcAnimationStatus.getAnimationStatus(icaoStatusValue)
+                            )
+                            Text(
+                                modifier = Modifier.padding(top = 45.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontFamily = FontFamily.SansSerif,
+                                text = when (icaoStatusValue) {
+                                    // don't show a message while waiting to detect an NFC document,
+                                    is MrtdNfc.Initial -> ""
+                                    // once an NFC document is detected show "initializing" until
+                                    // reading of data from document begins
+                                    is MrtdNfc.Connected,
+                                    is MrtdNfc.AttemptingPACE,
+                                    is MrtdNfc.PACESucceeded,
+                                    is MrtdNfc.AttemptingBAC,
+                                    is MrtdNfc.BACSucceeded,
+                                    is MrtdNfc.TunnelAuthenticating -> stringResource(R.string.nfc_status_initializing)
+                                    // if PACE is unsupported or fails, show "unable to initialize"
+                                    is MrtdNfc.PACENotSupported,
+                                    is MrtdNfc.PACEFailed -> stringResource(R.string.nfc_status_pace_unable_to_initialize)
+                                    // when reading data (in/out of a tunnel) show "reading... %"
+                                    is MrtdNfc.ReadingData,
+                                    is MrtdNfc.TunnelReading -> {
+                                        val progressPercent =
+                                            (icaoStatusValue as? MrtdNfc.ReadingData)?.progressPercent
+                                                ?: (icaoStatusValue as MrtdNfc.TunnelReading).progressPercent
+                                        stringResource(
+                                            R.string.nfc_status_reading_data,
+                                            progressPercent
+                                        )
+                                    }
+                                    // this is here for completeness sake and is not really visible
+                                    // due to the screen changing before this view is composed.
+                                    is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
                                 }
-
-                                is MrtdNfc.TunnelAuthenticating -> {
-                                    val s =
-                                        icaoCommunication.status.value as MrtdNfc.TunnelAuthenticating
-                                    stringResource(
-                                        R.string.nfc_status_tunnel_authenticating,
-                                        s.progressPercent
-                                    )
-                                }
-
-                                is MrtdNfc.TunnelReading -> {
-                                    val s = icaoCommunication.status.value as MrtdNfc.TunnelReading
-                                    stringResource(
-                                        R.string.nfc_status_tunnel_reading_data,
-                                        s.progressPercent
-                                    )
-                                }
-
-                                is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
-                            }
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .padding(top = 60.dp)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.passport_biometric_icon),
+                            tint = Color.LightGray,
+                            contentDescription = stringResource(
+                                R.string.accessibility_artwork_for,
+                                stringResource(id = R.string.evidence_nfc_scan_passport_symbol_accesibility_description)
+                            ),
+                            modifier = Modifier
+                                .size(48.dp)
+                                .padding(start = 16.dp)
+                        )
+                        Text(
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                            text = stringResource(R.string.evidence_nfc_scan_passport_symbol_check),
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Nfc Animation Status - used to update the NFC "contactless" icon colors and animation according
+ * to the value of [MrtdNfc.Status]
+ */
+enum class NfcAnimationStatus {
+    // Waiting to detect an NFC card
+    Initial,
+    // Any state that's not Initial, Error, or Finished
+    Connected,
+    // Some error occurred
+    Error,
+    // Finished scanning NFC document
+    Finished
+    ;
+    companion object {
+        /**
+         * Return an [NfcAnimationStatus] from an MrtdNfc.Status
+         */
+        fun getAnimationStatus(nfcStatus: MrtdNfc.Status): NfcAnimationStatus = when (nfcStatus) {
+            MrtdNfc.Initial -> Initial
+            MrtdNfc.PACENotSupported, MrtdNfc.PACEFailed -> Error
+            MrtdNfc.Finished -> Finished
+            else -> Connected
+        }
+    }
+}
+
+/**
+ * Compose the NFC "Heartbeat" animation according to the passed-in [nfcAnimationStatus] while
+ * following the device's Light/Dark theme colors, where the color scheme for Dark theme is the
+ * inverse of Light.
+ */
+@Composable
+fun NfcHeartbeatAnimation(nfcAnimationStatus: NfcAnimationStatus) {
+    val infiniteTransition = rememberInfiniteTransition(label = "repeating transition")
+    // Duration of all animation transitions.
+    val transitionDurationMs = 1500
+    // Adjust size of contactless icon here.
+    val iconSize = 80.dp
+    // Define the starting alpha of background color of radius animation.
+    val animationBgAlpha = 0.1F
+    // Transition animation that grows the radius around the contactless icon.
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = transitionDurationMs,
+                easing = LinearOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ), label = "scaling animation"
+    )
+    // Transition animation for changing alpha of background color of radius animation.
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = animationBgAlpha,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = transitionDurationMs, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "alpha animation"
+    )
+    val tintColorThemed = if (!isSystemInDarkTheme()) {
+        colorResource(id = R.color.contactless_blue)
+    } else {
+        colorResource(id = R.color.contactless_blue).inverse()
+    }
+    // Start composing the "NFC heartbeat" animation.
+    Box(
+        contentAlignment = Alignment.Center,
+    ) {
+        // Don't show the radius animation when encountering an error.
+        if (nfcAnimationStatus != NfcAnimationStatus.Error) {
+            Box(
+                modifier = Modifier
+                    .size(iconSize) // heartbeat size
+                    .graphicsLayer(scaleX = scale, scaleY = scale)
+                    .alpha(alpha)
+                    .background(tintColorThemed, CircleShape)
+            )
+        }
+        Box(
+            modifier = Modifier.clip(CircleShape)
+        ) {
+            // get the main and background colors of the "contactless" icon
+            val (tintColor, bgColor) = when (nfcAnimationStatus) {
+                // Idling/waiting to begin reading an NFC document.
+                NfcAnimationStatus.Initial -> Pair(
+                    tintColorThemed,
+                    tintColorThemed.copy(alpha = animationBgAlpha)
+                )
+                // Once an NFC document is detected, inverse colors of "Initial" status.
+                NfcAnimationStatus.Connected -> Pair(
+                    MaterialTheme.colorScheme.background,
+                    tintColorThemed
+                )
+                // Error while initializing/reading NFC card.
+                NfcAnimationStatus.Error -> Pair(
+                    MaterialTheme.colorScheme.background,
+                    Color.Red.copy(
+                        alpha =
+                        if (isSystemInDarkTheme()) {
+                            1F
+                        } else {
+                            0.3F
+                        }
+                    )
+                )
+                // NFC scan complete -- colors are not used b/c icon is changed entirely.
+                else -> Pair(Color.Transparent, Color.Transparent)
+            }
+            Icon(
+                painter = painterResource(id = R.drawable.contactless),
+                contentDescription = stringResource(
+                    R.string.accessibility_artwork_for,
+                    stringResource(id = R.string.evidence_nfc_scan_title)
+                ),
+                tint = tintColor,
+                modifier = Modifier
+                    .size(iconSize)
+                    .background(bgColor)
+            )
         }
     }
 }

@@ -15,9 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,6 +31,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityException
+import com.android.identity.issuance.evidence.EvidenceRequestCompletionMessage
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
@@ -46,7 +45,6 @@ import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceRequestWeb
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
-import com.android.identity.issuance.evidence.EvidenceResponseOpenid4Vp
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
@@ -91,7 +89,8 @@ fun ProvisionDocumentScreen(
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
     walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    documentStore: DocumentStore,
+    developerMode: Boolean = false
 ) {
     val context = application.applicationContext
 
@@ -189,7 +188,16 @@ fun ProvisionDocumentScreen(
 
                     is EvidenceRequestMessage -> {
                         EvidenceRequestMessageView(
-                            evidenceRequest,
+                            evidenceRequest = evidenceRequest,
+                            provisioningViewModel = provisioningViewModel,
+                            walletServerProvider = walletServerProvider,
+                            documentStore = documentStore
+                        )
+                    }
+
+                    is EvidenceRequestCompletionMessage -> {
+                        EvidenceRequestCompletedScreen(
+                            evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             walletServerProvider = walletServerProvider,
                             documentStore = documentStore
@@ -229,9 +237,11 @@ fun ProvisionDocumentScreen(
 
                     is EvidenceRequestIcaoNfcTunnel -> {
                         EvidenceRequestIcaoNfcTunnelView(
-                            evidenceRequest,
+                            evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            permissionTracker = permissionTracker
+                            permissionTracker = permissionTracker,
+                            developerMode = developerMode
+
                         )
                     }
 

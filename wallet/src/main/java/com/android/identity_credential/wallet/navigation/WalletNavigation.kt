@@ -189,7 +189,8 @@ fun WalletNavigation(
                 onNavigate = onNavigate,
                 permissionTracker = permissionTracker,
                 walletServerProvider = application.walletServerProvider,
-                documentStore = application.documentStore
+                documentStore = application.documentStore,
+                developerMode = application.settingsModel.developerModeEnabled.value ?: false
             )
         }
 

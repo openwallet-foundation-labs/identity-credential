@@ -1,5 +1,6 @@
 package com.android.identity.issuance.proofing
 
+import com.android.identity.issuance.evidence.EvidenceRequestCompletionMessage
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -10,8 +11,8 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponse
-import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.issuance.proofing.ProofingGraph.Node
+import com.android.identity.securearea.PassphraseConstraints
 import kotlinx.io.bytestring.ByteString
 
 /**
@@ -30,6 +31,27 @@ class ProofingGraphBuilder {
     fun message(id: String, message: String, assets: Map<String, ByteString>,
                 acceptButtonText: String, rejectButtonText: String?) {
         val evidenceRequest = EvidenceRequestMessage(message, assets, acceptButtonText, rejectButtonText)
+        chain.add { followUp -> ProofingGraph.SimpleNode(id, followUp, evidenceRequest) }
+    }
+
+    /** Sends [EvidenceRequestCompletionMessage]. */
+    fun completionMessage(
+        id: String,
+        messageTitle: String,
+        message: String,
+        assets: Map<String, ByteString>,
+        acceptButtonText: String,
+        rejectButtonText: String?,
+
+    ) {
+        val evidenceRequest =
+            EvidenceRequestCompletionMessage(
+                messageTitle,
+                message,
+                assets,
+                acceptButtonText,
+                rejectButtonText,
+            )
         chain.add { followUp -> ProofingGraph.SimpleNode(id, followUp, evidenceRequest) }
     }
 
