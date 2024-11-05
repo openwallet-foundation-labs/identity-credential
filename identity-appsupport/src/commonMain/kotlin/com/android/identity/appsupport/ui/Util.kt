@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ImageBitmap
 
 @Composable
 expect fun AppTheme(content: @Composable () -> Unit)
@@ -16,3 +17,5 @@ fun AppThemeDefault(content: @Composable () -> Unit) {
         content = content
     )
 }
+
+expect fun decodeImage(encodedData: ByteArray): ImageBitmap

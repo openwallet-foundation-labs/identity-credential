@@ -6,6 +6,7 @@ import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
+import kotlinx.datetime.LocalDate
 
 /**
  * Object containing the metadata of the German ID Document Type.
@@ -45,7 +46,7 @@ object GermanPersonalID {
                 "Date of Birth",
                 "Day, month, and year on which the PID holder was born. If unknown, approximate date of birth.",
                 Icon.TODAY,
-                SampleData.birthDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
             )
             .addVcAttribute(
                 DocumentAttributeType.Number,
@@ -205,7 +206,7 @@ object GermanPersonalID {
                 "Date of Issue",
                 "Date (and possibly time) when the PID was issued.",
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -213,7 +214,7 @@ object GermanPersonalID {
                 "Date of Expiry",
                 "Date (and possibly time) when the PID will expire.",
                 Icon.CALENDAR_CLOCK,
-                SampleData.expiryDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
             )
             .addVcAttribute(
                 DocumentAttributeType.String,

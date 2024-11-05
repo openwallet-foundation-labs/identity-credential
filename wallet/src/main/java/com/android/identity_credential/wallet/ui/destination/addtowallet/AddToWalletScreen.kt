@@ -115,8 +115,10 @@ fun AddToWalletScreen(
                 // compose ScanQrDialog when user taps on "Scan Credential Offer"
                 if (showQrScannerDialog.value) {
                     ScanQrCodeDialog(
-                        title = stringResource(R.string.credential_offer_scan),
-                        description = stringResource(id = R.string.credential_offer_details),
+                        title = @Composable { Text(text = stringResource(R.string.credential_offer_scan)) },
+                        text = @Composable { Text(
+                            text = stringResource(id = R.string.credential_offer_details)
+                        )},
                         onCodeScanned = { qrCodeTextUrl ->
                             // filter only for OID4VCI Url schemes.
                             if (qrCodeTextUrl.startsWith(WalletApplication.OID4VCI_CREDENTIAL_OFFER_URL_SCHEME)) {

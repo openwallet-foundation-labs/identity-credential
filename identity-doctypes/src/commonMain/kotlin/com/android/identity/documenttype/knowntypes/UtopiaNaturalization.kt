@@ -5,6 +5,7 @@ import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
+import kotlinx.datetime.LocalDate
 
 /**
  * Naturalization Certificate of the fictional State of Utopia.
@@ -40,7 +41,7 @@ object UtopiaNaturalization {
                 "Date of Birth",
                 "Day, month, and year on which the naturalized person was born. If unknown, approximate date of birth.",
                 Icon.TODAY,
-                SampleData.birthDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -48,7 +49,7 @@ object UtopiaNaturalization {
                 "Date of Naturalization",
                 "Date (and possibly time) when the person was naturalized.",
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addSampleRequest(
                 id = "full",
