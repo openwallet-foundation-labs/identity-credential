@@ -3,6 +3,8 @@ package com.android.identity.crypto
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
 import com.android.identity.SwiftBridge
+import com.android.identity.util.toByteArray
+import com.android.identity.util.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
