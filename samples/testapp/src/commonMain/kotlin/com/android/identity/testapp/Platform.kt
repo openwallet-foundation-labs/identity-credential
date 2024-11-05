@@ -6,3 +6,5 @@ enum class Platform {
 }
 
 expect val platform: Platform
+
+expect fun getLocalIpAddress(): String

@@ -27,16 +27,18 @@ import org.jetbrains.compose.resources.stringResource
  * Renders a QR code and shows it in a dialog.
  *
  * @param title The title of the dialog.
- * @param description The description text to include in the dialog.
- * @param dismissButton The text for the dismiss button.
+ * @param text The description to include in the dialog, displayed above the QR code.
+ * @param additionalContent Content which is displayed below the QR code.
+ * @param dismissButton The content for the dismiss button.
  * @param data the QR code to show, e.g. mdoc:owBjMS4... or https://github.com/....
  * @param onDismiss called when the dismiss button is pressed.
  * @param modifier A [Modifier] or `null`.
  */
 @Composable
 fun ShowQrCodeDialog(
-    title: String,
-    description: String,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    additionalContent: (@Composable () -> Unit)? = null,
     dismissButton: String,
     data: String,
     onDismiss: () -> Unit,
@@ -48,12 +50,12 @@ fun ShowQrCodeDialog(
 
     AlertDialog(
         modifier = modifier ?: Modifier,
-        title = { Text(text = title) },
+        title = title,
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(text = description)
+                text?.invoke()
 
                 Row(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -74,6 +76,8 @@ fun ShowQrCodeDialog(
                         )
                     }
                 }
+
+                additionalContent?.invoke()
             }
         },
         onDismissRequest = onDismiss,

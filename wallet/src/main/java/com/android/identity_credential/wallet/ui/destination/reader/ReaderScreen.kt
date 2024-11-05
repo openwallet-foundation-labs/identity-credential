@@ -174,8 +174,8 @@ private fun WaitForEngagement(
 
     if (showQrScannerDialog.value) {
         ScanQrCodeDialog(
-            title = stringResource(R.string.reader_screen_scan_qr_dialog_title),
-            description = stringResource(R.string.reader_screen_scan_qr_dialog_text),
+            title = @Composable { Text(text = stringResource(R.string.reader_screen_scan_qr_dialog_title)) },
+            text = @Composable { Text(text = stringResource(R.string.reader_screen_scan_qr_dialog_text)) },
             onCodeScanned = { qrCodeText ->
                 model.setQrCode(qrCodeText)
                 true

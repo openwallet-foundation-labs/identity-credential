@@ -55,7 +55,8 @@ navigation-plugin = "2.7.7"
 androidx-preference = "1.2.1"
 exif = "1.3.7"
 ausweis-sdk = "2.1.1"
-jetbrains-navigation = "2.7.0-alpha07"
+jetbrains-navigation = "2.8.0-alpha10"
+jetbrains-lifecycle = "2.8.2"
 cameraLifecycle = "1.3.4"
 buildconfig = "5.3.5"
 qrose = "1.0.1"
@@ -99,12 +100,14 @@ androidx-navigation-runtime = { group = "androidx.navigation", name = "navigatio
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidx-navigation" }
 code-scanner = { module = "com.github.yuriy-budiyev:code-scanner", version.ref = "code-scanner" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
+ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "androidx-lifecycle-ktx" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle-ktx" }
@@ -127,6 +130,7 @@ exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref =
 ausweis-sdk = { module = "com.governikus:ausweisapp", version.ref = "ausweis-sdk"}
 jetbrains-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref="jetbrains-navigation" }
 jetbrains-navigation-runtime = { module = "org.jetbrains.androidx.navigation:navigation-runtime", version.ref="jetbrains-navigation" }
+jetbrains-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref="jetbrains-lifecycle" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
 qrose = { group = "io.github.alexzhirkevich", name = "qrose", version.ref="qrose"}
 easyqrscan = { module = "io.github.kalinjul.easyqrscan:scanner", version.ref = "easyqrscan" }

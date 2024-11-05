@@ -5,6 +5,7 @@ import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
+import kotlinx.datetime.LocalDate
 
 /**
  * Object containing the metadata of the EU Certificate of Residency (COR) document.
@@ -52,7 +53,7 @@ object EUCertificateOfResidence {
                 true,
                 NAMESPACE,
                 Icon.TODAY,
-                SampleData.birthDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Boolean,
@@ -82,7 +83,7 @@ object EUCertificateOfResidence {
                 false,
                 NAMESPACE,
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -192,7 +193,7 @@ object EUCertificateOfResidence {
                 true,
                 NAMESPACE,
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Date,
@@ -202,7 +203,7 @@ object EUCertificateOfResidence {
                 true,
                 NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                SampleData.expiryDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.String,
