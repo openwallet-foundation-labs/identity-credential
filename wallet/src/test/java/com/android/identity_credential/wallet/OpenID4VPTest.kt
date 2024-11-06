@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet
 
 import com.android.identity.document.DocumentRequest
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity_credential.wallet.presentation.DescriptorMap
 import com.android.identity_credential.wallet.presentation.createPresentationSubmission
 import com.android.identity_credential.wallet.presentation.formatAsDocumentRequest
@@ -84,7 +85,7 @@ class OpenID4VPTest {
                 "\"id_token_signed_response_alg\":\"RS256\"}"),
             authRequest.clientMetadata!!)
 
-        val presentationSubmission = createPresentationSubmission(authRequest)
+        val presentationSubmission = createPresentationSubmission(authRequest, CredentialFormat.MDOC_MSO)
         Assert.assertEquals("32f54163-7166-48f1-93d8-ff217bdb0653",
             presentationSubmission.definitionId)
         val descriptorMaps = presentationSubmission.descriptorMaps
@@ -142,7 +143,7 @@ class OpenID4VPTest {
                     "\"vp_formats\":{\"mso_mdoc\":{\"alg\":[\"ES256\",\"ES384\",\"ES512\",\"EdDSA\",\"ESB256\",\"ESB320\",\"ESB384\",\"ESB512\"]}}}\n"),
             authRequest.clientMetadata!!)
 
-        val presentationSubmission = createPresentationSubmission(authRequest)
+        val presentationSubmission = createPresentationSubmission(authRequest, CredentialFormat.MDOC_MSO)
         val descriptorMaps = presentationSubmission.descriptorMaps
         for (descriptorMap: DescriptorMap in descriptorMaps) {
             Assert.assertEquals("org.iso.18013.5.1.mDL ", descriptorMap.id)

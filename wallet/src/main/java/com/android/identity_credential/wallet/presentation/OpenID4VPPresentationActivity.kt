@@ -462,7 +462,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
         val uri = Uri.parse(authRequest)
         val authorizationRequest = getAuthorizationRequest(uri, httpClient)
-        val presentationSubmission = createPresentationSubmission(authorizationRequest)
+        val credentialFormat = getFormat(authorizationRequest.clientMetadata, authorizationRequest.presentationDefinition)
+        val presentationSubmission = createPresentationSubmission(authorizationRequest, credentialFormat)
         val inputDescriptors =
             authorizationRequest.presentationDefinition["input_descriptors"]!!.jsonArray
 
@@ -479,10 +480,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         //
         val inputDescriptorObj = inputDescriptors[0].jsonObject
         val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
-        // Get the requested format from the client metadata.
-        val credentialFormat = getFormat(authorizationRequest.clientMetadata)
-        val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
 
+        val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
         val document = firstMatchingDocument(credentialFormat, docType)
             ?: run { throw NoMatchingDocumentException("No matching credentials in wallet for " +
                     "docType $docType and credentialFormat $credentialFormat") }
@@ -894,42 +893,75 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
     }
 }
 
-private fun getFormat(clientMetadata: JsonObject): CredentialFormat {
-    // Search for these strings, in order.
+private fun getFormat(
+    clientMetadata: JsonObject,
+    presentationDefinition: JsonObject
+): CredentialFormat {
+    // Since we only return a single format, we order acceptedFormats such that preferred formats
+    // are first.
     val acceptedFormats = listOf(
         "mso_mdoc" to CredentialFormat.MDOC_MSO,
         "jwt_vc" to CredentialFormat.SD_JWT_VC,
         "vc+sd-jwt" to CredentialFormat.SD_JWT_VC)
-    clientMetadata["vp_formats"]?.let {
-        val vpFormats = it.jsonObject.keys
-        for ((format, credentialFormat) in acceptedFormats) {
-            if (vpFormats.contains(format)) {
-                return credentialFormat
+
+    // If the clientMetadata has a exactly one format, return that.
+    if (clientMetadata.containsKey("vp_formats")) {
+        val vpFormats = clientMetadata["vp_formats"]!!.jsonObject.keys
+        if (vpFormats.size == 1) {
+            for ((format, credentialFormat) in acceptedFormats) {
+                if (vpFormats.contains(format)) {
+                    return credentialFormat
+                }
             }
+            throw IllegalArgumentException("No supported formats found in: ${vpFormats.sorted().joinToString()}")
         }
-        throw IllegalArgumentException("No supported formats found in: ${vpFormats.sorted().joinToString()}")
     }
-    throw IllegalArgumentException("No vp_formats found in client_metadata")
+
+    // If clientMetadata has 0 or 2+ formats, use presentation_definition -> input_descriptors
+    // -> format.
+    val inputDescriptors = presentationDefinition["input_descriptors"]!!.jsonArray
+    val vpFormats = HashSet<String>()
+
+    for (inputDescriptor: JsonElement in inputDescriptors) {
+        val inputDescriptorObj = inputDescriptor.jsonObject
+        val formatName = inputDescriptorObj["format"]?.jsonObject?.keys?.first()
+        if (formatName != null) {
+            vpFormats.add(formatName)
+        }
+    }
+
+    for ((format, credentialFormat) in acceptedFormats) {
+        if (vpFormats.contains(format)) {
+            return credentialFormat
+        }
+    }
+    throw IllegalArgumentException("No vp_formats found in client_metadata and no supported " +
+            "formats found in input_descriptors: ${vpFormats.sorted().joinToString()}")
 }
 
-private val validFormats = setOf("mso_mdoc", "jwt_vc", "vc+sd-jwt")
+internal fun createPresentationSubmission(
+    authRequest: AuthorizationRequest,
+    credentialFormat: CredentialFormat
+): PresentationSubmission {
+    val vpFormats = when (credentialFormat) {
+        CredentialFormat.MDOC_MSO -> setOf("jwt_vc", "vc+sd-jwt")
+        CredentialFormat.SD_JWT_VC -> setOf("mso_mdoc")
+    }
 
-internal fun createPresentationSubmission(authRequest: AuthorizationRequest): PresentationSubmission {
     val descriptorMaps = ArrayList<DescriptorMap>()
     val inputDescriptors = authRequest.presentationDefinition["input_descriptors"]!!.jsonArray
 
     for (inputDescriptor: JsonElement in inputDescriptors) {
         val inputDescriptorObj = inputDescriptor.jsonObject
         val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
-        val formatName = inputDescriptorObj["format"]?.jsonObject?.keys?.first() ?: "mso_mdoc"
-        if (!validFormats.contains(formatName)) {
-            throw IllegalArgumentException("Unexpected format ($formatName) in input_descriptors.")
+        val formatName = inputDescriptorObj["format"]?.jsonObject?.keys?.first()
+        if (formatName != null && vpFormats.contains(formatName)) {
+            descriptorMaps.add(DescriptorMap(
+                id = docType,
+                format = formatName,
+                path = "$"
+            ))
         }
-        descriptorMaps.add(DescriptorMap(
-            id = docType,
-            format = formatName,
-            path = "$"
-        ))
     }
 
     return PresentationSubmission(
