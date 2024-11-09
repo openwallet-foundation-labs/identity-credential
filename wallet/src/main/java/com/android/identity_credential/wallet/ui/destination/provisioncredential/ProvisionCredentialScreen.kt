@@ -15,9 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +38,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthenti
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
+import com.android.identity.issuance.evidence.EvidenceRequestPreauthorizedCode
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
@@ -56,6 +55,7 @@ import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
+import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
 import com.android.identity_credential.wallet.PermissionTracker
@@ -82,6 +82,7 @@ import org.json.JSONObject
 import java.util.StringTokenizer
 import kotlin.random.Random
 
+private const val TAG = "ProvisionCredentialScreen"
 
 @Composable
 fun ProvisionDocumentScreen(
@@ -271,6 +272,22 @@ fun ProvisionDocumentScreen(
                             walletServerProvider = walletServerProvider,
                             application = application
                         )
+                    }
+
+                    is EvidenceRequestPreauthorizedCode -> {
+                        // should have been processed by the model internally
+                        Logger.e(TAG, "Unexpected evidence request type: EvidenceRequestPreauthorizedCode")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Center,
+                                text = stringResource(R.string.provisioning_request_unexpected)
+                            )
+                        }
                     }
                 }
             }

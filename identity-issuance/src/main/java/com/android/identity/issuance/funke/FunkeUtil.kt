@@ -90,18 +90,20 @@ internal object FunkeUtil {
         refreshToken: String? = null,
         accessToken: String? = null,
         authorizationCode: String? = null,
+        preauthorizedCode: String? = null,
+        txCode: String? = null,  // pin or other transaction code
         codeVerifier: String? = null,
         dpopNonce: String? = null
     ): FunkeAccess {
-        if (refreshToken == null && authorizationCode == null) {
-            throw IllegalArgumentException("Neither authorization code, nor refresh token provided")
+        if (refreshToken == null && authorizationCode == null && preauthorizedCode == null) {
+            throw IllegalArgumentException("No authorizations provided")
         }
         val httpClient = env.getInterface(HttpClient::class)!!
         var currentDpopNonce = dpopNonce
         // When dpop nonce is null, this loop will run twice, first request will return with error,
         // but will provide fresh, dpop nonce and the second request will get fresh access data.
         while (true) {
-            val dpop = FunkeUtil.generateDPoP(env, clientId, tokenUrl, currentDpopNonce, null)
+            val dpop = generateDPoP(env, clientId, tokenUrl, currentDpopNonce, null)
             val tokenRequest = FormUrlEncoder {
                 if (refreshToken != null) {
                     add("grant_type", "refresh_token")
@@ -110,6 +112,12 @@ internal object FunkeUtil {
                 if (authorizationCode != null) {
                     add("grant_type", "authorization_code")
                     add("code", authorizationCode)
+                } else if (preauthorizedCode != null) {
+                    add("grant_type", "urn:ietf:params:oauth:grant-type:pre-authorized_code")
+                    add("pre-authorized_code", preauthorizedCode)
+                    if (txCode != null) {
+                        add("tx_code", txCode)
+                    }
                 }
                 if (codeVerifier != null) {
                     add("code_verifier", codeVerifier)

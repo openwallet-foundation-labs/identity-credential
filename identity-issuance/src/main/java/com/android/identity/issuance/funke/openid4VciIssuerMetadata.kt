@@ -2,6 +2,7 @@ package com.android.identity.issuance.funke
 
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.issuance.common.cache
+import com.android.identity.util.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
@@ -22,9 +23,12 @@ internal data class Openid4VciIssuerMetadata(
     val credentialEndpoint: String,
     val display: List<Openid4VciIssuerDisplay>,
     val credentialConfigurations: Map<String, Openid4VciCredentialConfiguration>,
-    val authorizationServers: List<Openid4VciAuthorizationMetadata>
+    val authorizationServers: List<Openid4VciAuthorizationMetadata>,
+    val tokenEndpoint: String  // fallback token endpoint, not standard
 ) {
     companion object {
+        const val TAG = "Openid4VciIssuerMetadata"
+
         suspend fun get(env: FlowEnvironment, issuerUrl: String): Openid4VciIssuerMetadata {
             return env.cache(Openid4VciIssuerMetadata::class, issuerUrl) { _, _ ->
                 val httpClient = env.getInterface(HttpClient::class)!!
@@ -48,7 +52,10 @@ internal data class Openid4VciIssuerMetadata(
                         "$authorizationServerUrl/.well-known/oauth-authorization-server"
                     val authorizationMetadataRequest = httpClient.get(authorizationMetadataUrl) {}
                     if (authorizationMetadataRequest.status != HttpStatusCode.OK) {
-                        throw IllegalStateException("Invalid authorization server, no $authorizationMetadataUrl")
+                        if (authorizationServerUrl != issuerUrl) {
+                            Logger.e(TAG, "Invalid authorization server '$authorizationServerUrl'")
+                        }
+                        continue
                     }
                     val authorizationMetadataText = String(authorizationMetadataRequest.readBytes())
                     val authorizationMetadata =
@@ -58,8 +65,11 @@ internal data class Openid4VciIssuerMetadata(
                         authorizationMetadataList.add(authorizationMetadata)
                     }
                 }
-                if (authorizationMetadataList.isEmpty()) {
-                    throw IllegalStateException("No compatible authorization server found in $issuerMetadataUrl")
+                val tokenEndpoint = if (authorizationMetadataList.isEmpty()) {
+                    credentialMetadata["token_endpoint"]?.jsonPrimitive?.content
+                        ?: "$issuerUrl/token"
+                } else {
+                    authorizationMetadataList[0].tokenEndpoint
                 }
                 Openid4VciIssuerMetadata(
                     credentialIssuer = credentialMetadata["credential_issuer"]?.jsonPrimitive?.content ?: issuerUrl,
@@ -71,7 +81,7 @@ internal data class Openid4VciIssuerMetadata(
                             val obj = it.value.jsonObject
                             Openid4VciCredentialConfiguration(
                                 id = it.key,
-                                scope = obj["scope"]!!.jsonPrimitive.content,
+                                scope = obj["scope"]?.jsonPrimitive?.content,
                                 cryptographicBindingMethod = preferred(
                                     obj["cryptographic_binding_methods_supported"]!!.jsonArray,
                                     SUPPORTED_BINDING_METHODS
@@ -84,7 +94,8 @@ internal data class Openid4VciIssuerMetadata(
                                 format = extractFormat(obj),
                                 display = extractDisplay(obj["display"])
                             )
-                        }
+                        },
+                    tokenEndpoint = tokenEndpoint
                 )
             }
         }
@@ -210,7 +221,7 @@ internal data class Openid4VciCredentialConfiguration(
     val format: Openid4VciFormat?,
     val display: List<Openid4VciIssuerDisplay>
 ) {
-    val isSupported: Boolean get() = scope != null && cryptographicBindingMethod != null &&
+    val isSupported: Boolean get() = cryptographicBindingMethod != null &&
             credentialSigningAlgorithm != null && proofType != null && format != null
 }
 

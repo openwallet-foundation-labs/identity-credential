@@ -39,11 +39,13 @@ import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
-import com.android.identity_credential.wallet.credentialoffer.initiateCredentialOfferIssuance
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.qrscanner.ScanQrDialog
 import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUrl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 private const val TAG = "AddToWalletScreen"
 
@@ -135,24 +137,21 @@ fun AddToWalletScreen(
                             // filter only for OID4VCI Url schemes.
                             if (qrCodeTextUrl.startsWith(WalletApplication.OID4VCI_CREDENTIAL_OFFER_URL_SCHEME)) {
                                 // scanned text is expected to be an encoded Url
-                                val decodedQuery = getUrlQueryFromCustomSchemeUrl(qrCodeTextUrl)
-                                // extract Credential Issuer Uri (issuing authority path) and credential id (pid-mso-mdoc, pid-sd-jwt)
-                                extractCredentialIssuerData(decodedQuery).let { (credentialIssuerUri, credentialConfigurationId) ->
-                                    // initiate getting issuing authority dynamically from specified Issuer Uri and Credential Id
-                                    initiateCredentialOfferIssuance(
-                                        walletServerProvider = walletServerProvider,
-                                        provisioningViewModel = provisioningViewModel,
-                                        settingsModel = settingsModel,
-                                        documentStore = documentStore,
-                                        onNavigate = { route ->
-                                            // hoist the actual navigation on the parent composable
-                                            // because calling onNavigate.invoke(route) does not
-                                            // trigger a recomposition
-                                            navigateToOnComposable.value = route
-                                        },
-                                        credentialIssuerUri = credentialIssuerUri,
-                                        credentialIssuerConfigurationId = credentialConfigurationId,
-                                    )
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    val query = getUrlQueryFromCustomSchemeUrl(qrCodeTextUrl)
+                                    // extract Credential Issuer Uri (issuing authority path) and credential id (pid-mso-mdoc, pid-sd-jwt)
+                                    val offer = extractCredentialIssuerData(query)
+                                    if (offer != null) {
+                                        // initiate getting issuing authority dynamically from specified Issuer Uri and Credential Id
+                                        provisioningViewModel.start(
+                                            walletServerProvider = walletServerProvider,
+                                            settingsModel = settingsModel,
+                                            documentStore = documentStore,
+                                            issuerIdentifier = null,
+                                            openid4VciCredentialOffer = offer,
+                                        )
+                                        onNavigate(WalletDestination.ProvisionDocument.route)
+                                    }
                                 }
                             }
                         },

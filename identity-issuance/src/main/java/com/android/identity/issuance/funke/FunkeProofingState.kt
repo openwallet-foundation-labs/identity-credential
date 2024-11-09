@@ -15,6 +15,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
+import com.android.identity.issuance.evidence.EvidenceRequestPreauthorizedCode
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceRequestWeb
@@ -23,6 +24,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceResponseOpenid4Vp
+import com.android.identity.issuance.evidence.EvidenceResponsePreauthorizedCode
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponseWeb
@@ -42,18 +44,20 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
 import java.net.URLEncoder
 
-
 @FlowState(
     flowInterface = ProofingFlow::class
 )
 @CborSerializable
 class FunkeProofingState(
     val credentialIssuerUri: String,
+    val credentialConfigurationId: String,
     val clientId: String,
     val issuanceClientId: String,
     val documentId: String,
-    val proofingInfo: ProofingInfo,
+    val proofingInfo: ProofingInfo?,
     val applicationCapabilities: WalletApplicationCapabilities,
+    val tokenUri: String,
+    val useGermanEId: Boolean = false,
     var access: FunkeAccess? = null,
     var secureAreaIdentifier: String? = null,
     var secureAreaSetupDone: Boolean = false,
@@ -69,14 +73,26 @@ class FunkeProofingState(
     suspend fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
         return if (access == null) {
             if (!tosAcknowleged) {
-                val message = env.getInterface(Resources::class)!!
-                    .getStringResource("funke/tos.html")!!
-                listOf(EvidenceRequestMessage(
-                    message = message,
-                    assets = emptyMap(),
-                    acceptButtonText = "Continue",
-                    rejectButtonText = "Cancel"
-                ))
+                val message = if (useGermanEId) {
+                    env.getInterface(Resources::class)!!
+                        .getStringResource("funke/tos.html")!!
+                } else {
+                    val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+                    val issuingAuthorityName = metadata.display[0].text
+                    val documentName = metadata.credentialConfigurations[credentialConfigurationId]!!.display[0].text
+                    env.getInterface(Resources::class)!!
+                        .getStringResource("generic/tos.html")!!
+                        .replace("\$ISSUER_NAME", issuingAuthorityName)
+                        .replace("\$ID_NAME", documentName)
+                }
+                listOf(
+                    EvidenceRequestMessage(
+                        message = message,
+                        assets = emptyMap(),
+                        acceptButtonText = "Continue",
+                        rejectButtonText = "Cancel"
+                    )
+                )
             } else if (!notificationPermissonRequested) {
                 listOf(EvidenceRequestNotificationPermission(
                     permissionNotGrantedMessage = """
@@ -95,24 +111,27 @@ class FunkeProofingState(
                     assets = mapOf()
                 ))
             } else {
+                val list = mutableListOf<EvidenceRequest>(EvidenceRequestPreauthorizedCode())
                 val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-                val authorizationMetadata = metadata.authorizationServers[0]
-                val authorizeUrl = "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
-                    add("client_id", issuanceClientId)
-                    add("request_uri", proofingInfo.requestUri!!)
+                if (proofingInfo != null && metadata.authorizationServers.isNotEmpty()) {
+                    val authorizationMetadata = metadata.authorizationServers[0]
+                    val authorizeUrl =
+                        "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
+                            add("client_id", issuanceClientId)
+                            add("request_uri", proofingInfo.requestUri!!)
+                        }
+                    if (authorizationMetadata.useGermanEId) {
+                        list.add(EvidenceRequestGermanEid(authorizeUrl, listOf()))
+                    } else {
+                        if (openid4VpRequest != null) {
+                            val uri = URI(authorizationMetadata.authorizationChallengeEndpoint!!)
+                            val origin = uri.scheme + ":" + uri.authority
+                            list.add(EvidenceRequestOpenid4Vp(origin, openid4VpRequest!!))
+                        }
+                        list.add(EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl))
+                    }
                 }
-                if (authorizationMetadata.useGermanEId) {
-                    listOf(EvidenceRequestGermanEid(authorizeUrl, listOf()))
-                } else if (openid4VpRequest != null) {
-                    val uri = URI(authorizationMetadata.authorizationChallengeEndpoint!!)
-                    val origin = uri.scheme + ":" + uri.authority
-                    listOf(
-                        EvidenceRequestOpenid4Vp(origin, openid4VpRequest!!),
-                        EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl)
-                    )
-                } else {
-                    listOf(EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl))
-                }
+                return list
             }
         } else if (secureAreaIdentifier == null) {
             listOf(
@@ -190,6 +209,19 @@ class FunkeProofingState(
             is EvidenceResponseOpenid4Vp -> {
                 processOpenid4VpResponse(env, evidenceResponse.response)
             }
+            is EvidenceResponsePreauthorizedCode -> {
+                this.access = FunkeUtil.obtainToken(
+                    env = env,
+                    tokenUrl = tokenUri,
+                    clientId = clientId,
+                    issuanceClientId = issuanceClientId,
+                    preauthorizedCode = evidenceResponse.code,
+                    txCode = evidenceResponse.txCode,
+                    codeVerifier = proofingInfo?.pkceCodeVerifier,
+                    dpopNonce = null
+                )
+                Logger.i(TAG, "Token request: success")
+            }
             else -> throw IllegalArgumentException("Unexpected evidence type")
         }
     }
@@ -235,7 +267,7 @@ class FunkeProofingState(
             clientId = clientId,
             issuanceClientId = issuanceClientId,
             authorizationCode = authCode,
-            codeVerifier = proofingInfo.pkceCodeVerifier,
+            codeVerifier = proofingInfo?.pkceCodeVerifier,
             dpopNonce = dpopNonce
         )
         Logger.i(TAG, "Token request: success")
@@ -263,7 +295,7 @@ class FunkeProofingState(
         val dpop = FunkeUtil.generateDPoP(env, clientId,
             authorizationMetadata.authorizationChallengeEndpoint!!, null, null)
         val challengeRequest = FormUrlEncoder {
-            add("auth_session", proofingInfo.authSession!!)
+            add("auth_session", proofingInfo!!.authSession!!)
             add("presentation_during_issuance_session", presentationCode)
         }.toString()
         val challengeResponse = httpClient.post(
