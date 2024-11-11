@@ -4,8 +4,10 @@ import android.content.SharedPreferences
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -17,6 +19,7 @@ import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWa
 import com.android.identity_credential.wallet.ui.destination.document.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.document.DocumentDetailsScreen
 import com.android.identity_credential.wallet.ui.destination.document.DocumentInfoScreen
+import com.android.identity_credential.wallet.ui.destination.document.EventDetailsScreen
 import com.android.identity_credential.wallet.ui.destination.document.EventLogScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
@@ -130,6 +133,26 @@ fun WalletNavigation(
         }
 
         composable(
+            route = "${WalletDestination.EventDetails.route}/{documentId}/{timestamp}",
+            arguments = listOf(
+                navArgument("documentId") { type = NavType.StringType },
+                navArgument("timestamp") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            // Extract arguments from the back stack entry
+            val documentId = backStackEntry.arguments?.getString("documentId") ?: ""
+            val timestamp = backStackEntry.arguments?.getString("timestamp") ?: ""
+
+            EventDetailsScreen(
+                documentModel = documentModel,
+                navController = navController,
+                documentId = documentId,
+                timestamp = timestamp
+            )
+        }
+
+
+        composable(
             route = WalletDestination.DocumentInfo.routeWithArgs,
             arguments = WalletDestination.DocumentInfo.getArguments()
         ) { backStackEntry ->
@@ -156,7 +179,7 @@ fun WalletNavigation(
                     EventLogScreen(
                         documentId = cardId,
                         documentModel = documentModel,
-                        onNavigate = onNavigate,
+                        navController = navController,
                     )
                 }
                 "credentials" -> {

@@ -31,6 +31,24 @@ sealed class WalletDestination(val routeEnum: Route) {
 
     object Reader : WalletDestination(Route.READER)
 
+    object EventDetails : WalletDestination(Route.EVENT_DETAILS) {
+        enum class Argument(val argument: NamedNavArgument) {
+            REQUESTED_FIELDS(
+                navArgument("requestedFields") {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            );
+
+            fun extractFromBackStackEntry(backStackEntry: NavBackStackEntry): String? {
+                return backStackEntry.arguments?.getString(argument.name)
+            }
+        }
+
+        override fun getArguments(): List<NamedNavArgument> =
+            Argument.values().map { it.argument }
+    }
+
     // Screens with arguments
     object DocumentInfo : WalletDestination(Route.DOCUMENT_INFO) {
         /**
@@ -189,10 +207,11 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     ADD_TO_WALLET("add_to_wallet"),
     DOCUMENT_INFO("document_info",
         "documentId={documentId}&section={section}&auth_required={auth_required}"),
-    ACTIVITY_LOG("activity_log","documentId={documentId}"),
+    ACTIVITIES("activities","documentId={documentId}"),
     PROVISION_DOCUMENT("provision_document"),
     QR_ENGAGEMENT("qr_engagement"),
     READER("reader_select_request"),
+    EVENT_DETAILS("event_details"),
 
     // a Route for popping the back stack showing a different Screen
     POP_BACK_STACK("pop_back_stack"),

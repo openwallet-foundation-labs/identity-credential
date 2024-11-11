@@ -134,9 +134,23 @@
     <string name="settings_screen_log_to_file_title">Logging</string>
     <string name="settings_screen_log_to_file_subtitle_on">Diagnostic messages are being logged</string>
     <string name="settings_screen_log_to_file_subtitle_off">Diagnostic messages are not being logged</string>
-    <string name="settings_screen_activities_logging_title">Show Activity</string>
+    <string name="settings_screen_activities_logging_title">Log Activity</string>
     <string name="settings_screen_activities_logging_subtitle_on">Activities are being logged</string>
     <string name="settings_screen_activities_logging_subtitle_off">Activities are not being logged</string>
+    <string name="settings_screen_activities_logging_shared_in_person">Shared in person</string>
+    <string name="settings_screen_activities_logging_shared_to_website">Shared to website</string>
+    <string name="settings_screen_activities_logging_shared_to_application">Shared to application</string>
+    <string name="settings_screen_activities_logging_unknown_requester">Unknown requester</string>
+    <string name="settings_screen_activities_logging_unverified_requester">Unverified requester</string>
+    <string name="settings_screen_activities_logging_disclaimer">
+        The activity log is kept on this device and is encrypted at rest. It is never shared with the application
+        vendor, device manufacturer, or anyone else.
+    </string>
+    <string name="settings_screen_activities_logging_delete_all_entries">Delete all entries</string>
+    <string name="settings_screen_activities_logging_confirm_deletion">Confirm Deletion</string>
+    <string name="settings_screen_activities_logging_confirm_deletion_detailed">
+        Are you sure you want to delete all activity entries for this document?
+    </string>
     <string name="settings_screen_log_to_file_clear_button">Clear log</string>
     <string name="settings_screen_log_to_file_share_button">Share log</string>
     <string name="settings_screen_log_to_file_chooser_title">Share Log</string>
@@ -222,8 +236,15 @@
     <string name="document_info_screen_menu_item_show_data">Show Data</string>
     <string name="document_info_screen_menu_item_show_credentials">Show Credentials</string>
     <string name="document_info_screen_menu_item_request_update">Request Update</string>
-    <string name="document_info_screen_menu_activities_log">Activities Log</string>
+    <string name="document_info_screen_menu_activities_log">Show Usage</string>
     <string name="document_info_screen_menu_activities_log_screen_empty">No activities logged yet</string>
+    <string name="document_info_screen_menu_activities_log_screen_shared_in_person">"Shared in-person"</string>
+    <string name="document_info_screen_menu_activities_log_screen_shared_with_website">"Shared with website"</string>
+    <string name="document_info_screen_menu_activities_log_screen_shared_with_application">"Shared with application"</string>
+    <string name="document_info_screen_menu_activities_log_screen_unknown_share">"Unknown share type"</string>
+    <string name="document_info_screen_menu_activities_log_screen_share_type">"Share Type"</string>
+    <string name="document_info_screen_menu_activities_log_screen_requester">"Requester"</string>
+    <string name="document_info_screen_menu_activities_log_screen_data_shared">"Data shared"</string>
     <string name="document_info_screen_request_update_title">Request Update</string>
     <string name="document_info_screen_request_update_message">
         This is a Developer Mode feature to request a document update from the Issuing Authority.
