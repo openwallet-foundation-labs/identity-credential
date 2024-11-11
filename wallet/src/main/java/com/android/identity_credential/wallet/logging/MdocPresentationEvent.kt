@@ -9,4 +9,7 @@ data class MdocPresentationEvent (
     var sessionTranscript: ByteArray,
     var deviceRequestCbor: ByteArray,
     var deviceResponseCbor: ByteArray,
+    val requesterInfo: EventLogger.RequesterInfo = EventLogger.RequesterInfo(
+        requester = EventLogger.Requester.Anonymous(),
+        shareType = EventLogger.ShareType.UNKNOWN)
 ) : Event(timestamp)

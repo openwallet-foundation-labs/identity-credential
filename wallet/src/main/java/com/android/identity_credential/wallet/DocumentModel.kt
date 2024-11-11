@@ -57,6 +57,7 @@ import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.credman.CredmanRegistry
+import com.android.identity_credential.wallet.logging.EventLogger
 import com.android.identity_credential.wallet.logging.MdocPresentationEvent
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.ui.destination.document.formatDate
@@ -186,8 +187,6 @@ class DocumentModel(
                 is MdocPresentationEvent -> {
                     val parser = DeviceRequestParser(event.deviceRequestCbor, event.deviceResponseCbor)
                     val deviceRequest = parser.parse()
-
-                    // Extract the requested fields as before
                     val targetNamespaces = setOf("eu.europa.ec.eudi.pid.1", "org.iso.18013.5.1")
                     val requestedFields = deviceRequest.docRequests.flatMap { docRequest ->
                         targetNamespaces.flatMap { namespace ->
@@ -202,13 +201,14 @@ class DocumentModel(
                     // Format timestamp and other UI-friendly data
                     EventInfo(
                         timestamp = formatDate(event.timestamp),
+                        requesterInfo = event.requesterInfo,
                         requestedFields = requestedFields,
-                        // TODO: thumbnail to be populated instead of requestedFields
                     )
                 }
                 else -> {
                     EventInfo(
                         timestamp = formatDate(event.timestamp),
+                        requesterInfo = EventLogger.RequesterInfo(EventLogger.Requester.Anonymous(), EventLogger.ShareType.UNKNOWN),
                         requestedFields = "Unknown event type"
                     )
                 }

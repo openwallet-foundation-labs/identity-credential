@@ -66,9 +66,11 @@ import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.logging.EventLogger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import com.android.identity.appsupport.ui.consent.MdocConsentField
+import com.android.identity.crypto.javaX509Certificate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -348,6 +350,8 @@ class PresentationActivity : FragmentActivity() {
                             val deviceResponseGenerator =
                                 DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
 
+                            // Inside Phase.REQUEST_AVAILABLE
+                            var requester: EventLogger.Requester? = null
                             deviceRequest.docRequests.forEach { docRequest ->
                                 // find an MdocCredential for the docRequest or skip to next docRequest
                                 val mdocCredential =
@@ -362,6 +366,8 @@ class PresentationActivity : FragmentActivity() {
                                     )
                                     if (result.isTrusted && result.trustPoints.isNotEmpty()) {
                                         trustPoint = result.trustPoints.first()
+                                        val requesterName = trustPoint.certificate.javaX509Certificate.subjectX500Principal.name
+                                        requester = EventLogger.Requester.Named(requesterName)
                                     } else if (result.error != null) {
                                         Logger.w(
                                             TAG,
@@ -369,6 +375,8 @@ class PresentationActivity : FragmentActivity() {
                                             result.error!!
                                         )
                                     }
+                                } else {
+                                    requester = EventLogger.Requester.Anonymous()
                                 }
 
                                 val consentFields = MdocConsentField.generateConsentFields(
@@ -413,7 +421,9 @@ class PresentationActivity : FragmentActivity() {
                                 walletApp.settingsModel.focusedCardId.value.toString(),
                                 deviceRetrievalHelper!!.sessionTranscript,
                                 deviceRequestByteArray!!,
-                                deviceResponse
+                                deviceResponse,
+                                requester ?: EventLogger.Requester.Anonymous(),
+                                EventLogger.ShareType.SHARED_WITH_APPLICATION,
                             )
                         } catch (e: Throwable) {
                             if (e is UserCanceledPromptException) {
