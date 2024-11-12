@@ -243,7 +243,7 @@ class DocumentType private constructor(
                     }
                     list
                 }
-                VcRequest(claims)
+                VcRequest(vcBuilder!!.type, claims)
             }
             sampleRequests.add(DocumentWellKnownRequest(id, displayName, mdocRequest, vcRequest))
         }
