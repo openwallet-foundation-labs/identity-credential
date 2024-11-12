@@ -343,7 +343,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         val documentConfiguration = document.documentConfiguration
         return when (credentialFormat) {
             CredentialFormat.MDOC_MSO -> documentConfiguration.mdocConfiguration?.docType == docType
-            CredentialFormat.SD_JWT_VC -> documentConfiguration.sdJwtVcDocumentConfiguration != null
+            CredentialFormat.SD_JWT_VC ->
+                if (docType == "") {
+                    documentConfiguration.sdJwtVcDocumentConfiguration != null
+                } else {
+                    documentConfiguration.sdJwtVcDocumentConfiguration?.vct == docType
+                }
         }
     }
 
@@ -479,7 +484,25 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         //  https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-descriptor
         //
         val inputDescriptorObj = inputDescriptors[0].jsonObject
-        val docType = inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
+        val docType = if (credentialFormat == CredentialFormat.MDOC_MSO) {
+            inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
+        } else {
+            try {
+                var vct = ""
+                val constraints = inputDescriptorObj["constraints"]!!.jsonObject
+                for (field in constraints["fields"]!!.jsonArray) {
+                    if (field.jsonObject["path"]!!.jsonArray[0].toString() == "\"\$.vct\"") {
+                        val vctField = field.jsonObject
+                        val filter = vctField["filter"]!!.jsonObject
+                        vct = filter["const"]!!.toString().run { substring(1, this.length - 1) }
+                    }
+                }
+                vct
+            } catch (e: NullPointerException) {
+                Logger.d(TAG, "Error: Could not find const filter field: ${e.message}")
+                ""
+            }
+        }
 
         val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
         val document = firstMatchingDocument(credentialFormat, docType)

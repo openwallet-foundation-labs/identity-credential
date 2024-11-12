@@ -1382,6 +1382,14 @@ private fun sdjwtCalcPresentationDefinition(
     format.put("jwt_vc", algContainer)
 
     val fields = JSONArray()
+    val vctArray = JSONArray()
+    vctArray.add("\$.vct")
+    val vctFilter = JSONObject()
+    vctFilter.put("const", request.vcRequest!!.vct)
+    val vctField = JSONObject()
+    vctField.put("path", vctArray)
+    vctField.put("filter", vctFilter)
+    fields.add(vctField)
     for (claim in request.vcRequest!!.claimsToRequest) {
         var array = JSONArray()
         array.add("\$.${claim.identifier}")
