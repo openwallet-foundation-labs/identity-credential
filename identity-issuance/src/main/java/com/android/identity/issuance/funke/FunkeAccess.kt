@@ -17,14 +17,13 @@ import kotlin.time.Duration.Companion.seconds
 class FunkeAccess(
     val accessToken: String,
     val accessTokenExpiration: Instant,
-    var dpopNonce: String,
+    var dpopNonce: String?,
     var cNonce: String?,
     var refreshToken: String?,
 ) {
     companion object {
         suspend fun parseResponse(tokenResponse: HttpResponse): FunkeAccess {
             val dpopNonce = tokenResponse.headers["DPoP-Nonce"]
-                ?: throw IllegalArgumentException("No DPoP nonce in token response")
             val tokenString = String(tokenResponse.readBytes())
             val token = Json.parseToJsonElement(tokenString) as JsonObject
             val accessToken = getField(token, "access_token").content

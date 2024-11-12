@@ -26,17 +26,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.MutableLiveData
 import androidx.navigation.compose.rememberNavController
 import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
-import com.android.identity_credential.wallet.credentialoffer.initiateCredentialOfferIssuance
+import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.navigation.WalletNavigation
 import com.android.identity_credential.wallet.navigation.navigateTo
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUrl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
     companion object {
@@ -46,6 +49,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var application: WalletApplication
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
+    private val routeRequest = MutableLiveData<String?>(null)
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
         PermissionTracker(this, mapOf(
@@ -89,31 +93,14 @@ class MainActivity : FragmentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    // observe whether a new intent was received with credential offer url
-                    val credentialOfferIntentPayload by provisioningViewModel.newCredentialOfferIntentReceived.collectAsState()
-                    // if not null, execute once
-                    LaunchedEffect(credentialOfferIntentPayload) {
-                        if (credentialOfferIntentPayload != null) {
-                            val credentialIssuerUri = credentialOfferIntentPayload!!.first
-                            val credentialIssuerConfigurationId =
-                                credentialOfferIntentPayload!!.second
 
-                            initiateCredentialOfferIssuance(
-                                walletServerProvider = application.walletServerProvider,
-                                provisioningViewModel = provisioningViewModel,
-                                settingsModel = application.settingsModel,
-                                documentStore = application.documentStore,
-                                onNavigate = { routeWithArgs ->
-                                    navigateTo(navController, routeWithArgs)
-                                },
-                                credentialIssuerUri = credentialIssuerUri,
-                                credentialIssuerConfigurationId = credentialIssuerConfigurationId,
-                            )
-                            // reset the state (consume the Url)
-                            provisioningViewModel.onNewCredentialOfferIntent(null, null)
+                    val route = routeRequest.observeAsState()
+                    LaunchedEffect(route.value) {
+                        if (route.value != null) {
+                            navigateTo(navController, routeRequest.value!!)
+                            routeRequest.value = null
                         }
                     }
-
                     WalletNavigation(
                         navController,
                         application = application,
@@ -152,12 +139,19 @@ class MainActivity : FragmentActivity() {
         if (intent.action == Intent.ACTION_VIEW) {
             // perform recomposition only if deep link url starts with oid4vci credential offer scheme
             if (intent.dataString?.startsWith(WalletApplication.OID4VCI_CREDENTIAL_OFFER_URL_SCHEME) == true) {
-                val decodedQuery = getUrlQueryFromCustomSchemeUrl(intent.dataString!!)
-                extractCredentialIssuerData(decodedQuery).let { (credentialIssuerUri, credentialConfigurationId) ->
-                    provisioningViewModel.onNewCredentialOfferIntent(
-                        credentialIssuerUri,
-                        credentialConfigurationId
-                    )
+                CoroutineScope(Dispatchers.Main).launch {
+                    val query = getUrlQueryFromCustomSchemeUrl(intent.dataString!!)
+                    val offer = extractCredentialIssuerData(query)
+                    if (offer != null) {
+                        provisioningViewModel.start(
+                            walletServerProvider = application.walletServerProvider,
+                            documentStore = application.documentStore,
+                            settingsModel = application.settingsModel,
+                            issuerIdentifier = null,
+                            openid4VciCredentialOffer = offer
+                        )
+                        routeRequest.value = WalletDestination.ProvisionDocument.route
+                    }
                 }
             }
         }

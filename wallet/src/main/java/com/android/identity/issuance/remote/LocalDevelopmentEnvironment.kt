@@ -169,6 +169,10 @@ internal class LocalDevelopmentEnvironment(
                     R.drawable.funke_logo,
                     Bitmap.CompressFormat.PNG
                 )
+                "generic/card_art.png" -> bitmapData(
+                    R.drawable.card_art_generic,
+                    Bitmap.CompressFormat.PNG
+                )
                 "img_erika_portrait.jpf" ->
                     ByteString(getRawResourceAsBytes(R.raw.img_erika_portrait))
                 "img_erika_signature.jpf" ->
@@ -199,6 +203,8 @@ internal class LocalDevelopmentEnvironment(
                     context.resources.getString(R.string.utopia_local_issuing_authority_photoid_tos)
                 "funke/tos.html" ->
                     context.resources.getString(R.string.funke_issuing_authority_tos)
+                "generic/tos.html" ->
+                    context.resources.getString(R.string.generic_issuing_authority_tos)
                 else -> null
             }
         }

@@ -19,15 +19,14 @@ import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
+import com.android.identity.issuance.evidence.EvidenceRequestPreauthorizedCode
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
+import com.android.identity.issuance.evidence.EvidenceResponsePreauthorizedCode
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -55,30 +54,7 @@ class ProvisioningViewModel : ViewModel() {
 
     private lateinit var issuer: IssuingAuthority
 
-    /*
-     Backing field + StateFlow that is observed on MainActivity's composable whose value is updated
-     from onNewIntent() when a OID4VCI Credential Offer deep link is intercepted in MainActivity.
-     */
-    private val _newCredentialOfferIntentReceived = MutableStateFlow<Pair<String, String>?>(null)
-    val newCredentialOfferIntentReceived: StateFlow<Pair<String, String>?> =
-        _newCredentialOfferIntentReceived.asStateFlow()
-
-    /**
-     * Trigger a recomposition of MainActivity from onNewIntent() after an OID4VCI deep link is
-     * intercepted. If both [credentialIssuerUri] and [credentialConfigurationId] are [null] then
-     * set observable value to [null] rather than Pair(null,null).
-     */
-    fun onNewCredentialOfferIntent(
-        credentialIssuerUri: String?,
-        credentialConfigurationId: String?
-    ) {
-        if (credentialIssuerUri != null && credentialConfigurationId != null) {
-            _newCredentialOfferIntentReceived.value =
-                Pair(credentialIssuerUri, credentialConfigurationId)
-        } else {
-            _newCredentialOfferIntentReceived.value = null
-        }
-    }
+    var openid4VciCredentialOffer: Openid4VciCredentialOffer? = null
 
     fun reset() {
         state.value = State.IDLE
@@ -110,18 +86,17 @@ class ProvisioningViewModel : ViewModel() {
         settingsModel: SettingsModel,
         // PID-based mdoc or sd-jwt
         issuerIdentifier: String?,
-        // OID4VCI credential offer
-        credentialIssuerUri: String? = null,
-        credentialIssuerConfigurationId: String? = null,
+        openid4VciCredentialOffer: Openid4VciCredentialOffer? = null,
     ) {
         this.documentStore = documentStore
         this.settingsModel = settingsModel
+        this.openid4VciCredentialOffer = openid4VciCredentialOffer
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (credentialIssuerUri != null) {
+                if (openid4VciCredentialOffer != null) {
                     issuer = walletServerProvider.createOpenid4VciIssuingAuthorityByUri(
-                        credentialIssuerUri,
-                        credentialIssuerConfigurationId!!
+                        openid4VciCredentialOffer.issuerUri,
+                        openid4VciCredentialOffer.configurationId
                     )
                 } else {
                     issuer = walletServerProvider.getIssuingAuthority(issuerIdentifier!!)
@@ -156,6 +131,7 @@ class ProvisioningViewModel : ViewModel() {
                 evidenceRequests = proofingFlow!!.getEvidenceRequests()
                 currentEvidenceRequestIndex = 0
                 Logger.d(TAG, "ers0 ${evidenceRequests!!.size}")
+
                 if (evidenceRequests!!.size == 0) {
                     state.value = State.PROOFING_COMPLETE
                     document!!.let {
@@ -204,14 +180,29 @@ class ProvisioningViewModel : ViewModel() {
 
                 evidenceRequests = proofingFlow!!.getEvidenceRequests()
                 currentEvidenceRequestIndex = 0
+
                 Logger.d(TAG, "ers1 ${evidenceRequests!!.size}")
-                if (evidenceRequests!!.size == 0) {
+                if (evidenceRequests!!.isEmpty()) {
                     state.value = State.PROOFING_COMPLETE
                     document!!.refreshState(walletServerProvider)
                     documentStore!!.addDocument(document!!)
                     proofingFlow!!.complete()
                     document!!.refreshState(walletServerProvider)
                 } else {
+                    if (evidenceRequests!![0] is EvidenceRequestPreauthorizedCode) {
+                        if (openid4VciCredentialOffer?.preauthorizedCode != null) {
+                            Logger.d(TAG, "handling pre-authorized code")
+                            proofingFlow!!.sendEvidence(
+                                EvidenceResponsePreauthorizedCode(
+                                    code = openid4VciCredentialOffer!!.preauthorizedCode!!,
+                                    txCode = null  // We don't support it yet
+                                )
+                            )
+                            evidenceRequests = proofingFlow!!.getEvidenceRequests()
+                        } else {
+                            currentEvidenceRequestIndex++
+                        }
+                    }
                     selectViableEvidenceRequest()
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
@@ -364,4 +355,10 @@ class ProvisioningViewModel : ViewModel() {
             CredentialFormat.SD_JWT_VC -> documentConfiguration.sdJwtVcDocumentConfiguration != null
         }
     }
+
+    data class Openid4VciCredentialOffer(
+        val issuerUri: String,
+        val configurationId: String,
+        val preauthorizedCode: String?
+    )
 }

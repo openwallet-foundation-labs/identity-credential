@@ -281,6 +281,7 @@
     <string name="provisioning_submitting">Submitting evidence…</string>
     <string name="provisioning_error">Error provisioning: %1$s</string>
     <string name="provisioning_unexpected">Unexpected state: %1$s</string>
+    <string name="provisioning_request_unexpected">Unexpected request type</string>
 
     <!-- Presentation screen -->
     <string name="presentation_credential_usage_warning">Reused Credential</string>
@@ -496,6 +497,14 @@
         a fictional person used for testing only.</p>
         <p>The PID is generated and signed on the government server. The created PID will be bound to
         this device.</p>
+    ]]></string>
+
+    <!-- Generic issuing authority TOS -->
+    <string name="generic_issuing_authority_tos"><![CDATA[
+        <h2>Provisioning $ID_NAME credential</h2>
+        <p>In the following screens, information will be collected for provisioning of $ID_NAME
+            from $ISSUER_NAME.</p>
+        <p>The created $ID_NAME will be bound to this device.</p>
     ]]></string>
 
     <!-- Credential Offer -->

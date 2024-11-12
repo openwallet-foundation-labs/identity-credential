@@ -11,6 +11,7 @@ import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.flow.annotation.FlowJoin
@@ -143,7 +144,7 @@ class FunkeIssuingAuthorityState(
                     }
                 }
                 if (cardArt == null) {
-                    val artPath = "funke/card_art_funke_generic.png"
+                    val artPath = "generic/card_art.png"
                     cardArt = resources.getRawResource(artPath)!!.toByteArray()
                 }
                 val requireUserAuthenticationToViewDocument = false
@@ -179,6 +180,7 @@ class FunkeIssuingAuthorityState(
             addDocumentType(EUPersonalID.getDocumentType())
             addDocumentType(DrivingLicense.getDocumentType())
             addDocumentType(PhotoID.getDocumentType())
+            addDocumentType(EUCertificateOfResidence.getDocumentType())
         }
     }
 
@@ -243,11 +245,10 @@ class FunkeIssuingAuthorityState(
 
     @FlowMethod
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
-        val proofingInfo = performPushedAuthorizationRequest(env)
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-        val authorizationMetadata = metadata.authorizationServers[0]
         var openid4VpRequest: String? = null
-        if (proofingInfo.authSession != null && proofingInfo.openid4VpPresentation != null) {
+        val proofingInfo = performPushedAuthorizationRequest(env)
+        if (proofingInfo?.authSession != null && proofingInfo.openid4VpPresentation != null) {
             val httpClient = env.getInterface(HttpClient::class)!!
             val presentationResponse = httpClient.get(proofingInfo.openid4VpPresentation) {}
             if (presentationResponse.status == HttpStatusCode.OK) {
@@ -262,16 +263,19 @@ class FunkeIssuingAuthorityState(
         )?.let {
             WalletApplicationCapabilities.fromCbor(it.toByteArray())
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
+        val useGermanId = metadata.authorizationServers.isNotEmpty()
+                && metadata.authorizationServers[0].useGermanEId
         return FunkeProofingState(
-            credentialIssuerUri = credentialIssuerUri,
             clientId = clientId,
+            credentialConfigurationId = credentialConfigurationId,
             issuanceClientId = issuanceClientId,
             documentId = documentId,
+            credentialIssuerUri = credentialIssuerUri,
             proofingInfo = proofingInfo,
             applicationCapabilities = applicationCapabilities,
-            // Don't show TOS when using browser API
-            tosAcknowleged = !authorizationMetadata.useGermanEId,
-            openid4VpRequest = openid4VpRequest
+            tokenUri = metadata.tokenEndpoint,
+            openid4VpRequest = openid4VpRequest,
+            useGermanEId = useGermanId
         )
     }
 
@@ -294,7 +298,8 @@ class FunkeIssuingAuthorityState(
         issuerDocument.state = DocumentCondition.READY
         if (issuerDocument.documentConfiguration == null) {
             val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-            if (metadata.authorizationServers[0].useGermanEId) {
+            if (metadata.authorizationServers.isNotEmpty() &&
+                metadata.authorizationServers[0].useGermanEId) {
                 val isCloudSecureArea =
                     issuerDocument.secureAreaIdentifier!!.startsWith("CloudSecureArea?")
                 issuerDocument.documentConfiguration =
@@ -573,13 +578,13 @@ class FunkeIssuingAuthorityState(
         }
     }
 
-    private suspend fun performPushedAuthorizationRequest(
-        env: FlowEnvironment
-    ): ProofingInfo {
+    private suspend fun performPushedAuthorizationRequest(env: FlowEnvironment): ProofingInfo? {
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        if (metadata.authorizationServers.isEmpty()) {
+            return null
+        }
         val config = metadata.credentialConfigurations[credentialConfigurationId]!!
         val authorizationMetadata = metadata.authorizationServers[0]
-
         val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
         val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
 
@@ -733,6 +738,12 @@ class FunkeIssuingAuthorityState(
                 )
             }
             is Openid4VciFormatMdoc -> {
+                val documentType = documentTypeRepository.getDocumentTypeForMdoc(config.format.docType)
+                val staticData = if (documentType != null) {
+                    fillInSampleData(documentType).build()
+                } else {
+                    NameSpacedData.Builder().build()
+                }
                 DocumentConfiguration(
                     base.displayName,
                     base.typeDisplayName,
@@ -740,9 +751,7 @@ class FunkeIssuingAuthorityState(
                     base.requireUserAuthenticationToViewDocument,
                     MdocDocumentConfiguration(
                         config.format.docType,
-                        staticData = fillInSampleData(
-                            documentTypeRepository.getDocumentTypeForMdoc(config.format.docType)!!
-                        ).build()
+                        staticData = staticData
                     ),
                     null
                 )
@@ -773,7 +782,6 @@ class FunkeIssuingAuthorityState(
         document: FunkeIssuerDocument
     ) {
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-        val authorizationMetadata = metadata.authorizationServers[0]
         var access = document.access!!
         val nowPlusSlack = Clock.System.now() + 30.seconds
         if (access.cNonce != null && nowPlusSlack < access.accessTokenExpiration) {
@@ -786,7 +794,7 @@ class FunkeIssuingAuthorityState(
             env = env,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
-            tokenUrl = authorizationMetadata.tokenEndpoint,
+            tokenUrl = metadata.tokenEndpoint,
             refreshToken = refreshToken,
             accessToken = access.accessToken
         )
