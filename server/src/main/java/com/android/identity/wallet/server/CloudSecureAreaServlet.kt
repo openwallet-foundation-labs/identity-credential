@@ -13,6 +13,7 @@ import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.securearea.cloud.CloudSecureAreaServer
@@ -80,25 +81,38 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                 )
             }
 
-            fun createKeyMaterial(): KeyMaterial {
+            fun createKeyMaterial(serverEnvironment: FlowEnvironment): KeyMaterial {
                 val serverSecureAreaBoundKey = Random.Default.nextBytes(32)
 
                 val now = Clock.System.now()
                 val validFrom = now
                 val validUntil = now.plus(DateTimePeriod(years = 10), TimeZone.currentSystemDefault())
 
-                // Create Attestation Root w/ self-signed certificate.
+                // Load attestation root
+                val configuration = serverEnvironment.getInterface(Configuration::class)!!
+                val resources = serverEnvironment.getInterface(Resources::class)!!
+                val certificateName = configuration.getValue("csa.certificate")
+                    ?: "cloud_secure_area/certificate.pem"
+                val rootCertificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
+                val privateKeyName = configuration.getValue("csa.privateKey")
+                    ?: "cloud_secure_area/private_key.pem"
+                val rootPrivateKey = EcPrivateKey.fromPem(
+                    resources.getStringResource(privateKeyName)!!,
+                    rootCertificate.ecPublicKey
+                )
+
+                // Create instance-specific intermediate certificate.
                 val attestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
                 val attestationKeySignatureAlgorithm = Algorithm.ES256
                 val attestationKeySubject = "CN=Cloud Secure Area Attestation Root"
                 val attestationKeyCertificate = X509Cert.create(
                     attestationKey.publicKey,
-                    attestationKey,
+                    rootPrivateKey,
                     null,
                     attestationKeySignatureAlgorithm,
                     "1",
                     attestationKeySubject,
-                    attestationKeySubject,
+                    rootCertificate.javaX509Certificate.issuerX500Principal.name,
                     validFrom,
                     validUntil,
                     setOf(),
@@ -126,7 +140,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                 return KeyMaterial(
                     serverSecureAreaBoundKey,
                     attestationKey,
-                    X509CertChain(listOf(attestationKeyCertificate)),
+                    X509CertChain(listOf(attestationKeyCertificate, rootCertificate)),
                     attestationKeySignatureAlgorithm,
                     attestationKeySubject,
                     cloudBindingKeyAttestationKey,
@@ -150,7 +164,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
             val keyMaterialBlob = runBlocking {
                 storage.get("RootState", "", "cloudSecureAreaKeyMaterial")?.toByteArray()
                     ?: let {
-                        val blob = KeyMaterial.createKeyMaterial().toCbor()
+                        val blob = KeyMaterial.createKeyMaterial(serverEnvironment).toCbor()
                         storage.insert(
                             "RootState",
                             "",

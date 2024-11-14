@@ -5,6 +5,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
@@ -15,6 +16,8 @@ import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.funke.toJson
+import com.android.identity.issuance.isCloudKeyAttestation
+import com.android.identity.issuance.validateCloudKeyAttestation
 import com.android.identity.issuance.validateKeyAttestation
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.util.Logger
@@ -108,13 +111,22 @@ class ApplicationSupportState(
         val keyList = keyAttestations.map { attestation ->
             // TODO: ensure that keys come from the same device and extract data for key_type
             // and user_authentication values
-            validateKeyAttestation(
-                attestation.certChain!!,
-                nonce,
-                settings.androidRequireGmsAttestation,
-                settings.androidRequireVerifiedBootGreen,
-                settings.androidRequireAppSignatureCertificateDigests
-            )
+            if (isCloudKeyAttestation(attestation.certChain!!)) {
+                val trustedRootKeys = getCloudSecureAreaTrustedRootKeys(env)
+                validateCloudKeyAttestation(
+                    attestation.certChain!!,
+                    nonce,
+                    trustedRootKeys.trustedKeys
+                )
+            } else {
+                validateKeyAttestation(
+                    attestation.certChain!!,
+                    nonce,
+                    settings.androidRequireGmsAttestation,
+                    settings.androidRequireVerifiedBootGreen,
+                    settings.androidRequireAppSignatureCertificateDigests
+                )
+            }
             attestation.publicKey.toJson(null)
         }
 
@@ -242,9 +254,26 @@ class ApplicationSupportState(
         return "$message.$signature"
     }
 
+    private suspend fun getCloudSecureAreaTrustedRootKeys(
+        env: FlowEnvironment
+    ): CloudSecureAreaTrustedRootKeys {
+        return env.cache(CloudSecureAreaTrustedRootKeys::class) { configuration, resources ->
+            val certificateName = configuration.getValue("csa.certificate")
+                ?: "cloud_secure_area/certificate.pem"
+            val certificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
+            CloudSecureAreaTrustedRootKeys(
+                trustedKeys = setOf(ByteString(certificate.javaX509Certificate.publicKey.encoded))
+            )
+        }
+    }
+
     internal data class AttestationData(
         val certificate: X509Cert,
         val privateKey: EcPrivateKey,
         val clientId: String
+    )
+
+    internal data class CloudSecureAreaTrustedRootKeys(
+        val trustedKeys: Set<ByteString>
     )
 }
