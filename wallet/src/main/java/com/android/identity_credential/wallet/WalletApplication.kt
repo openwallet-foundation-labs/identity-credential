@@ -29,7 +29,6 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
-import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -38,12 +37,14 @@ import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.X509Cert
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.vical.SignedVical
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.StorageEngine
@@ -133,6 +134,7 @@ class WalletApplication : Application() {
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUCertificateOfResidence.getDocumentType())
+        documentTypeRepository.addDocumentType(UtopiaNaturalization.getDocumentType())
 
         // init storage
         val storageFile = Path(applicationContext.noBackupFilesDir.path, "identity.bin")
@@ -185,8 +187,11 @@ class WalletApplication : Application() {
         credentialFactory.addCredentialImplementation(MdocCredential::class) {
             document, dataItem -> MdocCredential(document, dataItem)
         }
-        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class) {
-            document, dataItem -> SdJwtVcCredential(document, dataItem)
+        credentialFactory.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
+                document, dataItem -> KeyBoundSdJwtVcCredential(document, dataItem)
+        }
+        credentialFactory.addCredentialImplementation(KeylessSdJwtVcCredential::class) {
+                document, dataItem -> KeylessSdJwtVcCredential(document, dataItem)
         }
 
         // init documentStore

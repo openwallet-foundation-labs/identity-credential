@@ -57,7 +57,7 @@ internal class CredentialFactoryMdl : CredentialFactory {
     override suspend fun makeCredential(
         environment: FlowEnvironment,
         state: IssuanceState,
-        authenticationKey: EcPublicKey
+        authenticationKey: EcPublicKey?
     ): String {
         val now = Clock.System.now()
 
@@ -74,7 +74,7 @@ internal class CredentialFactoryMdl : CredentialFactory {
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             docType,
-            authenticationKey
+            authenticationKey!!
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
 

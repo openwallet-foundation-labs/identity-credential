@@ -55,7 +55,6 @@ import kotlin.time.Duration.Companion.days
  */
 class CredentialServlet : BaseServlet() {
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
-        println("credential")
         val authorization = req.getHeader("Authorization")
         if (authorization == null || authorization.substring(0, 5).lowercase() != "dpop ") {
             throw InvalidRequestException("Authorization header invalid or missing")
@@ -74,7 +73,6 @@ class CredentialServlet : BaseServlet() {
             storage.update("IssuanceState", "", id, ByteString(state.toCbor()))
         }
         val requestString = String(req.inputStream.readNBytes(req.contentLength))
-        println("Request: $requestString")
         val json = Json.parseToJsonElement(requestString) as JsonObject
         val format = Openid4VciFormat.fromJson(json)
         val factory = CredentialFactory.byOfferId.values.find { factory ->
@@ -83,6 +81,16 @@ class CredentialServlet : BaseServlet() {
         if (factory == null) {
             throw IllegalStateException(
                 "No credential can be created for scope '${state.scope}' and the given format")
+        }
+        if (factory.cryptographicBindingMethods.isEmpty()) {
+            // Keyless credential: no need for proof/proofs parameter.
+            val credential = runBlocking {
+                factory.makeCredential(environment, state, null)
+            }
+            resp.writer.write(Json.encodeToString(buildJsonObject {
+                put("credential", credential)
+            }))
+            return
         }
         val proofsObj = json["proofs"]?.jsonObject
         val singleProof = proofsObj == null

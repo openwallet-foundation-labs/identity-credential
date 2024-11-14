@@ -12,7 +12,7 @@ data class CredentialData(
     /**
      * The secure-area bound key that the credential is for.
      */
-    val secureAreaBoundKey: EcPublicKey,
+    val secureAreaBoundKey: EcPublicKey?,
 
     /**
      * The credential is not valid until this point in time.

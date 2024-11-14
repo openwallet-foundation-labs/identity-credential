@@ -43,7 +43,8 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
@@ -248,7 +249,10 @@ class DocumentModel(
                 is MdocCredential -> {
                     keyInfos.add(createCardInfoForMdocCredential(credential))
                 }
-                is SdJwtVcCredential -> {
+                is KeyBoundSdJwtVcCredential -> {
+                    keyInfos.add(createCardInfoForSdJwtVcCredential(credential))
+                }
+                is KeylessSdJwtVcCredential -> {
                     keyInfos.add(createCardInfoForSdJwtVcCredential(credential))
                 }
                 else -> {
@@ -433,7 +437,7 @@ class DocumentModel(
         )
     }
 
-    private fun createCardInfoForSdJwtVcCredential(sdJwtVcCredential: SdJwtVcCredential): CredentialInfo {
+    private fun createCardInfoForSdJwtVcCredential(sdJwtVcCredential: Credential): CredentialInfo {
 
         val kvPairs = mutableMapOf<String, String>()
 
@@ -446,7 +450,11 @@ class DocumentModel(
         kvPairs.put("Document Type", body.docType)
         kvPairs.put("Digest Hash Algorithm", body.sdHashAlg.toString())
 
-        addSecureAreaBoundCredentialInfo(sdJwtVcCredential, kvPairs)
+        if (sdJwtVcCredential is SecureAreaBoundCredential) {
+            addSecureAreaBoundCredentialInfo(sdJwtVcCredential, kvPairs)
+        } else {
+            kvPairs.put("Keyless", "true")
+        }
 
         kvPairs.put("Issuer Provided Data", "${sdJwtVcCredential.issuerProvidedData.size} bytes")
 
@@ -568,8 +576,9 @@ class DocumentModel(
                         "${settingsModel.screenLockIsSetup.value}"
             )
             for (documentId in documentStore.listDocuments()) {
-                val document = documentStore.lookupDocument(documentId)!!
-                document.deleteInvalidatedCredentials()
+                documentStore.lookupDocument(documentId)?.let { document ->
+                    document.deleteInvalidatedCredentials()
+                }
             }
         }
 
@@ -747,20 +756,21 @@ class DocumentModel(
                 }
             }
 
-            if (docConf.sdJwtVcDocumentConfiguration != null) {
+            val configuration = docConf.sdJwtVcDocumentConfiguration
+            if (configuration != null && configuration.keyBound != false) {
                 refreshCredentials(
                     issuer,
                     document,
                     WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC,
                     CredentialFormat.SD_JWT_VC
                 ) { credentialToReplace, credentialDomain, secureArea, createKeySettings ->
-                    SdJwtVcCredential(
+                    KeyBoundSdJwtVcCredential(
                         document,
                         credentialToReplace,
                         credentialDomain,
                         secureArea,
                         createKeySettings,
-                        docConf.sdJwtVcDocumentConfiguration!!.vct,
+                        configuration.vct,
                     )
                 }
             }
@@ -773,9 +783,19 @@ class DocumentModel(
         var numCredentialsRefreshed = 0
         if (document.state.numAvailableCredentials > 0) {
             for (credentialData in issuer.getCredentials(document.documentIdentifier)) {
-                val pendingCredential = document.pendingCredentials.find {
-                            (it as SecureAreaBoundCredential).attestation
-                                .publicKey.equals(credentialData.secureAreaBoundKey)
+                val pendingCredential = if (credentialData.secureAreaBoundKey == null) {
+                    // Keyless credential
+                    KeylessSdJwtVcCredential(
+                        document,
+                        null,
+                        WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC,
+                        document.documentConfiguration.sdJwtVcDocumentConfiguration!!.vct
+                    )
+                } else {
+                    document.pendingCredentials.find {
+                        (it as SecureAreaBoundCredential).attestation
+                            .publicKey.equals(credentialData.secureAreaBoundKey)
+                    }
                 }
                 if (pendingCredential == null) {
                     Logger.w(TAG, "No pending Credential for pubkey ${credentialData.secureAreaBoundKey}")

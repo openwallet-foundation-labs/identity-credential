@@ -24,8 +24,10 @@ import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.DocumentWellKnownRequest
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
@@ -309,6 +311,8 @@ class VerifierServlet : BaseHttpServlet() {
             repo.addDocumentType(DrivingLicense.getDocumentType())
             repo.addDocumentType(EUPersonalID.getDocumentType())
             repo.addDocumentType(PhotoID.getDocumentType())
+            repo.addDocumentType(EUCertificateOfResidence.getDocumentType())
+            repo.addDocumentType(UtopiaNaturalization.getDocumentType())
             repo
         }
     }

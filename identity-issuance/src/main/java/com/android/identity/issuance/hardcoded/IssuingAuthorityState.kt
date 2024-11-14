@@ -763,7 +763,8 @@ class IssuingAuthorityState(
                 staticData = staticData,
             ),
             sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
-                EUPersonalID.EUPID_VCT
+                vct = EUPersonalID.EUPID_VCT,
+                keyBound = true
             ),
         )
     }

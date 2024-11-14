@@ -45,27 +45,37 @@ class WellKnownOpenidCredentialIssuerServlet : BaseServlet() {
                             is Openid4VciFormatMdoc -> put("doctype", JsonPrimitive(format.docType))
                             is Openid4VciFormatSdJwt -> put("vct", JsonPrimitive(format.vct))
                         }
-                        put("proof_types_supported", buildJsonObject {
-                            if (CredentialServlet.isStandaloneProofOfPossessionAccepted(environment)) {
-                                put("jwt", buildJsonObject {
+                        if (credentialFactory.proofSigningAlgorithms.isNotEmpty()) {
+                            put("proof_types_supported", buildJsonObject {
+                                if (CredentialServlet.isStandaloneProofOfPossessionAccepted(
+                                        environment
+                                    )
+                                ) {
+                                    put("jwt", buildJsonObject {
+                                        put(
+                                            "proof_signing_alg_values_supported",
+                                            JsonArray(credentialFactory.proofSigningAlgorithms.map {
+                                                JsonPrimitive(it)
+                                            })
+                                        )
+                                    })
+                                }
+                                put("attestation", buildJsonObject {
                                     put("proof_signing_alg_values_supported",
                                         JsonArray(credentialFactory.proofSigningAlgorithms.map {
                                             JsonPrimitive(it)
                                         })
                                     )
                                 })
-                            }
-                            put("attestation", buildJsonObject {
-                                put("proof_signing_alg_values_supported",
-                                    JsonArray(credentialFactory.proofSigningAlgorithms.map {
-                                        JsonPrimitive(it)
-                                    }))
                             })
-                        })
-                        put("cryptographic_binding_methods_supported",
-                            JsonArray(credentialFactory.cryptographicBindingMethods.map {
-                                JsonPrimitive(it)
-                            }))
+                        }
+                        if (credentialFactory.cryptographicBindingMethods.isNotEmpty()) {
+                            put("cryptographic_binding_methods_supported",
+                                JsonArray(credentialFactory.cryptographicBindingMethods.map {
+                                    JsonPrimitive(it)
+                                })
+                            )
+                        }
                         put("credential_signing_alg_values_supported",
                             JsonArray(credentialFactory.credentialSigningAlgorithms.map {
                                 JsonPrimitive(it)

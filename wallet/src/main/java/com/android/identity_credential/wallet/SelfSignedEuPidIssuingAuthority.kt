@@ -261,7 +261,8 @@ class SelfSignedEuPidIssuingAuthority(
                 staticData = staticData
             ),
             sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
-                vct = EUPersonalID.EUPID_VCT
+                vct = EUPersonalID.EUPID_VCT,
+                keyBound = true
             ),
         )
     }
@@ -288,7 +289,8 @@ class SelfSignedEuPidIssuingAuthority(
                 staticData = builder.build()
             ),
             sdJwtVcDocumentConfiguration = SdJwtVcDocumentConfiguration(
-                vct = EUPersonalID.EUPID_VCT
+                vct = EUPersonalID.EUPID_VCT,
+                keyBound = true
             ),
         )
     }

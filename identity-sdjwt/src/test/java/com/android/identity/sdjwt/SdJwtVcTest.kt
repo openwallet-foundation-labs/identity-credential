@@ -9,7 +9,7 @@ import com.android.identity.crypto.create
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.sdjwt.SdJwtVerifiableCredential.AttributeNotDisclosedException
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.securearea.KeyPurpose
@@ -49,7 +49,7 @@ class SdJwtVcTest {
     private lateinit var timeSigned: Instant
     private lateinit var timeValidityEnd: Instant
     private lateinit var issuerCert: X509Cert
-    private lateinit var credential: SdJwtVcCredential
+    private lateinit var credential: KeyBoundSdJwtVcCredential
 
     @Before
     fun setup() {
@@ -59,8 +59,8 @@ class SdJwtVcTest {
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
         credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(SdJwtVcCredential::class) {
-            document, dataItem ->  SdJwtVcCredential(document, dataItem)
+        credentialFactory.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
+            document, dataItem ->  KeyBoundSdJwtVcCredential(document, dataItem)
         }
         provisionCredential()
     }
@@ -81,7 +81,7 @@ class SdJwtVcTest {
         timeSigned = Clock.System.now()
         timeValidityBegin = timeSigned.plus(1.hours)
         timeValidityEnd = timeSigned.plus(10.days)
-        credential = SdJwtVcCredential(
+        credential = KeyBoundSdJwtVcCredential(
             document,
             null,
             "domain",

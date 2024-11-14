@@ -71,15 +71,16 @@ class FunkeProofingState(
 
     @FlowMethod
     suspend fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val configuration = metadata.credentialConfigurations[credentialConfigurationId]!!
         return if (access == null) {
             if (!tosAcknowleged) {
                 val message = if (useGermanEId) {
                     env.getInterface(Resources::class)!!
                         .getStringResource("funke/tos.html")!!
                 } else {
-                    val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
                     val issuingAuthorityName = metadata.display[0].text
-                    val documentName = metadata.credentialConfigurations[credentialConfigurationId]!!.display[0].text
+                    val documentName = configuration.display[0].text
                     env.getInterface(Resources::class)!!
                         .getStringResource("generic/tos.html")!!
                         .replace("\$ISSUER_NAME", issuingAuthorityName)
@@ -112,7 +113,6 @@ class FunkeProofingState(
                 ))
             } else {
                 val list = mutableListOf<EvidenceRequest>(EvidenceRequestPreauthorizedCode())
-                val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
                 if (proofingInfo != null && metadata.authorizationServers.isNotEmpty()) {
                     val authorizationMetadata = metadata.authorizationServers[0]
                     val authorizeUrl =
@@ -133,6 +133,9 @@ class FunkeProofingState(
                 }
                 return list
             }
+        } else if (configuration.proofType == Openid4VciNoProof) {
+            // Keyless credentials, no more questions
+            emptyList()
         } else if (secureAreaIdentifier == null) {
             listOf(
                 if (applicationCapabilities.androidKeystoreStrongBoxAvailable) {
