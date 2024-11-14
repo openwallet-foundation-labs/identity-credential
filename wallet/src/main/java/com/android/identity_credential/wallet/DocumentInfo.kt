@@ -40,14 +40,9 @@ data class DocumentInfo(
     // Human-readable string explaining the user what state the document is in.
     val status: String,
 
-    // Data attributes
-    val attributes: Map<String, String>,
-
-    // Data attribute: Portrait of the document holder, if available
-    val attributePortrait: Bitmap?,
-
-    // Data attribute: Signature or usual mark of the holder, if available
-    val attributeSignatureOrUsualMark: Bitmap?,
+    // Data attributes (mapped from attribute identifier to information about how to display the
+    // name and value of the attribute).
+    val attributes: Map<String, AttributeDisplayInfo>,
 
     // A list of the underlying credentials
     val credentialInfos: List<CredentialInfo>

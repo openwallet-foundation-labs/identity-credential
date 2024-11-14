@@ -37,13 +37,17 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.AttributeDisplayInfoHtml
+import com.android.identity_credential.wallet.AttributeDisplayInfoImage
+import com.android.identity_credential.wallet.AttributeDisplayInfoPlainText
 import com.android.identity_credential.wallet.DocumentInfo
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
-import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
+import com.android.identity_credential.wallet.ui.KeyValuePairHtml
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
+import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
 import kotlinx.coroutines.launch
 
 
@@ -161,37 +165,60 @@ private fun DocumentDetails(
             modifier = Modifier.padding(8.dp)
         )
 
-        if (documentInfo.attributePortrait != null) {
-            Row(
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    bitmap = documentInfo.attributePortrait.asImageBitmap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .size(200.dp),
-                    contentDescription = stringResource(R.string.accessibility_portrait),
-                )
+        val topImages = listOf("portrait")
+        val bottomImages = listOf("signature_usual_mark")
+        for (attributeId in topImages) {
+            val attributeDisplayInfo = documentInfo.attributes[attributeId]
+            if (attributeDisplayInfo != null) {
+                val displayInfo = attributeDisplayInfo as AttributeDisplayInfoImage
+                Row(
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        bitmap = displayInfo.image.asImageBitmap(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .size(200.dp),
+                        contentDescription = displayInfo.name
+                    )
+                }
             }
         }
 
-        for ((key, value) in documentInfo.attributes) {
-            KeyValuePairText(key, value)
+        val centerAttributes = documentInfo.attributes.filter {
+            !topImages.contains(it.key) && !bottomImages.contains(it.key)
+        }
+        for ((attributeId, displayInfo) in centerAttributes) {
+            when (displayInfo) {
+                is AttributeDisplayInfoPlainText -> {
+                    KeyValuePairText(displayInfo.name, displayInfo.value)
+                }
+                is AttributeDisplayInfoHtml -> {
+                    KeyValuePairHtml(displayInfo.name, displayInfo.value)
+                }
+                else -> {
+                    throw IllegalArgumentException("Unsupported attribute display info for $attributeId: $displayInfo")
+                }
+            }
         }
 
-        if (documentInfo.attributeSignatureOrUsualMark != null) {
-            Row(
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    bitmap = documentInfo.attributeSignatureOrUsualMark.asImageBitmap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .size(75.dp),
-                    contentDescription = stringResource(R.string.accessibility_signature),
-                )
+        for (attributeId in bottomImages) {
+            val attributeDisplayInfo = documentInfo.attributes[attributeId]
+            if (attributeDisplayInfo != null) {
+                val displayInfo = attributeDisplayInfo as AttributeDisplayInfoImage
+                Row(
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        bitmap = displayInfo.image.asImageBitmap(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .size(75.dp),
+                        contentDescription = displayInfo.name
+                    )
+                }
             }
         }
     }
