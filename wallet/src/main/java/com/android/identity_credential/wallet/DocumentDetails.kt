@@ -1,11 +1,10 @@
 package com.android.identity_credential.wallet
 
 import android.content.Context
-import android.graphics.Bitmap
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.document.Document
-import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.DocumentAttribute
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.MdocDocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
@@ -30,20 +29,14 @@ private const val TAG = "ViewDocumentData"
  * or sent to external parties.
  *
  * @param typeName human readable type name of the document, e.g. "Driving License".
- * @param portrait portrait of the holder, if available
- * @param signatureOrUsualMark signature or usual mark of the holder, if available
  * @param attributes key/value pairs with data in the document
  */
 data class DocumentDetails(
-    val portrait: Bitmap?,
-    val signatureOrUsualMark: Bitmap?,
-    val attributes: Map<String, String>
+    val attributes: Map<String, AttributeDisplayInfo>
 )
 
 private data class VisitNamespaceResult(
-    val portrait: ByteArray?,
-    val signatureOrUsualMark: ByteArray?,
-    val keysAndValues: Map<String, String>
+    val keysAndValues: Map<String, AttributeDisplayInfo>
 )
 
 private fun visitNamespace(
@@ -52,9 +45,7 @@ private fun visitNamespace(
     namespaceName: String,
     listOfEncodedIssuerSignedItemBytes: List<ByteArray>,
 ): VisitNamespaceResult {
-    var portrait: ByteArray? = null
-    var signatureOrUsualMark: ByteArray? = null
-    val keysAndValues: MutableMap<String, String> = LinkedHashMap()
+    val keysAndValues: MutableMap<String, AttributeDisplayInfo> = LinkedHashMap()
     for (encodedIssuerSignedItemBytes in listOfEncodedIssuerSignedItemBytes) {
         val issuerSignedItemBytes = Cbor.decode(encodedIssuerSignedItemBytes)
         val issuerSignedItem = issuerSignedItemBytes.asTaggedEncodedCbor
@@ -64,53 +55,88 @@ private fun visitNamespace(
 
         val mdocDataElement = mdocDocumentType?.namespaces?.get(namespaceName)?.dataElements?.get(elementIdentifier)
 
-        var elementValueAsString: String? = null
+        val elementName = mdocDataElement?.attribute?.displayName ?: elementIdentifier
+        var attributeDisplayInfo: AttributeDisplayInfo? = null
 
         if (mdocDataElement != null) {
-            elementValueAsString = mdocDataElement.renderValue(
-                value = Cbor.decode(encodedElementValue),
-                trueFalseStrings = Pair(
-                    context.resources.getString(R.string.document_details_boolean_false_value),
-                    context.resources.getString(R.string.document_details_boolean_true_value),
+            attributeDisplayInfo = if (isImageAttribute(namespaceName, mdocDataElement.attribute)) {
+                Jpeg2kConverter.decodeByteArray(context, elementValue.asBstr)?.let {
+                    AttributeDisplayInfoImage(elementName, it)
+                }
+            } else if (namespaceName == DrivingLicense.MDL_NAMESPACE &&
+                mdocDataElement.attribute.identifier == "driving_privileges") {
+                val htmlDisplayValue = createDrivingPrivilegesHtml(encodedElementValue)
+                AttributeDisplayInfoHtml(elementName, htmlDisplayValue)
+            } else {
+                AttributeDisplayInfoPlainText(
+                    elementName,
+                    mdocDataElement.renderValue(
+                        value = Cbor.decode(encodedElementValue),
+                        trueFalseStrings = Pair(
+                            context.resources.getString(R.string.document_details_boolean_false_value),
+                            context.resources.getString(R.string.document_details_boolean_true_value),
+                        )
+                    )
+                )
+            }
+        }
+
+        if (attributeDisplayInfo == null) {
+            attributeDisplayInfo = AttributeDisplayInfoPlainText(
+                elementName,
+                Cbor.toDiagnostics(
+                    encodedElementValue,
+                    setOf(DiagnosticOption.BSTR_PRINT_LENGTH)
                 )
             )
-
-            if (mdocDataElement.attribute.type == DocumentAttributeType.Picture &&
-                namespaceName == DrivingLicense.MDL_NAMESPACE) {
-                when (mdocDataElement.attribute.identifier) {
-                    "portrait" -> {
-                        portrait = elementValue.asBstr
-                        continue
-                    }
-
-                    "signature_usual_mark" -> {
-                        signatureOrUsualMark = elementValue.asBstr
-                        continue
-                    }
-                }
-            }
-            if (mdocDataElement.attribute.type == DocumentAttributeType.Picture &&
-                namespaceName == PhotoID.PHOTO_ID_NAMESPACE) {
-                when (mdocDataElement.attribute.identifier) {
-                    "portrait" -> {
-                        portrait = elementValue.asBstr
-                        continue
-                    }
-                }
-            }
         }
 
-        if (elementValueAsString == null) {
-            elementValueAsString = Cbor.toDiagnostics(
-                encodedElementValue,
-                setOf(DiagnosticOption.BSTR_PRINT_LENGTH)
-            )
-        }
-
-        val elementName = mdocDataElement?.attribute?.displayName ?: elementIdentifier
-        keysAndValues[elementName] = elementValueAsString
+        keysAndValues[elementIdentifier] = attributeDisplayInfo
     }
-    return VisitNamespaceResult(portrait, signatureOrUsualMark, keysAndValues)
+    return VisitNamespaceResult(keysAndValues)
+}
+
+private fun isImageAttribute(namespaceName: String, attribute: DocumentAttribute): Boolean {
+    if (namespaceName == DrivingLicense.MDL_NAMESPACE) {
+        return when (attribute.identifier) {
+            "portrait", "signature_usual_mark" -> true
+            else -> false
+        }
+    }
+    if (namespaceName == PhotoID.PHOTO_ID_NAMESPACE) {
+        return when (attribute.identifier) {
+            "portrait" -> true
+            else -> false
+        }
+    }
+    return false
+}
+
+/**
+ * Creates a string with HTML that renders the Driving Privileges field in a more human-readable
+ * format.
+ *
+ * TODO: We should consider moving this to MdocDataElement.renderValue(), with a parameter to switch
+ * between text/plain and text/html.
+ *
+ * @param encodedElementValue The CBOR-encoded value of the driving_privileges element.
+ */
+fun createDrivingPrivilegesHtml(encodedElementValue: ByteArray): String {
+    val decodedValue = Cbor.decode(encodedElementValue).asArray
+    val htmlDisplayValue = buildString {
+        for (categoryMap in decodedValue) {
+            val categoryCode =
+                categoryMap.getOrNull("vehicle_category_code")?.asTstr ?: "Unspecified"
+            // The current HTML -> AnnotatedString parser only handles a subset of HTML.
+            // Because of that, we'll do indentation using spaces.
+            val vehicleIndent = "&nbsp;".repeat(4)
+            append("<div>${vehicleIndent}Vehicle class: $categoryCode</div>")
+            val indent = "&nbsp;".repeat(8)
+            categoryMap.getOrNull("issue_date")?.asDateString?.let { append("<div>${indent}Issued: $it</div>") }
+            categoryMap.getOrNull("expiry_date")?.asDateString?.let { append("<div>${indent}Expires: $it</div>") }
+        }
+    }
+    return htmlDisplayValue
 }
 
 fun Document.renderDocumentDetails(
@@ -120,7 +146,7 @@ fun Document.renderDocumentDetails(
     // TODO: maybe use DocumentConfiguration instead of pulling data out of a certified credential.
 
     if (certifiedCredentials.size == 0) {
-        return DocumentDetails(null, null, mapOf())
+        return DocumentDetails(mapOf())
     }
     val credential = certifiedCredentials[0]
 
@@ -135,11 +161,7 @@ fun Document.renderDocumentDetails(
             renderDocumentDetailsForSdJwt(documentTypeRepository, credential)
         }
         else -> {
-            DocumentDetails(
-                null,
-                null,
-                mapOf()
-            )
+            return DocumentDetails(mapOf())
         }
     }
 }
@@ -150,9 +172,6 @@ private fun Document.renderDocumentDetailsForMdoc(
     credential: MdocCredential
 ): DocumentDetails {
 
-    var portrait: Bitmap? = null
-    var signatureOrUsualMark: Bitmap? = null
-
     val documentData = StaticAuthDataParser(credential.issuerProvidedData).parse()
     val issuerAuthCoseSign1 = Cbor.decode(documentData.issuerAuth).asCoseSign1
     val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
@@ -161,7 +180,7 @@ private fun Document.renderDocumentDetailsForMdoc(
     val mso = MobileSecurityObjectParser(encodedMso).parse()
 
     val documentType = documentTypeRepository.getDocumentTypeForMdoc(mso.docType)
-    val kvPairs = mutableMapOf<String, String>()
+    val kvPairs = mutableMapOf<String, AttributeDisplayInfo>()
     for (namespaceName in mso.valueDigestNamespaces) {
         val digestIdMapping = documentData.digestIdMapping[namespaceName] ?: listOf()
         val result = visitNamespace(
@@ -170,24 +189,17 @@ private fun Document.renderDocumentDetailsForMdoc(
             namespaceName,
             digestIdMapping
         )
-        if (result.portrait != null) {
-            portrait = Jpeg2kConverter.decodeByteArray(context, result.portrait)
-        }
-        if (result.signatureOrUsualMark != null) {
-            signatureOrUsualMark = Jpeg2kConverter.decodeByteArray(
-                context, result.signatureOrUsualMark)
-        }
         kvPairs += result.keysAndValues
     }
 
-    return DocumentDetails(portrait, signatureOrUsualMark, kvPairs)
+    return DocumentDetails(kvPairs)
 }
 
 private fun Document.renderDocumentDetailsForSdJwt(
     documentTypeRepository: DocumentTypeRepository,
     credential: SdJwtVcCredential
 ): DocumentDetails {
-    val kvPairs = mutableMapOf<String, String>()
+    val kvPairs = mutableMapOf<String, AttributeDisplayInfo>()
 
     val vcType = documentTypeRepository.getDocumentTypeForVc(credential.vct)?.vcDocumentType
 
@@ -207,8 +219,8 @@ private fun Document.renderDocumentDetailsForSdJwt(
             ?.displayName
             ?: claimName
 
-        kvPairs[displayName] = content
+        kvPairs[claimName] = AttributeDisplayInfoPlainText(displayName, content)
     }
 
-    return DocumentDetails(null, null, kvPairs)
+    return DocumentDetails(kvPairs)
 }

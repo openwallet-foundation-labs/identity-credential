@@ -281,6 +281,8 @@ class ShowDocumentFragment : Fragment() {
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
+                    } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "driving_privileges") {
+                        valueStr = createDrivingPrivilegesHtml(value)
                     } else if (mdocDataElement != null) {
                         valueStr = mdocDataElement.renderValue(Cbor.decode(value))
                     } else {
@@ -301,6 +303,22 @@ class ShowDocumentFragment : Fragment() {
             }
         }
         return sb.toString()
+    }
+
+    private fun createDrivingPrivilegesHtml(encodedElementValue: ByteArray): String {
+        val decodedValue = Cbor.decode(encodedElementValue).asArray
+        val htmlDisplayValue = buildString {
+            for (categoryMap in decodedValue) {
+                val categoryCode =
+                    categoryMap.getOrNull("vehicle_category_code")?.asTstr ?: "Unspecified"
+                val vehicleIndent = "&nbsp;".repeat(4)
+                append("<div>${vehicleIndent}Vehicle class: $categoryCode</div>")
+                val indent = "&nbsp;".repeat(8)
+                categoryMap.getOrNull("issue_date")?.asDateString?.let { append("<div>${indent}Issued: $it</div>") }
+                categoryMap.getOrNull("expiry_date")?.asDateString?.let { append("<div>${indent}Expires: $it</div>") }
+            }
+        }
+        return htmlDisplayValue
     }
 
     private fun isPortraitApplicable(docType: String, namespace: String?): Boolean {

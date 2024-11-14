@@ -76,7 +76,9 @@ import com.android.identity_credential.wallet.ReaderDocument
 import com.android.identity_credential.wallet.ReaderModel
 import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
+import com.android.identity_credential.wallet.createDrivingPrivilegesHtml
 import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.KeyValuePairHtml
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.qrscanner.ScanQrDialog
@@ -615,7 +617,12 @@ private fun ShowResultDocument(
                         )
                     )
                 }
-                KeyValuePairText(key, value)
+                if (dataElementName == "driving_privileges") {
+                    val html = createDrivingPrivilegesHtml(dataElement.value)
+                    KeyValuePairHtml(key, html)
+                } else {
+                    KeyValuePairText(key, value)
+                }
 
                 if (dataElement.bitmap != null) {
                     Row(

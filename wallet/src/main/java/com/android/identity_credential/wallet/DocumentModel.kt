@@ -303,8 +303,6 @@ class DocumentModel(
             lastRefresh = document.state.timestamp,
             status = statusString,
             attributes = data.attributes,
-            attributePortrait = data.portrait,
-            attributeSignatureOrUsualMark = data.signatureOrUsualMark,
             credentialInfos = keyInfos,
         )
     }

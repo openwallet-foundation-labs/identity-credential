@@ -30,7 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.identity_credential.wallet.R
@@ -122,6 +124,30 @@ fun KeyValuePairText(
         )
         Text(
             text = valueText,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+fun KeyValuePairHtml(
+    keyText: String,
+    html: String
+) {
+    Column(
+        Modifier
+            .padding(8.dp)
+            .fillMaxWidth()) {
+        Text(
+            text = keyText,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            // TODO: Find a KMM-friendly alternative to fromHtml. This has been removed from common
+            // and is now Android-only (see
+            // https://android-review.googlesource.com/c/platform/frameworks/support/+/3150316).
+            text = AnnotatedString.Companion.fromHtml(html),
             style = MaterialTheme.typography.bodyMedium
         )
     }
