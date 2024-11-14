@@ -15,6 +15,8 @@ import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
@@ -122,15 +124,18 @@ fun Document.renderDocumentDetails(
     }
     val credential = certifiedCredentials[0]
 
-    when (credential) {
+    return when (credential) {
         is MdocCredential -> {
-            return renderDocumentDetailsForMdoc(context, documentTypeRepository, credential)
+            renderDocumentDetailsForMdoc(context, documentTypeRepository, credential)
         }
-        is SdJwtVcCredential -> {
-            return renderDocumentDetailsForSdJwt(documentTypeRepository, credential)
+        is KeyBoundSdJwtVcCredential -> {
+            renderDocumentDetailsForSdJwt(documentTypeRepository, credential)
+        }
+        is KeylessSdJwtVcCredential -> {
+            renderDocumentDetailsForSdJwt(documentTypeRepository, credential)
         }
         else -> {
-            return DocumentDetails(
+            DocumentDetails(
                 null,
                 null,
                 mapOf()

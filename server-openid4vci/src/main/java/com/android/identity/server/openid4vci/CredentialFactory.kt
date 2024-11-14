@@ -11,14 +11,18 @@ internal interface CredentialFactory {
     val offerId: String
     val scope: String
     val format: Openid4VciFormat
-    val proofSigningAlgorithms: List<String>
-    val cryptographicBindingMethods: List<String>
+    val proofSigningAlgorithms: List<String>  // must be empty for keyless credentials
+    val cryptographicBindingMethods: List<String>  // must be empty for keyless credentials
     val credentialSigningAlgorithms: List<String>
     val name: String  // human-readable name
     val logo: String?  // relative URL for the image
 
+    /**
+     * Creates the credential. [authenticationKey] must be non-null for key-bound
+     * credentials and null for keyless ones.
+     */
     suspend fun makeCredential(environment: FlowEnvironment, state: IssuanceState,
-                       authenticationKey: EcPublicKey): String
+                       authenticationKey: EcPublicKey?): String
 
     companion object {
         val byOfferId: Map<String, CredentialFactory>
@@ -27,7 +31,7 @@ internal interface CredentialFactory {
         init {
             val makers = mutableListOf(
                 CredentialFactoryMdl(),
-                CredentialFactorySdJwtSample()
+                CredentialFactoryUtopiaNaturatization()
             )
             byOfferId = makers.associateBy { it.offerId }
             supportedScopes = makers.map { it.scope }.toSet()

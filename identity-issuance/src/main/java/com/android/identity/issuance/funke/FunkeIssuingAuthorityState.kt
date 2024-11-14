@@ -14,6 +14,7 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
@@ -39,6 +40,10 @@ import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.fromCbor
 import com.android.identity.issuance.wallet.ApplicationSupportState
+import com.android.identity.mdoc.mso.MobileSecurityObjectParser
+import com.android.identity.mdoc.mso.StaticAuthDataParser
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
@@ -52,6 +57,7 @@ import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -60,7 +66,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
 @FlowState(
@@ -181,6 +186,7 @@ class FunkeIssuingAuthorityState(
             addDocumentType(DrivingLicense.getDocumentType())
             addDocumentType(PhotoID.getDocumentType())
             addDocumentType(EUCertificateOfResidence.getDocumentType())
+            addDocumentType(UtopiaNaturalization.getDocumentType())
         }
     }
 
@@ -308,6 +314,13 @@ class FunkeIssuingAuthorityState(
                 issuerDocument.documentConfiguration =
                     generateGenericDocumentConfiguration(env)
             }
+            val credentialConfiguration =
+                metadata.credentialConfigurations[credentialConfigurationId]!!
+            // For keyless credentials, just obtain them right away
+            if (credentialConfiguration.proofType == Openid4VciNoProof &&
+                issuerDocument.credentials.isEmpty()) {
+                obtainCredentialsKeyless(env, documentId, issuerDocument)
+            }
         }
         updateIssuerDocument(env, documentId, issuerDocument)
         return issuerDocument.documentConfiguration!!
@@ -356,16 +369,20 @@ class FunkeIssuingAuthorityState(
                 )
             )
         }
-        return if (credentialConfiguration.proofType is Openid4VciProofTypeKeyAttestation) {
-            RequestCredentialsUsingKeyAttestation(documentId, configuration, cNonce)
-        } else {
-            RequestCredentialsUsingProofOfPossession(
-                issuanceClientId,
-                documentId,
-                configuration,
-                cNonce,
-                credentialIssuerUri = credentialIssuerUri
-            )
+        return when (credentialConfiguration.proofType) {
+            is Openid4VciProofTypeKeyAttestation ->
+                RequestCredentialsUsingKeyAttestation(documentId, configuration, cNonce)
+            is Openid4VciProofTypeJwt ->
+                RequestCredentialsUsingProofOfPossession(
+                    issuanceClientId,
+                    documentId,
+                    configuration,
+                    cNonce,
+                    credentialIssuerUri = credentialIssuerUri
+                )
+            Openid4VciNoProof ->
+                throw IllegalStateException("requestCredentials call is unexpected for keyless credentials")
+            null -> throw IllegalStateException("Unexpected state")
         }
     }
 
@@ -383,8 +400,87 @@ class FunkeIssuingAuthorityState(
             else -> throw IllegalStateException("Unsupported RequestCredential type")
         }
 
-        // Send the request
         val document = loadIssuerDocument(env, state.documentId)
+
+        // Send the request
+        val credentials = obtainCredentials(env, metadata, request, state.documentId, document)
+
+        check(credentials.size == publicKeys.size)
+        document.credentials.addAll(credentials.zip(publicKeys).map {
+            val credential = it.first.jsonPrimitive.content
+            val publicKey = it.second
+            when (credentialConfiguration.format) {
+                is Openid4VciFormatSdJwt -> {
+                    val sdJwt = SdJwtVerifiableCredential.fromString(credential)
+                    val jwtBody = JwtBody.fromString(sdJwt.body)
+                    CredentialData(
+                        publicKey,
+                        jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
+                        jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
+                        CredentialFormat.SD_JWT_VC,
+                        credential.toByteArray()
+                    )
+                }
+                is Openid4VciFormatMdoc -> {
+                    val credentialBytes = credential.fromBase64Url()
+                    val credentialData = StaticAuthDataParser(credentialBytes).parse()
+                    val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
+                    val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
+                    val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
+                    val mso = MobileSecurityObjectParser(encodedMso).parse()
+                    CredentialData(
+                        publicKey,
+                        mso.validFrom,
+                        mso.validUntil,
+                        CredentialFormat.MDOC_MSO,
+                        credentialBytes
+                    )
+                }
+                null -> throw IllegalStateException("Unexpected credential format")
+            }
+        })
+        updateIssuerDocument(env, state.documentId, document, true)
+    }
+
+    private suspend fun obtainCredentialsKeyless(
+        env: FlowEnvironment,
+        documentId: String,
+        issuerDocument: FunkeIssuerDocument,
+    ) {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
+        val request = buildJsonObject {
+            putFormat(credentialConfiguration.format!!)
+        }
+        val credentials = obtainCredentials(
+            env,
+            metadata,
+            request,
+            documentId,
+            issuerDocument
+        )
+        check(credentials.size == 1)
+        val credential = credentials[0].jsonPrimitive.content
+        val sdJwt = SdJwtVerifiableCredential.fromString(credential)
+        val jwtBody = JwtBody.fromString(sdJwt.body)
+        issuerDocument.credentials.add(
+            CredentialData(
+                null,
+                jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
+                jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
+                CredentialFormat.SD_JWT_VC,
+                credential.toByteArray()
+            )
+        )
+    }
+
+    private suspend fun obtainCredentials(
+        env: FlowEnvironment,
+        metadata: Openid4VciIssuerMetadata,
+        request: JsonObject,
+        documentId: String,
+        document: FunkeIssuerDocument
+    ): JsonArray {
         val access = document.access!!
         val dpop = FunkeUtil.generateDPoP(
             env,
@@ -417,7 +513,7 @@ class FunkeIssuingAuthorityState(
             // Currently in Funke case this gets document in permanent bad state, notification
             // is not needed as an exception will generate notification on the client side.
             document.state = DocumentCondition.DELETION_REQUESTED
-            updateIssuerDocument(env, state.documentId, document, false)
+            updateIssuerDocument(env, documentId, document, false)
 
             throw IssuingAuthorityException("Error getting a credential issued")
         }
@@ -425,27 +521,11 @@ class FunkeIssuingAuthorityState(
         val responseText = String(credentialResponse.readBytes())
 
         val response = Json.parseToJsonElement(responseText) as JsonObject
-        val credentials = if (response.contains("credential")) {
+        return if (response.contains("credential")) {
             JsonArray(listOf(response["credential"]!!))
         } else {
             response["credentials"] as JsonArray
         }
-        check(credentials.size == publicKeys.size)
-        document.credentials.addAll(credentials.zip(publicKeys).map {
-            val credential = it.first.jsonPrimitive.content
-            val publicKey = it.second
-            val now = Clock.System.now()
-            // TODO: where do we get this from? Get the real data from the credential
-            val expiration = Clock.System.now() + 14.days
-            when (credentialConfiguration.format) {
-                is Openid4VciFormatSdJwt ->
-                    CredentialData(publicKey, now, expiration, CredentialFormat.SD_JWT_VC, credential.toByteArray())
-                is Openid4VciFormatMdoc ->
-                    CredentialData(publicKey, now, expiration, CredentialFormat.MDOC_MSO, credential.fromBase64Url())
-                null -> throw IllegalStateException("Unexpected credential format")
-            }
-        })
-        updateIssuerDocument(env, state.documentId, document, true)
     }
 
     private fun createRequestUsingProofOfPossession(
@@ -507,7 +587,12 @@ class FunkeIssuingAuthorityState(
 
     @FlowMethod
     suspend fun getCredentials(env: FlowEnvironment, documentId: String): List<CredentialData> {
-        return loadIssuerDocument(env, documentId).credentials
+        val document = loadIssuerDocument(env, documentId)
+        val credentials = mutableListOf<CredentialData>()
+        credentials.addAll(document.credentials)
+        document.credentials.clear()
+        updateIssuerDocument(env, documentId, document, false)
+        return credentials
     }
 
     @FlowMethod
@@ -692,7 +777,10 @@ class FunkeIssuingAuthorityState(
                     art.toByteArray(),
                     false,
                     null,
-                    SdJwtVcDocumentConfiguration(config.format.vct)
+                    SdJwtVcDocumentConfiguration(
+                        vct = config.format.vct,
+                        keyBound = config.proofType != Openid4VciNoProof
+                    )
                 )
             }
             is Openid4VciFormatMdoc -> {
@@ -734,7 +822,10 @@ class FunkeIssuingAuthorityState(
                     base.cardArt,
                     base.requireUserAuthenticationToViewDocument,
                     null,
-                    SdJwtVcDocumentConfiguration(config.format.vct)
+                    SdJwtVcDocumentConfiguration(
+                        vct = config.format.vct,
+                        keyBound = config.proofType != Openid4VciNoProof
+                    )
                 )
             }
             is Openid4VciFormatMdoc -> {

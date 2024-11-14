@@ -1,71 +1,78 @@
 package com.android.identity.server.openid4vci
 
+import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509Cert
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.sdjwt.Issuer
 import com.android.identity.sdjwt.SdJwtVcGenerator
-import com.android.identity.sdjwt.util.JsonWebKey
 import kotlinx.datetime.Clock
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.days
 
-internal class CredentialFactorySdJwtSample : CredentialFactory {
+internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
     override val offerId: String
-        get() = "sample"
+        get() = "utopia_naturalization"
 
     override val scope: String
-        get() = "sample_sd_jwt"
+        get() = "utopia_naturalization_sd_jwt"
 
     override val format: Openid4VciFormat
         get() = FORMAT
 
     override val proofSigningAlgorithms: List<String>
-        get() = CredentialFactory.DEFAULT_PROOF_SIGNING_ALGORITHMS
+        get() = listOf()  // keyless
 
     override val cryptographicBindingMethods: List<String>
-        get() = listOf("jwk")
+        get() = listOf()  // keyless
 
     override val credentialSigningAlgorithms: List<String>
         get() = CredentialFactory.DEFAULT_CREDENTIAL_SIGNING_ALGORITHMS
 
     override val name: String
-        get() = "Example EAA (SD-JWT)"
+        get() = "Utopia Naturalization Certificate"
 
     override val logo: String
-        get() = "card-generic.png"
+        get() = "naturalization.png"
 
     override suspend fun makeCredential(
         environment: FlowEnvironment,
         state: IssuanceState,
-        authenticationKey: EcPublicKey
+        authenticationKey: EcPublicKey?
     ): String {
+        check(authenticationKey == null)
         val data = state.credentialData!!
+        val birthdateDataElement = euPidDocumentType.mdocDocumentType!!
+            .namespaces[EUPersonalID.EUPID_NAMESPACE]!!.dataElements["birth_date"]!!
+        val birthdate = birthdateDataElement.renderValue(Cbor.decode(
+            data.getDataElement(EUPersonalID.EUPID_NAMESPACE, "birth_date")))
         val identityAttributes = buildJsonObject {
-            put("given_name", JsonPrimitive(data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "given_name")))
-            put("family_name", JsonPrimitive(data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "family_name")))
+            put("given_name", data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "given_name"))
+            put("family_name", data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "family_name"))
+            put("birth_date", birthdate)
+            put("naturalization_date", "2024-04-01")  // Utopia Naturalization Day (aka April Fools)
         }
 
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random,
             payload = identityAttributes,
-            docType = EUPersonalID.EUPID_VCT,
+            docType = UtopiaNaturalization.VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 
         val now = Clock.System.now()
 
         val timeSigned = now
-        val validFrom = now
-        val validUntil = validFrom + 30.days
+        val validFrom = Instant.parse("2024-04-01T12:00:00Z")
+        val validUntil = Instant.parse("2034-04-01T12:00:00Z")
 
-        sdJwtVcGenerator.publicKey = JsonWebKey(authenticationKey)
         sdJwtVcGenerator.timeSigned = timeSigned
         sdJwtVcGenerator.timeValidityBegin = validFrom
         sdJwtVcGenerator.timeValidityEnd = validUntil
@@ -82,6 +89,9 @@ internal class CredentialFactorySdJwtSample : CredentialFactory {
     }
 
     companion object {
-        val FORMAT = Openid4VciFormatSdJwt("example")
+        private val FORMAT = Openid4VciFormatSdJwt(UtopiaNaturalization.VCT)
+
+        // to decode attributes
+        private val euPidDocumentType = EUPersonalID.getDocumentType()
     }
 }

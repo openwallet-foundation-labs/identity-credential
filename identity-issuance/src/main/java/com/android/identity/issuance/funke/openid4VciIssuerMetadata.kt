@@ -83,14 +83,14 @@ internal data class Openid4VciIssuerMetadata(
                                 id = it.key,
                                 scope = obj["scope"]?.jsonPrimitive?.content,
                                 cryptographicBindingMethod = preferred(
-                                    obj["cryptographic_binding_methods_supported"]!!.jsonArray,
+                                    obj["cryptographic_binding_methods_supported"]?.jsonArray,
                                     SUPPORTED_BINDING_METHODS
                                 ),
                                 credentialSigningAlgorithm = preferred(
                                     obj["credential_signing_alg_values_supported"]!!.jsonArray,
                                     SUPPORTED_SIGNATURE_ALGORITHMS
                                 ),
-                                proofType = extractProofType(obj["proof_types_supported"]!!.jsonObject),
+                                proofType = extractProofType(obj["proof_types_supported"]?.jsonObject),
                                 format = extractFormat(obj),
                                 display = extractDisplay(obj["display"])
                             )
@@ -101,6 +101,9 @@ internal data class Openid4VciIssuerMetadata(
         }
 
         private fun preferred(available: JsonArray?, supported: List<String>): String? {
+            if (available == null) {
+                return "none"
+            }
             val availableSet = available?.map { it.jsonPrimitive.content }?.toSet() ?: return null
             return supported.firstOrNull { availableSet.contains(it) }
         }
@@ -148,7 +151,10 @@ internal data class Openid4VciIssuerMetadata(
             )
         }
 
-        private fun extractProofType(jsonObject: JsonObject): Openid4VciProofType? {
+        private fun extractProofType(jsonObject: JsonObject?): Openid4VciProofType? {
+            if (jsonObject == null) {
+                return Openid4VciNoProof
+            }
             val attestation = jsonObject["attestation"]?.jsonObject
             if (attestation != null) {
                 val alg = preferred(
@@ -241,6 +247,10 @@ internal sealed class Openid4VciProofType {
     abstract val id: String
 }
 
+internal object Openid4VciNoProof : Openid4VciProofType() {
+    override val id: String get() = "none"
+}
+
 internal data class Openid4VciProofTypeJwt(
     val signingAlgorithm: String
 ) : Openid4VciProofType() {
@@ -263,7 +273,5 @@ internal fun JsonObjectBuilder.putFormat(format: Openid4VciFormat) {
         is Openid4VciFormatMdoc -> {
             put("doctype", JsonPrimitive(format.docType))
         }
-
-        null -> throw IllegalStateException("Credential format was not specified")
     }
 }

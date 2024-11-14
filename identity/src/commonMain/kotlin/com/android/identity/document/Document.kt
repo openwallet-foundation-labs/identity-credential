@@ -374,11 +374,16 @@ class Document private constructor(
             store: DocumentStore,
             credentialFactory: CredentialFactory
         ): Document? = Document(name, storageEngine, secureAreaRepository, store, credentialFactory).run {
-            if (loadDocument()) {
-                this// return this Document object
-            } else { // when document.loadDocument() == false
-                null // return null
+            try {
+                if (!loadDocument()) {
+                    return null
+                }
+            } catch (err: Exception) {
+                Logger.e(TAG, "Error loading document $name, ignoring it", err)
+                // TODO: delete it from storage?
+                return null
             }
+            return this
         }
     }
 }

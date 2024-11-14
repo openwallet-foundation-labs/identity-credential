@@ -48,7 +48,7 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -406,7 +406,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                     vct,
                     requestedClaims,
                     walletApp.documentTypeRepository,
-                    credential as SdJwtVcCredential
+                    credential as KeyBoundSdJwtVcCredential
                 )
                 return Pair(credential as SecureAreaBoundCredential, consentFields)
             }
@@ -670,7 +670,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 val deviceResponseCbor = deviceResponseGenerator.generate()
                 deviceResponseCbor
             }
-            is SdJwtVcCredential -> {
+            is KeyBoundSdJwtVcCredential -> {
                 showSdJwtPresentmentFlow(
                     activity = this,
                     consentFields = consentFields,
@@ -1028,7 +1028,7 @@ private fun VcConsentField.Companion.generateConsentFields(
     vct: String,
     claims: List<String>,
     documentTypeRepository: DocumentTypeRepository,
-    vcCredential: SdJwtVcCredential?,
+    vcCredential: KeyBoundSdJwtVcCredential?,
 ): List<VcConsentField> {
     val vcType = documentTypeRepository.getDocumentTypeForVc(vct)?.vcDocumentType
     val ret = mutableListOf<VcConsentField>()
@@ -1047,7 +1047,7 @@ private fun VcConsentField.Companion.generateConsentFields(
 
 private fun filterConsentFields(
     list: List<VcConsentField>,
-    credential: SdJwtVcCredential?
+    credential: KeyBoundSdJwtVcCredential?
 ): List<VcConsentField> {
     if (credential == null) {
         return list
