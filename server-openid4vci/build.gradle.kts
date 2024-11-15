@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.kotlinx.io.bytestring)
     implementation(libs.bouncy.castle.bcprov)
     implementation(libs.nimbus.oauth2.oidc.sdk)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
 }
