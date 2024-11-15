@@ -1,18 +1,53 @@
 package com.android.identity_credential.wallet
 
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
+import com.android.identity.crypto.X509CertificateCreateOption
+import com.android.identity.crypto.X509CertificateExtension
+import com.android.identity.crypto.create
+import com.android.identity.crypto.javaPrivateKey
+import com.android.identity.crypto.javaPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.document.DocumentRequest
 import com.android.identity.issuance.CredentialFormat
+import com.android.identity.util.toBase64Url
 import com.android.identity_credential.wallet.presentation.DescriptorMap
 import com.android.identity_credential.wallet.presentation.createPresentationSubmission
 import com.android.identity_credential.wallet.presentation.formatAsDocumentRequest
 import com.android.identity_credential.wallet.presentation.getAuthRequestFromJwt
 import com.android.identity_credential.wallet.presentation.parsePathItem
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.util.Base64
+import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimePeriod
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.serialization.json.Json.Default.parseToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import org.bouncycastle.asn1.ASN1ObjectIdentifier
+import org.bouncycastle.asn1.x509.ExtendedKeyUsage
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.KeyPurposeId
+import org.bouncycastle.asn1.x509.KeyUsage
 import org.junit.Assert
 import org.junit.Test
+import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.ECPublicKey
+import kotlin.time.Duration
 
 class OpenID4VPTest {
 
@@ -46,6 +81,173 @@ class OpenID4VPTest {
             "RlIjoiZGlyZWN0X3Bvc3Quand0In0.6VvDuIZ6QhLbzVyncJ-3mEkykYAadSqmgpjxd72j6zxeivNxGpnPh0" +
             "c7YxCHbGNHY47ZZ7STu6LxbJY6EOWHHw"
 
+    private fun createSingleUseReaderKey(): Pair<EcPrivateKey, X509CertChain> {
+        val now = Clock.System.now()
+        val validFrom = now.plus(DateTimePeriod(minutes = -10), TimeZone.currentSystemDefault())
+        val validUntil = now.plus(DateTimePeriod(minutes = 10), TimeZone.currentSystemDefault())
+        val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
+
+        val extensions = mutableListOf<X509CertificateExtension>()
+        extensions.add(
+            X509CertificateExtension(
+                Extension.keyUsage.toString(),
+                true,
+                KeyUsage(KeyUsage.digitalSignature).encoded
+            )
+        )
+        extensions.add(
+            X509CertificateExtension(
+                Extension.extendedKeyUsage.toString(),
+                true,
+                ExtendedKeyUsage(
+                    KeyPurposeId.getInstance(ASN1ObjectIdentifier("1.0.18013.5.1.2"))
+                ).encoded
+            )
+        )
+        val readerKeySubject = "CN=OWF IC Online Verifier Single-Use Reader Key"
+
+        // TODO: for now, instead of using the per-site Reader Root generated at first run, use the
+        //  well-know OWF IC Reader root checked into Git.
+        val owfIcReaderCert = X509Cert.fromPem("""
+-----BEGIN CERTIFICATE-----
+MIICCTCCAY+gAwIBAgIQZc/0rhdjZ9n3XoZYzpt2GjAKBggqhkjOPQQDAzA+MS8wLQYDVQQDDCZP
+V0YgSWRlbnRpdHkgQ3JlZGVudGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCWlowHhcNMjQw
+OTE3MTY1NjA5WhcNMjkwOTE3MTY1NjA5WjA+MS8wLQYDVQQDDCZPV0YgSWRlbnRpdHkgQ3JlZGVu
+dGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCWlowdjAQBgcqhkjOPQIBBgUrgQQAIgNiAATM
+1ZVDQ7E4A+ujJl0J7Op8qvy/BSgg/UCTw+WrwYI32/jV9pk8Qu5BSTbUDZE2PQheqy4s3j8y1gMu
++Q5pemhYn/c4OMYXZY8uD+t4Wo9UFoSDkFbvlumZ/cuO5TTAI76jUjBQMB0GA1UdDgQWBBTgtILK
+HJ50qO/Nc33zshz2aX4+4TAfBgNVHSMEGDAWgBTgtILKHJ50qO/Nc33zshz2aX4+4TAOBgNVHQ8B
+Af8EBAMCAQYwCgYIKoZIzj0EAwMDaAAwZQIxALmOcU+Ggax3wHbD8tcd8umuDxzimf9PSICjvlh5
+kwR0/1SZZF7bqMAOQXsrwNYFLgIwLVirmU4WvRlUktR2Ty5kxgDG0iy+g00ur9JXCF+wAUQjKHbg
+VvIQ6NRr06GwpPJR
+-----END CERTIFICATE-----
+        """.trimIndent())
+
+        val owfIcReaderRoot = EcPrivateKey.fromPem("""
+-----BEGIN PRIVATE KEY-----
+MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDDxgrZBXnoO54/hZM2DAGrByoWRatjH9hGs
+lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
+-----END PRIVATE KEY-----
+        """.trimIndent(),
+            owfIcReaderCert.ecPublicKey)
+        val owfIcReaderRootSignatureAlgorithm = Algorithm.ES384
+        val owfIcReaderRootIssuer = owfIcReaderCert.javaX509Certificate.issuerX500Principal.name
+
+        val readerKeyCertificate = X509Cert.create(
+            readerKey.publicKey,
+            owfIcReaderRoot,
+            owfIcReaderCert,
+            owfIcReaderRootSignatureAlgorithm,
+            "1",
+            readerKeySubject,
+            owfIcReaderRootIssuer,
+            validFrom,
+            validUntil,
+            setOf(
+                X509CertificateCreateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                X509CertificateCreateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE
+            ),
+            extensions
+        )
+        return Pair(
+            readerKey,
+            X509CertChain(listOf(readerKeyCertificate) + owfIcReaderCert)
+        )
+    }
+
+    private fun generateSignedJWT(claimsSet: JWTClaimsSet) : SignedJWT {
+        val (singleUseReaderKeyPriv, singleUseReaderKeyCertChain) = createSingleUseReaderKey()
+        val readerPub = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
+        val readerPriv = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+        val readerKey = ECKey(
+            Curve.P_256,
+            readerPub,
+            readerPriv,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        )
+
+        val readerX5c = singleUseReaderKeyCertChain.certificates.map { cert ->
+            Base64.from(cert.encodedCertificate.toBase64Url())
+        }
+
+        val signedJWT = SignedJWT(
+            JWSHeader.Builder(JWSAlgorithm.ES256)
+                .keyID(readerKey.keyID)
+                .x509CertChain(readerX5c)
+                .type(JOSEObjectType("oauth-authz-req+jwt"))
+                .build(),
+            claimsSet
+        )
+
+        val signer: JWSSigner = ECDSASigner(readerKey)
+        signedJWT.sign(signer)
+        return signedJWT
+    }
+
+    private fun generateClaimSet(
+        issuance: Instant,
+        expiration: Instant,
+        notBefore: Instant
+    ): JWTClaimsSet =
+        JWTClaimsSet.parse("{\n" +
+            "    \"response_type\": \"vp_token\",\n" +
+            "    \"client_id\": \"example.id\",\n" +
+            "    \"response_uri\": \"https://example.com\",\n" +
+            "    \"response_mode\": \"direct_post.jwt\",\n" +
+            "    \"presentation_definition\": {\n" +
+            "        \"id\": \"4db74328-9e94-49bb-97b7-bbfcb2d11a06\",\n" +
+            "        \"input_descriptors\": [\n" +
+            "            {\n" +
+            "                \"id\": \"8f76f19e-b161-4baf-a57a-fd129322a48c\",\n" +
+            "                \"format\": {\n" +
+            "                    \"vc+sd-jwt\": {\n" +
+            "                        \"sd-jwt_alg_values\": [\n" +
+            "                            \"ES256\"\n" +
+            "                        ],\n" +
+            "                        \"kb-jwt_alg_values\": [\n" +
+            "                            \"ES256\"\n" +
+            "                        ]\n" +
+            "                    }\n" +
+            "                },\n" +
+            "                \"constraints\": {\n" +
+            "                    \"limit_disclosure\": \"required\",\n" +
+            "                    \"fields\": [\n" +
+            "                        {\n" +
+            "                            \"path\": [\n" +
+            "                                \"\$.age_equal_or_over.21\"\n" +
+            "                            ]\n" +
+            "                        },\n" +
+            "                        {\n" +
+            "                            \"path\": [\n" +
+            "                                \"\$.vct\"\n" +
+            "                            ],\n" +
+            "                            \"filter\": {\n" +
+            "                                \"type\": \"string\",\n" +
+            "                                \"enum\": [\n" +
+            "                                    \"https://example.bmi.bund.de/credential/pid/1.0\",\n" +
+            "                                    \"urn:eu.europa.ec.eudi:pid:1\"\n" +
+            "                                ]\n" +
+            "                            }\n" +
+            "                        }\n" +
+            "                    ]\n" +
+            "                }\n" +
+            "            }\n" +
+            "        ]\n" +
+            "    },\n" +
+            "    \"exp\": ${expiration.epochSeconds},\n" +
+            "    \"nbf\": ${notBefore.epochSeconds},\n" +
+            "    \"iat\": ${issuance.epochSeconds},\n" +
+            "    \"jti\": \"39543149-470b-47ae-be96-213f8f4bc9fd\"\n" +
+            "}")
+
     @Test
     fun testParsePathBracketed() {
         Assert.assertEquals(Pair("namespace", "dataElem"), parsePathItem("\"\$['namespace']['dataElem']\""))
@@ -54,6 +256,51 @@ class OpenID4VPTest {
     @Test
     fun testParsePathDotted() {
         Assert.assertEquals(Pair("credentialSubject", "dataElem"), parsePathItem("\"\$.dataElem\""))
+    }
+
+    @Test
+    fun testExpiredJWT() {
+        val now = Clock.System.now()
+        
+        val expiredClaimSet = generateClaimSet(
+            issuance = now.minus(Duration.parse("1m")),
+            expiration = now.minus(Duration.parse("1d")),
+            notBefore = now.minus(Duration.parse("1m"))
+        )
+
+        Assert.assertThrows(RuntimeException::class.java) {
+            getAuthRequestFromJwt(generateSignedJWT(expiredClaimSet), "example.id")
+        }
+    }
+
+    @Test
+    fun testIssuedInFutureJWT() {
+        val now = Clock.System.now()
+
+        val issuedInFutureClaimSet = generateClaimSet(
+            issuance = now.plus(Duration.parse("1m")),
+            expiration = now.plus(Duration.parse("1d")),
+            notBefore = now.plus(Duration.parse("1m"))
+        )
+
+        Assert.assertThrows(RuntimeException::class.java) {
+            getAuthRequestFromJwt(generateSignedJWT(issuedInFutureClaimSet), "example.id")
+        }
+    }
+
+    @Test
+    fun testNotYetValidJWT() {
+        val now = Clock.System.now()
+
+        val notYetValidClaimSet = generateClaimSet(
+            issuance = now.minus(Duration.parse("1m")),
+            expiration = now.plus(Duration.parse("1d")),
+            notBefore = now.plus(Duration.parse("5m"))
+        )
+
+        Assert.assertThrows(RuntimeException::class.java) {
+            getAuthRequestFromJwt(generateSignedJWT(notYetValidClaimSet), "example.id")
+        }
     }
 
     @Test
