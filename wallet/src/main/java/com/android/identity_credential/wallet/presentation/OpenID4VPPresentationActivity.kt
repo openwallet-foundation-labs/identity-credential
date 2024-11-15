@@ -876,8 +876,8 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
         var exp: Instant? = null
         if (expiration != null) {
             exp = Instant.fromEpochMilliseconds(expiration.time)
-            if (exp >= now) {
-                throw BadJWTException("Expired JWT ($exp >= $now)")
+            if (exp <= now) {
+                throw BadJWTException("Expired JWT ($exp <= $now)")
             }
         }
 
@@ -885,8 +885,8 @@ private class TimeChecks : JWTClaimsSetVerifier<SecurityContext> {
         var iat: Instant? = null
         if (issuance != null) {
             iat = Instant.fromEpochMilliseconds(issuance.time)
-            if (now <= iat) {
-                throw BadJWTException("JWT issued in the future ($now <= $iat)")
+            if (now < iat) {
+                throw BadJWTException("JWT issued in the future ($now < $iat)")
             }
 
             if (exp != null) {
