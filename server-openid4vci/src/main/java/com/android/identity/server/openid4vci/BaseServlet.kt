@@ -135,8 +135,12 @@ abstract class BaseServlet: BaseHttpServlet() {
         if (json["nonce"]?.jsonPrimitive?.content != dpopNonce) {
             throw InvalidRequestException("Stale or invalid DPoP nonce")
         }
-        if (json["htu"]?.jsonPrimitive?.content != req.requestURL.toString()) {
-            throw InvalidRequestException("Incorrect request URI: ${req.requestURL}")
+        val serverUrl = environment.getInterface(Configuration::class)!!.getValue("base_url")
+        // NB: cannot use req.requestURL, as it does not take into account potential frontends.
+        val expectedUrl = "$serverUrl${req.servletPath}"
+        val actualUrl = json["htu"]?.jsonPrimitive?.content
+        if (actualUrl != expectedUrl) {
+            throw InvalidRequestException("Incorrect request URI: $expectedUrl vs $actualUrl")
         }
     }
 }
