@@ -5,9 +5,12 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.vc.JwtBody
+import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Instant
+
+private const val TAG = "SdJwtVerifiablePresentation"
 
 /**
  * A presentation of a SD-JWT. It consists of:
@@ -57,13 +60,25 @@ class SdJwtVerifiablePresentation(
      *
      * The caller MUST pass in three functions that will validate the nonce, audience, and
      * creation time of the SD-JWT presentation.
+     *
+     * @return True if the presentation is key-bound and the binding is valid. False if it is
+     *     not key-bound. Throws an exception if the binding is invalid.
      */
     fun verifyKeyBinding(
         checkNonce: (String) -> Boolean,
         checkAudience: (String) -> Boolean,
         checkCreationTime: (Instant) -> Boolean,
-    ) {
-        val key = JwtBody.fromString(sdJwtVc.body).publicKey?.asEcPublicKey ?:
+    ): Boolean {
+        val jwtBody = JwtBody.fromString(sdJwtVc.body)
+        if (jwtBody.publicKey == null) {
+            // Non-keybound credential. No verification needed.
+            Logger.i(TAG, "verifyKeyBinding found a body with no public key. Assuming a"
+                    + " non-keybound credential.")
+            // TODO: If we're expecting a keybound credential, this should be an error.
+            return false
+        }
+
+        val key = jwtBody.publicKey?.asEcPublicKey ?:
             throw MalformedSdJwtPresentationError("couldn't parse public holder key from JWT: ${sdJwtVc.body}")
         val keyBindingBodyObj = verifyHolderSignature(key)
 
@@ -78,6 +93,7 @@ class SdJwtVerifiablePresentation(
         if (!checkCreationTime(keyBindingBodyObj.creationTime)) {
             throw IllegalStateException("creation time didn't verify in key binding JWT: ${keyBindingBodyObj.toString()}")
         }
+        return true
     }
 
     override fun toString() = "$sdJwtVc$keyBindingHeader.$keyBindingBody.$keyBindingSignature"
