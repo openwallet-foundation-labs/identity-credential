@@ -38,6 +38,7 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.android.identity.appsupport.ui.getOutlinedImageVector
@@ -188,7 +189,11 @@ private fun RelyingPartySection(relyingParty: ConsentRelyingParty) {
             }
             if (relyingParty.trustPoint.displayName != null) {
                 Text(
-                    text = relyingParty.trustPoint.displayName!!,
+                    text = stringResource(
+                        Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
+                        relyingParty.trustPoint.displayName!!
+                    ),
+                    textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -199,12 +204,14 @@ private fun RelyingPartySection(relyingParty: ConsentRelyingParty) {
                     Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
                     relyingParty.websiteOrigin
                 ),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
         } else {
             Text(
                 text = stringResource(Res.string.consent_modal_bottom_sheet_headline_share_with_unknown_requester),
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
