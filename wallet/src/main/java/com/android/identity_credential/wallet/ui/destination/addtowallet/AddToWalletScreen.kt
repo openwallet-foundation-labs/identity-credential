@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
@@ -38,7 +39,6 @@ import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
-import com.android.identity_credential.wallet.ui.qrscanner.ScanQrDialog
 import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -100,13 +100,6 @@ fun AddToWalletScreen(
     // to navigate after scanning a Qr code
     navigateToOnComposable.value?.let { route -> onNavigate(route) }
 
-    /**
-     * Helper function for hiding [ScanQrDialog] from current view.
-     */
-    fun dismissScanQrDialog() {
-        showQrScannerDialog.value = false
-    }
-
     ScreenWithAppBarAndBackButton(
         title = stringResource(R.string.add_screen_title),
         onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
@@ -121,13 +114,10 @@ fun AddToWalletScreen(
             } else {
                 // compose ScanQrDialog when user taps on "Scan Credential Offer"
                 if (showQrScannerDialog.value) {
-                    ScanQrDialog(
-                        modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .fillMaxHeight(0.6f),
+                    ScanQrCodeDialog(
                         title = stringResource(R.string.credential_offer_scan),
                         description = stringResource(id = R.string.credential_offer_details),
-                        onScannedQrCode = { qrCodeTextUrl ->
+                        onCodeScanned = { qrCodeTextUrl ->
                             // filter only for OID4VCI Url schemes.
                             if (qrCodeTextUrl.startsWith(WalletApplication.OID4VCI_CREDENTIAL_OFFER_URL_SCHEME)) {
                                 // scanned text is expected to be an encoded Url
@@ -145,8 +135,13 @@ fun AddToWalletScreen(
                                     }
                                 }
                             }
+                            true
                         },
-                        onClose = { dismissScanQrDialog() }
+                        dismissButton = stringResource(R.string.reader_screen_scan_qr_dialog_dismiss_button),
+                        onDismiss = { showQrScannerDialog.value = false },
+                        modifier = Modifier
+                            .fillMaxWidth()//0.9f)
+                            .fillMaxHeight(0.6f),
                     )
                 } else { // not showing [ScanQrDialog]
                     AddToWalletScreenWithIssuerDisplayDatas(
