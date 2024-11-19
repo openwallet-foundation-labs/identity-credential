@@ -201,8 +201,8 @@ fun defaultGraph(
         }
         completionMessage(
             id = "detailedMessage",
-            messageTitle = "Document Scanning Complete",
-            message = "Your application is now under ID issuer verification. This process might take a few hours.",
+            messageTitle = "Document Submission Complete",
+            message = "Your application is now being verified by the issuer. This process might take a few hours.",
             assets = mapOf(),
             acceptButtonText = "Done",
             rejectButtonText = null

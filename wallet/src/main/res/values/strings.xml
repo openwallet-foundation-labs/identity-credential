@@ -306,7 +306,7 @@
 
     <!-- Presentation screen -->
     <string name="presentation_credential_usage_warning">Reused Credential</string>
-    <string name="presentation_biometric_prompt_title">Use your screen lock</string>
+    <string name="presentation_biometric_prompt_title">Verify it\'s you</string>
     <string name="presentation_biometric_prompt_subtitle">Authentication is required to share this information</string>
     <string name="presentation_lskf_warning_dismiss_btn">Ok</string>
     <string name="presentation_lskf_warning_dialog_title">Unable to Present Document</string>
@@ -418,8 +418,8 @@
         <img src=\'utopia_logo.png\' style=\'height: 150px; display: block; margin: auto\'
            alt=\'State of Utopia Department of Motor Vehicles\'/>
         <h2>Provisioning a Mobile Driving License (mDL)</h2>
-        <p>In the following screens, information will be collected for provisioning of a mDL.</p>
-        <p>The mDL can either contain hard-coded data for fictional person or
+        <p>In the following screens, information will be collected to provision an mDL.</p>
+        <p>The mDL can either contain hard-coded data for a fictional person or
         data derived from the chip in an ePassport or eID document.</p>
         <p>In this version of the application the mDL is generated and signed on-device. In future
         versions the collected evidence will be conveyed securely and privately to an issuance
@@ -443,11 +443,11 @@
         <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
            alt=\'State of Utopia Department of Motor Vehicles\'/>
         <h2>Provisioning a Mobile Driving License (mDL)</h2>
-        <p>In the following screens, information will be collected for provisioning of a mDL.</p>
-        <p>The mDL can either contain hard-coded data for fictional person or
+        <p>In the following screens, information will be collected to provision an mDL.</p>
+        <p>The mDL can either contain hard-coded data for a fictional person or
         data derived from the chip in an ePassport or eID document.</p>
         <p>In this version of the Issuing Authority the mDL is generated and signed on-device.
-        In other versions the collected evidence are conveyed securely and privately to an issuance
+        In other versions the collected evidence is conveyed securely and privately to an issuance
         server for evaluation and signing of the mDL.</p>
         <p>The created mDL will be bound to this device.</p>
     ]]>
@@ -457,11 +457,11 @@
         <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
            alt=\'State of Utopia Government\'/>
         <h2>Provisioning a Personal ID (PID)</h2>
-        <p>In the following screens, information will be collected for provisioning of a PID.</p>
-        <p>The PID can either contain hard-coded data for fictional person or
+        <p>In the following screens, information will be collected to provision a PID.</p>
+        <p>The PID can either contain hard-coded data for a fictional person or
         data derived from the chip in an ePassport or eID document.</p>
         <p>In this version of the Issuing Authority the PID is generated and signed on-device.
-        In other versions the collected evidence are conveyed securely and privately to an issuance
+        In other versions the collected evidence is conveyed securely and privately to an issuance
         server for evaluation and signing of the PID.</p>
         <p>The created PID will be bound to this device.</p>
     ]]>
@@ -471,11 +471,11 @@
         <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
            alt=\'State of Utopia Government\'/>
         <h2>Provisioning a Photo ID</h2>
-        <p>In the following screens, information will be collected for provisioning of a Photo ID.</p>
-        <p>The Photo ID can either contain hard-coded data for fictional person or
+        <p>In the following screens, information will be collected to provision a Photo ID.</p>
+        <p>The Photo ID can either contain hard-coded data for a fictional person or
         data derived from the chip in an ePassport or eID document.</p>
         <p>In this version of the Issuing Authority the Photo ID is generated and signed on-device.
-        In other versions the collected evidence are conveyed securely and privately to an issuance
+        In other versions the collected evidence is conveyed securely and privately to an issuance
         server for evaluation and signing of the Photo ID.</p>
         <p>The created Photo ID will be bound to this device.</p>
     ]]>
@@ -488,7 +488,7 @@
         ![State of Utopia Central Registry seal](utopia_logo.png){
            style=height:150px;display:block;margin:auto}\n\n
         ## Provisioning a Personal Information Document (PID)\n\n
-        In the following screens, information will be collected for provisioning of a PID.\n\n
+        In the following screens, information will be collected to provision a PID.\n\n
         The PID can either contain hard-coded data for fictional person or
         data derived from the chip in an ePassport or eID document.\n\n
         In this version of the application the PID is generated and signed on-device. In future
@@ -514,7 +514,7 @@
     <!-- Funke issuing authority TOS -->
     <string name="funke_issuing_authority_tos"><![CDATA[
         <h2>Provisioning a Personal Identification Data (PID) credential</h2>
-        <p>In the following screens, information will be collected for provisioning of a PID for
+        <p>In the following screens, information will be collected to provision a PID for
         a fictional person used for testing only.</p>
         <p>The PID is generated and signed on the government server. The created PID will be bound to
         this device.</p>
@@ -523,9 +523,9 @@
     <!-- Generic issuing authority TOS -->
     <string name="generic_issuing_authority_tos"><![CDATA[
         <h2>Provisioning $ID_NAME credential</h2>
-        <p>In the following screens, information will be collected for provisioning of $ID_NAME
-            from $ISSUER_NAME.</p>
-        <p>The created $ID_NAME will be bound to this device.</p>
+        <p>In the following screens, information will be collected to provision
+            <b>$ID_NAME</b> from <b>$ISSUER_NAME</b>.</p>
+        <p>The created <b>$ID_NAME</b> will be bound to this device.</p>
     ]]></string>
 
     <!-- Credential Offer -->
