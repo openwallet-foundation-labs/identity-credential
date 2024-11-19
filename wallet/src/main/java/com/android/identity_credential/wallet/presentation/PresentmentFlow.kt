@@ -45,7 +45,7 @@ private suspend fun showPresentmentFlowImpl(
     consentFields: List<ConsentField>,
     document: ConsentDocument,
     relyingParty: ConsentRelyingParty,
-    credential: SecureAreaBoundCredential,
+    credential: Credential,
     signAndGenerate: (KeyUnlockData?) -> ByteArray
 ): ByteArray {
     // always show the Consent Prompt first
@@ -72,11 +72,14 @@ private suspend fun showPresentmentFlowImpl(
         // if KeyLockedException is raised show the corresponding Prompt to unlock
         // the auth key for a Credential's Secure Area
         catch (e: KeyLockedException) {
-            when (credential.secureArea) {
+            // The only way we should get a KeyLockedException is if this is a secure area bound
+            // credential.
+            val secureAreaBoundCredential = credential as SecureAreaBoundCredential
+            when (secureAreaBoundCredential.secureArea) {
                 // show Biometric prompt
                 is AndroidKeystoreSecureArea -> {
                     val unlockData =
-                        AndroidKeystoreKeyUnlockData(credential.alias)
+                        AndroidKeystoreKeyUnlockData(secureAreaBoundCredential.alias)
                     val cryptoObject =
                         unlockData.getCryptoObjectForSigning(Algorithm.ES256)
 
@@ -107,7 +110,7 @@ private suspend fun showPresentmentFlowImpl(
                     remainingPassphraseAttempts--
 
                     val softwareKeyInfo =
-                        credential.secureArea.getKeyInfo(credential.alias) as SoftwareKeyInfo
+                        secureAreaBoundCredential.secureArea.getKeyInfo(secureAreaBoundCredential.alias) as SoftwareKeyInfo
                     val constraints = softwareKeyInfo.passphraseConstraints!!
                     val title =
                         if (constraints.requireNumerical)
@@ -141,8 +144,8 @@ private suspend fun showPresentmentFlowImpl(
                 is CloudSecureArea -> {
                     if (keyUnlockData == null) {
                         keyUnlockData = CloudKeyUnlockData(
-                            credential.secureArea as CloudSecureArea,
-                            credential.alias,
+                            secureAreaBoundCredential.secureArea as CloudSecureArea,
+                            secureAreaBoundCredential.alias,
                         )
                     }
 
@@ -154,7 +157,7 @@ private suspend fun showPresentmentFlowImpl(
                             }
                             remainingPassphraseAttempts--
 
-                            val constraints = (credential.secureArea as CloudSecureArea).passphraseConstraints
+                            val constraints = (secureAreaBoundCredential.secureArea as CloudSecureArea).passphraseConstraints
                             val title =
                                 if (constraints.requireNumerical)
                                     activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)
@@ -202,7 +205,7 @@ private suspend fun showPresentmentFlowImpl(
 
                 // for secure areas not yet implemented
                 else -> {
-                    throw IllegalStateException("No prompts implemented for Secure Area ${credential.secureArea.displayName}")
+                    throw IllegalStateException("No prompts implemented for Secure Area ${secureAreaBoundCredential.secureArea.displayName}")
                 }
             }
         }
@@ -233,7 +236,7 @@ suspend fun showSdJwtPresentmentFlow(
     consentFields: List<ConsentField>,
     document: ConsentDocument,
     relyingParty: ConsentRelyingParty,
-    credential: SecureAreaBoundCredential,
+    credential: Credential,
     nonce: String,
     clientId: String,
 ): ByteArray {
@@ -261,9 +264,10 @@ suspend fun showSdJwtPresentmentFlow(
             Logger.e(TAG, "No disclosures remaining.")
         }
 
+        val secureAreaBoundCredential = credential as? SecureAreaBoundCredential
         filteredSdJwt.createPresentation(
-            credential.secureArea,
-            credential.alias,
+            secureAreaBoundCredential?.secureArea,
+            secureAreaBoundCredential?.alias,
             keyUnlockData,
             Algorithm.ES256,
             nonce!!,

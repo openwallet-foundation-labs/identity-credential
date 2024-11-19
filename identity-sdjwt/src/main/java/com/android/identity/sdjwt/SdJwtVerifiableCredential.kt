@@ -130,22 +130,27 @@ class SdJwtVerifiableCredential(
         }
     }
 
-    fun createPresentation(secureArea: SecureArea,
-                           alias: String,
+    fun createPresentation(secureArea: SecureArea?,
+                           alias: String?,
                            keyUnlockData: KeyUnlockData?,
                            alg: Algorithm,
                            nonce: String,
                            audience: String,
                            creationTime: Instant = Clock.System.now()): SdJwtVerifiablePresentation {
+        val (keyBindingHeaderStr, keyBindingBodyStr, signatureStr) =
+            if (secureArea != null && alias != null) {
+                val keyBindingHeaderStr = KeyBindingHeader(alg).toString()
+                val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64Url()
+                val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
 
-        val keyBindingHeaderStr = KeyBindingHeader(alg).toString()
-
-        val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64Url()
-        val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
-
-        val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".toByteArray(Charsets.US_ASCII)
-        val signature = secureArea.sign(alias, alg, toBeSigned, keyUnlockData)
-        val signatureStr = signature.toCoseEncoded().toBase64Url()
+                val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".toByteArray(Charsets.US_ASCII)
+                val signature = secureArea.sign(alias, alg, toBeSigned, keyUnlockData)
+                val signatureStr = signature.toCoseEncoded().toBase64Url()
+                listOf(keyBindingHeaderStr, keyBindingBodyStr, signatureStr)
+            } else {
+                // Non-keybound credentials don't need to sign the key binding JWT.
+                listOf("", "", "")
+            }
 
         return SdJwtVerifiablePresentation(
             this,

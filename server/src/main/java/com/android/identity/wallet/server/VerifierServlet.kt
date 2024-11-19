@@ -1114,7 +1114,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         // on the verifier, check that the key binding can be verified with the
         // key mentioned in the SD-JWT:
-        presentation.verifyKeyBinding(
+        val isKeyBound = presentation.verifyKeyBinding(
             checkAudience = { clientId == it },
             checkNonce = { nonceStr == it },
             checkCreationTime = { true /* TODO: sometimes flaky it < Clock.System.now() */ }
@@ -1154,6 +1154,9 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             lines.add(OpenID4VPResultLine(key, value))
             disclosedClaims.add(key)
             Logger.i(TAG, "Adding special case $key: $value")
+        }
+        if (!isKeyBound) {
+            lines.add(OpenID4VPResultLine("Key bound", "false"))
         }
 
         val json = Json { ignoreUnknownKeys = true }

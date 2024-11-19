@@ -35,6 +35,7 @@ import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
+import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
@@ -58,6 +59,7 @@ import com.android.identity.appsupport.ui.consent.ConsentField
 import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
 import com.android.identity.appsupport.ui.consent.MdocConsentField
 import com.android.identity.appsupport.ui.consent.VcConsentField
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
 import com.nimbusds.jose.EncryptionMethod
@@ -382,7 +384,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         credentialFormat: CredentialFormat,
         inputDescriptor: JsonObject,
         now: Instant):
-            Pair<SecureAreaBoundCredential, List<ConsentField>> {
+            Pair<Credential, List<ConsentField>> {
         return when(credentialFormat) {
             CredentialFormat.MDOC_MSO -> {
                 val credential =
@@ -395,7 +397,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                     walletApp.documentTypeRepository,
                     credential as MdocCredential
                 )
-                return Pair(credential as SecureAreaBoundCredential, consentFields)
+                return Pair(credential, consentFields)
             }
             CredentialFormat.SD_JWT_VC -> {
                 val (vct, requestedClaims) = parseInputDescriptorForVc(inputDescriptor)
@@ -406,9 +408,9 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                     vct,
                     requestedClaims,
                     walletApp.documentTypeRepository,
-                    credential as KeyBoundSdJwtVcCredential
+                    credential as SdJwtVcCredential
                 )
-                return Pair(credential as SecureAreaBoundCredential, consentFields)
+                return Pair(credential, consentFields)
             }
         }
     }
@@ -640,7 +642,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
     @OptIn(ExperimentalEncodingApi::class)
     private suspend fun generateVpToken(
         consentFields: List<ConsentField>,
-        credential: SecureAreaBoundCredential,
+        credential: Credential,
         trustPoint: TrustPoint?,
         authorizationRequest: AuthorizationRequest,
         sessionTranscript: ByteArray // TODO: Only needed for mdoc. Generate internally.
@@ -670,7 +672,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 val deviceResponseCbor = deviceResponseGenerator.generate()
                 deviceResponseCbor
             }
-            is KeyBoundSdJwtVcCredential -> {
+            is SdJwtVcCredential -> {
                 showSdJwtPresentmentFlow(
                     activity = this,
                     consentFields = consentFields,
@@ -1028,7 +1030,7 @@ private fun VcConsentField.Companion.generateConsentFields(
     vct: String,
     claims: List<String>,
     documentTypeRepository: DocumentTypeRepository,
-    vcCredential: KeyBoundSdJwtVcCredential?,
+    vcCredential: SdJwtVcCredential?,
 ): List<VcConsentField> {
     val vcType = documentTypeRepository.getDocumentTypeForVc(vct)?.vcDocumentType
     val ret = mutableListOf<VcConsentField>()
@@ -1047,7 +1049,7 @@ private fun VcConsentField.Companion.generateConsentFields(
 
 private fun filterConsentFields(
     list: List<VcConsentField>,
-    credential: KeyBoundSdJwtVcCredential?
+    credential: SdJwtVcCredential?
 ): List<VcConsentField> {
     if (credential == null) {
         return list
