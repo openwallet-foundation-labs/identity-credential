@@ -443,7 +443,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         inputDescriptor: JsonObject
     ): Pair<String, List<String>> {
         val requestedClaims = mutableListOf<String>()
-        val vct = EUPersonalID.EUPID_VCT  // TODO: extract from `inputDescriptor`
+        // Set the default vct if we don't detect it below.
+        var vct = EUPersonalID.EUPID_VCT
 
         val constraints = inputDescriptor["constraints"]!!.jsonObject
         val fields = constraints["fields"]!!.jsonArray
@@ -453,6 +454,11 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             val parsed = parsePathItem(path)
             val claimName = parsed.second
             requestedClaims.add(claimName)
+
+            if (path == "\"\$.vct\"") {
+                val filter = fieldObj["filter"]!!.jsonObject
+                vct = filter["const"]!!.toString().run { substring(1, this.length - 1) }
+            }
         }
         return Pair(vct, requestedClaims)
     }
@@ -490,18 +496,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             inputDescriptorObj["id"]!!.toString().run { substring(1, this.length - 1) }
         } else {
             try {
-                var vct = ""
-                val constraints = inputDescriptorObj["constraints"]!!.jsonObject
-                for (field in constraints["fields"]!!.jsonArray) {
-                    if (field.jsonObject["path"]!!.jsonArray[0].toString() == "\"\$.vct\"") {
-                        val vctField = field.jsonObject
-                        val filter = vctField["filter"]!!.jsonObject
-                        vct = filter["const"]!!.toString().run { substring(1, this.length - 1) }
-                    }
-                }
+                val (vct, _) = parseInputDescriptorForVc(inputDescriptorObj)
                 vct
             } catch (e: NullPointerException) {
-                Logger.d(TAG, "Error: Could not find const filter field: ${e.message}")
+                Logger.d(TAG, "Error: Expected input descriptor field is missing: ${e.message}")
                 ""
             }
         }
