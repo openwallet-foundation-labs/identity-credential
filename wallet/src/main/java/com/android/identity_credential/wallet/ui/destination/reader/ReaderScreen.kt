@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -81,7 +82,6 @@ import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairHtml
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
-import com.android.identity_credential.wallet.ui.qrscanner.ScanQrDialog
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.datetime.Instant
@@ -173,10 +173,15 @@ private fun WaitForEngagement(
     var dropdownSelected = remember { mutableStateOf(availableRequests[0]) }
 
     if (showQrScannerDialog.value) {
-        ScanQrDialog(title = stringResource(R.string.reader_screen_scan_qr_dialog_title),
+        ScanQrCodeDialog(
+            title = stringResource(R.string.reader_screen_scan_qr_dialog_title),
             description = stringResource(R.string.reader_screen_scan_qr_dialog_text),
-            onScannedQrCode = { qrCodeText -> model.setQrCode(qrCodeText) },
-            onClose = { showQrScannerDialog.value = false }
+            onCodeScanned = { qrCodeText ->
+                model.setQrCode(qrCodeText)
+                true
+            },
+            dismissButton = stringResource(R.string.reader_screen_scan_qr_dialog_dismiss_button),
+            onDismiss = { showQrScannerDialog.value = false },
         )
     }
 
