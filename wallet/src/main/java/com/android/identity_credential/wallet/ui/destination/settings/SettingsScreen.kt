@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
+import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.WalletApplicationConfiguration
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
@@ -234,6 +235,18 @@ fun SettingsScreen(
                     subtitle = settingsModel.minServerUrl.observeAsState().value!!,
                     onClicked = { showMinServerUrlDialog = true }
                 )
+            }
+            if (settingsModel.developerModeEnabled.value == true) {
+                SettingSectionSubtitle(title = stringResource(R.string.settings_screen_debug_actions_section))
+                val context = LocalContext.current
+                val walletApplication = context.applicationContext as WalletApplication
+                Button(
+                    onClick = {
+                        walletApplication.documentModel.periodicSyncForAllDocuments()
+                    }
+                ) {
+                    Text(text = stringResource(R.string.settings_screen_trigger_periodic_sync_button))
+                }
             }
         }
     }

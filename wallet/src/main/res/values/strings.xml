@@ -566,4 +566,6 @@
     <string name="qr_alert_dialog_bt_disabled_text">Bluetooth must be enabled to share a QR connection code</string>
     <string name="qr_alert_dialog_bt_enable_button">Enable</string>
     <string name="presentation_result_no_matching_document_message">No available documents can fulfill the request.</string>
+    <string name="settings_screen_debug_actions_section">Debug actions</string>
+    <string name="settings_screen_trigger_periodic_sync_button">Trigger Periodic Sync</string>
 </resources>
