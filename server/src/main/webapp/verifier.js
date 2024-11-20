@@ -1,6 +1,12 @@
 
 // Keep in sync with verifier.html
 var selectedProtocol = 'w3c_dc_preview'
+// If the user clicks on one of the protocol entries, that becomes both the selected and the
+// preferred protocol. If the selected protocol is disabled (because, for instance, the user selects
+// a document that doesn't support the selected protocol), the selected protocol will be updated but
+// the preferred one will remain the same. Then if the preferred one is enabled again, the selection
+// will change back to the preferred protocol.
+var preferredProtocol = selectedProtocol
 
 var openid4vpUri = ''
 
@@ -15,6 +21,7 @@ async function onLoad() {
             selected === 'openid4vp_eudi' ||
             selected === 'openid4vp_mdoc') {
             selectedProtocol = selected
+            preferredProtocol = selectedProtocol
             protocolDropdown.innerHTML = target.innerHTML
         }
     })
@@ -41,7 +48,10 @@ async function onLoad() {
 }
 
 function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
-    var tabId = mdocOrVc + '-' + docTypeOrVct
+    // For the tab ID to be queryable using jQuery, we need to mask out special characters. Replace
+    // anything that isn't a letter or number.
+    var escapedDocTypeOrVct = docTypeOrVct.replace(/[^a-zA-Z0-9]/g,'_');
+    var tabId = mdocOrVc + '-' + escapedDocTypeOrVct
     var activeStr = active ? "active" : ""
     $('<li class="nav-item" role="presentation">' +
     '<button class="nav-link ' + activeStr + '" data-bs-toggle="pill" id="pills-tab-' + tabId + '" data-bs-target="#pills-' + tabId + '" type="button" role="tab" aria-controls="pills-home" aria-selected="true">' +
@@ -64,6 +74,44 @@ function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
     str += '</div> '
 
     $(str).appendTo('#pills-tabContent')
+
+    // When one of the document tabs is selected, update the available protocol dropdown options.
+    $('#pills-tab-' + tabId).on('shown.bs.tab', function (e) {
+        updateProtocolOptions(mdocOrVc);
+    });
+}
+
+function updateProtocolOptions(mdocOrVc) {
+    const protocolDropdown = document.getElementById('protocolDropdown')
+    const w3cOptions = document.querySelectorAll('.w3c-option');
+
+    if (mdocOrVc === 'mdoc') {
+        // Enable W3C options for mdoc entries
+        w3cOptions.forEach(option => {
+            option.classList.remove('disabled');
+            option.removeAttribute('disabled');
+            // If the preferred protocol was just reenabled, set it as the selected protocol.
+            if (preferredProtocol == option.getAttribute('value')) {
+                selectedProtocol = preferredProtocol
+                protocolDropdown.innerHTML = option.innerHTML;
+            }
+        });
+    } else {
+        // Disable W3C options for non-mdoc entries
+        w3cOptions.forEach(option => {
+            option.classList.add('disabled');
+            option.setAttribute('disabled', 'disabled');
+            if (selectedProtocol == option.getAttribute('value')) {
+                selectedProtocol = null
+            }
+        });
+        // If the selected protocol was disabled, select the next non-disabled protocol.
+        if (selectedProtocol == null) {
+            const firstEnabledOption = document.querySelector('.dropdown-item:not(.disabled)');
+            selectedProtocol = firstEnabledOption.getAttribute('value');
+            protocolDropdown.innerHTML = firstEnabledOption.innerHTML;
+        }
+    }
 }
 
 async function onLoadRedirect() {
