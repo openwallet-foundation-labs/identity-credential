@@ -1,6 +1,5 @@
 package com.android.identity_credential.wallet.navigation
 
-import android.content.SharedPreferences
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
@@ -65,13 +64,11 @@ fun WalletNavigation(
     application: WalletApplication,
     provisioningViewModel: ProvisioningViewModel,
     permissionTracker: PermissionTracker,
-    sharedPreferences: SharedPreferences,
     qrEngagementViewModel: QrEngagementViewModel,
     documentModel: DocumentModel,
     readerModel: ReaderModel,
 ) {
     val onNavigate = { routeWithArgs: String -> navigateTo(navController, routeWithArgs) }
-    val credentialStore = application.documentStore
     NavHost(
         navController = navController,
         startDestination = WalletDestination.Main.route
@@ -123,12 +120,9 @@ fun WalletNavigation(
          */
         composable(WalletDestination.AddToWallet.route) {
             AddToWalletScreen(
-                documentModel = documentModel,
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = onNavigate,
-                documentStore = application.documentStore,
-                walletServerProvider = application.walletServerProvider,
-                settingsModel = application.settingsModel,
+                walletServerProvider = application.walletServerProvider
             )
         }
 
@@ -212,7 +206,6 @@ fun WalletNavigation(
                 onNavigate = onNavigate,
                 permissionTracker = permissionTracker,
                 walletServerProvider = application.walletServerProvider,
-                documentStore = application.documentStore,
                 developerMode = application.settingsModel.developerModeEnabled.value ?: false
             )
         }

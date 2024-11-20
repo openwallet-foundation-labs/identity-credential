@@ -13,7 +13,6 @@ import com.android.identity.issuance.DocumentExtensions.documentIdentifier
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.DocumentExtensions.refreshState
-import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceRequest
@@ -27,11 +26,13 @@ import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.buildByteString
 import org.json.JSONObject
+import kotlin.coroutines.cancellation.CancellationException
 
 class ProvisioningViewModel : ViewModel() {
 
@@ -52,9 +53,21 @@ class ProvisioningViewModel : ViewModel() {
 
     var error: Throwable? = null
 
-    private lateinit var issuer: IssuingAuthority
+    private lateinit var walletServerProvider: WalletServerProvider
+    private lateinit var documentStore: DocumentStore
+    private lateinit var settingsModel: SettingsModel
 
-    var openid4VciCredentialOffer: Openid4VciCredentialOffer? = null
+    private var openid4VciCredentialOffer: Openid4VciCredentialOffer? = null
+
+    fun init(
+        walletServerProvider: WalletServerProvider,
+        documentStore: DocumentStore,
+        settingsModel: SettingsModel,
+    ) {
+        this.walletServerProvider = walletServerProvider
+        this.documentStore = documentStore
+        this.settingsModel = settingsModel
+    }
 
     fun reset() {
         state.value = State.IDLE
@@ -65,8 +78,6 @@ class ProvisioningViewModel : ViewModel() {
         currentEvidenceRequestIndex = 0
         nextEvidenceRequest.value = null
         selectedOpenid4VpCredential.value = null
-        documentStore = null
-        settingsModel = null
     }
 
     private var proofingFlow: ProofingFlow? = null
@@ -74,37 +85,39 @@ class ProvisioningViewModel : ViewModel() {
     var document: Document? = null
     private var evidenceRequests: List<EvidenceRequest>? = null
     private var currentEvidenceRequestIndex: Int = 0
-    private var documentStore: DocumentStore? = null
-    private var settingsModel: SettingsModel? = null
+    private var job: Job? = null
 
     val nextEvidenceRequest = mutableStateOf<EvidenceRequest?>(null)
     val selectedOpenid4VpCredential = mutableStateOf<Credential?>(null)
 
     fun start(
-        walletServerProvider: WalletServerProvider,
-        documentStore: DocumentStore,
-        settingsModel: SettingsModel,
         // PID-based mdoc or sd-jwt
         issuerIdentifier: String?,
         openid4VciCredentialOffer: Openid4VciCredentialOffer? = null,
     ) {
-        this.documentStore = documentStore
-        this.settingsModel = settingsModel
-        this.openid4VciCredentialOffer = openid4VciCredentialOffer
-        viewModelScope.launch(Dispatchers.IO) {
+        val lastJob = this.job
+        if (lastJob != null) {
+            this.job = null
+            lastJob.cancel(CancellationException("New provisioning started"))
+        }
+        this.job = viewModelScope.launch(Dispatchers.IO) {
+            lastJob?.join()
+            reset()
+            this@ProvisioningViewModel.openid4VciCredentialOffer = openid4VciCredentialOffer
+            state.value = State.IDLE
             try {
-                if (openid4VciCredentialOffer != null) {
-                    issuer = walletServerProvider.createOpenid4VciIssuingAuthorityByUri(
+                val issuer = if (openid4VciCredentialOffer != null) {
+                    walletServerProvider.createOpenid4VciIssuingAuthorityByUri(
                         openid4VciCredentialOffer.issuerUri,
                         openid4VciCredentialOffer.configurationId
                     )
                 } else {
-                    issuer = walletServerProvider.getIssuingAuthority(issuerIdentifier!!)
+                    walletServerProvider.getIssuingAuthority(issuerIdentifier!!)
                 }
                 val issuerConfiguration = issuer.getConfiguration()
 
                 state.value = State.CREDENTIAL_REGISTRATION
-                val createDocumentKeyFlow = this@ProvisioningViewModel.issuer.register()
+                val createDocumentKeyFlow = issuer.register()
                 val documentRegistrationConfiguration =
                     createDocumentKeyFlow.getDocumentRegistrationConfiguration()
                 val issuerDocumentIdentifier = documentRegistrationConfiguration.documentId
@@ -134,9 +147,7 @@ class ProvisioningViewModel : ViewModel() {
 
                 if (evidenceRequests!!.size == 0) {
                     state.value = State.PROOFING_COMPLETE
-                    document!!.let {
-                        it.refreshState(walletServerProvider)
-                    }
+                    document!!.refreshState(walletServerProvider)
                     documentStore.addDocument(document!!)
                     proofingFlow!!.complete()
                 } else {
@@ -156,10 +167,7 @@ class ProvisioningViewModel : ViewModel() {
     }
 
     fun evidenceCollectionFailed(
-        error: Throwable,
-        walletServerProvider: WalletServerProvider,
-        documentStore: DocumentStore
-    ) {
+        error: Throwable    ) {
         if (document != null) {
             documentStore.deleteDocument(document!!.name)
         }
@@ -168,11 +176,8 @@ class ProvisioningViewModel : ViewModel() {
         state.value = State.FAILED
     }
 
-    fun provideEvidence(
-        evidence: EvidenceResponse,
-        walletServerProvider: WalletServerProvider,
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
+    fun provideEvidence(evidence: EvidenceResponse) {
+        this.job = viewModelScope.launch(Dispatchers.IO) {
             try {
                 state.value = State.SUBMITTING_EVIDENCE
 
@@ -185,7 +190,7 @@ class ProvisioningViewModel : ViewModel() {
                 if (evidenceRequests!!.isEmpty()) {
                     state.value = State.PROOFING_COMPLETE
                     document!!.refreshState(walletServerProvider)
-                    documentStore!!.addDocument(document!!)
+                    documentStore.addDocument(document!!)
                     proofingFlow!!.complete()
                     document!!.refreshState(walletServerProvider)
                 } else {
@@ -208,7 +213,7 @@ class ProvisioningViewModel : ViewModel() {
                 }
             } catch (e: Throwable) {
                 if (document != null) {
-                    documentStore!!.deleteDocument(document!!.name)
+                    documentStore.deleteDocument(document!!.name)
                 }
                 Logger.w(TAG, "Error submitting evidence", e)
                 e.printStackTrace()
@@ -330,17 +335,17 @@ class ProvisioningViewModel : ViewModel() {
         docType: String
     ): Document? {
         // prefer the credential which is on-screen if possible
-        val credentialIdFromPager: String? = settingsModel!!.focusedCardId.value
+        val credentialIdFromPager: String? = settingsModel.focusedCardId.value
         if (credentialIdFromPager != null
             && canDocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docType)
         ) {
-            return documentStore!!.lookupDocument(credentialIdFromPager)
+            return documentStore.lookupDocument(credentialIdFromPager)
         }
 
-        val docId = documentStore!!.listDocuments().firstOrNull { credentialId ->
+        val docId = documentStore.listDocuments().firstOrNull { credentialId ->
             canDocumentSatisfyRequest(credentialId, credentialFormat, docType)
         }
-        return docId?.let { documentStore!!.lookupDocument(it) }
+        return docId?.let { documentStore.lookupDocument(it) }
     }
 
     private fun canDocumentSatisfyRequest(
@@ -348,7 +353,7 @@ class ProvisioningViewModel : ViewModel() {
         credentialFormat: CredentialFormat,
         docType: String
     ): Boolean {
-        val document = documentStore!!.lookupDocument(credentialId) ?: return false
+        val document = documentStore.lookupDocument(credentialId) ?: return false
         val documentConfiguration = document.documentConfiguration
         return when (credentialFormat) {
             CredentialFormat.MDOC_MSO -> documentConfiguration.mdocConfiguration?.docType == docType

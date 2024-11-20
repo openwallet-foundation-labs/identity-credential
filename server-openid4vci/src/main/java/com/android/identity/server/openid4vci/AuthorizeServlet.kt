@@ -93,7 +93,6 @@ class AuthorizeServlet : BaseServlet() {
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
         val code = req.getParameter("authorizationCode")
         val pidData = req.getParameter("pidData")
-        val extraInfo = req.getParameter("extraInfo")
         val id = codeToId(OpaqueIdType.AUTHORIZATION_STATE, code)
         val storage = environment.getInterface(Storage::class)!!
         val baseUri = URI(this.baseUrl)
@@ -130,7 +129,6 @@ class AuthorizeServlet : BaseServlet() {
                 }
             }
 
-            data.putEntry("com.android.identity.server.openid4vci", "extraInfo", Cbor.encode(Tstr(extraInfo)))
             state.credentialData = data.build()
             storage.update("IssuanceState", "", id, ByteString(state.toCbor()))
         }

@@ -92,7 +92,6 @@ fun ProvisionDocumentScreen(
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
     walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore,
     developerMode: Boolean = false
 ) {
     val context = application.applicationContext
@@ -147,8 +146,7 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
-                                    evidence = EvidenceResponseQuestionString(inputString),
-                                    walletServerProvider = walletServerProvider
+                                    evidence = EvidenceResponseQuestionString(inputString)
                                 )
                             }
                         )
@@ -160,8 +158,7 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
-                                    evidence = EvidenceResponseCreatePassphrase(inputString),
-                                    walletServerProvider = walletServerProvider
+                                    evidence = EvidenceResponseCreatePassphrase(inputString)
                                 )
                             }
                         )
@@ -175,15 +172,12 @@ fun ProvisionDocumentScreen(
                             onAccept = {
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseSetupCloudSecureArea(
-                                        evidenceRequest.cloudSecureAreaIdentifier),
-                                    walletServerProvider = walletServerProvider
+                                        evidenceRequest.cloudSecureAreaIdentifier)
                                 )
                             },
                             onError = { error ->
                                 provisioningViewModel.evidenceCollectionFailed(
-                                    error = error,
-                                    walletServerProvider = walletServerProvider,
-                                    documentStore = documentStore
+                                    error = error
                                 )
                             }
                         )
@@ -192,27 +186,21 @@ fun ProvisionDocumentScreen(
                     is EvidenceRequestMessage -> {
                         EvidenceRequestMessageView(
                             evidenceRequest = evidenceRequest,
-                            provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore
+                            provisioningViewModel = provisioningViewModel
                         )
                     }
 
                     is EvidenceRequestCompletionMessage -> {
                         EvidenceRequestCompletedScreen(
                             evidenceRequest = evidenceRequest,
-                            provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore
+                            provisioningViewModel = provisioningViewModel
                         )
                     }
 
                     is EvidenceRequestNotificationPermission -> {
                         EvidenceRequestNotificationPermissionView(
                             evidenceRequest,
-                            provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore
+                            provisioningViewModel = provisioningViewModel
                         )
                     }
 
@@ -221,8 +209,7 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             onAccept = { selectedOption ->
                                 provisioningViewModel.provideEvidence(
-                                    evidence = EvidenceResponseQuestionMultipleChoice(selectedOption),
-                                    walletServerProvider = walletServerProvider
+                                    evidence = EvidenceResponseQuestionMultipleChoice(selectedOption)
                                 )
                             }
                         )
@@ -232,8 +219,6 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestIcaoPassiveAuthenticationView(
                             evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore,
                             permissionTracker = permissionTracker
                         )
                     }
@@ -252,19 +237,14 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestSelfieVideoView(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            permissionTracker = permissionTracker,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore
+                            permissionTracker = permissionTracker
                         )
                     }
 
                     is EvidenceRequestGermanEid -> {
                         EvidenceRequestEIdView(
                             evidenceRequest = evidenceRequest,
-                            provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore,
-                            permissionTracker = permissionTracker
+                            provisioningViewModel = provisioningViewModel
                         )
                     }
 
@@ -272,8 +252,7 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestWebView(
                             evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
-                            documentStore = documentStore
+                            walletServerProvider = walletServerProvider
                         )
                     }
 
@@ -281,7 +260,6 @@ fun ProvisionDocumentScreen(
                         EvidenceRequestOpenid4Vp(
                             evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
-                            walletServerProvider = walletServerProvider,
                             application = application
                         )
                     }

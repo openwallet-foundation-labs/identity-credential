@@ -29,14 +29,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
 import com.android.identity_credential.wallet.navigation.WalletDestination
@@ -76,12 +73,9 @@ private suspend fun getIssuerDisplayDatas(
 
 @Composable
 fun AddToWalletScreen(
-    documentModel: DocumentModel,
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
-    documentStore: DocumentStore,
     walletServerProvider: WalletServerProvider,
-    settingsModel: SettingsModel,
 ) {
     val loadingIssuerDisplayDatas = remember { mutableStateOf(true) }
     val loadingIssuerDisplayError = remember { mutableStateOf<Throwable?>(null) }
@@ -144,9 +138,6 @@ fun AddToWalletScreen(
                                     if (offer != null) {
                                         // initiate getting issuing authority dynamically from specified Issuer Uri and Credential Id
                                         provisioningViewModel.start(
-                                            walletServerProvider = walletServerProvider,
-                                            settingsModel = settingsModel,
-                                            documentStore = documentStore,
                                             issuerIdentifier = null,
                                             openid4VciCredentialOffer = offer,
                                         )
@@ -161,9 +152,6 @@ fun AddToWalletScreen(
                     AddToWalletScreenWithIssuerDisplayDatas(
                         provisioningViewModel,
                         onNavigate,
-                        documentStore,
-                        walletServerProvider,
-                        settingsModel,
                         issuerDisplayDatas,
                         onShowScanQrDialog = {
                             showQrScannerDialog.value = true
@@ -221,9 +209,6 @@ private fun AddToWalletScreenLoading() {
 private fun AddToWalletScreenWithIssuerDisplayDatas(
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
-    documentStore: DocumentStore,
-    walletServerProvider: WalletServerProvider,
-    settingsModel: SettingsModel,
     issuerDisplayDatas: SnapshotStateList<IssuerDisplayData>,
     onShowScanQrDialog: () -> Unit,
 ) {
@@ -248,10 +233,7 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
             onClick = {
                 provisioningViewModel.reset()
                 provisioningViewModel.start(
-                    walletServerProvider = walletServerProvider,
-                    documentStore = documentStore,
                     issuerIdentifier = issuerDisplayData.configuration.identifier,
-                    settingsModel = settingsModel,
                 )
                 onNavigate(WalletDestination.ProvisionDocument.route)
             }) {
