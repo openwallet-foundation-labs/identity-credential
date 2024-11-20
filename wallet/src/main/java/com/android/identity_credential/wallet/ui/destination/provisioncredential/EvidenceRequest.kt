@@ -68,7 +68,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.appsupport.ui.PassphraseEntryField
-import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.evidence.EvidenceRequestCompletionMessage
@@ -104,6 +103,7 @@ import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
+import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.android.identity_credential.wallet.util.inverse
@@ -123,9 +123,7 @@ private const val TAG = "EvidenceRequest"
 @Composable
 fun EvidenceRequestMessageView(
     evidenceRequest: EvidenceRequestMessage,
-    provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    provisioningViewModel: ProvisioningViewModel
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -147,8 +145,7 @@ fun EvidenceRequestMessageView(
                 modifier = Modifier.padding(8.dp),
                 onClick = {
                     provisioningViewModel.provideEvidence(
-                        evidence = EvidenceResponseMessage(false),
-                        walletServerProvider = walletServerProvider
+                        evidence = EvidenceResponseMessage(false)
                     )
             }) {
                 Text(rejectButtonText)
@@ -158,8 +155,7 @@ fun EvidenceRequestMessageView(
             modifier = Modifier.padding(8.dp),
             onClick = {
                 provisioningViewModel.provideEvidence(
-                    evidence = EvidenceResponseMessage(true),
-                    walletServerProvider = walletServerProvider
+                    evidence = EvidenceResponseMessage(true)
                 )
         }) {
             Text(evidenceRequest.acceptButtonText)
@@ -176,9 +172,7 @@ fun EvidenceRequestMessageView(
 @Composable
 fun EvidenceRequestCompletedScreen(
     evidenceRequest: EvidenceRequestCompletionMessage,
-    provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    provisioningViewModel: ProvisioningViewModel
 ) {
     Column(
         modifier = Modifier
@@ -242,8 +236,7 @@ fun EvidenceRequestCompletedScreen(
                 modifier = Modifier.padding(8.dp),
                 onClick = {
                     provisioningViewModel.provideEvidence(
-                        evidence = EvidenceResponseMessage(true),
-                        walletServerProvider = walletServerProvider,
+                        evidence = EvidenceResponseMessage(true)
                     )
                 }) {
                 Text(evidenceRequest.acceptButtonText)
@@ -256,9 +249,7 @@ fun EvidenceRequestCompletedScreen(
 @Composable
 fun EvidenceRequestNotificationPermissionView(
     evidenceRequest: EvidenceRequestNotificationPermission,
-    provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    provisioningViewModel: ProvisioningViewModel
 ) {
 
     // Only need to request POST_NOTIFICATIONS permission if on Android 13 (Tiramisu) or later.
@@ -266,8 +257,7 @@ fun EvidenceRequestNotificationPermissionView(
         // TODO: This is a hack, this check should be done in the model instead of here.
         SideEffect {
             provisioningViewModel.provideEvidence(
-                evidence = EvidenceResponseNotificationPermission(true),
-                walletServerProvider = walletServerProvider
+                evidence = EvidenceResponseNotificationPermission(true)
             )
         }
         return
@@ -276,8 +266,7 @@ fun EvidenceRequestNotificationPermissionView(
     val postNotificationsPermissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
     if (postNotificationsPermissionState.status.isGranted) {
         provisioningViewModel.provideEvidence(
-            evidence = EvidenceResponseNotificationPermission(true),
-            walletServerProvider = walletServerProvider
+            evidence = EvidenceResponseNotificationPermission(true)
         )
     } else {
         Column {
@@ -304,8 +293,7 @@ fun EvidenceRequestNotificationPermissionView(
                     modifier = Modifier.padding(8.dp),
                     onClick = {
                         provisioningViewModel.provideEvidence(
-                            evidence = EvidenceResponseNotificationPermission(false),
-                            walletServerProvider = walletServerProvider
+                            evidence = EvidenceResponseNotificationPermission(false)
                         )
                     }) {
                     Text(evidenceRequest.continueWithoutPermissionButtonText)
@@ -732,8 +720,6 @@ fun EvidenceRequestQuestionMultipleChoiceView(
 fun EvidenceRequestIcaoPassiveAuthenticationView(
     evidenceRequest: EvidenceRequestIcaoPassiveAuthentication,
     provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore,
     permissionTracker: PermissionTracker
 ) {
     EvidenceRequestIcaoView(
@@ -742,8 +728,7 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
         IcaoMrtdCommunicationModel.Route.CAMERA_SCAN
     ) { nfcData ->
         provisioningViewModel.provideEvidence(
-            evidence = EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod),
-            walletServerProvider = walletServerProvider
+            evidence = EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod)
         )
     }
 }
@@ -1192,9 +1177,7 @@ fun NfcHeartbeatAnimation(nfcAnimationStatus: NfcAnimationStatus) {
 fun EvidenceRequestSelfieVideoView(
     evidenceRequest: EvidenceRequestSelfieVideo,
     provisioningViewModel: ProvisioningViewModel,
-    permissionTracker: PermissionTracker,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    permissionTracker: PermissionTracker
 ) {
     if (evidenceRequest.poseSequence.isEmpty()) {
         throw IllegalArgumentException("Pose sequence must not be empty.")
@@ -1244,8 +1227,7 @@ fun EvidenceRequestSelfieVideoView(
                     return@SelfieRecorder
                 } else {
                     provisioningViewModel.provideEvidence(
-                        evidence = EvidenceResponseSelfieVideo(selfieResult),
-                        walletServerProvider = walletServerProvider
+                        evidence = EvidenceResponseSelfieVideo(selfieResult)
                     )
                 }
             },
@@ -1420,19 +1402,14 @@ fun EvidenceRequestSelfieVideoView(
 @Composable
 fun EvidenceRequestEIdView(
     evidenceRequest: EvidenceRequestGermanEid,
-    provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore,
-    permissionTracker: PermissionTracker
+    provisioningViewModel: ProvisioningViewModel
 ) {
     AusweisView(
         evidenceRequest.tcTokenUrl,
-        evidenceRequest.optionalComponents,
-        permissionTracker
+        evidenceRequest.optionalComponents
     ) { evidence ->
         provisioningViewModel.provideEvidence(
-            evidence = evidence,
-            walletServerProvider = walletServerProvider
+            evidence = evidence
         )
     }
 }
@@ -1441,7 +1418,6 @@ fun EvidenceRequestEIdView(
 fun AusweisView(
     tcTokenUrl: String,
     requiredComponents: List<String>,
-    permissionTracker: PermissionTracker,
     onResult: (evidence: EvidenceResponseGermanEid) -> Unit
 ) {
     val navController = rememberNavController()
@@ -1642,8 +1618,7 @@ fun AusweisView(
 fun EvidenceRequestWebView(
     evidenceRequest: EvidenceRequestWeb,
     provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    walletServerProvider: WalletServerProvider
 ) {
     val context = LocalContext.current
     val url = Uri.parse(evidenceRequest.url)
@@ -1656,8 +1631,7 @@ fun EvidenceRequestWebView(
             // Wait for notifications
             appSupport.notifications.collectLatest { notification ->
                 if (notification.baseUrl == redirectUri) {
-                    handleLanding(appSupport, redirectUri, provisioningViewModel,
-                        walletServerProvider, documentStore)
+                    handleLanding(appSupport, redirectUri, provisioningViewModel)
                 }
             }
         }
@@ -1670,8 +1644,7 @@ fun EvidenceRequestWebView(
         // Poll as a fallback
         do {
             delay(10.seconds)
-        } while(handleLanding(appSupport, redirectUri, provisioningViewModel,
-                walletServerProvider, documentStore))
+        } while(handleLanding(appSupport, redirectUri, provisioningViewModel))
     }
     Column {
         Row(
@@ -1694,7 +1667,6 @@ fun EvidenceRequestWebView(
 fun EvidenceRequestOpenid4Vp(
     evidenceRequest: EvidenceRequestOpenid4Vp,
     provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
     application: WalletApplication
 ) {
     val cx = LocalContext.current
@@ -1722,17 +1694,22 @@ fun EvidenceRequestOpenid4Vp(
                 onClick = {
                 val activity = getFragmentActivity(cx)
                 CoroutineScope(Dispatchers.Main).launch {
-                    val response = openid4VpPresentation(
-                        credential,
-                        application,
-                        activity,
-                        evidenceRequest.originUri,
-                        evidenceRequest.request
-                    )
-                    provisioningViewModel.provideEvidence(
-                        evidence = EvidenceResponseOpenid4Vp(response),
-                        walletServerProvider = walletServerProvider
-                    )
+                    try {
+                        val response = openid4VpPresentation(
+                            credential,
+                            application,
+                            activity,
+                            evidenceRequest.originUri,
+                            evidenceRequest.request
+                        )
+                        provisioningViewModel.provideEvidence(
+                            evidence = EvidenceResponseOpenid4Vp(response)
+                        )
+                    } catch (cancelled: UserCanceledPromptException) {
+                        provisioningViewModel.evidenceCollectionFailed(
+                            error = cancelled
+                        )
+                    }
                 }
             }) {
                 Text(text = stringResource(id = R.string.presentation_evidence_ok))
@@ -1750,9 +1727,7 @@ fun EvidenceRequestOpenid4Vp(
 private suspend fun handleLanding(
     appSupport: ApplicationSupport,
     redirectUri: String,
-    provisioningViewModel: ProvisioningViewModel,
-    walletServerProvider: WalletServerProvider,
-    documentStore: DocumentStore
+    provisioningViewModel: ProvisioningViewModel
 ): Boolean {
     val resp = try {
         appSupport.getLandingUrlStatus(redirectUri)
@@ -1762,8 +1737,7 @@ private suspend fun handleLanding(
             "landing: $redirectUri unknown: $err"
         )
         provisioningViewModel.provideEvidence(
-            evidence = EvidenceResponseWeb(""),
-            walletServerProvider = walletServerProvider
+            evidence = EvidenceResponseWeb("")
         )
         return false
     }
@@ -1776,8 +1750,7 @@ private suspend fun handleLanding(
         return true
     }
     provisioningViewModel.provideEvidence(
-        evidence = EvidenceResponseWeb(resp),
-        walletServerProvider = walletServerProvider
+        evidence = EvidenceResponseWeb(resp)
     )
     return false
 }

@@ -81,6 +81,11 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         application = getApplication() as WalletApplication
+        provisioningViewModel.init(
+            walletServerProvider = application.walletServerProvider,
+            documentStore = application.documentStore,
+            settingsModel = application.settingsModel
+        )
         permissionTracker.updatePermissions()
         // handle intents with schema openid-credential-offer://
         handleOid4vciCredentialOfferIntent(intent)
@@ -106,7 +111,6 @@ class MainActivity : FragmentActivity() {
                         application = application,
                         provisioningViewModel = provisioningViewModel,
                         permissionTracker = permissionTracker,
-                        sharedPreferences = application.sharedPreferences,
                         qrEngagementViewModel = qrEngagementViewModel,
                         documentModel = application.documentModel,
                         readerModel = application.readerModel,
@@ -143,14 +147,11 @@ class MainActivity : FragmentActivity() {
                     val query = getUrlQueryFromCustomSchemeUrl(intent.dataString!!)
                     val offer = extractCredentialIssuerData(query)
                     if (offer != null) {
+                        routeRequest.value = WalletDestination.ProvisionDocument.route
                         provisioningViewModel.start(
-                            walletServerProvider = application.walletServerProvider,
-                            documentStore = application.documentStore,
-                            settingsModel = application.settingsModel,
                             issuerIdentifier = null,
                             openid4VciCredentialOffer = offer
                         )
-                        routeRequest.value = WalletDestination.ProvisionDocument.route
                     }
                 }
             }
