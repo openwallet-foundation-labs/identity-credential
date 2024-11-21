@@ -90,6 +90,7 @@ enum class Protocol {
     PLAIN_OPENID4VP,
     EUDI_OPENID4VP,
     MDOC_OPENID4VP,
+    CUSTOM_OPENID4VP,
 }
 
 @Serializable
@@ -98,7 +99,8 @@ private data class OpenID4VPBeginRequest(
     val docType: String,
     val requestId: String,
     val protocol: String,
-    val origin: String
+    val origin: String,
+    val scheme: String
 )
 
 @Serializable
@@ -578,6 +580,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
+            "openid4vp_custom" -> Protocol.CUSTOM_OPENID4VP
             else -> {
                 Logger.w(TAG, "$remoteHost: Unknown protocol '$request.protocol'")
                 resp.status = HttpServletResponse.SC_BAD_REQUEST
@@ -766,6 +769,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
+            "openid4vp_custom" -> Protocol.CUSTOM_OPENID4VP
             else -> {
                 Logger.w(TAG, "$remoteHost: Unknown protocol '$request.protocol'")
                 resp.status = HttpServletResponse.SC_BAD_REQUEST
@@ -797,6 +801,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             Protocol.PLAIN_OPENID4VP -> "openid4vp://"
             Protocol.EUDI_OPENID4VP -> "eudi-openid4vp://"
             Protocol.MDOC_OPENID4VP -> "mdoc-openid4vp://"
+            Protocol.CUSTOM_OPENID4VP -> request.scheme
             else -> {
                 Logger.w(TAG, "$remoteHost: Unknown protocol '${session.protocol}'")
                 resp.status = HttpServletResponse.SC_BAD_REQUEST
