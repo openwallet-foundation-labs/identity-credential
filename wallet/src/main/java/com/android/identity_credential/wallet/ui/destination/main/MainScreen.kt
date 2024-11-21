@@ -9,6 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Fingerprint
@@ -446,24 +448,40 @@ fun MainScreenNoDocumentsAvailable(
         )
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalAlignment = Alignment.Start
     ) {
+        Text(
+            modifier = Modifier.padding(8.dp).fillMaxWidth(),
+            text = stringResource(R.string.welcome_to_your_open_wallet_empty),
+            style = MaterialTheme.typography.displayMedium,
+            textAlign = TextAlign.Left
+        )
         Text(
             modifier = Modifier.padding(8.dp),
             text = stringResource(R.string.wallet_screen_empty),
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Left
         )
     }
+    Image(
+        painter = painterResource(
+            if (isSystemInDarkTheme())
+                R.drawable.welcome_image_dark
+            else
+                R.drawable.welcome_image_light),
+        contentDescription = stringResource(R.string.welcome_to_your_wallet_image),
+        modifier = Modifier.padding(8.dp)
+    )
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.Center
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
     ) {
-        Button(onClick = {
+        Button(
+            modifier = Modifier.padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            onClick = {
             if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
                 showDeviceLockNotSetupWarning = true
             } else {
@@ -471,6 +489,11 @@ fun MainScreenNoDocumentsAvailable(
             }
 
         }) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = "Add icon",
+                modifier = Modifier.padding(end = 8.dp, top = 12.dp, bottom = 12.dp)
+            )
             Text(stringResource(R.string.wallet_screen_add))
         }
     }
