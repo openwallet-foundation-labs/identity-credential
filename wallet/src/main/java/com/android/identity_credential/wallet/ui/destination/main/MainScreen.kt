@@ -466,11 +466,7 @@ fun MainScreenNoDocumentsAvailable(
         )
     }
     Image(
-        painter = painterResource(
-            if (isSystemInDarkTheme())
-                R.drawable.welcome_image_dark
-            else
-                R.drawable.welcome_image_light),
+        painter = painterResource(R.drawable.welcome_image),
         contentDescription = stringResource(R.string.welcome_to_your_wallet_image),
         modifier = Modifier.padding(8.dp)
     )
