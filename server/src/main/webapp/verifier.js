@@ -19,10 +19,14 @@ async function onLoad() {
             selected === 'w3c_dc_arf' ||
             selected === 'openid4vp_plain' ||
             selected === 'openid4vp_eudi' ||
-            selected === 'openid4vp_mdoc') {
+            selected === 'openid4vp_mdoc' ||
+            selected === 'openid4vp_custom') {
             selectedProtocol = selected
             preferredProtocol = selectedProtocol
             protocolDropdown.innerHTML = target.innerHTML
+
+            const scheme = document.getElementById("scheme-form");
+            scheme.hidden = selected !== 'openid4vp_custom';
         }
     })
 
@@ -141,7 +145,11 @@ function redirectClose() {
 
 async function requestDocument(format, docType, requestId) {
     console.log('requestDocument, format=' + format + ' docType=' + docType + ' requestId=' + requestId + ' protocol=' + selectedProtocol)
-    if (selectedProtocol.startsWith('openid4vp_')) {
+    if (selectedProtocol === 'openid4vp_custom') {
+        if (document.getElementById("scheme-input").value === "") {
+            alert("You must specify a non-empty scheme when performing a custom OpenID4VP request.")
+            return
+        }
         const response = await callServer(
             'openid4vpBegin',
             {
@@ -150,10 +158,25 @@ async function requestDocument(format, docType, requestId) {
                 requestId: requestId,
                 protocol: selectedProtocol,
                 origin: location.origin,
+                scheme: document.getElementById("scheme-input").value
             }
         )
         console.log("URI " + response.uri)
         window.open(response.uri, '_blank').focus()
+    } else if (selectedProtocol.startsWith('openid4vp_')) {
+              const response = await callServer(
+                  'openid4vpBegin',
+                  {
+                      format: format,
+                      docType: docType,
+                      requestId: requestId,
+                      protocol: selectedProtocol,
+                      origin: location.origin,
+                      scheme: ""
+                  }
+              )
+              console.log("URI " + response.uri)
+              window.open(response.uri, '_blank').focus()
     } else if (selectedProtocol === "w3c_dc_preview") {
         try {
             const response = await callServer(

@@ -31,9 +31,9 @@
 
         Selected protocol for retrieval:
 
-        <div class="">
+        <div class="d-flex gap-4 flex-wrap">
             <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle btn-lg" type="button"
+                <button class="btn btn-secondary dropdown-toggle btn-lg overflow-visible" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false" id="protocolDropdown">
                     W3C Digital Credentials API (Preview)
                 </button>
@@ -53,7 +53,13 @@
                     <li><a class="dropdown-item" value="openid4vp_mdoc" href="#">
                         OpenID4VP (mdoc-openid4vp:// URI scheme)
                     </a></li>
+                    <li><button class="dropdown-item" value="openid4vp_custom" href="#">
+                        OpenID4VP (Custom URI scheme)
+                    </button></li>
                 </ul>
+            </div>
+            <div id="scheme-form" class="input-group mb-3 w-25" hidden style="flex-basis: 40%;">
+                <input class="form-control text-end" type="text" placeholder="custom-uri-scheme" id="scheme-input">
             </div>
         </div>
 
