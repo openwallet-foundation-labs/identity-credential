@@ -229,7 +229,7 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(24.dp),
             onClick = {
                 provisioningViewModel.reset()
                 provisioningViewModel.start(
@@ -272,14 +272,7 @@ private fun AddToWalletScreenWithIssuerDisplayDatas(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-
-        colors = ButtonColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            disabledContainerColor = Color.Green,
-            disabledContentColor = Color.Green
-        ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(24.dp),
         onClick = onShowScanQrDialog
     ) {
         Row {

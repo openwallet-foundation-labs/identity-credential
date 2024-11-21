@@ -71,8 +71,8 @@
     <string name="wallet_screen_nfc_presentation_instructions">Tap to share or use code</string>
     <string name="wallet_screen_qr_icon_content_description">QR Icon</string>
     <string name="wallet_screen_show_qr">Show code</string>
-    <string name="wallet_screen_empty">No documents in wallet, start by adding one</string>
-    <string name="wallet_screen_add">Add to Wallet</string>
+    <string name="wallet_screen_empty">Add documents and manage your documents in one place.</string>
+    <string name="wallet_screen_add">Add a document</string>
     <string name="wallet_screen_permissions">Need permissions</string>
     <string name="wallet_screen_permissions_dismiss">Dismiss</string>
     <string name="qr_lskf_warning_dismiss_btn">Ok</string>
@@ -566,6 +566,8 @@
     <string name="qr_alert_dialog_bt_disabled_text">Bluetooth must be enabled to share a QR connection code</string>
     <string name="qr_alert_dialog_bt_enable_button">Enable</string>
     <string name="presentation_result_no_matching_document_message">No available documents can fulfill the request.</string>
+    <string name="welcome_to_your_wallet_image">Welcome to your wallet image</string>
+    <string name="welcome_to_your_open_wallet_empty">Welcome to your Open Wallet</string>
     <string name="settings_screen_debug_actions_section">Debug actions</string>
     <string name="settings_screen_trigger_periodic_sync_button">Trigger Periodic Sync</string>
 </resources>
