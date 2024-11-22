@@ -64,6 +64,7 @@ class AusweisModel(
     data class Auth(val progress: Int): Status()
     data object NetworkError: Status()
     data object GenericError: Status()
+    data object PinError: Status()
 
     private lateinit var sdk: IAusweisApp2Sdk
     private lateinit var sessionId: String
@@ -122,7 +123,11 @@ class AusweisModel(
     fun startWorkflow(simulatedCard: Boolean) {
         useSimulatedCard = simulatedCard
         job = coroutineScope.launch {
-            runAusweisSdk()
+            try {
+                runAusweisSdk()
+            } catch (err: UnexpectedStateException) {
+                Logger.e(TAG, "Error communicating with the card", err)
+            }
         }
     }
 
@@ -140,7 +145,7 @@ class AusweisModel(
 
     fun tryAgain() {
         status.value = null
-        navController.navigate(AusweisModel.Route.INITIAL.route)
+        navController.navigate(Route.INITIAL.route)
         initialize()
     }
 
@@ -279,7 +284,13 @@ class AusweisModel(
             } else if (type == "READER") {
                 // TODO: process READER
             } else {
-                throw IllegalStateException("Unexpected message type: $type")
+                if (type == "ENTER_CAN" || type == "ENTER_PUK") {
+                    status.value = PinError
+                } else {
+                    status.value = GenericError
+                }
+                navController.navigate(Route.ERROR.route)
+                throw UnexpectedStateException(type ?: "<null>")
             }
         }
     }
@@ -306,4 +317,7 @@ class AusweisModel(
     private fun disableCardScanning(nfcAdapter: NfcAdapter?) {
         nfcAdapter?.disableReaderMode(context.getActivity())
     }
+
+    class UnexpectedStateException(type: String):
+        IllegalStateException("Unexpected message type: $type")
 }

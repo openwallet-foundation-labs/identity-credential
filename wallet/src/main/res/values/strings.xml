@@ -389,6 +389,7 @@
     <string name="eid_nfc_scanning">Scanning eID using NFC</string>
     <string name="eid_enter_pin">Enter your PIN</string>
     <string name="eid_network_error">Error establishing network connection</string>
+    <string name="eid_pin_error">Incorrect PIN entered too many times. The card is locked. Use Ausweis App to unlock the card.</string>
     <string name="eid_generic_error">Error scanning or processing the card</string>
     <string name="eid_try_again">Try again</string>
 
