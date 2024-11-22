@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +53,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -68,6 +70,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.appsupport.ui.PassphraseEntryField
+import com.android.identity.appsupport.ui.getDefaultImageVector
+import com.android.identity.documenttype.Icon
 import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.evidence.EvidenceRequestCompletionMessage
@@ -1499,22 +1503,28 @@ fun AusweisView(
                 val statusValue = status.value
                 if (statusValue is AusweisModel.AccessRights) {
                     for (component in statusValue.components) {
-                        Text(
-                            when (component) {
-                                "GivenNames" -> stringResource(R.string.eid_access_right_first_name)
-                                "FamilyName" -> stringResource(R.string.eid_access_right_last_name)
-                                "BirthName" -> stringResource(R.string.eid_access_right_maiden_name)
-                                "DateOfBirth" -> stringResource(R.string.eid_access_right_date_of_birth)
-                                "Address" -> stringResource(R.string.eid_access_right_address)
-                                "Nationality" -> stringResource(R.string.eid_access_right_nationality)
-                                "PlaceOfBirth" -> stringResource(R.string.eid_access_right_place_of_birth)
-                                "Pseudonym" -> stringResource(R.string.eid_access_right_pseudonym)
-                                "AgeVerification" -> stringResource(R.string.eid_access_right_age_verification)
-                                // TODO: all others
-                                else -> "Item [$component]"
-                            },
-                            modifier = Modifier.padding(8.dp, 0.dp)
-                        )
+                        when (component) {
+                            "GivenNames" ->
+                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_first_name))
+                            "FamilyName" ->
+                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_last_name))
+                            "BirthName" ->
+                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_maiden_name))
+                            "DateOfBirth" ->
+                                AccessRightsIconAndText(Icon.TODAY, stringResource(R.string.eid_access_right_date_of_birth))
+                            "Address" ->
+                                AccessRightsIconAndText(Icon.PLACE, stringResource(R.string.eid_access_right_address))
+                            "Nationality" ->
+                                AccessRightsIconAndText(Icon.LANGUAGE, stringResource(R.string.eid_access_right_nationality))
+                            "PlaceOfBirth" ->
+                                AccessRightsIconAndText(Icon.PLACE, stringResource(R.string.eid_access_right_place_of_birth))
+                            "Pseudonym" ->
+                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_pseudonym))
+                            "AgeVerification" ->
+                                AccessRightsIconAndText(Icon.TODAY, stringResource(R.string.eid_access_right_age_verification))
+                            // TODO: all others
+                            else -> AccessRightsIconAndText(Icon.STARS, component)
+                        }
                     }
                 }
                 Row(
@@ -1611,6 +1621,22 @@ fun AusweisView(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AccessRightsIconAndText(
+    icon: Icon,
+    text: String
+) {
+    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.Start) {
+        Image(
+            painter = rememberVectorPainter(icon.getDefaultImageVector()),
+            contentDescription = "Person Icon",
+            modifier = Modifier.padding(start = 16.dp))
+        Text(
+            text = text,
+            modifier = Modifier.padding(8.dp, 0.dp))
     }
 }
 
