@@ -402,7 +402,7 @@
         You can do this by presenting the eID you have in your wallet.
     </string>
     <string name="presentation_evidence_ok">Present eID</string>
-    <string name="presentation_evidence_cancel">Cancel</string>
+    <string name="presentation_evidence_cancel">Use Web Browser</string>
 
     <!-- Accessibility -->
     <string name="accessibility_go_back_icon">Go back</string>

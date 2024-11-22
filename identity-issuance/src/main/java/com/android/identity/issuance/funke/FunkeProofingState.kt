@@ -125,7 +125,7 @@ class FunkeProofingState(
                     } else {
                         if (openid4VpRequest != null) {
                             val uri = URI(authorizationMetadata.authorizationChallengeEndpoint!!)
-                            val origin = uri.scheme + ":" + uri.authority
+                            val origin = uri.scheme + "//:" + uri.authority
                             list.add(EvidenceRequestOpenid4Vp(origin, openid4VpRequest!!))
                         }
                         list.add(EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl))
