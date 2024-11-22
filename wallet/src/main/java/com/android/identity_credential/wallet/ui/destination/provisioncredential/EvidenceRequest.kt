@@ -1603,6 +1603,8 @@ fun AusweisView(
                         text = stringResource(
                             if (status.value == AusweisModel.NetworkError) {
                                 R.string.eid_network_error
+                            } else if (status.value == AusweisModel.PinError) {
+                                R.string.eid_pin_error
                             } else {
                                 R.string.eid_generic_error
                             }),
