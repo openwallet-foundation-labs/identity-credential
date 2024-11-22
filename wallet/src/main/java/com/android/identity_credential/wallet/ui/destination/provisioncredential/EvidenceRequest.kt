@@ -1746,7 +1746,9 @@ fun EvidenceRequestOpenid4Vp(
                 modifier = Modifier.padding(8.dp),
                 onClick = {provisioningViewModel.moveToNextEvidenceRequest()}
             ) {
-                Text(text = stringResource(id = R.string.presentation_evidence_cancel))
+                Text(text = evidenceRequest.cancelText ?:
+                    stringResource(id = R.string.presentation_evidence_cancel)
+                )
             }
         }
     }
