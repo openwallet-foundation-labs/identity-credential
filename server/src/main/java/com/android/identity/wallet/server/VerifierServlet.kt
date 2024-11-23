@@ -26,6 +26,7 @@ import com.android.identity.documenttype.DocumentWellKnownRequest
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.handler.FlowNotifications
@@ -312,6 +313,7 @@ class VerifierServlet : BaseHttpServlet() {
             val repo =  DocumentTypeRepository()
             repo.addDocumentType(DrivingLicense.getDocumentType())
             repo.addDocumentType(EUPersonalID.getDocumentType())
+            repo.addDocumentType(GermanPersonalID.getDocumentType())
             repo.addDocumentType(PhotoID.getDocumentType())
             repo.addDocumentType(EUCertificateOfResidence.getDocumentType())
             repo.addDocumentType(UtopiaNaturalization.getDocumentType())

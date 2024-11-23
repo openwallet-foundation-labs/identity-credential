@@ -13,6 +13,7 @@ import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.annotation.FlowJoin
@@ -183,6 +184,7 @@ class FunkeIssuingAuthorityState(
 
         val documentTypeRepository = DocumentTypeRepository().apply {
             addDocumentType(EUPersonalID.getDocumentType())
+            addDocumentType(GermanPersonalID.getDocumentType())
             addDocumentType(DrivingLicense.getDocumentType())
             addDocumentType(PhotoID.getDocumentType())
             addDocumentType(EUCertificateOfResidence.getDocumentType())
