@@ -36,6 +36,7 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.X509Cert
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
+import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
@@ -132,6 +133,7 @@ class WalletApplication : Application() {
         documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
+        documentTypeRepository.addDocumentType(GermanPersonalID.getDocumentType())
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUCertificateOfResidence.getDocumentType())
         documentTypeRepository.addDocumentType(UtopiaNaturalization.getDocumentType())

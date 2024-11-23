@@ -26,6 +26,7 @@ import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
@@ -158,6 +159,7 @@ class IssuingAuthorityState(
         // TODO: calling app should pass in DocumentTypeRepository, we shouldn't create it here
         val documentTypeRepository = DocumentTypeRepository().apply {
             addDocumentType(DrivingLicense.getDocumentType())
+            addDocumentType(GermanPersonalID.getDocumentType())
             addDocumentType(EUPersonalID.getDocumentType())
             addDocumentType(PhotoID.getDocumentType())
         }

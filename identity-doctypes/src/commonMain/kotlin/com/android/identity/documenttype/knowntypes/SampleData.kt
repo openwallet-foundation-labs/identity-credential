@@ -44,6 +44,7 @@ internal object SampleData {
     val portraitCaptureDate = LocalDate.parse("2020-03-14")
     const val AGE_IN_YEARS = 53
     const val AGE_BIRTH_YEAR = 1971
+    const val AGE_OVER = true  // Generic "age over" value
     const val AGE_OVER_13 = true
     const val AGE_OVER_16 = true
     const val AGE_OVER_18 = true
