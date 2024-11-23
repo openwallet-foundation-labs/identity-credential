@@ -1,6 +1,8 @@
 package com.android.identity_credential.wallet.ui.destination.document
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,12 +28,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,6 +54,7 @@ import com.android.identity_credential.wallet.ui.KeyValuePairHtml
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
+import com.android.identity_credential.wallet.util.inverse
 import kotlinx.coroutines.launch
 
 
@@ -156,41 +163,73 @@ private fun DocumentAuthenticationRequired(
 private fun DocumentDetails(
     documentInfo: DocumentInfo,
 ) {
-    Column() {
-        Text(
-            text = stringResource(R.string.document_details_screen_flash_pass_lecture),
-            textAlign = TextAlign.Center,
-            fontStyle = FontStyle.Italic,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(8.dp)
-        )
-
+    Column(
+        modifier = Modifier
+            .padding(top = 20.dp)
+            .padding(horizontal = 20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(bottom = 20.dp)
+                .border(
+                    1.dp,
+                    SolidColor(MaterialTheme.colorScheme.outline),
+                    RoundedCornerShape(30.dp)
+                )
+        ) {
+            Icon(
+                modifier = Modifier
+                    .size(40.dp)
+                    .padding(top = 20.dp, start = 10.dp, end = 10.dp),
+                painter = painterResource(id = R.drawable.warning),
+                tint = MaterialTheme.colorScheme.background.inverse(),
+                contentDescription = stringResource(
+                    R.string.accessibility_artwork_for,
+                    stringResource(id = R.string.document_details_screen_warning_icon_unverified_data)
+                )
+            )
+            Text(
+                modifier = Modifier.padding(top = 20.dp, bottom = 20.dp, end = 16.dp),
+                text = stringResource(R.string.document_details_screen_flash_pass_lecture),
+                textAlign = TextAlign.Left,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
         val topImages = listOf("portrait")
         val bottomImages = listOf("signature_usual_mark")
         for (attributeId in topImages) {
             val attributeDisplayInfo = documentInfo.attributes[attributeId]
             if (attributeDisplayInfo != null) {
                 val displayInfo = attributeDisplayInfo as AttributeDisplayInfoImage
-                Row(
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Image(
-                        bitmap = displayInfo.image.asImageBitmap(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                            .size(200.dp),
-                        contentDescription = displayInfo.name
-                    )
-                }
+                Image(
+                    bitmap = displayInfo.image.asImageBitmap(),
+                    modifier = Modifier
+                        .width(100.dp)
+                        .background(Color.Green)
+                        .align(Alignment.Start),
+                    contentDescription = displayInfo.name
+                )
             }
         }
-
         val centerAttributes = documentInfo.attributes.filter {
             !topImages.contains(it.key) && !bottomImages.contains(it.key)
         }
-        for ((attributeId, displayInfo) in centerAttributes) {
-            when (displayInfo) {
+        val orderedEntries = listOf(
+            "issuing_country",
+            "birth_date",
+            "expiry_date",
+            "given_name",
+            "family_name",
+        )
+        val sortedKeys = centerAttributes.keys.sortedBy { keyValue ->
+            if (keyValue in orderedEntries) {
+                orderedEntries.indexOfFirst { it == keyValue }
+            } else {
+                Int.MAX_VALUE
+            }
+        }
+        for (sortedKey in sortedKeys) {
+            when (val displayInfo = centerAttributes[sortedKey]) {
                 is AttributeDisplayInfoPlainText -> {
                     KeyValuePairText(displayInfo.name, displayInfo.value)
                 }
@@ -198,7 +237,7 @@ private fun DocumentDetails(
                     KeyValuePairHtml(displayInfo.name, displayInfo.value)
                 }
                 else -> {
-                    throw IllegalArgumentException("Unsupported attribute display info for $attributeId: $displayInfo")
+                    throw IllegalArgumentException("Unsupported attribute display info for $sortedKey: $displayInfo")
                 }
             }
         }
