@@ -247,7 +247,7 @@
                  works out of the box for development without any configuration.
             -->
             <param-name>verifierBaseUrl</param-name>
-            <param-value></param-value>
+            <param-value>http://127.0.0.1:8080/server</param-value>
         </init-param>
 
         <init-param>

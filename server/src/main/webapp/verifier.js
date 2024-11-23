@@ -10,6 +10,8 @@ var preferredProtocol = selectedProtocol
 
 var openid4vpUri = ''
 
+var selectedResponseMode = 'direct_post.jwt'
+
 async function onLoad() {
     const protocolDropdown = document.getElementById('protocolDropdown')
     protocolDropdown.addEventListener('hide.bs.dropdown', event => {
@@ -28,6 +30,12 @@ async function onLoad() {
             const scheme = document.getElementById("scheme-form");
             scheme.hidden = selected !== 'openid4vp_custom';
         }
+    })
+    const responseModeDropdown = document.getElementById('responseModeDropdown')
+    responseModeDropdown.addEventListener('hide.bs.dropdown', event => {
+        var target = event.clickEvent.target
+        responseModeDropdown.innerHTML = target.innerHTML
+        selectedResponseMode = target.innerHTML
     })
 
     // Ask server what document types / requests are available and use this to
@@ -145,38 +153,30 @@ function redirectClose() {
 
 async function requestDocument(format, docType, requestId) {
     console.log('requestDocument, format=' + format + ' docType=' + docType + ' requestId=' + requestId + ' protocol=' + selectedProtocol)
+    let scheme = ''
     if (selectedProtocol === 'openid4vp_custom') {
         if (document.getElementById("scheme-input").value === "") {
             alert("You must specify a non-empty scheme when performing a custom OpenID4VP request.")
             return
         }
-        const response = await callServer(
-            'openid4vpBegin',
-            {
-                format: format,
-                docType: docType,
-                requestId: requestId,
-                protocol: selectedProtocol,
-                origin: location.origin,
-                scheme: document.getElementById("scheme-input").value
-            }
-        )
-        console.log("URI " + response.uri)
-        window.open(response.uri, '_blank').focus()
-    } else if (selectedProtocol.startsWith('openid4vp_')) {
-              const response = await callServer(
-                  'openid4vpBegin',
-                  {
-                      format: format,
-                      docType: docType,
-                      requestId: requestId,
-                      protocol: selectedProtocol,
-                      origin: location.origin,
-                      scheme: ""
-                  }
-              )
-              console.log("URI " + response.uri)
-              window.open(response.uri, '_blank').focus()
+        scheme = document.getElementById("scheme-input").value
+    }
+
+    if (selectedProtocol.startsWith('openid4vp_')) {
+          const response = await callServer(
+              'openid4vpBegin',
+              {
+                  format: format,
+                  docType: docType,
+                  requestId: requestId,
+                  protocol: selectedProtocol,
+                  origin: location.origin,
+                  scheme: scheme,
+                  responseMode: selectedResponseMode
+              }
+          )
+          console.log("URI " + response.uri)
+          window.open(response.uri, '_blank').focus()
     } else if (selectedProtocol === "w3c_dc_preview") {
         try {
             const response = await callServer(

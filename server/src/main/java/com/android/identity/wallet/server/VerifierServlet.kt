@@ -101,7 +101,8 @@ private data class OpenID4VPBeginRequest(
     val requestId: String,
     val protocol: String,
     val origin: String,
-    val scheme: String
+    val scheme: String,
+    val responseMode: String
 )
 
 @Serializable
@@ -140,6 +141,7 @@ data class Session(
     val nonce: String,
     val origin: String,
     val encryptionKey: EcPrivateKey,
+    val responseMode: String? = null,
     var responseUri: String? = null,
     var deviceResponse: ByteArray? = null,
     var sessionTranscript: ByteArray? = null
@@ -780,6 +782,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         }
 
         // Create a new session
+        Logger.i(TAG, "Response mode is: ${request.responseMode}")
         val session = Session(
             id = Random.Default.nextBytes(16).toHex(),
             nonce = Random.Default.nextBytes(16).toHex(),
@@ -788,7 +791,8 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             requestFormat = request.format,
             requestDocType = request.docType,
             requestId = request.requestId,
-            protocol = protocol
+            protocol = protocol,
+            responseMode = request.responseMode
         )
         runBlocking {
             storage.insert(
@@ -884,7 +888,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             .claim("client_id", clientId)
             .claim("response_uri", responseUri)
             .claim("response_type", "vp_token")
-            .claim("response_mode", "direct_post.jwt")
+            .claim("response_mode", session.responseMode ?: "direct_post.jwt")
             .claim("nonce", session.nonce)
             .claim("state", session.id)
             .claim("presentation_definition", presentationDefinition)
@@ -967,42 +971,11 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                 kvPairs[parts[0]] = parts[1]
             }
 
-            val response = kvPairs["response"]
-            val encryptedJWT = EncryptedJWT.parse(response)
-
-            val encPub = session.encryptionKey.publicKey.javaPublicKey as ECPublicKey
-            val encPriv = session.encryptionKey.javaPrivateKey as ECPrivateKey
-            val encKey = ECKey(
-                Curve.P_256,
-                encPub,
-                encPriv,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            )
-
-            val decrypter = ECDHDecrypter(encKey)
-            encryptedJWT.decrypt(decrypter)
-
-            val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
-            if (session.requestFormat == "mdoc") {
-                session.deviceResponse = vpToken.fromBase64Url()
-            } else {
-                session.deviceResponse = vpToken.toByteArray()
+            if (session.responseMode == "direct_post.jwt") {
+                updateSessionFromDirectPostJwtResponse(kvPairs, session)
+            } else if (session.responseMode == "direct_post") {
+                updateSessionFromDirectPostResponse(kvPairs, session)
             }
-
-            session.sessionTranscript = createSessionTranscriptOpenID4VP(
-                clientId = clientId,
-                responseUri = session.responseUri!!,
-                authorizationRequestNonce = encryptedJWT.header.agreementPartyVInfo.toString(),
-                mdocGeneratedNonce = encryptedJWT.header.agreementPartyUInfo.toString()
-            )
 
             // Save `deviceResponse` and `sessionTranscript`, for later
             runBlocking {
@@ -1013,7 +986,6 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                     ByteString(session.toCbor())
                 )
             }
-
         } catch (e: Throwable) {
             Logger.w(TAG, "$remoteHost: handleResponse: Error getting response", e)
             resp.status = HttpServletResponse.SC_BAD_REQUEST
@@ -1028,6 +1000,67 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         )
         resp.contentType = "application/json"
         resp.status = HttpServletResponse.SC_OK
+    }
+
+    private fun updateSessionFromDirectPostJwtResponse(
+        kvPairs: MutableMap<String, String>,
+        session: Session
+    ) {
+        val response = kvPairs["response"]
+        val encryptedJWT = EncryptedJWT.parse(response)
+
+        val encPub = session.encryptionKey.publicKey.javaPublicKey as ECPublicKey
+        val encPriv = session.encryptionKey.javaPrivateKey as ECPrivateKey
+        val encKey = ECKey(
+            Curve.P_256,
+            encPub,
+            encPriv,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        )
+
+        val decrypter = ECDHDecrypter(encKey)
+        encryptedJWT.decrypt(decrypter)
+
+        val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
+        if (session.requestFormat == "mdoc") {
+            session.deviceResponse = vpToken.fromBase64Url()
+        } else {
+            session.deviceResponse = vpToken.toByteArray()
+        }
+
+        session.sessionTranscript = createSessionTranscriptOpenID4VP(
+            clientId = clientId,
+            responseUri = session.responseUri!!,
+            authorizationRequestNonce = encryptedJWT.header.agreementPartyVInfo.toString(),
+            mdocGeneratedNonce = encryptedJWT.header.agreementPartyUInfo.toString()
+        )
+    }
+
+    private fun updateSessionFromDirectPostResponse(
+        kvPairs: MutableMap<String, String>,
+        session: Session
+    ) {
+        val vpToken = kvPairs["vp_token"]!!
+        if (session.requestFormat == "mdoc") {
+            session.deviceResponse = vpToken.fromBase64Url()
+        } else {
+            session.deviceResponse = vpToken.toByteArray()
+        }
+
+        session.sessionTranscript = createSessionTranscriptOpenID4VP(
+            clientId = clientId,
+            responseUri = session.responseUri!!,
+            authorizationRequestNonce = "",
+            mdocGeneratedNonce = ""
+        )
     }
 
     private fun handleOpenID4VPGetData(
@@ -1436,7 +1469,7 @@ private fun calcClientMetadata(session: Session, format: String): JSONObject {
     val client_metadata = JSONObject()
     client_metadata.put("authorization_encrypted_response_alg", "ECDH-ES")
     client_metadata.put("authorization_encrypted_response_enc", "A128CBC-HS256")
-    client_metadata.put("response_mode", "direct_post.jwt")
+    client_metadata.put("response_mode", session.responseMode ?: "direct_post.jwt")
 
     val vpFormats = when (format) {
         "vc" -> {

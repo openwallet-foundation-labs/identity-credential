@@ -36,7 +36,6 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
 import com.android.identity.credential.Credential
-import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.X509Cert
@@ -49,7 +48,6 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
-import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -90,6 +88,7 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -146,6 +145,7 @@ internal data class AuthorizationRequest (
     var clientId: String,
     var nonce: String,
     var responseUri: String,
+    var responseMode: String,
     var state: String?,
     var clientMetadata: JsonObject,
     var certificateChain: List<X509Certificate>?
@@ -554,29 +554,27 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         val vpToken = if (credentialToUse is MdocCredential) {
             Base64.UrlSafe.encode(vpTokenByteArray).replace("=", "")
         } else vpTokenByteArray.decodeToString()
-        val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
-            // put("id_token", idToken) // depends on response type, only supporting vp_token for now
-            put("state", authorizationRequest.state)
-            put("vp_token", vpToken)
-            put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
-        }))
 
-        // If the request provided the right fields so we can encrypt the response, encrypt it.
-        val jwtResponse =
-            maybeEncryptJwtResponse(claimSet, authorizationRequest, generatedNonce, httpClient)
+        Logger.i(TAG, "Response mode is ${authorizationRequest.responseMode}")
+        val sendResponseBody = when (authorizationRequest.responseMode) {
+            "direct_post" -> getDirectPostAuthorizationResponseBody(
+                authorizationRequest,
+                vpToken,
+                presentationSubmission,
+            )
+            "direct_post.jwt" -> getDirectPostJwtAuthorizationResponseBody(
+                authorizationRequest,
+                vpToken,
+                presentationSubmission,
+                generatedNonce,
+                httpClient
+            )
+            else -> throw IllegalArgumentException("Unsupported response mode: ${authorizationRequest.responseMode}")
+        }
 
-        // send response
-        Logger.i(TAG, "Sending response to ${authorizationRequest.responseUri}")
-        val requestState: String? = authorizationRequest.state
+        Logger.i(TAG, "Sending response body: $sendResponseBody")
         val response = httpClient.post(authorizationRequest.responseUri) {
-            body = FormData(Parameters.build {
-                val serializedJwtResposne = jwtResponse.serialize()
-                Logger.i(TAG, "Sending serialized JWT response: $serializedJwtResposne")
-                append("response", serializedJwtResposne)
-                requestState?.let {
-                    append("state", it)
-                }
-            })
+            body = sendResponseBody
         }
         Logger.i(TAG, "Response: $response")
 
@@ -598,6 +596,58 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             }
             else -> Logger.d(TAG, "Response $response unexpected")
         }
+    }
+
+    private suspend fun getDirectPostAuthorizationResponseBody(
+        authorizationRequest: AuthorizationRequest,
+        vpToken: String,
+        presentationSubmission: PresentationSubmission,
+    ): FormData {
+        Logger.i(TAG, "Sending response to ${authorizationRequest.responseUri}")
+        val requestState: String? = authorizationRequest.state
+        val responseBody = FormData(Parameters.build {
+            authorizationRequest.state?.let {
+                append("state", it)
+            }
+            append("vp_token", vpToken)
+            append("presentation_submission", Json.encodeToString(presentationSubmission))
+            requestState?.let {
+                append("state", it)
+            }
+        })
+        return responseBody
+    }
+
+    @OptIn(InternalAPI::class)
+    private suspend fun getDirectPostJwtAuthorizationResponseBody(
+        authorizationRequest: AuthorizationRequest,
+        vpToken: String,
+        presentationSubmission: PresentationSubmission,
+        generatedNonce: String,
+        httpClient: HttpClient
+    ): FormData {
+        val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
+            // put("id_token", idToken) // depends on response type, only supporting vp_token for now
+            put("state", authorizationRequest.state)
+            put("vp_token", vpToken)
+            put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
+        }))
+
+        // If the request provided the right fields so we can encrypt the response, encrypt it.
+        val jwtResponse =
+            maybeEncryptJwtResponse(claimSet, authorizationRequest, generatedNonce, httpClient)
+
+        // send response
+        Logger.i(TAG, "Sending response to ${authorizationRequest.responseUri}")
+        val requestState: String? = authorizationRequest.state
+        return FormData(Parameters.build {
+            val serializedJwtResposne = jwtResponse.serialize()
+            Logger.i(TAG, "Sending serialized JWT response: $serializedJwtResposne")
+            append("response", serializedJwtResposne)
+            requestState?.let {
+                append("state", it)
+            }
+        })
     }
 
     private suspend fun maybeEncryptJwtResponse(
@@ -761,6 +811,7 @@ private suspend fun getAuthorizationRequest(
             clientId = requestUri.getQueryParameter("client_id")!!,
             nonce = requestUri.getQueryParameter("nonce")!!,
             responseUri = requestUri.getQueryParameter("response_uri")!!,
+            responseMode = requestUri.getQueryParameter("response_mode")!!,
             state = requestUri.getQueryParameter("state"),
             clientMetadata = requestUri.getQueryParameter("client_metadata")!!
                 .run { Json.parseToJsonElement(this).jsonObject },
@@ -829,8 +880,7 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String?): Aut
     Logger.i(TAG, "presentation_definition: $jsonStr")
     Logger.i(TAG, "Claims Set: ${signedJWT.jwtClaimsSet}")
 
-    // Check the response mode. This is required as part of mdoc profile; NOTE that sd-jwt profile
-    // requires direct_post.
+    // Check the response mode.
     val responseMode = signedJWT.jwtClaimsSet.getStringClaim("response_mode")
     val allowedResponseModes = setOf("direct_post", "direct_post.jwt")
     if (!allowedResponseModes.contains(responseMode)) {
@@ -847,6 +897,7 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String?): Aut
         clientId = signedJWT.jwtClaimsSet.getStringClaim("client_id"),
         nonce = signedJWT.jwtClaimsSet.getStringClaim("nonce"),
         responseUri = responseUri,
+        responseMode = responseMode,
         state = signedJWT.jwtClaimsSet.getStringClaim("state"),
         clientMetadata = Json.parseToJsonElement(Gson().toJson(signedJWT.jwtClaimsSet.getJSONObjectClaim("client_metadata"))).jsonObject,
         certificateChain = pubCertChain
