@@ -55,14 +55,12 @@ fun ScreenWithAppBar(
         topBar = {
             CenterAlignedTopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    // The app looks cleaner if the top bar is invisible (same color as the bg).
+                    containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.primary,
                 ),
-                title = {
-                    Text(
-                        title, maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                },
+                // The app looks cleaner if we omit the title.
+                title = {},
                 navigationIcon = navigationIcon,
                 scrollBehavior = scrollBehavior,
                 actions = actions,
