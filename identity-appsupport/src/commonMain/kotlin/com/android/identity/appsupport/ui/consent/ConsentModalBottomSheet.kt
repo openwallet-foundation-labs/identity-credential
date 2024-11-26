@@ -374,7 +374,13 @@ private fun RequestSection(
             )
         }
     }
-    if (relyingParty.trustPoint == null) {
+    // TODO: Remove this. For demo purposes only, don't show this warning with the test website.
+    // The correct fix for the credman preview flow would be to update CredmanPresentationActivity
+    // and update the trustpoint handling.
+    val siteIsOurOwnReader = (
+            relyingParty.websiteOrigin == "https:ws.utopia-central-registry.org" ||
+            relyingParty.websiteOrigin == "https://ws.utopia-central-registry.org")
+    if (relyingParty.trustPoint == null && !siteIsOurOwnReader) {
         Box(
             modifier = Modifier.padding(vertical = 8.dp)
         ) {

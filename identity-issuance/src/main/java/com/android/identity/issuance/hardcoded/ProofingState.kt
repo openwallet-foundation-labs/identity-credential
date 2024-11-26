@@ -3,7 +3,6 @@ package com.android.identity.issuance.hardcoded
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.ProofingFlow
@@ -19,7 +18,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResul
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.fromCbor
 import com.android.identity.issuance.proofing.ProofingGraph
-import com.android.identity.issuance.proofing.defaultGraph
+import com.android.identity.issuance.proofing.defaultGraphUtopiaForFunke
 import com.android.identity.issuance.tunnel.inProcessMrtdNfcTunnelFactory
 import com.android.identity.mrtd.MrtdAccessDataCan
 import io.ktor.client.HttpClient
@@ -143,7 +142,7 @@ class ProofingState(
         val key = GraphKey(issuingAuthorityId, documentId, developerModeEnabled)
         return env.cache(ProofingGraph::class, key) { configuration, resources ->
             val cloudSecureAreaUrl = WalletServerSettings(configuration).cloudSecureAreaUrl
-            defaultGraph(
+            defaultGraphUtopiaForFunke(
                 documentId,
                 resources,
                 walletApplicationCapabilities,

@@ -227,6 +227,82 @@ fun defaultGraph(
     }
 }
 
+fun defaultGraphUtopiaForFunke(
+    documentId: String,
+    resources: Resources,
+    walletApplicationCapabilities: WalletApplicationCapabilities,
+    developerModeEnabled: Boolean,
+    cloudSecureAreaUrl: String,
+    tosText: String,
+    tosAssets: Map<String, ByteString>
+): ProofingGraph {
+    return ProofingGraph.create {
+        message(
+            "tos",
+            tosText,
+            tosAssets,
+            "Accept",
+            "Reject",
+        )
+        choice(
+            id = "path",
+            message = "Use hard-coded data or scan ePassport or eID card?",
+            assets = mapOf(),
+            acceptButtonText = "Continue"
+        ) {
+            on(id = "hardcoded", text = "Use hard-coded data") {}
+            on(id = "passport", text = "Derive from ePassport / eID card") {
+                icaoTunnel("tunnel", listOf(1, 2, 7), true) {
+                    whenChipAuthenticated {}
+                    whenActiveAuthenticated {}
+                    whenNotAuthenticated {}
+                }
+            }
+            on(id = "germanEid", text = "Derive from PIN-protected German eID") {
+                eId("germanEidCard", "https://test.governikus-eid.de/AusweisAuskunft/WebServiceRequesterServlet")
+            }
+        }
+        if (!walletApplicationCapabilities.androidKeystoreStrongBoxAvailable) {
+            message(
+                "strongbox-not-available",
+                "Warning: StrongBox is not available on your device so the stored credential " +
+                        "cannot achieve LoA High.",
+                assets = mapOf(),
+                acceptButtonText = "Continue",
+                rejectButtonText = null
+                )
+        }
+        createSelfieRequest(id = "selfie_request")
+        message(
+            "message",
+            message = """
+                Your application is about to be sent the ID issuer for verification. You will
+                get notified when the application is approved.
+            """.trimIndent(),
+            assets = mapOf(),
+            acceptButtonText = "Continue",
+            null
+        )
+        requestNotificationPermission(
+            "notificationPermission",
+            permissionNotAvailableMessage = """
+                ## Receive notifications?
+                
+                If there are updates to your document the issuer will send an updated document
+                to your device. If you are interested, we can send a notification to make you aware
+                of when this happens. This requires granting a permission.
+                
+                If you previously denied this permission, attempting to grant it again might not do
+                anything and you may need to manually go into Settings and manually enable
+                notifications for this application.
+            """.trimIndent(),
+            grantPermissionButtonText = "Grant Permission",
+            continueWithoutPermissionButtonText = "No Thanks",
+            assets = mapOf()
+        )
+    }
+}
+
 fun defaultCredentialConfiguration(
     documentId: String,
     walletApplicationCapabilities: WalletApplicationCapabilities,
@@ -241,6 +317,7 @@ fun defaultCredentialConfiguration(
                 CborMap.builder()
                     .put("curve", EcCurve.P256.coseCurveIdentifier)
                     .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
+                    .put("useStrongBox", walletApplicationCapabilities.androidKeystoreStrongBoxAvailable)
                     .put("userAuthenticationRequired", true)
                     .put("userAuthenticationTimeoutMillis", 0L)
                     .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
