@@ -7,4 +7,9 @@ by the "Android German EUDI Open Source Wallet Prototype" team in the
 This work is done on a branch of the OpenWallet Foundation's [Identity Credential](https://github.com/openwallet-foundation-labs/identity-credential) (OWF IC)
 project with the goal of making sure the delta is as small as possible.
 
+Issuer website to get an EAA ([link](https://ws.utopia-central-registry.org/server/openid4vci/index.html)).
+Verifier website to request an EAA([link](https://ws.utopia-central-registry.org/server/verifier.html)).
+
+FUNKE judges and other testers can use [this link](https://play.google.com/apps/internaltest/4701496035344838882) to install it.
+
 This is not an officially supported Google product.
