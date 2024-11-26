@@ -17,13 +17,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
+import com.android.identity.util.toBase64Url
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.EventInfo
 import com.android.identity_credential.wallet.R
@@ -110,7 +111,8 @@ fun EventLogScreen(
                                 .padding(4.dp)
                                 .clickable {
                                     // Pass documentId and timestamp as arguments
-                                    navController.navigate("${WalletDestination.EventDetails.route}/$documentId/${eventInfo.timestamp}")
+                                    val encodedDocId = documentId.toByteArray().toBase64Url()
+                                    navController.navigate("${WalletDestination.EventDetails.route}/$encodedDocId/${eventInfo.timestamp}")
                                 },
                             verticalAlignment = Alignment.CenterVertically
                         ) {

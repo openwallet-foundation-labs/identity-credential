@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.android.identity.util.fromBase64Url
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -134,7 +135,8 @@ fun WalletNavigation(
             )
         ) { backStackEntry ->
             // Extract arguments from the back stack entry
-            val documentId = backStackEntry.arguments?.getString("documentId") ?: ""
+            val encodedDocumentId = backStackEntry.arguments?.getString("documentId") ?: ""
+            val documentId = String(encodedDocumentId.fromBase64Url())
             val timestamp = backStackEntry.arguments?.getString("timestamp") ?: ""
 
             EventDetailsScreen(
