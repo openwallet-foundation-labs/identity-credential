@@ -21,44 +21,46 @@ The project includes libraries written in Kotlin:
    run on Android (API 24 or later) and will take advantage of
    Android-specific features including hardware-backed Keystore, NFC, Bluetooth
    Low Energy, and so on.
-- `identity-android-legacy` contains an older version of the APIs for applications
-   not yet migrated to the newer libraries. At some point this library will be
-   removed. Unlike the other libraries and applications, this library is in
-   Java, not Kotlin.
+- `identity-android-legacy` contains an older version of the APIs for
+   applications not yet migrated to the newer libraries. At some point this
+   library will be removed. Unlike the other libraries and applications, this
+   library is in Java, not Kotlin.
 - `identity-doctypes` contains known credential document types (for example
-   ISO/IEC 18013-5:2021 mDL and EU PID) along with human-readable descriptions of
-   claims / data elements and also sample data. This is packaged separately from
-   the core `identity` library because its size is non-negligible and not all
-   applications need this or they may bring their own.
+   ISO/IEC 18013-5:2021 mDL and EU PID) along with human-readable descriptions
+   of claims / data elements and also sample data. This is packaged separately
+   from the core `identity` library because its size is non-negligible and not
+   all applications need this or they may bring their own.
 - `identity-csa` and `identity-android-csa` are libraries for implementing and
-   communicating with a Cloud-based Secure Area. This is discussed more in-depth below.
+   communicating with a Cloud-based Secure Area. This is discussed more
+   in-depth below.
 
 These libraries are intended to be used by Wallet Applications (mobile
-applications on the credential holder's device), Reader Applications (applications
-operated on device controlled by the verifier), and Issuance Systems (applications
-operated by the credential issuer or their agent). They provide the following
-building blocks
+applications on the credential holder's device), Reader Applications
+(applications operated on device controlled by the verifier), and Issuance
+Systems (applications operated by the credential issuer or their agent). They
+provide the following building blocks
 
 - A light-weight _Secure Area_ abstraction for hardware-backed keystore
   - Applications can create hardware-backed Elliptic Curve Cryptography
     keys which can be used for creating Signatures or performing Key Agreement.
-    Each key will have an attestation which can be used to prove to Relying Parties
-    (such as a credential issuer) that the private part of the key only exists
-    in a Secure Area.
+    Each key will have an attestation which can be used to prove to Relying
+    Parties (such as a credential issuer) that the private part of the key
+    only exists in a Secure Area.
   - The `identity-android` library includes an implementation based on
     [Android Keystore](https://developer.android.com/training/articles/keystore)
-    with support for requiring user authentication (biometric or lock-screen knowledge
-    factor, e.g. system PIN) for unlocking the key and also can use
+    with support for requiring user authentication (biometric or lock-screen
+    knowledge factor, e.g. system PIN) for unlocking the key and also can use
     [StrongBox](https://source.android.com/docs/compatibility/13/android-13-cdd#9112_strongbox)
-    if available on the device. This is appropriate to use in Android applications
-    implementing ISO/IEC 18013-5:2021 for storing `DeviceKey`.
+    if available on the device. This is appropriate to use in Android
+    applications implementing ISO/IEC 18013-5:2021 for storing `DeviceKey`.
   - The `identity` library includes an implementation backed by BouncyCastle
     with support for passphrase-protected keys. This isn't suitable for use
     in Mobile Applications as its not backed by Secure Hardware.
   - A protocol for a Cloud Secure Area is provided along with production quality
-    client-side implementation in the `identity-android-csa` library and a reference
-    implementation of the server side in the `identity-csa` library with the caveat
-    that the provided server implementation isn't suitable for production use.
+    client-side implementation in the `identity-android-csa` library and a
+    reference implementation of the server side in the `identity-csa` library
+    with the caveat that the provided server implementation isn't suitable for
+    production use.
     - The point of this is to provide a secure and privacy-preserving protocol
       with end-to-end encryption directly from the app to a Secure Area
       in the server, with messages being exchanged via HTTPS. Consequently, this
