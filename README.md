@@ -21,23 +21,24 @@ The project includes libraries written in Kotlin:
    run on Android (API 24 or later) and will take advantage of
    Android-specific features including hardware-backed Keystore, NFC, Bluetooth
    Low Energy, and so on.
-- `identity-android-legacy` contains an older version of the APIs for applications
-   not yet migrated to the newer libraries. At some point this library will be
-   removed. Unlike the other libraries and applications, this library is in
-   Java, not Kotlin.
+- `identity-android-legacy` contains an older version of the APIs for
+   applications not yet migrated to the newer libraries. At some point this
+   library will be removed. Unlike the other libraries and applications, this
+   library is in Java, not Kotlin.
 - `identity-doctypes` contains known credential document types (for example
-   ISO/IEC 18013-5:2021 mDL and EU PID) along with human-readable descriptions of
-   claims / data elements and also sample data. This is packaged separately from
-   the core `identity` library because its size is non-negligible and not all
-   applications need this or they may bring their own.
+   ISO/IEC 18013-5:2021 mDL and EU PID) along with human-readable descriptions
+   of claims / data elements and also sample data. This is packaged separately
+   from the core `identity` library because its size is non-negligible and not
+   all applications need this or they may bring their own.
 - `identity-csa` and `identity-android-csa` are libraries for implementing and
-   communicating with a Cloud-based Secure Area. This is discussed more in-depth below.
+   communicating with a Cloud-based Secure Area. This is discussed more
+   in-depth below.
 
 These libraries are intended to be used by Wallet Applications (mobile
-applications on the credential holder's device), Reader Applications (applications
-operated on device controlled by the verifier), and Issuance Systems (applications
-operated by the credential issuer or their agent). They provide the following
-building blocks
+applications on the credential holder's device), Reader Applications
+(applications operated on device controlled by the verifier), and Issuance
+Systems (applications operated by the credential issuer or their agent). They
+provide the following building blocks
 
 - A light-weight _Secure Area_ abstraction for hardware-backed keystore
   - Applications can create hardware-backed Elliptic Curve Cryptography
