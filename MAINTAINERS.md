@@ -5,7 +5,6 @@
 | Akash Shah      | @dyiop          | -    | dyiop@google.com     | -          | Google LLC          | -         |
 | Cory Barker     | @TheCoryBarker  | -    | cobark@google.com    | -          | Google LLC          | -         |
 | David Zeuthen   | @davidz25       | -    | zeuthen@google.com   | davidz25   | Google LLC          | -         |
-| Dritan Xhabija  | @dritan-x       | -    | dritan@google.com    | -          | Google LLC          | -         |
 | Hamzeh Zawawy   | @hzawawy        | -    | hamzeh@google.com    | -          | Google LLC          | -         |
 | Gareth Oliver   | @GarethCOliver  | -    | gco@google.com       | gco_google | Google LLC          | -         |
 | Kevin Deus      | @kdeus          | -    | kdeus@google.com     | -          | Google LLC          | -         |
