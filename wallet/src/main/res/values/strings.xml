@@ -271,13 +271,10 @@
     <!-- DocumentDetailsScreen -->
     <string name="document_details_screen_title">Document Data</string>
     <string name="document_details_screen_disclaimer">UNVERIFIED DATA\nDO NOT USE</string>
-    <string name="document_details_screen_flash_pass_lecture">
-        Showing this screen is not a secure way of sharing identity data because the verifier
-        has no way to confirm the authenticity of the data. Use NFC or QR to share identity
-        data in a secure and privacy-preserving manner.
-    </string>
+    <string name="document_details_screen_flash_pass_lecture">Do not share this screen. It is not secure for presenting info directly as authenticity cannot be verified.</string>
     <string name="document_details_boolean_true_value">True</string>
     <string name="document_details_boolean_false_value">False</string>
+    <string name="document_details_screen_warning_icon_unverified_data">Warning Icon</string>
 
     <!-- CredentialInfoScreen -->
     <string name="credential_info_screen_title">Credentials</string>
