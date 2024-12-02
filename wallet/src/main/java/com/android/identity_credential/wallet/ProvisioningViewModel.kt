@@ -18,10 +18,12 @@ import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
-import com.android.identity.issuance.evidence.EvidenceRequestPreauthorizedCode
+import com.android.identity.issuance.evidence.EvidenceRequestCredentialOffer
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
-import com.android.identity.issuance.evidence.EvidenceResponsePreauthorizedCode
+import com.android.identity.issuance.evidence.EvidenceResponseCredentialOffer
+import com.android.identity.issuance.evidence.Openid4VciCredentialOffer
+import com.android.identity.issuance.evidence.Openid4VciCredentialOfferAuthorizationCode
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
@@ -103,10 +105,10 @@ class ProvisioningViewModel : ViewModel() {
         this.job = viewModelScope.launch(Dispatchers.IO) {
             lastJob?.join()
             reset()
-            this@ProvisioningViewModel.openid4VciCredentialOffer = openid4VciCredentialOffer
             state.value = State.IDLE
             try {
                 val issuer = if (openid4VciCredentialOffer != null) {
+                    this@ProvisioningViewModel.openid4VciCredentialOffer = openid4VciCredentialOffer
                     walletServerProvider.createOpenid4VciIssuingAuthorityByUri(
                         openid4VciCredentialOffer.issuerUri,
                         openid4VciCredentialOffer.configurationId
@@ -142,6 +144,16 @@ class ProvisioningViewModel : ViewModel() {
 
                 proofingFlow = issuer.proof(issuerDocumentIdentifier)
                 evidenceRequests = proofingFlow!!.getEvidenceRequests()
+                // EvidenceRequestCredentialOffer (if requested at all) is always the first request.
+                if (evidenceRequests!!.isNotEmpty() &&
+                        evidenceRequests!![0] is EvidenceRequestCredentialOffer) {
+                    proofingFlow!!.sendEvidence(
+                        EvidenceResponseCredentialOffer(openid4VciCredentialOffer ?:
+                                createDefaultCredentialOffer(issuerIdentifier!!))
+                    )
+                    evidenceRequests = proofingFlow!!.getEvidenceRequests()
+                }
+
                 currentEvidenceRequestIndex = 0
                 Logger.d(TAG, "ers0 ${evidenceRequests!!.size}")
 
@@ -164,6 +176,12 @@ class ProvisioningViewModel : ViewModel() {
                 state.value = State.FAILED
             }
         }
+    }
+
+    private fun createDefaultCredentialOffer(issuerIdentifier: String): Openid4VciCredentialOffer {
+        val parts = issuerIdentifier.split('#')
+        return Openid4VciCredentialOfferAuthorizationCode(
+            parts[1], parts[2], null, null)
     }
 
     fun evidenceCollectionFailed(
@@ -194,20 +212,6 @@ class ProvisioningViewModel : ViewModel() {
                     proofingFlow!!.complete()
                     document!!.refreshState(walletServerProvider)
                 } else {
-                    if (evidenceRequests!![0] is EvidenceRequestPreauthorizedCode) {
-                        if (openid4VciCredentialOffer?.preauthorizedCode != null) {
-                            Logger.d(TAG, "handling pre-authorized code")
-                            proofingFlow!!.sendEvidence(
-                                EvidenceResponsePreauthorizedCode(
-                                    code = openid4VciCredentialOffer!!.preauthorizedCode!!,
-                                    txCode = null  // We don't support it yet
-                                )
-                            )
-                            evidenceRequests = proofingFlow!!.getEvidenceRequests()
-                        } else {
-                            currentEvidenceRequestIndex++
-                        }
-                    }
                     selectViableEvidenceRequest()
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
@@ -360,10 +364,4 @@ class ProvisioningViewModel : ViewModel() {
             CredentialFormat.SD_JWT_VC -> documentConfiguration.sdJwtVcDocumentConfiguration != null
         }
     }
-
-    data class Openid4VciCredentialOffer(
-        val issuerUri: String,
-        val configurationId: String,
-        val preauthorizedCode: String?
-    )
 }

@@ -28,7 +28,6 @@ import com.android.identity.appsupport.ui.consent.MdocConsentField
 import com.android.identity.credential.Credential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
-import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.evidence.EvidenceRequestCompletionMessage
@@ -39,7 +38,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthenti
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
-import com.android.identity.issuance.evidence.EvidenceRequestPreauthorizedCode
+import com.android.identity.issuance.evidence.EvidenceRequestCredentialOffer
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
@@ -264,7 +263,7 @@ fun ProvisionDocumentScreen(
                         )
                     }
 
-                    is EvidenceRequestPreauthorizedCode -> {
+                    is EvidenceRequestCredentialOffer -> {
                         // should have been processed by the model internally
                         Logger.e(TAG, "Unexpected evidence request type: EvidenceRequestPreauthorizedCode")
                         Row(

@@ -19,10 +19,11 @@ class FunkeAccess(
     val accessTokenExpiration: Instant,
     var dpopNonce: String?,
     var cNonce: String?,
+    var tokenEndpoint: String,
     var refreshToken: String?,
 ) {
     companion object {
-        suspend fun parseResponse(tokenResponse: HttpResponse): FunkeAccess {
+        suspend fun parseResponse(tokenEndpoint: String, tokenResponse: HttpResponse): FunkeAccess {
             val dpopNonce = tokenResponse.headers["DPoP-Nonce"]
             val tokenString = String(tokenResponse.readBytes())
             val token = Json.parseToJsonElement(tokenString) as JsonObject
@@ -31,7 +32,8 @@ class FunkeAccess(
             val duration = getField(token, "expires_in").long
             val accessTokenExpiration = Clock.System.now() + duration.seconds
             val refreshToken = token["refresh_token"]?.jsonPrimitive?.content
-            return FunkeAccess(accessToken, accessTokenExpiration, dpopNonce, cNonce, refreshToken)
+            return FunkeAccess(accessToken, accessTokenExpiration, dpopNonce,
+                cNonce, tokenEndpoint, refreshToken)
         }
 
         private fun getField(jsonElement: JsonObject, name: String): JsonPrimitive {

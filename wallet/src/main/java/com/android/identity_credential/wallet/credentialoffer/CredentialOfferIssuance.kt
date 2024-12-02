@@ -1,5 +1,6 @@
 package com.android.identity_credential.wallet.credentialoffer
 
+import com.android.identity.issuance.evidence.Openid4VciCredentialOffer
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import io.ktor.client.HttpClient
@@ -20,7 +21,7 @@ import java.net.URLDecoder
  */
 suspend fun extractCredentialIssuerData(
     urlQueryComponent: String
-): ProvisioningViewModel.Openid4VciCredentialOffer? {
+): Openid4VciCredentialOffer? {
     try {
         val params = urlQueryComponent.split('&').map {
             val index = it.indexOf('=')
@@ -45,23 +46,7 @@ suspend fun extractCredentialIssuerData(
             credentialOfferString = String(response.readBytes())
         }
         val json = Json.parseToJsonElement(credentialOfferString).jsonObject
-        // extract Credential Issuer Uri and Credential (Config) Id
-        val credentialIssuerUri = json["credential_issuer"]!!.jsonPrimitive.content
-        val credentialConfigurationIds = json["credential_configuration_ids"]!!.jsonArray
-        // Right now only use the first configuration id
-        val credentialConfigurationId = credentialConfigurationIds[0].jsonPrimitive.content
-        var preauthorizedCode: String? = null
-        if (json.containsKey("grants")) {
-            val codeObject = json["grants"]!!.jsonObject["urn:ietf:params:oauth:grant-type:pre-authorized_code"]
-            if (codeObject != null) {
-                preauthorizedCode = codeObject.jsonObject["pre-authorized_code"]?.jsonPrimitive?.content
-            }
-        }
-        return ProvisioningViewModel.Openid4VciCredentialOffer(
-            credentialIssuerUri,
-            credentialConfigurationId,
-            preauthorizedCode
-        )
+        return Openid4VciCredentialOffer.parse(json)
     } catch (err: Exception) {
         Logger.e("CredentialOffer", "Parsing error", err)
         return null
