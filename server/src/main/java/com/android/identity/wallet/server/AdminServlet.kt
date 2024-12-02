@@ -13,6 +13,7 @@ import com.android.identity.issuance.hardcoded.IssuerDocument
 import com.android.identity.issuance.hardcoded.IssuingAuthorityState
 import com.android.identity.server.BaseHttpServlet
 import com.android.identity.util.Logger
+import com.android.identity.util.htmlEscape
 import io.ktor.utils.io.core.toByteArray
 import jakarta.servlet.http.Cookie
 import kotlinx.coroutines.runBlocking
@@ -189,13 +190,6 @@ class AdminServlet : BaseHttpServlet() {
         }
     }
 
-    private fun htmlEscape(text: String?): String {
-        return (text ?: "<null>")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-    }
-
     override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {
         val threadId = Thread.currentThread().id
         val remoteHost = getRemoteHost(req)
@@ -223,10 +217,10 @@ class AdminServlet : BaseHttpServlet() {
                     val documentIds = storage.enumerate("IssuerDocument", clientId)
                     for (documentId in documentIds) {
                         writer.write("<tr>")
-                        writer.write("<td class='code'>${htmlEscape(documentId)}</td>")
+                        writer.write("<td class='code'>${documentId.htmlEscape()}</td>")
                         val documentData = storage.get("IssuerDocument", clientId, documentId)!!
                         val document = IssuerDocument.fromDataItem(Cbor.decode(documentData.toByteArray()))
-                        writer.write("<td>${htmlEscape(document.documentConfiguration?.displayName)}</td>")
+                        writer.write("<td>${document.documentConfiguration?.displayName?.htmlEscape()}</td>")
                         writer.write("<tr>")
                     }
                 }
@@ -241,7 +235,7 @@ class AdminServlet : BaseHttpServlet() {
                 runBlocking {
                     val clients = storage.enumerate("ClientKeys", "")
                     for (client in clients) {
-                        val escaped = htmlEscape(client)
+                        val escaped = client.htmlEscape()
                         val urlenc = URLEncoder.encode(client, "utf-8")
                         writer.write("<li><a href='documents.html?clientId=$urlenc'>$escaped</a></li>")
                     }

@@ -1,11 +1,16 @@
 package com.android.identity.issuance.funke
 
 import com.android.identity.cbor.annotation.CborSerializable
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.device.AssertionDPoPKey
+import com.android.identity.device.DeviceAssertionMaker
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
+import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.WalletApplicationCapabilities
@@ -15,8 +20,9 @@ import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestOpenid4Vp
-import com.android.identity.issuance.evidence.EvidenceRequestPreauthorizedCode
+import com.android.identity.issuance.evidence.EvidenceRequestCredentialOffer
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
+import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceRequestWeb
 import com.android.identity.issuance.evidence.EvidenceResponse
@@ -24,13 +30,20 @@ import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceResponseOpenid4Vp
-import com.android.identity.issuance.evidence.EvidenceResponsePreauthorizedCode
+import com.android.identity.issuance.evidence.EvidenceResponseCredentialOffer
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
+import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponseWeb
+import com.android.identity.issuance.evidence.Openid4VciCredentialOffer
+import com.android.identity.issuance.evidence.Openid4VciCredentialOfferAuthorizationCode
+import com.android.identity.issuance.evidence.Openid4VciCredentialOfferPreauthorizedCode
+import com.android.identity.issuance.wallet.ApplicationSupportState
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
+import com.android.identity.util.htmlEscape
+import com.android.identity.util.toBase64Url
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -39,10 +52,13 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
 import java.net.URLEncoder
+import kotlin.random.Random
 
 @FlowState(
     flowInterface = ProofingFlow::class
@@ -54,16 +70,17 @@ class FunkeProofingState(
     val clientId: String,
     val issuanceClientId: String,
     val documentId: String,
-    val proofingInfo: ProofingInfo?,
     val applicationCapabilities: WalletApplicationCapabilities,
-    val tokenUri: String,
-    val useGermanEId: Boolean = false,
+    var proofingInfo: ProofingInfo? = null,
+    var useGermanEId: Boolean = false,
     var access: FunkeAccess? = null,
     var secureAreaIdentifier: String? = null,
     var secureAreaSetupDone: Boolean = false,
     var tosAcknowleged: Boolean = false,
     var notificationPermissonRequested: Boolean = false,
-    var openid4VpRequest: String? = null
+    var openid4VpRequest: String? = null,
+    var txCode: String? = null,
+    var credentialOffer: Openid4VciCredentialOffer? = null
 ) {
     companion object {
         private const val TAG = "FunkeProofingState"
@@ -73,8 +90,12 @@ class FunkeProofingState(
     suspend fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
         val configuration = metadata.credentialConfigurations[credentialConfigurationId]!!
+        val credentialOffer = this.credentialOffer
         return if (access == null) {
-            if (!tosAcknowleged) {
+            // Don't have access token yet.
+            if (credentialOffer == null) {
+                listOf(EvidenceRequestCredentialOffer())
+            } else if (!tosAcknowleged) {
                 val message = if (useGermanEId) {
                     env.getInterface(Resources::class)!!
                         .getStringResource("funke/tos.html")!!
@@ -86,18 +107,49 @@ class FunkeProofingState(
                         .replace("\$ISSUER_NAME", issuingAuthorityName)
                         .replace("\$ID_NAME", documentName)
                 }
-                listOf(
-                    EvidenceRequestMessage(
-                        message = message,
-                        assets = emptyMap(),
-                        acceptButtonText = "Continue",
-                        rejectButtonText = "Cancel"
-                    )
-                )
-            } else if (!notificationPermissonRequested) {
-                listOf(
-                    EvidenceRequestNotificationPermission(
-                    permissionNotGrantedMessage = """
+                listOf(EvidenceRequestMessage(
+                    message = message,
+                    assets = emptyMap(),
+                    acceptButtonText = "Continue",
+                    rejectButtonText = "Cancel"
+                ))
+            } else if (txCode == null &&
+                credentialOffer is Openid4VciCredentialOfferPreauthorizedCode &&
+                credentialOffer.txCode != null) {
+                val message = "<p>" + credentialOffer.txCode!!.description.htmlEscape() + "</p>"
+                listOf(EvidenceRequestQuestionString(
+                    message = message,
+                    assets = mapOf(),
+                    defaultValue = "",
+                    acceptButtonText = "OK"
+                ))
+            } else {
+                val list = mutableListOf<EvidenceRequest>()
+                val authorizationMetadata = selectAuthorizationServer(metadata)
+                val proofingInfo = this.proofingInfo
+                if (openid4VpRequest != null &&
+                    authorizationMetadata.authorizationChallengeEndpoint != null) {
+                    val uri = URI(authorizationMetadata.authorizationChallengeEndpoint)
+                    val origin = uri.scheme + ":" + uri.authority
+                    list.add(EvidenceRequestOpenid4Vp(origin, openid4VpRequest!!))
+                }
+                if (proofingInfo != null && authorizationMetadata.authorizationEndpoint != null) {
+                    val authorizeUrl =
+                        "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
+                            add("client_id", issuanceClientId)
+                            add("request_uri", proofingInfo.requestUri!!)
+                        }
+                    if (authorizationMetadata.useGermanEId) {
+                        list.add(EvidenceRequestGermanEid(authorizeUrl, listOf()))
+                    } else {
+                        list.add(EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl))
+                    }
+                }
+                list
+            }
+        } else if (!notificationPermissonRequested) {
+            listOf(EvidenceRequestNotificationPermission(
+                permissionNotGrantedMessage = """
                         ## Receive notifications?
                         
                         If there are updates to your document the issuer will send an updated document
@@ -112,29 +164,7 @@ class FunkeProofingState(
                     continueWithoutPermissionButtonText = "No Thanks",
                     assets = mapOf()
                 )
-                )
-            } else {
-                val list = mutableListOf<EvidenceRequest>(EvidenceRequestPreauthorizedCode())
-                if (proofingInfo != null && metadata.authorizationServers.isNotEmpty()) {
-                    val authorizationMetadata = metadata.authorizationServers[0]
-                    val authorizeUrl =
-                        "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
-                            add("client_id", issuanceClientId)
-                            add("request_uri", proofingInfo.requestUri!!)
-                        }
-                    if (authorizationMetadata.useGermanEId) {
-                        list.add(EvidenceRequestGermanEid(authorizeUrl, listOf()))
-                    } else {
-                        if (openid4VpRequest != null) {
-                            val uri = URI(authorizationMetadata.authorizationChallengeEndpoint!!)
-                            val origin = uri.scheme + "://" + uri.authority
-                            list.add(EvidenceRequestOpenid4Vp(origin, openid4VpRequest!!))
-                        }
-                        list.add(EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl))
-                    }
-                }
-                return list
-            }
+            )
         } else if (configuration.proofType == Openid4VciNoProof) {
             // Keyless credentials, no more questions
             emptyList()
@@ -177,6 +207,20 @@ class FunkeProofingState(
     @FlowMethod
     suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
         when (evidenceResponse) {
+            is EvidenceResponseCredentialOffer -> {
+                val credentialOffer = evidenceResponse.credentialOffer
+                this.credentialOffer = credentialOffer
+                initializeProofing(env)
+                if (credentialOffer is Openid4VciCredentialOfferPreauthorizedCode) {
+                    if (credentialOffer.txCode == null) {
+                        obtainTokenUsingPreauthorizedCode(env)
+                    }
+                }
+            }
+            is EvidenceResponseQuestionString -> {
+                txCode = evidenceResponse.answer
+                obtainTokenUsingPreauthorizedCode(env)
+            }
             is EvidenceResponseGermanEid -> {
                 val url = evidenceResponse.url
                 if (url != null) {
@@ -216,19 +260,6 @@ class FunkeProofingState(
             }
             is EvidenceResponseOpenid4Vp -> {
                 processOpenid4VpResponse(env, evidenceResponse.response)
-            }
-            is EvidenceResponsePreauthorizedCode -> {
-                this.access = FunkeUtil.obtainToken(
-                    env = env,
-                    tokenUrl = tokenUri,
-                    clientId = clientId,
-                    issuanceClientId = issuanceClientId,
-                    preauthorizedCode = evidenceResponse.code,
-                    txCode = evidenceResponse.txCode,
-                    codeVerifier = proofingInfo?.pkceCodeVerifier,
-                    dpopNonce = null
-                )
-                Logger.i(TAG, "Token request: success")
             }
             else -> throw IllegalArgumentException("Unexpected evidence type")
         }
@@ -271,12 +302,27 @@ class FunkeProofingState(
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
         this.access = FunkeUtil.obtainToken(
             env = env,
-            tokenUrl = metadata.authorizationServers[0].tokenEndpoint,
+            tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
             authorizationCode = authCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
             dpopNonce = dpopNonce
+        )
+        Logger.i(TAG, "Token request: success")
+    }
+
+    private suspend fun obtainTokenUsingPreauthorizedCode(env: FlowEnvironment) {
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        this.access = FunkeUtil.obtainToken(
+            env = env,
+            tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
+            clientId = clientId,
+            issuanceClientId = issuanceClientId,
+            preauthorizedCode = (credentialOffer as Openid4VciCredentialOfferPreauthorizedCode).preauthorizedCode,
+            txCode = txCode,
+            codeVerifier = proofingInfo?.pkceCodeVerifier,
+            dpopNonce = null
         )
         Logger.i(TAG, "Token request: success")
     }
@@ -299,7 +345,7 @@ class FunkeProofingState(
         val presentationCode =
             parsedResponse["presentation_during_issuance_session"]!!.jsonPrimitive.content
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-        val authorizationMetadata = metadata.authorizationServers[0]
+        val authorizationMetadata = selectAuthorizationServer(metadata)
         val dpop = FunkeUtil.generateDPoP(env, clientId,
             authorizationMetadata.authorizationChallengeEndpoint!!, null, null)
         val challengeRequest = FormUrlEncoder {
@@ -321,5 +367,143 @@ class FunkeProofingState(
             Json.parseToJsonElement(String(challengeResponse.readBytes())).jsonObject
         val authCode = parsedChallengeResponse["authorization_code"]!!.jsonPrimitive.content
         obtainTokenUsingCode(env, authCode, null)
+    }
+
+    private fun selectAuthorizationServer(
+        metadata: Openid4VciIssuerMetadata
+    ): Openid4VciAuthorizationMetadata {
+        val authorizationServer = credentialOffer?.authorizationServer
+        return if (authorizationServer == null) {
+            metadata.authorizationServerList[0]
+        } else {
+            metadata.authorizationServerList.first { it ->
+                it.baseUrl == authorizationServer
+            }
+        }
+    }
+
+    private suspend fun initializeProofing(env: FlowEnvironment) {
+        performPushedAuthorizationRequest(env)
+        val proofingInfo = this.proofingInfo
+        if (proofingInfo?.authSession != null && proofingInfo.openid4VpPresentation != null) {
+            val httpClient = env.getInterface(HttpClient::class)!!
+            val presentationResponse = httpClient.get(proofingInfo.openid4VpPresentation) {}
+            if (presentationResponse.status == HttpStatusCode.OK) {
+                openid4VpRequest = String(presentationResponse.readBytes())
+            }
+        }
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        useGermanEId = selectAuthorizationServer(metadata).useGermanEId
+    }
+
+    private suspend fun performPushedAuthorizationRequest(env: FlowEnvironment) {
+        if (credentialOffer is Openid4VciCredentialOfferPreauthorizedCode) {
+            return
+        }
+        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val config = metadata.credentialConfigurations[credentialConfigurationId]!!
+        val authorizationMetadata = selectAuthorizationServer(metadata)
+        // Use authorization challenge if available, as we want to try it first before falling
+        // back to web-based authorization.
+        val (endpoint, expectedResponseStatus) =
+            if (authorizationMetadata.authorizationChallengeEndpoint != null) {
+                Pair(
+                    authorizationMetadata.authorizationChallengeEndpoint,
+                    HttpStatusCode.BadRequest
+                )
+            } else if (authorizationMetadata.pushedAuthorizationRequestEndpoint != null) {
+                Pair(
+                    authorizationMetadata.pushedAuthorizationRequestEndpoint,
+                    HttpStatusCode.Created
+                )
+            } else {
+                return
+            }
+        val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
+        val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
+
+        // NB: applicationSupport will only be non-null when running this code locally in the
+        // Android Wallet app.
+        val applicationSupport = env.getInterface(ApplicationSupport::class)
+        val parRedirectUrl: String
+        val landingUrl: String
+        if (authorizationMetadata.useGermanEId) {
+            landingUrl = ""
+            // Does not matter, but must be https
+            parRedirectUrl = "https://secure.redirect.com"
+        } else {
+            landingUrl = applicationSupport?.createLandingUrl() ?:
+                    ApplicationSupportState(clientId).createLandingUrl(env)
+            parRedirectUrl = landingUrl
+        }
+
+        val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
+        val clientAssertion = if (applicationSupport != null) {
+            // Required when applicationSupport is exposed
+            val assertionMaker = env.getInterface(DeviceAssertionMaker::class)!!
+            applicationSupport.createJwtClientAssertion(
+                clientKeyInfo.attestation,
+                assertionMaker.makeDeviceAssertion(AssertionDPoPKey(
+                    clientKeyInfo.publicKey,
+                    credentialIssuerUri
+                ))
+            )
+        } else {
+            ApplicationSupportState(clientId).createJwtClientAssertion(
+                env,
+                clientKeyInfo.publicKey,
+                credentialIssuerUri
+            )
+        }
+
+        val credentialOffer = this.credentialOffer
+        val req = FormUrlEncoder {
+            add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")
+            if (config.scope != null) {
+                add("scope", config.scope)
+            }
+            if (credentialOffer is Openid4VciCredentialOfferAuthorizationCode) {
+                val issuerState = credentialOffer.issuerState
+                if (issuerState != null) {
+                    add("issuer_state", issuerState)
+                }
+            }
+            add("response_type", "code")
+            add("code_challenge_method", "S256")
+            add("redirect_uri", parRedirectUrl)
+            add("client_assertion", clientAssertion)
+            add("code_challenge", codeChallenge)
+            add("client_id", issuanceClientId)
+        }
+        val httpClient = env.getInterface(HttpClient::class)!!
+        val response = httpClient.post(endpoint) {
+            headers {
+                append("Content-Type", "application/x-www-form-urlencoded")
+            }
+            setBody(req.toString())
+        }
+        val responseText = String(response.readBytes())
+        if (response.status != expectedResponseStatus) {
+            Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
+            throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
+        }
+        val parsedResponse = Json.parseToJsonElement(responseText) as JsonObject
+        if (response.status == HttpStatusCode.BadRequest) {
+            val errorCode = parsedResponse["error"]
+            if (errorCode !is JsonPrimitive || errorCode.content != "insufficient_authorization") {
+                Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
+                throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
+            }
+        }
+        val authSession = parsedResponse["auth_session"]
+        val requestUri = parsedResponse["request_uri"]
+        val presentation = parsedResponse["presentation"]
+        this.proofingInfo = ProofingInfo(
+            requestUri = requestUri?.jsonPrimitive?.content,
+            authSession = authSession?.jsonPrimitive?.content,
+            pkceCodeVerifier = pkceCodeVerifier,
+            landingUrl = landingUrl,
+            openid4VpPresentation = presentation?.jsonPrimitive?.content
+        )
     }
 }

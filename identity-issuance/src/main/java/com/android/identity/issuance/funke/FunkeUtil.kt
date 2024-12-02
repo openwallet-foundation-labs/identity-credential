@@ -153,7 +153,7 @@ internal object FunkeUtil {
                 )
             }
             return try {
-                FunkeAccess.parseResponse(tokenResponse)
+                FunkeAccess.parseResponse(tokenUrl, tokenResponse)
             } catch (err: IllegalArgumentException) {
                 val tokenString = String(tokenResponse.readBytes())
                 Logger.e(TAG, "Invalid token response: ${err.message}: $tokenString")
