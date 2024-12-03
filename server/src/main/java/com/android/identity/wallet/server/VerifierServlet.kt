@@ -63,6 +63,7 @@ import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encode
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -83,6 +84,7 @@ import java.net.NetworkInterface
 import java.net.URLEncoder
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
 enum class Protocol {
@@ -823,6 +825,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         Logger.i(TAG, "Sending handleOpenID4VPBegin response: $responseString")
     }
 
+    @OptIn(ExperimentalEncodingApi::class)
     private fun handleOpenID4VPRequest(
         remoteHost: String,
         req: HttpServletRequest,
@@ -870,7 +873,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         )
 
         val readerX5c = singleUseReaderKeyCertChain.certificates.map { cert ->
-            Base64.from(cert.encodedCertificate.toBase64Url())
+            Base64.from(kotlin.io.encoding.Base64.Default.encode(cert.encodedCertificate))
         }
 
         val request = lookupWellknownRequest(session.requestFormat, session.requestDocType, session.requestId)
