@@ -59,6 +59,7 @@ import com.android.identity.appsupport.ui.consent.ConsentField
 import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
 import com.android.identity.appsupport.ui.consent.MdocConsentField
 import com.android.identity.appsupport.ui.consent.VcConsentField
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
@@ -148,7 +149,7 @@ internal data class AuthorizationRequest (
     var responseUri: String,
     var state: String?,
     var clientMetadata: JsonObject,
-    var certificateChain: List<X509Certificate>?
+    var certificateChain: List<X509Cert>?
 )
 
 class NoMatchingDocumentException(message: String): Exception(message) {}
@@ -534,14 +535,13 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
         var trustPoint: TrustPoint? = null
         if (authorizationRequest.certificateChain != null) {
-            val trustResult = walletApp.readerTrustManager.verify(authorizationRequest.certificateChain!!)
+            val trustResult = walletApp.readerTrustManager.verify(
+                authorizationRequest.certificateChain!!
+            )
             if (!trustResult.isTrusted) {
                 Logger.w(TAG, "Reader root not trusted")
                 if (trustResult.error != null) {
                     Logger.w(TAG, "trustResult.error", trustResult.error!!)
-                }
-                for (cert in authorizationRequest.certificateChain!!) {
-                    Logger.i(TAG, "${X509Cert(cert.encoded).toPem()}")
                 }
             }
             if (trustResult.isTrusted && trustResult.trustPoints.size > 0) {
@@ -798,7 +798,7 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String?): Aut
     }
     Logger.i(TAG, "signedJWT client_id: ${signedJWT.jwtClaimsSet.getStringClaim("client_id")}")
     val x5c = signedJWT.header?.x509CertChain ?: throw IllegalArgumentException("Error retrieving cert chain")
-    val pubCertChain = x5c.mapNotNull { runCatching { X509CertUtils.parse(it.decode()) }.getOrNull() }
+    val pubCertChain = x5c.mapNotNull { runCatching { X509Cert(it.decode()) }.getOrNull() }
     if (pubCertChain.isEmpty()) {
         throw IllegalArgumentException("Invalid x5c")
     }
@@ -814,7 +814,7 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String?): Aut
                     JOSEObjectType(""),
                     null,
                 )
-            jwsKeySelector = JWSKeySelector<SecurityContext> { _, _ -> listOf(pubCertChain[0].publicKey) }
+            jwsKeySelector = JWSKeySelector<SecurityContext> { _, _ -> listOf(pubCertChain[0].javaX509Certificate.publicKey) }
             jwtClaimsSetVerifier = TimeChecks()
         }
         jwtProcessor.process(signedJWT, null)

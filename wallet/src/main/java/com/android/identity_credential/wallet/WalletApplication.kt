@@ -231,7 +231,10 @@ class WalletApplication : Application() {
             R.raw.austroad_test_event_reader_thales_root,
             R.raw.austroad_test_event_reader_zetes,
         )) {
-            val cert = X509Cert(resources.openRawResource(certResourceId).readBytes())
+            val pemEncodedCert = resources.openRawResource(certResourceId).readBytes().decodeToString()
+            Logger.i(TAG, "PEMEncoded\n$pemEncodedCert")
+            val cert = X509Cert.fromPem(pemEncodedCert)
+            Logger.iHex(TAG, "x509cert", cert.encodedCertificate)
             readerTrustManager.addTrustPoint(
                 TrustPoint(
                     cert,

@@ -1,12 +1,19 @@
 package com.android.identity.mdoc.vical
 
+import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.toDataItem
+import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.cose.CoseSign1
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 
 /**
@@ -19,6 +26,59 @@ data class SignedVical(
     val vical: Vical,
     val vicalProviderCertificateChain: X509CertChain,
 ) {
+    /**
+     * Generates a VICAL
+     *
+     * @param signingKey the key used to sign the VICAL. This must match the public key in the leaf
+     * certificate in `vicalProviderCertificateChain`.
+     * @param signingAlgorithm the algorithm used to make the signature
+     * @return the bytes of the CBOR encoded COSE_Sign1 with the VICAL.
+     */
+    fun generate(
+        signingKey: EcPrivateKey,
+        signingAlgorithm: Algorithm
+    ): ByteArray {
+        val certInfosBuilder = CborArray.builder()
+        for (certInfo in vical.certificateInfos) {
+            val cert = X509Cert(certInfo.certificate)
+
+            val docTypesBuilder = CborArray.builder()
+            certInfo.docType.forEach { docTypesBuilder.add(it) }
+
+            certInfosBuilder.addMap()
+                .put("certificate", certInfo.certificate)
+                .put("serialNumber", Tagged(2, Bstr(cert.serialNumber.value)))
+                .put("ski", cert.subjectKeyIdentifier!!)
+                .put("docType", docTypesBuilder.end().build())
+                .end()
+        }
+
+        val vicalBuilder = CborMap.builder()
+            .put("version", vical.version)
+            .put("vicalProvider", vical.vicalProvider)
+            .put("date", vical.date.toDataItemDateTimeString())
+        vical.nextUpdate?.let { vicalBuilder.put("nextUpdate", it.toDataItemDateTimeString())}
+        vical.vicalIssueID?.let { vicalBuilder.put("vicalIssueID", it.toDataItem()) }
+        vicalBuilder.put("certificateInfos", certInfosBuilder.end().build())
+
+        val encodedVical = Cbor.encode(vicalBuilder.end().build())
+
+        val signature = Cose.coseSign1Sign(
+            key = signingKey,
+            dataToSign = encodedVical,
+            includeDataInPayload = true,
+            signatureAlgorithm = signingAlgorithm,
+            protectedHeaders = mapOf(
+                Pair(CoseNumberLabel(Cose.COSE_LABEL_ALG), signingAlgorithm.coseAlgorithmIdentifier.toDataItem())
+            ),
+            unprotectedHeaders = mapOf(
+                Pair(CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN), vicalProviderCertificateChain.toDataItem())
+            )
+        )
+
+        return Cbor.encode(signature.toDataItem())
+    }
+
     companion object {
         private const val TAG = "SignedVical"
 

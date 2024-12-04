@@ -15,12 +15,18 @@
  */
 package com.android.identity.mdoc.util
 
+import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.OID
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Tstr
 import com.android.identity.document.DocumentRequest.DataElement
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.X500Name
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.request.DeviceRequestParser
@@ -30,6 +36,9 @@ import com.android.identity.mdoc.util.MdocUtil.generateIssuerNameSpaces
 import com.android.identity.mdoc.util.MdocUtil.stripIssuerNameSpaces
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -287,5 +296,101 @@ class MdocUtilTest {
             assertEquals(dataElementName, dataElementName1)
             assertEquals(intentToRetain, intentToRetain1)
         }
+    }
+
+    // Checks the correct extensions are present and that they are formatted correctly.
+    @Test
+    fun testGenerateIacaCertificate() {
+        val iacaKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val iacaCert = MdocUtil.generateIacaCertificate(
+            iacaKey = iacaKey,
+            subject = X500Name.fromName("CN=TEST IACA Certificate,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            issuerAltNameUrl = "http://www.example.com/issuer",
+            crlUrl = "http://www.example.com/issuer/crl"
+        )
+        assertEquals(
+            "BIT STRING (7 bit) 0000011",
+            ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
+                OID.X509_EXTENSION_KEY_USAGE.oid)!!)!!).trim()
+        )
+        assertEquals(
+            """
+            SEQUENCE (2 elem)
+              BOOLEAN true
+              INTEGER 0
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
+                OID.X509_EXTENSION_BASIC_CONSTRAINTS.oid)!!)!!).trim()
+        )
+        assertEquals(
+            """
+            SEQUENCE (1 elem)
+              [6] (1 elem)
+                (29 byte) 687474703a2f2f7777772e6578616d706c652e636f6d2f697373756572
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
+                OID.X509_EXTENSION_ISSUER_ALT_NAME.oid)!!)!!).trim()
+        )
+        assertEquals(
+            """
+            SEQUENCE (1 elem)
+              SEQUENCE (1 elem)
+                [0] (1 elem)
+                  [0] (1 elem)
+                    [6] (1 elem)
+                      (33 byte) 687474703a2f2f7777772e6578616d706c652e636f6d2f6973737565722f63726c
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
+                OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!)!!).trim()
+        )
+    }
+
+    @Test
+    fun testGenerateDsCertificate() {
+        val iacaKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val iacaCert = MdocUtil.generateIacaCertificate(
+            iacaKey = iacaKey,
+            subject = X500Name.fromName("CN=TEST IACA Certificate,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            issuerAltNameUrl = "http://www.example.com/issuer",
+            crlUrl = "http://www.example.com/issuer/crl"
+        )
+        val dsKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val dsCert = MdocUtil.generateDsCertificate(
+            iacaCert = iacaCert,
+            iacaKey = iacaKey,
+            dsKey = dsKey.publicKey,
+            subject = X500Name.fromName("CN=TEST DS Certificate,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+        )
+        assertEquals(
+            "BIT STRING (7 bit) 0000011",
+            ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
+                OID.X509_EXTENSION_KEY_USAGE.oid)!!)!!).trim()
+        )
+        assertEquals(
+            """
+            SEQUENCE (2 elem)
+              BOOLEAN true
+              INTEGER 0
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
+                OID.X509_EXTENSION_BASIC_CONSTRAINTS.oid)!!)!!).trim()
+        )
+        assertContentEquals(
+            dsCert.getExtensionValue(OID.X509_EXTENSION_ISSUER_ALT_NAME.oid)!!,
+            iacaCert.getExtensionValue(OID.X509_EXTENSION_ISSUER_ALT_NAME.oid)!!
+        )
+        assertContentEquals(
+            dsCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!,
+            iacaCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!
+        )
     }
 }

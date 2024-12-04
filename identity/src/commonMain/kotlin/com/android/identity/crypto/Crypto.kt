@@ -202,4 +202,8 @@ expect object Crypto {
     internal fun ecPrivateKeyFromPem(pemEncoding: String, publicKey: EcPublicKey): EcPrivateKey
 
     internal fun uuidGetRandom(): UUID
+
+    // TODO: replace with non-platform specific code which requires us to add support for RSA signature
+    // validation
+    internal fun validateCertChain(certChain: X509CertChain): Boolean
 }

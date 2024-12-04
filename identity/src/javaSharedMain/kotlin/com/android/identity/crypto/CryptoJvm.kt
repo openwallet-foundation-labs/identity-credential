@@ -22,10 +22,6 @@ import com.google.crypto.tink.proto.OutputPrefixType
 import com.google.crypto.tink.shaded.protobuf.ByteString
 import com.google.crypto.tink.subtle.EllipticCurves
 import kotlinx.io.bytestring.ByteStringBuilder
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1Sequence
-import org.bouncycastle.asn1.DERSequenceGenerator
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.agreement.X448Agreement
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -51,10 +47,6 @@ import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECPrivateKeySpec
 import org.bouncycastle.util.BigIntegers
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
@@ -107,7 +99,7 @@ actual object Crypto {
     /**
      * Message digest function.
      *
-     * @param algorithm must one of [Algorithm.SHA256], [Algorithm.SHA384], [Algorithm.SHA512].
+     * @param algorithm must one of [Algorithm.INSECURE_SHA1], [Algorithm.SHA256], [Algorithm.SHA384], [Algorithm.SHA512].
      * @param message the message to get a digest of.
      * @return the digest.
      * @throws IllegalArgumentException if the given algorithm is not supported.
@@ -117,6 +109,7 @@ actual object Crypto {
         message: ByteArray
     ): ByteArray {
         val algName = when (algorithm) {
+            Algorithm.INSECURE_SHA1 -> "SHA-1"
             Algorithm.SHA256 -> "SHA-256"
             Algorithm.SHA384 -> "SHA-384"
             Algorithm.SHA512 -> "SHA-512"
@@ -297,9 +290,6 @@ actual object Crypto {
     /**
      * Checks signature validity.
      *
-     * The signature must be DER encoded except for curve Ed25519 and Ed448 where it
-     * should just be the raw R and S values.
-     *
      * @param publicKey the public key the signature was made with.
      * @param message the data that was signed.
      * @param algorithm the signature algorithm to use.
@@ -336,7 +326,7 @@ actual object Crypto {
                     signature.r + signature.s
                 }
                 else -> {
-                    signature.toDer()
+                    signature.toDerEncoded()
                 }
             }
             Signature.getInstance(signatureAlgorithm).run {
@@ -463,7 +453,7 @@ actual object Crypto {
                         update(message)
                         sign()
                     }
-                EcSignature.fromDer(key.curve, derEncodedSignature)
+                EcSignature.fromDerEncoded(key.curve.bitSize, derEncodedSignature)
             } catch (e: Exception) {
                 throw IllegalStateException("Unexpected Exception", e)
             }
@@ -794,4 +784,21 @@ actual object Crypto {
     internal actual fun uuidGetRandom(): UUID {
         return UUID.fromJavaUuid(java.util.UUID.randomUUID())
     }
+
+    internal actual fun validateCertChain(certChain: X509CertChain): Boolean {
+        val javaCerts = certChain.javaX509Certificates
+        for (n in javaCerts.indices) {
+            if (n < javaCerts.size - 1) {
+                val cert = javaCerts[n]
+                val certSignedBy = javaCerts[n + 1]
+                try {
+                    cert.verify(certSignedBy.publicKey)
+                } catch (_: Throwable) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
 }
