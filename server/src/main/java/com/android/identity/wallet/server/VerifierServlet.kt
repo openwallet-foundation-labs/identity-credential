@@ -1000,11 +1000,22 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                 session.deviceResponse = vpToken.toByteArray()
             }
 
+            // According to ISO 23220-4, the mdoc profile is required to have the apv and apu params
+            // set in the JWE header. However, there is no such requirement for the sd-jwt profile.
+            val apv = encryptedJWT.header.agreementPartyVInfo
+            val apu = encryptedJWT.header.agreementPartyUInfo
+            if (session.requestFormat == "mdoc") {
+                if ((apu == null) or (apv == null)) {
+                    // Log a warning here instead of throwing an error since apu + apv are not req
+                    // for functionality.
+                    Logger.w(TAG, "Mdoc wallet did not provide both apu and apv JWE headers as expected.")
+                }
+            }
             session.sessionTranscript = createSessionTranscriptOpenID4VP(
                 clientId = clientId,
                 responseUri = session.responseUri!!,
-                authorizationRequestNonce = encryptedJWT.header.agreementPartyVInfo.toString(),
-                mdocGeneratedNonce = encryptedJWT.header.agreementPartyUInfo.toString()
+                authorizationRequestNonce = apv?.toString(),
+                mdocGeneratedNonce = apu?.toString()
             )
 
             // Save `deviceResponse` and `sessionTranscript`, for later
@@ -1178,35 +1189,27 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 private fun createSessionTranscriptOpenID4VP(
     clientId: String,
     responseUri: String,
-    authorizationRequestNonce: String,
-    mdocGeneratedNonce: String
+    authorizationRequestNonce: String?,
+    mdocGeneratedNonce: String?
 ): ByteArray {
-    val clientIdToHash = Cbor.encode(CborArray.builder()
-        .add(clientId)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
-    val clientIdHash = Crypto.digest(Algorithm.SHA256, clientIdToHash)
+    val clientIdBuilder = CborArray.builder().add(clientId)
+    mdocGeneratedNonce?.let { clientIdBuilder.add(it) }
+    val clientIdHash = Crypto.digest(Algorithm.SHA256, Cbor.encode(clientIdBuilder.end().build()))
 
-    val responseUriToHash = Cbor.encode(CborArray.builder()
-        .add(responseUri)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
-    val responseUriHash = Crypto.digest(Algorithm.SHA256, responseUriToHash)
+    val responseUriBuilder = CborArray.builder().add(responseUri)
+    mdocGeneratedNonce?.let { responseUriBuilder.add(it) }
+    val responseUriHash = Crypto.digest(Algorithm.SHA256, Cbor.encode(responseUriBuilder.end().build()))
 
-    val oid4vpHandover = CborArray.builder()
+    val oid4vpHandoverBuilder = CborArray.builder()
         .add(clientIdHash)
         .add(responseUriHash)
-        .add(authorizationRequestNonce)
-        .end()
-        .build()
+    authorizationRequestNonce?.let { oid4vpHandoverBuilder.add(it) }
 
     return Cbor.encode(
         CborArray.builder()
             .add(Simple.NULL)
             .add(Simple.NULL)
-            .add(oid4vpHandover)
+            .add(oid4vpHandoverBuilder.end().build())
             .end()
             .build()
     )
