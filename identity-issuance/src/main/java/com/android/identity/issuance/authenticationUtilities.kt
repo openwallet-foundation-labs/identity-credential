@@ -44,7 +44,7 @@ private fun X509CertChain.validate() {
         val cert = certs[n]
         val nextCert = certs[n + 1]
         try {
-            cert.verify(nextCert)
+            cert.verify(nextCert.ecPublicKey)
         } catch (e: Throwable) {
             throw IllegalArgumentException("Attestation error: error validating certificate chain", e)
         }

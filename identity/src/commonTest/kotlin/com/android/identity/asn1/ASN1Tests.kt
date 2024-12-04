@@ -1,0 +1,371 @@
+package com.android.identity.asn1
+
+import com.android.identity.crypto.X509Cert
+import com.android.identity.util.fromHex
+import com.android.identity.util.toHex
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.io.bytestring.ByteStringBuilder
+import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.time.Duration.Companion.seconds
+
+private fun ByteArray.encodeTagLength(tagNum: Int): ByteArray {
+    val bsb = ByteStringBuilder()
+    ASN1.appendUniversalTagEncodingLength(bsb, tagNum, ASN1Encoding.PRIMITIVE, this.size)
+    bsb.append(this)
+    return bsb.toByteString().toByteArray()
+}
+
+class ASN1Tests {
+
+    @Test
+    fun testBoolean() {
+        assertContentEquals("010100".fromHex(), ASN1.encode(ASN1Boolean(false)))
+        assertContentEquals("0101ff".fromHex(), ASN1.encode(ASN1Boolean(true)))
+
+        assertEquals(ASN1Boolean(false), ASN1.decode("010100".fromHex()))
+        assertEquals(ASN1Boolean(true), ASN1.decode("0101ff".fromHex()))
+        assertFailsWith(IllegalArgumentException::class) {
+            assertEquals(ASN1Boolean(false), ASN1.decode("010101".fromHex()))
+        }
+    }
+
+    @Test
+    fun testInteger() {
+        // See also ASN1TestsJvm.kt which tests that Long.derEncodeToByteArray() and
+        // ByteArray.derDecodeAsLong() works as expected.
+        //
+        assertEquals("020100", ASN1.encode(ASN1Integer(0)).toHex())
+        assertEquals("020101", ASN1.encode(ASN1Integer(1)).toHex())
+        assertEquals("02020080", ASN1.encode(ASN1Integer(128L)).toHex())
+        assertEquals("0201ff", ASN1.encode(ASN1Integer(-1L)).toHex())
+        assertEquals("0202ff01", ASN1.encode(ASN1Integer(-255L)).toHex())
+        assertEquals("0202ff00", ASN1.encode(ASN1Integer(-256L)).toHex())
+
+        assertEquals(ASN1Integer(0L), ASN1.decode("020100".fromHex()))
+        assertEquals(ASN1Integer(1L), ASN1.decode("020101".fromHex()))
+        assertEquals(ASN1Integer(128L), ASN1.decode("02020080".fromHex()))
+        assertEquals(ASN1Integer(-1L), ASN1.decode("0201ff".fromHex()))
+        assertEquals(ASN1Integer(-255L), ASN1.decode("0202ff01".fromHex()))
+        assertEquals(ASN1Integer(-256L), ASN1.decode("0202ff00".fromHex()))
+    }
+
+    @Test
+    fun testSequence() {
+        assertEquals(
+            "3009020100020101020102",
+            ASN1.encode(
+                ASN1Sequence(
+                    listOf(
+                        ASN1Integer(0),
+                        ASN1Integer(1),
+                        ASN1Integer(2),
+                    )
+                )
+            ).toHex()
+        )
+
+        assertEquals(
+            ASN1Sequence(
+                listOf(
+                    ASN1Integer(0),
+                    ASN1Integer(1),
+                    ASN1Integer(2),
+                )
+            ),
+            ASN1.decode("3009020100020101020102".fromHex())
+        )
+    }
+
+    @Test
+    fun testSet() {
+        assertEquals(
+            "3109020100020101020102",
+            ASN1.encode(
+                ASN1Set(
+                    listOf(
+                        ASN1Integer(0),
+                        ASN1Integer(1),
+                        ASN1Integer(2),
+                    )
+                )
+            ).toHex()
+        )
+
+        assertEquals(
+            ASN1Set(
+                listOf(
+                    ASN1Integer(0),
+                    ASN1Integer(1),
+                    ASN1Integer(2),
+                )
+            ),
+            ASN1.decode("3109020100020101020102".fromHex())
+        )
+    }
+
+    @Test
+    fun testObjectIdentifier() {
+        assertEquals(
+            "06082a8648ce3d040303",
+            ASN1.encode(ASN1ObjectIdentifier("1.2.840.10045.4.3.3")).toHex()
+        )
+        assertEquals(
+            "0603551d0e",
+            ASN1.encode(ASN1ObjectIdentifier("2.5.29.14")).toHex()
+        )
+        assertEquals(
+            "06052b81040022",
+            ASN1.encode(ASN1ObjectIdentifier("1.3.132.0.34")).toHex()
+        )
+
+        assertEquals(
+            ASN1ObjectIdentifier("1.2.840.10045.4.3.3"),
+            ASN1.decode("06082a8648ce3d040303".fromHex())
+        )
+        assertEquals(
+            ASN1ObjectIdentifier("2.5.29.14"),
+            ASN1.decode("0603551d0e".fromHex())
+        )
+        assertEquals(
+            ASN1ObjectIdentifier("1.3.132.0.34"),
+            ASN1.decode("06052b81040022".fromHex())
+        )
+    }
+
+    @Test
+    fun testTime() {
+        val pairs = mapOf<ASN1Object, ByteArray>(
+            ASN1Time(
+                LocalDateTime(1950, 2, 1, 0, 0, 0).toInstant(TimeZone.UTC),
+                ASN1TimeTag.UTC_TIME_TAG.tagNumber
+            ) to "500201000000Z".encodeToByteArray().encodeTagLength(0x17),
+            ASN1Time(
+                LocalDateTime(1999, 12, 31, 10, 20, 30).toInstant(TimeZone.UTC),
+                ASN1TimeTag.UTC_TIME_TAG.tagNumber
+            ) to "991231102030Z".encodeToByteArray().encodeTagLength(0x17),
+            ASN1Time(
+                LocalDateTime(2000, 1, 1, 0, 0, 0).toInstant(TimeZone.UTC),
+                ASN1TimeTag.UTC_TIME_TAG.tagNumber
+            ) to "000101000000Z".encodeToByteArray().encodeTagLength(0x17),
+            ASN1Time(
+                LocalDateTime(2024, 12, 6, 9, 57, 10).toInstant(TimeZone.UTC),
+                ASN1TimeTag.UTC_TIME_TAG.tagNumber
+            ) to "241206095710Z".encodeToByteArray().encodeTagLength(0x17),
+
+            ASN1Time(
+                LocalDateTime(2024, 1, 1, 0, 0, 0).toInstant(TimeZone.UTC),
+                ASN1TimeTag.GENERALIZED_TIME_TAG.tagNumber
+            ) to "20240101000000Z".encodeToByteArray().encodeTagLength(0x18),
+            ASN1Time(
+                LocalDateTime(2024, 1, 1, 0, 0, 0,
+                    0.5.seconds.inWholeNanoseconds.toInt()
+                ).toInstant(TimeZone.UTC),
+                ASN1TimeTag.GENERALIZED_TIME_TAG.tagNumber
+            ) to "20240101000000.5Z".encodeToByteArray().encodeTagLength(0x18),
+            ASN1Time(
+                LocalDateTime(2024, 1, 1, 0, 0, 0,
+                    0.54321.seconds.inWholeNanoseconds.toInt()
+                ).toInstant(TimeZone.UTC),
+                ASN1TimeTag.GENERALIZED_TIME_TAG.tagNumber
+            ) to "20240101000000.54321Z".encodeToByteArray().encodeTagLength(0x18),
+        )
+        for ((obj, encoded) in pairs) {
+            assertEquals(obj, ASN1.decode(encoded), "error decoding ${encoded.toHex()}")
+            assertEquals(encoded.toHex(), ASN1.encode(obj).toHex(), "error encoding $obj (should be ${encoded.toHex()})")
+        }
+    }
+
+    @Test
+    fun testStrings() {
+        val pairs = mutableMapOf<ASN1Object, ByteArray>(
+            ASN1String("foobar") to "0c06".fromHex() + "foobar".encodeToByteArray()
+        )
+        // Tests for all string tags
+        for (tag in ASN1StringTag.entries) {
+            pairs.put(
+                ASN1String(value = "foo", tagNumber = tag.tagNumber),
+                byteArrayOf(tag.tagNumber.toByte(), 3) + "foo".encodeToByteArray()
+            )
+        }
+        for ((obj, encoded) in pairs) {
+            assertEquals(obj, ASN1.decode(encoded))
+            assertEquals(encoded.toHex(), ASN1.encode(obj).toHex())
+        }
+    }
+
+    @Test
+    fun testBitString() {
+        val pairs = mapOf<ASN1Object, Pair<ByteArray, String>>(
+            ASN1BitString(numUnusedBits = 0, value = "4401".fromHex()) to
+                    Pair("0303004401".fromHex(), "0100010000000001"),
+
+            ASN1BitString(numUnusedBits = 2, value = "44f8".fromHex()) to
+                    Pair("03030244f8".fromHex(), "01000100111110")
+        )
+        for ((obj, encodedAndTextual) in pairs) {
+            assertEquals(obj, ASN1.decode(encodedAndTextual.first))
+            assertEquals(encodedAndTextual.first.toHex(), ASN1.encode(obj).toHex())
+            assertEquals(encodedAndTextual.second, (obj as ASN1BitString).renderBitString())
+        }
+    }
+
+    @Test
+    fun testOctetString() {
+        val pairs = mapOf<ASN1Object, ByteArray>(
+            ASN1OctetString(value = "fffe".fromHex()) to "0402fffe".fromHex(),
+            ASN1OctetString(value = "".fromHex()) to "0400".fromHex(),
+        )
+        for ((obj, encoded) in pairs) {
+            assertEquals(obj, ASN1.decode(encoded))
+            assertEquals(encoded.toHex(), ASN1.encode(obj).toHex())
+        }
+    }
+
+    @Test
+    fun testUnsupportedTag() {
+        // Checks that an unsupported tag appears as ASN1RawObject
+        //
+        val obj = ASN1Sequence(
+            listOf(
+                ASN1Integer(0),
+                ASN1Integer(1),
+                ASN1RawObject(ASN1TagClass.UNIVERSAL, ASN1Encoding.PRIMITIVE, 0x09, byteArrayOf(16, 17)),
+                ASN1Integer(2),
+            )
+        )
+        val encoded = "300d02010002010109021011020102".fromHex()
+
+        assertEquals(obj, ASN1.decode(encoded))
+        assertEquals(encoded.toHex(), ASN1.encode(obj).toHex())
+    }
+
+
+    // This is Maryland's IACA certificate (IACA_Root_2024.cer) downloaded from
+    //
+    //  https://mva.maryland.gov/Pages/MDMobileID_Googlewallet.aspx
+    //
+    private val exampleX509Cert = X509Cert.fromPem(
+        """
+-----BEGIN CERTIFICATE-----
+MIICxjCCAmygAwIBAgITJkV7El8K11IXqY7mz96n/EhiITAKBggqhkjOPQQDAjBq
+MQ4wDAYDVQQIEwVVUy1NRDELMAkGA1UEBhMCVVMxFDASBgNVBAcTC0dsZW4gQnVy
+bmllMRUwEwYDVQQKEwxNYXJ5bGFuZCBNVkExHjAcBgNVBAMTFUZhc3QgRW50ZXJw
+cmlzZXMgUm9vdDAeFw0yNDAxMDUwNTAwMDBaFw0yOTAxMDQwNTAwMDBaMGoxDjAM
+BgNVBAgTBVVTLU1EMQswCQYDVQQGEwJVUzEUMBIGA1UEBxMLR2xlbiBCdXJuaWUx
+FTATBgNVBAoTDE1hcnlsYW5kIE1WQTEeMBwGA1UEAxMVRmFzdCBFbnRlcnByaXNl
+cyBSb290MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaWcKIqlAWboV93RAa5ad
+0LJBn8W0/yYwtOyUlxuTxoo4SPkorKmOz3EhThC+U4WRrt13aSnCsJtK+waBFghX
+u6OB8DCB7TAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNV
+HQ4EFgQUTprRzaFBJ1SLjJsO01tlLCQ4YF0wPAYDVR0SBDUwM4EWbXZhY3NAbWRv
+dC5zdGF0ZS5tZC51c4YZaHR0cHM6Ly9tdmEubWFyeWxhbmQuZ292LzBYBgNVHR8E
+UTBPME2gS6BJhkdodHRwczovL215bXZhLm1hcnlsYW5kLmdvdjo1NDQzL01EUC9X
+ZWJTZXJ2aWNlcy9DUkwvbURML3Jldm9jYXRpb25zLmNybDAQBgkrBgEEAYPFIQEE
+A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
+8lJuYL/nDxMCIHHkAyIJcQlQmKDUVkBr3heUd5N9Y8GWdbWnbHuwe7Om
+-----END CERTIFICATE-----
+        """.trimIndent())
+
+    @Test
+    fun testCertificate() {
+        // Check that we encode to exactly the same bits as we decoded...
+        val certificate = ASN1.decode(exampleX509Cert.encodedCertificate)
+        val reencoded = ASN1.encode(certificate!!)
+        assertEquals(exampleX509Cert.encodedCertificate.toHex(), reencoded.toHex())
+    }
+
+    @Test
+    fun testPrettyPrint() {
+        val certificate = ASN1.decode(exampleX509Cert.encodedCertificate)
+        assertEquals("""
+            SEQUENCE (3 elem)
+              SEQUENCE (8 elem)
+                [0] (1 elem)
+                  INTEGER 2
+                INTEGER 26457b125f0ad75217a98ee6cfdea7fc486221
+                SEQUENCE (1 elem)
+                  OBJECT IDENTIFIER 1.2.840.10045.4.3.2
+                SEQUENCE (5 elem)
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.8
+                      PrintableString US-MD
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.6
+                      PrintableString US
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.7
+                      PrintableString Glen Burnie
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.10
+                      PrintableString Maryland MVA
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.3
+                      PrintableString Fast Enterprises Root
+                SEQUENCE (2 elem)
+                  UTCTime 2024-01-05T05:00:00Z
+                  UTCTime 2029-01-04T05:00:00Z
+                SEQUENCE (5 elem)
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.8
+                      PrintableString US-MD
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.6
+                      PrintableString US
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.7
+                      PrintableString Glen Burnie
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.10
+                      PrintableString Maryland MVA
+                  SET (1 elem)
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.4.3
+                      PrintableString Fast Enterprises Root
+                SEQUENCE (2 elem)
+                  SEQUENCE (2 elem)
+                    OBJECT IDENTIFIER 1.2.840.10045.2.1
+                    OBJECT IDENTIFIER 1.2.840.10045.3.1.7
+                  BIT STRING (520 bit) 0000010001101001011001110000101000100010101010010100000001011001101110100001010111110111011101000100000001101011100101101001110111010000101100100100000110011111110001011011010011111111001001100011000010110100111011001001010010010111000110111001001111000110100010100011100001001000111110010010100010101100101010011000111011001111011100010010000101001110000100001011111001010011100001011001000110101110110111010111011101101001001010011100001010110000100110110100101011111011000001101000000100010110000010000101011110111011
+                [3] (1 elem)
+                  SEQUENCE (6 elem)
+                    SEQUENCE (3 elem)
+                      OBJECT IDENTIFIER 2.5.29.15
+                      BOOLEAN true
+                      OCTET STRING (4 byte) 03020106
+                    SEQUENCE (3 elem)
+                      OBJECT IDENTIFIER 2.5.29.19
+                      BOOLEAN true
+                      OCTET STRING (8 byte) 30060101ff020100
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.29.14
+                      OCTET STRING (22 byte) 04144e9ad1cda14127548b8c9b0ed35b652c2438605d
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.29.18
+                      OCTET STRING (53 byte) 303381166d76616373406d646f742e73746174652e6d642e7573861968747470733a2f2f6d76612e6d6172796c616e642e676f762f
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 2.5.29.31
+                      OCTET STRING (81 byte) 304f304da04ba049864768747470733a2f2f6d796d76612e6d6172796c616e642e676f763a353434332f4d44502f57656253657276696365732f43524c2f6d444c2f7265766f636174696f6e732e63726c
+                    SEQUENCE (2 elem)
+                      OBJECT IDENTIFIER 1.3.6.1.4.1.58017.1
+                      OCTET STRING (3 byte) 4d4450
+              SEQUENCE (1 elem)
+                OBJECT IDENTIFIER 1.2.840.10045.4.3.2
+              BIT STRING (568 bit) 0011000001000101000000100010000100000000100111010111110111111110000100111000000100111001011101010000111110111001000110110101101011100110010010101101001001010011010110111011111101011001000000100010000011010011011010011011110010001011111100100101001001101110011000001011111111100111000011110001001100000010001000000111000111100100000000110010001000001001011100010000100101010000100110001010000011010100010101100100000001101011110111100001011110010100011101111001001101111101011000111100000110010110011101011011010110100111011011000111101110110000011110111011001110100110
+            """.trimIndent(),
+            ASN1.print(certificate!!).trim()
+        )
+    }
+}

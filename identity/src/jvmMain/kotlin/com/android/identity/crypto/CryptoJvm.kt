@@ -2,6 +2,7 @@ package com.android.identity.crypto
 
 import com.android.identity.util.UUID
 import com.android.identity.util.fromJavaUuid
+import com.android.identity.util.toHex
 import com.google.crypto.tink.HybridDecrypt
 import com.google.crypto.tink.HybridEncrypt
 import com.google.crypto.tink.InsecureSecretKeyAccess
@@ -22,10 +23,6 @@ import com.google.crypto.tink.proto.OutputPrefixType
 import com.google.crypto.tink.shaded.protobuf.ByteString
 import com.google.crypto.tink.subtle.EllipticCurves
 import kotlinx.io.bytestring.ByteStringBuilder
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1Sequence
-import org.bouncycastle.asn1.DERSequenceGenerator
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.agreement.X448Agreement
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -51,10 +48,6 @@ import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECPrivateKeySpec
 import org.bouncycastle.util.BigIntegers
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
@@ -297,9 +290,6 @@ actual object Crypto {
     /**
      * Checks signature validity.
      *
-     * The signature must be DER encoded except for curve Ed25519 and Ed448 where it
-     * should just be the raw R and S values.
-     *
      * @param publicKey the public key the signature was made with.
      * @param message the data that was signed.
      * @param algorithm the signature algorithm to use.
@@ -336,7 +326,7 @@ actual object Crypto {
                     signature.r + signature.s
                 }
                 else -> {
-                    signature.toDer()
+                    signature.toDerEncoded()
                 }
             }
             Signature.getInstance(signatureAlgorithm).run {
@@ -463,7 +453,7 @@ actual object Crypto {
                         update(message)
                         sign()
                     }
-                EcSignature.fromDer(key.curve, derEncodedSignature)
+                EcSignature.fromDerEncoded(key.curve.bitSize, derEncodedSignature)
             } catch (e: Exception) {
                 throw IllegalStateException("Unexpected Exception", e)
             }
