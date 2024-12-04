@@ -1,16 +1,24 @@
 package com.android.identity.crypto
 
+import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.OID
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
 
 class X509CertTests {
 
     // This is a key attestation recorded from an Android device and traces up to a Google CA.
     // It contains both EC and RSA keys of various sizes making it an useful test vector for
-    // X509Certificate implementations.
+    // X509Cert implementations.
     //
     private val androidKeyCertChain = X509CertChain(
         listOf(
@@ -105,6 +113,120 @@ class X509CertTests {
                 }
             }
         }
+    }
+
+    // Checks that X509Cert.verify() works with certificates created by X509Cert.Builder
+    private fun testCertSignedWithCurve(curve: EcCurve) {
+        if (!Crypto.supportedCurves.contains(curve)) {
+            println("Skipping testCertSignedWithCurve($curve) since platform does not support the curve.")
+            return
+        }
+
+        val key = Crypto.createEcPrivateKey(curve)
+        val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+        val serialNumber = ASN1Integer(1)
+        val subject = X500Name.fromName("CN=Foobar1")
+        val issuer = X500Name.fromName("CN=Foobar2")
+        val cert = X509Cert.Builder(
+            publicKey = key.publicKey,
+            signingKey = key,
+            signatureAlgorithm = key.curve.defaultSigningAlgorithm,
+            serialNumber = serialNumber,
+            subject = subject,
+            issuer = issuer,
+            validFrom = now - 1.hours,
+            validUntil = now + 1.hours
+        )
+            .includeSubjectKeyIdentifier()
+            .includeAuthorityKeyIdentifierAsSubjectKeyIdentifier()
+            .build()
+
+        assertTrue(cert.verify(key.publicKey))
+
+        // Also check that the fields are as expected.
+        assertEquals(curve.defaultSigningAlgorithm, cert.signatureAlgorithm)
+        assertEquals(2, cert.version)
+        assertEquals(cert.serialNumber, serialNumber)
+        assertEquals(cert.issuer, issuer)
+        assertEquals(cert.validityNotBefore, now - 1.hours)
+        assertEquals(cert.validityNotAfter, now + 1.hours)
+        assertEquals(cert.subject, subject)
+        assertEquals(cert.ecPublicKey, key.publicKey)
+        assertEquals(
+            setOf(
+                OID.X509_EXTENSION_SUBJECT_KEY_IDENTIFIER.oid,
+                OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid,
+            ),
+            cert.nonCriticalExtensionOIDs
+        )
+        assertTrue(cert.criticalExtensionOIDs.isEmpty())
+
+        val subjectPublicKey = when (key.publicKey) {
+            is EcPublicKeyDoubleCoordinate -> {
+                (key.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
+            }
+            is EcPublicKeyOkp -> {
+                (key.publicKey as EcPublicKeyOkp).x
+            }
+        }
+
+        // Check the subjectKeyIdentifier and authorityKeyIdentifier extensions are correct and
+        // also correctly encoded.
+        val expectedSubjectKeyIdentifier = Crypto.digest(Algorithm.INSECURE_SHA1, subjectPublicKey)
+        assertEquals(expectedSubjectKeyIdentifier.toHex(), cert.subjectKeyIdentifier!!.toHex())
+        assertEquals(expectedSubjectKeyIdentifier.toHex(), cert.authorityKeyIdentifier!!.toHex())
+        assertEquals(
+            "OCTET STRING (20 byte) ${expectedSubjectKeyIdentifier.toHex()}",
+            ASN1.print(ASN1.decode(cert.getExtensionValue(OID.X509_EXTENSION_SUBJECT_KEY_IDENTIFIER.oid)!!)!!).trim()
+        )
+        assertEquals(
+            """
+                SEQUENCE (1 elem)
+                  [0] (1 elem)
+                    (20 byte) ${expectedSubjectKeyIdentifier.toHex()}
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(cert.getExtensionValue(OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid)!!)!!).trim()
+        )
+    }
+
+    @Test fun testCertSignedWithCurve_P256() = testCertSignedWithCurve(EcCurve.P256)
+    @Test fun testCertSignedWithCurve_P384() = testCertSignedWithCurve(EcCurve.P384)
+    @Test fun testCertSignedWithCurve_P521() = testCertSignedWithCurve(EcCurve.P521)
+    @Test fun testCertSignedWithCurve_BRAINPOOLP256R1() = testCertSignedWithCurve(EcCurve.BRAINPOOLP256R1)
+    @Test fun testCertSignedWithCurve_BRAINPOOLP320R1() = testCertSignedWithCurve(EcCurve.BRAINPOOLP320R1)
+    @Test fun testCertSignedWithCurve_BRAINPOOLP384R1() = testCertSignedWithCurve(EcCurve.BRAINPOOLP384R1)
+    @Test fun testCertSignedWithCurve_BRAINPOOLP512R1() = testCertSignedWithCurve(EcCurve.BRAINPOOLP512R1)
+    @Test fun testCertSignedWithCurve_ED25519() = testCertSignedWithCurve(EcCurve.ED25519)
+    @Test fun testCertSignedWithCurve_ED448() = testCertSignedWithCurve(EcCurve.ED448)
+
+    @Test
+    fun testKeyUsageEncoding() {
+        assertEquals(
+            "BIT STRING (9 bit) 000000001",
+            ASN1.print(X509KeyUsage.encodeSet(setOf(
+                X509KeyUsage.DECIPHER_ONLY
+            ))).trim()
+        )
+        assertEquals(
+            X509KeyUsage.encodeSet(setOf(
+                X509KeyUsage.DECIPHER_ONLY
+            )),
+            ASN1.decode("0303070080".fromHex())
+        )
+
+        // Check that we handle trailing zero bits correctly
+        assertEquals(
+            "BIT STRING (7 bit) 0000011",
+            ASN1.print(X509KeyUsage.encodeSet(setOf(
+                X509KeyUsage.KEY_CERT_SIGN, X509KeyUsage.CRL_SIGN
+            ))).trim()
+        )
+        assertEquals(
+            X509KeyUsage.encodeSet(setOf(
+                X509KeyUsage.KEY_CERT_SIGN, X509KeyUsage.CRL_SIGN
+            )),
+            ASN1.decode("03020106".fromHex())
+        )
     }
 
 }

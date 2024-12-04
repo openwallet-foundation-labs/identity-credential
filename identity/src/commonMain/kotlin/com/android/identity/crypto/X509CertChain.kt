@@ -32,6 +32,10 @@ data class X509CertChain(
         }
     }
 
+    // TODO: probably include a method to verify a whole chain which includes using
+    //   platform-specific crypto since parts of the chain might include e.g. RSA
+    //   certificates.
+
     companion object {
         /**
          * Decodes a certificate chain from CBOR.

@@ -34,6 +34,7 @@ actual object Crypto {
         message: ByteArray
     ): ByteArray {
         return when (algorithm) {
+            Algorithm.INSECURE_SHA1 -> SwiftBridge.sha1(message.toNSData()).toByteArray()
             Algorithm.SHA256 -> SwiftBridge.sha256(message.toNSData()).toByteArray()
             Algorithm.SHA384 -> SwiftBridge.sha384(message.toNSData()).toByteArray()
             Algorithm.SHA512 -> SwiftBridge.sha512(message.toNSData()).toByteArray()
