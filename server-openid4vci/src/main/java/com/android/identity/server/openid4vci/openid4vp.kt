@@ -1,19 +1,19 @@
 package com.android.identity.server.openid4vci
 
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.X509CertificateCreateOption
-import com.android.identity.crypto.X509CertificateExtension
-import com.android.identity.crypto.create
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.documenttype.DocumentWellKnownRequest
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Clock
@@ -132,24 +132,6 @@ private fun createSingleUseReaderKey(): Pair<EcPrivateKey, X509CertChain> {
     val validFrom = now.plus(DateTimePeriod(minutes = -10), TimeZone.currentSystemDefault())
     val validUntil = now.plus(DateTimePeriod(minutes = 10), TimeZone.currentSystemDefault())
     val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
-
-    val extensions = mutableListOf<X509CertificateExtension>()
-    extensions.add(
-        X509CertificateExtension(
-            Extension.keyUsage.toString(),
-            true,
-            KeyUsage(KeyUsage.digitalSignature).encoded
-        )
-    )
-    extensions.add(
-        X509CertificateExtension(
-            Extension.extendedKeyUsage.toString(),
-            true,
-            ExtendedKeyUsage(
-                KeyPurposeId.getInstance(ASN1ObjectIdentifier("1.0.18013.5.1.2"))
-            ).encoded
-        )
-    )
     val readerKeySubject = "CN=OWF IC Online Verifier Single-Use Reader Key"
 
     // TODO: for now, instead of using the per-site Reader Root generated at first run, use the
@@ -176,24 +158,14 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 -----END PRIVATE KEY-----
         """.trimIndent(),
         owfIcReaderCert.ecPublicKey)
-    val owfIcReaderRootSignatureAlgorithm = Algorithm.ES384
-    val owfIcReaderRootIssuer = owfIcReaderCert.javaX509Certificate.issuerX500Principal.name
-
-    val readerKeyCertificate = X509Cert.create(
-        readerKey.publicKey,
-        owfIcReaderRoot,
-        owfIcReaderCert,
-        owfIcReaderRootSignatureAlgorithm,
-        "1",
-        readerKeySubject,
-        owfIcReaderRootIssuer,
-        validFrom,
-        validUntil,
-        setOf(
-            X509CertificateCreateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-            X509CertificateCreateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE
-        ),
-        extensions
+    val readerKeyCertificate = MdocUtil.generateReaderCertificate(
+        readerRootCert = owfIcReaderCert,
+        readerRootKey = owfIcReaderRoot,
+        readerKey = readerKey.publicKey,
+        subject = X500Name.fromName(readerKeySubject),
+        serial = ASN1Integer(1L),
+        validFrom = validFrom,
+        validUntil = validUntil
     )
     return Pair(
         readerKey,

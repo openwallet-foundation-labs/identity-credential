@@ -15,6 +15,14 @@
  */
 package com.android.identity.mdoc.util
 
+import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Encoding
+import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.ASN1ObjectIdentifier
+import com.android.identity.asn1.ASN1Sequence
+import com.android.identity.asn1.ASN1TagClass
+import com.android.identity.asn1.ASN1TaggedObject
+import com.android.identity.asn1.OID
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
@@ -26,9 +34,15 @@ import com.android.identity.document.DocumentRequest.DataElement
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X500Name
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.util.Logger
+import kotlinx.datetime.Instant
 import kotlin.random.Random
 
 /**
@@ -394,4 +408,212 @@ object MdocUtil {
         }
         return Cbor.encode(builder.end().build())
     }
+
+    /**
+     * Generates a self-signed IACA certificate according to ISO/IEC 18013-5:2021 Annex B.1.2.
+     *
+     * @param iacaKey the private key.
+     * @param subject the value to use for subject and issuer, e.g. "CN=Test IACA,C=ZZ".
+     * @param serial the serial number to use for the certificate.
+     * @param validFrom the point in time the certificate should be valid from.
+     * @param validUntil the point in time the certificate should be valid until.
+     * @param issuerAltNameUrl the issuer alternative name (see RFC 5280 section 4.2.1.7),
+     * e.g. "http://issuer.example.com/informative/web/page".
+     * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
+     * @return a [X509Cert] with all the required extensions.
+     */
+    fun generateIacaCertificate(
+        iacaKey: EcPrivateKey,
+        subject: X500Name,
+        serial: ASN1Integer,
+        validFrom: Instant,
+        validUntil: Instant,
+        issuerAltNameUrl: String,
+        crlUrl: String
+    ): X509Cert {
+        return X509Cert.Builder(
+            publicKey = iacaKey.publicKey,
+            signingKey = iacaKey,
+            signatureAlgorithm = iacaKey.curve.defaultSigningAlgorithm,
+            serialNumber = serial,
+            subject = subject,
+            issuer = subject,
+            validFrom = validFrom,
+            validUntil = validUntil
+        )
+            .includeSubjectKeyIdentifier()
+            // From 18013-5 table B.1: critical: Key certificate signature + CRL signature bits set
+            .setKeyUsage(setOf(X509KeyUsage.CRL_SIGN, X509KeyUsage.KEY_CERT_SIGN))
+            // From 18013-5 table B.1: critical, CA=true, pathLenConstraint=0
+            .setBasicConstraints(true, 0)
+            // From 18013-5 table B.1: non-critical, Email or URL
+            .addExtension(
+                OID.X509_EXTENSION_ISSUER_ALT_NAME.oid,
+                false,
+                ASN1.encode(
+                    ASN1Sequence(listOf(
+                        ASN1TaggedObject(
+                            ASN1TagClass.CONTEXT_SPECIFIC,
+                            ASN1Encoding.PRIMITIVE,
+                            6,
+                            issuerAltNameUrl.encodeToByteArray()
+                        )
+                    ))
+                )
+            )
+            // From 18013-5 table B.1: non-critical, The ‘reasons’ and ‘cRL Issuer’
+            // fields shall not be used.
+            .addExtension(
+                OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid,
+                false,
+                ASN1.encode(
+                    ASN1Sequence(listOf(
+                        ASN1Sequence(listOf(
+                            ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.CONSTRUCTED, 0, ASN1.encode(
+                                ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.CONSTRUCTED, 0, ASN1.encode(
+                                    ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.PRIMITIVE, 6,
+                                        crlUrl.encodeToByteArray()
+                                    )
+                                ))
+                            ))
+                        ))
+                    ))
+                )
+            )
+            .build()
+    }
+
+    /**
+     * Generates a Document Signing certificate according to ISO/IEC 18013-5:2021 Annex B.1.4.
+     *
+     * @param iacaCert the IACA certificate.
+     * @param iacaKey the private key for the IACA certificate.
+     * @param dsKey the public part of the DS key.
+     * @param subject the value to use for subject, e.g. "CN=Test DS,C=ZZ".
+     * @param serial the serial number to use for the certificate.
+     * @param validFrom the point in time the certificate should be valid from.
+     * @param validUntil the point in time the certificate should be valid until.
+     * @return a [X509Cert] with all the required extensions.
+     */
+    fun generateDsCertificate(
+        iacaCert: X509Cert,
+        iacaKey: EcPrivateKey,
+        dsKey: EcPublicKey,
+        subject: X500Name,
+        serial: ASN1Integer,
+        validFrom: Instant,
+        validUntil: Instant,
+    ): X509Cert {
+        return X509Cert.Builder(
+            publicKey = dsKey,
+            signingKey = iacaKey,
+            signatureAlgorithm = iacaKey.curve.defaultSigningAlgorithm,
+            serialNumber = serial,
+            subject = subject,
+            issuer = iacaCert.subject,
+            validFrom = validFrom,
+            validUntil = validUntil
+        )
+            .includeSubjectKeyIdentifier()
+            .setAuthorityKeyIdentifierToCertificate(iacaCert)
+            // From 18013-5 table B.3: critical: Key certificate signature + CRL signature bits set
+            .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+            // From 18013-5 table B.3: non-critical, Extended Key usage
+            .addExtension(
+                OID.X509_EXTENSION_EXTENDED_KEY_USAGE.oid,
+                true,
+                ASN1.encode(ASN1Sequence(listOf(
+                    ASN1ObjectIdentifier(OID.ISO_18013_5_MDL_DS.oid)
+                )))
+            )
+            // From 18013-5 table B.3: non-critical, Email or URL
+            .addExtension(
+                OID.X509_EXTENSION_ISSUER_ALT_NAME.oid,
+                false,
+                iacaCert.getExtensionValue(OID.X509_EXTENSION_ISSUER_ALT_NAME.oid)!!
+            )
+            // From 18013-5 table B.3: non-critical, The ‘reasons’ and ‘cRL Issuer’
+            // fields shall not be used.
+            .addExtension(
+                OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid,
+                false,
+                iacaCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!
+            )
+            .build()
+    }
+
+    /**
+     * Generates a self-signed reader root certificate.
+     *
+     * Note that there are no requirements in ISO/IEC 18013-5:2021 for reader certificates.
+     *
+     * @param readerRootKey the private key.
+     * @param subject the value to use for subject and issuer, e.g. "CN=Test Reader Root,C=ZZ".
+     * @param serial the serial number to use for the certificate.
+     * @param validFrom the point in time the certificate should be valid from.
+     * @param validUntil the point in time the certificate should be valid until.
+     * @return a [X509Cert].
+     */
+    fun generateReaderRootCertificate(
+        readerRootKey: EcPrivateKey,
+        subject: X500Name,
+        serial: ASN1Integer,
+        validFrom: Instant,
+        validUntil: Instant,
+    ): X509Cert {
+        return X509Cert.Builder(
+            publicKey = readerRootKey.publicKey,
+            signingKey = readerRootKey,
+            signatureAlgorithm = readerRootKey.curve.defaultSigningAlgorithm,
+            serialNumber = serial,
+            subject = subject,
+            issuer = subject,
+            validFrom = validFrom,
+            validUntil = validUntil
+        )
+            .includeSubjectKeyIdentifier()
+            .setKeyUsage(setOf(X509KeyUsage.CRL_SIGN, X509KeyUsage.KEY_CERT_SIGN))
+            .setBasicConstraints(true, 0)
+            .build()
+    }
+
+    /**
+     * Generates a reader certificate.
+     *
+     * Note that there are no requirements in ISO/IEC 18013-5:2021 for reader certificates.
+     *
+     * @param readerRootCert the reader root certificate.
+     * @param readerRootKey the private key for the reader root certificate.
+     * @param readerKey the public part of the reader key.
+     * @param subject the value to use for subject, e.g. "CN=Test Reader,C=ZZ".
+     * @param serial the serial number to use for the certificate.
+     * @param validFrom the point in time the certificate should be valid from.
+     * @param validUntil the point in time the certificate should be valid until.
+     * @return a [X509Cert] with all the required extensions.
+     */
+    fun generateReaderCertificate(
+        readerRootCert: X509Cert,
+        readerRootKey: EcPrivateKey,
+        readerKey: EcPublicKey,
+        subject: X500Name,
+        serial: ASN1Integer,
+        validFrom: Instant,
+        validUntil: Instant,
+    ): X509Cert {
+        return X509Cert.Builder(
+            publicKey = readerKey,
+            signingKey = readerRootKey,
+            signatureAlgorithm = readerRootKey.curve.defaultSigningAlgorithm,
+            serialNumber = serial,
+            subject = subject,
+            issuer = readerRootCert.subject,
+            validFrom = validFrom,
+            validUntil = validUntil
+        )
+            .includeSubjectKeyIdentifier()
+            .setAuthorityKeyIdentifierToCertificate(readerRootCert)
+            .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+            .build()
+    }
+
 }

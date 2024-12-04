@@ -111,8 +111,7 @@ class TransferHelper(
         var trustPoint: TrustPoint? = null
         if (docRequest.readerAuthenticated) {
             val result = trustManager.verify(
-                docRequest.readerCertificateChain!!.javaX509Certificates,
-                customValidators = emptyList()  // not neeeded for reader auth
+                docRequest.readerCertificateChain!!.certificates,
             )
             if (result.isTrusted && !result.trustPoints.isEmpty()) {
                 trustPoint = result.trustPoints.first()

@@ -1,5 +1,6 @@
 package com.android.identity.securearea.cloud
 
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.annotation.CborSerializable
@@ -8,10 +9,9 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.X509CertificateExtension
-import com.android.identity.crypto.create
 import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.securearea.AttestationExtension
 import com.android.identity.securearea.KeyPurpose
@@ -233,27 +233,26 @@ class CloudSecureAreaServer(
             DateTimePeriod(years = 10),
             TimeZone.currentSystemDefault()
         )
-        val attestationExtension =
-            X509CertificateExtension(
-                AttestationExtension.ATTESTATION_OID,
-                false,
-                AttestationExtension.encode(request1.deviceChallenge)
-            )
         val cloudBindingKeyAttestation = X509CertChain(
             listOf(
-                X509Cert.create(
-                    cloudBindingKey.publicKey,
-                    cloudRootAttestationKey,
-                    null,
-                    cloudRootAttestationKeySignatureAlgorithm,
-                    "1",
-                    "CN=Cloud Secure Area Cloud Binding Key",
-                    cloudRootAttestationKeyIssuer,
-                    cloudBindingKeyValidFrom,
-                    cloudBindingKeyValidUntil,
-                    setOf(),
-                    listOf(attestationExtension)
-                ),
+                X509Cert.Builder(
+                    publicKey = cloudBindingKey.publicKey,
+                    signingKey = cloudRootAttestationKey,
+                    signatureAlgorithm = cloudRootAttestationKeySignatureAlgorithm,
+                    serialNumber = ASN1Integer(1L),
+                    subject = X500Name.fromName("CN=Cloud Secure Area Cloud Binding Key"),
+                    issuer = X500Name.fromName(cloudRootAttestationKeyIssuer),
+                    validFrom = cloudBindingKeyValidFrom,
+                    validUntil = cloudBindingKeyValidUntil
+                )
+                    .includeSubjectKeyIdentifier()
+                    .setAuthorityKeyIdentifierToCertificate(cloudRootAttestationKeyCertification.certificates[0])
+                    .addExtension(
+                        oid = AttestationExtension.ATTESTATION_OID,
+                        critical = false,
+                        value = AttestationExtension.encode(request1.deviceChallenge)
+                    )
+                    .build()
             ) + cloudRootAttestationKeyCertification.certificates
         )
         state.cloudBindingKey = cloudBindingKey.toCoseKey()
@@ -477,25 +476,24 @@ class CloudSecureAreaServer(
 
         val keyInfo = secureArea.getKeyInfo("CloudKey")
 
-        val attestationCert = X509Cert.create(
-            keyInfo.publicKey,
-            attestationKey,
-            attestationKeyCertification.certificates[0],
-            attestationKeySignatureAlgorithm,
-            "1",
-            "CN=Cloud Secure Area Key",
-            attestationKeyIssuer,
-            Instant.fromEpochMilliseconds(state.validFromMillis),
-            Instant.fromEpochMilliseconds(state.validUntilMillis),
-            setOf(),
-            listOf(
-                X509CertificateExtension(
-                    AttestationExtension.ATTESTATION_OID,
-                    false,
-                    AttestationExtension.encode(state.challenge!!)
-                )
+        val attestationCert = X509Cert.Builder(
+                publicKey = keyInfo.publicKey,
+                signingKey = attestationKey,
+                signatureAlgorithm = attestationKeySignatureAlgorithm,
+                serialNumber = ASN1Integer(1L),
+                subject = X500Name.fromName("CN=Cloud Secure Area Key"),
+                issuer = X500Name.fromName(attestationKeyIssuer),
+                validFrom = Instant.fromEpochMilliseconds(state.validFromMillis),
+                validUntil = Instant.fromEpochMilliseconds(state.validUntilMillis)
             )
-        )
+                .includeSubjectKeyIdentifier()
+                .setAuthorityKeyIdentifierToCertificate(attestationKeyCertification.certificates[0])
+                .addExtension(
+                    oid = AttestationExtension.ATTESTATION_OID,
+                    critical = false,
+                    value = AttestationExtension.encode(state.challenge!!)
+                )
+                .build()
 
         state.cloudKeyStorage = storageEngine.toCbor()
         val response1 = CreateKeyResponse1(

@@ -1,5 +1,7 @@
 package com.android.identity.wallet.server
 
+import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.crypto.Algorithm
@@ -7,9 +9,8 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.create
-import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
@@ -105,37 +106,37 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                 val attestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
                 val attestationKeySignatureAlgorithm = Algorithm.ES256
                 val attestationKeySubject = "CN=Cloud Secure Area Attestation Root"
-                val attestationKeyCertificate = X509Cert.create(
-                    attestationKey.publicKey,
-                    rootPrivateKey,
-                    null,
-                    attestationKeySignatureAlgorithm,
-                    "1",
-                    attestationKeySubject,
-                    rootCertificate.javaX509Certificate.issuerX500Principal.name,
-                    validFrom,
-                    validUntil,
-                    setOf(),
-                    listOf()
+                val attestationKeyCertificate = X509Cert.Builder(
+                    publicKey = attestationKey.publicKey,
+                    signingKey = rootPrivateKey,
+                    signatureAlgorithm = attestationKeySignatureAlgorithm,
+                    serialNumber = ASN1Integer(1L),
+                    subject = X500Name.fromName(attestationKeySubject),
+                    issuer = rootCertificate.subject,
+                    validFrom = validFrom,
+                    validUntil = validUntil
                 )
+                    .includeSubjectKeyIdentifier()
+                    .setAuthorityKeyIdentifierToCertificate(rootCertificate)
+                    .build()
 
                 // Create Cloud Binding Key Attestation Root w/ self-signed certificate.
                 val cloudBindingKeyAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
                 val cloudBindingKeySignatureAlgorithm = Algorithm.ES256
                 val cloudBindingKeySubject = "CN=Cloud Secure Area Cloud Binding Key Attestation Root"
-                val cloudBindingKeyAttestationCertificate = X509Cert.create(
-                    cloudBindingKeyAttestationKey.publicKey,
-                    cloudBindingKeyAttestationKey,
-                    null,
-                    cloudBindingKeySignatureAlgorithm,
-                    "1",
-                    cloudBindingKeySubject,
-                    cloudBindingKeySubject,
-                    validFrom,
-                    validUntil,
-                    setOf(),
-                    listOf()
+                val cloudBindingKeyAttestationCertificate = X509Cert.Builder(
+                    publicKey = cloudBindingKeyAttestationKey.publicKey,
+                    signingKey = cloudBindingKeyAttestationKey,
+                    signatureAlgorithm = cloudBindingKeySignatureAlgorithm,
+                    serialNumber = ASN1Integer(1L),
+                    subject = X500Name.fromName(cloudBindingKeySubject),
+                    issuer = X500Name.fromName(cloudBindingKeySubject),
+                    validFrom = validFrom,
+                    validUntil = validUntil
                 )
+                    .includeSubjectKeyIdentifier()
+                    .setAuthorityKeyIdentifierToCertificate(rootCertificate)
+                    .build()
 
                 return KeyMaterial(
                     serverSecureAreaBoundKey,
@@ -244,14 +245,14 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
         for (certificate in keyMaterial.attestationKeyCertificates.certificates) {
             sb.append("<h3>Certificate</h3>")
             sb.append("<pre>")
-            sb.append(certificate.javaX509Certificate)
+            sb.append(ASN1.print(ASN1.decode(certificate.tbsCertificate)!!))
             sb.append("</pre>")
         }
         sb.append("<h2>Cloud Binding Key Attestation Root</h2>")
         for (certificate in keyMaterial.cloudBindingKeyCertificates.certificates) {
             sb.append("<h3>Certificate</h3>")
             sb.append("<pre>")
-            sb.append(certificate.javaX509Certificate)
+            sb.append(ASN1.print(ASN1.decode(certificate.tbsCertificate)!!))
             sb.append("</pre>")
         }
         sb.append(

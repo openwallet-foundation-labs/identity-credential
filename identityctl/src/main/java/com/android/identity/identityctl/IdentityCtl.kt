@@ -1,31 +1,18 @@
 package com.android.identity.identityctl
 
-import com.android.identity.crypto.Algorithm
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.X509CertificateCreateOption
-import com.android.identity.crypto.X509CertificateExtension
-import com.android.identity.crypto.create
-import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.crypto.X509KeyUsage
+import com.android.identity.mdoc.util.MdocUtil
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
-import org.bouncycastle.asn1.ASN1ObjectIdentifier
-import org.bouncycastle.asn1.x509.BasicConstraints
-import org.bouncycastle.asn1.x509.CRLDistPoint
-import org.bouncycastle.asn1.x509.DistributionPoint
-import org.bouncycastle.asn1.x509.DistributionPointName
-import org.bouncycastle.asn1.x509.ExtendedKeyUsage
-import org.bouncycastle.asn1.x509.Extension
-import org.bouncycastle.asn1.x509.GeneralName
-import org.bouncycastle.asn1.x509.GeneralNames
-import org.bouncycastle.asn1.x509.KeyPurposeId
-import org.bouncycastle.asn1.x509.KeyUsage
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.BigIntegers
 import java.io.File
@@ -36,202 +23,6 @@ import kotlin.random.Random
 
 @OptIn(ExperimentalEncodingApi::class)
 object IdentityCtl {
-
-
-    /**
-     * Generates a self-signed IACA certificate according to ISO/IEC 18013-5:2021 Annex B.1.2.
-     *
-     * @param iacaKey the private key.
-     * @param subject the value to use for subject and issuer, e.g. "CN=Test IACA,C=ZZ".
-     * @param validFrom the point in time the certificate should be valid from.
-     * @param validUntil the point in time the certificate should be valid until.
-     * @param issuerAltNameUrl the issuer alternative name (see RFC 5280 section 4.2.1.7),
-     * e.g. "http://issuer.example.com/informative/web/page".
-     * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
-     * @return a [X509Cert] with all the required extensions.
-     */
-    @JvmStatic
-    fun generateIacaCertificate(
-        iacaKey: EcPrivateKey,
-        subject: String,
-        validFrom: Instant,
-        validUntil: Instant,
-        issuerAltNameUrl: String,
-        crlUrl: String
-    ): X509Cert {
-        // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
-
-        // From 18013-5 table B.1: countryName is mandatory
-        //                         stateOrProvinceName is optional.
-        //                         organizationName is optional.
-        //                         commonName shall be present.
-        //                         serialNumber is optional.
-        //
-
-        // From 18013-5 Annex B: 3-5 years is recommended
-        //                       Maximum of 20 years after “Not before” date
-
-        val curve = iacaKey.curve
-
-        // From 18013-5 table B.1: Non-sequential positive, non-zero integer, shall contain
-        //                         at least 63 bits of output from a CSPRNG, should contain at
-        //                         least 71 bits of output from a CSPRNG, maximum 20 octets.
-        val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
-
-        val extensions = mutableListOf<X509CertificateExtension>()
-
-        // From 18013-5 table B.1: critical: Key certificate signature + CRL signature bits set
-        extensions.add(
-            X509CertificateExtension(
-                Extension.keyUsage.toString(),
-                true,
-                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded
-            )
-        )
-
-        // From 18013-5 table B.1: non-critical, Email or URL
-        extensions.add(
-            X509CertificateExtension(
-                Extension.issuerAlternativeName.toString(),
-                false,
-                GeneralNames(
-                    GeneralName(GeneralName.uniformResourceIdentifier, issuerAltNameUrl)
-                ).encoded
-            )
-        )
-
-        // From 18013-5 table B.1: critical, CA=true, pathLenConstraint=0
-        extensions.add(
-            X509CertificateExtension(
-                Extension.basicConstraints.toString(),
-                true,
-                BasicConstraints(0).encoded
-            )
-        )
-
-        // From 18013-5 table B.1: non-critical, The ‘reasons’ and ‘cRL Issuer’
-        // fields shall not be used.
-        val distributionPoint =
-            DistributionPoint(
-                DistributionPointName(
-                    GeneralNames(
-                        GeneralName(GeneralName.uniformResourceIdentifier, crlUrl)
-                    )
-                ),
-                null,
-                null
-            )
-        extensions.add(
-            X509CertificateExtension(
-                Extension.cRLDistributionPoints.toString(),
-                false,
-                CRLDistPoint(listOf(distributionPoint).toTypedArray()).encoded
-            )
-        )
-
-        return X509Cert.create(
-            iacaKey.publicKey,
-            iacaKey,
-            null,
-            curve.defaultSigningAlgorithm,
-            serial,
-            subject,
-            subject,
-            validFrom,
-            validUntil,
-            // 18013-5 Annex C requires both of these to be present
-            setOf(
-                X509CertificateCreateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-                X509CertificateCreateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER
-            ),
-            extensions
-        )
-    }
-
-    /**
-     * Generates a Document Signing certificate according to ISO/IEC 18013-5:2021 Annex B.1.4.
-     *
-     * @param iacaCert the IACA certificate the DS certificate.
-     * @param iacaKey the private key for the IACA certificate.
-     * @param dsKey the public part of the DS key.
-     * @param subject the value to use for subject, e.g. "CN=Test DS,C=ZZ".
-     * @param validFrom the point in time the certificate should be valid from.
-     * @param validUntil the point in time the certificate should be valid until.
-     * @return a [X509Cert] with all the required extensions.
-     */
-    @JvmStatic
-    fun generateDsCertificate(
-        iacaCert: X509Cert,
-        iacaKey: EcPrivateKey,
-        dsKey: EcPublicKey,
-        subject: String,
-        validFrom: Instant,
-        validUntil: Instant,
-    ): X509Cert {
-
-        val iacaCertJava = iacaCert.javaX509Certificate
-
-        // Must be same exact binary value as the subject of IACA certificate.
-        val issuer = iacaCertJava.subjectX500Principal.toString()
-
-        val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
-
-        val extensions = mutableListOf<X509CertificateExtension>()
-
-        extensions.add(
-            X509CertificateExtension(
-                Extension.keyUsage.toString(),
-                true,
-                KeyUsage(KeyUsage.digitalSignature).encoded
-            )
-        )
-
-        extensions.add(
-            X509CertificateExtension(
-                Extension.extendedKeyUsage.toString(),
-                true,
-                ExtendedKeyUsage(
-                    KeyPurposeId.getInstance(ASN1ObjectIdentifier("1.0.18013.5.1.2"))
-                ).encoded
-            )
-        )
-
-        // Copy cRLDistributionPoints and issuerAlternativeName from IACA cert
-        extensions.add(
-            X509CertificateExtension(
-                Extension.cRLDistributionPoints.toString(),
-                false,
-                iacaCertJava.getExtensionValue(Extension.cRLDistributionPoints.toString())
-            )
-        )
-        extensions.add(
-            X509CertificateExtension(
-                Extension.issuerAlternativeName.toString(),
-                false,
-                iacaCertJava.getExtensionValue(Extension.issuerAlternativeName.toString())
-            )
-        )
-
-        val documentSigningKeyCert = X509Cert.create(
-            dsKey,
-            iacaKey,
-            iacaCert,
-            Algorithm.ES256,
-            serial,
-            subject,
-            issuer,
-            validFrom,
-            validUntil,
-            setOf(
-                X509CertificateCreateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-                X509CertificateCreateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE
-            ),
-            extensions
-        )
-
-        return documentSigningKeyCert
-    }
-
 
     fun getArg(
         args: Array<String>,
@@ -252,9 +43,9 @@ object IdentityCtl {
 
     fun generateIaca(args: Array<String>) {
         val certificateOutputFilename =
-            getArg(args,"out_certificate","iaca_certificate.pem")
+            getArg(args,"out_certificate", "iaca_certificate.pem")
         val privateKeyOutputFilename =
-            getArg(args,"out_private_key","iaca_private_key.pem")
+            getArg(args,"out_private_key", "iaca_private_key.pem")
 
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
@@ -264,18 +55,18 @@ object IdentityCtl {
         //                         commonName shall be present.
         //                         serialNumber is optional.
         //
-        val subjectAndIssuer =
-            getArg(args,"subject_and_issuer",
-                "CN=OWF Identity Credential TEST IACA,C=ZZ")
+        val subjectAndIssuer = X500Name.fromName(
+            getArg(args, "subject_and_issuer", "CN=OWF Identity Credential TEST IACA,C=ZZ")
+        )
 
         // From 18013-5 Annex B: 3-5 years is recommended
         //                       Maximum of 20 years after “Not before” date
-        val validityInYears = getArg(args,"validity_in_years","5").toInt()
-        val now = Clock.System.now()
+        val validityInYears = getArg(args, "validity_in_years", "5").toInt()
+        val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
         val validFrom = now
         val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
 
-        val curveName = getArg(args,"curve","P384")
+        val curveName = getArg(args, "curve", "P384")
         val curve = EcCurve.values().find { curve -> curve.name == curveName }
             ?: throw IllegalArgumentException("No curve with name $curveName")
 
@@ -292,9 +83,12 @@ object IdentityCtl {
             "https://github.com/openwallet-foundation-labs/identity-credential"
         )
 
-        val iacaCertificate = generateIacaCertificate(
+        val serial = ASN1Integer(BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray())
+
+        val iacaCertificate = MdocUtil.generateIacaCertificate(
             iacaKey,
             subjectAndIssuer,
+            serial,
             validFrom,
             validUntil,
             issuerAltNameUrl,
@@ -318,9 +112,9 @@ object IdentityCtl {
 
     fun generateDs(args: Array<String>) {
         val iacaCertificateFilename =
-            getArg(args,"iaca_certificate","iaca_certificate.pem")
+            getArg(args, "iaca_certificate", "iaca_certificate.pem")
         val iacaPrivateKeyFilename =
-            getArg(args,"iaca_private_key","iaca_private_key.pem")
+            getArg(args, "iaca_private_key", "iaca_private_key.pem")
 
         val iacaCert = X509Cert.fromPem(
             String(File(iacaCertificateFilename).readBytes(), StandardCharsets.US_ASCII))
@@ -330,35 +124,42 @@ object IdentityCtl {
             iacaCert.ecPublicKey)
 
         val certificateOutputFilename =
-            getArg(args,"out_certificate","ds_certificate.pem")
+            getArg(args, "out_certificate", "ds_certificate.pem")
         val privateKeyOutputFilename =
-            getArg(args,"out_private_key","ds_private_key.pem")
+            getArg(args, "out_private_key", "ds_private_key.pem")
 
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
-        val subject = getArg(args,"subject", "CN=OWF Identity Credential TEST DS,C=ZZ")
+        val subject = X500Name.fromName(
+            getArg(args, "subject", "CN=OWF Identity Credential TEST DS,C=ZZ")
+        )
 
-        val validityInYears = getArg(args,"validity_in_years","1").toInt()
-        val now = Clock.System.now()
+        val validityInYears = getArg(args, "validity_in_years", "1").toInt()
+        val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
         val validFrom = now
         val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
 
-        val curveName = getArg(args,"curve","P256")
+        val curveName = getArg(args, "curve", "P256")
         val curve = EcCurve.values().find { curve -> curve.name == curveName }
             ?: throw IllegalArgumentException("No curve with name $curveName")
 
         val dsKey = Crypto.createEcPrivateKey(curve)
 
-        val dsCertificate = generateDsCertificate(
+        val serial = ASN1Integer(BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray())
+
+        val dsCertificate = MdocUtil.generateDsCertificate(
             iacaCert,
             iacaPrivateKey,
             dsKey.publicKey,
             subject,
+            serial,
             validFrom,
             validUntil
         )
 
         println("Generated DS certificate and private key.")
+
+        println("- Loaded IACA cert from $iacaCertificateFilename")
 
         File(privateKeyOutputFilename).outputStream().bufferedWriter().let {
             it.write(dsKey.toPem())
@@ -375,55 +176,43 @@ object IdentityCtl {
 
     fun generateReaderRoot(args: Array<String>) {
         val certificateOutputFilename =
-            getArg(args,"out_certificate","reader_root_certificate.pem")
+            getArg(args, "out_certificate", "reader_root_certificate.pem")
         val privateKeyOutputFilename =
-            getArg(args,"out_private_key","reader_root_private_key.pem")
+            getArg(args, "out_private_key", "reader_root_private_key.pem")
 
-        val subjectAndIssuer =
-            getArg(args,"subject_and_issuer",
-                "CN=OWF Identity Credential TEST Reader CA,C=ZZ")
+        val subjectAndIssuer = X500Name.fromName(
+            getArg(args, "subject_and_issuer", "CN=OWF Identity Credential TEST Reader CA,C=ZZ")
+        )
 
         // From 18013-5 Annex B: 3-5 years is recommended
         //                       Maximum of 20 years after “Not before” date
-        val validityInYears = getArg(args,"validity_in_years","5").toInt()
-        val now = Clock.System.now()
+        val validityInYears = getArg(args, "validity_in_years", "5").toInt()
+        val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
         val validFrom = now
         val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
 
-        val curveName = getArg(args,"curve","P384")
+        val curveName = getArg(args, "curve", "P384")
         val curve = EcCurve.values().find { curve -> curve.name == curveName }
             ?: throw IllegalArgumentException("No curve with name $curveName")
 
-        val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
+        val serial = ASN1Integer(BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray())
 
         val readerRootKey = Crypto.createEcPrivateKey(curve)
 
-        val extensions = mutableListOf<X509CertificateExtension>()
-
-        extensions.add(
-            X509CertificateExtension(
-                Extension.keyUsage.toString(),
-                true,
-                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded
-            )
+        val readerRootCertificate = X509Cert.Builder(
+            publicKey = readerRootKey.publicKey,
+            signingKey = readerRootKey,
+            signatureAlgorithm = readerRootKey.curve.defaultSigningAlgorithm,
+            serialNumber = serial,
+            subject = subjectAndIssuer,
+            issuer = subjectAndIssuer,
+            validFrom = validFrom,
+            validUntil = validUntil
         )
-
-        val readerRootCertificate = X509Cert.create(
-            readerRootKey.publicKey,
-            readerRootKey,
-            null,
-            curve.defaultSigningAlgorithm,
-            serial,
-            subjectAndIssuer,
-            subjectAndIssuer,
-            validFrom,
-            validUntil,
-            setOf(
-                X509CertificateCreateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
-                X509CertificateCreateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER
-            ),
-            extensions
-        )
+            .includeSubjectKeyIdentifier()
+            .setKeyUsage(setOf(X509KeyUsage.CRL_SIGN, X509KeyUsage.KEY_CERT_SIGN))
+            .setBasicConstraints(true, 0)
+            .build()
 
         println("Generated self-signed reader root certificate and private key.")
 
@@ -449,7 +238,7 @@ Generate an IACA certificate and corresponding private key:
     identityctl generateIaca
         [--out_certificate iaca_certificate.pem]
         [--out_private_key iaca_private_key.pem]
-        [--subject_and_issuer 'CN=Utopia TEST IACA,C=ZZ']
+        [--subject_and_issuer 'CN=OWF Identity Credential TEST IACA,C=ZZ']
         [--validity_in_years 5]
         [--curve P384]
         [--issuer_alt_name_url https://issuer.example.com/website]
@@ -462,7 +251,7 @@ Generate an DS certificate and corresponding private key:
         --iaca_private_key iaca_private_key.pem
         [--out_certificate ds_certificate.pem]
         [--out_private_key ds_private_key.pem]
-        [--subject 'CN=Utopia TEST DS,C=ZZ']
+        [--subject 'CN=OWF Identity Credential TEST DS,C=ZZ']
         [--validity_in_years 1]
         [--curve P256]
 
@@ -471,7 +260,7 @@ Generate an reader root and corresponding private key:
     identityctl generateReaderRoot
         [--out_certificate reader_root_certificate.pem]
         [--out_private_key reader_root_private_key.pem]
-        [--subject_and_issuer 'CN=Utopia TEST Reader CA,C=ZZ']
+        [--subject_and_issuer 'CN=OWF Identity Credential TEST Reader CA,C=ZZ']
         [--validity_in_years 3]
         [--curve P384]
 
@@ -504,5 +293,4 @@ Generate an reader root and corresponding private key:
             }
         }
     }
-
 }

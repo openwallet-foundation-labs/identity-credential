@@ -1,6 +1,7 @@
 package com.android.identity.testapp
 
 import com.android.identity.appsupport.ui.consent.MdocConsentField
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
@@ -13,11 +14,14 @@ import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
+import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -39,9 +43,17 @@ import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
+import com.android.identity.trustmanagement.TrustManager
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import identitycredential.samples.testapp.generated.resources.Res
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -69,9 +81,9 @@ object TestAppUtils {
             docType = mdocRequest.docType,
             itemsToRequest = itemsToRequest,
             requestInfo = null,
-            readerKey = null,
-            signatureAlgorithm = Algorithm.UNSET,
-            readerKeyCertificateChain = null,
+            readerKey = readerKey,
+            signatureAlgorithm = readerKey.curve.defaultSigningAlgorithm,
+            readerKeyCertificateChain = X509CertChain(listOf(readerCert, readerRootCert)),
         )
         return deviceRequestGenerator.generate()
     }
@@ -141,7 +153,28 @@ object TestAppUtils {
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var credentialFactory: CredentialFactory
     lateinit var documentTypeRepository: DocumentTypeRepository
+
+    private val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
+    private val certsValidUntil = LocalDate.parse("2034-12-01").atStartOfDayIn(TimeZone.UTC)
+
+    private lateinit var dsKey: EcPrivateKey
     lateinit var dsKeyPub: EcPublicKey
+    lateinit var dsCert: X509Cert
+
+    private lateinit var iacaKey: EcPrivateKey
+    lateinit var iacaKeyPub: EcPublicKey
+    lateinit var iacaCert: X509Cert
+
+    private lateinit var readerKey: EcPrivateKey
+    lateinit var readerKeyPub: EcPublicKey
+    lateinit var readerCert: X509Cert
+
+    private lateinit var readerRootKey: EcPrivateKey
+    lateinit var readerRootKeyPub: EcPublicKey
+    lateinit var readerRootCert: X509Cert
+
+    lateinit var issuerTrustManager: TrustManager
+    lateinit var readerTrustManager: TrustManager
 
     init {
         storageEngine = EphemeralStorageEngine()
@@ -152,9 +185,114 @@ object TestAppUtils {
         credentialFactory.addCredentialImplementation(MdocCredential::class) {
                 document, dataItem -> MdocCredential(document, dataItem)
         }
+        generateKeysAndCerts()
+        generateTrustManagers()
         provisionDocument()
         documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
+    }
+
+    private fun generateKeysAndCerts() {
+        iacaKeyPub = EcPublicKey.fromPem(
+            """
+                -----BEGIN PUBLIC KEY-----
+                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAElQdbKvX5mU29gS+xH/XLa5hSRRzMGpdN
+                5PCLJHKIQYUWdnRRH6A0oLiCt0I/gX90D5NZN27LY2VGaiDkgHI9J3CW99YHZ/5N
+                /4x1uBkz7X66R5oKAOFP9nCAKhM2C+PI
+                -----END PUBLIC KEY-----
+            """.trimIndent().trim(),
+            EcCurve.P384
+        )
+        iacaKey = EcPrivateKey.fromPem(
+            """
+                -----BEGIN PRIVATE KEY-----
+                MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDBLCuy17r0A6FtCd552BGW12sQKD095yEaG
+                nZxSDva2gKvmaKex2dylcZg5cR39M0SgBwYFK4EEACI=
+                -----END PRIVATE KEY-----
+            """.trimIndent().trim(),
+            iacaKeyPub
+        )
+        iacaCert = MdocUtil.generateIacaCertificate(
+            iacaKey = iacaKey,
+            subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST IACA"),
+            serial = ASN1Integer(1L),
+            validFrom = certsValidFrom,
+            validUntil = certsValidUntil,
+            issuerAltNameUrl = "https://github.com/openwallet-foundation-labs/identity-credential",
+            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential"
+        )
+
+        dsKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        dsKeyPub = dsKey.publicKey
+        dsCert = MdocUtil.generateDsCertificate(
+            iacaCert = iacaCert,
+            iacaKey = iacaKey,
+            dsKey = dsKeyPub,
+            subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST DS"),
+            serial = ASN1Integer(1L),
+            validFrom = certsValidFrom,
+            validUntil = certsValidUntil,
+        )
+
+        readerRootKeyPub = EcPublicKey.fromPem(
+            """
+                -----BEGIN PUBLIC KEY-----
+                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEzNWVQ0OxOAProyZdCezqfKr8vwUoIP1A
+                k8Plq8GCN9v41faZPELuQUk21A2RNj0IXqsuLN4/MtYDLvkOaXpoWJ/3ODjGF2WP
+                Lg/reFqPVBaEg5BW75bpmf3LjuU0wCO+
+                -----END PUBLIC KEY-----
+            """.trimIndent().trim(),
+            EcCurve.P384
+        )
+        readerRootKey = EcPrivateKey.fromPem(
+            """
+                -----BEGIN PRIVATE KEY-----
+                MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDDxgrZBXnoO54/hZM2DAGrByoWRatjH9hGs
+                lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
+                -----END PRIVATE KEY-----
+            """.trimIndent().trim(),
+            readerRootKeyPub
+        )
+        readerRootCert = MdocUtil.generateReaderRootCertificate(
+            readerRootKey = iacaKey,
+            subject = X500Name.fromName("CN=OWF IC TestApp Reader Root"),
+            serial = ASN1Integer(1L),
+            validFrom = certsValidFrom,
+            validUntil = certsValidUntil,
+        )
+
+        readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        readerKeyPub = readerKey.publicKey
+        readerCert = MdocUtil.generateReaderCertificate(
+            readerRootCert = readerRootCert,
+            readerRootKey = readerRootKey,
+            readerKey = readerKeyPub,
+            subject = X500Name.fromName("CN=OWF IC TestApp Reader Cert"),
+            serial = ASN1Integer(1L),
+            validFrom = certsValidFrom,
+            validUntil = certsValidUntil,
+        )
+    }
+
+    @OptIn(ExperimentalResourceApi::class)
+    private fun generateTrustManagers() {
+        issuerTrustManager = TrustManager()
+        issuerTrustManager.addTrustPoint(
+            TrustPoint(
+                certificate = iacaCert,
+                displayName = "OWF IC TestApp Issuer",
+                displayIcon = null
+            )
+        )
+
+        readerTrustManager = TrustManager()
+        readerTrustManager.addTrustPoint(
+            TrustPoint(
+                certificate = readerRootCert,
+                displayName = "OWF IC TestApp",
+                displayIcon = runBlocking { Res.readBytes("files/utopia-brewery.png") }
+            )
+        )
     }
 
     private fun provisionDocument() {
@@ -227,35 +365,6 @@ object TestAppUtils {
         val validFrom = Clock.System.now() - 1.hours
         val validUntil = validFrom + 24.hours
 
-        val documentSignerKeyPub = EcPublicKey.fromPem(
-"""-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnmiWAMGIeo2E3usWRLL/EPfh1Bw5
-JHgq8RYzJvraMj5QZSh94CL/nlEi3vikGxDP34HjxZcjzGEimGg03sB6Ng==
------END PUBLIC KEY-----""",
-            EcCurve.P256
-        )
-        dsKeyPub = documentSignerKeyPub
-
-        val documentSignerKey = EcPrivateKey.fromPem(
-            """-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg/ANvinTxJAdR8nQ0
-NoUdBMcRJz+xLsb0kmhyMk+lkkGhRANCAASeaJYAwYh6jYTe6xZEsv8Q9+HUHDkk
-eCrxFjMm+toyPlBlKH3gIv+eUSLe+KQbEM/fgePFlyPMYSKYaDTewHo2
------END PRIVATE KEY-----""",
-            documentSignerKeyPub
-        )
-
-        val documentSignerCert = X509Cert.fromPem(
-"""-----BEGIN CERTIFICATE-----
-MIIBITCBx6ADAgECAgEBMAoGCCqGSM49BAMCMBoxGDAWBgNVBAMMD1N0YXRlIE9mIFV0b3BpYTAe
-Fw0yNDExMDcyMTUzMDdaFw0zNDExMDUyMTUzMDdaMBoxGDAWBgNVBAMMD1N0YXRlIE9mIFV0b3Bp
-YTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJ5olgDBiHqNhN7rFkSy/xD34dQcOSR4KvEWMyb6
-2jI+UGUofeAi/55RIt74pBsQz9+B48WXI8xhIphoNN7AejYwCgYIKoZIzj0EAwIDSQAwRgIhALkq
-UIVeaSW0xhLuMdwHyjiwTV8USD4zq68369ZW6jBvAiEAj2smZAXJB04x/s3exzjnI5BQprUOSfYE
-uku1Jv7gA+A=
------END CERTIFICATE-----""""
-        )
-
         val mso = msoGenerator.generate()
         val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
 
@@ -272,12 +381,12 @@ uku1Jv7gA+A=
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
             Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                X509CertChain(listOf(documentSignerCert)).toDataItem()
+                X509CertChain(listOf(dsCert, iacaCert)).toDataItem()
             )
         )
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(
-                documentSignerKey,
+                dsKey,
                 taggedEncodedMso,
                 true,
                 Algorithm.ES256,
@@ -297,6 +406,5 @@ uku1Jv7gA+A=
             timeValidityEnd
         )
     }
-
 
 }
