@@ -251,7 +251,9 @@
         </init-param>
 
         <init-param>
-            <!-- The ClientID to use. If left blank the value of `verifierBaseUrl` is used. -->
+            <!-- The ClientID to use, without the client_id_scheme prefix.
+                 If left blank the value of `verifierBaseUrl` is used.
+             -->
             <param-name>verifierClientId</param-name>
             <param-value></param-value>
         </init-param>
