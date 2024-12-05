@@ -371,9 +371,11 @@ class VerifierServlet : BaseHttpServlet() {
     private val clientId: String by lazy {
         var ret = configuration.getValue("verifierClientId")
         if (ret == null || ret.length == 0) {
-            ret = baseUrl
+            // Remove the http:// or https:// from the baseUrl.
+            val startIndex = baseUrl.findAnyOf(listOf("://"))?.first
+            ret = if (startIndex == null) baseUrl else baseUrl.removeRange(0, startIndex+3)
         }
-        ret
+        "x509_san_dns:$ret"
     }
 
     private fun createSingleUseReaderKey(): Pair<EcPrivateKey, X509CertChain> {
@@ -885,6 +887,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         val claimsSet = JWTClaimsSet.Builder()
             .claim("client_id", clientId)
+            .claim("client_id_scheme", "x509_san_dns")
             .claim("response_uri", responseUri)
             .claim("response_type", "vp_token")
             .claim("response_mode", "direct_post.jwt")
