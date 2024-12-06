@@ -7,6 +7,8 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
 import com.android.identity.documenttype.knowntypes.EUPersonalID.EUPID_VCT
+import com.android.identity.util.fromBase64Url
+import kotlinx.datetime.LocalDate
 
 /**
  * PhotoID according to ISO/IEC TS 23220-4 (E) operational phase - Annex C Photo ID v2
@@ -68,7 +70,7 @@ object PhotoID {
                 ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
                 CborMap.builder()
-                    .put("birth_date", SampleData.birthDate.toDataItemFullDate())
+                    .put("birth_date", LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate())
                     .end()
                     .build()
             )
@@ -80,7 +82,7 @@ object PhotoID {
                 true,
                 ISO_23220_2_NAMESPACE,
                 Icon.ACCOUNT_BOX,
-                null // TODO: include img_erika_portrait.jpg
+                SampleData.PORTRAIT_BASE64URL.fromBase64Url().toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -90,7 +92,7 @@ object PhotoID {
                 true,
                 ISO_23220_2_NAMESPACE,
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -100,7 +102,7 @@ object PhotoID {
                 true,
                 ISO_23220_2_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                SampleData.expiryDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -250,7 +252,7 @@ object PhotoID {
                 false,
                 ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
-                SampleData.portraitCaptureDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.PORTRAIT_CAPTURE_DATE).toDataItemFullDate()
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,

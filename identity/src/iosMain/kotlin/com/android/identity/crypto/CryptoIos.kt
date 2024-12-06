@@ -5,6 +5,8 @@ import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureEnclaveKeyUnlockData
 import com.android.identity.util.UUID
+import com.android.identity.util.toByteArray
+import com.android.identity.util.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.allocArrayOf
@@ -319,18 +321,4 @@ actual object Crypto {
             keyUnlockData?.authenticationContext as objcnames.classes.LAContext?
         )?.toByteArray() ?: throw KeyLockedException("Unable to unlock key")
     }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-internal fun NSData.toByteArray(): ByteArray {
-    return ByteArray(length.toInt()).apply {
-        usePinned {
-            memcpy(it.addressOf(0), bytes, length)
-        }
-    }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-internal fun ByteArray.toNSData(): NSData = memScoped {
-    NSData.create(bytes = allocArrayOf(this@toNSData), length = this@toNSData.size.toULong())
 }

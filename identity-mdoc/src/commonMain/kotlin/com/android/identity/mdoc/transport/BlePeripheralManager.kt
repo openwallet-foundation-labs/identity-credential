@@ -1,0 +1,54 @@
+package com.android.identity.mdoc.transport
+
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.util.UUID
+import kotlinx.coroutines.channels.Channel
+
+internal interface BlePeripheralManager {
+    val incomingMessages: Channel<ByteArray>
+
+    fun setUuids(
+        stateCharacteristicUuid: UUID,
+        client2ServerCharacteristicUuid: UUID,
+        server2ClientCharacteristicUuid: UUID,
+        identCharacteristicUuid: UUID?,
+        l2capUuid: UUID?
+    )
+
+    fun setCallbacks(
+        /**
+         * Called if an error occurs asynchronously and the error isn't bubbled back
+         * to one of the methods on this object.
+         */
+        onError: (error: Throwable) -> Unit,
+
+        /**
+         * Called on transport-specific termination.
+         */
+        onClosed: () -> Unit
+    )
+
+    suspend fun waitForPowerOn()
+
+    suspend fun advertiseService(uuid: UUID)
+
+    suspend fun setESenderKey(eSenderKey: EcPublicKey)
+
+    suspend fun waitForStateCharacteristicWriteOrL2CAPClient()
+
+    suspend fun writeToStateCharacteristic(value: Int)
+
+    suspend fun sendMessage(message: ByteArray)
+
+    fun close()
+
+    // The PSM if listening on L2CAP.
+    //
+    // This is guaranteed to be available after [advertiseService] is called if the `l2capUuid` passed
+    // to [setUuids] isn't `null`.
+    //
+    val l2capPsm: Int?
+
+    // True if connected via L2CAP
+    val usingL2cap: Boolean
+}
