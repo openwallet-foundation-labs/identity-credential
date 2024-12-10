@@ -22,6 +22,8 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import com.android.identity.cbor.Cbor
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.ByteStringBuilder
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.concurrent.BlockingQueue
@@ -130,7 +132,6 @@ internal class L2CAPServer(val listener: Listener) {
 
     private fun readFromSocket() {
         Logger.d(TAG, "Start reading socket input")
-        val pendingDataBaos = ByteArrayOutputStream()
 
         // Keep listening to the InputStream until an exception occurs.
         val inputStream = try {
@@ -140,25 +141,19 @@ internal class L2CAPServer(val listener: Listener) {
             return
         }
         while (true) {
-            val buf = ByteArray(DataTransportBle.L2CAP_BUF_SIZE)
             try {
-                val numBytesRead = inputStream.read(buf)
-                if (numBytesRead == -1) {
-                    Logger.d(TAG, "End of stream reading from socket")
+                val length = try {
+                    val encodedLength = inputStream.readNOctets(4U)
+                    (encodedLength[0].toUInt().and(0xffU) shl 24) +
+                            (encodedLength[1].toUInt().and(0xffU) shl 16) +
+                            (encodedLength[2].toUInt().and(0xffU) shl 8) +
+                            (encodedLength[3].toUInt().and(0xffU) shl 0)
+                } catch (e: Throwable) {
                     reportPeerDisconnected()
                     break
                 }
-                pendingDataBaos.write(buf, 0, numBytesRead)
-                try {
-                    val pendingData = pendingDataBaos.toByteArray()
-                    val (endOffset, _) = Cbor.decode(pendingData, 0)
-                    val dataItemBytes = pendingData.sliceArray(IntRange(0, endOffset - 1))
-                    pendingDataBaos.reset()
-                    pendingDataBaos.write(pendingData, endOffset, pendingData.size - endOffset)
-                    reportMessageReceived(dataItemBytes)
-                } catch (e: Exception) {
-                    /* not enough data to decode item, do nothing */
-                }
+                val message = inputStream.readNOctets(length)
+                reportMessageReceived(message)
             } catch (e: IOException) {
                 reportError(Error("Error on listening input stream from socket L2CAP", e))
                 break
@@ -167,7 +162,16 @@ internal class L2CAPServer(val listener: Listener) {
     }
 
     fun sendMessage(data: ByteArray) {
-        writerQueue.add(data)
+        val bsb = ByteStringBuilder()
+        val length = data.size.toUInt()
+        bsb.apply {
+            append((length shr 24).and(0xffU).toByte())
+            append((length shr 16).and(0xffU).toByte())
+            append((length shr 8).and(0xffU).toByte())
+            append((length shr 0).and(0xffU).toByte())
+        }
+        bsb.append(data)
+        writerQueue.add(bsb.toByteString().toByteArray())
     }
 
     fun reportPeerConnected() {

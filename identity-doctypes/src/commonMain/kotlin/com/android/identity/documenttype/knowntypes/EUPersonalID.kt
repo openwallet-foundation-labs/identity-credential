@@ -21,6 +21,7 @@ import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
+import kotlinx.datetime.LocalDate
 
 /**
  * Object containing the metadata of the EU Personal ID Document Type.
@@ -67,7 +68,7 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.TODAY,
-                SampleData.birthDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Number,
@@ -267,7 +268,7 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Date,
@@ -277,7 +278,7 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                SampleData.expiryDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.String,

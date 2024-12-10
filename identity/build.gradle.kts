@@ -1,7 +1,12 @@
+import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.get
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
     id("maven-publish")
 }
@@ -13,6 +18,13 @@ kotlin {
     jvmToolchain(17)
 
     jvm()
+
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
 
     listOf(
         iosX64(),
@@ -47,6 +59,8 @@ kotlin {
         }
     }
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
         val commonMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
@@ -75,6 +89,16 @@ kotlin {
                 implementation(libs.tink)
             }
         }
+
+        val androidMain by getting {
+            dependsOn(jvmMain)
+            dependencies {
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
+                implementation(libs.tink)
+            }
+        }
+
     }
 }
 
@@ -97,6 +121,31 @@ tasks["iosArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["iosSimulatorArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["jvmSourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["sourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+
+android {
+    namespace = "com.android.identity"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    dependencies {
+    }
+
+    packaging {
+        resources {
+            excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
+            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        }
+    }
+}
+
 
 group = "com.android.identity"
 version = projectVersionName

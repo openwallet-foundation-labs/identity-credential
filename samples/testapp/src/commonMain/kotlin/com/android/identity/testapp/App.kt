@@ -31,6 +31,9 @@ import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
+import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
+import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
+import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
 import com.android.identity.testapp.ui.QrCodesScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
@@ -95,7 +98,10 @@ class App {
                             onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
-                            onClickQrCodes = { navController.navigate(QrCodesDestination.route) }
+                            onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
+                            onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
+                            onClickIsoMdocProximityReading = { navController.navigate(IsoMdocProximityReadingDestination.route) },
+                            onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
                         )
                     }
                     composable(route = AboutDestination.route) {
@@ -145,6 +151,21 @@ class App {
                     }
                     composable(route = QrCodesDestination.route) {
                         QrCodesScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = IsoMdocProximitySharingDestination.route) {
+                        IsoMdocProximitySharingScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = IsoMdocProximityReadingDestination.route) {
+                        IsoMdocProximityReadingScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = IsoMdocMultiDeviceTestingDestination.route) {
+                        IsoMdocMultiDeviceTestingScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }
