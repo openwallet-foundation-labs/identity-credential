@@ -47,6 +47,7 @@ kotlin {
             dependencies {
                 implementation(project(":identity"))
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.io.core)
                 implementation(libs.kotlinx.io.bytestring)
                 implementation(libs.kotlinx.coroutines.core)
             }

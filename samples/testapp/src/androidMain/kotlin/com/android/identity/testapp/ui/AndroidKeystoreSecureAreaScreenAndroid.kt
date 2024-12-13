@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.securearea.KeyAttestation
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
@@ -58,9 +57,9 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.testapp.MainActivity
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import kotlinx.coroutines.CoroutineScope
@@ -74,25 +73,25 @@ private val TAG = "AndroidKeystoreSecureAreaScreen"
 
 private val androidKeystoreStorage: AndroidStorageEngine by lazy { 
     AndroidStorageEngine.Builder(
-        MainActivity.appContext,
-        Path(MainActivity.appContext.dataDir.path, "testdata.bin")
+        AndroidContexts.applicationContext,
+        Path(AndroidContexts.applicationContext.dataDir.path, "testdata.bin")
     ).build()
 }
 
 private val androidKeystoreSecureArea: AndroidKeystoreSecureArea by lazy {
-    AndroidKeystoreSecureArea(MainActivity.appContext, androidKeystoreStorage)
+    AndroidKeystoreSecureArea(AndroidContexts.applicationContext, androidKeystoreStorage)
 }
 
 private val androidKeystoreCapabilities: AndroidKeystoreSecureArea.Capabilities by lazy {
-    AndroidKeystoreSecureArea.Capabilities(MainActivity.appContext)
+    AndroidKeystoreSecureArea.Capabilities(AndroidContexts.applicationContext)
 }
 
 private val keymintVersionTee: Int by lazy {
-    getFeatureVersionKeystore(MainActivity.appContext, false)
+    getFeatureVersionKeystore(AndroidContexts.applicationContext, false)
 }
 
 private val keymintVersionStrongBox: Int by lazy {
-    getFeatureVersionKeystore(MainActivity.appContext, true)
+    getFeatureVersionKeystore(AndroidContexts.applicationContext, true)
 }
 
 @Composable
@@ -650,7 +649,7 @@ private fun doUserAuth(
             promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         } else {
             val canUseBiometricAuth = BiometricManager
-                .from(MainActivity.appContext)
+                .from(AndroidContexts.applicationContext)
                 .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
             if (canUseBiometricAuth) {
                 promptInfoBuilder.setNegativeButtonText("Use LSKF")
@@ -667,7 +666,8 @@ private fun doUserAuth(
         // Run the prompt on the UI thread, we'll block below on `cv`...
         CoroutineScope(Dispatchers.Main).launch {
             val biometricPromptInfo = promptInfoBuilder.build()
-            val biometricPrompt = BiometricPrompt(MainActivity.instance,
+            val biometricPrompt = BiometricPrompt(
+                AndroidContexts.currentActivity!!,
                 object : BiometricPrompt.AuthenticationCallback() {
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -683,7 +683,8 @@ private fun doUserAuth(
                                 .setSubtitle(title)
                             promptInfoBuilderLskf.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                             val biometricPromptInfoLskf = promptInfoBuilderLskf.build()
-                            val biometricPromptLskf = BiometricPrompt(MainActivity.instance,
+                            val biometricPromptLskf = BiometricPrompt(
+                                AndroidContexts.currentActivity!!,
                                 object : BiometricPrompt.AuthenticationCallback() {
                                     override fun onAuthenticationError(
                                         errorCode: Int,

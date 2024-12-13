@@ -56,7 +56,6 @@ import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
@@ -101,7 +100,7 @@ class PresentationActivity : FragmentActivity() {
 
         fun engagementDetected(context: Context) {
             if (phase.value != Phase.NOT_CONNECTED) {
-                Logger.w(TAG, "nfcEngagementDetected: expected NOT_CONNECTED, is in " + phase.value)
+                Logger.w(TAG, "engagementDetected: expected NOT_CONNECTED, is in " + phase.value)
                 return
             }
             launchPresentationActivity(context)
@@ -143,6 +142,10 @@ class PresentationActivity : FragmentActivity() {
             showResult(
                 R.string.presentation_result_error_message_reader_timeout,
                 R.drawable.presentment_result_status_error)
+        }
+
+        fun stopPresentation(context: Context) {
+            phase.value = Phase.NOT_CONNECTED
         }
 
         private fun showResult(stringId: Int, drawableId: Int, delay: Long = 1500) {

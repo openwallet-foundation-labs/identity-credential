@@ -65,6 +65,7 @@ kotlin {
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
                 implementation(libs.accompanist.permissions)
+                implementation(libs.androidx.material)
             }
         }
     }

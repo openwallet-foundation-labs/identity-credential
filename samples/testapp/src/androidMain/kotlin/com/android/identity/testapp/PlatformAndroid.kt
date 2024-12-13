@@ -6,6 +6,7 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
+import com.android.identity.util.AndroidContexts
 import kotlinx.io.files.Path
 import java.net.NetworkInterface
 
@@ -27,13 +28,13 @@ actual fun getLocalIpAddress(): String {
 
 private val androidKeystoreStorage: AndroidStorageEngine by lazy {
     AndroidStorageEngine.Builder(
-        MainActivity.appContext,
-        Path(MainActivity.appContext.dataDir.path, "testapp-default.bin")
+        AndroidContexts.applicationContext,
+        Path(AndroidContexts.applicationContext.dataDir.path, "testapp-default.bin")
     ).build()
 }
 
 private val androidKeystoreSecureArea: AndroidKeystoreSecureArea by lazy {
-    AndroidKeystoreSecureArea(MainActivity.appContext, androidKeystoreStorage)
+    AndroidKeystoreSecureArea(AndroidContexts.applicationContext, androidKeystoreStorage)
 }
 
 actual fun platformSecureArea(): SecureArea {

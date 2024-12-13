@@ -4,6 +4,9 @@ import com.android.identity.cbor.Cbor.decode
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
+import com.android.identity.mdoc.transport.MdocTransport
+import com.android.identity.nfc.NdefRecord
+import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 
 /**
@@ -20,6 +23,13 @@ class ConnectionMethodWifiAware(
     val channelInfoOperatingClass: Long?,
     val bandInfoSupportedBands: ByteArray?
 ): ConnectionMethod() {
+    override fun equals(other: Any?): Boolean {
+        return other is ConnectionMethodWifiAware &&
+                other.passphraseInfoPassphrase == passphraseInfoPassphrase &&
+                other.channelInfoChannelNumber == channelInfoChannelNumber &&
+                other.channelInfoOperatingClass == channelInfoOperatingClass &&
+                other.bandInfoSupportedBands == bandInfoSupportedBands
+    }
 
     override fun toString(): String {
         val builder = StringBuilder("wifi_aware")
@@ -71,14 +81,24 @@ class ConnectionMethodWifiAware(
         )
     }
 
+    override fun toNdefRecord(
+        auxiliaryReferences: List<String>,
+        role: MdocTransport.Role
+    ): Pair<NdefRecord, NdefRecord>? {
+        Logger.w(TAG, "toNdefRecord() not yet implemented")
+        return null
+    }
+
     companion object {
+        private const val TAG = "ConnectionMethodWifiAware"
         const val METHOD_TYPE = 3L
         const val METHOD_MAX_VERSION = 1L
         private const val OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE = 0L
         private const val OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS = 1L
         private const val OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER = 2L
         private const val OPTION_KEY_BAND_INFO_SUPPORTED_BANDS = 3L
-        fun fromDeviceEngagementWifiAware(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodWifiAware? {
+
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodWifiAware? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
