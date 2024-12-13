@@ -2,7 +2,6 @@ package com.android.identity.testapp.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.content.MediaType.Companion.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -46,30 +46,42 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.identity.appsupport.ui.decodeImage
+import com.android.identity.mdoc.nfc.NfcEngagementResult
+import com.android.identity.mdoc.nfc.nfcHandover
 import com.android.identity.appsupport.ui.permissions.rememberBluetoothPermissionState
 import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.DocumentWellKnownRequest
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.engagement.EngagementParser
+import com.android.identity.mdoc.nfc.startNfcEngagement
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.mdoc.sessionencryption.SessionEncryption
 import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.mdoc.transport.MdocTransportClosedException
 import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
+import com.android.identity.nfc.NfcTagReader
 import com.android.identity.testapp.TestAppUtils
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import com.android.identity.util.UUID
 import com.android.identity.util.fromBase64Url
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -94,6 +106,7 @@ fun IsoMdocProximityReadingScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val readerShowQrScanner = remember { mutableStateOf(false) }
+    val readerShowNfcScanner = remember { mutableStateOf(false) }
     var readerAutoCloseConnection by remember { mutableStateOf(true) }
     var readerBleUseL2CAP by remember { mutableStateOf(false) }
     var readerJob by remember { mutableStateOf<Job?>(null) }
@@ -102,12 +115,83 @@ fun IsoMdocProximityReadingScreen(
     var readerSessionTranscript = remember { mutableStateOf<ByteArray?>(null) }
     var readerMostRecentDeviceResponse = remember { mutableStateOf<ByteArray?>(null) }
 
+    if (readerShowNfcScanner.value) {
+        AlertDialog(
+            title = @Composable { Text(text = "NFC Scanning Options") },
+            text = @Composable {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = readerAutoCloseConnection,
+                            onCheckedChange = { readerAutoCloseConnection = it }
+                        )
+                        Text(text = "Close transport after receiving first response")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = readerBleUseL2CAP,
+                            onCheckedChange = { readerBleUseL2CAP = it }
+                        )
+                        Text(text = "Use L2CAP if available")
+                    }
+                }
+            },
+            dismissButton = @Composable { TextButton(onClick = {
+                readerShowNfcScanner.value = false
+            }) { Text("Close") } },
+            onDismissRequest = {
+                readerShowNfcScanner.value = false
+            },
+            confirmButton = @Composable { TextButton(
+                onClick = {
+                    readerShowNfcScanner.value = false
+                    coroutineScope.launch {
+                        try {
+                            startNfcEngagement(
+                                options = MdocTransportOptions(bleUseL2CAP = readerBleUseL2CAP),
+                                onConnected = { transport, encodedDeviceEngagement, handover, elapsedTime ->
+                                    Logger.i(TAG, "NFC engagement completed in $elapsedTime")
+                                    readerJob = CoroutineScope(Dispatchers.IO).launch {
+                                        try {
+                                            doReaderFlow(
+                                                encodedDeviceEngagement = encodedDeviceEngagement,
+                                                existingTransport = transport,
+                                                handover = handover,
+                                                autoCloseConnection = readerAutoCloseConnection,
+                                                bleUseL2CAP = readerBleUseL2CAP,
+                                                showToast = showToast,
+                                                readerTransport = readerTransport,
+                                                readerSessionEncryption = readerSessionEncryption,
+                                                readerSessionTranscript = readerSessionTranscript,
+                                                readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                                                selectedRequest = selectedRequest,
+                                            )
+                                            readerJob = null
+                                        } catch (e: Throwable) {
+                                            Logger.e(TAG, "NFC engagement transport failed", e)
+                                            e.printStackTrace()
+                                            showToast("NFC engagement transport failed with $e")
+                                        }
+                                    }
+                                }
+                            )
+                        } catch (e: Throwable) {
+                            Logger.e(TAG, "NFC engagement failed", e)
+                            e.printStackTrace()
+                            showToast("NFC engagement failed with $e")
+                        }
+                    }
+                }
+            ) { Text("Scan with NFC") } },
+        )
+    }
+
     if (readerShowQrScanner.value) {
         ScanQrCodeDialog(
             title = { Text(text = "Scan QR code") },
             text = { Text(text = "Scan this QR code on another device") },
             additionalContent = {
-                Column() {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = readerAutoCloseConnection,
@@ -131,6 +215,8 @@ fun IsoMdocProximityReadingScreen(
                     readerJob = coroutineScope.launch() {
                         doReaderFlow(
                             encodedDeviceEngagement = data.substring(5).fromBase64Url(),
+                            existingTransport = null,
+                            handover = Simple.NULL,
                             autoCloseConnection = readerAutoCloseConnection,
                             bleUseL2CAP = readerBleUseL2CAP,
                             showToast = showToast,
@@ -313,6 +399,15 @@ fun IsoMdocProximityReadingScreen(
                         content = { Text("Request mDL via QR Code") }
                     )
                 }
+                item {
+                    TextButton(
+                        onClick = {
+                            readerShowNfcScanner.value = true
+                            readerMostRecentDeviceResponse.value = null
+                        },
+                        content = { Text("Request mDL via NFC") }
+                    )
+                }
             }
         }
     }
@@ -320,6 +415,8 @@ fun IsoMdocProximityReadingScreen(
 
 private suspend fun doReaderFlow(
     encodedDeviceEngagement: ByteArray,
+    existingTransport: MdocTransport?,
+    handover: DataItem,
     autoCloseConnection: Boolean,
     bleUseL2CAP: Boolean,
     showToast: (message: String) -> Unit,
@@ -330,18 +427,18 @@ private suspend fun doReaderFlow(
     selectedRequest: MutableState<DocumentWellKnownRequest>,
 ) {
     val deviceEngagement = EngagementParser(encodedDeviceEngagement).parse()
-    val connectionMethod = deviceEngagement.connectionMethods[0]
     val eDeviceKey = deviceEngagement.eSenderKey
     val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
-    val transport = MdocTransportFactory.createTransport(
-        connectionMethod,
+    val transport = existingTransport ?: MdocTransportFactory.createTransport(
+        deviceEngagement.connectionMethods[0],
         MdocTransport.Role.MDOC_READER,
         MdocTransportOptions(bleUseL2CAP = bleUseL2CAP)
     )
     readerTransport.value = transport
     val encodedSessionTranscript = TestAppUtils.generateEncodedSessionTranscript(
         encodedDeviceEngagement,
+        handover,
         eReaderKey.publicKey
     )
     val sessionEncryption = SessionEncryption(

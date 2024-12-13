@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
     id("maven-publish")
 }
 
@@ -65,6 +67,7 @@ kotlin {
         val commonMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
             dependencies {
+                implementation(compose.runtime)
                 implementation(projects.processorAnnotations)
                 implementation(libs.kotlinx.io.bytestring)
                 implementation(libs.kotlinx.io.core)
@@ -74,12 +77,9 @@ kotlin {
             }
         }
 
-        val commonTest by getting {
-            kotlin.srcDir("build/generated/ksp/metadata/commonTest/kotlin")
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutine.test)
-            }
+        // Code available on targets with a GUI (e.g. Android and iOS)
+        val uiMain by creating {
+            dependsOn(commonMain)
         }
 
         val jvmMain by getting {
@@ -90,15 +90,31 @@ kotlin {
             }
         }
 
+        val iosMain by getting {
+            dependsOn(uiMain)
+        }
+
         val androidMain by getting {
             dependsOn(jvmMain)
+            dependsOn(uiMain)
             dependencies {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
+
+                implementation(compose.material3)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.material)
+                implementation(libs.androidx.biometrics)
             }
         }
 
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutine.test)
+            }
+        }
     }
 }
 
@@ -143,6 +159,13 @@ android {
             excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
+    }
+
+    buildFeatures {
+        compose = true
+    }
+    dependencies {
+        debugImplementation(compose.uiTooling)
     }
 }
 

@@ -34,6 +34,8 @@ import com.android.identity.appsupport.ui.consent.ConsentRelyingParty
 import com.android.identity.appsupport.ui.consent.MdocConsentField
 import com.android.identity.appsupport.ui.permissions.rememberBluetoothPermissionState
 import com.android.identity.appsupport.ui.qrcode.ShowQrCodeDialog
+import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.documenttype.knowntypes.DrivingLicense
@@ -250,6 +252,7 @@ fun IsoMdocProximitySharingScreen(
                                         peripheralServerModeUuid = null,
                                         centralClientModeUuid = UUID.randomUUID(),
                                     ),
+                                    handover = Simple.NULL,
                                     options = MdocTransportOptions(),
                                     autoCloseConnection = holderAutoCloseConnection,
                                     showToast = showToast,
@@ -273,6 +276,7 @@ fun IsoMdocProximitySharingScreen(
                                         peripheralServerModeUuid = UUID.randomUUID(),
                                         centralClientModeUuid = null,
                                     ),
+                                    handover = Simple.NULL,
                                     options = MdocTransportOptions(),
                                     autoCloseConnection = holderAutoCloseConnection,
                                     showToast = showToast,
@@ -296,6 +300,7 @@ fun IsoMdocProximitySharingScreen(
                                         peripheralServerModeUuid = null,
                                         centralClientModeUuid = UUID.randomUUID(),
                                     ),
+                                    handover = Simple.NULL,
                                     options = MdocTransportOptions(bleUseL2CAP = true),
                                     autoCloseConnection = holderAutoCloseConnection,
                                     showToast = showToast,
@@ -319,6 +324,7 @@ fun IsoMdocProximitySharingScreen(
                                         peripheralServerModeUuid = UUID.randomUUID(),
                                         centralClientModeUuid = null,
                                     ),
+                                    handover = Simple.NULL,
                                     options = MdocTransportOptions(bleUseL2CAP = true),
                                     autoCloseConnection = holderAutoCloseConnection,
                                     showToast = showToast,
@@ -338,6 +344,7 @@ fun IsoMdocProximitySharingScreen(
 
 private suspend fun doHolderFlow(
     connectionMethod: ConnectionMethod,
+    handover: DataItem,
     options: MdocTransportOptions,
     autoCloseConnection: MutableState<Boolean>,
     showToast: (message: String) -> Unit,
@@ -376,6 +383,7 @@ private suspend fun doHolderFlow(
                 val eReaderKey = SessionEncryption.getEReaderKey(sessionData)
                 encodedSessionTranscript = TestAppUtils.generateEncodedSessionTranscript(
                     encodedDeviceEngagement.value!!,
+                    handover,
                     eReaderKey
                 )
                 sessionEncryption = SessionEncryption(
