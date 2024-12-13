@@ -88,6 +88,7 @@ dependencies {
     implementation(project(":identity-sdjwt"))
     implementation(project(":identity-flow"))
     implementation(project(":identity-android"))
+    implementation(project(":identity-issuance-api"))
     implementation(project(":identity-issuance"))
     implementation(project(":identity-appsupport"))
     implementation(project(":mrtd-reader"))

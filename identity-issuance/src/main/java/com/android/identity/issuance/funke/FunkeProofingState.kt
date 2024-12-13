@@ -95,7 +95,8 @@ class FunkeProofingState(
                     )
                 )
             } else if (!notificationPermissonRequested) {
-                listOf(EvidenceRequestNotificationPermission(
+                listOf(
+                    EvidenceRequestNotificationPermission(
                     permissionNotGrantedMessage = """
                         ## Receive notifications?
                         
@@ -110,7 +111,8 @@ class FunkeProofingState(
                     grantPermissionButtonText = "Grant Permission",
                     continueWithoutPermissionButtonText = "No Thanks",
                     assets = mapOf()
-                ))
+                )
+                )
             } else {
                 val list = mutableListOf<EvidenceRequest>(EvidenceRequestPreauthorizedCode())
                 if (proofingInfo != null && metadata.authorizationServers.isNotEmpty()) {
@@ -175,8 +177,11 @@ class FunkeProofingState(
     @FlowMethod
     suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
         when (evidenceResponse) {
-            is EvidenceResponseGermanEid -> if (evidenceResponse.url != null) {
-                processRedirectUrl(env, evidenceResponse.url)
+            is EvidenceResponseGermanEid -> {
+                val url = evidenceResponse.url
+                if (url != null) {
+                    processRedirectUrl(env, url)
+                }
             }
             is EvidenceResponseWeb -> {
                 val index = evidenceResponse.response.indexOf("code=")

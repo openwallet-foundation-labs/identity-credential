@@ -1,10 +1,8 @@
 package com.android.identity.issuance.tunnel
 
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
-import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
-import com.android.identity.mrtd.MrtdAccessData
 
 /**
  * Drives the exchange with the chip in MRTD through NFC tunnel, sending commands to the chip

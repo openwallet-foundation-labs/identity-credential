@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":identity-mdoc"))
     implementation(project(":identity-sdjwt"))
     implementation(project(":identity-flow"))
+    implementation(project(":identity-issuance-api"))
     implementation(project(":mrtd-reader"))
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)

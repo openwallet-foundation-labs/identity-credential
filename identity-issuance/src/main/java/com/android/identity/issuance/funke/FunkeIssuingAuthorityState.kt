@@ -1,12 +1,13 @@
 package com.android.identity.issuance.funke
 
 import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.device.AssertionDPoPKey
+import com.android.identity.device.DeviceAssertionMaker
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -36,6 +37,8 @@ import com.android.identity.issuance.IssuingAuthorityNotification
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.SdJwtVcDocumentConfiguration
+import com.android.identity.securearea.config.SecureAreaConfigurationAndroidKeystore
+import com.android.identity.securearea.config.SecureAreaConfigurationCloud
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.issuance.common.cache
@@ -340,46 +343,43 @@ class FunkeIssuingAuthorityState(
         refreshAccessIfNeeded(env, documentId, document)
 
         val cNonce = document.access!!.cNonce!!
+        val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
         val configuration = if (document.secureAreaIdentifier!!.startsWith("CloudSecureArea?")) {
-            val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
             CredentialConfiguration(
-                cNonce.toByteArray(),
-                document.secureAreaIdentifier!!,
-                Cbor.encode(
-                    CborMap.builder()
-                        .put("passphraseRequired", true)
-                        .put("userAuthenticationRequired", true)
-                        .put("userAuthenticationTimeoutMillis", 0L)
-                        .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
-                        .put("purposes", KeyPurpose.encodeSet(purposes))
-                        .end().build()
+                ByteString(cNonce.toByteArray()),
+                SecureAreaConfigurationCloud(
+                    purposes = KeyPurpose.encodeSet(purposes),
+                    curve = EcCurve.P256.coseCurveIdentifier,
+                    cloudSecureAreaId = document.secureAreaIdentifier!!,
+                    passphraseRequired = true,
+                    useStrongBox = true,
+                    userAuthenticationRequired = true,
+                    userAuthenticationTimeoutMillis = 0,
+                    userAuthenticationTypes = 3, // LSKF + Biometrics
                 )
             )
         } else {
             CredentialConfiguration(
-                cNonce.toByteArray(),
-                document.secureAreaIdentifier!!,
-                Cbor.encode(
-                    CborMap.builder()
-                        .put("curve", EcCurve.P256.coseCurveIdentifier)
-                        .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
-                        .put("useStrongBox", true)
-                        .put("userAuthenticationRequired", true)
-                        .put("userAuthenticationTimeoutMillis", 0L)
-                        .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
-                        .end().build()
+                ByteString(cNonce.toByteArray()),
+                SecureAreaConfigurationAndroidKeystore(
+                    purposes = KeyPurpose.encodeSet(purposes),
+                    curve = EcCurve.P256.coseCurveIdentifier,
+                    useStrongBox = true,
+                    userAuthenticationRequired = true,
+                    userAuthenticationTimeoutMillis = 0,
+                    userAuthenticationTypes = 3 // LSKF + Biometrics
                 )
             )
         }
         return when (credentialConfiguration.proofType) {
             is Openid4VciProofTypeKeyAttestation ->
-                RequestCredentialsUsingKeyAttestation(documentId, configuration, cNonce)
+                RequestCredentialsUsingKeyAttestation(clientId, documentId, configuration)
             is Openid4VciProofTypeJwt ->
                 RequestCredentialsUsingProofOfPossession(
-                    issuanceClientId,
-                    documentId,
-                    configuration,
-                    cNonce,
+                    clientId = clientId,
+                    issuanceClientId = issuanceClientId,
+                    documentId = documentId,
+                    credentialConfiguration = configuration,
                     credentialIssuerUri = credentialIssuerUri
                 )
             Openid4VciNoProof ->
@@ -394,9 +394,9 @@ class FunkeIssuingAuthorityState(
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
         val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
 
-        val (request, publicKeys) = when (state) {
+        val credentialTasks = when (state) {
             is RequestCredentialsUsingProofOfPossession ->
-                createRequestUsingProofOfPossession(state, credentialConfiguration)
+                listOf(createRequestUsingProofOfPossession(state, credentialConfiguration))
             is RequestCredentialsUsingKeyAttestation ->
                 createRequestUsingKeyAttestation(env, state, credentialConfiguration)
             else -> throw IllegalStateException("Unsupported RequestCredential type")
@@ -404,43 +404,48 @@ class FunkeIssuingAuthorityState(
 
         val document = loadIssuerDocument(env, state.documentId)
 
-        // Send the request
-        val credentials = obtainCredentials(env, metadata, request, state.documentId, document)
+        for ((request, publicKeys) in credentialTasks) {
+            // Send the request
+            val credentials = obtainCredentials(env, metadata, request, state.documentId, document)
 
-        check(credentials.size == publicKeys.size)
-        document.credentials.addAll(credentials.zip(publicKeys).map {
-            val credential = it.first.jsonPrimitive.content
-            val publicKey = it.second
-            when (credentialConfiguration.format) {
-                is Openid4VciFormatSdJwt -> {
-                    val sdJwt = SdJwtVerifiableCredential.fromString(credential)
-                    val jwtBody = JwtBody.fromString(sdJwt.body)
-                    CredentialData(
-                        publicKey,
-                        jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
-                        jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
-                        CredentialFormat.SD_JWT_VC,
-                        credential.toByteArray()
-                    )
+            check(credentials.size == publicKeys.size)
+            document.credentials.addAll(credentials.zip(publicKeys).map {
+                val credential = it.first.jsonPrimitive.content
+                val publicKey = it.second
+                when (credentialConfiguration.format) {
+                    is Openid4VciFormatSdJwt -> {
+                        val sdJwt = SdJwtVerifiableCredential.fromString(credential)
+                        val jwtBody = JwtBody.fromString(sdJwt.body)
+                        CredentialData(
+                            publicKey,
+                            jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
+                            jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
+                            CredentialFormat.SD_JWT_VC,
+                            credential.toByteArray()
+                        )
+                    }
+
+                    is Openid4VciFormatMdoc -> {
+                        val credentialBytes = credential.fromBase64Url()
+                        val credentialData = StaticAuthDataParser(credentialBytes).parse()
+                        val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
+                        val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
+                        val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
+                        val mso = MobileSecurityObjectParser(encodedMso).parse()
+                        CredentialData(
+                            publicKey,
+                            mso.validFrom,
+                            mso.validUntil,
+                            CredentialFormat.MDOC_MSO,
+                            credentialBytes
+                        )
+                    }
+
+                    null -> throw IllegalStateException("Unexpected credential format")
                 }
-                is Openid4VciFormatMdoc -> {
-                    val credentialBytes = credential.fromBase64Url()
-                    val credentialData = StaticAuthDataParser(credentialBytes).parse()
-                    val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
-                    val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
-                    val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-                    val mso = MobileSecurityObjectParser(encodedMso).parse()
-                    CredentialData(
-                        publicKey,
-                        mso.validFrom,
-                        mso.validUntil,
-                        CredentialFormat.MDOC_MSO,
-                        credentialBytes
-                    )
-                }
-                null -> throw IllegalStateException("Unexpected credential format")
-            }
-        })
+            })
+        }
+
         updateIssuerDocument(env, state.documentId, document, true)
     }
 
@@ -562,29 +567,32 @@ class FunkeIssuingAuthorityState(
         env: FlowEnvironment,
         state: RequestCredentialsUsingKeyAttestation,
         configuration: Openid4VciCredentialConfiguration
-    ): Pair<JsonObject, List<EcPublicKey>> {
+    ): List<Pair<JsonObject, List<EcPublicKey>>> {
         // NB: applicationSupport will only be non-null in the environment when running this code
         // locally in the Android Wallet app.
         val applicationSupport = env.getInterface(ApplicationSupport::class)
-
-        val platformAttestations =
-            state.credentialRequests!!.map { it.secureAreaBoundKeyAttestation }
-
-        val keyAttestation =
-            applicationSupport?.createJwtKeyAttestation(platformAttestations, state.nonce)
-                ?: ApplicationSupportState(clientId).createJwtKeyAttestation(
-                    env, platformAttestations, state.nonce
+        return state.credentialRequestSets.map { credentialRequestSet ->
+            val jwtKeyAttestation = if (applicationSupport != null) {
+                applicationSupport.createJwtKeyAttestation(
+                    keyAttestations = credentialRequestSet.keyAttestations,
+                    keysAssertion = credentialRequestSet.keysAssertion
                 )
-
-        val request = buildJsonObject {
-            put("proof", buildJsonObject {
-                put("attestation", JsonPrimitive(keyAttestation))
-                put("proof_type", JsonPrimitive("attestation"))
-            })
-            putFormat(configuration.format!!)
+            } else {
+                ApplicationSupportState(clientId).createJwtKeyAttestation(
+                    env = env,
+                    keyAttestations = credentialRequestSet.keyAttestations,
+                    keysAssertion = credentialRequestSet.keysAssertion
+                )
+            }
+            val request = buildJsonObject {
+                put("proof", buildJsonObject {
+                    put("attestation", JsonPrimitive(jwtKeyAttestation))
+                    put("proof_type", JsonPrimitive("attestation"))
+                })
+                putFormat(configuration.format!!)
+            }
+            Pair(request, credentialRequestSet.keyAttestations.map { it.publicKey })
         }
-
-        return Pair(request, platformAttestations.map { it.publicKey })
     }
 
     @FlowMethod
@@ -691,14 +699,23 @@ class FunkeIssuingAuthorityState(
         }
 
         val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
-        val clientAssertion = applicationSupport?.createJwtClientAssertion(
-            clientKeyInfo.attestation,
-            credentialIssuerUri
-        ) ?: ApplicationSupportState(clientId).createJwtClientAssertion(
-            env,
-            clientKeyInfo.publicKey,
-            credentialIssuerUri
-        )
+        val clientAssertion = if (applicationSupport != null) {
+            // Required when applicationSupport is exposed
+            val assertionMaker = env.getInterface(DeviceAssertionMaker::class)!!
+            applicationSupport.createJwtClientAssertion(
+                clientKeyInfo.attestation,
+                assertionMaker.makeDeviceAssertion(AssertionDPoPKey(
+                    clientKeyInfo.publicKey,
+                    credentialIssuerUri
+                ))
+            )
+        } else {
+            ApplicationSupportState(clientId).createJwtClientAssertion(
+                env,
+                clientKeyInfo.publicKey,
+                credentialIssuerUri
+            )
+        }
 
         val req = FormUrlEncoder {
             add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")

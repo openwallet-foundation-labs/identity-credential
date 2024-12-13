@@ -3,7 +3,6 @@ package com.android.identity.issuance.hardcoded
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
-import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Storage
 import com.android.identity.issuance.ProofingFlow
@@ -26,7 +25,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.runBlocking
-import java.net.URLEncoder
 
 /**
  * State of [ProofingFlow] RPC implementation.

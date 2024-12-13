@@ -1,11 +1,10 @@
 package com.android.identity.securearea.software
 
-import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.fromDataItem
+import com.android.identity.securearea.config.SecureAreaConfigurationSoftware
 import kotlinx.datetime.Instant;
 
 /**
@@ -43,25 +42,14 @@ class SoftwareCreateKeySettings internal constructor(
          * @param configuration configuration from a CBOR map.
          * @return the builder.
          */
-        fun applyConfiguration(configuration: DataItem) = apply {
-            var passphraseRequired = false
-            var passphrase: String? = null
-            var passphraseConstraints: PassphraseConstraints? = null
-            for ((key, value) in configuration.asMap) {
-                when (key.asTstr) {
-                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
-                    "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
-                    "passphrase" -> {
-                        passphraseRequired = true
-                        passphrase = value.asTstr
-                    }
-                    "passphraseConstraints" -> {
-                        passphraseRequired = true
-                        passphraseConstraints = PassphraseConstraints.fromDataItem(value)
-                    }
-                }
-            }
-            setPassphraseRequired(passphraseRequired, passphrase, passphraseConstraints)
+        fun applyConfiguration(configuration: SecureAreaConfigurationSoftware) = apply {
+            setKeyPurposes(KeyPurpose.decodeSet(configuration.purposes))
+            setEcCurve(EcCurve.fromInt(configuration.curve))
+            setPassphraseRequired(
+                required = configuration.passphrase != null,
+                passphrase = configuration.passphrase,
+                constraints = configuration.passphraseConstraints
+            )
         }
 
         /**

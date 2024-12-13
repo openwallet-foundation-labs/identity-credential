@@ -1,23 +1,18 @@
 package com.android.identity_credential.wallet
 
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborMap
-import com.android.identity.crypto.EcCurve
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.CredentialFormat
-import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.MdocDocumentConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
-import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.mrtd.MrtdAccessData
+import com.android.identity.securearea.config.SecureAreaConfigurationSoftware
+import kotlinx.io.bytestring.ByteString
 import kotlin.time.Duration.Companion.seconds
 
 class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {}) {
@@ -35,9 +30,9 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
         configuration = IssuingAuthorityConfiguration(
             identifier = "mDL_SelfSigned",
             issuingAuthorityName = "Test IA",
-            issuingAuthorityLogo =  byteArrayOf(1, 2, 3),
+            issuingAuthorityLogo = byteArrayOf(1, 2, 3),
             issuingAuthorityDescription = "mDL from Test IA",
-            pendingDocumentInformation = DocumentConfiguration(
+            pendingDocumentInformation = com.android.identity.issuance.DocumentConfiguration(
                 displayName = "mDL for Test IA (proofing pending)",
                 typeDisplayName = "Driving License",
                 cardArt = byteArrayOf(1, 2, 3),
@@ -57,23 +52,23 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
         delayForProofingAndIssuance = 3.seconds
     }
 
-    override fun createPresentationData(presentationFormat: CredentialFormat,
-                                        documentConfiguration: DocumentConfiguration,
+    override fun createPresentationData(presentationFormat: com.android.identity.issuance.CredentialFormat,
+                                        documentConfiguration: com.android.identity.issuance.DocumentConfiguration,
                                         authenticationKey: EcPublicKey
     ): ByteArray {
         return byteArrayOf(1, 2, 3)
     }
 
-    override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
+    override fun developerModeRequestUpdate(currentConfiguration: com.android.identity.issuance.DocumentConfiguration): com.android.identity.issuance.DocumentConfiguration {
         return configuration.pendingDocumentInformation
     }
 
-    override suspend fun getConfiguration(): IssuingAuthorityConfiguration {
+    override suspend fun getConfiguration(): com.android.identity.issuance.IssuingAuthorityConfiguration {
         return configuration
     }
 
     override fun getProofingGraphRoot(
-        registrationResponse: RegistrationResponse
+        registrationResponse: com.android.identity.issuance.RegistrationResponse
     ): SimpleIssuingAuthorityProofingGraph.Node {
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
@@ -111,14 +106,14 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
         return true
     }
 
-    override fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): DocumentConfiguration {
+    override fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): com.android.identity.issuance.DocumentConfiguration {
         val firstName = (collectedEvidence["name"] as EvidenceResponseQuestionString).answer
-        return DocumentConfiguration(
+        return com.android.identity.issuance.DocumentConfiguration(
             displayName = "${firstName}'s Driving License",
             typeDisplayName = "Driving License",
             cardArt = byteArrayOf(1, 2, 3),
             requireUserAuthenticationToViewDocument = true,
-            mdocConfiguration = MdocDocumentConfiguration(
+            mdocConfiguration = com.android.identity.issuance.MdocDocumentConfiguration(
                 "org.iso.18013.5.1.mDL",
                 NameSpacedData.Builder().build(),
             ),
@@ -126,17 +121,12 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
         )
     }
 
-    override fun createCredentialConfiguration(collectedEvidence: MutableMap<String, EvidenceResponse>): CredentialConfiguration {
+    override fun createCredentialConfiguration(
+        collectedEvidence: MutableMap<String, EvidenceResponse>
+    ): CredentialConfiguration {
         return CredentialConfiguration(
-            byteArrayOf(1, 2, 3),
-            "SoftwareSecureArea",
-            Cbor.encode(
-                CborMap.builder()
-                    .put("curve", EcCurve.P256.coseCurveIdentifier)
-                    .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
-                    .end().build()
-            )
+            ByteString(byteArrayOf(1, 2, 3)),
+            SecureAreaConfigurationSoftware()
         )
     }
-
 }

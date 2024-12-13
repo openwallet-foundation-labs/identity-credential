@@ -20,6 +20,7 @@ import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcCurve
+import com.android.identity.device.AssertionBindingKeys
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
@@ -38,6 +39,9 @@ import com.android.identity.issuance.DocumentExtensions.issuingAuthorityConfigur
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityException
 import com.android.identity.issuance.KeyPossessionProof
+import com.android.identity.securearea.config.SecureAreaConfigurationAndroidKeystore
+import com.android.identity.securearea.config.SecureAreaConfigurationCloud
+import com.android.identity.securearea.config.SecureAreaConfigurationSoftware
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -842,28 +846,26 @@ class DocumentModel(
             val requestCredentialsFlow = issuer.requestCredentials(document.documentIdentifier)
             val credConfig = requestCredentialsFlow.getCredentialConfiguration(credentialFormat)
 
-            val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
-                ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
-            val authKeySettings: CreateKeySettings = when (secureArea) {
-                is AndroidKeystoreSecureArea -> {
-                    AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
-                        .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
-                        .build()
-                }
-
-                is SoftwareSecureArea -> {
+            val secureAreaConfiguration = credConfig.secureAreaConfiguration
+            val (secureArea, authKeySettings) = when (secureAreaConfiguration) {
+                is SecureAreaConfigurationSoftware -> Pair(
+                    secureAreaRepository.getImplementation("SoftwareSecureArea"),
                     SoftwareCreateKeySettings.Builder()
-                        .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                        .applyConfiguration(secureAreaConfiguration)
                         .build()
-                }
-
-                is CloudSecureArea -> {
-                    CloudCreateKeySettings.Builder(credConfig.challenge)
-                        .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                )
+                is SecureAreaConfigurationAndroidKeystore -> Pair(
+                    secureAreaRepository.getImplementation("AndroidKeystoreSecureArea"),
+                    AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge.toByteArray())
+                        .applyConfiguration(secureAreaConfiguration)
                         .build()
-                }
-
-                else -> throw IllegalStateException("Unexpected SecureArea $secureArea")
+                )
+                is SecureAreaConfigurationCloud -> Pair(
+                    secureAreaRepository.getImplementation(secureAreaConfiguration.cloudSecureAreaId),
+                    CloudCreateKeySettings.Builder(credConfig.challenge.toByteArray())
+                        .applyConfiguration(secureAreaConfiguration)
+                        .build()
+                )
             }
             DocumentUtil.managedCredentialHelper(
                 document,
@@ -872,7 +874,7 @@ class DocumentModel(
                     createCredential(
                         credentialToReplace,
                         credentialDomain,
-                        secureArea,
+                        secureArea!!,
                         authKeySettings,
                     )
                 },
@@ -890,7 +892,24 @@ class DocumentModel(
                     )
                 )
             }
-            val challenges = requestCredentialsFlow.sendCredentials(credentialRequests)
+            val applicationSupportConnection =
+                walletServerProvider.getApplicationSupportConnection()
+            val keysAssertion = walletServerProvider.assertionMaker.makeDeviceAssertion(
+                AssertionBindingKeys(
+                    publicKeys = credentialRequests.map { request ->
+                        request.secureAreaBoundKeyAttestation.publicKey
+                    },
+                    nonce = credConfig.challenge,
+                    clientId = applicationSupportConnection.clientId,
+                    keyStorage = listOf(),
+                    userAuthentication = listOf(),
+                    issuedAt = Clock.System.now()
+                )
+            )
+            val challenges = requestCredentialsFlow.sendCredentials(
+                credentialRequests = credentialRequests,
+                keysAssertion = keysAssertion
+            )
             if (challenges.isNotEmpty()) {
                 val activity = this.activity!!
                 if (challenges.size != document.pendingCredentials.size) {

@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.buildconfig)
+    alias(libs.plugins.ksp)
 }
 
 val projectVersionCode: Int by rootProject.extra
@@ -36,42 +37,71 @@ kotlin {
             isStatic = true
         }
     }
-    
+
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
-
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+        val iosMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
         }
 
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.bouncy.castle.bcprov)
-            implementation(libs.androidx.biometrics)
-            implementation(libs.ktor.client.android)
-            implementation(project(":identity-android"))
-            implementation(project(":identity-android-csa"))
+        val iosX64Main by getting {
+            dependencies {}
         }
 
-        commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(compose.materialIconsExtended)
-            implementation(libs.jetbrains.navigation.compose)
-            implementation(libs.jetbrains.navigation.runtime)
-            implementation(libs.jetbrains.lifecycle.viewmodel.compose)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.network)
-            implementation(project(":identity"))
-            implementation(project(":identity-mdoc"))
-            implementation(project(":identity-appsupport"))
-            implementation(project(":identity-doctypes"))
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.kotlinx.io.core)
+        val iosArm64Main by getting {
+            dependencies {}
+        }
+
+        val iosSimulatorArm64Main by getting {
+            dependencies {}
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation(compose.preview)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.androidx.biometrics)
+                implementation(libs.ktor.client.android)
+                implementation(project(":identity-android"))
+                implementation(project(":identity-android-csa"))
+            }
+        }
+
+        val commonMain by getting {
+            kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
+                implementation(compose.materialIconsExtended)
+                implementation(libs.jetbrains.navigation.compose)
+                implementation(libs.jetbrains.navigation.runtime)
+                implementation(libs.jetbrains.lifecycle.viewmodel.compose)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.network)
+                implementation(projects.processorAnnotations)
+
+                implementation(project(":identity"))
+                implementation(project(":identity-mdoc"))
+                implementation(project(":identity-appsupport"))
+                implementation(project(":identity-doctypes"))
+                implementation(project(":identity-flow"))
+                implementation(project(":identity-issuance-api"))
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.io.core)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
+            }
         }
     }
 }
@@ -120,3 +150,17 @@ android {
         debugImplementation(compose.uiTooling)
     }
 }
+
+dependencies {
+    add("kspCommonMainMetadata", project(":processor"))
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
+    if (name != "kspCommonMainKotlinMetadata") {
+        dependsOn("kspCommonMainKotlinMetadata")
+    }
+}
+
+tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")

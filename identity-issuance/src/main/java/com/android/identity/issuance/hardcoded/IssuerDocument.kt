@@ -11,7 +11,6 @@ import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.fromDataItem
 import com.android.identity.issuance.toDataItem
-import kotlinx.datetime.Instant
 
 // The document as seen from the issuer's perspective
 data class IssuerDocument(

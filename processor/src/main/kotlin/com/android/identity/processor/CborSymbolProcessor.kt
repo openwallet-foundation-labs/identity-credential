@@ -174,8 +174,9 @@ class CborSymbolProcessor(
             type: KSType
         ): String {
             val declaration = type.declaration
-            val qualifiedName = declaration.qualifiedName!!.asString()
-            when (qualifiedName) {
+            val declarationQualifiedName = declaration.qualifiedName
+                ?: throw NullPointerException("Declaration $declaration with null qualified name!")
+            when (val qualifiedName = declarationQualifiedName.asString()) {
                 "kotlin.collections.Map", "kotlin.collections.MutableMap" ->
                     with(codeBuilder) {
                         val map = varName("map")
@@ -458,6 +459,9 @@ class CborSymbolProcessor(
                     line("builder.put(\"$typeKey\", \"$typeId\")")
                 }
                 classDeclaration.getAllProperties().forEach { property ->
+                    if (!property.hasBackingField) {
+                        return@forEach
+                    }
                     val name = property.simpleName.asString()
                     val type = property.type.resolve()
                     // We want exceptions to be serializable (if marked with @CborSerializable),
@@ -502,6 +506,9 @@ class CborSymbolProcessor(
             block("fun $deserializer($dataItem: DataItem): $baseName") {
                 val constructorParameters = mutableListOf<String>()
                 classDeclaration.getAllProperties().forEach { property ->
+                    if (!property.hasBackingField) {
+                        return@forEach
+                    }
                     val type = property.type.resolve()
                     val fieldName = property.simpleName.asString()
                     // We want exceptions to be serializable (if marked with @CborSerializable),
@@ -550,6 +557,9 @@ class CborSymbolProcessor(
                 line("private val $fieldNameSet = setOf(")
                 withIndent {
                     classDeclaration.getAllProperties().forEach { property ->
+                        if (!property.hasBackingField) {
+                            return@forEach
+                        }
                         val name = property.simpleName.asString()
                         line("\"$name\",")
                     }

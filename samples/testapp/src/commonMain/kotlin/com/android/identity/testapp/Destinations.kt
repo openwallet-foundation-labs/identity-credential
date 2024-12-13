@@ -11,6 +11,7 @@ import identitycredential.samples.testapp.generated.resources.consent_modal_bott
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_multi_device_testing_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
+import identitycredential.samples.testapp.generated.resources.provisioning_test_title
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
@@ -58,6 +59,11 @@ data object PassphraseEntryFieldDestination : Destination {
     override val title = Res.string.passphrase_entry_field_screen_title
 }
 
+data object ProvisioningTestDestination : Destination {
+    override val route: String = "provisioning_test"
+    override val title = Res.string.provisioning_test_title
+}
+
 data object ConsentModalBottomSheetListDestination : Destination {
     override val route = "consent_modal_bottom_sheet_list"
     override val title = Res.string.consent_modal_bottom_sheet_list_screen_title
@@ -103,6 +109,7 @@ val appDestinations = listOf(
     SecureEnclaveSecureAreaDestination,
     CloudSecureAreaDestination,
     PassphraseEntryFieldDestination,
+    ProvisioningTestDestination,
     ConsentModalBottomSheetListDestination,
     ConsentModalBottomSheetDestination,
     QrCodesDestination,

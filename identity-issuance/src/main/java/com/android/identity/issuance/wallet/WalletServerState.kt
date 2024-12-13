@@ -10,7 +10,6 @@ import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.FlowEnvironment
 import com.android.identity.flow.server.Resources
 import com.android.identity.issuance.ApplicationSupport
-import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.IssuingAuthorityException

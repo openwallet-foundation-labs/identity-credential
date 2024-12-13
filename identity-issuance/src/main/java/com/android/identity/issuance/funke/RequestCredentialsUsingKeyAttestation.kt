@@ -1,6 +1,7 @@
 package com.android.identity.issuance.funke
 
 import com.android.identity.cbor.annotation.CborSerializable
+import com.android.identity.device.DeviceAssertion
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.FlowEnvironment
@@ -16,12 +17,12 @@ import com.android.identity.issuance.RequestCredentialsFlow
 )
 @CborSerializable
 class RequestCredentialsUsingKeyAttestation(
+    val clientId: String,
     documentId: String,
     credentialConfiguration: CredentialConfiguration,
-    nonce: String,
     format: CredentialFormat? = null,
-    var credentialRequests: List<CredentialRequest>? = null
-) : AbstractRequestCredentials(documentId, credentialConfiguration, nonce, format) {
+    val credentialRequestSets: MutableList<CredentialRequestSet> = mutableListOf()
+) : AbstractRequestCredentials(documentId, credentialConfiguration, format) {
     companion object
 
     @FlowMethod
@@ -36,13 +37,15 @@ class RequestCredentialsUsingKeyAttestation(
     @FlowMethod
     fun sendCredentials(
         env: FlowEnvironment,
-        newCredentialRequests: List<CredentialRequest>
+        credentialRequests: List<CredentialRequest>,
+        keysAssertion: DeviceAssertion // holds AssertionBingingKeys
     ): List<KeyPossessionChallenge> {
-        if (credentialRequests != null) {
-            throw IllegalStateException("Credential requests were already sent")
-        }
-        credentialRequests = newCredentialRequests
-        return listOf()
+        credentialRequestSets.add(CredentialRequestSet(
+            format = format!!,
+            keyAttestations = credentialRequests.map { it.secureAreaBoundKeyAttestation },
+            keysAssertion = keysAssertion
+        ))
+        return emptyList()
     }
 
     @FlowMethod

@@ -1,11 +1,11 @@
 package com.android.identity.issuance.remote
 
 import android.content.Context
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
-import com.android.identity.crypto.Algorithm
+import com.android.identity.device.AssertionNonce
+import com.android.identity.device.DeviceAssertionMaker
 import com.android.identity.flow.handler.FlowDispatcher
 import com.android.identity.flow.handler.FlowDispatcherHttp
 import com.android.identity.flow.handler.FlowDispatcherLocal
@@ -18,15 +18,13 @@ import com.android.identity.flow.handler.SimpleCipher
 import com.android.identity.flow.transport.HttpTransport
 import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.ClientAuthentication
-import com.android.identity.issuance.ClientChallenge
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.WalletServer
 import com.android.identity.issuance.WalletServerImpl
-import com.android.identity.issuance.authenticationMessage
-import com.android.identity.issuance.extractAttestationSequence
 import com.android.identity.issuance.wallet.WalletServerState
-import com.android.identity.securearea.KeyInfo
+import com.android.identity.device.DeviceCheck
+import com.android.identity.device.DeviceAttestation
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.SettingsModel
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +36,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.bouncycastle.asn1.ASN1OctetString
+import kotlinx.io.bytestring.ByteString
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -74,6 +72,17 @@ class WalletServerProvider(
 
     private var notificationsJob: Job? = null
     private var resetListeners = mutableListOf<()->Unit>()
+
+    private val storage = StorageImpl(context, "wallet_servers")
+
+    val assertionMaker = DeviceAssertionMaker { assertion ->
+        val applicationSupportConnection = applicationSupportSupplier!!.getApplicationSupport()
+        DeviceCheck.generateAssertion(
+            secureArea = secureArea,
+            deviceAttestationId = applicationSupportConnection.deviceAttestationId,
+            assertion = assertion
+        )
+    }
 
     companion object {
         private const val TAG = "WalletServerProvider"
@@ -156,9 +165,9 @@ class WalletServerProvider(
         instanceLock.withLock {
             if (instance == null) {
                 Logger.i(TAG, "Creating new WalletServer instance: $baseUrl")
-                val server = getWalletServerUnlocked(baseUrl)
-                instance = server.first
-                applicationSupportSupplier = server.second
+                val connection = estableshWalletServerConnection(baseUrl)
+                instance = connection.server
+                applicationSupportSupplier = connection.applicationSupportSupplier
                 Logger.i(TAG, "Created new WalletServer instance: $baseUrl")
             } else {
                 Logger.i(TAG, "Reusing existing WalletServer instance: $baseUrl")
@@ -228,17 +237,15 @@ class WalletServerProvider(
     }
 
     /**
-     * Gets ApplicationSupport object. It always comes from the server (either full wallet server
-     * or minimal wallet server).
+     * Gets ApplicationSupport object and data necessary to make use of it.
+     * It always comes from the server (either full wallet server or minimal wallet server).
      */
-    suspend fun getApplicationSupport(): ApplicationSupport {
+    suspend fun getApplicationSupportConnection(): ApplicationSupportConnection {
         getWalletServer()
         return applicationSupportSupplier!!.getApplicationSupport()
     }
 
-    private suspend fun getWalletServerUnlocked(
-        baseUrl: String
-    ): Pair<WalletServer, ApplicationSupportSupplier> {
+    private suspend fun estableshWalletServerConnection(baseUrl: String): WalletServerConnection {
         val dispatcher: FlowDispatcher
         val notifier: FlowNotifier
         val exceptionMapBuilder = FlowExceptionMap.Builder()
@@ -247,13 +254,14 @@ class WalletServerProvider(
         if (baseUrl == "dev:") {
             val builder = FlowDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
-            notifier = FlowNotificationsLocal(noopCipher)
+            notifier = FlowNotificationsLocal(CoroutineScope(Dispatchers.IO), noopCipher)
             applicationSupportSupplier = ApplicationSupportSupplier() {
-                val minServer = getWalletServerUnlocked(settingsModel.minServerUrl.value!!)
-                minServer.second.getApplicationSupport()
+                val minServer = estableshWalletServerConnection(settingsModel.minServerUrl.value!!)
+                minServer.applicationSupportSupplier.getApplicationSupport()
             }
             val environment = LocalDevelopmentEnvironment(
-                context, settingsModel, secureArea, notifier, applicationSupportSupplier)
+                context, settingsModel, assertionMaker,
+                secureArea, notifier, applicationSupportSupplier)
             dispatcher = WrapperFlowDispatcher(builder.build(
                 environment,
                 noopCipher,
@@ -278,51 +286,67 @@ class WalletServerProvider(
             flowNotifier = notifier
         )
 
-        val alias = "ClientKey:$baseUrl"
-        var keyInfo: KeyInfo? = null
-        var challenge: ClientChallenge? = null
+        val connectionDataBytes = storage.get(
+            table = "Hosts",
+            peerId = "",
+            key = baseUrl
+        )
+        var connectionData = if (connectionDataBytes == null) {
+            null
+        } else {
+            WalletServerConnectionData.fromCbor(connectionDataBytes.toByteArray())
+        }
         val authentication = walletServer.authenticate()
-        try {
-            keyInfo = secureArea.getKeyInfo(alias)
-        } catch (ex: Exception) {
-            challenge = authentication.requestChallenge("")
-        }
-        if (keyInfo != null) {
-            val attestation = keyInfo.attestation
-            val seq = extractAttestationSequence(attestation.certChain!!)
-            val clientId = String(ASN1OctetString.getInstance(seq.getObjectAt(4)).octets)
-            challenge = authentication.requestChallenge(clientId)
-            if (clientId != challenge.clientId) {
-                secureArea.deleteKey(alias)
-                keyInfo = null
-            }
-        }
-        val newClient = keyInfo == null
-        if (newClient) {
-            secureArea.createKey(alias,
-                AndroidKeystoreCreateKeySettings.Builder(
-                    challenge!!.clientId.toByteArray()
-                ).build()
+        val challenge = authentication.requestChallenge(connectionData?.clientId ?: "")
+        val deviceAttestation: DeviceAttestation?
+        if (connectionData?.clientId != challenge.clientId) {
+            // new client
+            val result = DeviceCheck.generateAttestation(secureArea, challenge.clientId)
+            deviceAttestation = result.deviceAttestation
+            connectionData = WalletServerConnectionData(
+                clientId = challenge.clientId,
+                deviceAttestationId = result.deviceAttestationId
             )
-            keyInfo = secureArea.getKeyInfo(alias)
+            if (connectionDataBytes == null) {
+                storage.insert(
+                    table = "Hosts",
+                    peerId = "",
+                    data = ByteString(connectionData.toCbor()),
+                    key = baseUrl
+                )
+            } else {
+                storage.update(
+                    table = "Hosts",
+                    peerId = "",
+                    data = ByteString(connectionData.toCbor()),
+                    key = baseUrl
+                )
+            }
+        } else {
+            deviceAttestation = null
         }
-        val message = authenticationMessage(challenge!!.clientId, challenge.nonce)
         authentication.authenticate(ClientAuthentication(
-            secureArea.sign(alias, Algorithm.ES256, message.toByteArray(), null),
-            if (newClient) {
-                keyInfo!!.attestation.certChain!!
-            } else null,
+            deviceAttestation,
+            DeviceCheck.generateAssertion(
+                secureArea,
+                connectionData.deviceAttestationId,
+                AssertionNonce(challenge.nonce)
+            ),
             getWalletApplicationCapabilities()
         ))
         authentication.complete()
 
         if (applicationSupportSupplier == null) {
             applicationSupportSupplier = ApplicationSupportSupplier {
-                walletServer.applicationSupport()
+                ApplicationSupportConnection(
+                    applicationSupport = walletServer.applicationSupport(),
+                    clientId = connectionData.clientId,
+                    deviceAttestationId = connectionData.deviceAttestationId
+                )
             }
         }
 
-        return Pair(walletServer, applicationSupportSupplier)
+        return WalletServerConnection(walletServer, applicationSupportSupplier)
     }
 
     /**
@@ -355,18 +379,31 @@ class WalletServerProvider(
         }
     }
 
-    internal class ApplicationSupportSupplier(val factory: suspend () -> ApplicationSupport) {
-        private var applicationSupport: ApplicationSupport? = null
+    internal class ApplicationSupportSupplier(
+        val factory: suspend () -> ApplicationSupportConnection
+    ) {
+        private var connection: ApplicationSupportConnection? = null
 
-        suspend fun getApplicationSupport(): ApplicationSupport {
-            if (applicationSupport == null) {
-                applicationSupport = factory()
+        suspend fun getApplicationSupport(): ApplicationSupportConnection {
+            if (connection == null) {
+                connection = factory()
             }
-            return applicationSupport!!
+            return connection!!
         }
 
         suspend fun release() {
-            applicationSupport?.complete()
+            connection?.applicationSupport?.complete()
         }
     }
+
+    class ApplicationSupportConnection(
+        val applicationSupport: ApplicationSupport,
+        val clientId: String,
+        val deviceAttestationId: String
+    )
+
+    internal class WalletServerConnection(
+        val server: WalletServer,
+        val applicationSupportSupplier: ApplicationSupportSupplier
+    )
 }
