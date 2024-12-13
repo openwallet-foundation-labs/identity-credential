@@ -62,7 +62,7 @@ class MultiDeviceTestsClient(
                     EngagementParser(encodedDeviceEngagement).parse()
                 val connectionMethod = deviceEngagement.connectionMethods[0]
                 val eDeviceKey = deviceEngagement.eSenderKey
-                val transport = MdocTransportFactory.createTransport(
+                val transport = MdocTransportFactory.Default.createTransport(
                     connectionMethod,
                     MdocTransport.Role.MDOC_READER,
                     options

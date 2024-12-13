@@ -13,9 +13,11 @@
     <string name="consent_modal_bottom_sheet_screen_title">ConsentModalBottomSheet</string>
     <string name="consent_modal_bottom_sheet_list_screen_title">ConsentModalBottomSheet use-cases</string>
     <string name="qr_codes_screen_title">QR code generation and scanning</string>
+    <string name="nfc_screen_title">NFC sharing and scanning</string>
     <string name="iso_mdoc_proximity_sharing_title">ISO mdoc Proximity Sharing</string>
     <string name="iso_mdoc_proximity_reading_title">ISO mdoc Proximity Reading</string>
     <string name="iso_mdoc_multi_device_testing_title">ISO mdoc Multi-Device Testing</string>
     <string name="provisioning_test_title">Test provisioning</string>
+    <string name="presentation_title">Presentation</string>
 
 </resources>
