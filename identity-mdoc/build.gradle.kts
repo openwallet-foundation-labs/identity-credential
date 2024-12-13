@@ -42,11 +42,14 @@ kotlin {
         }
     }
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(project(":identity"))
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.io.core)
                 implementation(libs.kotlinx.io.bytestring)
                 implementation(libs.kotlinx.coroutines.core)
             }
@@ -74,7 +77,17 @@ kotlin {
             }
         }
 
+        // Code available on targets with a GUI (e.g. Android and iOS)
+        val uiMain by creating {
+            dependsOn(commonMain)
+        }
+
+        val iosMain by getting {
+            dependsOn(uiMain)
+        }
+
         val androidMain by getting {
+            dependsOn(uiMain)
             dependencies {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)

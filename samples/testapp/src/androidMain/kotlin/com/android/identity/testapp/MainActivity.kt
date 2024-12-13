@@ -1,6 +1,5 @@
 package com.android.identity.testapp
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
@@ -12,22 +11,25 @@ import java.security.Security
 
 class MainActivity : FragmentActivity() {
 
-    companion object {
-        lateinit var appContext: Context
-            private set
+    private val app = App()
 
-        lateinit var instance: MainActivity
-            private set
+    private var fragmentActivity: FragmentActivity? = null
+
+    override fun onResume() {
+        super.onResume()
+        fragmentActivity = this
     }
 
-    private val app = App()
+    override fun onPause() {
+        super.onPause()
+        fragmentActivity = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        instance = this
-        appContext = applicationContext
-        AndroidInitializer.initialize(applicationContext)
+        fragmentActivity = this
+        AndroidInitializer.initialize(applicationContext, { fragmentActivity })
 
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in the OS itself.

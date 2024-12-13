@@ -78,9 +78,9 @@ object TestAppUtils {
 
     fun generateEncodedSessionTranscript(
         encodedDeviceEngagement: ByteArray,
+        handover: DataItem,
         eReaderKey: EcPublicKey
     ): ByteArray {
-        val handover = Simple.NULL
         val encodedEReaderKey = Cbor.encode(eReaderKey.toCoseKey().toDataItem())
         return Cbor.encode(
             CborArray.builder()
