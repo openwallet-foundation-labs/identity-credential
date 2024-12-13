@@ -1,5 +1,4 @@
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -42,11 +41,14 @@ kotlin {
         }
     }
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(project(":identity"))
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.io.core)
                 implementation(libs.kotlinx.io.bytestring)
                 implementation(libs.kotlinx.coroutines.core)
             }
@@ -74,7 +76,17 @@ kotlin {
             }
         }
 
+        // Code available on targets with a graphical OS (e.g. Android and iOS)
+        val mobileOsMain by creating {
+            dependsOn(commonMain)
+        }
+
+        val iosMain by getting {
+            dependsOn(mobileOsMain)
+        }
+
         val androidMain by getting {
+            dependsOn(mobileOsMain)
             dependencies {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)

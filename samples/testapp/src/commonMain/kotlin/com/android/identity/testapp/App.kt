@@ -34,6 +34,7 @@ import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
 import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
 import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
+import com.android.identity.testapp.ui.NfcScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
 import com.android.identity.testapp.ui.ProvisioningTestScreen
 import com.android.identity.testapp.ui.QrCodesScreen
@@ -101,6 +102,7 @@ class App {
                             onClickIssuanceTestField = { navController.navigate(ProvisioningTestDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
+                            onClickNfc = { navController.navigate(NfcDestination.route) },
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
                             onClickIsoMdocProximityReading = { navController.navigate(IsoMdocProximityReadingDestination.route) },
                             onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
@@ -156,6 +158,11 @@ class App {
                     }
                     composable(route = QrCodesDestination.route) {
                         QrCodesScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = NfcDestination.route) {
+                        NfcScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }
