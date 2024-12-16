@@ -26,6 +26,9 @@ import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
 import com.android.identity.documenttype.IntegerOption
 import com.android.identity.documenttype.StringOption
+import com.android.identity.util.fromBase64Url
+import com.android.identity.util.fromHex
+import kotlinx.datetime.LocalDate
 
 /**
  * Object containing the metadata of the Driving License
@@ -74,7 +77,7 @@ object DrivingLicense {
                 true,
                 MDL_NAMESPACE,
                 Icon.TODAY,
-                SampleData.birthDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Date,
@@ -84,7 +87,7 @@ object DrivingLicense {
                 true,
                 MDL_NAMESPACE,
                 Icon.DATE_RANGE,
-                SampleData.issueDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Date,
@@ -94,7 +97,7 @@ object DrivingLicense {
                 true,
                 MDL_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                SampleData.expiryDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -134,7 +137,7 @@ object DrivingLicense {
                 true,
                 MDL_NAMESPACE,
                 Icon.ACCOUNT_BOX,
-                null // TODO: include img_erika_portrait.jpg
+                SampleData.PORTRAIT_BASE64URL.fromBase64Url().toDataItem()
             )
             .addAttribute(
                 DocumentAttributeType.ComplexType,
@@ -284,7 +287,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.TODAY,
-                SampleData.portraitCaptureDate.toDataItemFullDate()
+                LocalDate.parse(SampleData.PORTRAIT_CAPTURE_DATE).toDataItemFullDate()
             )
             .addAttribute(
                 DocumentAttributeType.Number,
@@ -484,7 +487,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.SIGNATURE,
-                null  // TODO: include img_erika_signature.jpg
+                SampleData.SIGNATURE_OR_USUAL_MARK_BASE64URL.fromBase64Url().toDataItem()
             )
             .addAttribute(
                 DocumentAttributeType.ComplexType,

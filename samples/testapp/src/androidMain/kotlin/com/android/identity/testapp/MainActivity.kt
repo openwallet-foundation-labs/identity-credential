@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
+import com.android.identity.util.AndroidInitializer
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 
@@ -26,6 +27,7 @@ class MainActivity : FragmentActivity() {
 
         instance = this
         appContext = applicationContext
+        AndroidInitializer.initialize(applicationContext)
 
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in the OS itself.

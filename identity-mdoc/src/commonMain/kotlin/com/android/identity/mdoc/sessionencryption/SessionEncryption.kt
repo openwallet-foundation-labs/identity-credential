@@ -228,6 +228,18 @@ class SessionEncryption(
                 end()
                 Cbor.encode(end().build())
             }
+
+        /**
+         * Gets the ephemeral reader key in a `SessionEstablishment` message.
+         *
+         * @param the bytes of a `SessionEstablishment` message.
+         * @return the reader key, as a [EcPublicKey].
+         */
+        fun getEReaderKey(sessionEstablishmentMessage: ByteArray): EcPublicKey {
+            val map = Cbor.decode(sessionEstablishmentMessage)
+            val encodedEReaderKey = map["eReaderKey"].asTagged.asBstr
+            return Cbor.decode(encodedEReaderKey).asCoseKey.ecPublicKey
+        }
     }
 }
 

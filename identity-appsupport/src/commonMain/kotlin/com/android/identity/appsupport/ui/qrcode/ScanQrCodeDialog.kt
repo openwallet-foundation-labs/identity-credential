@@ -18,7 +18,8 @@ import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
  * If the application doesn't have the necessary permission, the user is prompted to grant it.
  *
  * @param title The title of the dialog.
- * @param description The description text to include in the dialog.
+ * @param text The description to include in the dialog, displayed above the QR scanner window.
+ * @param additionalContent Content which is displayed below the QR scanner window.
  * @param dismissButton The text for the dismiss button.
  * @param onCodeScanned called when a QR code is scanned, the parameter is the parsed data. Should
  *   return `true` to stop scanning, `false` to continue scanning.
@@ -27,8 +28,9 @@ import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
  */
 @Composable
 fun ScanQrCodeDialog(
-    title: String,
-    description: String,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    additionalContent: (@Composable () -> Unit)? = null,
     dismissButton: String,
     onCodeScanned: (data: String) -> Boolean,
     onDismiss: () -> Unit,
@@ -36,12 +38,12 @@ fun ScanQrCodeDialog(
 ) {
     AlertDialog(
         modifier = modifier ?: Modifier,
-        title = { Text(text = title) },
+        title = title,
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(text = description)
+                text?.invoke()
 
                 ScannerWithPermissions(
                     modifier = Modifier.height(300.dp),
@@ -50,6 +52,8 @@ fun ScanQrCodeDialog(
                     },
                     types = listOf(CodeType.QR)
                 )
+
+                additionalContent?.invoke()
             }
         },
         onDismissRequest = onDismiss,

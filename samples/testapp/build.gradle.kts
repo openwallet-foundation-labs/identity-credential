@@ -39,11 +39,16 @@ kotlin {
     
     sourceSets {
 
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
+
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.bouncy.castle.bcprov)
             implementation(libs.androidx.biometrics)
+            implementation(libs.ktor.client.android)
             implementation(project(":identity-android"))
             implementation(project(":identity-android-csa"))
         }
@@ -58,7 +63,9 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(libs.jetbrains.navigation.compose)
             implementation(libs.jetbrains.navigation.runtime)
-
+            implementation(libs.jetbrains.lifecycle.viewmodel.compose)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.network)
             implementation(project(":identity"))
             implementation(project(":identity-mdoc"))
             implementation(project(":identity-appsupport"))

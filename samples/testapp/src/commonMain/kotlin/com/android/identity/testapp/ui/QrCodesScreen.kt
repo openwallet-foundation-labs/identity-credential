@@ -22,8 +22,9 @@ fun QrCodesScreen(
 
     if (showMdocQrCodeDialog.value) {
         ShowQrCodeDialog(
-            title = "Scan code on reader",
-            description = "Your personal information won't be shared yet. You don't need to hand your phone to anyone to share your ID.",
+            title = { Text(text = "Scan code on reader") },
+            text = { Text(text = "Your personal information won't be shared yet. You don't need to hand your " +
+                    "phone to anyone to share your ID.") },
             dismissButton = "Close",
             // This is the DeviceEngagement test vector from ISO/IEC 18013-5:2021 Annex D encoded
             // as specified in clause 8.2.2.3.
@@ -35,8 +36,8 @@ fun QrCodesScreen(
 
     if (showUrlQrCodeDialog.value) {
         ShowQrCodeDialog(
-            title = "Scan code with phone",
-            description = "This is a QR code for https://github.com/openwallet-foundation-labs/identity-credential",
+            title = { Text(text = "Scan code with phone") },
+            text = { Text(text = "This is a QR code for https://github.com/openwallet-foundation-labs/identity-credential") },
             dismissButton = "Close",
             data = "https://github.com/openwallet-foundation-labs/identity-credential",
             onDismiss = { showUrlQrCodeDialog.value = false }
@@ -45,9 +46,9 @@ fun QrCodesScreen(
 
     if (showQrScanDialog.value) {
         ScanQrCodeDialog(
-            title = "Scan code",
-            description = "Ask the person you wish to request identity attributes from to present" +
-                    " a QR code. This is usually in their identity wallet.",
+            title = { Text ("Scan code") },
+            text = { Text ("Ask the person you wish to request identity attributes from to present" +
+                    " a QR code. This is usually in their identity wallet.") },
             dismissButton = "Close",
             onCodeScanned = { data ->
                 if (data.startsWith("mdoc:")) {
