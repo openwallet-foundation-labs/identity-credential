@@ -3,6 +3,7 @@
 | Maintainer      | GitHub ID       | LFID | Email                | Chat ID    | Company Affiliation | Scope     |
 |-----------------|-----------------|------|----------------------|------------| ------------------- | --------- |
 | Akash Shah      | @dyiop          | -    | dyiop@google.com     | -          | Google LLC          | -         |
+| Alex Koukarine  | @halxinate      | -    | koukarine@google.com | -          | Google LLC          | -         |
 | Cory Barker     | @TheCoryBarker  | -    | cobark@google.com    | -          | Google LLC          | -         |
 | David Zeuthen   | @davidz25       | -    | zeuthen@google.com   | davidz25   | Google LLC          | -         |
 | Hamzeh Zawawy   | @hzawawy        | -    | hamzeh@google.com    | -          | Google LLC          | -         |
