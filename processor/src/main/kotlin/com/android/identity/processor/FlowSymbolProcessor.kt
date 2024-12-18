@@ -383,6 +383,9 @@ class FlowSymbolProcessor(
         operations: List<FlowOperationInfo>
     ) {
         val lastDotImpl = flowImplName.lastIndexOf('.')
+        if (lastDotImpl < 0) {
+            throw IllegalArgumentException("Expected fully-qualified name: $flowImplName ($interfaceFullName)")
+        }
         val packageName = flowImplName.substring(0, lastDotImpl)
         val baseName = flowImplName.substring(lastDotImpl + 1)
         with(CodeBuilder()) {
@@ -834,7 +837,7 @@ class FlowSymbolProcessor(
         annotation?.arguments?.forEach { arg ->
             if (arg.name?.asString() == name) {
                 val field = arg.value.toString()
-                if (field.isNotEmpty()) {
+                if (field.isNotEmpty() && field != "null") {
                     return field
                 }
             }

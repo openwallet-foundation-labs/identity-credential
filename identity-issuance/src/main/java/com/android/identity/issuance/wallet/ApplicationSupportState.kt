@@ -5,7 +5,9 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.device.AssertionDPoPKey
+import com.android.identity.device.DeviceAssertion
+import com.android.identity.device.DeviceAttestationAndroid
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
@@ -16,9 +18,9 @@ import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.funke.toJson
-import com.android.identity.issuance.isCloudKeyAttestation
-import com.android.identity.issuance.validateCloudKeyAttestation
-import com.android.identity.issuance.validateKeyAttestation
+import com.android.identity.issuance.validateAndroidKeyAttestation
+import com.android.identity.issuance.validateDeviceAssertion
+import com.android.identity.issuance.validateDeviceAssertionBindingKeys
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.util.Logger
 import com.android.identity.util.toBase64Url
@@ -28,6 +30,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -41,7 +44,9 @@ class ApplicationSupportState(
         const val TAG = "ApplicationSupportState"
 
         // This is the ID that was allocated to our app in the context of Funke. Use it as
-        // default client id for ease of development.
+        // default OpenId4VCI client id for ease of development. It is NOT used as value for
+        // clientId field above! It identifies our wallet app to OpenId4VCI servers, whereas
+        // clientId identifies a particular wallet app instance to the wallet server.
         const val FUNKE_CLIENT_ID = "60f8c117-b692-4de8-8f7f-636ff852baa6"
     }
 
@@ -79,20 +84,33 @@ class ApplicationSupportState(
 
     @FlowMethod
     suspend fun createJwtClientAssertion(
-        env: FlowEnvironment, attestation: KeyAttestation, targetIssuanceUrl: String
+        env: FlowEnvironment,
+        keyAttestation: KeyAttestation,
+        keyAssertion: DeviceAssertion
     ): String {
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val storage = env.getInterface(Storage::class)!!
+        val clientRecord = ClientRecord.fromCbor(
+            storage.get("Clients", "", clientId)!!.toByteArray())
 
-        validateKeyAttestation(
-            attestation.certChain!!,
-            null,  // no challenge check
-            settings.androidRequireGmsAttestation,
-            settings.androidRequireVerifiedBootGreen,
-            settings.androidRequireAppSignatureCertificateDigests
-        )
+        validateDeviceAssertion(clientRecord.deviceAttestation, keyAssertion)
 
-        check(attestation.certChain!!.certificates[0].ecPublicKey == attestation.publicKey)
-        return createJwtClientAssertion(env, attestation.publicKey, targetIssuanceUrl)
+        val assertion = keyAssertion.assertion as AssertionDPoPKey
+
+        if (clientRecord.deviceAttestation is DeviceAttestationAndroid) {
+            val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+            val certChain = keyAttestation.certChain!!
+            check(assertion.publicKey == certChain.certificates.first().ecPublicKey)
+            validateAndroidKeyAttestation(
+                certChain,
+                null,  // no challenge check needed
+                settings.androidRequireGmsAttestation,
+                settings.androidRequireVerifiedBootGreen,
+                settings.androidRequireAppSignatureCertificateDigests
+            )
+        }
+
+        check(keyAttestation.certChain!!.certificates[0].ecPublicKey == keyAttestation.publicKey)
+        return createJwtClientAssertion(env, keyAttestation.publicKey, assertion.targetUrl)
     }
 
     @FlowMethod
@@ -104,31 +122,21 @@ class ApplicationSupportState(
     suspend fun createJwtKeyAttestation(
         env: FlowEnvironment,
         keyAttestations: List<KeyAttestation>,
-        nonce: String
+        keysAssertion: DeviceAssertion // holds AssertionBindingKeys
     ): String {
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val storage = env.getInterface(Storage::class)!!
+        val clientRecord = ClientRecord.fromCbor(
+            storage.get("Clients", "", clientId)!!.toByteArray())
+        val assertion = validateDeviceAssertionBindingKeys(
+            env = env,
+            deviceAttestation = clientRecord.deviceAttestation,
+            keyAttestations = keyAttestations,
+            deviceAssertion = keysAssertion,
+            nonce = null,  // no check
+        )
 
-        val keyList = keyAttestations.map { attestation ->
-            // TODO: ensure that keys come from the same device and extract data for key_type
-            // and user_authentication values
-            if (isCloudKeyAttestation(attestation.certChain!!)) {
-                val trustedRootKeys = getCloudSecureAreaTrustedRootKeys(env)
-                validateCloudKeyAttestation(
-                    attestation.certChain!!,
-                    nonce,
-                    trustedRootKeys.trustedKeys
-                )
-            } else {
-                validateKeyAttestation(
-                    attestation.certChain!!,
-                    nonce,
-                    settings.androidRequireGmsAttestation,
-                    settings.androidRequireVerifiedBootGreen,
-                    settings.androidRequireAppSignatureCertificateDigests
-                )
-            }
-            attestation.publicKey.toJson(null)
-        }
+        val nonce = String(assertion.nonce.toByteArray())
+        val keyList = assertion.publicKeys
 
         val attestationData = env.cache(AttestationData::class) { configuration, resources ->
             // The key that we use here is unique for a particular Wallet ecosystem.
@@ -160,17 +168,24 @@ class ApplicationSupportState(
         val now = Clock.System.now()
         val notBefore = now - 1.seconds
         val expiration = now + 5.minutes
-        val payload = JsonObject(
-            mapOf(
-                "iss" to JsonPrimitive(attestationData.clientId),
-                "attested_keys" to JsonArray(keyList),
-                "nonce" to JsonPrimitive(nonce),
-                "nbf" to JsonPrimitive(notBefore.epochSeconds),
-                "exp" to JsonPrimitive(expiration.epochSeconds),
-                "iat" to JsonPrimitive(now.epochSeconds)
-                // TODO: add appropriate key_type and user_authentication values
-            )
-        ).toString().toByteArray().toBase64Url()
+        val payload = buildJsonObject {
+            put("iss", attestationData.clientId)
+            put("attested_keys", JsonArray(keyList.map { it.toJson(null) }))
+            put("nonce", nonce)
+            put("nbf", notBefore.epochSeconds)
+            put("exp", expiration.epochSeconds)
+            put("iat", now.epochSeconds)
+            if (assertion.userAuthentication.isNotEmpty()) {
+                put("user_authentication",
+                    JsonArray(assertion.userAuthentication.map { JsonPrimitive(it) })
+                )
+            }
+            if (assertion.keyStorage.isNotEmpty()) {
+                put("key_storage",
+                    JsonArray(assertion.keyStorage.map { JsonPrimitive(it) })
+                )
+            }
+        }.toString().toByteArray().toBase64Url()
 
         val message = "$head.$payload"
         val sig = Crypto.sign(
@@ -254,26 +269,9 @@ class ApplicationSupportState(
         return "$message.$signature"
     }
 
-    private suspend fun getCloudSecureAreaTrustedRootKeys(
-        env: FlowEnvironment
-    ): CloudSecureAreaTrustedRootKeys {
-        return env.cache(CloudSecureAreaTrustedRootKeys::class) { configuration, resources ->
-            val certificateName = configuration.getValue("csa.certificate")
-                ?: "cloud_secure_area/certificate.pem"
-            val certificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
-            CloudSecureAreaTrustedRootKeys(
-                trustedKeys = setOf(ByteString(certificate.javaX509Certificate.publicKey.encoded))
-            )
-        }
-    }
-
     internal data class AttestationData(
         val certificate: X509Cert,
         val privateKey: EcPrivateKey,
         val clientId: String
-    )
-
-    internal data class CloudSecureAreaTrustedRootKeys(
-        val trustedKeys: Set<ByteString>
     )
 }

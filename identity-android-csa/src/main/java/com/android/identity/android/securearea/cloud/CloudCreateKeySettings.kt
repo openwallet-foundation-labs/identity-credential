@@ -2,10 +2,10 @@ package com.android.identity.android.securearea.cloud
 
 import android.os.Build
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.config.SecureAreaConfigurationCloud
 import kotlinx.datetime.Instant
 
 /**
@@ -79,25 +79,15 @@ class CloudCreateKeySettings private constructor(
          * @param configuration configuration from a CBOR map.
          * @return the builder.
          */
-        fun applyConfiguration(configuration: DataItem) = apply {
-            var userAutenticationRequired = false
-            var userAuthenticationTimeoutMillis = 0L
-            var userAuthenticationTypes = setOf<UserAuthenticationType>()
-            for ((key, value) in configuration.asMap) {
-                when (key.asTstr) {
-                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
-                    "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
-                    "useStrongBox" -> setUseStrongBox(value.asBoolean)
-                    "userAuthenticationRequired" -> userAutenticationRequired = value.asBoolean
-                    "userAuthenticationTimeoutMillis" -> userAuthenticationTimeoutMillis = value.asNumber
-                    "userAuthenticationTypes" -> userAuthenticationTypes = UserAuthenticationType.decodeSet(value.asNumber)
-                    "passphraseRequired" -> setPassphraseRequired(value.asBoolean)
-                }
-            }
+        fun applyConfiguration(configuration: SecureAreaConfigurationCloud) = apply {
+            setKeyPurposes(KeyPurpose.decodeSet(configuration.purposes))
+            setEcCurve(EcCurve.fromInt(configuration.curve))
+            setUseStrongBox(configuration.useStrongBox)
+            setPassphraseRequired(configuration.passphraseRequired)
             setUserAuthenticationRequired(
-                userAutenticationRequired,
-                userAuthenticationTimeoutMillis,
-                userAuthenticationTypes
+                configuration.userAuthenticationRequired,
+                configuration.userAuthenticationTimeoutMillis,
+                UserAuthenticationType.decodeSet(configuration.userAuthenticationTypes)
             )
         }
 

@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":identity"))
     implementation(project(":identity-flow"))
     implementation(project(":processor-annotations"))
+    implementation(project(":identity-issuance-api"))
     implementation(project(":identity-issuance"))
     implementation(project(":identity-csa"))
     implementation(project(":identity-mdoc"))

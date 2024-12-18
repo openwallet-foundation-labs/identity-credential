@@ -1,41 +1,35 @@
 package com.android.identity.issuance
 
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcSignature
+import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.crypto.javaX509Certificates
+import com.android.identity.device.AssertionBindingKeys
+import com.android.identity.device.DeviceAssertion
+import com.android.identity.device.DeviceAttestation
+import com.android.identity.device.DeviceAttestationAndroid
+import com.android.identity.device.DeviceAttestationIos
+import com.android.identity.device.DeviceAttestationJvm
+import com.android.identity.flow.server.Configuration
+import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.issuance.common.cache
 import com.android.identity.securearea.AttestationExtension
+import com.android.identity.securearea.KeyAttestation
 import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.util.Logger
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.bytestring.append
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1OctetString
-import org.bouncycastle.asn1.ASN1Sequence
 
-private val salt = byteArrayOf((0xe7).toByte(), 0x7c, (0xf8).toByte(), (0xec).toByte())
-
-private const val KEY_DESCRIPTION_OID: String = "1.3.6.1.4.1.11129.2.1.17"
+// TODO: move as much of this as possible into com.android.identity.device (and perhaps
+// com.android.identity.crypto) package.
 
 private const val TAG = "authenticationUtilities"
-
-fun authenticationMessage(clientId: String, nonce: ByteString): ByteString {
-    val buffer = ByteStringBuilder()
-    buffer.append(salt)
-    buffer.append(clientId.toByteArray())
-    buffer.append(nonce)
-    return buffer.toByteString()
-}
-
-fun extractAttestationSequence(chain: X509CertChain): ASN1Sequence {
-    val extension = chain.certificates[0].javaX509Certificate.getExtensionValue(KEY_DESCRIPTION_OID)
-    val asn1InputStream = ASN1InputStream(extension)
-    val derSequenceBytes = (asn1InputStream.readObject() as ASN1OctetString).octets
-    val seqInputStream = ASN1InputStream(derSequenceBytes)
-    return seqInputStream.readObject() as ASN1Sequence
-}
 
 private fun X509CertChain.validate() {
     val certs = certificates
@@ -51,9 +45,9 @@ private fun X509CertChain.validate() {
     }
 }
 
-fun validateKeyAttestation(
+fun validateAndroidKeyAttestation(
     chain: X509CertChain,
-    clientId: String?,
+    nonce: ByteString?,
     requireGmsAttestation: Boolean,
     requireVerifiedBootGreen: Boolean,
     requireAppSignatureCertificateDigests: List<String>,
@@ -74,8 +68,9 @@ fun validateKeyAttestation(
         val parser = AndroidAttestationExtensionParser(x509certs[0])
 
         // Challenge must match...
-        check(clientId == null || clientId.toByteArray() contentEquals parser.attestationChallenge)
-        { "Challenge didn't match what was expected" }
+        check(nonce == null || nonce == ByteString(parser.attestationChallenge)) {
+            "Challenge didn't match what was expected"
+        }
 
         if (requireVerifiedBootGreen) {
             // Verified Boot state must VERIFIED
@@ -85,7 +80,7 @@ fun validateKeyAttestation(
             ) { "Verified boot state is not GREEN" }
         }
 
-        if (requireAppSignatureCertificateDigests.size > 0) {
+        if (requireAppSignatureCertificateDigests.isNotEmpty()) {
             check (parser.applicationSignatureDigests.size == requireAppSignatureCertificateDigests.size)
             { "Number Signing certificates mismatch" }
             for (n in 0..<parser.applicationSignatureDigests.size) {
@@ -95,7 +90,8 @@ fun validateKeyAttestation(
         }
 
         // Log the digests for easy copy-pasting into config file.
-        Logger.d(TAG, "Accepting Android client with ${parser.applicationSignatureDigests.size} " +
+        Logger.d(
+            TAG, "Accepting Android client with ${parser.applicationSignatureDigests.size} " +
                 "signing certificates digests")
         for (n in 0..<parser.applicationSignatureDigests.size) {
             Logger.d(TAG, "Digest $n: ${parser.applicationSignatureDigests[n].toHex()}")
@@ -118,7 +114,7 @@ fun isCloudKeyAttestation(chain: X509CertChain): Boolean {
 
 fun validateCloudKeyAttestation(
     chain: X509CertChain,
-    nonce: String,
+    nonce: ByteString,
     trustedRootKeys: Set<ByteString>
 ) {
     chain.validate()
@@ -135,9 +131,9 @@ fun validateCloudKeyAttestation(
         throw IllegalStateException("Error decoding attestation extension", e)
     }
 
-    val challengeInAttestation = AttestationExtension.decode(attestationExtension)
-    if (!challengeInAttestation.contentEquals(nonce.toByteArray())) {
-        throw IllegalStateException("Challenge in attestation does match expected attestation")
+    val challengeInAttestation = ByteString(AttestationExtension.decode(attestationExtension))
+    if (challengeInAttestation != nonce) {
+        throw IllegalStateException("Challenge in attestation does match expected nonce")
     }
 
     val rootPublicKey = ByteString(certificates.last().javaX509Certificate.publicKey.encoded)
@@ -145,3 +141,131 @@ fun validateCloudKeyAttestation(
         "Unexpected cloud attestation root"
     }
 }
+
+fun validateIosDeviceAttestation(attestation: DeviceAttestationIos) {
+    // TODO, assume valid for now
+}
+
+fun validateDeviceAttestation(
+    attestation: DeviceAttestation,
+    clientId: String,
+    settings: WalletServerSettings
+) {
+    when (attestation) {
+        is DeviceAttestationAndroid -> {
+            validateAndroidKeyAttestation(
+                attestation.certificateChain,
+                null, // TODO: enable: ByteString(clientId.toByteArray()),
+                settings.androidRequireGmsAttestation,
+                settings.androidRequireVerifiedBootGreen,
+                settings.androidRequireAppSignatureCertificateDigests
+            )
+        }
+        is DeviceAttestationIos -> {
+            validateIosDeviceAttestation(attestation)
+        }
+        is DeviceAttestationJvm ->
+            throw IllegalArgumentException("JVM attestations are not accepted")
+    }
+}
+
+fun validateDeviceAssertion(attestation: DeviceAttestation, assertion: DeviceAssertion) {
+    try {
+        when (attestation) {
+            is DeviceAttestationAndroid -> {
+                val signature =
+                    EcSignature.fromCoseEncoded(assertion.platformAssertion.toByteArray())
+                if (!Crypto.checkSignature(
+                        publicKey = attestation.certificateChain.certificates.first().ecPublicKey,
+                        message = assertion.assertionData.toByteArray(),
+                        algorithm = Algorithm.ES256,
+                        signature = signature
+                    )
+                ) {
+                    throw IllegalArgumentException("DeviceAssertion validation failed")
+                }
+            }
+
+            is DeviceAttestationIos -> {
+                // accept for now
+            }
+
+            is DeviceAttestationJvm ->
+                throw IllegalArgumentException("JVM attestations are not accepted")
+        }
+    } catch(err: Exception) {
+        err.printStackTrace()
+        throw err
+    }
+}
+
+suspend fun validateDeviceAssertionBindingKeys(
+    env: FlowEnvironment,
+    deviceAttestation: DeviceAttestation,
+    keyAttestations: List<KeyAttestation>,
+    deviceAssertion: DeviceAssertion,
+    nonce: ByteString?
+): AssertionBindingKeys {
+    val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+    if (env.getInterface(ApplicationSupport::class) == null) {
+        // No ApplicationSupport is indication that we are running on the server, not
+        // locally in app. Device assertion validation is only meaningful or possible
+        // on the server.
+        validateDeviceAssertion(deviceAttestation, deviceAssertion)
+    }
+    val assertion = deviceAssertion.assertion as AssertionBindingKeys
+    check(nonce == null || nonce == assertion.nonce)
+
+    val keyList = keyAttestations.map { attestation ->
+        val certChain = attestation.certChain
+        if (certChain == null) {
+            if (deviceAttestation !is DeviceAttestationIos) {
+                throw IllegalArgumentException("key attestations are only optional for iOS")
+            }
+        } else {
+            // TODO: check that what is claimed in the assertion matches what we see in key
+            // attestations
+            check(attestation.publicKey == certChain.certificates.first().ecPublicKey)
+            if (isCloudKeyAttestation(certChain)) {
+                val trustedRootKeys = getCloudSecureAreaTrustedRootKeys(env)
+                validateCloudKeyAttestation(
+                    attestation.certChain!!,
+                    assertion.nonce,
+                    trustedRootKeys.trustedKeys
+                )
+            } else {
+                validateAndroidKeyAttestation(
+                    certChain,
+                    assertion.nonce,
+                    settings.androidRequireGmsAttestation,
+                    settings.androidRequireVerifiedBootGreen,
+                    settings.androidRequireAppSignatureCertificateDigests
+                )
+            }
+        }
+        attestation.publicKey
+    }
+
+    if (keyList != assertion.publicKeys) {
+        throw IllegalArgumentException("key list mismatch")
+    }
+
+    return assertion
+}
+
+private suspend fun getCloudSecureAreaTrustedRootKeys(
+    env: FlowEnvironment
+): CloudSecureAreaTrustedRootKeys {
+    return env.cache(CloudSecureAreaTrustedRootKeys::class) { configuration, resources ->
+        val certificateName = configuration.getValue("csa.certificate")
+            ?: "cloud_secure_area/certificate.pem"
+        val certificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
+        CloudSecureAreaTrustedRootKeys(
+            trustedKeys = setOf(ByteString(certificate.javaX509Certificate.publicKey.encoded))
+        )
+    }
+}
+
+internal data class CloudSecureAreaTrustedRootKeys(
+    val trustedKeys: Set<ByteString>
+)

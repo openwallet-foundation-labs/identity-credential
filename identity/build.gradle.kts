@@ -59,6 +59,9 @@ kotlin {
         }
     }
 
+    // we want some extra dependsOn calls to create
+    // javaSharedMain to share between JVM and Android,
+    // but otherwise want to follow default hierarchy.
     applyDefaultHierarchyTemplate()
 
     sourceSets {
@@ -82,7 +85,17 @@ kotlin {
             }
         }
 
+        val javaSharedMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
+                implementation(libs.tink)
+            }
+        }
+
         val jvmMain by getting {
+            dependsOn(javaSharedMain)
             dependencies {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
@@ -91,14 +104,13 @@ kotlin {
         }
 
         val androidMain by getting {
-            dependsOn(jvmMain)
+            dependsOn(javaSharedMain)
             dependencies {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
             }
         }
-
     }
 }
 
@@ -149,6 +161,28 @@ android {
 
 group = "com.android.identity"
 version = projectVersionName
+
+android {
+    namespace = "com.android.identity"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources {
+            excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
+            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        }
+    }
+}
 
 publishing {
     repositories {

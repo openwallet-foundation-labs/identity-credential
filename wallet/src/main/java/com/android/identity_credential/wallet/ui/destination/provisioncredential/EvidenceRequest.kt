@@ -1654,7 +1654,7 @@ fun EvidenceRequestWebView(
     val scope = rememberCoroutineScope()
     LaunchedEffect(url, redirectUri) {
         // NB: these scopes will be cancelled when navigating outside of this screen.
-        val appSupport = walletServerProvider.getApplicationSupport()
+        val appSupport = walletServerProvider.getApplicationSupportConnection().applicationSupport
         scope.launch {
             // Wait for notifications
             appSupport.notifications.collectLatest { notification ->

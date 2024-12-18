@@ -289,35 +289,31 @@ class IssuingAuthorityState(
             walletApplicationCapabilities,
             issuerDocument.collectedEvidence
         )
-        return RequestCredentialsState(
-            documentId,
-            credentialConfiguration)
+        return RequestCredentialsState(clientId, documentId, credentialConfiguration)
     }
 
     @FlowJoin
     suspend fun completeRequestCredentials(env: FlowEnvironment, state: RequestCredentialsState) {
-        val now = Clock.System.now()
-
         val issuerDocument = loadIssuerDocument(env, state.documentId)
-        for (request in state.credentialRequests) {
+        for (bindingKeySet in state.bindingKeys) {
             // Skip if we already have a request for the authentication key
-            if (hasCpoRequestForAuthenticationKey(issuerDocument,
-                    request.secureAreaBoundKeyAttestation.publicKey)) {
-                continue
+            for (authenticationKey in bindingKeySet.publicKeys) {
+                if (hasCpoRequestForAuthenticationKey(issuerDocument, authenticationKey)) {
+                    continue
+                }
+                val presentationData = createPresentationData(
+                    env,
+                    state.format!!,
+                    issuerDocument.documentConfiguration!!,
+                    authenticationKey
+                )
+                val simpleCredentialRequest = SimpleCredentialRequest(
+                    authenticationKey,
+                    CredentialFormat.MDOC_MSO,
+                    presentationData,
+                )
+                issuerDocument.simpleCredentialRequests.add(simpleCredentialRequest)
             }
-            val authenticationKey = request.secureAreaBoundKeyAttestation.publicKey
-            val presentationData = createPresentationData(
-                env,
-                state.format!!,
-                issuerDocument.documentConfiguration!!,
-                authenticationKey
-            )
-            val simpleCredentialRequest = SimpleCredentialRequest(
-                authenticationKey,
-                CredentialFormat.MDOC_MSO,
-                presentationData,
-            )
-            issuerDocument.simpleCredentialRequests.add(simpleCredentialRequest)
         }
         updateIssuerDocument(env, state.documentId, issuerDocument)
     }
@@ -1078,11 +1074,12 @@ class IssuingAuthorityState(
         env: FlowEnvironment,
         germanEid: EvidenceResponseGermanEidResolved
     ): JsonObject {
-        if (germanEid.data == null) {
+        val germanEidData = germanEid.data
+        if (germanEidData == null) {
             Logger.e(TAG, "No data in eId response")
             throw IllegalStateException("No personal data")
         }
-        val elem = Json.parseToJsonElement(germanEid.data)
+        val elem = Json.parseToJsonElement(germanEidData)
         val personalData = elem.jsonObject["PersonalData"]?.jsonObject
         if (personalData == null) {
             Logger.e(TAG, "Error in German eID response data: ${germanEid.data}")

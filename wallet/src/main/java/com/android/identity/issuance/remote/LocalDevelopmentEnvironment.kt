@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Handler
 import androidx.annotation.RawRes
+import com.android.identity.device.DeviceAssertionMaker
 import com.android.identity.flow.server.Configuration
 import com.android.identity.flow.server.Resources
 import com.android.identity.flow.server.Storage
@@ -31,6 +32,7 @@ import kotlin.reflect.cast
 internal class LocalDevelopmentEnvironment(
     context: Context,
     settingsModel: SettingsModel,
+    private val assertionMaker: DeviceAssertionMaker,
     private val secureArea: SecureArea,
     private val notifications: FlowNotifications,
     private val applicationSupportSupplier: WalletServerProvider.ApplicationSupportSupplier
@@ -59,12 +61,13 @@ internal class LocalDevelopmentEnvironment(
             FlowNotifications::class -> notifications
             HttpClient::class -> httpClient
             SecureArea::class -> secureArea
+            DeviceAssertionMaker::class -> assertionMaker
             ApplicationSupport::class -> runBlocking {
                 // We do not want to attempt to obtain applicationSupport ahead of time
                 // as there may be connection problems and we want to deal with them only
                 // if we have to, thus runBlocking is used. But this code is only used for
                 // "dev:" Wallet Server.
-                applicationSupportSupplier.getApplicationSupport()
+                applicationSupportSupplier.getApplicationSupport().applicationSupport
             }
             else -> return null
         })
@@ -195,6 +198,8 @@ internal class LocalDevelopmentEnvironment(
             return when(name) {
                 "ds_private_key.pem" -> getRawResourceAsString(R.raw.ds_private_key)
                 "ds_certificate.pem" -> getRawResourceAsString(R.raw.ds_certificate)
+                "cloud_secure_area/certificate.pem" ->
+                    getRawResourceAsString(R.raw.csa_certificate)
                 "utopia_local/tos.html" ->
                     context.resources.getString(R.string.utopia_local_issuing_authority_tos)
                 "utopia_local_pid/tos.html" ->

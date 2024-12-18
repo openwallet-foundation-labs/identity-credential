@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import Security
 import LocalAuthentication
+import DeviceCheck
 
 @objc public class SwiftBridge : NSObject {
     @objc(sha256:) public class func sha256(data: Data) -> Data {
@@ -364,6 +365,54 @@ import LocalAuthentication
         }
         let data = SecKeyCopyExternalRepresentation(key!, nil)
         return data as Data?
+    }
+    
+    @objc(generateDeviceAttestation::) public class func generateDeviceAttestation(
+        dataHash: Data,
+        completionHandler: @escaping (String?, Data?, Error?) -> Void
+    ) -> Void {
+        let attestService = DCAppAttestService.shared
+        guard attestService.isSupported == true else {
+            completionHandler(nil, nil, NSError(domain: "com.android.identity", code: 1, userInfo: [
+                "message": "This device does not support attestation"
+            ]))
+            return
+        }
+        
+        guard dataHash.count == 32 else {
+            print("Invalid dataHash size")
+            completionHandler(nil, nil, NSError(domain: "com.android.identity", code: 2, userInfo: [
+                "message": "dataHash length must be 32 bytes"
+            ]))
+            return
+        }
+        
+        attestService.generateKey { keyId, err in
+            guard err == nil else {
+                completionHandler(nil, nil, err)
+                return
+            }
+                        
+            attestService.attestKey(keyId!, clientDataHash: dataHash) { attestation, err in
+                guard err == nil else {
+                    completionHandler(nil, nil, err)
+                    return
+                }
+                completionHandler(keyId!, attestation, nil)
+            }
+        }
+    }
+    
+    @objc(generateDeviceAssertion:::) public class func generateDeviceAssertion(
+        keyId: String,
+        dataHash: Data,
+        completionHandler: @escaping (Data?, Error?) -> Void
+    ) -> Void {
+        DCAppAttestService.shared.generateAssertion(
+            keyId,
+            clientDataHash: dataHash,
+            completionHandler: completionHandler
+        )
     }
 }
 

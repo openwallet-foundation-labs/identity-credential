@@ -1,5 +1,9 @@
 package com.android.identity.testapp
 
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.SecureEnclaveSecureArea
+import com.android.identity.storage.EphemeralStorageEngine
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.NativePlacement
@@ -62,4 +66,16 @@ actual fun getLocalIpAddress(): String {
         }
     }
     throw IllegalStateException("Unable to determine local address")
+}
+
+private val secureEnclaveStorage = EphemeralStorageEngine()
+
+private val secureEnclaveSecureArea = SecureEnclaveSecureArea(secureEnclaveStorage)
+
+actual fun platformSecureArea(): SecureArea {
+    return secureEnclaveSecureArea
+}
+
+actual fun platformKeySetting(clientId: String): CreateKeySettings {
+    return CreateKeySettings()
 }

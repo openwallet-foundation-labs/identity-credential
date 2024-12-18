@@ -35,6 +35,7 @@ import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
 import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
+import com.android.identity.testapp.ui.ProvisioningTestScreen
 import com.android.identity.testapp.ui.QrCodesScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
@@ -97,6 +98,7 @@ class App {
                             onClickCloudSecureArea = { navController.navigate(CloudSecureAreaDestination.route) },
                             onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
+                            onClickIssuanceTestField = { navController.navigate(ProvisioningTestDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
@@ -121,6 +123,9 @@ class App {
                     }
                     composable(route = PassphraseEntryFieldDestination.route) {
                         PassphraseEntryFieldScreen(showToast = { message -> showToast(message) })
+                    }
+                    composable(route = ProvisioningTestDestination.route) {
+                        ProvisioningTestScreen()
                     }
                     composable(route = ConsentModalBottomSheetListDestination.route) {
                         ConsentModalBottomSheetListScreen(

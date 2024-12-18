@@ -4,7 +4,6 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialFormat
-import kotlinx.datetime.Instant
 
 data class SimpleCredentialRequest(
     val authenticationKey: EcPublicKey,

@@ -320,8 +320,10 @@ internal class InProcessMrtdNfcTunnel(
                 } else {
                     EvidenceRequestIcaoNfcTunnelType.READING
                 }
-            val evidenceResponse = transmitCore(EvidenceRequestIcaoNfcTunnel(
-                requestType, passThrough(), progressPercent, ByteString(commandAPDU!!.bytes)))
+            val evidenceResponse = transmitCore(
+                EvidenceRequestIcaoNfcTunnel(
+                requestType, passThrough(), progressPercent, ByteString(commandAPDU!!.bytes))
+            )
             return ResponseAPDU(evidenceResponse!!.response.toByteArray())
         }
 

@@ -1,10 +1,12 @@
 package com.android.identity.issuance.proofing
 
-import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.EcCurve
 import com.android.identity.flow.server.Resources
 import com.android.identity.issuance.CredentialConfiguration
+import com.android.identity.securearea.config.SecureAreaConfigurationAndroidKeystore
+import com.android.identity.securearea.config.SecureAreaConfigurationCloud
+import com.android.identity.securearea.config.SecureAreaConfigurationSoftware
 import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
@@ -15,6 +17,7 @@ import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.toDataItem
 import kotlinx.io.bytestring.ByteString
 import java.net.URLEncoder
+import kotlin.random.Random
 
 fun defaultGraph(
     documentId: String,
@@ -232,19 +235,17 @@ fun defaultCredentialConfiguration(
     walletApplicationCapabilities: WalletApplicationCapabilities,
     collectedEvidence: Map<String, EvidenceResponse>
 ): CredentialConfiguration {
-    val challenge = byteArrayOf(1, 2, 3)
+    val challenge = ByteString(Random.nextBytes(16))
     if (!collectedEvidence.containsKey("devmode_sa")) {
         return CredentialConfiguration(
             challenge,
-            "AndroidKeystoreSecureArea",
-            Cbor.encode(
-                CborMap.builder()
-                    .put("curve", EcCurve.P256.coseCurveIdentifier)
-                    .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
-                    .put("userAuthenticationRequired", true)
-                    .put("userAuthenticationTimeoutMillis", 0L)
-                    .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
-                    .end().build()
+            SecureAreaConfigurationAndroidKeystore(
+                purposes = KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)),
+                curve = EcCurve.P256.coseCurveIdentifier,
+                useStrongBox = true,
+                userAuthenticationRequired = true,
+                userAuthenticationTimeoutMillis = 0,
+                userAuthenticationTypes = 3  // LSKF + Biometrics
             )
         )
     }
@@ -299,19 +300,15 @@ fun defaultCredentialConfiguration(
             }
             return CredentialConfiguration(
                 challenge,
-                "AndroidKeystoreSecureArea",
-                Cbor.encode(
-                    CborMap.builder()
-                        .put("useStrongBox", useStrongBox)
-                        .put("userAuthenticationRequired", (userAuthType != 0))
-                        .put("userAuthenticationTimeoutMillis", 0L)
-                        .put("userAuthenticationTypes", userAuthType)
-                        .put("curve", curve.coseCurveIdentifier)
-                        .put("purposes", KeyPurpose.encodeSet(purposes))
-                        .end().build()
+                SecureAreaConfigurationAndroidKeystore(
+                    curve = curve.coseCurveIdentifier,
+                    purposes = KeyPurpose.encodeSet(purposes),
+                    useStrongBox = useStrongBox,
+                    userAuthenticationRequired = userAuthType != 0,
+                    userAuthenticationTimeoutMillis = 0,
+                    userAuthenticationTypes = userAuthType.toLong(),
                 )
             )
-
         }
 
         "devmode_sa_software" -> {
@@ -443,8 +440,7 @@ fun defaultCredentialConfiguration(
             }
             return CredentialConfiguration(
                 challenge,
-                "SoftwareSecureArea",
-                Cbor.encode(builder.end().build())
+                SecureAreaConfigurationSoftware()
             )
         }
 
@@ -464,15 +460,15 @@ fun defaultCredentialConfiguration(
                 .cloudSecureAreaIdentifier
             return CredentialConfiguration(
                 challenge,
-                cloudSecureAreaId,
-                Cbor.encode(
-                    CborMap.builder()
-                        .put("passphraseRequired", true)
-                        .put("userAuthenticationRequired", (userAuthType != 0))
-                        .put("userAuthenticationTimeoutMillis", 0L)
-                        .put("userAuthenticationTypes", userAuthType)
-                        .put("purposes", KeyPurpose.encodeSet(purposes))
-                        .end().build()
+                SecureAreaConfigurationCloud(
+                    purposes = KeyPurpose.encodeSet(purposes),
+                    curve = EcCurve.P256.coseCurveIdentifier,
+                    cloudSecureAreaId = cloudSecureAreaId,
+                    userAuthenticationTimeoutMillis = 0,
+                    useStrongBox = true,
+                    passphraseRequired = true,
+                    userAuthenticationRequired = userAuthType != 0,
+                    userAuthenticationTypes = userAuthType.toLong()
                 )
             )
         }
