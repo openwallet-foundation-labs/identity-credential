@@ -289,31 +289,31 @@ class IssuingAuthorityState(
             walletApplicationCapabilities,
             issuerDocument.collectedEvidence
         )
-        return RequestCredentialsState(clientId, documentId, credentialConfiguration)
+        return RequestCredentialsState(documentId, credentialConfiguration)
     }
 
     @FlowJoin
     suspend fun completeRequestCredentials(env: FlowEnvironment, state: RequestCredentialsState) {
         val issuerDocument = loadIssuerDocument(env, state.documentId)
-        for (bindingKeySet in state.bindingKeys) {
+        for (request in state.credentialRequests) {
             // Skip if we already have a request for the authentication key
-            for (authenticationKey in bindingKeySet.publicKeys) {
-                if (hasCpoRequestForAuthenticationKey(issuerDocument, authenticationKey)) {
-                    continue
-                }
-                val presentationData = createPresentationData(
-                    env,
-                    state.format!!,
-                    issuerDocument.documentConfiguration!!,
-                    authenticationKey
-                )
-                val simpleCredentialRequest = SimpleCredentialRequest(
-                    authenticationKey,
-                    CredentialFormat.MDOC_MSO,
-                    presentationData,
-                )
-                issuerDocument.simpleCredentialRequests.add(simpleCredentialRequest)
+            if (hasCpoRequestForAuthenticationKey(issuerDocument,
+                    request.secureAreaBoundKeyAttestation.publicKey)) {
+                continue
             }
+            val authenticationKey = request.secureAreaBoundKeyAttestation.publicKey
+            val presentationData = createPresentationData(
+                env,
+                state.format!!,
+                issuerDocument.documentConfiguration!!,
+                authenticationKey
+            )
+            val simpleCredentialRequest = SimpleCredentialRequest(
+                authenticationKey,
+                CredentialFormat.MDOC_MSO,
+                presentationData,
+            )
+            issuerDocument.simpleCredentialRequests.add(simpleCredentialRequest)
         }
         updateIssuerDocument(env, state.documentId, issuerDocument)
     }

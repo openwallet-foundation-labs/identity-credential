@@ -892,20 +892,22 @@ class DocumentModel(
                     )
                 )
             }
-            val applicationSupportConnection =
-                walletServerProvider.getApplicationSupportConnection()
-            val keysAssertion = walletServerProvider.assertionMaker.makeDeviceAssertion(
-                AssertionBindingKeys(
-                    publicKeys = credentialRequests.map { request ->
-                        request.secureAreaBoundKeyAttestation.publicKey
-                    },
-                    nonce = credConfig.challenge,
-                    clientId = applicationSupportConnection.clientId,
-                    keyStorage = listOf(),
-                    userAuthentication = listOf(),
-                    issuedAt = Clock.System.now()
-                )
-            )
+            val keysAssertion = if (credConfig.keyAssertionRequired) {
+                walletServerProvider.assertionMaker.makeDeviceAssertion { clientId ->
+                    AssertionBindingKeys(
+                        publicKeys = credentialRequests.map { request ->
+                            request.secureAreaBoundKeyAttestation.publicKey
+                        },
+                        nonce = credConfig.challenge,
+                        clientId = clientId,
+                        keyStorage = listOf(),
+                        userAuthentication = listOf(),
+                        issuedAt = Clock.System.now()
+                    )
+                }
+            } else {
+                null
+            }
             val challenges = requestCredentialsFlow.sendCredentials(
                 credentialRequests = credentialRequests,
                 keysAssertion = keysAssertion

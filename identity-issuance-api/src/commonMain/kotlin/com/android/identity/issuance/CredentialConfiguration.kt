@@ -15,6 +15,11 @@ data class CredentialConfiguration(
     val challenge: ByteString,
 
     /**
+     * Key assertion parameter to [RequestCredentialsFlow.sendCredentials] is required.
+     */
+    val keyAssertionRequired: Boolean,
+
+    /**
      * The configuration for the device-bound key for e.g. access control.
      *
      * This is Secure Area dependent.

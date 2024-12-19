@@ -38,12 +38,12 @@ class RequestCredentialsUsingKeyAttestation(
     fun sendCredentials(
         env: FlowEnvironment,
         credentialRequests: List<CredentialRequest>,
-        keysAssertion: DeviceAssertion // holds AssertionBingingKeys
+        keysAssertion: DeviceAssertion? // holds AssertionBingingKeys
     ): List<KeyPossessionChallenge> {
         credentialRequestSets.add(CredentialRequestSet(
             format = format!!,
             keyAttestations = credentialRequests.map { it.secureAreaBoundKeyAttestation },
-            keysAssertion = keysAssertion
+            keysAssertion = keysAssertion!!
         ))
         return emptyList()
     }

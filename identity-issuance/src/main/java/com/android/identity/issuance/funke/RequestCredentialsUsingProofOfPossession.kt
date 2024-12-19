@@ -49,7 +49,7 @@ class RequestCredentialsUsingProofOfPossession(
     suspend fun sendCredentials(
         env: FlowEnvironment,
         newCredentialRequests: List<CredentialRequest>,
-        keysAssertion: DeviceAssertion
+        keysAssertion: DeviceAssertion?
     ): List<KeyPossessionChallenge> {
         if (credentialRequests != null) {
             throw IllegalStateException("Credentials were already sent")
@@ -61,7 +61,7 @@ class RequestCredentialsUsingProofOfPossession(
             env = env,
             deviceAttestation = clientRecord.deviceAttestation,
             keyAttestations = newCredentialRequests.map { it.secureAreaBoundKeyAttestation },
-            deviceAssertion = keysAssertion,
+            deviceAssertion = keysAssertion!!,
             nonce = credentialConfiguration.challenge
         )
         val nonce = JsonPrimitive(String(credentialConfiguration.challenge.toByteArray()))

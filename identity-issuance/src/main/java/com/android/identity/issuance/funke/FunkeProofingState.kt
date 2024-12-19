@@ -443,10 +443,12 @@ class FunkeProofingState(
             val assertionMaker = env.getInterface(DeviceAssertionMaker::class)!!
             applicationSupport.createJwtClientAssertion(
                 clientKeyInfo.attestation,
-                assertionMaker.makeDeviceAssertion(AssertionDPoPKey(
-                    clientKeyInfo.publicKey,
-                    credentialIssuerUri
-                ))
+                assertionMaker.makeDeviceAssertion {
+                    AssertionDPoPKey(
+                        clientKeyInfo.publicKey,
+                        credentialIssuerUri
+                    )
+                }
             )
         } else {
             ApplicationSupportState(clientId).createJwtClientAssertion(

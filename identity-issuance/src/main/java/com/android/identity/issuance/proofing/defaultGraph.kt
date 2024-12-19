@@ -238,8 +238,9 @@ fun defaultCredentialConfiguration(
     val challenge = ByteString(Random.nextBytes(16))
     if (!collectedEvidence.containsKey("devmode_sa")) {
         return CredentialConfiguration(
-            challenge,
-            SecureAreaConfigurationAndroidKeystore(
+            challenge = challenge,
+            keyAssertionRequired = false,
+            secureAreaConfiguration = SecureAreaConfigurationAndroidKeystore(
                 purposes = KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)),
                 curve = EcCurve.P256.coseCurveIdentifier,
                 useStrongBox = true,
@@ -299,8 +300,9 @@ fun defaultCredentialConfiguration(
                 else -> throw IllegalStateException()
             }
             return CredentialConfiguration(
-                challenge,
-                SecureAreaConfigurationAndroidKeystore(
+                challenge = challenge,
+                keyAssertionRequired = false,
+                secureAreaConfiguration = SecureAreaConfigurationAndroidKeystore(
                     curve = curve.coseCurveIdentifier,
                     purposes = KeyPurpose.encodeSet(purposes),
                     useStrongBox = useStrongBox,
@@ -439,8 +441,9 @@ fun defaultCredentialConfiguration(
                 builder.put("passphraseConstraints", passphraseConstraints.toDataItem())
             }
             return CredentialConfiguration(
-                challenge,
-                SecureAreaConfigurationSoftware()
+                challenge = challenge,
+                keyAssertionRequired = false,
+                secureAreaConfiguration = SecureAreaConfigurationSoftware()
             )
         }
 
@@ -459,8 +462,9 @@ fun defaultCredentialConfiguration(
             val cloudSecureAreaId = (collectedEvidence["devmode_sa_cloud_setup_csa"] as EvidenceResponseSetupCloudSecureArea)
                 .cloudSecureAreaIdentifier
             return CredentialConfiguration(
-                challenge,
-                SecureAreaConfigurationCloud(
+                challenge = challenge,
+                keyAssertionRequired = false,
+                secureAreaConfiguration = SecureAreaConfigurationCloud(
                     purposes = KeyPurpose.encodeSet(purposes),
                     curve = EcCurve.P256.coseCurveIdentifier,
                     cloudSecureAreaId = cloudSecureAreaId,

@@ -75,12 +75,12 @@ class WalletServerProvider(
 
     private val storage = StorageImpl(context, "wallet_servers")
 
-    val assertionMaker = DeviceAssertionMaker { assertion ->
+    val assertionMaker = DeviceAssertionMaker { assertionFactory ->
         val applicationSupportConnection = applicationSupportSupplier!!.getApplicationSupport()
         DeviceCheck.generateAssertion(
             secureArea = secureArea,
             deviceAttestationId = applicationSupportConnection.deviceAttestationId,
-            assertion = assertion
+            assertion = assertionFactory(applicationSupportConnection.clientId)
         )
     }
 
