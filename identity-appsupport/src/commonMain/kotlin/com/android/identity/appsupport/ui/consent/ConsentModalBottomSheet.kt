@@ -91,6 +91,7 @@ fun ConsentModalBottomSheet(
     ModalBottomSheet(
         onDismissRequest = { onCancel() },
         sheetState = sheetState,
+        dragHandle = null,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
@@ -172,7 +173,7 @@ private fun ButtonSection(
 @Composable
 private fun RelyingPartySection(relyingParty: ConsentRelyingParty) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (relyingParty.trustPoint != null) {

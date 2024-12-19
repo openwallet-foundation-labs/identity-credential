@@ -202,4 +202,7 @@ expect object Crypto {
     internal fun ecPrivateKeyFromPem(pemEncoding: String, publicKey: EcPublicKey): EcPrivateKey
 
     internal fun uuidGetRandom(): UUID
+
+    // TODO: replace with non-platform specific code
+    internal fun validateCertChain(certChain: X509CertChain): Boolean
 }

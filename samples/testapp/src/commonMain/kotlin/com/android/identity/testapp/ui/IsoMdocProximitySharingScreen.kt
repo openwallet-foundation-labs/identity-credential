@@ -455,6 +455,19 @@ private suspend fun showConsentPrompt(
         encodedSessionTranscript,
     ).parse()
     for (docRequest in deviceRequest.docRequests) {
+        Logger.i(TAG, "docRequest.readerAuthenticated=${docRequest.readerAuthenticated}")
+        val trustPoint = if (docRequest.readerAuthenticated) {
+            val trustResult = TestAppUtils.readerTrustManager.verify(docRequest.readerCertificateChain!!.certificates)
+            Logger.i(TAG, "trustResult.isTrusted=${trustResult.isTrusted}")
+            Logger.i(TAG, "trustResult.error=${trustResult.error}")
+            if (trustResult.isTrusted) {
+                trustResult.trustPoints[0]
+            } else {
+                null
+            }
+        } else {
+            null
+        }
         if (docRequest.docType == DrivingLicense.MDL_DOCTYPE) {
             val cardArt = getDrawableResourceBytes(
                 getSystemResourceEnvironment(),
@@ -476,7 +489,7 @@ private suspend fun showConsentPrompt(
                     ),
                     consentFields = consentFields,
                     relyingParty = ConsentRelyingParty(
-                        trustPoint = null,
+                        trustPoint = trustPoint,
                         websiteOrigin = null,
                     )
                 )

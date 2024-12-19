@@ -1,11 +1,13 @@
 package com.android.identity.sdjwt
 
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.create
+import com.android.identity.crypto.X500Name
+import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.sdjwt.SdJwtVerifiableCredential.AttributeNotDisclosedException
@@ -109,21 +111,20 @@ class SdJwtVcTest {
 
         val issuerKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val validFrom = Clock.System.now()
-        val validUntil = Instant.fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
+        val validUntil = validFrom + 5.days
+        issuerCert = X509Cert.Builder(
+            publicKey = issuerKey.publicKey,
+            signingKey = issuerKey,
+            signatureAlgorithm = issuerKey.curve.defaultSigningAlgorithm,
+            serialNumber = ASN1Integer(1L),
+            subject = X500Name.fromName("CN=State of Utopia"),
+            issuer = X500Name.fromName("CN=State of Utopia"),
+            validFrom = validFrom,
+            validUntil = validUntil
         )
-        issuerCert = X509Cert.create(
-            issuerKey.publicKey,
-            issuerKey,
-            null,
-            Algorithm.ES256,
-            "1",
-            "CN=State Of Utopia",
-            "CN=State Of Utopia",
-            validFrom,
-            validUntil, setOf(), listOf()
-        )
-
+            .includeSubjectKeyIdentifier()
+            .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+            .build()
 
         // Issuer knows that it will use ECDSA with SHA-256.
         // Public keys and cert chains will be at https://example-issuer.com/...

@@ -31,20 +31,6 @@ import org.bouncycastle.asn1.ASN1OctetString
 
 private const val TAG = "authenticationUtilities"
 
-private fun X509CertChain.validate() {
-    val certs = certificates
-    // Check that all the certificates sign each other...
-    for (n in 0 until certs.size - 1) {
-        val cert = certs[n]
-        val nextCert = certs[n + 1]
-        try {
-            cert.verify(nextCert)
-        } catch (e: Throwable) {
-            throw IllegalArgumentException("Attestation error: error validating certificate chain", e)
-        }
-    }
-}
-
 fun validateAndroidKeyAttestation(
     chain: X509CertChain,
     nonce: ByteString?,
@@ -52,7 +38,9 @@ fun validateAndroidKeyAttestation(
     requireVerifiedBootGreen: Boolean,
     requireAppSignatureCertificateDigests: List<String>,
 ) {
-    chain.validate()
+    check(chain.validate()) {
+        "Certificate chain did not validate"
+    }
     val x509certs = chain.javaX509Certificates
     val rootCertificatePublicKey = x509certs.last().publicKey
 
@@ -117,7 +105,9 @@ fun validateCloudKeyAttestation(
     nonce: ByteString,
     trustedRootKeys: Set<ByteString>
 ) {
-    chain.validate()
+    check(chain.validate()) {
+        "Certificate chain did not validate"
+    }
     val certificates = chain.certificates
     val leafX509Cert = certificates.first().javaX509Certificate
     val extensionDerEncodedString = leafX509Cert.getExtensionValue(AttestationExtension.ATTESTATION_OID)

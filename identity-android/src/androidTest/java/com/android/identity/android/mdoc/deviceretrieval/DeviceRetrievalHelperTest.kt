@@ -21,6 +21,7 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.mdoc.transport.DataTransportTcp
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
@@ -41,9 +42,10 @@ import com.android.identity.crypto.Crypto.createEcPrivateKey
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.create
+import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -81,6 +83,7 @@ import java.util.Calendar
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.days
 
 @Suppress("deprecation")
 class DeviceRetrievalHelperTest {
@@ -174,21 +177,21 @@ class DeviceRetrievalHelperTest {
             msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
         }
         val validFrom = now()
-        val validUntil = fromEpochMilliseconds(
-            validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
-        )
+        val validUntil = validFrom + 5.days
         documentSignerKey = createEcPrivateKey(EcCurve.P256)
-        documentSignerCert = X509Cert.create(
-            documentSignerKey.publicKey,
-            documentSignerKey,
-            null,
-            Algorithm.ES256,
-            "1",
-            "CN=State Of Utopia",
-            "CN=State Of Utopia",
-            validFrom,
-            validUntil, setOf(), listOf()
+        documentSignerCert = X509Cert.Builder(
+            publicKey = documentSignerKey.publicKey,
+            signingKey = documentSignerKey,
+            signatureAlgorithm = documentSignerKey.curve.defaultSigningAlgorithm,
+            serialNumber = ASN1Integer(1L),
+            subject = X500Name.fromName("CN=State of Utopia"),
+            issuer = X500Name.fromName("CN=State of Utopia"),
+            validFrom = validFrom,
+            validUntil = validUntil
         )
+            .includeSubjectKeyIdentifier()
+            .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+            .build()
         val mso = msoGenerator.generate()
         val taggedEncodedMso = encode(Tagged(24, Bstr(mso)))
 

@@ -65,6 +65,7 @@ import com.android.identity.mdoc.transport.MdocTransportClosedException
 import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.testapp.TestAppUtils
+import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
@@ -495,7 +496,8 @@ private fun ShowReaderResults(
             // TODO: show multiple documents
             val documentData = DocumentData.fromMdocDeviceResponseDocument(
                 deviceResponse.documents[0],
-                TestAppUtils.documentTypeRepository
+                TestAppUtils.documentTypeRepository,
+                TestAppUtils.issuerTrustManager
             )
             ShowDocumentData(documentData, 0, deviceResponse.documents.size)
         }
@@ -639,15 +641,16 @@ private data class DocumentData(
         fun fromMdocDeviceResponseDocument(
             document: DeviceResponseParser.Document,
             documentTypeRepository: DocumentTypeRepository,
+            issuerTrustManager: TrustManager
         ): DocumentData {
             val infos = mutableListOf<String>()
             val warnings = mutableListOf<String>()
             val kvPairs = mutableListOf<DocumentKeyValuePair>()
 
             if (document.issuerSignedAuthenticated) {
-                // TODO: Take a [TrustManager] instance and use that to determine trust relationship
-                if (document.issuerCertificateChain.certificates.last().ecPublicKey == TestAppUtils.dsKeyPub) {
-                    infos.add("Issuer is in a trust list")
+                val trustResult = issuerTrustManager.verify(document.issuerCertificateChain.certificates)
+                if (trustResult.isTrusted) {
+                    infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
                 } else {
                     warnings.add("Issuer is not in trust list")
                 }

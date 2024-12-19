@@ -16,6 +16,7 @@ import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.cbor.Cbor
+import com.android.identity.crypto.X509Cert
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.MdocDataElement
 import com.android.identity.crypto.javaPublicKey
@@ -207,13 +208,12 @@ class ShowDocumentFragment : Fragment() {
 
         for (doc in documents) {
             sb.append("<h3>Doctype: <font color=\"$primaryColor\">${doc.docType}</font></h3>")
-            val cc = mutableListOf<X509Certificate>()
-            doc.issuerCertificateChain.certificates.forEach() { c -> cc.add(c.javaX509Certificate) }
-            var certChain: List<X509Certificate> = cc
+            val cc = doc.issuerCertificateChain.certificates
+            var certChain: List<X509Cert> = cc
             val customValidators = CustomValidators.getByDocType(doc.docType)
             val result = VerifierApp.trustManagerInstance.verify(
                 chain = certChain,
-                customValidators = customValidators
+                //customValidators = customValidators
             )
             if (result.trustChain.any()) {
                 certChain = result.trustChain
@@ -222,7 +222,7 @@ class ShowDocumentFragment : Fragment() {
                 sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error?.message}<br>")
             }
 
-            val commonName = certChain.last().issuerX500Principal.getCommonName("")
+            val commonName = certChain.last().issuer.name
             sb.append("${getFormattedCheck(result.isTrusted)}Issuer’s DS Key Recognized: ($commonName)<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
             var macOrSignatureString = "MAC"
