@@ -14,7 +14,6 @@ import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
-import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.annotation.FlowJoin
@@ -187,7 +186,6 @@ class FunkeIssuingAuthorityState(
 
         val documentTypeRepository = DocumentTypeRepository().apply {
             addDocumentType(EUPersonalID.getDocumentType())
-            addDocumentType(GermanPersonalID.getDocumentType())
             addDocumentType(DrivingLicense.getDocumentType())
             addDocumentType(PhotoID.getDocumentType())
             addDocumentType(EUCertificateOfResidence.getDocumentType())
@@ -257,15 +255,6 @@ class FunkeIssuingAuthorityState(
     @FlowMethod
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
         val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-        var openid4VpRequest: String? = null
-        val proofingInfo = performPushedAuthorizationRequest(env)
-        if (proofingInfo?.authSession != null && proofingInfo.openid4VpPresentation != null) {
-            val httpClient = env.getInterface(HttpClient::class)!!
-            val presentationResponse = httpClient.get(proofingInfo.openid4VpPresentation) {}
-            if (presentationResponse.status == HttpStatusCode.OK) {
-                openid4VpRequest = String(presentationResponse.readBytes())
-            }
-        }
         val storage = env.getInterface(Storage::class)!!
         val applicationCapabilities = storage.get(
             "WalletApplicationCapabilities",
@@ -274,19 +263,13 @@ class FunkeIssuingAuthorityState(
         )?.let {
             WalletApplicationCapabilities.fromCbor(it.toByteArray())
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
-        val useGermanId = metadata.authorizationServers.isNotEmpty()
-                && metadata.authorizationServers[0].useGermanEId
         return FunkeProofingState(
             clientId = clientId,
             credentialConfigurationId = credentialConfigurationId,
             issuanceClientId = issuanceClientId,
             documentId = documentId,
             credentialIssuerUri = credentialIssuerUri,
-            proofingInfo = proofingInfo,
-            applicationCapabilities = applicationCapabilities,
-            tokenUri = metadata.tokenEndpoint,
-            openid4VpRequest = openid4VpRequest,
-            useGermanEId = useGermanId
+            applicationCapabilities = applicationCapabilities
         )
     }
 
@@ -309,8 +292,8 @@ class FunkeIssuingAuthorityState(
         issuerDocument.state = DocumentCondition.READY
         if (issuerDocument.documentConfiguration == null) {
             val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-            if (metadata.authorizationServers.isNotEmpty() &&
-                metadata.authorizationServers[0].useGermanEId) {
+            if (metadata.authorizationServerList.isNotEmpty() &&
+                metadata.authorizationServerList[0].useGermanEId) {
                 val isCloudSecureArea =
                     issuerDocument.secureAreaIdentifier!!.startsWith("CloudSecureArea?")
                 issuerDocument.documentConfiguration =
@@ -673,108 +656,6 @@ class FunkeIssuingAuthorityState(
         }
     }
 
-    private suspend fun performPushedAuthorizationRequest(env: FlowEnvironment): ProofingInfo? {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
-        if (metadata.authorizationServers.isEmpty()) {
-            return null
-        }
-        val config = metadata.credentialConfigurations[credentialConfigurationId]!!
-        val authorizationMetadata = metadata.authorizationServers[0]
-        val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
-        val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
-
-        // NB: applicationSupport will only be non-null when running this code locally in the
-        // Android Wallet app.
-        val applicationSupport = env.getInterface(ApplicationSupport::class)
-        val parRedirectUrl: String
-        val landingUrl: String
-        if (authorizationMetadata.useGermanEId) {
-            landingUrl = ""
-            // Does not matter, but must be https
-            parRedirectUrl = "https://secure.redirect.com"
-        } else {
-            landingUrl = applicationSupport?.createLandingUrl() ?:
-                ApplicationSupportState(clientId).createLandingUrl(env)
-            parRedirectUrl = landingUrl
-        }
-
-        val clientKeyInfo = FunkeUtil.communicationKey(env, clientId)
-        val clientAssertion = if (applicationSupport != null) {
-            // Required when applicationSupport is exposed
-            val assertionMaker = env.getInterface(DeviceAssertionMaker::class)!!
-            applicationSupport.createJwtClientAssertion(
-                clientKeyInfo.attestation,
-                assertionMaker.makeDeviceAssertion(AssertionDPoPKey(
-                    clientKeyInfo.publicKey,
-                    credentialIssuerUri
-                ))
-            )
-        } else {
-            ApplicationSupportState(clientId).createJwtClientAssertion(
-                env,
-                clientKeyInfo.publicKey,
-                credentialIssuerUri
-            )
-        }
-
-        val req = FormUrlEncoder {
-            add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")
-            if (config.scope != null) {
-                add("scope", config.scope)
-            }
-            add("response_type", "code")
-            add("code_challenge_method", "S256")
-            add("redirect_uri", parRedirectUrl)
-            add("client_assertion", clientAssertion)
-            add("code_challenge", codeChallenge)
-            add("client_id", issuanceClientId)
-        }
-        val httpClient = env.getInterface(HttpClient::class)!!
-        // Use authorization challenge if available, as we want to try it first before falling
-        // back to web-based authorization.
-        val (endpoint, expectedResponseStatus) =
-            if (authorizationMetadata.authorizationChallengeEndpoint != null) {
-                Pair(
-                    authorizationMetadata.authorizationChallengeEndpoint,
-                    HttpStatusCode.BadRequest
-                )
-            } else {
-                Pair(
-                    authorizationMetadata.pushedAuthorizationRequestEndpoint,
-                    HttpStatusCode.Created
-                )
-            }
-        val response = httpClient.post(endpoint) {
-            headers {
-                append("Content-Type", "application/x-www-form-urlencoded")
-            }
-            setBody(req.toString())
-        }
-        val responseText = String(response.readBytes())
-        if (response.status != expectedResponseStatus) {
-            Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
-            throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
-        }
-        val parsedResponse = Json.parseToJsonElement(responseText) as JsonObject
-        if (response.status == HttpStatusCode.BadRequest) {
-            val errorCode = parsedResponse["error"]
-            if (errorCode !is JsonPrimitive || errorCode.content != "insufficient_authorization") {
-                Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
-                throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
-            }
-        }
-        val authSession = parsedResponse["auth_session"]
-        val requestUri = parsedResponse["request_uri"]
-        val presentation = parsedResponse["presentation"]
-        return ProofingInfo(
-            requestUri = requestUri?.jsonPrimitive?.content,
-            authSession = authSession?.jsonPrimitive?.content,
-            pkceCodeVerifier = pkceCodeVerifier,
-            landingUrl = landingUrl,
-            openid4VpPresentation = presentation?.jsonPrimitive?.content
-        )
-    }
-
     private suspend fun generateFunkeDocumentConfiguration(
         env: FlowEnvironment,
         isCloudSecureArea: Boolean
@@ -904,7 +785,7 @@ class FunkeIssuingAuthorityState(
             env = env,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
-            tokenUrl = metadata.tokenEndpoint,
+            tokenUrl = access.tokenEndpoint,
             refreshToken = refreshToken,
             accessToken = access.accessToken
         )

@@ -13,6 +13,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -23,8 +25,7 @@ internal data class Openid4VciIssuerMetadata(
     val credentialEndpoint: String,
     val display: List<Openid4VciIssuerDisplay>,
     val credentialConfigurations: Map<String, Openid4VciCredentialConfiguration>,
-    val authorizationServers: List<Openid4VciAuthorizationMetadata>,
-    val tokenEndpoint: String  // fallback token endpoint, not standard
+    val authorizationServerList: List<Openid4VciAuthorizationMetadata>
 ) {
     companion object {
         const val TAG = "Openid4VciIssuerMetadata"
@@ -60,25 +61,24 @@ internal data class Openid4VciIssuerMetadata(
                     val authorizationMetadataText = String(authorizationMetadataRequest.readBytes())
                     val authorizationMetadata =
                         extractAuthorizationServerMetadata(
-                            Json.parseToJsonElement(authorizationMetadataText).jsonObject)
+                            url = authorizationServerUrl,
+                            jsonObject = Json.parseToJsonElement(authorizationMetadataText).jsonObject
+                        )
                     if (authorizationMetadata != null) {
                         authorizationMetadataList.add(authorizationMetadata)
                     }
-                }
-                val tokenEndpoint = if (authorizationMetadataList.isEmpty()) {
-                    credentialMetadata["token_endpoint"]?.jsonPrimitive?.content
-                        ?: "$issuerUrl/token"
-                } else {
-                    authorizationMetadataList[0].tokenEndpoint
                 }
                 Openid4VciIssuerMetadata(
                     credentialIssuer = credentialMetadata["credential_issuer"]?.jsonPrimitive?.content ?: issuerUrl,
                     credentialEndpoint = credentialMetadata["credential_endpoint"]!!.jsonPrimitive.content,
                     display = extractDisplay(credentialMetadata["display"]),
-                    authorizationServers = authorizationMetadataList.toList(),
+                    authorizationServerList = authorizationMetadataList.toList(),
                     credentialConfigurations =
                         credentialMetadata["credential_configurations_supported"]!!.jsonObject.mapValues {
                             val obj = it.value.jsonObject
+                            val credentialSigningAlgorithms =
+                                obj["credential_signing_alg_values_supported"]
+                                    ?: obj["cryptographic_suites_supported"]!!  // Deprecated name
                             Openid4VciCredentialConfiguration(
                                 id = it.key,
                                 scope = obj["scope"]?.jsonPrimitive?.content,
@@ -87,15 +87,14 @@ internal data class Openid4VciIssuerMetadata(
                                     SUPPORTED_BINDING_METHODS
                                 ),
                                 credentialSigningAlgorithm = preferred(
-                                    obj["credential_signing_alg_values_supported"]!!.jsonArray,
+                                    credentialSigningAlgorithms.jsonArray,
                                     SUPPORTED_SIGNATURE_ALGORITHMS
                                 ),
                                 proofType = extractProofType(obj["proof_types_supported"]?.jsonObject),
                                 format = extractFormat(obj),
                                 display = extractDisplay(obj["display"])
                             )
-                        },
-                    tokenEndpoint = tokenEndpoint
+                        }
                 )
             }
         }
@@ -123,7 +122,10 @@ internal data class Openid4VciIssuerMetadata(
         }
 
         // Returns null if no compatible configuration could be created
-        private fun extractAuthorizationServerMetadata(jsonObject: JsonObject): Openid4VciAuthorizationMetadata? {
+        private fun extractAuthorizationServerMetadata(
+            url: String,
+            jsonObject: JsonObject
+        ): Openid4VciAuthorizationMetadata? {
             val responseType = preferred(
                 jsonObject["response_types_supported"]?.jsonArray,
                 SUPPORTED_RESPONSE_TYPES
@@ -136,18 +138,21 @@ internal data class Openid4VciIssuerMetadata(
                 jsonObject["dpop_signing_alg_values_supported"]?.jsonArray,
                 SUPPORTED_SIGNATURE_ALGORITHMS
             ) ?: return null
-            val authorizationEndpoint = jsonObject["authorization_endpoint"]!!.jsonPrimitive.content
+            val authorizationEndpoint = jsonObject["authorization_endpoint"]?.jsonPrimitive?.content
             val authorizationChallengeEndpoint =
                 jsonObject["authorization_challenge_endpoint"]?.jsonPrimitive?.content
+            val useGermanEId = authorizationEndpoint != null &&
+                    authorizationEndpoint.startsWith("https://demo.pid-issuer.bundesdruckerei.de/")
             return Openid4VciAuthorizationMetadata(
-                pushedAuthorizationRequestEndpoint = jsonObject["pushed_authorization_request_endpoint"]!!.jsonPrimitive.content,
+                baseUrl = url,
+                pushedAuthorizationRequestEndpoint = jsonObject["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content,
                 authorizationEndpoint = authorizationEndpoint,
                 authorizationChallengeEndpoint = authorizationChallengeEndpoint,
                 tokenEndpoint = jsonObject["token_endpoint"]!!.jsonPrimitive.content,
                 responseType = responseType,
                 codeChallengeMethod = codeChallengeMethod,
                 dpopSigningAlgorithm = dpopSigningAlgorithm,
-                useGermanEId = authorizationEndpoint.startsWith("https://demo.pid-issuer.bundesdruckerei.de/")
+                useGermanEId = useGermanEId
             )
         }
 
@@ -196,8 +201,9 @@ internal data class Openid4VciIssuerMetadata(
 
 // from .well-known/oauth-authorization-server
 internal data class Openid4VciAuthorizationMetadata(
-    val pushedAuthorizationRequestEndpoint: String,
-    val authorizationEndpoint: String,
+    val baseUrl: String,
+    val pushedAuthorizationRequestEndpoint: String?,
+    val authorizationEndpoint: String?,
     val authorizationChallengeEndpoint: String?,
     val tokenEndpoint: String,
     val responseType: String,
