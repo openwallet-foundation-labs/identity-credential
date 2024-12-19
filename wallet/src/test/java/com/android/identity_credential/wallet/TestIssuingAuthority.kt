@@ -125,8 +125,9 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {})
         collectedEvidence: MutableMap<String, EvidenceResponse>
     ): CredentialConfiguration {
         return CredentialConfiguration(
-            ByteString(byteArrayOf(1, 2, 3)),
-            SecureAreaConfigurationSoftware()
+            challenge = ByteString(byteArrayOf(1, 2, 3)),
+            keyAssertionRequired = false,
+            secureAreaConfiguration = SecureAreaConfigurationSoftware()
         )
     }
 }

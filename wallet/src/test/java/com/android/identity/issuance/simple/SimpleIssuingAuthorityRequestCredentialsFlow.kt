@@ -23,7 +23,7 @@ class SimpleIssuingAuthorityRequestCredentialsFlow(
 
     override suspend fun sendCredentials(
         credentialRequests: List<CredentialRequest>,
-        keysAssertion: DeviceAssertion
+        keysAssertion: DeviceAssertion?
     ): List<KeyPossessionChallenge> {
         // TODO: should check attestations
         issuingAuthority.addCpoRequests(documentId, format, credentialRequests)

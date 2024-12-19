@@ -329,8 +329,9 @@ class FunkeIssuingAuthorityState(
         val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
         val configuration = if (document.secureAreaIdentifier!!.startsWith("CloudSecureArea?")) {
             CredentialConfiguration(
-                ByteString(cNonce.toByteArray()),
-                SecureAreaConfigurationCloud(
+                challenge = ByteString(cNonce.toByteArray()),
+                keyAssertionRequired = true,
+                secureAreaConfiguration = SecureAreaConfigurationCloud(
                     purposes = KeyPurpose.encodeSet(purposes),
                     curve = EcCurve.P256.coseCurveIdentifier,
                     cloudSecureAreaId = document.secureAreaIdentifier!!,
@@ -343,8 +344,9 @@ class FunkeIssuingAuthorityState(
             )
         } else {
             CredentialConfiguration(
-                ByteString(cNonce.toByteArray()),
-                SecureAreaConfigurationAndroidKeystore(
+                challenge = ByteString(cNonce.toByteArray()),
+                keyAssertionRequired = true,
+                secureAreaConfiguration = SecureAreaConfigurationAndroidKeystore(
                     purposes = KeyPurpose.encodeSet(purposes),
                     curve = EcCurve.P256.coseCurveIdentifier,
                     useStrongBox = true,

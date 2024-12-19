@@ -33,12 +33,14 @@ interface RequestCredentialsFlow : FlowBase {
      *
      * @param credentialRequests a list of credentials requests, each representing a
      *   request for a issuer data generation along with the format requested.
+     * @param keysAssertion DeviceAssertion that wraps AssertionBindingKeys, only required
+     *   if [CredentialConfiguration.keyAssertionRequired] is true
      * @throws IllegalArgumentException if the issuer rejects the one or more of the requests.
      */
     @FlowMethod
     suspend fun sendCredentials(
         credentialRequests: List<CredentialRequest>,
-        keysAssertion: DeviceAssertion  // wraps AssertionBindingKeys
+        keysAssertion: DeviceAssertion?
     ): List<KeyPossessionChallenge>
 
     @FlowMethod
