@@ -93,6 +93,7 @@ actual object Crypto {
     )
 
     init {
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.insertProviderAt(BouncyCastleProvider(), 1)
     }
 
@@ -329,7 +330,12 @@ actual object Crypto {
                     signature.toDerEncoded()
                 }
             }
-            Signature.getInstance(signatureAlgorithm).run {
+            val signatureImpl = if (publicKey.curve.requireBouncyCastle) {
+                Signature.getInstance(signatureAlgorithm, BouncyCastleProvider.PROVIDER_NAME)
+            } else {
+                Signature.getInstance(signatureAlgorithm)
+            }
+            signatureImpl.run {
                 initVerify(publicKey.javaPublicKey)
                 update(message)
                 verify(rawSignature)
@@ -739,13 +745,8 @@ actual object Crypto {
             .replace("-----BEGIN PUBLIC KEY-----", "")
             .replace("-----END PUBLIC KEY-----", "")
             .trim())
-        val kf = when (curve) {
-            EcCurve.ED448,
-            EcCurve.ED25519 -> KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
-            EcCurve.X25519,
-            EcCurve.X448 -> KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
-            else -> KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
-        }
+        // Always use BouncyCastle, publicKeyJava.toEcPublicKey below would choke on anything else.
+        val kf = KeyFactory.getInstance(curve.javaKeyAlgorithm, BouncyCastleProvider.PROVIDER_NAME)
         val spec = X509EncodedKeySpec(encoded)
         val publicKeyJava = kf.generatePublic(spec)
         return publicKeyJava.toEcPublicKey(curve)
@@ -769,13 +770,10 @@ actual object Crypto {
             .replace("-----BEGIN PRIVATE KEY-----", "")
             .replace("-----END PRIVATE KEY-----", "")
             .trim())
-        val kf = when (publicKey.curve) {
-            EcCurve.ED448,
-            EcCurve.ED25519 -> KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
-            EcCurve.X25519,
-            EcCurve.X448 -> KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
-            else -> KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
-        }
+        // Always use BouncyCastle, privateKeyJava.toEcPrivateKey below would
+        // choke on anything else.
+        val kf = KeyFactory.getInstance(
+            publicKey.curve.javaKeyAlgorithm, BouncyCastleProvider.PROVIDER_NAME)
         val spec = PKCS8EncodedKeySpec(encoded)
         val privateKeyJava = kf.generatePrivate(spec)
         return privateKeyJava.toEcPrivateKey(publicKey.javaPublicKey, publicKey.curve)

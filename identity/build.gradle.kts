@@ -113,14 +113,44 @@ kotlin {
             }
         }
 
-        val androidInstrumentedTest by getting {
+        val appleMain by getting {
             dependencies {
+                // This dependency is needed for SqliteStorage implementation.
+                // KMP-compatible version is still alpha and it is not compatible with
+                // other androidx packages, particularly androidx.work that we use in wallet.
+                // TODO: once compatibility issues are resolved, SqliteStorage and this
+                // dependency can be moved into commonMain.
+                implementation(libs.androidx.sqlite)
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(libs.hsqldb)
+                implementation(libs.mysql)
+                implementation(libs.postgresql)
+            }
+        }
+
+        val androidInstrumentedTest by getting {
+            dependsOn(commonTest)
+            dependencies {
+                implementation(libs.androidx.sqlite)
+                implementation(libs.androidx.sqlite.framework)
+                implementation(libs.androidx.sqlite.bundled)
                 implementation(libs.androidx.test.junit)
                 implementation(libs.androidx.espresso.core)
                 implementation(libs.compose.junit4)
             }
         }
 
+        val appleTest by getting {
+            dependencies {
+                implementation(libs.androidx.sqlite)
+                implementation(libs.androidx.sqlite.framework)
+                implementation(libs.androidx.sqlite.bundled)
+            }
+        }
     }
 }
 
