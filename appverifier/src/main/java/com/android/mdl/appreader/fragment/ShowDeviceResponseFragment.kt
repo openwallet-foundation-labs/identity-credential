@@ -23,6 +23,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.crypto.toEcPrivateKey
@@ -163,19 +164,19 @@ class ShowDeviceResponseFragment : Fragment() {
             )
             sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
 
-            var certChain = doc.issuerCertificateChain.javaX509Certificates
+            var certChain = doc.issuerCertificateChain
             val customValidators = CustomValidators.getByDocType(doc.docType)
             val result = VerifierApp.trustManagerInstance.verify(
-                chain = certChain,
-                customValidators = customValidators
+                chain = certChain.certificates,
+                //customValidators = customValidators
             )
             if (result.trustChain.any()){
-                certChain = result.trustChain
+                certChain = X509CertChain(result.trustChain)
             }
             if (!result.isTrusted) {
                 sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error?.message}<br>")
             }
-            val commonName = certChain.last().issuerX500Principal.getCommonName("")
+            val commonName = certChain.certificates.last().issuer.name
             sb.append("${getFormattedCheck(result.isTrusted)}Issuer’s DS Key Recognized: ($commonName)<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
 

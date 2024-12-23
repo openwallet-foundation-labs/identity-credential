@@ -5,6 +5,11 @@ import LocalAuthentication
 import DeviceCheck
 
 @objc public class SwiftBridge : NSObject {
+    @objc(sha1:) public class func sha1(data: Data) -> Data {
+        let hashed = Insecure.SHA1.hash(data: data)
+        return Data(hashed)
+    }
+
     @objc(sha256:) public class func sha256(data: Data) -> Data {
         let hashed = SHA256.hash(data: data)
         return Data(hashed)

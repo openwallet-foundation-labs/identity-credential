@@ -3,12 +3,14 @@ package com.android.identity.android.securearea.cloud
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.test.InstrumentationRegistry
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.create
+import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.AttestationExtension
 import com.android.identity.securearea.CreateKeySettings
@@ -69,19 +71,19 @@ class CloudSecureAreaTest {
             val attestationKeySignatureAlgorithm = attestationKey.curve.defaultSigningAlgorithm
             val attestationKeyCertificates = X509CertChain(
                 listOf(
-                    X509Cert.create(
-                        attestationKey.publicKey,
-                        attestationKey,
-                        null,
-                        attestationKeySignatureAlgorithm,
-                        "1",
-                        attestationKeySubject,
-                        attestationKeySubject,
-                        attestationKeyValidFrom,
-                        attestationKeyValidUntil,
-                        setOf(),
-                        listOf()
+                    X509Cert.Builder(
+                        publicKey = attestationKey.publicKey,
+                        signingKey = attestationKey,
+                        signatureAlgorithm = attestationKeySignatureAlgorithm,
+                        serialNumber = ASN1Integer(1L),
+                        subject = X500Name.fromName(attestationKeySubject),
+                        issuer = X500Name.fromName(attestationKeySubject),
+                        validFrom = attestationKeyValidFrom,
+                        validUntil = attestationKeyValidUntil
                     )
+                        .includeSubjectKeyIdentifier()
+                        .setKeyUsage(setOf(X509KeyUsage.KEY_CERT_SIGN))
+                        .build(),
                 )
             )
 
@@ -92,19 +94,19 @@ class CloudSecureAreaTest {
             val cloudBindingKeySignatureAlgorithm = cloudBindingKeyAttestationKey.curve.defaultSigningAlgorithm
             val cloudBindingKeyAttestationCertificates = X509CertChain(
                 listOf(
-                    X509Cert.create(
-                        cloudBindingKeyAttestationKey.publicKey,
-                        cloudBindingKeyAttestationKey,
-                        null,
-                        cloudBindingKeySignatureAlgorithm,
-                        "1",
-                        cloudBindingKeySubject,
-                        cloudBindingKeySubject,
-                        cloudBindingKeyValidFrom,
-                        cloudBindingKeyValidUntil,
-                        setOf(),
-                        listOf()
+                    X509Cert.Builder(
+                        publicKey = cloudBindingKeyAttestationKey.publicKey,
+                        signingKey = cloudBindingKeyAttestationKey,
+                        signatureAlgorithm = cloudBindingKeySignatureAlgorithm,
+                        serialNumber = ASN1Integer(1L),
+                        subject = X500Name.fromName(cloudBindingKeySubject),
+                        issuer = X500Name.fromName(cloudBindingKeySubject),
+                        validFrom = cloudBindingKeyValidFrom,
+                        validUntil = cloudBindingKeyValidUntil
                     )
+                        .includeSubjectKeyIdentifier()
+                        .setKeyUsage(setOf(X509KeyUsage.KEY_CERT_SIGN))
+                        .build(),
                 )
             )
 

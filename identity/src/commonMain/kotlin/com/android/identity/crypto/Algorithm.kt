@@ -22,6 +22,9 @@ enum class Algorithm(val coseAlgorithmIdentifier: Int) {
     /** The algorithm identifier for signatures using EdDSA  */
     EDDSA(-8),
 
+    /** SHA-1 Hash (insecure, shouldn't be used) */
+    INSECURE_SHA1(-14),
+
     /** SHA-2 256-bit Hash */
     SHA256(-16),
 

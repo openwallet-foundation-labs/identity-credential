@@ -32,6 +32,13 @@ data class X509CertChain(
         }
     }
 
+    /**
+     * Validates that every certificate in the chain is signed by the next one.
+     *
+     * @return true if every certificate in the chain is signed by the next one, false otherwise.
+     */
+    fun validate(): Boolean = Crypto.validateCertChain(this)
+
     companion object {
         /**
          * Decodes a certificate chain from CBOR.

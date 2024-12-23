@@ -233,8 +233,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                 var trustPoint: TrustPoint? = null
                 if (docRequest.readerAuthenticated) {
                     val result = walletApp.readerTrustManager.verify(
-                        docRequest.readerCertificateChain!!.javaX509Certificates,
-                        customValidators = emptyList()  // not needed for reader auth
+                        docRequest.readerCertificateChain!!.certificates,
                     )
                     if (result.isTrusted && result.trustPoints.isNotEmpty()) {
                         trustPoint = result.trustPoints.first()

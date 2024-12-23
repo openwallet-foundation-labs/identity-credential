@@ -16,7 +16,6 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
-import com.android.identity.crypto.fromDer
 import com.android.identity.crypto.fromJavaX509Certificates
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.AttestationExtension
@@ -356,7 +355,7 @@ open class CloudSecureArea(
             val request1 = E2EESetupRequest1(
                 eDeviceKey.publicKey.toCoseKey(),
                 deviceNonce,
-                EcSignature.fromDer(EcCurve.P256, derSignature),
+                EcSignature.fromDerEncoded(EcCurve.P256.bitSize, derSignature),
                 response0.serverState
             )
             response = runBlocking { communicate(serverUrl, request1.toCbor()) }
@@ -620,7 +619,7 @@ open class CloudSecureArea(
             val derSignatureLocal = s.sign()
 
             val request1 = SignRequest1(
-                EcSignature.fromDer(EcCurve.P256, derSignatureLocal),
+                EcSignature.fromDerEncoded(EcCurve.P256.bitSize, derSignatureLocal),
                 (keyUnlockData as? CloudKeyUnlockData)?.passphrase,
                 response0.serverState
             )
@@ -741,7 +740,7 @@ open class CloudSecureArea(
             val derSignatureLocal = s.sign()
 
             val request1 = KeyAgreementRequest1(
-                EcSignature.fromDer(EcCurve.P256, derSignatureLocal),
+                EcSignature.fromDerEncoded(EcCurve.P256.bitSize, derSignatureLocal),
                 (keyUnlockData as? CloudKeyUnlockData)?.passphrase,
                 response0.serverState
             )

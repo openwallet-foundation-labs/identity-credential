@@ -249,10 +249,8 @@ class ReaderModel(
             val warningTexts = mutableListOf<String>()
 
             if (document.issuerSignedAuthenticated) {
-                val readerAuthChain = document.issuerCertificateChain.javaX509Certificates
                 val trustResult = trustManager.verify(
-                    readerAuthChain,
-                    emptyList()  // TODO: use mDL specific validators, if applicable
+                    document.issuerCertificateChain.certificates,
                 )
                 if (trustResult.isTrusted) {
                     val trustPoint = trustResult.trustPoints[0]
@@ -260,8 +258,8 @@ class ReaderModel(
                         ?: trustPoint.certificate.javaX509Certificate.subjectX500Principal.name
                     infoTexts.add(res.getString(R.string.reader_model_info_in_trust_list, displayName))
                 } else {
-                    val dsCert = readerAuthChain[0]
-                    val displayName = dsCert.issuerX500Principal.name
+                    val dsCert = document.issuerCertificateChain.certificates[0]
+                    val displayName = dsCert.issuer.name
                     warningTexts.add(res.getString(R.string.reader_model_warning_not_in_trust_list, displayName))
                 }
             }
