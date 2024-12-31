@@ -93,6 +93,7 @@ actual object Crypto {
     )
 
     init {
+        Security.removeProvider("BC")
         Security.insertProviderAt(BouncyCastleProvider(), 1)
     }
 
