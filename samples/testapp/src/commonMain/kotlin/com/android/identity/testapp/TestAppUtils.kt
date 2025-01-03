@@ -196,9 +196,9 @@ object TestAppUtils {
         iacaKeyPub = EcPublicKey.fromPem(
             """
                 -----BEGIN PUBLIC KEY-----
-                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAElQdbKvX5mU29gS+xH/XLa5hSRRzMGpdN
-                5PCLJHKIQYUWdnRRH6A0oLiCt0I/gX90D5NZN27LY2VGaiDkgHI9J3CW99YHZ/5N
-                /4x1uBkz7X66R5oKAOFP9nCAKhM2C+PI
+                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE+QDye70m2O0llPXMjVjxVZz3m5k6agT+
+                wih+L79b7jyqUl99sbeUnpxaLD+cmB3HK3twkA7fmVJSobBc+9CDhkh3mx6n+YoH
+                5RulaSWThWBfMyRjsfVODkosHLCDnbPV
                 -----END PUBLIC KEY-----
             """.trimIndent().trim(),
             EcCurve.P384
@@ -206,8 +206,10 @@ object TestAppUtils {
         iacaKey = EcPrivateKey.fromPem(
             """
                 -----BEGIN PRIVATE KEY-----
-                MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDBLCuy17r0A6FtCd552BGW12sQKD095yEaG
-                nZxSDva2gKvmaKex2dylcZg5cR39M0SgBwYFK4EEACI=
+                MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCcRuzXW3pW2h9W8pu5
+                /CSR6JSnfnZVATq+408WPoNC3LzXqJEQSMzPsI9U1q+wZ2yhZANiAAT5APJ7vSbY
+                7SWU9cyNWPFVnPebmTpqBP7CKH4vv1vuPKpSX32xt5SenFosP5yYHccre3CQDt+Z
+                UlKhsFz70IOGSHebHqf5igflG6VpJZOFYF8zJGOx9U4OSiwcsIOds9U=
                 -----END PRIVATE KEY-----
             """.trimIndent().trim(),
             iacaKeyPub
@@ -237,9 +239,9 @@ object TestAppUtils {
         readerRootKeyPub = EcPublicKey.fromPem(
             """
                 -----BEGIN PUBLIC KEY-----
-                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEzNWVQ0OxOAProyZdCezqfKr8vwUoIP1A
-                k8Plq8GCN9v41faZPELuQUk21A2RNj0IXqsuLN4/MtYDLvkOaXpoWJ/3ODjGF2WP
-                Lg/reFqPVBaEg5BW75bpmf3LjuU0wCO+
+                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE+QDye70m2O0llPXMjVjxVZz3m5k6agT+
+                wih+L79b7jyqUl99sbeUnpxaLD+cmB3HK3twkA7fmVJSobBc+9CDhkh3mx6n+YoH
+                5RulaSWThWBfMyRjsfVODkosHLCDnbPV
                 -----END PUBLIC KEY-----
             """.trimIndent().trim(),
             EcCurve.P384
@@ -247,8 +249,10 @@ object TestAppUtils {
         readerRootKey = EcPrivateKey.fromPem(
             """
                 -----BEGIN PRIVATE KEY-----
-                MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDDxgrZBXnoO54/hZM2DAGrByoWRatjH9hGs
-                lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
+                MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCcRuzXW3pW2h9W8pu5
+                /CSR6JSnfnZVATq+408WPoNC3LzXqJEQSMzPsI9U1q+wZ2yhZANiAAT5APJ7vSbY
+                7SWU9cyNWPFVnPebmTpqBP7CKH4vv1vuPKpSX32xt5SenFosP5yYHccre3CQDt+Z
+                UlKhsFz70IOGSHebHqf5igflG6VpJZOFYF8zJGOx9U4OSiwcsIOds9U=
                 -----END PRIVATE KEY-----
             """.trimIndent().trim(),
             readerRootKeyPub
