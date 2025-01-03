@@ -63,4 +63,15 @@ internal object SampleData {
     const val RESIDENT_STATE = "Sample State"
     const val RESIDENT_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
 
+    //Movie ticket specific sample data
+    const val TICKET_NUMBER = 123456789
+    const val CINEMA_ID = "Sample Cinema Name, Address."
+    const val MOVIE_ID = "Sample Movie Title"
+    const val MOVIE_RATING = "PG-13"
+    const val MOVIE_DATE = "2024-12-31"
+    const val MOVIE_TIME = "23:00"
+    const val THEATRE_NAME = "11"
+    const val THEATRE_SEAT = "G2"
+    const val CINEMA_PARKING = true
+
 }

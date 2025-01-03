@@ -38,6 +38,7 @@ import com.android.identity.crypto.X509Cert
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaMovieTicket
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.WalletApplicationCapabilities
@@ -137,6 +138,7 @@ class WalletApplication : Application() {
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUCertificateOfResidence.getDocumentType())
         documentTypeRepository.addDocumentType(UtopiaNaturalization.getDocumentType())
+        documentTypeRepository.addDocumentType(UtopiaMovieTicket.getDocumentType())
 
         // init storage
         val storageFile = Path(applicationContext.noBackupFilesDir.path, "identity.bin")

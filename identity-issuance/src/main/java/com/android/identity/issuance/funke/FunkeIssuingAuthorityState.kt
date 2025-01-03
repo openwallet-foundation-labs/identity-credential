@@ -15,6 +15,7 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaMovieTicket
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.annotation.FlowJoin
 import com.android.identity.flow.annotation.FlowMethod
@@ -190,6 +191,7 @@ class FunkeIssuingAuthorityState(
             addDocumentType(PhotoID.getDocumentType())
             addDocumentType(EUCertificateOfResidence.getDocumentType())
             addDocumentType(UtopiaNaturalization.getDocumentType())
+            addDocumentType(UtopiaMovieTicket.getDocumentType())
         }
     }
 
