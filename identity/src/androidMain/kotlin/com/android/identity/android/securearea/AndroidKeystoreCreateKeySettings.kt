@@ -149,7 +149,8 @@ class AndroidKeystoreCreateKeySettings private constructor(
                 require(UserAuthenticationType.encodeSet(userAuthenticationTypes) != 0L) {
                     "userAuthenticationType must be set when user authentication is required" }
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    require(UserAuthenticationType.encodeSet(userAuthenticationTypes) ==
+                    require(
+                        UserAuthenticationType.encodeSet(userAuthenticationTypes) ==
                             UserAuthenticationType.LSKF.flagValue or
                             UserAuthenticationType.BIOMETRIC.flagValue) {
                         "Only LSKF and Strong Biometric supported on this API level" }

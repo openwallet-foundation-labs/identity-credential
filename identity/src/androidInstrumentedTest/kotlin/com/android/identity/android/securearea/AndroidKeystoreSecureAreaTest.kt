@@ -25,7 +25,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.InstrumentationRegistry
 import com.android.identity.android.TestUtil
-import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
@@ -34,6 +33,7 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.util.AndroidAttestationExtensionParser
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
@@ -70,7 +70,7 @@ class AndroidKeystoreSecureAreaTest {
         val context = InstrumentationRegistry.getTargetContext()
         val storageFile = Path(context.dataDir.path, "testdata.bin")
         SystemFileSystem.delete(storageFile, false)
-        val storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
+        val storageEngine = GenericStorageEngine(storageFile)
         ks = AndroidKeystoreSecureArea(context, storageEngine)
     }
 
@@ -635,7 +635,7 @@ class AndroidKeystoreSecureAreaTest {
 
         // Check the attestation extension
         val parser = AndroidAttestationExtensionParser(
-            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate
+            keyInfo.attestation.certChain!!.certificates[0]
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
@@ -746,7 +746,7 @@ class AndroidKeystoreSecureAreaTest {
 
         // Check the attestation extension
         val parser = AndroidAttestationExtensionParser(
-            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate
+            keyInfo.attestation.certChain!!.certificates[0]
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
@@ -773,7 +773,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         val parser = AndroidAttestationExtensionParser(
-            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate
+            keyInfo.attestation.certChain!!.certificates[0]
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
 

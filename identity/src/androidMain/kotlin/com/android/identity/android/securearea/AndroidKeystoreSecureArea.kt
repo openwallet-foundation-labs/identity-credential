@@ -321,7 +321,8 @@ class AndroidKeystoreSecureArea(
         }
 
         // Need to generate the data which getKeyInfo() reads from disk.
-        val settingsBuilder = AndroidKeystoreCreateKeySettings.Builder("".toByteArray(StandardCharsets.UTF_8))
+        val settingsBuilder =
+            AndroidKeystoreCreateKeySettings.Builder("".toByteArray(StandardCharsets.UTF_8))
 
         // attestation
         val attestationCerts = mutableListOf<X509Cert>()

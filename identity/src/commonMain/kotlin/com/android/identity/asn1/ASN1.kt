@@ -105,6 +105,12 @@ object ASN1 {
     }
 
     internal fun decode(derEncoded: ByteArray, offset: Int): Pair<Int, ASN1Object?> {
+        if (offset >= derEncoded.size) {
+            // TODO: review if we should move this check somewhere elsewhere.
+            // We hit this code when parsing Android key attestation on the Pixel 3a emulator
+            // (exercised in DeviceAttestationAndroidTest).
+            return Pair(derEncoded.size, null)
+        }
         val (lengthOffset, idOctets) = decodeIdentifierOctets(derEncoded, offset)
         val (contentOffset, length) = decodeLength(derEncoded, lengthOffset)
         val content = derEncoded.sliceArray(IntRange(contentOffset, contentOffset + length - 1))

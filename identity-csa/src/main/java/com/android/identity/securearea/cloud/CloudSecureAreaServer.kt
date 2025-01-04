@@ -155,15 +155,12 @@ class CloudSecureAreaServer(
 
         // Finally, check the Attestation Extension...
         try {
-            val parser = AndroidAttestationExtensionParser(x509certs[0])
+            val parser = AndroidAttestationExtensionParser(attestation.certificates.first())
 
             // Challenge must match...
-            check(
-                Arrays.equals(
-                    cloudChallenge,
-                    parser.attestationChallenge
-                )
-            ) { "Challenge didn't match what was expected" }
+            check(cloudChallenge.contentEquals(parser.attestationChallenge)) {
+                "Challenge didn't match what was expected"
+            }
 
             if (requireVerifiedBootGreen) {
                 // Verified Boot state must VERIFIED
@@ -176,7 +173,7 @@ class CloudSecureAreaServer(
                 check (parser.applicationSignatureDigests.size == requireAppSignatureCertificateDigests.size)
                 { "Number Signing certificates mismatch" }
                 for (n in 0..<parser.applicationSignatureDigests.size) {
-                    check (Arrays.equals(parser.applicationSignatureDigests[n],
+                    check (parser.applicationSignatureDigests[n].toByteArray().contentEquals(
                         requireAppSignatureCertificateDigests[n]))
                     { "Signing certificate $n mismatch" }
                 }
@@ -186,7 +183,8 @@ class CloudSecureAreaServer(
             Logger.d(TAG, "$remoteHost: Accepting Android client with ${parser.applicationSignatureDigests.size} " +
                     "signing certificates digests")
             for (n in 0..<parser.applicationSignatureDigests.size) {
-                Logger.d(TAG, "$remoteHost: Digest $n: ${parser.applicationSignatureDigests[n].toHex()}")
+                Logger.d(TAG,
+                    "$remoteHost: Digest $n: ${parser.applicationSignatureDigests[n].toByteArray().toHex()}")
             }
 
         } catch (e: IOException) {

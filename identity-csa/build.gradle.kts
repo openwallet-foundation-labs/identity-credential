@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":identity"))
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.io.bytestring)
 
     implementation(project(":processor-annotations"))
     ksp(project(":processor"))

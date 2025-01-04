@@ -3,6 +3,7 @@ package com.android.identity.issuance.wallet
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.device.AssertionNonce
 import com.android.identity.device.DeviceAttestation
+import com.android.identity.device.DeviceAttestationValidationData
 import com.android.identity.flow.annotation.FlowMethod
 import com.android.identity.flow.annotation.FlowState
 import com.android.identity.flow.server.Configuration
@@ -14,8 +15,6 @@ import com.android.identity.issuance.ClientChallenge
 import com.android.identity.issuance.WalletServerCapabilities
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.toCbor
-import com.android.identity.issuance.validateDeviceAssertion
-import com.android.identity.issuance.validateDeviceAttestation
 import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
@@ -62,12 +61,21 @@ class AuthenticationState(
             if (this.deviceAttestation != null) {
                 throw IllegalStateException("Client already registered")
             }
-            validateDeviceAttestation(attestation, clientId, settings)
+            attestation.validate(DeviceAttestationValidationData(
+                clientId = clientId,
+                iosReleaseBuild = settings.iosReleaseBuild,
+                iosAppIdentifier = settings.iosAppIdentifier,
+                androidGmsAttestation = settings.androidRequireGmsAttestation,
+                androidVerifiedBootGreen = settings.androidRequireVerifiedBootGreen,
+                androidAppSignatureCertificateDigests = listOf()
+            ))
             val clientData = ByteString(ClientRecord(attestation).toCbor())
             this.deviceAttestation = attestation
             storage.insert("Clients", "", clientData, key = clientId)
         }
-        validateDeviceAssertion(this.deviceAttestation!!, auth.assertion)
+
+        this.deviceAttestation!!.validateAssertion(auth.assertion)
+
         if ((auth.assertion.assertion as AssertionNonce).nonce != this.nonce) {
             throw IllegalArgumentException("nonce mismatch")
         }

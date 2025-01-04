@@ -2,6 +2,8 @@ package com.android.identity.issuance
 
 import com.android.identity.flow.server.Configuration
 import com.android.identity.util.Logger
+import com.android.identity.util.fromBase64Url
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Wallet Server settings.
@@ -14,14 +16,22 @@ class WalletServerSettings(private val conf: Configuration) {
     val waitForNotificationSupported
         get() = getBool("waitForNotificationSupported", false)
 
+    val iosReleaseBuild
+        get() = getBool("iosRequireReleaseBuild", false)
+
+    val iosAppIdentifier
+        get() = getString("iosRequireAppIdentifier")
+
     val androidRequireGmsAttestation
         get() = getBool("androidRequireGmsAttestation", true)
 
     val androidRequireVerifiedBootGreen
         get() = getBool("androidRequireVerifiedBootGreen", true)
 
-    val androidRequireAppSignatureCertificateDigests: List<String>
-        get() = getStringList("androidRequireAppSignatureCertificateDigests")
+    val androidRequireAppSignatureCertificateDigests: List<ByteString>
+        get() = getStringList("androidRequireAppSignatureCertificateDigests").map {
+                ByteString(it.fromBase64Url())
+            }
 
     val cloudSecureAreaEnabled: Boolean
         get() = getBool("cloudSecureAreaEnabled", false)

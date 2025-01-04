@@ -195,7 +195,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                 settings.cloudSecureAreaRekeyingIntervalSeconds,
                 settings.androidRequireGmsAttestation,
                 settings.androidRequireVerifiedBootGreen,
-                settings.androidRequireAppSignatureCertificateDigests.map { hex -> hex.fromHex() },
+                settings.androidRequireAppSignatureCertificateDigests.map { it.toByteArray() },
                 SimplePassphraseFailureEnforcer(
                     settings.cloudSecureAreaLockoutNumFailedAttempts,
                     settings.cloudSecureAreaLockoutDurationSeconds.seconds
