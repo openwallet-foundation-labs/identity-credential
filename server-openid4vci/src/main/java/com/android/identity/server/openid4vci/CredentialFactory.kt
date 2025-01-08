@@ -31,7 +31,8 @@ internal interface CredentialFactory {
         init {
             val makers = mutableListOf(
                 CredentialFactoryMdl(),
-                CredentialFactoryUtopiaNaturatization()
+                CredentialFactoryUtopiaNaturatization(),
+                CredentialFactoryUtopiaMovieTicket(),
             )
             byOfferId = makers.associateBy { it.offerId }
             supportedScopes = makers.map { it.scope }.toSet()

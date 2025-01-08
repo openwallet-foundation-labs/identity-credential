@@ -26,6 +26,7 @@ import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.GermanPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaMovieTicket
 import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
 import com.android.identity.flow.handler.FlowNotifications
 import com.android.identity.flow.server.Configuration
@@ -300,6 +301,7 @@ class VerifierServlet : BaseHttpServlet() {
             repo.addDocumentType(PhotoID.getDocumentType())
             repo.addDocumentType(EUCertificateOfResidence.getDocumentType())
             repo.addDocumentType(UtopiaNaturalization.getDocumentType())
+            repo.addDocumentType(UtopiaMovieTicket.getDocumentType())
             repo
         }
     }
