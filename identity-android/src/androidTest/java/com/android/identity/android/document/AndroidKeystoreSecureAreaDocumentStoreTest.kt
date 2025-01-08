@@ -85,7 +85,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         Assert.assertFalse(pendingCredential.isCertified)
         val attestation = pendingCredential.attestation
         val parser =
-            AndroidAttestationExtensionParser(attestation.certChain!!.certificates[0].javaX509Certificate)
+            AndroidAttestationExtensionParser(attestation.certChain!!.certificates[0])
         Assert.assertArrayEquals(
             authKeyChallenge,
             parser.attestationChallenge

@@ -1,5 +1,6 @@
 package com.android.identity.device
 
+import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
@@ -17,9 +18,9 @@ actual object DeviceCheck {
         clientId: String
     ): DeviceAttestationResult {
         val alias = "deviceCheck_" + Random.nextBytes(9).toBase64Url()
-        // TODO: utilize clientId once we have access to AndroidSecureArea APIs here
-        // and start checking it on the server
-        secureArea.createKey(alias, CreateKeySettings())
+        val keySettings = AndroidKeystoreCreateKeySettings.Builder(clientId.encodeToByteArray())
+            .build()
+        secureArea.createKey(alias, keySettings)
         val keyInfo = secureArea.getKeyInfo(alias)
         return DeviceAttestationResult(
             deviceAttestationId = alias,
@@ -37,7 +38,8 @@ actual object DeviceCheck {
             alias = deviceAttestationId,
             signatureAlgorithm = Algorithm.ES256,
             dataToSign = assertionData,
-            keyUnlockData = null)
+            keyUnlockData = null
+        )
         return DeviceAssertion(
             assertionData = ByteString(assertionData),
             platformAssertion = ByteString(signature.toCoseEncoded())

@@ -106,11 +106,21 @@ kotlin {
         val androidMain by getting {
             dependsOn(javaSharedMain)
             dependencies {
+                implementation(libs.androidx.biometrics)
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
             }
         }
+
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation(libs.androidx.test.junit)
+                implementation(libs.androidx.espresso.core)
+                implementation(libs.compose.junit4)
+            }
+        }
+
     }
 }
 

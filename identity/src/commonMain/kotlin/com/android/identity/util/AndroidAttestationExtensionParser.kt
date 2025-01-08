@@ -15,20 +15,19 @@
  */
 package com.android.identity.util
 
-import org.bouncycastle.asn1.ASN1Boolean
-import org.bouncycastle.asn1.ASN1Encodable
-import org.bouncycastle.asn1.ASN1Enumerated
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1OctetString
-import org.bouncycastle.asn1.ASN1Primitive
-import org.bouncycastle.asn1.ASN1Sequence
-import org.bouncycastle.asn1.ASN1Set
-import org.bouncycastle.asn1.ASN1TaggedObject
-import java.security.cert.X509Certificate
+import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Boolean
+import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.ASN1Object
+import com.android.identity.asn1.ASN1OctetString
+import com.android.identity.asn1.ASN1Sequence
+import com.android.identity.asn1.ASN1Set
+import com.android.identity.asn1.ASN1TaggedObject
+import com.android.identity.crypto.X509Cert
+import kotlinx.io.bytestring.ByteString
 
 // This code is based on https://github.com/google/android-key-attestation
-class AndroidAttestationExtensionParser(cert: X509Certificate) {
+class AndroidAttestationExtensionParser(cert: X509Cert) {
     enum class SecurityLevel {
         SOFTWARE,
         TRUSTED_ENVIRONMENT,
@@ -54,53 +53,44 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
 
     val verifiedBootState: VerifiedBootState
 
-    val applicationSignatureDigests: List<ByteArray>
+    val applicationSignatureDigests: List<ByteString>
 
-    private val softwareEnforcedAuthorizations: Map<Int, ASN1Primitive?>
-    private val teeEnforcedAuthorizations: Map<Int, ASN1Primitive?>
+    private val softwareEnforcedAuthorizations: Map<Int, ASN1Object>
+    private val teeEnforcedAuthorizations: Map<Int, ASN1Object>
 
     init {
         val attestationExtensionBytes = cert.getExtensionValue(KEY_DESCRIPTION_OID)
-        require(attestationExtensionBytes != null && attestationExtensionBytes.size > 0) {
+        require(attestationExtensionBytes != null && attestationExtensionBytes.isNotEmpty()) {
             "Couldn't find keystore attestation extension."
         }
-        var seq: ASN1Sequence
-        ASN1InputStream(attestationExtensionBytes).use { asn1InputStream ->
-            // The extension contains one object, a sequence, in the
-            // Distinguished Encoding Rules (DER)-encoded form. Get the DER
-            // bytes.
-            val derSequenceBytes = (asn1InputStream.readObject() as ASN1OctetString).octets
-            ASN1InputStream(derSequenceBytes).use { seqInputStream ->
-                seq = seqInputStream.readObject() as ASN1Sequence
-            }
-        }
+        val extAsn1 = ASN1.decode(attestationExtensionBytes)
+            ?: throw IllegalArgumentException("ASN.1 parsing failed")
+        val seq = extAsn1 as ASN1Sequence
 
-        attestationVersion = getIntegerFromAsn1(seq.getObjectAt(ATTESTATION_VERSION_INDEX))
+        attestationVersion = getIntegerFromAsn1(seq.elements[ATTESTATION_VERSION_INDEX])
         this.attestationSecurityLevel = securityLevelToEnum(
-            getIntegerFromAsn1(
-                seq.getObjectAt(ATTESTATION_SECURITY_LEVEL_INDEX)
-            )
+            getIntegerFromAsn1(seq.elements[ATTESTATION_SECURITY_LEVEL_INDEX])
         )
 
-        keymasterVersion = getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_VERSION_INDEX))
+        keymasterVersion = getIntegerFromAsn1(seq.elements[KEYMASTER_VERSION_INDEX])
         this.keymasterSecurityLevel = securityLevelToEnum(
-            getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_SECURITY_LEVEL_INDEX))
+            getIntegerFromAsn1(seq.elements[KEYMASTER_SECURITY_LEVEL_INDEX])
         )
         attestationChallenge =
-            (seq.getObjectAt(ATTESTATION_CHALLENGE_INDEX) as ASN1OctetString).octets
-        uniqueId = (seq.getObjectAt(UNIQUE_ID_INDEX) as ASN1OctetString).octets
+            (seq.elements[ATTESTATION_CHALLENGE_INDEX] as ASN1OctetString).value
+        uniqueId = (seq.elements[UNIQUE_ID_INDEX] as ASN1OctetString).value
 
         softwareEnforcedAuthorizations = getAuthorizationMap(
-            (seq.getObjectAt(SW_ENFORCED_INDEX) as ASN1Sequence).toArray()
+            (seq.elements[SW_ENFORCED_INDEX] as ASN1Sequence).elements
         )
         teeEnforcedAuthorizations = getAuthorizationMap(
-            (seq.getObjectAt(TEE_ENFORCED_INDEX) as ASN1Sequence).toArray()
+            (seq.elements[TEE_ENFORCED_INDEX] as ASN1Sequence).elements
         )
 
         val rootOfTrustSeq = findAuthorizationListEntry(teeEnforcedAuthorizations, 704) as ASN1Sequence?
         verifiedBootState =
             if (rootOfTrustSeq != null) {
-                when (getIntegerFromAsn1(rootOfTrustSeq.getObjectAt(2))) {
+                when (getIntegerFromAsn1(rootOfTrustSeq.elements[2])) {
                     0 -> VerifiedBootState.GREEN
                     1 -> VerifiedBootState.YELLOW
                     2 -> VerifiedBootState.ORANGE
@@ -112,15 +102,15 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
             }
 
         val encodedAttestationApplicationId = getSoftwareAuthorizationByteString(709)
+            ?: throw IllegalArgumentException("No software authorization")
+        val attestationApplicationIdSeq = (ASN1.decode(encodedAttestationApplicationId)
+            ?: throw IllegalArgumentException("ASN.1 parsing failed")) as ASN1Sequence
 
-        val attestationApplicationIdSeq =
-            ASN1InputStream(encodedAttestationApplicationId).readObject() as ASN1Sequence
-
-        val signatureDigestSet = attestationApplicationIdSeq.getObjectAt(1) as ASN1Set
-        val digests = mutableListOf<ByteArray>()
-        for (n in 0 until signatureDigestSet.size()) {
-            val octetString = signatureDigestSet.getObjectAt(n) as ASN1OctetString
-            digests.add(octetString.octets)
+        val signatureDigestSet = attestationApplicationIdSeq.elements[1] as ASN1Set
+        val digests = mutableListOf<ByteString>()
+        for (element in signatureDigestSet.elements) {
+            val octetString = element as ASN1OctetString
+            digests.add(ByteString(octetString.value))
         }
         applicationSignatureDigests = digests
     }
@@ -163,12 +153,12 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
     fun getSoftwareAuthorizationByteString(tag: Int): ByteArray? {
         val entry =
             findAuthorizationListEntry(softwareEnforcedAuthorizations, tag) as ASN1OctetString?
-        return entry?.octets
+        return entry?.value
     }
 
     fun getTeeAuthorizationByteString(tag: Int): ByteArray? {
         val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag) as ASN1OctetString?
-        return entry?.octets
+        return entry?.value
     }
 
     companion object {
@@ -187,53 +177,56 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
         private const val KM_SECURITY_LEVEL_SOFTWARE = 0
         private const val KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT = 1
         private const val KM_SECURITY_LEVEL_STRONG_BOX = 2
+
         private fun findAuthorizationListEntry(
-            authorizationMap: Map<Int, ASN1Primitive?>, tag: Int
-        ): ASN1Primitive? {
-            return authorizationMap.getOrDefault(tag, null)
+            authorizationMap: Map<Int, ASN1Object>, tag: Int
+        ): ASN1Object? {
+            return authorizationMap[tag]
         }
 
-        private fun getBooleanFromAsn1(asn1Value: ASN1Encodable): Boolean {
+        private fun getBooleanFromAsn1(asn1Value: ASN1Object): Boolean {
             return if (asn1Value is ASN1Boolean) {
-                asn1Value.isTrue
+                asn1Value.value
             } else {
                 throw RuntimeException(
-                    "Boolean value expected; found " + asn1Value.javaClass.name + " instead."
+                    "Boolean value expected; found " + asn1Value::class.simpleName + " instead."
                 )
             }
         }
 
-        private fun getIntegerFromAsn1(asn1Value: ASN1Encodable): Int {
+        private fun getIntegerFromAsn1(asn1Value: ASN1Object): Int {
             return if (asn1Value is ASN1Integer) {
-                asn1Value.value.toInt()
-            } else if (asn1Value is ASN1Enumerated) {
-                asn1Value.value.toInt()
+                val longValue = asn1Value.toLong()
+                if (Int.MIN_VALUE <= longValue && longValue <= Int.MAX_VALUE) {
+                    longValue.toInt()
+                } else {
+                    throw IllegalArgumentException("Int value out of range: $longValue")
+                }
             } else {
                 throw IllegalArgumentException(
-                    "Integer value expected; found " + asn1Value.javaClass.name + " instead."
+                    "Integer value expected; found " + asn1Value::class.simpleName + " instead."
                 )
             }
         }
 
-        private fun getLongFromAsn1(asn1Value: ASN1Encodable): Long {
+        private fun getLongFromAsn1(asn1Value: ASN1Object): Long {
             return if (asn1Value is ASN1Integer) {
-                asn1Value.value.toLong()
-            } else if (asn1Value is ASN1Enumerated) {
-                asn1Value.value.toLong()
+                asn1Value.toLong()
             } else {
                 throw IllegalArgumentException(
-                    "Integer value expected; found " + asn1Value.javaClass.name + " instead."
+                    "Integer value expected; found " + asn1Value::class.simpleName + " instead."
                 )
             }
         }
 
         private fun getAuthorizationMap(
-            authorizationList: Array<ASN1Encodable>
-        ): Map<Int, ASN1Primitive?> {
-            val authorizationMap: MutableMap<Int, ASN1Primitive?> = HashMap()
+            authorizationList: List<ASN1Object>
+        ): Map<Int, ASN1Object> {
+            val authorizationMap: MutableMap<Int, ASN1Object> = HashMap()
             for (entry in authorizationList) {
                 val taggedEntry = entry as ASN1TaggedObject
-                authorizationMap[taggedEntry.tagNo] = taggedEntry.baseObject as ASN1Primitive
+                authorizationMap[taggedEntry.tag] = ASN1.decode(taggedEntry.content)
+                    ?: throw IllegalArgumentException("ASN.1 parsing error")
             }
             return authorizationMap
         }

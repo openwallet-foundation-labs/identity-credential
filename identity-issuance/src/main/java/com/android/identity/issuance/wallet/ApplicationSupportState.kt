@@ -18,12 +18,11 @@ import com.android.identity.issuance.LandingUrlUnknownException
 import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.cache
 import com.android.identity.issuance.funke.toJson
-import com.android.identity.issuance.validateAndroidKeyAttestation
-import com.android.identity.issuance.validateDeviceAssertion
 import com.android.identity.issuance.validateDeviceAssertionBindingKeys
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.util.Logger
 import com.android.identity.util.toBase64Url
+import com.android.identity.util.validateAndroidKeyAttestation
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
@@ -92,7 +91,7 @@ class ApplicationSupportState(
         val clientRecord = ClientRecord.fromCbor(
             storage.get("Clients", "", clientId)!!.toByteArray())
 
-        validateDeviceAssertion(clientRecord.deviceAttestation, keyAssertion)
+        clientRecord.deviceAttestation.validateAssertion(keyAssertion)
 
         val assertion = keyAssertion.assertion as AssertionDPoPKey
 
