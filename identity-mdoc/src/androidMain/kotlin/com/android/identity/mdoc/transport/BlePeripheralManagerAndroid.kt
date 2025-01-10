@@ -23,7 +23,7 @@ import com.android.identity.cbor.Tagged
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.util.AndroidInitializer
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import com.android.identity.util.toHex
@@ -37,7 +37,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.bytestring.ByteStringBuilder
-import java.io.OutputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.min
@@ -131,7 +130,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
 
     override val incomingMessages = Channel<ByteArray>(Channel.UNLIMITED)
 
-    private val context = AndroidInitializer.applicationContext
+    private val context = AndroidContexts.applicationContext
     private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
     private var gattServer: BluetoothGattServer? = null
     private var service: BluetoothGattService? = null

@@ -14,6 +14,8 @@ import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity
 import identitycredential.samples.testapp.generated.resources.provisioning_test_title
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
+import identitycredential.samples.testapp.generated.resources.nfc_screen_title
+import identitycredential.samples.testapp.generated.resources.presentation_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
@@ -86,6 +88,11 @@ data object QrCodesDestination : Destination {
     override val title = Res.string.qr_codes_screen_title
 }
 
+data object NfcDestination : Destination {
+    override val route = "nfc"
+    override val title = Res.string.nfc_screen_title
+}
+
 data object IsoMdocProximitySharingDestination : Destination {
     override val route = "iso_mdoc_proximity_sharing"
     override val title = Res.string.iso_mdoc_proximity_sharing_title
@@ -101,6 +108,16 @@ data object IsoMdocMultiDeviceTestingDestination : Destination {
     override val title = Res.string.iso_mdoc_multi_device_testing_title
 }
 
+data object PresentationDestination : Destination {
+    override val route = "presentation"
+    override val title = Res.string.presentation_title
+    const val allowMultipleRequests = "allow_multiple_requests"
+    val routeWithArgs = "${route}/{$allowMultipleRequests}"
+    val arguments = listOf(
+        navArgument(allowMultipleRequests) { type = NavType.BoolType },
+    )
+}
+
 val appDestinations = listOf(
     StartDestination,
     AboutDestination,
@@ -113,7 +130,9 @@ val appDestinations = listOf(
     ConsentModalBottomSheetListDestination,
     ConsentModalBottomSheetDestination,
     QrCodesDestination,
+    NfcDestination,
     IsoMdocProximitySharingDestination,
     IsoMdocProximityReadingDestination,
     IsoMdocMultiDeviceTestingDestination,
+    PresentationDestination,
 )

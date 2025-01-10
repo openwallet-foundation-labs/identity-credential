@@ -25,7 +25,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.android.identity.appsupport.ui.AppTheme
+import com.android.identity.testapp.presentation.PresentationModel
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
@@ -34,7 +36,9 @@ import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
 import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
 import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
+import com.android.identity.testapp.ui.NfcScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
+import com.android.identity.testapp.ui.PresentationScreen
 import com.android.identity.testapp.ui.ProvisioningTestScreen
 import com.android.identity.testapp.ui.QrCodesScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
@@ -49,7 +53,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-class App {
+class App() {
 
     companion object {
         private const val TAG = "App"
@@ -61,11 +65,11 @@ class App {
     @Preview
     fun Content(navController: NavHostController = rememberNavController()) {
 
-        // Get current back stack entry
         val backStackEntry by navController.currentBackStackEntryAsState()
-        // Get the name of the current screen
+        val routeWithoutArgs = backStackEntry?.destination?.route?.substringBefore('/')
+
         val currentDestination = appDestinations.find {
-            it.route == backStackEntry?.destination?.route
+            it.route == routeWithoutArgs
         } ?: StartDestination
 
         snackbarHostState = remember { SnackbarHostState() }
@@ -74,7 +78,7 @@ class App {
             Scaffold(
                 topBar = {
                     AppBar(
-                        currentDestination = currentDestination as Destination,
+                        currentDestination = currentDestination,
                         canNavigateBack = navController.previousBackStackEntry != null,
                         navigateUp = { navController.navigateUp() }
                     )
@@ -101,6 +105,7 @@ class App {
                             onClickIssuanceTestField = { navController.navigate(ProvisioningTestDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
+                            onClickNfc = { navController.navigate(NfcDestination.route) },
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
                             onClickIsoMdocProximityReading = { navController.navigate(IsoMdocProximityReadingDestination.route) },
                             onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
@@ -159,9 +164,18 @@ class App {
                             showToast = { message -> showToast(message) }
                         )
                     }
+                    composable(route = NfcDestination.route) {
+                        NfcScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
                     composable(route = IsoMdocProximitySharingDestination.route) {
                         IsoMdocProximitySharingScreen(
-                            showToast = { message -> showToast(message) }
+                            presentationModel = PresentationModel.getInstance(),
+                            onNavigateToPresentationScreen = { allowMultipleRequests ->
+                                navController.navigate(PresentationDestination.route + "/$allowMultipleRequests")
+                            },
+                            showToast = { message -> showToast(message) },
                         )
                     }
                     composable(route = IsoMdocProximityReadingDestination.route) {
@@ -171,6 +185,20 @@ class App {
                     }
                     composable(route = IsoMdocMultiDeviceTestingDestination.route) {
                         IsoMdocMultiDeviceTestingScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(
+                        route = PresentationDestination.routeWithArgs,
+                        arguments = PresentationDestination.arguments,
+                    ) { navBackStackEntry ->
+                        val allowMultipleRequests = navBackStackEntry.arguments?.getBoolean(
+                            PresentationDestination.allowMultipleRequests
+                        ) ?: false
+                        PresentationScreen(
+                            presentationModel = PresentationModel.getInstance(),
+                            allowMultipleRequests = allowMultipleRequests,
+                            onPresentationComplete = { navController.popBackStack() },
                             showToast = { message -> showToast(message) }
                         )
                     }
