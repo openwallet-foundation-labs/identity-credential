@@ -54,6 +54,20 @@ private val ED448_X509_ENCODED_PREFIX =
 private val X448_X509_ENCODED_PREFIX =
     byteArrayOf(0x30, 0x42, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6f, 0x03, 0x39, 0x00)
 
+val EcCurve.requireBouncyCastle: Boolean
+    get() = when (this) {
+        EcCurve.BRAINPOOLP256R1, EcCurve.BRAINPOOLP384R1,
+            EcCurve.BRAINPOOLP320R1, EcCurve.BRAINPOOLP512R1 -> true
+        else -> false
+    }
+
+val EcCurve.javaKeyAlgorithm: String
+    get() = when(this) {
+        EcCurve.ED448, EcCurve.ED25519 -> "EdDSA"
+        EcCurve.X25519, EcCurve.X448 -> "XDH"
+        else -> "EC"
+    }
+
 val EcPublicKey.javaPublicKey: PublicKey
     get() = when (this) {
         is EcPublicKeyDoubleCoordinate -> {
@@ -71,7 +85,11 @@ val EcPublicKey.javaPublicKey: PublicKey
                 val ecParameters = params.getParameterSpec(ECParameterSpec::class.java)
                 val ecPoint = ECPoint(bx, by)
                 val keySpec = ECPublicKeySpec(ecPoint, ecParameters)
-                val kf = KeyFactory.getInstance("EC")
+                val kf = if (curve.requireBouncyCastle) {
+                    KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
+                } else {
+                    KeyFactory.getInstance("EC")
+                }
                 kf.generatePublic(keySpec)
             } catch (e: Exception) {
                 throw IllegalStateException("Unexpected error", e)
