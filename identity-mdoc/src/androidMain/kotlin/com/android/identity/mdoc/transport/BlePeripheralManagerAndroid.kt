@@ -431,7 +431,6 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
         }
         suspendCancellableCoroutine<Boolean> { continuation ->
             setWaitCondition(WaitState.SERVICE_ADDED, continuation)
-
             gattServer!!.addService(service!!)
         }
 
@@ -524,6 +523,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
     }
 
     override fun close() {
+        Logger.d(TAG, "close()")
         device = null
         advertiser?.stopAdvertising(advertiseCallback)
         advertiser = null

@@ -20,6 +20,6 @@
     <string name="certificate_viewer_examples_title">CertificateViewer Examples</string>
     <string name="certificate_viewer_title">Certificate Viewer</string>
     <string name="provisioning_test_title">Test provisioning</string>
-    <string name="presentation_title">Presentation</string>
+    <string name="presentment_title">Presentment</string>
 
 </resources>
