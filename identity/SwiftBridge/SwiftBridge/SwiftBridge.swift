@@ -419,5 +419,46 @@ import DeviceCheck
             completionHandler: completionHandler
         )
     }
+
+    @objc(verifySignature::::) public class func verifySignature(
+        encodedCertificate: Data,
+        message: Data,
+        signatureAlgorithmOid: String,
+        signature: Data
+    ) -> Error? {
+        let certificate = SecCertificateCreateWithData(nil, encodedCertificate as CFData)
+        if (certificate == nil) {
+            return NSError(domain: "com.android.identity", code: 2, userInfo: [
+                "message": "error parsing certificate"
+            ])
+        }
+        let key = SecCertificateCopyKey(certificate!)
+        if (key == nil) {
+            return NSError(domain: "com.android.identity", code: 2, userInfo: [
+                "message": "error extracting certificate key"
+            ])
+        }
+        // TODO: add mappings for more signature algorithms
+        var algorithm: SecKeyAlgorithm
+        switch (signatureAlgorithmOid) {
+        case "1.2.840.10045.4.3.2":
+            algorithm = SecKeyAlgorithm.ecdsaSignatureMessageX962SHA256
+        case "1.2.840.10045.4.3.3":
+            algorithm = SecKeyAlgorithm.ecdsaSignatureMessageX962SHA384
+        case "1.2.840.10045.4.3.4":
+            algorithm = SecKeyAlgorithm.ecdsaSignatureMessageX962SHA512
+        case "1.2.840.113549.1.1.11":
+            algorithm = SecKeyAlgorithm.rsaSignatureMessagePKCS1v15SHA256
+        default:
+            return NSError(domain: "com.android.identity", code: 2, userInfo: [
+                "message": "unknown signature algorithm: " + signatureAlgorithmOid
+            ])
+        }
+        var error: Unmanaged<CFError>? = nil
+        guard SecKeyVerifySignature(key!, algorithm, message as CFData, signature as CFData, &error) else {
+            return error!.takeRetainedValue() as Error
+        }
+        return nil
+    }
 }
 
