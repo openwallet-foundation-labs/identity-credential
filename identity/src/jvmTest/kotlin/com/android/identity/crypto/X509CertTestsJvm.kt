@@ -1,17 +1,22 @@
 package com.android.identity.crypto
 
 import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Boolean
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.ASN1OctetString
+import com.android.identity.asn1.ASN1Sequence
+import com.android.identity.asn1.ASN1Time
 import com.android.identity.util.toHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.io.bytestring.ByteStringBuilder
 import org.bouncycastle.asn1.x500.X500Name as bcX500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.jcajce.spec.XDHParameterSpec
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import java.io.File
 import java.math.BigInteger
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -25,7 +30,9 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.seconds
 
 class X509CertTestsJvm {
 
@@ -108,7 +115,6 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
             validFrom = now - 1.hours,
             validUntil = now + 1.hours
         ).build()
-        println("blah_cert\n:${cert.toPem()}")
         val javaCert = cert.javaX509Certificate
         javaCert.verify(key.publicKey.javaPublicKey)
     }
@@ -123,4 +129,62 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
     @Test fun testCertSignedWithCurve_ED25519() = testJavaCertSignedWithCurve(EcCurve.ED25519)
     @Test fun testCertSignedWithCurve_ED448() = testJavaCertSignedWithCurve(EcCurve.ED448)
 
+    @Test
+    fun testGenerateAndValidate() {
+        // OpenSSL does not believe certificates issued before this date (even if it recognizes it)
+        val from = Instant.parse("1950-01-01T00:00:00Z")
+
+        // This is selected to be the first instant when 4 digit year must be used (and 2 digit
+        // year must be used in certificates before that).
+        // See https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.5
+        val until = Instant.parse("2050-01-01T00:00:00Z")
+
+        // Basic Constraints extension, marks certificate as Certificate Authority
+        val caExt = ASN1Sequence(listOf(
+            ASN1Boolean(true)
+        ))
+        val caExtBytes = ByteStringBuilder()
+        caExt.encode(caExtBytes)
+
+        val caKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val caCertificate =
+            X509Cert.Builder(
+                publicKey = caKey.publicKey,
+                signingKey = caKey,
+                signatureAlgorithm = caKey.curve.defaultSigningAlgorithm,
+                serialNumber = ASN1Integer(112676L),
+                subject = X500Name.fromName("CN=TestCA"),
+                issuer = X500Name.fromName("CN=TestCA"),
+                validFrom = from,
+                validUntil = until
+            )
+                .includeSubjectKeyIdentifier()
+                .addExtension("2.5.29.19", false, caExtBytes.toByteString().toByteArray())
+                .setKeyUsage(setOf(X509KeyUsage.KEY_CERT_SIGN))
+                .build()
+
+        val leafKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val leafCertificate = X509Cert.Builder(
+            publicKey = leafKey.publicKey,
+            signingKey = caKey,
+            signatureAlgorithm = caKey.curve.defaultSigningAlgorithm,
+            serialNumber = ASN1Integer(1222682L),
+            subject = X500Name.fromName("CN=TestLeaf"),
+            issuer = caCertificate.subject,
+            validFrom = from + 1.seconds,
+            validUntil = until - 1.seconds
+        )
+            .includeSubjectKeyIdentifier()
+            .setAuthorityKeyIdentifierToCertificate(caCertificate)
+            .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+            .build()
+
+        assertTrue(X509CertChain(listOf(leafCertificate, caCertificate)).validate())
+
+        // To manually test with OpenSSL:
+        // (1) Uncomment the following two lines, adjusting folder name.
+        // File("/Users/kmy/junk/leaf.pem").writeText(leafCertificate.toPem())
+        // File("/Users/kmy/junk/root.pem").writeText(caCertificate.toPem())
+        // (2) Make sure `openssl verify -verbose -CAfile root.pem leaf.pem` succeeds
+    }
 }

@@ -346,6 +346,7 @@ class ASN1Tests {
                     LocalDateTime(2024, 1, 1, 0, 0, 0,
                         0.5.seconds.inWholeNanoseconds.toInt()
                     ).toInstant(TimeZone.UTC),
+                    ASN1TimeTag.GENERALIZED_TIME.tag
                 ),
                 ASN1Time(
                     LocalDateTime(1999, 12, 31, 10, 20, 30).toInstant(TimeZone.UTC),
