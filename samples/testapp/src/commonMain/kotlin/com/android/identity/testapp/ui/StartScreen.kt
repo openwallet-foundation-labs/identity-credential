@@ -25,6 +25,7 @@ import identitycredential.samples.testapp.generated.resources.provisioning_test_
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.x509_chain_viewer_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -41,6 +42,7 @@ fun StartScreen(
     onClickIsoMdocProximitySharing: () -> Unit = {},
     onClickIsoMdocProximityReading: () -> Unit = {},
     onClickMdocTransportMultiDeviceTesting: () -> Unit = {},
+    onClickX509ChainViewer: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -123,6 +125,12 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickMdocTransportMultiDeviceTesting) {
                     Text(stringResource(Res.string.iso_mdoc_multi_device_testing_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickX509ChainViewer) {
+                    Text(stringResource(Res.string.x509_chain_viewer_title))
                 }
             }
         }

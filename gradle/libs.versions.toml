@@ -23,6 +23,7 @@ tink = "1.13.0"
 jetbrainsKotlinJvm = "2.1.0"
 ksp = "2.1.0-1.0.29"
 androidx-biometrics = "1.2.0-alpha05"
+uiToolingPreview = "1.7.6"
 volley = "1.2.1"
 cbor = "0.9"
 scuba = "0.0.26"
@@ -63,6 +64,7 @@ qrose = "1.0.1"
 easyqrscan = "0.2.0"
 
 [libraries]
+androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }

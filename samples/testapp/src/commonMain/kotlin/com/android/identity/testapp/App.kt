@@ -41,6 +41,7 @@ import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
 import com.android.identity.testapp.ui.VerifierType
+import com.android.identity.testapp.ui.X509ChainScreen
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.back_button
 import kotlinx.coroutines.CoroutineScope
@@ -104,6 +105,7 @@ class App {
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
                             onClickIsoMdocProximityReading = { navController.navigate(IsoMdocProximityReadingDestination.route) },
                             onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
+                            onClickX509ChainViewer = { navController.navigate(X509ChainViewerDestination.route) },
                         )
                     }
                     composable(route = AboutDestination.route) {
@@ -173,6 +175,9 @@ class App {
                         IsoMdocMultiDeviceTestingScreen(
                             showToast = { message -> showToast(message) }
                         )
+                    }
+                    composable(route = X509ChainViewerDestination.route) {
+                        X509ChainScreen()
                     }
                 }
             }
