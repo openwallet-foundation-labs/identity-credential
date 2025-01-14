@@ -16,7 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class ASN1Time(
     val value: Instant,
-    tag: Int = ASN1TimeTag.GENERALIZED_TIME.tag
+    tag: Int = pickDefaultTag(value).tag
 ): ASN1PrimitiveValue(tag) {
 
     override fun encode(builder: ByteStringBuilder) {
@@ -128,6 +128,20 @@ class ASN1Time(
                 else -> throw IllegalArgumentException("Unsupported tag number")
             }
             return ASN1Time(parsedTime, tag)
+        }
+
+        private val twoDigitYearRangeStart = Instant.parse("1950-01-01T00:00:00Z")
+        private val twoDigitYearRangeEnd = Instant.parse("2050-01-01T00:00:00Z")
+
+        // For time in certificates the rule is to use 2 digit year through year 2049 and
+        // four-digit year after that. We might as well use it as a general default.
+        // See https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.5
+        fun pickDefaultTag(value: Instant): ASN1TimeTag {
+            return if (twoDigitYearRangeStart <= value && value < twoDigitYearRangeEnd) {
+                ASN1TimeTag.UTC_TIME
+            } else {
+                ASN1TimeTag.GENERALIZED_TIME
+            }
         }
     }
 }
