@@ -146,6 +146,15 @@ class X509Cert(
         get() = (parsedCert.elements[2] as ASN1BitString).value
 
     /**
+     * The signature algorithm for the certificate as OID string.
+     */
+    val signatureAlgorithmOid: String
+        get() {
+            val algorithmIdentifier = parsedCert.elements[1] as ASN1Sequence
+            return (algorithmIdentifier.elements[0] as ASN1ObjectIdentifier).oid
+        }
+
+    /**
      * The signature algorithm for the certificate.
      *
      * @throws IllegalArgumentException if the OID for the algorithm doesn't correspond with a signature algorithm
@@ -153,16 +162,16 @@ class X509Cert(
      */
     val signatureAlgorithm: Algorithm
         get() {
-            val algorithmIdentifier = parsedCert.elements[1] as ASN1Sequence
-            val algorithmOid = (algorithmIdentifier.elements[0] as ASN1ObjectIdentifier).oid
-            return when (algorithmOid) {
+            return when (signatureAlgorithmOid) {
                 "1.2.840.10045.4.3.2" -> Algorithm.ES256
                 "1.2.840.10045.4.3.3" -> Algorithm.ES384
                 "1.2.840.10045.4.3.4" -> Algorithm.ES512
                 "1.3.101.112", "1.3.101.113" -> Algorithm.EDDSA  // ED25519, ED448
-                else -> throw IllegalArgumentException("Unexpected algorithm OID $algorithmOid")
+                else -> throw IllegalArgumentException(
+                    "Unexpected algorithm OID $signatureAlgorithmOid")
             }
         }
+
 
     /**
      * The public key in the certificate, as an Elliptic Curve key.

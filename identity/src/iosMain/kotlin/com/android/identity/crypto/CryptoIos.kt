@@ -323,5 +323,20 @@ actual object Crypto {
         )?.toByteArray() ?: throw KeyLockedException("Unable to unlock key")
     }
 
-    internal actual fun validateCertChain(certChain: X509CertChain): Boolean = TODO()
+    internal actual fun validateCertChain(certChain: X509CertChain): Boolean {
+        val certificates = certChain.certificates
+        for (i in 1..certificates.lastIndex) {
+            val toVerify = certificates[i - 1]
+            val err = SwiftBridge.verifySignature(
+                certificates[i].encodedCertificate.toNSData(),
+                toVerify.tbsCertificate.toNSData(),
+                toVerify.signatureAlgorithmOid,
+                toVerify.signature.toNSData()
+            )
+            if (err != null) {
+                return false
+            }
+        }
+        return true
+    }
 }
