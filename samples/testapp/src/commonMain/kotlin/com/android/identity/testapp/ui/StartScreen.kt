@@ -15,6 +15,7 @@ import com.android.identity.testapp.platform
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.about_screen_title
 import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.certificate_viewer_examples_title
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_list_screen_title
@@ -43,6 +44,7 @@ fun StartScreen(
     onClickIsoMdocProximitySharing: () -> Unit = {},
     onClickIsoMdocProximityReading: () -> Unit = {},
     onClickMdocTransportMultiDeviceTesting: () -> Unit = {},
+    onClickCertificatesViewerExamples: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -128,6 +130,12 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickMdocTransportMultiDeviceTesting) {
                     Text(stringResource(Res.string.iso_mdoc_multi_device_testing_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickCertificatesViewerExamples) {
+                    Text(stringResource(Res.string.certificate_viewer_examples_title))
                 }
             }
         }

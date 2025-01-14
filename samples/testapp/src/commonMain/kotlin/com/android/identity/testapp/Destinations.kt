@@ -5,6 +5,7 @@ import androidx.navigation.navArgument
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.about_screen_title
 import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.certificate_viewer_examples_title
 import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_list_screen_title
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_screen_title
@@ -19,6 +20,7 @@ import identitycredential.samples.testapp.generated.resources.presentation_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
+import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
 import org.jetbrains.compose.resources.StringResource
 
 sealed interface Destination {
@@ -118,6 +120,21 @@ data object PresentationDestination : Destination {
     )
 }
 
+data object CertificatesViewerExamplesDestination : Destination {
+    override val route = "certificates_viewer"
+    override val title = Res.string.certificate_viewer_examples_title
+}
+
+data object CertificateViewerDestination : Destination {
+    override val route = "certificate_details_viewer"
+    override val title = Res.string.certificate_viewer_title
+    const val CERTIFICATE_DATA = "certificate_data_arg"
+    val routeWithArgs = "$route/{$CERTIFICATE_DATA}"
+    val arguments = listOf(
+        navArgument(CERTIFICATE_DATA) { type = NavType.StringType },
+    )
+}
+
 val appDestinations = listOf(
     StartDestination,
     AboutDestination,
@@ -135,4 +152,6 @@ val appDestinations = listOf(
     IsoMdocProximityReadingDestination,
     IsoMdocMultiDeviceTestingDestination,
     PresentationDestination,
+    CertificatesViewerExamplesDestination,
+    CertificateViewerDestination,
 )

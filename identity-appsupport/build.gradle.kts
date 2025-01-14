@@ -86,6 +86,8 @@ android {
     }
     dependencies {
         debugImplementation(compose.uiTooling)
+        debugImplementation(libs.androidx.ui.tooling.preview)
+        implementation(libs.kotlinx.datetime)
     }
 
     packaging {

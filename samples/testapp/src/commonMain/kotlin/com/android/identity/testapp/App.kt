@@ -31,6 +31,7 @@ import com.android.identity.testapp.presentation.PresentationModel
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
+import com.android.identity.testapp.ui.CertificateViewerExamplesScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
 import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
@@ -45,6 +46,7 @@ import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
 import com.android.identity.testapp.ui.VerifierType
+import com.android.identity.testapp.ui.CertificateScreen
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.back_button
 import kotlinx.coroutines.CoroutineScope
@@ -109,6 +111,7 @@ class App() {
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
                             onClickIsoMdocProximityReading = { navController.navigate(IsoMdocProximityReadingDestination.route) },
                             onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
+                            onClickCertificatesViewerExamples = { navController.navigate(CertificatesViewerExamplesDestination.route) },
                         )
                     }
                     composable(route = AboutDestination.route) {
@@ -201,6 +204,18 @@ class App() {
                             onPresentationComplete = { navController.popBackStack() },
                             showToast = { message -> showToast(message) }
                         )
+                    }
+                    composable(route = CertificatesViewerExamplesDestination.route) {
+                        CertificateViewerExamplesScreen(navController = navController)
+                    }
+                    composable(
+                        route = CertificateViewerDestination.routeWithArgs,
+                        arguments = CertificateViewerDestination.arguments
+                    ) { backStackEntry ->
+                        val certData = backStackEntry.arguments?.getString(
+                            CertificateViewerDestination.CERTIFICATE_DATA
+                        )!!
+                        CertificateScreen(certData)
                     }
                 }
             }
