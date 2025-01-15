@@ -508,7 +508,7 @@ class DataTransportNfc(
             reportError(Error("NFC IsoDep not set"))
             return
         }
-        val maxTransceiveLength = _isoDep!!.maxTransceiveLength
+        val maxTransceiveLength = Math.min(connectionMethod.commandDataFieldMaxLength.toInt(), _isoDep!!.maxTransceiveLength)
         Logger.d(TAG, "maxTransceiveLength: $maxTransceiveLength")
         Logger.d(TAG, "isExtendedLengthApduSupported: ${_isoDep!!.isExtendedLengthApduSupported}")
         val transceiverThread: Thread = object : Thread() {
