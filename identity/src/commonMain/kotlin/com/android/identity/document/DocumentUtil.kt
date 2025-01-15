@@ -16,7 +16,6 @@
 package com.android.identity.document
 
 import com.android.identity.credential.Credential
-import com.android.identity.credential.SecureAreaBoundCredential
 import kotlinx.datetime.Instant;
 
 /**

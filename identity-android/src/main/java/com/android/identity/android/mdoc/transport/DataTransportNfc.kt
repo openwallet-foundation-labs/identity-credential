@@ -20,7 +20,9 @@ import android.nfc.NdefRecord
 import android.nfc.cardemulation.HostApduService
 import android.nfc.tech.IsoDep
 import android.util.Pair
+import com.android.identity.android.mdoc.deviceretrieval.IsoDepWrapper
 import com.android.identity.android.util.NfcUtil
+import com.android.identity.direct_access.DirectAccessTransport
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.util.Logger
@@ -34,6 +36,7 @@ import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedTransferQueue
 import java.util.concurrent.TimeUnit
 
+
 /**
  * NFC data transport
  */
@@ -43,7 +46,7 @@ class DataTransportNfc(
     private val connectionMethod: ConnectionMethodNfc,
     options: DataTransportOptions
 ) : DataTransport(context, role, options) {
-    var _isoDep: IsoDep? = null
+    var _isoDep: IsoDepWrapper? = null
 
     var listenerRemainingChunks: ArrayList<ByteArray>? = null
     var listenerTotalChunks = 0
@@ -140,7 +143,7 @@ class DataTransportNfc(
      *
      * @param isoDep the tag with [IsoDep] technology.
      */
-    fun setIsoDep(isoDep: IsoDep) {
+    fun setIsoDep(isoDep: IsoDepWrapper) {
         this._isoDep = isoDep
     }
 
@@ -387,18 +390,18 @@ class DataTransportNfc(
         baos.write(ins)
         baos.write(p1)
         baos.write(p2)
-        var hasExtendedLc = false
-        if (data == null) {
-            baos.write(0)
-        } else if (data.size < 256) {
-            baos.write(data.size)
-        } else {
-            hasExtendedLc = true
+        var isExtended = true
+        if (le > 256 || (data != null && data.size > 256)) {
+            isExtended = true
             baos.write(0x00)
-            baos.write(data.size / 0x100)
-            baos.write(data.size and 0xff)
         }
         if (data != null && data.size > 0) {
+            if (isExtended && le > 256 && data.size < 256 || data.size > 256) {
+                baos.write(data.size / 0x100)
+                baos.write(data.size and 0xff)
+            } else {
+                baos.write(data.size)
+            }
             try {
                 baos.write(data)
             } catch (e: IOException) {
@@ -411,9 +414,6 @@ class DataTransportNfc(
             } else if (le < 256) {
                 baos.write(le)
             } else {
-                if (!hasExtendedLc) {
-                    baos.write(0x00)
-                }
                 if (le == 65536) {
                     baos.write(0x00)
                     baos.write(0x00)
@@ -508,7 +508,7 @@ class DataTransportNfc(
             reportError(Error("NFC IsoDep not set"))
             return
         }
-        val maxTransceiveLength = _isoDep!!.maxTransceiveLength
+        val maxTransceiveLength = Math.min(connectionMethod.commandDataFieldMaxLength.toInt(), _isoDep!!.maxTransceiveLength)
         Logger.d(TAG, "maxTransceiveLength: $maxTransceiveLength")
         Logger.d(TAG, "isExtendedLengthApduSupported: ${_isoDep!!.isExtendedLengthApduSupported}")
         val transceiverThread: Thread = object : Thread() {
@@ -800,6 +800,18 @@ class DataTransportNfc(
             }
             val transport = activeTransports[0]
             return transport.nfcDataTransferProcessCommandApdu(hostApduService, apdu)
+        }
+
+        fun processCommandApdu(
+            transport: DirectAccessTransport,
+            apdu: ByteArray
+        ): ByteArray? {
+            Logger.d(TAG, "sending via DirectAccessTransport")
+            return try {
+                transport.sendData(apdu)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
         }
 
         /**

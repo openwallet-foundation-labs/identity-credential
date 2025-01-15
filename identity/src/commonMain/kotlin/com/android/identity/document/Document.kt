@@ -19,6 +19,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialFactory
+import com.android.identity.direct_access.DirectAccessTransport
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
@@ -101,6 +102,16 @@ class Document private constructor(
         addedToStore = true
         saveDocument()
     }
+
+    /**
+     * Direct Access Transport.
+     *
+     * If non-null, this object defines the transport mechanism for interacting with the Direct
+     * Access applet for managing DirectAccessCredentials.
+     */
+    private var _directAccessTransport = store.directAccessTransport
+    val directAccessTransport: DirectAccessTransport?
+        get() = _directAccessTransport
 
     /**
      * Application specific data.

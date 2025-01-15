@@ -16,6 +16,7 @@
 package com.android.identity.document
 
 import com.android.identity.credential.CredentialFactory
+import com.android.identity.direct_access.DirectAccessTransport
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
@@ -57,6 +58,29 @@ class DocumentStore(
 ) {
     // Use a cache so the same instance is returned by multiple lookupDocument() calls.
     private val documentCache = mutableMapOf<String, Document>()
+
+    // Store the DirectAccessTransport, if it exists, in the DocumentStore since it isn't
+    // serializable and cannot be stored with the DirectAccessCredential.
+    internal var directAccessTransport: DirectAccessTransport? = null
+
+    /**
+     * Constructor for a DocumentStore which can hold DirectAccessCredentials.
+     *
+     * @param storageEngine the [StorageEngine] to use for storing/retrieving documents.
+     * @param secureAreaRepository the repository of configured [SecureArea] that can be used
+     * @param credentialFactory the [CredentialFactory] to use for retrieving serialized credentials
+     *                          associated with documents.
+     * @param directAccessTransport this object defines the transport mechanism for interacting with
+     *                              the Direct Access applet for managing DirectAccessCredentials.
+     */
+    constructor(
+        storageEngine: StorageEngine,
+        secureAreaRepository: SecureAreaRepository,
+        credentialFactory: CredentialFactory,
+        directAccessTransport: DirectAccessTransport
+    ) : this(storageEngine, secureAreaRepository, credentialFactory) {
+        this.directAccessTransport = directAccessTransport
+    }
 
     /**
      * Creates a new document.
