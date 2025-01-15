@@ -138,7 +138,7 @@ class MultiDeviceTestsServer(
         val iterationNumber = numIterations + 1
         Logger.i(TAG, "====== STARTING ITERATION ${iterationNumber} OF ${numIterationsTotal} ======")
 
-        var transport = MdocTransportFactory.createTransport(
+        var transport = MdocTransportFactory.Default.createTransport(
             connectionMethod = connectionMethod,
             role = MdocTransport.Role.MDOC,
             options = options
@@ -165,7 +165,7 @@ class MultiDeviceTestsServer(
                 Logger.i(TAG, "psmFromReader: $psmFromReader")
                 val connectionMethodWithPsm = connectionMethod
                 connectionMethodWithPsm.peripheralServerModePsm = psmFromReader
-                transport = MdocTransportFactory.createTransport(
+                transport = MdocTransportFactory.Default.createTransport(
                     connectionMethod = connectionMethod,
                     role = MdocTransport.Role.MDOC,
                     options = options

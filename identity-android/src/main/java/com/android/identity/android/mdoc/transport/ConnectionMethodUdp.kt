@@ -4,6 +4,9 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.transport.MdocTransport
+import com.android.identity.nfc.NdefRecord
+import com.android.identity.util.Logger
 
 class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() {
 
@@ -21,11 +24,25 @@ class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() 
         )
     }
 
+    override fun toNdefRecord(
+        auxiliaryReferences: List<String>,
+        role: MdocTransport.Role
+    ): Pair<NdefRecord, NdefRecord>? {
+        Logger.w(TAG, "toNdefRecord() not yet implemented")
+        return null
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is ConnectionMethodUdp && other.host == host && other.port == port
+    }
+
     override fun toString(): String {
         return "udp:host=$host:port=$port"
     }
 
     companion object {
+        private const val TAG = "ConnectionMethodUdp"
+
         // NOTE: 18013-5 only allows positive integers, but our codebase also supports negative
         // ones and this way we won't clash with types defined in the standard.
         const val METHOD_TYPE = -11L

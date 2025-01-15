@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
     id("maven-publish")
 }
 
@@ -74,6 +76,10 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
+
+                // TODO: Strictly speaking this should be moved to androidMain deps but it's here right
+                // now to make the build work.
+                implementation(compose.runtime)
             }
         }
 
@@ -106,10 +112,14 @@ kotlin {
         val androidMain by getting {
             dependsOn(javaSharedMain)
             dependencies {
-                implementation(libs.androidx.biometrics)
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
+                implementation(libs.androidx.biometrics)
+
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(libs.androidx.material)
             }
         }
 
@@ -196,33 +206,18 @@ android {
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
     }
+
+    buildFeatures {
+        compose = true
+    }
+    dependencies {
+        debugImplementation(compose.uiTooling)
+    }
 }
 
 
 group = "com.android.identity"
 version = projectVersionName
-
-android {
-    namespace = "com.android.identity"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    defaultConfig {
-        minSdk = 26
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    packaging {
-        resources {
-            excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
-            excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
-        }
-    }
-}
 
 publishing {
     repositories {

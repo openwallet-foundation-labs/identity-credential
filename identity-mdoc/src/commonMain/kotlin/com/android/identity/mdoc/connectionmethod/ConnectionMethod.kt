@@ -1,8 +1,12 @@
 package com.android.identity.mdoc.connectionmethod
 
 import com.android.identity.cbor.Cbor.decode
+import com.android.identity.mdoc.transport.MdocTransport
+import com.android.identity.nfc.NdefRecord
+import com.android.identity.nfc.Nfc
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.decodeToString
 
 /**
  * A class representing the ConnectionMethod structure exchanged between mdoc and mdoc reader.
@@ -21,16 +25,27 @@ abstract class ConnectionMethod {
      */
     abstract fun toDeviceEngagement(): ByteArray
 
+    /**
+     * Creates a NDEF Connection Handover Carrier Reference record and Auxiliary Data Reference records.
+     *
+     * @param auxiliaryReferences A list of references to include in the Alternative Carrier Record
+     * @param role If [MdocTransport.Role.MDOC] the generated records will be for the Handover Select message, otherwise
+     * for Handover  Request.
+     * @return The NDEF record and the Alternative Carrier record or null if NFC handover is not supported.
+     */
+    abstract fun toNdefRecord(
+        auxiliaryReferences: List<String>,
+        role: MdocTransport.Role
+    ): Pair<NdefRecord, NdefRecord>?
+
     companion object {
         private const val TAG = "ConnectionMethod"
 
         /**
          * Constructs a new [ConnectionMethod] from `DeviceRetrievalMethod` CBOR.
          *
-         *
          * See ISO/IEC 18013-5:2021 section 8.2.1.1 Device engagement structure for where
          * `DeviceRetrievalMethod` CBOR is defined.
-         *
          *
          * This is the reverse operation of [.toDeviceEngagement].
          *
@@ -43,23 +58,44 @@ abstract class ConnectionMethod {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             when (type) {
-                ConnectionMethodNfc.METHOD_TYPE -> return ConnectionMethodNfc.fromDeviceEngagementNfc(
+                ConnectionMethodNfc.METHOD_TYPE -> return ConnectionMethodNfc.fromDeviceEngagement(
                     encodedDeviceRetrievalMethod
                 )
 
-                ConnectionMethodBle.METHOD_TYPE -> return ConnectionMethodBle.fromDeviceEngagementBle(
+                ConnectionMethodBle.METHOD_TYPE -> return ConnectionMethodBle.fromDeviceEngagement(
                     encodedDeviceRetrievalMethod
                 )
 
-                ConnectionMethodWifiAware.METHOD_TYPE -> return ConnectionMethodWifiAware.fromDeviceEngagementWifiAware(
+                ConnectionMethodWifiAware.METHOD_TYPE -> return ConnectionMethodWifiAware.fromDeviceEngagement(
                     encodedDeviceRetrievalMethod
                 )
 
-                ConnectionMethodHttp.METHOD_TYPE -> return ConnectionMethodHttp.fromDeviceEngagementHttp(
+                ConnectionMethodHttp.METHOD_TYPE -> return ConnectionMethodHttp.fromDeviceEngagement(
                     encodedDeviceRetrievalMethod
                 )
             }
             Logger.w(TAG, "Unsupported ConnectionMethod type $type in DeviceEngagement")
+            return null
+        }
+
+        /**
+         * Constructs a new [ConnectionMethod] from a NFC record.
+         *
+         * @param role If [MdocTransport.Role.MDOC] the record is from a Handover Select message,
+         * [MdocTransport.Role.MDOC_READER] if from a for Handover Request message.
+         * @returns the decoded method or `null` if the method isn't supported.
+         */
+        fun fromNdefRecord(
+            record: NdefRecord,
+            role: MdocTransport.Role
+        ): ConnectionMethod? {
+            if (record.tnf == NdefRecord.Tnf.MIME_MEDIA &&
+                record.type.decodeToString() == Nfc.MIME_TYPE_CONNECTION_HANDOVER_BLE &&
+                record.id.decodeToString() == "0") {
+                return ConnectionMethodBle.fromNdefRecord(record, role)
+            }
+            // TODO: add support for Wifi Aware, NFC, and others.
+            Logger.w(TAG, "No support for NDEF record $record")
             return null
         }
 

@@ -21,6 +21,7 @@ import identitycredential.samples.testapp.generated.resources.consent_modal_bott
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_multi_device_testing_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
+import identitycredential.samples.testapp.generated.resources.nfc_screen_title
 import identitycredential.samples.testapp.generated.resources.provisioning_test_title
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
@@ -38,6 +39,7 @@ fun StartScreen(
     onClickIssuanceTestField: () -> Unit = {},
     onClickConsentSheetList: () -> Unit = {},
     onClickQrCodes: () -> Unit = {},
+    onClickNfc: () -> Unit = {},
     onClickIsoMdocProximitySharing: () -> Unit = {},
     onClickIsoMdocProximityReading: () -> Unit = {},
     onClickMdocTransportMultiDeviceTesting: () -> Unit = {},
@@ -101,13 +103,16 @@ fun StartScreen(
                     Text(stringResource(Res.string.consent_modal_bottom_sheet_list_screen_title))
                 }
             }
-
             item {
                 TextButton(onClick = onClickQrCodes) {
                     Text(stringResource(Res.string.qr_codes_screen_title))
                 }
             }
-
+            item {
+                TextButton(onClick = onClickNfc) {
+                    Text(stringResource(Res.string.nfc_screen_title))
+                }
+            }
             item {
                 TextButton(onClick = onClickIsoMdocProximitySharing) {
                     Text(stringResource(Res.string.iso_mdoc_proximity_sharing_title))

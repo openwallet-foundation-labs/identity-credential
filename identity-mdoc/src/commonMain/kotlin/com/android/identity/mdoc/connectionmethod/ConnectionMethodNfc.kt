@@ -4,6 +4,9 @@ import com.android.identity.cbor.Cbor.decode
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
+import com.android.identity.mdoc.transport.MdocTransport
+import com.android.identity.nfc.NdefRecord
+import com.android.identity.util.Logger
 
 /**
  * Connection method for NFC.
@@ -15,6 +18,12 @@ class ConnectionMethodNfc(
     val commandDataFieldMaxLength: Long,
     val responseDataFieldMaxLength: Long
 ): ConnectionMethod() {
+    override fun equals(other: Any?): Boolean {
+        return other is ConnectionMethodNfc &&
+                other.commandDataFieldMaxLength == commandDataFieldMaxLength &&
+                other.responseDataFieldMaxLength == responseDataFieldMaxLength
+    }
+
     override fun toString(): String =
         "nfc:cmd_max_length=$commandDataFieldMaxLength:resp_max_length=$responseDataFieldMaxLength"
 
@@ -31,12 +40,22 @@ class ConnectionMethodNfc(
         )
     }
 
+    override fun toNdefRecord(
+        auxiliaryReferences: List<String>,
+        role: MdocTransport.Role
+    ): Pair<NdefRecord, NdefRecord>? {
+        Logger.w(TAG, "toNdefRecord() not yet implemented")
+        return null
+    }
+
     companion object {
+        private const val TAG = "ConnectionMethodNfc"
         const val METHOD_TYPE = 1L
         const val METHOD_MAX_VERSION = 1L
         private const val OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH = 0L
         private const val OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH = 1L
-        fun fromDeviceEngagementNfc(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodNfc? {
+
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodNfc? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber

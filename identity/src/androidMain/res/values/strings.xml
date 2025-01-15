@@ -1,0 +1,5 @@
+<resources>
+    <!-- NfcTagReaderModalBottomSheet -->
+    <string name="nfc_tag_reader_modal_bottom_sheet_ready_to_scan">Ready to Scan</string>
+
+</resources>
