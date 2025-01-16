@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PersonalizationData xmlns:android="http://schemas.android.com/apk/res/android">
+  <identifier name="given_name" type="String" value="Erika"/>
+  <!--<given_name>Erika</given_name>
+  <family_name>John</family_name>
+  <birth_date>2003-01-01</birth_date>
+  <issue_date>2015-01-01</issue_date>
+  <expiry_date>2045-01-01</expiry_date>
+  <issuing_country>US</issuing_country>
+  <issuing_authority>Google</issuing_authority>
+  <document_number>A7y654ew</document_number>
+  <driving_privileges>
+    <vehicle_category_code>
+      <issue_date>2015-01-01</issue_date>
+      <expiry_date>2045-01-01</expiry_date>
+    </vehicle_category_code>
+    <vehicle_category_code>
+      <issue_date>2015-01-01</issue_date>
+      <expiry_date>2045-01-01</expiry_date>
+    </vehicle_category_code>
+  </driving_privileges>
+  <un_distinguishing_sign>CA</un_distinguishing_sign>
+  <age_over_18>true</age_over_18>
+  <age_over_21>true</age_over_21>
+  <sex>Female</sex>-->
+</PersonalizationData>
