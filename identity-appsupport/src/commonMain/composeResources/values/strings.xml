@@ -23,4 +23,25 @@
     <!-- ShowQrCodeDialog -->
     <string name="show_qr_code_dialog_qr_content_description">QR code image</string>
 
+    <!-- Certificates viewer -->
+    <string name="no_cert_data_warning">No certificate data provided.</string>
+    <string name="ic_descr_info">An info icon</string>
+    <string name="ic_descr_error">An error icon</string>
+    <string name="not_part_of_cert">&lt;Not Part Of Certificate&gt;</string>
+    <string name="sub_basic_info">Basic Information</string>
+    <string name="k_type">Type</string>
+    <string name="k_serial_number">Serial Number</string>
+    <string name="k_version">Version</string>
+    <string name="k_issued">Issued</string>
+    <string name="k_expired">Expired</string>
+    <string name="sub_subject">Subject</string>
+    <string name="k_country_name">Country Name</string>
+    <string name="k_common_name">Common Name</string>
+    <string name="k_organization">Organization</string>
+    <string name="sub_issuer">Issuer</string>
+    <string name="sub_public_key_info">Public Key Information</string>
+    <string name="k_pk_algorithm">Algorithm</string>
+    <string name="k_pk_named_curve">Named Curve</string>
+    <string name="k_pk_value">Value</string>
+
 </resources>

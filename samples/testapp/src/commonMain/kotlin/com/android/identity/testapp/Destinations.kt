@@ -16,6 +16,7 @@ import identitycredential.samples.testapp.generated.resources.passphrase_entry_f
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
+import identitycredential.samples.testapp.generated.resources.x509_chain_viewer_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -101,6 +102,11 @@ data object IsoMdocMultiDeviceTestingDestination : Destination {
     override val title = Res.string.iso_mdoc_multi_device_testing_title
 }
 
+data object X509ChainViewerDestination : Destination {
+    override val route = "x509_chain_viewer"
+    override val title = Res.string.x509_chain_viewer_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     AboutDestination,
@@ -116,4 +122,5 @@ val appDestinations = listOf(
     IsoMdocProximitySharingDestination,
     IsoMdocProximityReadingDestination,
     IsoMdocMultiDeviceTestingDestination,
+    X509ChainViewerDestination,
 )

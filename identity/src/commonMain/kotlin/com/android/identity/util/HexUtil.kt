@@ -11,15 +11,17 @@ object HexUtil {
      *
      * @param bytes the byte array to encode.
      * @param upperCase if `true`, will use upper-case characters, otherwise lower-case is used.
-     * @return a string with hexadecimal numbers.
+     * @param byteDivider a string to separate bytes (hex pairs).
+     * @return a string with hexadecimal numbers optionally separated by [byteDivider].
      */
-    fun toHex(bytes: ByteArray, upperCase: Boolean = false): String {
+    fun toHex(bytes: ByteArray, upperCase: Boolean = false, byteDivider: String = ""): String {
         val sb = StringBuilder(bytes.size * 2)
         for (n in 0 until bytes.size) {
             val b = bytes[n]
             val digits = if (upperCase) HEX_DIGITS_UPPER else HEX_DIGITS_LOWER
             sb.append(digits[b.toInt().and(0xff) shr 4])
             sb.append(digits[b.toInt().and(0x0f)])
+            sb.append(byteDivider)
         }
         return sb.toString()
     }
@@ -48,7 +50,8 @@ object HexUtil {
 /**
  * Extension to encode a [ByteArray] to a string with hexadecimal numbers.
  */
-fun ByteArray.toHex(): String = HexUtil.toHex(this)
+fun ByteArray.toHex(upperCase: Boolean = false, byteDivider: String = ""): String =
+    HexUtil.toHex(this, upperCase = upperCase, byteDivider = byteDivider)
 
 /**
  * Extension to decode a [ByteArray] from a string with hexadecimal numbers.
