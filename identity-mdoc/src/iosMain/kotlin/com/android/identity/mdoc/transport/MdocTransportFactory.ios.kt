@@ -2,6 +2,7 @@ package com.android.identity.mdoc.transport
 
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 
 internal actual fun defaultMdocTransportFactoryCreateTransport(
     connectionMethod: ConnectionMethod,
@@ -54,6 +55,18 @@ internal actual fun defaultMdocTransportFactoryCreateTransport(
                             connectionMethod.peripheralServerModePsm,
                         )
                     }
+                }
+            }
+        }
+        is ConnectionMethodNfc -> {
+            return when (role) {
+                MdocTransport.Role.MDOC -> throw NotImplementedError("Not yet implemented")
+                MdocTransport.Role.MDOC_READER -> {
+                    NfcTransportMdocReader(
+                        role,
+                        options,
+                        connectionMethod
+                    )
                 }
             }
         }

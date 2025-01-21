@@ -54,6 +54,7 @@ import identitycredential.identity_appsupport.generated.resources.presentment_do
 import identitycredential.identity_appsupport.generated.resources.presentment_document_picker_title
 import identitycredential.identity_appsupport.generated.resources.presentment_error
 import identitycredential.identity_appsupport.generated.resources.presentment_success
+import identitycredential.identity_appsupport.generated.resources.presentment_timeout
 import identitycredential.identity_appsupport.generated.resources.presentment_waiting_for_request
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -80,6 +81,7 @@ private const val TAG = "Presentment"
  * @param onPresentmentComplete called when the presentment is complete.
  * @param appName the name of the application.
  * @param appIconPainter the icon for the application.
+ * @param modifier a [Modifier].
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalCoroutinesApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -90,6 +92,7 @@ fun Presentment(
     onPresentmentComplete: () -> Unit,
     appName: String,
     appIconPainter: Painter,
+    modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -127,7 +130,7 @@ fun Presentment(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center
     ) {
         Spacer(modifier = Modifier.weight(0.15f))
@@ -171,6 +174,11 @@ fun Presentment(
                                 appName, appIconPainter,
                                 stringResource(Res.string.presentment_canceled)
                             )
+                        } else if (presentmentModel.error is PresentmentTimeout) {
+                                Triple(
+                                    "", painterResource(Res.drawable.presentment_icon_error),
+                                    stringResource(Res.string.presentment_timeout)
+                                )
                         } else {
                             Triple(
                                 "", painterResource(Res.drawable.presentment_icon_error),
@@ -214,6 +222,9 @@ fun Presentment(
     //   and since it's hidden it doesn't materially affect a production app.
     //
     if (presentmentModel.dismissable.collectAsState().value && state != PresentmentModel.State.COMPLETED) {
+        // TODO: for phones with display cutouts in the top-right (for example Pixel 9 Pro Fold when unfolded)
+        //   the Close icon may be obscured. Examine the displayCutouts path and move the icon so it doesn't
+        //   overlap.
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -221,7 +232,7 @@ fun Presentment(
                 imageVector = Icons.Filled.Close,
                 contentDescription = null,
                 modifier = Modifier
-                    .align(Alignment.TopEnd).padding(10.dp)
+                    .align(Alignment.TopEnd).padding(20.dp)
                     .combinedClickable(
                         onClick = { presentmentModel.dismiss(PresentmentModel.DismissType.CLICK) },
                         onLongClick = { presentmentModel.dismiss(PresentmentModel.DismissType.LONG_CLICK) },

@@ -93,7 +93,7 @@ class MdocNfcEngagementHelper(
         val requestedApplicationId = command.payload
         if (requestedApplicationId != Nfc.NDEF_APPLICATION_ID) {
             raiseError("SelectApplication: Expected NDEF AID but got ${requestedApplicationId.toByteArray().toHex()}")
-            return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
         }
         ndefApplicationSelected = true
         return ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
@@ -181,7 +181,7 @@ class MdocNfcEngagementHelper(
             }
             else -> {
                 raiseError("SelectFile: Unexpected File ID $selectedFileId")
-                return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
             }
         }
         return ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
@@ -335,7 +335,7 @@ class MdocNfcEngagementHelper(
             selectedFilePayload = bsb.toByteString()
             return ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
         } catch (error: Throwable) {
-            raiseError(error.message!!)
+            raiseError(error.message!!, error)
             return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
         }
     }
@@ -353,17 +353,17 @@ class MdocNfcEngagementHelper(
                 if (lenInData == 0) {
                     if (updateBinaryData != null) {
                         raiseError("Got reset but is already active")
-                        return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                        return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
                     }
                     updateBinaryData = ByteStringBuilder()
                 } else {
                     if (updateBinaryData == null) {
                         raiseError("Got length but we are not active")
-                        return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                        return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
                     }
                     if (lenInData != updateBinaryData!!.size) {
                         raiseError("Length $lenInData doesn't match received data of ${updateBinaryData!!.size} bytes")
-                        return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                        return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
                     }
 
                     // At this point we got the whole NDEF message that the reader wanted to send.
@@ -374,24 +374,24 @@ class MdocNfcEngagementHelper(
             } else {
                 if (updateBinaryData != null) {
                     raiseError("Got data in single UPDATE_BINARY but we are already active")
-                    return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                    return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
                 }
                 val ndefMessage = NdefMessage.fromEncoded(data.toByteArray(2))
                 return processUpdateBinaryNdefMessage(ndefMessage)
             }
         } else if (offset == 1) {
             raiseError("Unexpected offset $offset")
-            return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
         } else {
             // offset >= 2
             if (updateBinaryData == null) {
                 raiseError("Got data but we are not active")
-                return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
             }
             // Writes must be sequential
             if (offset - 2 != updateBinaryData!!.size) {
                 raiseError("Got data to write at offset $offset but we currently have ${updateBinaryData!!.size}")
-                return ResponseApdu(Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+                return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
             }
             updateBinaryData!!.append(data)
         }

@@ -3,6 +3,11 @@ package com.android.identity.testapp
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.appsupport.ui.AppTheme
 import com.android.identity.appsupport.ui.digitalcredentials.DigitalCredentials
@@ -29,9 +34,10 @@ class CredmanPresentmentActivity: FragmentActivity() {
 
     private val presentmentModel = PresentmentModel()
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AndroidContexts.setCurrentActivity(this)
+        enableEdgeToEdge()
 
         try {
             val request = IntentHelper.extractGetCredentialRequest(intent)
@@ -86,14 +92,17 @@ class CredmanPresentmentActivity: FragmentActivity() {
 
         setContent {
             AppTheme {
-                Presentment(
-                    presentmentModel = presentmentModel,
-                    documentTypeRepository = TestAppUtils.documentTypeRepository,
-                    source = TestAppPresentmentSource(App.settingsModel),
-                    onPresentmentComplete = { finish() },
-                    appName = stringResource(Res.string.app_name),
-                    appIconPainter = painterResource(Res.drawable.app_icon),
-                )
+                Scaffold { innerPadding ->
+                    Presentment(
+                        presentmentModel = presentmentModel,
+                        documentTypeRepository = TestAppUtils.documentTypeRepository,
+                        source = TestAppPresentmentSource(App.settingsModel),
+                        onPresentmentComplete = { finish() },
+                        appName = stringResource(Res.string.app_name),
+                        appIconPainter = painterResource(Res.drawable.app_icon),
+                        modifier = Modifier.consumeWindowInsets(innerPadding),
+                    )
+                }
             }
         }
     }

@@ -52,12 +52,15 @@ import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.DocumentCannedRequest
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.mdoc.nfc.scanNfcMdocReader
 import com.android.identity.mdoc.response.DeviceResponseParser
@@ -66,6 +69,8 @@ import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.mdoc.transport.MdocTransportClosedException
 import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
+import com.android.identity.mdoc.transport.NfcTransportMdocReader
+import com.android.identity.nfc.scanNfcTag
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.testapp.TestAppUtils
 import com.android.identity.trustmanagement.TrustManager
@@ -74,10 +79,7 @@ import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import com.android.identity.util.fromBase64Url
 import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -222,30 +224,37 @@ fun IsoMdocProximityReadingScreen(
                 if (data.startsWith("mdoc:")) {
                     readerShowQrScanner.value = false
                     readerJob = coroutineScope.launch() {
-                        doReaderFlow(
-                            encodedDeviceEngagement = ByteString(data.substring(5).fromBase64Url()),
-                            existingTransport = null,
-                            handover = Simple.NULL,
-                            allowMultipleRequests = settingsModel.readerAllowMultipleRequests.value,
-                            bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value,
-                            showToast = showToast,
-                            readerTransport = readerTransport,
-                            readerSessionEncryption = readerSessionEncryption,
-                            readerSessionTranscript = readerSessionTranscript,
-                            readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
-                            selectedRequest = selectedRequest,
-                            selectConnectionMethod = { connectionMethods ->
-                                if (settingsModel.readerAutomaticallySelectTransport.value) {
-                                    showToast("Auto-selected first from $connectionMethods")
-                                    connectionMethods[0]
-                                } else {
-                                    selectConnectionMethod(
-                                        connectionMethods,
-                                        connectionMethodPickerData
-                                    )
+                        try {
+                            doReaderFlow(
+                                encodedDeviceEngagement = ByteString(data.substring(5).fromBase64Url()),
+                                existingTransport = null,
+                                handover = Simple.NULL,
+                                updateNfcDialogMessage = null,
+                                allowMultipleRequests = settingsModel.readerAllowMultipleRequests.value,
+                                bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value,
+                                showToast = showToast,
+                                readerTransport = readerTransport,
+                                readerSessionEncryption = readerSessionEncryption,
+                                readerSessionTranscript = readerSessionTranscript,
+                                readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                                selectedRequest = selectedRequest,
+                                selectConnectionMethod = { connectionMethods ->
+                                    if (settingsModel.readerAutomaticallySelectTransport.value) {
+                                        showToast("Auto-selected first from $connectionMethods")
+                                        connectionMethods[0]
+                                    } else {
+                                        selectConnectionMethod(
+                                            connectionMethods,
+                                            connectionMethodPickerData
+                                        )
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        } catch (error: Throwable) {
+                            Logger.e(TAG, "Caught exception", error)
+                            error.printStackTrace()
+                            showToast("Error: ${error.message}")
+                        }
                         readerJob = null
                     }
                     true
@@ -421,6 +430,13 @@ fun IsoMdocProximityReadingScreen(
                 }
                 item {
                     SettingToggle(
+                        title = "NFC Data Transfer",
+                        isChecked = settingsModel.readerNfcDataTransferEnabled.collectAsState().value,
+                        onCheckedChange = { settingsModel.readerNfcDataTransferEnabled.value = it },
+                    )
+                }
+                item {
+                    SettingToggle(
                         title = "Automatically select transport",
                         isChecked = settingsModel.readerAutomaticallySelectTransport.collectAsState().value,
                         onCheckedChange = { settingsModel.readerAutomaticallySelectTransport.value = it },
@@ -513,7 +529,15 @@ fun IsoMdocProximityReadingScreen(
                                             )
                                         )
                                     }
-                                    val result = scanNfcMdocReader(
+                                    if (settingsModel.readerNfcDataTransferEnabled.value) {
+                                        negotiatedHandoverConnectionMethods.add(
+                                            ConnectionMethodNfc(
+                                                commandDataFieldMaxLength = 0xffff,
+                                                responseDataFieldMaxLength = 0x10000
+                                            )
+                                        )
+                                    }
+                                    scanNfcMdocReader(
                                         message = "Hold near credential holder's phone.",
                                         options = MdocTransportOptions(
                                             bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value
@@ -529,43 +553,36 @@ fun IsoMdocProximityReadingScreen(
                                                 )
                                             }
                                         },
-                                        negotiatedHandoverConnectionMethods = negotiatedHandoverConnectionMethods
-                                    )
-                                    if (result != null) {
-                                        readerJob = CoroutineScope(Dispatchers.IO).launch {
-                                            try {
-                                                doReaderFlow(
-                                                    encodedDeviceEngagement = result.encodedDeviceEngagement,
-                                                    existingTransport = result.transport,
-                                                    handover = result.handover,
-                                                    allowMultipleRequests = settingsModel.readerAllowMultipleRequests.value,
-                                                    bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value,
-                                                    showToast = showToast,
-                                                    readerTransport = readerTransport,
-                                                    readerSessionEncryption = readerSessionEncryption,
-                                                    readerSessionTranscript = readerSessionTranscript,
-                                                    readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
-                                                    selectedRequest = selectedRequest,
-                                                    selectConnectionMethod = { connectionMethods ->
-                                                        if (settingsModel.readerAutomaticallySelectTransport.value) {
-                                                            showToast("Auto-selected first from $connectionMethods")
-                                                            connectionMethods[0]
-                                                        } else {
-                                                            selectConnectionMethod(
-                                                                connectionMethods,
-                                                                connectionMethodPickerData
-                                                            )
-                                                        }
+                                        negotiatedHandoverConnectionMethods = negotiatedHandoverConnectionMethods,
+                                        onHandover = { transport, encodedDeviceEngagement, handover, updateMessage ->
+                                            doReaderFlow(
+                                                encodedDeviceEngagement = encodedDeviceEngagement,
+                                                existingTransport = transport,
+                                                handover = handover,
+                                                updateNfcDialogMessage = updateMessage,
+                                                allowMultipleRequests = settingsModel.readerAllowMultipleRequests.value,
+                                                bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value,
+                                                showToast = showToast,
+                                                readerTransport = readerTransport,
+                                                readerSessionEncryption = readerSessionEncryption,
+                                                readerSessionTranscript = readerSessionTranscript,
+                                                readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                                                selectedRequest = selectedRequest,
+                                                selectConnectionMethod = { connectionMethods ->
+                                                    if (settingsModel.readerAutomaticallySelectTransport.value) {
+                                                        showToast("Auto-selected first from $connectionMethods")
+                                                        connectionMethods[0]
+                                                    } else {
+                                                        selectConnectionMethod(
+                                                            connectionMethods,
+                                                            connectionMethodPickerData
+                                                        )
                                                     }
-                                                )
-                                                readerJob = null
-                                            } catch (e: Throwable) {
-                                                Logger.e(TAG, "NFC engagement transport failed", e)
-                                                e.printStackTrace()
-                                                showToast("NFC engagement transport failed with $e")
-                                            }
+                                                }
+                                            )
+                                            readerJob = null
                                         }
-                                    }
+                                    )
                                 } catch (e: Throwable) {
                                     Logger.e(TAG, "NFC engagement failed", e)
                                     e.printStackTrace()
@@ -585,6 +602,7 @@ private suspend fun doReaderFlow(
     encodedDeviceEngagement: ByteString,
     existingTransport: MdocTransport?,
     handover: DataItem,
+    updateNfcDialogMessage: ((message: String) -> Unit)?,
     allowMultipleRequests: Boolean,
     bleUseL2CAP: Boolean,
     showToast: (message: String) -> Unit,
@@ -612,11 +630,80 @@ private suspend fun doReaderFlow(
             // If user canceled
             return
         }
-        MdocTransportFactory.Default.createTransport(
+        val transport = MdocTransportFactory.Default.createTransport(
             connectionMethod,
             MdocTransport.Role.MDOC_READER,
             MdocTransportOptions(bleUseL2CAP = bleUseL2CAP)
         )
+        if (transport is NfcTransportMdocReader) {
+            if (scanNfcTag(
+                    message = "QR engagement with NFC Data Transfer. Move into NFC field of the mdoc",
+                    tagInteractionFunc = { tag, updateMessage ->
+                        transport.setTag(tag)
+                        doReaderFlowWithTransport(
+                            transport = transport,
+                            encodedDeviceEngagement = encodedDeviceEngagement,
+                            handover = handover,
+                            updateNfcDialogMessage = updateNfcDialogMessage,
+                            allowMultipleRequests = allowMultipleRequests,
+                            bleUseL2CAP = bleUseL2CAP,
+                            showToast = showToast,
+                            readerTransport = readerTransport,
+                            readerSessionEncryption = readerSessionEncryption,
+                            readerSessionTranscript = readerSessionTranscript,
+                            readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                            selectedRequest = selectedRequest,
+                            eDeviceKey = eDeviceKey,
+                            eReaderKey = eReaderKey,
+                        )
+                        true
+                    }
+                ) == true
+            ) {
+                return
+            } else {
+                throw IllegalStateException("Reading cancelled")
+            }
+        } else {
+            transport
+        }
+    }
+    doReaderFlowWithTransport(
+        transport = transport,
+        encodedDeviceEngagement = encodedDeviceEngagement,
+        handover = handover,
+        updateNfcDialogMessage = updateNfcDialogMessage,
+        allowMultipleRequests = allowMultipleRequests,
+        bleUseL2CAP = bleUseL2CAP,
+        showToast = showToast,
+        readerTransport = readerTransport,
+        readerSessionEncryption = readerSessionEncryption,
+        readerSessionTranscript = readerSessionTranscript,
+        readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+        selectedRequest = selectedRequest,
+        eDeviceKey = eDeviceKey,
+        eReaderKey = eReaderKey,
+    )
+}
+
+private suspend fun doReaderFlowWithTransport(
+    transport: MdocTransport,
+    encodedDeviceEngagement: ByteString,
+    handover: DataItem,
+    updateNfcDialogMessage: ((message: String) -> Unit)?,
+    allowMultipleRequests: Boolean,
+    bleUseL2CAP: Boolean,
+    showToast: (message: String) -> Unit,
+    readerTransport: MutableState<MdocTransport?>,
+    readerSessionEncryption: MutableState<SessionEncryption?>,
+    readerSessionTranscript: MutableState<ByteArray?>,
+    readerMostRecentDeviceResponse: MutableState<ByteArray?>,
+    selectedRequest: MutableState<RequestPickerEntry>,
+    eDeviceKey: EcPublicKey,
+    eReaderKey: EcPrivateKey,
+) {
+    if (updateNfcDialogMessage != null) {
+        updateNfcDialogMessage("Transferring data, don't move your phone")
     }
     readerTransport.value = transport
     val encodedSessionTranscript = TestAppUtils.generateEncodedSessionTranscript(
@@ -682,11 +769,10 @@ private suspend fun doReaderFlow(
         // Nothing to do, this is thrown when transport.close() is called from another coroutine, that
         // is, the onClick handlers for the close buttons.
         Logger.i(TAG, "Ending reader flow due to MdocTransportClosedException")
-    } catch (error: Throwable) {
-        Logger.e(TAG, "Caught exception", error)
-        error.printStackTrace()
-        showToast("Error: ${error.message}")
     } finally {
+        if (updateNfcDialogMessage != null) {
+            updateNfcDialogMessage("Transfer complete")
+        }
         transport.close()
         readerTransport.value = null
     }

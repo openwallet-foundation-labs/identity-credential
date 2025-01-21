@@ -63,11 +63,11 @@ private class NfcTagReader<T> {
                 if (error != null) {
                     Logger.e(TAG, "Connection failed", error.toKotlinError())
                 } else {
-                    val isoTag = tag as NFCISO7816TagProtocol
+                    val isoTag = NfcIsoTagIos(tag as NFCISO7816TagProtocol)
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             val ret = tagInteractionFunc(
-                                NfcIsoTagIos(isoTag),
+                                isoTag,
                                 { message -> session.alertMessage = message }
                             )
                             if (ret != null) {

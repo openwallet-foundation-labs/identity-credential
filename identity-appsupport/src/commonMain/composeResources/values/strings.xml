@@ -55,6 +55,7 @@
     <string name="presentment_success">The information was shared</string>
     <string name="presentment_error">Something went wrong</string>
     <string name="presentment_canceled">Presentment was canceled</string>
+    <string name="presentment_timeout">Timed out waiting for reader</string>
     <string name="presentment_waiting_for_request">Waiting for request</string>
     <string name="presentment_document_picker_title">Select Document</string>
     <string name="presentment_document_picker_text">Multiple documents can fulfill the request. Please select one</string>

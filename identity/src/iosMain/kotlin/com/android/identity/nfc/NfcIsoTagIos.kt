@@ -16,10 +16,19 @@ internal class NfcIsoTagIos(val tag: NFCISO7816TagProtocol): NfcIsoTag() {
         private const val TAG = "NfcIsoTagIos"
     }
 
+    // Note: there's currently no API to obtain this value on iOS.
+    //
+    override val maxTransceiveLength: Int
+        get() = 0xfeff
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun transceive(apdu: CommandApdu): ResponseApdu {
+    override suspend fun transceive(command: CommandApdu): ResponseApdu {
         return suspendCancellableCoroutine<ResponseApdu> { continuation ->
-            val apdu = NFCISO7816APDU(apdu.encode().toNSData())
+            val encodedCommand = command.encode()
+            check(encodedCommand.size <= maxTransceiveLength) {
+                "APDU is ${encodedCommand.size} bytes which exceeds maxTransceiveLength of $maxTransceiveLength bytes"
+            }
+            val apdu = NFCISO7816APDU(encodedCommand.toNSData())
             tag.sendCommandAPDU(apdu, { responseData, sw1, sw2, error ->
                 if (error != null) {
                     val kotlinError = if (error.domain == NFCErrorDomain &&
