@@ -1,38 +1,50 @@
 package com.android.identity.testapp
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.util.AndroidInitializer
+import com.android.identity.util.AndroidContexts
+import com.android.identity.util.Logger
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 
 class MainActivity : FragmentActivity() {
 
     companion object {
-        lateinit var appContext: Context
-            private set
+        private const val TAG = "MainActivity"
 
-        lateinit var instance: MainActivity
-            private set
+        private var bcInitialized = false
+
+        fun initBouncyCastle() {
+            if (bcInitialized) {
+                return
+            }
+            // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
+            // based implementation included in the OS itself.
+            Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+            Security.addProvider(BouncyCastleProvider())
+            bcInitialized = true
+        }
     }
 
     private val app = App()
 
+    override fun onResume() {
+        super.onResume()
+        AndroidContexts.setCurrentActivity(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AndroidContexts.setCurrentActivity(null)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        instance = this
-        appContext = applicationContext
-        AndroidInitializer.initialize(applicationContext)
-
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in the OS itself.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
+        initBouncyCastle()
 
         setContent {
             app.Content()

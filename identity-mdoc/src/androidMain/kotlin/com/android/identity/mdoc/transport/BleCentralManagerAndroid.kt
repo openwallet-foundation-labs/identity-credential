@@ -23,7 +23,7 @@ import com.android.identity.cbor.Tagged
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.util.AndroidInitializer
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import com.android.identity.util.toHex
@@ -125,7 +125,7 @@ internal class BleCentralManagerAndroid: BleCentralManager {
 
     override val incomingMessages = Channel<ByteArray>(Channel.UNLIMITED)
 
-    private val context = AndroidInitializer.applicationContext
+    private val context = AndroidContexts.applicationContext
     private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
     private var device: BluetoothDevice? = null
     private var gatt: BluetoothGatt? = null

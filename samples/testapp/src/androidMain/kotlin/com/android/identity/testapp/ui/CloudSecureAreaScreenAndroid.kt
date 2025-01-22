@@ -28,8 +28,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
@@ -64,11 +62,11 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.testapp.MainActivity
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.storage.EphemeralStorageEngine
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import kotlinx.coroutines.CoroutineScope
@@ -89,7 +87,7 @@ private val CSA_WALLET_PIN_DEFAULT: String = "1111"
 
 private var cloudSecureArea: CloudSecureArea? = null
 
-private val sharedPreferences = MainActivity.appContext.getSharedPreferences("default", MODE_PRIVATE)
+private val sharedPreferences = AndroidContexts.applicationContext.getSharedPreferences("default", MODE_PRIVATE)
 
 private data class CsaPassphraseTestConfiguration(
     val keyPurpose: KeyPurpose,
@@ -167,7 +165,7 @@ actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
                 showConnectDialog.value = false
                 CoroutineScope(Dispatchers.IO).launch {
                     cloudSecureArea = CloudSecureArea(
-                        MainActivity.appContext,
+                        AndroidContexts.applicationContext,
                         EphemeralStorageEngine(),
                         "CloudSecureArea",
                         url
@@ -831,7 +829,7 @@ private suspend fun doUserAuth(
         promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
     } else {
         val canUseBiometricAuth = BiometricManager
-            .from(MainActivity.appContext)
+            .from(AndroidContexts.applicationContext)
             .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
         if (canUseBiometricAuth) {
             promptInfoBuilder.setNegativeButtonText("Use LSKF")
@@ -848,7 +846,8 @@ private suspend fun doUserAuth(
     // Run the prompt on the UI thread, we'll block below on `cv`...
     CoroutineScope(Dispatchers.Main).launch {
         val biometricPromptInfo = promptInfoBuilder.build()
-        val biometricPrompt = BiometricPrompt(MainActivity.instance,
+        val biometricPrompt = BiometricPrompt(
+            AndroidContexts.currentActivity!!,
             object : BiometricPrompt.AuthenticationCallback() {
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -864,7 +863,8 @@ private suspend fun doUserAuth(
                             .setSubtitle(title)
                         promptInfoBuilderLskf.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                         val biometricPromptInfoLskf = promptInfoBuilderLskf.build()
-                        val biometricPromptLskf = BiometricPrompt(MainActivity.instance,
+                        val biometricPromptLskf = BiometricPrompt(
+                            AndroidContexts.currentActivity!!,
                             object : BiometricPrompt.AuthenticationCallback() {
                                 override fun onAuthenticationError(
                                     errorCode: Int,

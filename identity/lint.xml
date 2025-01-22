@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- We explicitly want app authors to add permissions, so the IC library has none. -->
+    <issue id="MissingPermission" severity="ignore" />
+</lint>

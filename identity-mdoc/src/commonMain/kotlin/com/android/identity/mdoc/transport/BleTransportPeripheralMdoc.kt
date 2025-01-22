@@ -96,12 +96,27 @@ internal class BleTransportPeripheralMdoc(
                 // Note: It's not really possible to know someone is connecting to us until they're _actually_
                 // connected. I mean, for all we know, someone could be BLE scanning us. So not really possible
                 // to go into State.CONNECTING...
-                peripheralManager.waitForStateCharacteristicWriteOrL2CAPClient()
-                _state.value = State.CONNECTED
             } catch (error: Throwable) {
                 failTransport(error)
                 throw MdocTransportException("Failed while opening transport", error)
             }
+        }
+        // This blocks until the mdoc reader has been found and in the case of QR codes
+        // won't happen until the reader has scanned the QR code. So it's literally
+        // blocking for potentially tens of seconds. Make sure we don't hold the lock
+        // so the wallet can do transport.close() from another coroutine / thread
+        // if the user dismisses the dialog with the QR code...
+        //
+        try {
+            peripheralManager.waitForStateCharacteristicWriteOrL2CAPClient()
+        } catch (error: Throwable) {
+            mutex.withLock {
+                failTransport(error)
+                throw MdocTransportException("Failed while opening transport", error)
+            }
+        }
+        mutex.withLock {
+            _state.value = State.CONNECTED
         }
     }
 

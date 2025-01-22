@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -74,13 +75,34 @@ internal class BleTransportCentralMdoc(
         get() = _scanningTime
 
     override suspend fun open(eSenderKey: EcPublicKey) {
+        var timeScanningStarted: Instant
         mutex.withLock {
             check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
             try {
                 _state.value = State.SCANNING
                 centralManager.waitForPowerOn()
-                val timeScanningStarted = Clock.System.now()
-                centralManager.waitForPeripheralWithUuid(uuid)
+                timeScanningStarted = Clock.System.now()
+            } catch (error: Throwable) {
+                failTransport(error)
+                throw MdocTransportException("Failed while opening transport", error)
+            }
+        }
+        // This blocks until the mdoc reader has been found and in the case of QR codes
+        // won't happen until the reader has scanned the QR code. So it's literally
+        // blocking for potentially tens of seconds. Make sure we don't hold the lock
+        // so the wallet can do transport.close() from another coroutine / thread
+        // if the user dismisses the dialog with the QR code...
+        //
+        try {
+            centralManager.waitForPeripheralWithUuid(uuid)
+        } catch (error: Throwable) {
+            mutex.withLock {
+                failTransport(error)
+                throw MdocTransportException("Failed while opening transport", error)
+            }
+        }
+        mutex.withLock {
+            try {
                 _scanningTime = Clock.System.now() - timeScanningStarted
                 _state.value = State.CONNECTING
                 if (psm != null) {

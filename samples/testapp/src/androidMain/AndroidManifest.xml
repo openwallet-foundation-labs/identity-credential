@@ -9,10 +9,20 @@
     <uses-permission android:name="android.permission.CAMERA"/>
 
     <!-- For BLE -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- For NFC engagement -->
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="true" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
@@ -28,10 +38,30 @@
             android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:name=".NfcPresentationActivity"
+            android:launchMode="singleInstance">
+        </activity>
+
+        <service
+            android:name=".NdefService"
+            android:exported="true"
+            android:label="@string/nfc_ndef_service_description"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/nfc_ndef_service" />
+        </service>
     </application>
 
 </manifest>

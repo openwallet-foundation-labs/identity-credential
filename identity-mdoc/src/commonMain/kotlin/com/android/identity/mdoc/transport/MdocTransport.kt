@@ -145,7 +145,7 @@ abstract class MdocTransport {
     /**
      * Closes the connection.
      *
-     * This can be called from any thread.
+     * This is idempotent and can be called from any thread.
      */
     abstract suspend fun close()
 }

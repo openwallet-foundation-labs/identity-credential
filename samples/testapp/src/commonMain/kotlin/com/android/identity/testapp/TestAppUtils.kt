@@ -48,12 +48,15 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
+import identitycredential.samples.testapp.generated.resources.driving_license_card_art
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.getDrawableResourceBytes
+import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -90,9 +93,9 @@ object TestAppUtils {
 
     fun generateEncodedSessionTranscript(
         encodedDeviceEngagement: ByteArray,
+        handover: DataItem,
         eReaderKey: EcPublicKey
     ): ByteArray {
-        val handover = Simple.NULL
         val encodedEReaderKey = Cbor.encode(eReaderKey.toCoseKey().toDataItem())
         return Cbor.encode(
             CborArray.builder()
@@ -104,6 +107,7 @@ object TestAppUtils {
         )
     }
 
+    /*
     fun generateEncodedDeviceResponse(
         consentFields: List<MdocConsentField>,
         encodedSessionTranscript: ByteArray
@@ -145,8 +149,10 @@ object TestAppUtils {
         return deviceResponseGenerator.generate()
     }
 
+     */
+
     private lateinit var documentData: NameSpacedData
-    lateinit var mdocCredential: MdocCredential
+    lateinit var documentStore: DocumentStore
 
     private lateinit var storageEngine: StorageEngine
     private lateinit var secureArea: SecureArea
@@ -299,8 +305,9 @@ object TestAppUtils {
         )
     }
 
+    @OptIn(ExperimentalResourceApi::class)
     private fun provisionDocument() {
-        val documentStore = DocumentStore(
+        documentStore = DocumentStore(
             storageEngine,
             secureAreaRepository,
             credentialFactory
@@ -308,7 +315,7 @@ object TestAppUtils {
 
         // Create the document...
         val document = documentStore.createDocument(
-            "testDocument"
+            "testDrivingLicenseDocument"
         )
 
         val nsdBuilder = NameSpacedData.Builder()
@@ -328,13 +335,21 @@ object TestAppUtils {
         val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
         val exceptions: MutableMap<String, List<String>> = HashMap()
 
+        runBlocking {
+            val cardArt = getDrawableResourceBytes(
+                getSystemResourceEnvironment(),
+                Res.drawable.driving_license_card_art
+            )
+            document.applicationData.setData("cardArt", cardArt)
+        }
+
         // Create an authentication key... make sure the authKey used supports both
         // mdoc ECDSA and MAC authentication.
         val now = Clock.System.now()
         val timeSigned = now - 1.hours
         val timeValidityBegin =  now - 1.hours
         val timeValidityEnd = now + 24.hours
-        mdocCredential = MdocCredential(
+        val mdocCredential = MdocCredential(
             document,
             null,
             "AuthKeyDomain",
@@ -409,6 +424,8 @@ object TestAppUtils {
             timeValidityBegin,
             timeValidityEnd
         )
+
+        documentStore.addDocument(document)
     }
 
 }
