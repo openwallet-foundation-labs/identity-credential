@@ -19,18 +19,15 @@ import androidx.test.InstrumentationRegistry
 import com.android.identity.android.TestUtil
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.storage.StorageEngine
+import com.android.identity.storage.Storage
+import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.AndroidAttestationExtensionParser
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -43,30 +40,26 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         private const val CREDENTIAL_DOMAIN = "domain"
     }
 
-    private lateinit var storageEngine: StorageEngine
-    private lateinit var secureArea: SecureArea
+    private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var credentialFactory: CredentialFactory
 
     @Before
     fun setup() {
-
         val context = InstrumentationRegistry.getTargetContext()
-        val storageFile = Path(context.dataDir.path, "testdata.bin")
-        SystemFileSystem.delete(storageFile, false)
-        storageEngine = AndroidStorageEngine.Builder(context, storageFile).build()
-        secureAreaRepository = SecureAreaRepository()
-        secureArea = AndroidKeystoreSecureArea(context, storageEngine)
-        secureAreaRepository.addImplementation(secureArea)
+        storage = AndroidStorage(":memory:")
+        secureAreaRepository = SecureAreaRepository.build {
+            add(AndroidKeystoreSecureArea.create(context, storage))
+        }
         credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(SecureAreaBoundCredential::class) {
-            document, dataItem -> SecureAreaBoundCredential(document, dataItem)
+            document, dataItem -> SecureAreaBoundCredential(document).apply { deserialize(dataItem) }
         }
     }
 
     @Test
-    fun testBasic() {
-        val documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
+    fun testBasic() = runBlocking {
+        val documentStore = DocumentStore(storage, secureAreaRepository, credentialFactory)
         var document: Document? = documentStore.createDocument(
             "testDocument"
         )
@@ -75,15 +68,18 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
         // Create pending credential and check its attestation
         val authKeyChallenge = byteArrayOf(20, 21, 22)
+        val secureArea =
+            secureAreaRepository.getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
         val pendingCredential = SecureAreaBoundCredential(
             document,
             null,
             CREDENTIAL_DOMAIN,
-            secureArea,
-            AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge).build(),
-        )
+            secureArea!!
+        ).apply {
+            generateKey(AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge).build())
+        }
         Assert.assertFalse(pendingCredential.isCertified)
-        val attestation = pendingCredential.attestation
+        val attestation = pendingCredential.getAttestation()
         val parser =
             AndroidAttestationExtensionParser(attestation.certChain!!.certificates[0])
         Assert.assertArrayEquals(

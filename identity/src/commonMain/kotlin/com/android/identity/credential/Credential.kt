@@ -88,7 +88,7 @@ open class Credential {
      * @param asReplacementFor the credential this credential will replace, if not null.
      * @param domain the domain of the credential.
      */
-    constructor(
+    protected constructor(
         document: Document,
         asReplacementFor: Credential?,
         domain: String
@@ -101,44 +101,41 @@ open class Credential {
         this.document = document
         replacementForIdentifier = asReplacementFor?.identifier
         asReplacementFor?.replacementIdentifier = this.identifier
-        _applicationData = SimpleApplicationData { document.saveDocument() }
-        // Only the leaf constructor should add the credential to the document.
-        if (this::class == Credential::class) {
-            addToDocument()
-        }
+        _applicationData = SimpleApplicationData { document.requestSave() }
     }
 
-    // Should only be called by the leaf constructor, like this
-    //
-    //   if (this::class == MyCredentialClass::class) {
-    //       addToDocument()
-    //   }
-    //
-    // where MyCredentialClass is a class derived from Credential.
-    //
+    /**
+     * Should be called by derived class either in constructor for a new credential (for keyless
+     * credentials) or once the key is generated (for key-bound credentials).
+     */
     protected fun addToDocument() {
         credentialCounter = document.addCredential(this)
-        document.saveDocument()
+        document.requestSave()
     }
 
     /**
      * Constructs a Credential from serialized data.
      *
+     * [deserialize] providing actual serialized data must be called before using this object.
+     *
      * @param document the [Document] that the credential belongs to.
-     * @param dataItem the serialized data.
      */
-    constructor(
+    protected constructor(
         document: Document,
-        dataItem: DataItem
     ) {
+        this.document = document
+    }
+
+    /**
+     * Initialize this object using serialized data.
+     */
+    open suspend fun deserialize(dataItem: DataItem) {
         val applicationDataDataItem = dataItem["applicationData"]
         check(applicationDataDataItem is Bstr) { "applicationData not found or not byte[]" }
-        this.document = document
         _applicationData = SimpleApplicationData
             .decodeFromCbor(applicationDataDataItem.value) {
-                document.saveDocument()
+                document.requestSave()
             }
-
         identifier = dataItem["identifier"].asTstr
         domain = dataItem["domain"].asTstr
         usageCount = dataItem["usageCount"].asNumber.toInt()
@@ -158,7 +155,6 @@ open class Credential {
         replacementForIdentifier = dataItem.getOrNull("replacementForAlias")?.asTstr
 
         credentialCounter = dataItem["credentialCounter"].asNumber
-
     }
 
     // Creates an alias which is guaranteed to be unique for all time (assuming the system clock
@@ -171,12 +167,14 @@ open class Credential {
     /**
      * A stable identifier for the Credential instance.
      */
-    val identifier: String
+    lateinit var identifier: String
+        private set
 
     /**
      * The domain of the credential.
      */
-    val domain: String
+    lateinit var domain: String
+        private set
 
     /**
      * How many times the credential has been used in an identity presentation.
@@ -193,7 +191,7 @@ open class Credential {
     /**
      * Indicates whether the credential has been invalidated.
      */
-    open val isInvalidated = false
+    open suspend fun isInvalidated(): Boolean = false
 
     /**
      * Application specific data.
@@ -204,7 +202,7 @@ open class Credential {
      */
     val applicationData: ApplicationData
         get() = _applicationData
-    private val _applicationData: SimpleApplicationData
+    private lateinit var _applicationData: SimpleApplicationData
 
     /**
      * The issuer-provided data associated with the credential.
@@ -287,7 +285,7 @@ open class Credential {
      *
      * After deletion, this object should no longer be used.
      */
-    open fun delete() {
+    open suspend fun delete() {
         document.removeCredential(this)
     }
 
@@ -296,9 +294,9 @@ open class Credential {
      *
      * This should be called when a crdential has been presented to a verifier.
      */
-    fun increaseUsageCount() {
+    suspend fun increaseUsageCount() {
         usageCount += 1
-        document.saveDocument()
+        document.saveDocument(false)
     }
 
     /**
@@ -308,7 +306,7 @@ open class Credential {
      * @param validFrom the point in time before which the data is not valid.
      * @param validUntil the point in time after which the data is not valid.
      */
-    fun certify(
+    suspend fun certify(
         issuerProvidedAuthenticationData: ByteArray,
         validFrom: Instant,
         validUntil: Instant

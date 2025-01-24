@@ -499,7 +499,9 @@ class PresentationActivity : FragmentActivity() {
      * @return a matching [MdocCredential] from either on-screen Document or [DocumentStore]
      *      or null if there are no matching MdocCredential
      */
-    private fun findMdocCredentialForRequest(docRequest: DeviceRequestParser.DocRequest): MdocCredential? {
+    private suspend fun findMdocCredentialForRequest(
+        docRequest: DeviceRequestParser.DocRequest
+    ): MdocCredential? {
         val now = Clock.System.now()
 
         // prefer the document that is on-screen if possible

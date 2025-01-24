@@ -33,8 +33,11 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.storage.GenericStorageEngine
+import com.android.identity.securearea.SecureAreaProvider
+import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.AndroidAttestationExtensionParser
+import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Assume
@@ -52,12 +55,10 @@ import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 
 class AndroidKeystoreSecureAreaTest {
 
-    private lateinit var ks: AndroidKeystoreSecureArea
+    private lateinit var secureAreaProvider: SecureAreaProvider<AndroidKeystoreSecureArea>
 
     @Before
     fun setup() {
@@ -68,15 +69,17 @@ class AndroidKeystoreSecureAreaTest {
 
 
         val context = InstrumentationRegistry.getTargetContext()
-        val storageFile = Path(context.dataDir.path, "testdata.bin")
-        SystemFileSystem.delete(storageFile, false)
-        val storageEngine = GenericStorageEngine(storageFile)
-        ks = AndroidKeystoreSecureArea(context, storageEngine)
+        val storage = AndroidStorage(databasePath = null, clock = Clock.System)
+        secureAreaProvider = SecureAreaProvider {
+            AndroidKeystoreSecureArea.create(context, storage)
+        }
     }
 
     @Test
-    fun testEcKeyDeletion() {
+    fun testEcKeyDeletion() = runTest {
         val settings = AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3)).build()
+
+        val ks = secureAreaProvider.get()
 
         // First create the key...
         ks.createKey("testKey", settings)
@@ -110,7 +113,8 @@ class AndroidKeystoreSecureAreaTest {
         testEcKeySigningHelper(true)
     }
 
-    fun testEcKeySigningHelper(useStrongBox: Boolean) {
+    fun testEcKeySigningHelper(useStrongBox: Boolean) = runTest {
+        val ks = secureAreaProvider.get()
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
@@ -156,8 +160,10 @@ class AndroidKeystoreSecureAreaTest {
         testEcKeySigningAuthBoundHelper(true)
     }
 
-    fun testEcKeySigningAuthBoundHelper(useStrongBox: Boolean) {
+    fun testEcKeySigningAuthBoundHelper(useStrongBox: Boolean) = runTest {
         Assume.assumeFalse(TestUtil.isRunningOnEmulator)
+        val ks = secureAreaProvider.get()
+
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
@@ -194,11 +200,13 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     @Test
-    fun testEcKeyAuthenticationTypeLskf() {
+    fun testEcKeyAuthenticationTypeLskf() = runTest {
         Assume.assumeFalse(TestUtil.isRunningOnEmulator)
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+
+        val ks = secureAreaProvider.get()
         val type = setOf(UserAuthenticationType.LSKF)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
@@ -225,11 +233,13 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     @Test
-    fun testEcKeyAuthenticationTypeBiometric() {
+    fun testEcKeyAuthenticationTypeBiometric() = runTest {
         Assume.assumeFalse(TestUtil.isRunningOnEmulator)
         // setUserAuthenticationParameters() is only available on API 30 or later.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+
+        val ks = secureAreaProvider.get()
         val type = setOf(UserAuthenticationType.BIOMETRIC)
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
@@ -275,12 +285,14 @@ class AndroidKeystoreSecureAreaTest {
     // Curve 25519 on Android is currently broken, see b/282063229 for details. Ignore test for now.
     @Ignore
     @Test
-    fun testEcKeySigningEd25519() {
+    fun testEcKeySigningEd25519() = runTest {
         // ECDH is only available on Android 12 or later (only HW-backed on Keymint 1.0 or later)
         //
         // Also note it's not available on StrongBox.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        val ks = secureAreaProvider.get()
+
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setEcCurve(EcCurve.ED25519)
@@ -315,7 +327,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     @Throws(IOException::class)
-    fun testEcKeySigningWithKeyWithoutCorrectPurpose() {
+    fun testEcKeySigningWithKeyWithoutCorrectPurpose() = runTest {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
         val context = InstrumentationRegistry.getTargetContext()
@@ -324,6 +336,8 @@ class AndroidKeystoreSecureAreaTest {
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
             )
         )
+
+        val ks = secureAreaProvider.get()
         ks.createKey(
             "testKey",
             AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
@@ -367,8 +381,9 @@ class AndroidKeystoreSecureAreaTest {
         testEcdhHelper(true)
     }
 
-    fun testEcdhHelper(useStrongBox: Boolean) {
+    fun testEcdhHelper(useStrongBox: Boolean) = runTest {
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val ks = secureAreaProvider.get()
         ks.createKey(
             "testKey",
             AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
@@ -406,12 +421,15 @@ class AndroidKeystoreSecureAreaTest {
     // Curve 25519 on Android is currently broken, see b/282063229 for details. Ignore test for now.
     @Ignore
     @Test
-    fun testEcdhX25519() {
+    fun testEcdhX25519() = runTest {
         // ECDH is only available on Android 12 or later (only HW-backed on Keymint 1.0 or later)
         //
         // Also note it's not available on StrongBox.
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+
+        val ks = secureAreaProvider.get()
+
         val otherKey = Crypto.createEcPrivateKey(EcCurve.X25519)
         ks.createKey(
             "testKey",
@@ -473,7 +491,8 @@ class AndroidKeystoreSecureAreaTest {
         testEcdhAndSigningHelper(true)
     }
 
-    fun testEcdhAndSigningHelper(useStrongBox: Boolean) {
+    fun testEcdhAndSigningHelper(useStrongBox: Boolean) = runTest {
+        val ks = secureAreaProvider.get()
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
         ks.createKey(
             "testKey",
@@ -525,7 +544,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     @Throws(IOException::class)
-    fun testEcdhWithoutCorrectPurpose() {
+    fun testEcdhWithoutCorrectPurpose() = runTest {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
         val context = InstrumentationRegistry.getTargetContext()
@@ -534,6 +553,7 @@ class AndroidKeystoreSecureAreaTest {
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
             )
         )
+        val ks = secureAreaProvider.get()
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
         ks.createKey(
             "testKey",
@@ -557,7 +577,8 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     @Test
-    fun testEcKeyCreationOverridesExistingAlias() {
+    fun testEcKeyCreationDuplicateAlias() = runTest {
+        val ks = secureAreaProvider.get()
         val challenge = byteArrayOf(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge).build()
         ks.createKey("testKey", settings)
@@ -605,7 +626,8 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     @Throws(IOException::class)
-    fun testAttestationHelper(useStrongBox: Boolean) {
+    fun testAttestationHelper(useStrongBox: Boolean) = runTest {
+        val ks = secureAreaProvider.get()
         val validFromCalendar: Calendar = GregorianCalendar(TimeZone.getTimeZone("UTC"))
         validFromCalendar[2023, 5, 15, 0, 0] = 0
         val validUntilCalendar: Calendar = GregorianCalendar(TimeZone.getTimeZone("UTC"))
@@ -681,7 +703,8 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     @Throws(IOException::class)
-    fun testAttestKeyHelper(context: Context, useStrongBox: Boolean) {
+    fun testAttestKeyHelper(context: Context, useStrongBox: Boolean) = runTest {
+        val ks = secureAreaProvider.get()
         val attestKeyAlias = "icTestAttestKey"
         val attestKeyCertificates: Array<Certificate>
         var kpg: KeyPairGenerator? = null
@@ -740,7 +763,7 @@ class AndroidKeystoreSecureAreaTest {
                 attestKeyCertificates[0].publicKey
             )
             // expected path
-        } catch (e : Throwable) {
+        } catch (e: Throwable) {
             Assert.fail()
         }
 
@@ -764,7 +787,8 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     @Throws(IOException::class)
-    fun testUsingGenericCreateKeySettings() {
+    fun testUsingGenericCreateKeySettings() = runTest {
+        val ks = secureAreaProvider.get()
         // Challenge is always empty when using the generic CreateKeySettings
         val challenge = byteArrayOf()
         ks.createKey("testKey", CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256))

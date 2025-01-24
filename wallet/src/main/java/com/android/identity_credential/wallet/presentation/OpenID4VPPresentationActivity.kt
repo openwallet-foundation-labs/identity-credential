@@ -313,13 +313,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
     }
 
-    private fun firstMatchingDocument(
+    private suspend fun firstMatchingDocument(
         credentialFormat: CredentialFormat,
         docType: String
     ): Document? {
         val settingsModel = walletApp.settingsModel
         val documentStore = walletApp.documentStore
-
         // prefer the credential which is on-screen if possible
         val credentialIdFromPager: String? = settingsModel.focusedCardId.value
         if (credentialIdFromPager != null
@@ -337,7 +336,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         return docId?.let { documentStore.lookupDocument(it) }
     }
 
-    private fun canDocumentSatisfyRequest(
+    private suspend fun canDocumentSatisfyRequest(
         credentialId: String,
         credentialFormat: CredentialFormat,
         docType: String
@@ -505,16 +504,23 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             }
         }
 
+        // TODO: is this line needed?
         val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
-        val document = firstMatchingDocument(credentialFormat, docType)
-            ?: run { throw NoMatchingDocumentException("No matching credentials in wallet for " +
-                    "docType $docType and credentialFormat $credentialFormat") }
 
-        // begin collecting and creating data needed for the response
         val secureRandom = Random.Default
         val bytes = ByteArray(16)
         secureRandom.nextBytes(bytes)
         val generatedNonce = Base64.UrlSafe.encode(bytes)
+
+        val document = firstMatchingDocument(credentialFormat, docType)
+            ?: run {
+                throw NoMatchingDocumentException(
+                    "No matching credentials in wallet for " +
+                            "docType $docType and credentialFormat $credentialFormat"
+                )
+            }
+
+        // begin collecting and creating data needed for the response
         val sessionTranscript = createSessionTranscript(
             clientId = authorizationRequest.clientId,
             responseUri = authorizationRequest.responseUri,
@@ -531,7 +537,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             document,
             credentialFormat,
             inputDescriptorObj,
-            now)
+            now
+        )
 
         var trustPoint: TrustPoint? = null
         if (authorizationRequest.certificateChain != null) {
@@ -549,11 +556,20 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             }
         }
 
-        val vpTokenByteArray = generateVpToken(consentFields, credentialToUse, trustPoint, authorizationRequest, sessionTranscript)
-        Logger.i(TAG, "Setting vp_token: ${vpTokenByteArray.decodeToString()}")
+        val vpTokenByteArray = generateVpToken(
+            consentFields,
+            credentialToUse,
+            trustPoint,
+            authorizationRequest,
+            sessionTranscript
+        )
         val vpToken = if (credentialToUse is MdocCredential) {
             Base64.UrlSafe.encode(vpTokenByteArray).replace("=", "")
-        } else vpTokenByteArray.decodeToString()
+        } else {
+            vpTokenByteArray.decodeToString()
+        }
+
+        Logger.i(TAG, "Setting vp_token: $vpToken")
         val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
             // put("id_token", idToken) // depends on response type, only supporting vp_token for now
             put("state", authorizationRequest.state)

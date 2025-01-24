@@ -15,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -77,6 +78,8 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.json.JSONObject
@@ -166,6 +169,7 @@ fun ProvisionDocumentScreen(
                     }
 
                     is EvidenceRequestSetupCloudSecureArea -> {
+                        val coroutineScope = rememberCoroutineScope()
                         EvidenceRequestSetupCloudSecureAreaView(
                             context = context,
                             secureAreaRepository = secureAreaRepository,
@@ -177,9 +181,11 @@ fun ProvisionDocumentScreen(
                                 )
                             },
                             onError = { error ->
-                                provisioningViewModel.evidenceCollectionFailed(
-                                    error = error
-                                )
+                                coroutineScope.launch {
+                                    provisioningViewModel.evidenceCollectionFailed(
+                                        error = error
+                                    )
+                                }
                             }
                         )
                     }

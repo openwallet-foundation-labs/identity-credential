@@ -339,7 +339,7 @@ private suspend fun digitalCredentialsArfProtocol(
     presentmentModel.setCompleted()
 }
 
-private fun calcDocument(
+private suspend fun calcDocument(
     credential: MdocCredential,
     claims: List<MdocClaim>,
     encodedSessionTranscript: ByteArray

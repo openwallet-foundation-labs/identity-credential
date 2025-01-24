@@ -13,6 +13,7 @@ import com.android.identity.crypto.EcPublicKey
  * @param attestation the attestation for the key.
  */
 open class KeyInfo protected constructor(
+    val alias: String,
     val publicKey: EcPublicKey,
     val keyPurposes: Set<KeyPurpose>,
     val attestation: KeyAttestation

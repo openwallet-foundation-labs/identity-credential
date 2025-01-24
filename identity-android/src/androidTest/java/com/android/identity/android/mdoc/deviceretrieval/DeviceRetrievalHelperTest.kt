@@ -21,6 +21,7 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.mdoc.transport.DataTransportTcp
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor.encode
@@ -64,13 +65,12 @@ import com.android.identity.mdoc.util.MdocUtil.mergeIssuerNamesSpaces
 import com.android.identity.mdoc.util.MdocUtil.stripIssuerNameSpaces
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.storage.StorageEngine
+import com.android.identity.storage.Storage
+import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.Constants
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
@@ -95,8 +95,7 @@ class DeviceRetrievalHelperTest {
         private const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
     }
 
-    private lateinit var storageEngine: StorageEngine
-    private lateinit var secureArea: SecureArea
+    private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var document: Document
     private lateinit var mdocCredential: MdocCredential
@@ -105,28 +104,36 @@ class DeviceRetrievalHelperTest {
     private lateinit var timeValidityEnd: Instant
     private lateinit var documentSignerKey: EcPrivateKey
     private lateinit var documentSignerCert: X509Cert
-    
+    private lateinit var documentStore: DocumentStore
+
     @Before
     fun setUp() {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
-        
-        storageEngine = EphemeralStorageEngine()
-        secureAreaRepository = SecureAreaRepository()
-        secureArea = SoftwareSecureArea(storageEngine)
-        secureAreaRepository.addImplementation(secureArea)
-        var credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class) {
-            document, dataItem -> MdocCredential(document, dataItem)
+
+        storage = AndroidStorage(":memory:")
+        secureAreaRepository = SecureAreaRepository.build {
+            add(
+                AndroidKeystoreSecureArea.create(
+                    InstrumentationRegistry.getTargetContext(),
+                    storage
+                )
+            )
         }
-        val documentStore = DocumentStore(
-            storageEngine,
+        val credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(MdocCredential::class) { document, dataItem ->
+            MdocCredential(document).apply { deserialize(dataItem) }
+        }
+        documentStore = DocumentStore(
+            storage,
             secureAreaRepository,
             credentialFactory
         )
+    }
 
+    private suspend fun asyncSetup() {
         // Create the document...
         document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
@@ -143,23 +150,28 @@ class DeviceRetrievalHelperTest {
         timeSigned = fromEpochMilliseconds(nowMillis)
         timeValidityBegin = fromEpochMilliseconds(nowMillis + 3600 * 1000)
         timeValidityEnd = fromEpochMilliseconds(nowMillis + 10 * 86400 * 1000)
+        val secureArea =
+            secureAreaRepository.getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
         mdocCredential = MdocCredential(
             document,
             null,
             CREDENTIAL_DOMAIN,
-            secureArea,
-            SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build(),
+            secureArea!!,
             MDL_DOCTYPE
-        )
+        ).apply {
+            generateKey(
+                SoftwareCreateKeySettings.Builder()
+                    .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+                    .build()
+            )
+        }
         Assert.assertFalse(mdocCredential.isCertified)
 
         // Generate an MSO and issuer-signed data for this credential.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            mdocCredential.attestation.publicKey
+            mdocCredential.getAttestation().publicKey
         )
         msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
         val issuerNameSpaces = generateIssuerNameSpaces(
@@ -231,7 +243,8 @@ class DeviceRetrievalHelperTest {
     }
     
     @Test
-    fun testPresentation() {
+    fun testPresentation() = runBlocking {
+        asyncSetup()
         val context = InstrumentationRegistry.getTargetContext()
         val condVarDeviceConnected = ConditionVariable()
         val condVarDeviceDisconnected = ConditionVariable()
@@ -365,7 +378,7 @@ class DeviceRetrievalHelperTest {
         val presentation = arrayOf<DeviceRetrievalHelper?>(null)
         val listener: DeviceRetrievalHelper.Listener = object : DeviceRetrievalHelper.Listener {
             override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {}
-            override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+            override fun onDeviceRequest(deviceRequestBytes: ByteArray) = runBlocking {
                 val parser = DeviceRequestParser(
                     deviceRequestBytes,
                     presentation[0]!!.sessionTranscript
@@ -412,6 +425,7 @@ class DeviceRetrievalHelperTest {
                             )
                             .generate()
                     )
+
                     presentation[0]!!.sendDeviceResponse(generator.generate(), null)
                 } catch (e: KeyLockedException) {
                     throw AssertionError(e)
@@ -445,7 +459,8 @@ class DeviceRetrievalHelperTest {
 
     @Test
     @Throws(Exception::class)
-    fun testPresentationVerifierDisconnects() {
+    fun testPresentationVerifierDisconnects() = runBlocking {
+        asyncSetup()
         val context = InstrumentationRegistry.getTargetContext()
         val executor: Executor = Executors.newSingleThreadExecutor()
         val condVarDeviceConnected = ConditionVariable()

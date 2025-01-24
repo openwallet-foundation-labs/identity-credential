@@ -39,7 +39,7 @@ interface PresentmentSource {
      * @param preSelectedDocument if not `null`, a [Document] preselected by the user.
      * @return zero, one, or more [Credential] instances eligible for presentment.
      */
-    fun selectCredentialForPresentment(
+    suspend fun selectCredentialForPresentment(
         request: Request,
         preSelectedDocument: Document?
     ): List<Credential>
