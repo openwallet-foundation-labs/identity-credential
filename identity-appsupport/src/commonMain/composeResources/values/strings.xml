@@ -23,4 +23,30 @@
     <!-- ShowQrCodeDialog -->
     <string name="show_qr_code_dialog_qr_content_description">QR code image</string>
 
+    <!-- CertificateViewer -->
+    <string name="certificate_viewer_no_certificates_in_chain">No certificates in the chain.</string>
+    <string name="certificate_viewer_no_cert_data_warning">No certificate data provided.</string>
+    <string name="certificate_viewer_accessibility_info_icon">An info icon</string>
+    <string name="certificate_viewer_accessibility_error_icon">An error icon</string>
+    <string name="certificate_viewer_sub_basic_info">Basic Information</string>
+    <string name="certificate_viewer_k_type">Type</string>
+    <string name="certificate_viewer_k_serial_number">Serial Number</string>
+    <string name="certificate_viewer_k_version">Version</string>
+    <string name="certificate_viewer_k_issued">Issued</string>
+    <string name="certificate_viewer_k_expired">Expired</string>
+    <string name="certificate_viewer_sub_subject">Subject</string>
+    <string name="certificate_viewer_sub_issuer">Issuer</string>
+    <string name="certificate_viewer_k_country_name">Country Name</string>
+    <string name="certificate_viewer_k_common_name">Common Name</string>
+    <string name="certificate_viewer_k_org_name">Organization</string>
+    <string name="certificate_viewer_k_org_unit_name">Organizational Unit</string>
+    <string name="certificate_viewer_k_locality_name">Locality</string>
+    <string name="certificate_viewer_k_state_name">State or Province</string>
+    <string name="certificate_viewer_k_other_name">&lt;Other Name&gt;</string>
+    <string name="certificate_viewer_sub_public_key_info">Public Key Information</string>
+    <string name="certificate_viewer_k_pk_algorithm">Algorithm</string>
+    <string name="certificate_viewer_k_pk_named_curve">Named Curve</string>
+    <string name="certificate_viewer_k_pk_value">Value</string>
+    <string name="certificate_viewer_sub_extensions">Extensions</string>
+
 </resources>
