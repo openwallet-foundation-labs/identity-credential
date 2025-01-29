@@ -118,7 +118,7 @@ fun ReaderScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
+            if (event in listOf(Lifecycle.Event.ON_START, Lifecycle.Event.ON_RESUME)) {
                 model.startRequest(
                     activity,
                     availableRequests[0].second,
