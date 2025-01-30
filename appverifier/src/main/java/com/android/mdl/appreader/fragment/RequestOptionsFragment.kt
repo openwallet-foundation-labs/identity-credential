@@ -237,7 +237,6 @@ class RequestOptionsFragment() : Fragment() {
             // Always call to cancel any connection that could be on progress
             transferManager.disconnect()
         }
-        transferManager.initVerificationHelper()
         observeTransferManager()
     }
 
@@ -301,6 +300,7 @@ class RequestOptionsFragment() : Fragment() {
         checkRequiredPermissions()
         val adapter = NfcAdapter.getDefaultAdapter(requireContext())
         if (adapter != null) {
+            transferManager.initVerificationHelper()
             transferManager.setNdefDeviceEngagement(
                 adapter,
                 requireActivity()

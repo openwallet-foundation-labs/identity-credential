@@ -325,6 +325,11 @@ class MdocReaderPrompt(
         verification.disconnect()
         super.onDismiss(dialog)
     }
+
+    override fun onResume() {
+        super.onResume()
+        initializeWithContext()
+    }
 }
 
 @Composable
