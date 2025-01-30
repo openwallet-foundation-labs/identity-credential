@@ -49,6 +49,11 @@
     <string name="certificate_viewer_k_pk_value">Value</string>
     <string name="certificate_viewer_sub_extensions">Extensions</string>
     <string name="certificate_viewer_version_text">X.509 Version %1$s Certificate</string>
+    <string name="certificate_viewer_oid">OID</string>
+    <string name="certificate_viewer_value">Value</string>
+    <string name="certificate_viewer_critical_ext">Critical Extension</string>
+    <string name="certificate_viewer_non_critical_ext">Non-Critical Extension</string>
+    <string name="certificate_viewer_value_digital_signature">Digital Signature</string>
 
     <!-- Presentment -->
     <string name="presentment_connecting_to_reader">Connecting to reader</string>

@@ -1,5 +1,6 @@
 package com.android.identity.appsupport.ui.certificateviewer
 
+import com.android.identity.asn1.ASN1
 import com.android.identity.asn1.OID
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509Cert
@@ -32,15 +33,15 @@ internal data class CertificateViewData(
     val pkAlgorithm: String,
     val pkNamedCurve: String,
     val pkValue: String,
-    val extensions: Map<String, String> = emptyMap()
+    val extensions: List<Triple<Boolean, String, String>> = emptyList(),
 ) {
 
     companion object {
 
+        val notAvail = "" // Composables wouldn't show keys with empty data.
+
         /** Map Certificate data to View fields. */
         fun from(cert: X509Cert): CertificateViewData {
-            val notAvail =
-                "" // TODO: Can't populate from data marker. Process properly in Composables.
             val type = "X.509"
 
             val version = runCatching { cert.version.toString() }
@@ -85,12 +86,7 @@ internal data class CertificateViewData(
             val pkValue: String = runCatching { cert.signature.toHex(byteDivider = " ") }
                 .getOrElse { e -> e.message ?: notAvail }
 
-            val extensionsMap = cert.criticalExtensionOIDs.associateWith { key ->
-                cert.getExtensionValue(key)?.toHex(byteDivider = " ") ?: notAvail
-            }
-                .plus(cert.nonCriticalExtensionOIDs.associateWith { key ->
-                    cert.getExtensionValue(key)?.toHex(byteDivider = " ") ?: notAvail
-                })
+            val extensions = formatExtensions(cert)
 
             return CertificateViewData(
                 type,
@@ -103,8 +99,44 @@ internal data class CertificateViewData(
                 pkAlgorithm,
                 pkNamedCurve,
                 pkValue,
-                extensionsMap
+                extensions
             )
+        }
+
+        private fun formatExtensions(cert: X509Cert): List<Triple<Boolean, String, String>> {
+
+            return cert.extensions.map { ext ->
+                    val displayValue = when (ext.oid) {
+                        // Known extensions data is formatted specifically by OID.
+                        OID.X509_EXTENSION_SUBJECT_KEY_IDENTIFIER.oid ->
+                            cert.subjectKeyIdentifier!!.toHex(byteDivider = " ")
+
+                        OID.X509_EXTENSION_KEY_USAGE.oid ->
+                            cert.keyUsage.joinToString(", ") { it.description }
+
+                        OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid ->
+                            cert.authorityKeyIdentifier!!.toHex(byteDivider = " ")
+
+                        else -> {
+                            try {
+                                // Most extensions are ASN.1 so we opportunistically try and decode
+                                // and if it works, pretty print that.
+                                ASN1.print(ASN1.decode(ext.data.toByteArray())!!)
+                            } catch (_: Throwable) {
+                                // If decoding fails, fall back to hex encoding.
+                                ext.data.toByteArray().toHex(byteDivider = " ")
+                            }
+                        }
+                    }
+                    val oidEntry = OID.lookupByOid(ext.oid)
+                    val oid = if (oidEntry != null) {
+                        "${ext.oid} ${oidEntry.description}"
+                    } else {
+                        ext.oid
+                    }
+                    Triple(ext.isCritical, oid, displayValue)
+                }
+
         }
 
         private fun Instant.formatWithRfc1123(): String {
