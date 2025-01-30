@@ -9,6 +9,7 @@ import kotlinx.datetime.Instant
  * Secure Enclave specific class for information about a key.
  */
 class SecureEnclaveKeyInfo internal constructor(
+    alias: String,
     publicKey: EcPublicKey,
     keyPurposes: Set<KeyPurpose>,
 
@@ -22,4 +23,4 @@ class SecureEnclaveKeyInfo internal constructor(
      */
     val userAuthenticationTypes: Set<SecureEnclaveUserAuthType>
 
-): KeyInfo(publicKey, keyPurposes, KeyAttestation(publicKey, null))
+): KeyInfo(alias, publicKey, keyPurposes, KeyAttestation(publicKey, null))

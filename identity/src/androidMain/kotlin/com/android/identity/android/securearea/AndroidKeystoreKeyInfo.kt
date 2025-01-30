@@ -10,6 +10,7 @@ import kotlinx.datetime.Instant
  * Android Keystore specific class for information about a key.
  */
 class AndroidKeystoreKeyInfo internal constructor(
+    alias: String,
     publicKey: EcPublicKey,
     attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
@@ -52,4 +53,4 @@ class AndroidKeystoreKeyInfo internal constructor(
      * The point in time after which the key is not valid, if set.
      */
     val validUntil: Instant?
-) : KeyInfo(publicKey, keyPurposes, attestation)
+) : KeyInfo(alias, publicKey, keyPurposes, attestation)

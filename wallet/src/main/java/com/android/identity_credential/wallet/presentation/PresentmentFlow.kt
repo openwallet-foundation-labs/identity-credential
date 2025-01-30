@@ -49,7 +49,7 @@ private suspend fun showPresentmentFlowImpl(
     trustPoint: TrustPoint?,
     document: ConsentDocument,
     credential: Credential,
-    signAndGenerate: (KeyUnlockData?) -> ByteArray
+    signAndGenerate: suspend (KeyUnlockData?) -> ByteArray
 ): ByteArray {
     // always show the Consent Prompt first
     showConsentPrompt(
@@ -160,7 +160,7 @@ private suspend fun showPresentmentFlowImpl(
                             }
                             remainingPassphraseAttempts--
 
-                            val constraints = (secureAreaBoundCredential.secureArea as CloudSecureArea).passphraseConstraints
+                            val constraints = (secureAreaBoundCredential.secureArea as CloudSecureArea).getPassphraseConstraints()
                             val title =
                                 if (constraints.requireNumerical)
                                     activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)
@@ -279,7 +279,7 @@ suspend fun showSdJwtPresentmentFlow(
     }
 }
 
-private fun mdocSignAndGenerate(
+private suspend fun mdocSignAndGenerate(
     claims: List<Claim>,
     credential: SecureAreaBoundCredential,
     encodedSessionTranscript: ByteArray,

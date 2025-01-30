@@ -79,7 +79,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
@@ -160,13 +159,13 @@ class DocumentModel(
         )
     }
 
-    fun deleteCard(documentInfo: DocumentInfo) {
+    suspend fun deleteCard(documentInfo: DocumentInfo) {
         val document = documentStore.lookupDocument(documentInfo.documentId)
         if (document == null) {
             Logger.w(TAG, "No document with id ${documentInfo.documentId}")
-            return
+        } else {
+            documentStore.deleteDocument(document.name)
         }
-        documentStore.deleteDocument(document.name)
     }
 
     fun attachToActivity(activity: FragmentActivity) {
@@ -183,7 +182,7 @@ class DocumentModel(
         return context.resources.getString(getStrId)
     }
 
-    fun getEventInfos(documentId: String): List<EventInfo> {
+    suspend fun getEventInfos(documentId: String): List<EventInfo> {
         val eventLogger = walletApplication.eventLogger
         val events = eventLogger.getEntries(documentId)
 
@@ -221,12 +220,12 @@ class DocumentModel(
         }
     }
 
-    fun deleteEventInfos(documentId: String) {
+    suspend fun deleteEventInfos(documentId: String) {
         val eventLogger = walletApplication.eventLogger
         eventLogger.deleteEntriesForDocument(documentId)
     }
 
-    private fun createCardForDocument(document: Document): DocumentInfo? {
+    private suspend fun createCardForDocument(document: Document): DocumentInfo? {
         val documentConfiguration = document.documentConfiguration
         val options = BitmapFactory.Options()
         options.inMutable = true
@@ -311,7 +310,7 @@ class DocumentModel(
         )
     }
 
-    private fun addSecureAreaBoundCredentialInfo(
+    private suspend fun addSecureAreaBoundCredentialInfo(
         credential: SecureAreaBoundCredential,
         kvPairs: MutableMap<String, String>
     ) {
@@ -408,7 +407,7 @@ class DocumentModel(
         }
     }
 
-    private fun createCardInfoForMdocCredential(mdocCredential: MdocCredential): CredentialInfo {
+    private suspend fun createCardInfoForMdocCredential(mdocCredential: MdocCredential): CredentialInfo {
 
         val credentialData = StaticAuthDataParser(mdocCredential.issuerProvidedData).parse()
         val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
@@ -439,7 +438,7 @@ class DocumentModel(
         )
     }
 
-    private fun createCardInfoForSdJwtVcCredential(sdJwtVcCredential: Credential): CredentialInfo {
+    private suspend fun createCardInfoForSdJwtVcCredential(sdJwtVcCredential: Credential): CredentialInfo {
 
         val kvPairs = mutableMapOf<String, String>()
 
@@ -474,7 +473,7 @@ class DocumentModel(
     }
 
 
-    private fun addDocument(document: Document) {
+    private suspend fun addDocument(document: Document) {
         createCardForDocument(document)?.let { documentInfos.add(it) }
     }
 
@@ -487,7 +486,7 @@ class DocumentModel(
         documentInfos.removeAt(cardIndex)
     }
 
-    private fun updateDocument(document: Document) {
+    private suspend fun updateDocument(document: Document) {
         val cardIndex = documentInfos.indexOfFirst { it.documentId == document.name }
         if (cardIndex < 0) {
             Logger.w(TAG, "No card for document with id ${document.name}")
@@ -496,7 +495,7 @@ class DocumentModel(
         createCardForDocument(document)?.let { documentInfos[cardIndex] = it }
     }
 
-    private fun updateCredman() {
+    private suspend fun updateCredman() {
         CredmanRegistry.registerCredentials(context, documentStore, documentTypeRepository)
     }
 
@@ -523,51 +522,45 @@ class DocumentModel(
                 startListeningForNotifications(issuingAuthorityId)
             }
 
-            // This ensure we process both flows sequentially, that is, that calls modifying our
-            // model (addDocument, removeDocument, updateDocument) doesn't happen at
-            // the same time...
-            //
-            runBlocking {
-                documentStore.eventFlow
-                    .onEach { (eventType, document) ->
-                        Logger.i(TAG, "DocumentStore event $eventType ${document.name}")
-                        when (eventType) {
-                            DocumentStore.EventType.DOCUMENT_ADDED -> {
-                                addDocument(document)
-                                if (!issuingAuthorityIdSet.contains(document.issuingAuthorityIdentifier)) {
-                                    issuingAuthorityIdSet.add(document.issuingAuthorityIdentifier)
-                                    startListeningForNotifications(document.issuingAuthorityIdentifier)
-                                }
-                                updateCredman()
+            documentStore.eventFlow
+                .onEach { (eventType, document) ->
+                    Logger.i(TAG, "DocumentStore event $eventType ${document.name}")
+                    when (eventType) {
+                        DocumentStore.EventType.DOCUMENT_ADDED -> {
+                            addDocument(document)
+                            if (!issuingAuthorityIdSet.contains(document.issuingAuthorityIdentifier)) {
+                                issuingAuthorityIdSet.add(document.issuingAuthorityIdentifier)
+                                startListeningForNotifications(document.issuingAuthorityIdentifier)
                             }
+                            updateCredman()
+                        }
 
-                            DocumentStore.EventType.DOCUMENT_DELETED -> {
-                                removeDocument(document)
-                                updateCredman()
-                            }
+                        DocumentStore.EventType.DOCUMENT_DELETED -> {
+                            removeDocument(document)
+                            updateCredman()
+                        }
 
-                            DocumentStore.EventType.DOCUMENT_UPDATED -> {
-                                // Store the name rather than instance to handle the case that the
-                                // document may have been deleted between now and the time it's
-                                // processed below...
-                                batchedUpdateFlow.emit(document.name)
-                            }
+                        DocumentStore.EventType.DOCUMENT_UPDATED -> {
+                            // Store the name rather than instance to handle the case that the
+                            // document may have been deleted between now and the time it's
+                            // processed below...
+                            batchedUpdateFlow.emit(document.name)
                         }
                     }
-                    .launchIn(this)
+                }
+                .launchIn(this)
 
-                batchedUpdateFlow.timedChunk(batchDuration)
-                    .onEach {
-                        it.distinct().forEach {
-                            documentStore.lookupDocument(it)?.let {
-                                Logger.i(TAG, "Processing delayed update event ${it.name}")
-                                updateDocument(it)
-                                updateCredman()
-                            }
+            batchedUpdateFlow.timedChunk(batchDuration)
+                .onEach {
+                    it.distinct().forEach {
+                        documentStore.lookupDocument(it)?.let {
+                            Logger.i(TAG, "Processing delayed update event ${it.name}")
+                            updateDocument(it)
+                            updateCredman()
                         }
                     }
-                    .launchIn(this)
-            }
+                }
+                .launchIn(this)
         }
 
         // If the LSKF is removed, make sure we delete all credentials with invalidated keys...
@@ -577,21 +570,25 @@ class DocumentModel(
                 TAG, "screenLockIsSetup changed to " +
                         "${settingsModel.screenLockIsSetup.value}"
             )
-            for (documentId in documentStore.listDocuments()) {
-                documentStore.lookupDocument(documentId)?.let { document ->
-                    document.deleteInvalidatedCredentials()
+            CoroutineScope(Dispatchers.IO).launch {
+                for (documentId in documentStore.listDocuments()) {
+                    documentStore.lookupDocument(documentId)?.let { document ->
+                        document.deleteInvalidatedCredentials()
+                    }
                 }
             }
         }
 
-        // Initial data population and export to Credman
-        //
-        for (documentId in documentStore.listDocuments()) {
-            documentStore.lookupDocument(documentId)?.let {
-                addDocument(it)
+        CoroutineScope(Dispatchers.IO).launch {
+            // Initial data population and export to Credman
+            //
+            for (documentId in documentStore.listDocuments()) {
+                documentStore.lookupDocument(documentId)?.let {
+                    addDocument(it)
+                }
             }
+            updateCredman()
         }
-        updateCredman()
     }
 
     // This processes events from an Issuing Authority which is a stream of events
@@ -638,7 +635,7 @@ class DocumentModel(
      * Called periodically by [WalletApplication.SyncDocumentWithIssuerWorker].
      */
     fun periodicSyncForAllDocuments() {
-        runBlocking {
+        CoroutineScope(Dispatchers.IO).launch {
             for (documentId in documentStore.listDocuments()) {
                 documentStore.lookupDocument(documentId)?.let { document ->
                     Logger.i(TAG, "Periodic sync for ${document.name}")
@@ -752,9 +749,10 @@ class DocumentModel(
                         credentialToReplace,
                         credentialDomain,
                         secureArea,
-                        createKeySettings,
                         docConf.mdocConfiguration!!.docType,
-                    )
+                    ).apply {
+                        generateKey(createKeySettings)
+                    }
                 }
             }
 
@@ -771,9 +769,10 @@ class DocumentModel(
                         credentialToReplace,
                         credentialDomain,
                         secureArea,
-                        createKeySettings,
                         configuration.vct,
-                    )
+                    ).apply {
+                        generateKey(createKeySettings)
+                    }
                 }
             }
         }
@@ -795,7 +794,7 @@ class DocumentModel(
                     )
                 } else {
                     document.pendingCredentials.find {
-                        (it as SecureAreaBoundCredential).attestation
+                        (it as SecureAreaBoundCredential).getAttestation()
                             .publicKey.equals(credentialData.secureAreaBoundKey)
                     }
                 }
@@ -819,12 +818,12 @@ class DocumentModel(
         document: Document,
         credentialDomain: String,
         credentialFormat: CredentialFormat,
-        createCredential: ((
+        createCredential: suspend (
             credentialToReplace: Credential?,
             credentialDomain: String,
             secureArea: SecureArea,
             createKeySettings: CreateKeySettings,
-                ) -> Credential)
+                ) -> Credential
     ) {
         val numCreds = document.issuingAuthorityConfiguration.numberOfCredentialsToRequest ?: 3
         val minValidTimeMillis = document.issuingAuthorityConfiguration.minCredentialValidityMillis ?: (30 * 24 * 3600L)
@@ -888,7 +887,7 @@ class DocumentModel(
             for (pendingCredential in document.pendingCredentials) {
                 credentialRequests.add(
                     CredentialRequest(
-                        (pendingCredential as SecureAreaBoundCredential).attestation
+                        (pendingCredential as SecureAreaBoundCredential).getAttestation()
                     )
                 )
             }
@@ -1041,7 +1040,7 @@ suspend fun signWithUnlock(
                             }
                             remainingPassphraseAttempts--
 
-                            val constraints = secureArea.passphraseConstraints
+                            val constraints = secureArea.getPassphraseConstraints()
                             val title =
                                 if (constraints.requireNumerical)
                                     activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)

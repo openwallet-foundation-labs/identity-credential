@@ -131,15 +131,13 @@ class ProvisioningViewModel : ViewModel() {
 
                 val documentIdentifier =
                     issuerConfiguration.identifier + "_" + issuerDocumentIdentifier
-                document = documentStore.createDocument(documentIdentifier)
                 val pendingDocumentConfiguration = issuerConfiguration.pendingDocumentInformation
-
-                document!!.let {
-                    it.issuingAuthorityIdentifier = issuerConfiguration.identifier
-                    it.documentIdentifier = issuerDocumentIdentifier
-                    it.documentConfiguration = pendingDocumentConfiguration
-                    it.issuingAuthorityConfiguration = issuerConfiguration
-                    it.refreshState(walletServerProvider)
+                document = documentStore.createDocument(documentIdentifier).apply {
+                    this.issuingAuthorityIdentifier = issuerConfiguration.identifier
+                    this.documentIdentifier = issuerDocumentIdentifier
+                    this.documentConfiguration = pendingDocumentConfiguration
+                    this.issuingAuthorityConfiguration = issuerConfiguration
+                    this.refreshState(walletServerProvider)
                 }
 
                 proofingFlow = issuer.proof(issuerDocumentIdentifier)
@@ -184,10 +182,13 @@ class ProvisioningViewModel : ViewModel() {
             parts[1], parts[2], null, null)
     }
 
-    fun evidenceCollectionFailed(
-        error: Throwable    ) {
-        if (document != null) {
-            documentStore.deleteDocument(document!!.name)
+    suspend fun evidenceCollectionFailed(
+        error: Throwable
+    ) {
+        val nameToDelete = document?.name
+        if (nameToDelete != null) {
+            document = null
+            documentStore.deleteDocument(nameToDelete)
         }
         Logger.w(TAG, "Error collecting evidence", error)
         this.error = error
@@ -216,8 +217,10 @@ class ProvisioningViewModel : ViewModel() {
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
             } catch (e: Throwable) {
-                if (document != null) {
-                    documentStore.deleteDocument(document!!.name)
+                val nameToDelete = document?.name
+                if (nameToDelete != null) {
+                    document = null
+                    documentStore.deleteDocument(nameToDelete)
                 }
                 Logger.w(TAG, "Error submitting evidence", e)
                 e.printStackTrace()
@@ -274,12 +277,12 @@ class ProvisioningViewModel : ViewModel() {
         }
     }
 
-    fun moveToNextEvidenceRequest(): Boolean {
+    suspend fun moveToNextEvidenceRequest(): Boolean {
         currentEvidenceRequestIndex++
         return selectViableEvidenceRequest()
     }
 
-    private fun selectViableEvidenceRequest(): Boolean {
+    private suspend fun selectViableEvidenceRequest(): Boolean {
         val evidenceRequests = this.evidenceRequests!!
         if (currentEvidenceRequestIndex >= evidenceRequests.size) {
             return false
@@ -306,7 +309,7 @@ class ProvisioningViewModel : ViewModel() {
         return true
     }
 
-    private fun selectCredential(request: String): Credential? {
+    private suspend fun selectCredential(request: String): Credential? {
         val parts = request.split('.')
         val openid4vpRequest = JSONObject(String(parts[1].fromBase64Url()))
 
@@ -334,7 +337,7 @@ class ProvisioningViewModel : ViewModel() {
         return document?.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, Clock.System.now())
     }
 
-    private fun firstMatchingDocument(
+    private suspend fun firstMatchingDocument(
         credentialFormat: CredentialFormat,
         docType: String
     ): Document? {
@@ -352,7 +355,7 @@ class ProvisioningViewModel : ViewModel() {
         return docId?.let { documentStore.lookupDocument(it) }
     }
 
-    private fun canDocumentSatisfyRequest(
+    private suspend fun canDocumentSatisfyRequest(
         credentialId: String,
         credentialFormat: CredentialFormat,
         docType: String

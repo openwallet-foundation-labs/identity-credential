@@ -23,8 +23,9 @@ import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.storage.StorageEngine
+import com.android.identity.storage.Storage
+import com.android.identity.storage.ephemeral.EphemeralStorage
+import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant;
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -33,30 +34,31 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class DocumentUtilTest {
-    private lateinit var storageEngine: StorageEngine
-    private lateinit var secureArea: SecureArea
+    private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var credentialFactory: CredentialFactory
 
     @BeforeTest
     fun setup() {
-        storageEngine = EphemeralStorageEngine()
-        secureAreaRepository = SecureAreaRepository()
-        secureArea = SoftwareSecureArea(storageEngine)
-        secureAreaRepository.addImplementation(secureArea)
+        storage = EphemeralStorage()
+        secureAreaRepository = SecureAreaRepository.build {
+            add(SoftwareSecureArea.create(storage))
+        }
         credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(
             SecureAreaBoundCredential::class
-        ) { document, dataItem ->  SecureAreaBoundCredential(document, dataItem) }
+        ) { document, dataItem -> SecureAreaBoundCredential(document).apply { deserialize(dataItem) } }
     }
 
     @Test
-    fun managedCredentialHelper() {
+    fun managedCredentialHelper() = runTest {
         val documentStore = DocumentStore(
-            storageEngine,
+            storage,
             secureAreaRepository,
             credentialFactory
         )
+        val secureArea: SecureArea =
+            secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
         val document = documentStore.createDocument(
             "testDocument"
         )
@@ -74,13 +76,16 @@ class DocumentUtilTest {
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             managedCredDomain,
-            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
-                document,
-                credentialToReplace,
-                managedCredDomain,
-                secureArea,
-                authKeySettings
-            )},
+            createCredential = { credentialToReplace ->
+                val credential = SecureAreaBoundCredential(
+                    document,
+                    credentialToReplace,
+                    managedCredDomain,
+                    secureArea,
+                )
+                credential.generateKey(authKeySettings)
+                credential
+            },
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
@@ -109,13 +114,16 @@ class DocumentUtilTest {
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             managedCredDomain,
-            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
-                document,
-                credentialToReplace,
-                managedCredDomain,
-                secureArea,
-                authKeySettings
-            )},
+            createCredential = { credentialToReplace ->
+                val credential = SecureAreaBoundCredential(
+                    document,
+                    credentialToReplace,
+                    managedCredDomain,
+                    secureArea,
+                )
+                credential.generateKey(authKeySettings)
+                credential
+            },
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
@@ -134,13 +142,16 @@ class DocumentUtilTest {
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             managedCredDomain,
-            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
-                document,
-                credentialToReplace,
-                managedCredDomain,
-                secureArea,
-                authKeySettings
-            )},
+            createCredential = { credentialToReplace ->
+                val credential = SecureAreaBoundCredential(
+                    document,
+                    credentialToReplace,
+                    managedCredDomain,
+                    secureArea
+                )
+                credential.generateKey(authKeySettings)
+                credential
+            },
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
@@ -162,13 +173,16 @@ class DocumentUtilTest {
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             managedCredDomain,
-            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
-                document,
-                credentialToReplace,
-                managedCredDomain,
-                secureArea,
-                authKeySettings
-            )},
+            createCredential = { credentialToReplace ->
+                val credential = SecureAreaBoundCredential(
+                    document,
+                    credentialToReplace,
+                    managedCredDomain,
+                    secureArea,
+                )
+                credential.generateKey(authKeySettings)
+                credential
+            },
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
@@ -214,13 +228,16 @@ class DocumentUtilTest {
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             managedCredDomain,
-            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
-                document,
-                credentialToReplace,
-                managedCredDomain,
-                secureArea,
-                authKeySettings
-            )},
+            createCredential = { credentialToReplace ->
+                val credential = SecureAreaBoundCredential(
+                    document,
+                    credentialToReplace,
+                    managedCredDomain,
+                    secureArea
+                )
+                credential.generateKey(authKeySettings)
+                credential
+            },
             Instant.fromEpochMilliseconds(195),
             numCreds,
             maxUsesPerCred,

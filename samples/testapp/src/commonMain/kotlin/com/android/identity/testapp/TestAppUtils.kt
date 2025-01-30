@@ -34,18 +34,18 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
-import com.android.identity.util.fromHex
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -109,10 +109,10 @@ object TestAppUtils {
     private lateinit var documentData: NameSpacedData
     lateinit var documentStore: DocumentStore
 
-    private val storageEngine: StorageEngine
-    private val secureArea: SecureArea
-    private val secureAreaRepository: SecureAreaRepository
-    private val credentialFactory: CredentialFactory
+    private val secureAreaRepository: SecureAreaRepository = SecureAreaRepository.build {
+        add(SoftwareSecureArea.create(platformStorage()))
+    }
+    private val credentialFactory: CredentialFactory = CredentialFactory()
     val documentTypeRepository: DocumentTypeRepository
 
     val provisionedDocumentTypes = listOf(
@@ -143,22 +143,31 @@ object TestAppUtils {
     lateinit var issuerTrustManager: TrustManager
     lateinit var readerTrustManager: TrustManager
 
+    private val initJob: Job
+
     init {
-        storageEngine = EphemeralStorageEngine()
-        secureAreaRepository = SecureAreaRepository()
-        secureArea = SoftwareSecureArea(storageEngine)
-        secureAreaRepository.addImplementation(secureArea)
-        credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(MdocCredential::class) {
-                document, dataItem -> MdocCredential(document, dataItem)
+            document, dataItem -> MdocCredential(document).apply { deserialize(dataItem) }
         }
         generateKeysAndCerts()
         generateTrustManagers()
-        provisionDocuments()
         documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
+
+        initJob = CoroutineScope(Dispatchers.Main).launch {
+            init()
+        }
+    }
+
+    suspend fun init() {
+        val documentStore = DocumentStore(
+            platformStorage(),
+            secureAreaRepository,
+            credentialFactory
+        )
+        provisionDocuments(documentStore)
     }
 
     private fun generateKeysAndCerts() {
@@ -268,13 +277,7 @@ object TestAppUtils {
         )
     }
 
-    private fun provisionDocuments() {
-        documentStore = DocumentStore(
-            storageEngine,
-            secureAreaRepository,
-            credentialFactory
-        )
-
+    private suspend fun provisionDocuments(documentStore: DocumentStore) {
         provisionDocument(
             "testDrivingLicense",
             DrivingLicense.getDocumentType(),
@@ -304,7 +307,7 @@ object TestAppUtils {
 
     // TODO: also provision SD-JWT credentials, if applicable
     @OptIn(ExperimentalResourceApi::class)
-    private fun provisionDocument(
+    private suspend fun provisionDocument(
         documentId: String,
         documentType: DocumentType,
         givenNameOverride: String,
@@ -352,22 +355,24 @@ object TestAppUtils {
         val timeSigned = now - 1.hours
         val timeValidityBegin =  now - 1.hours
         val timeValidityEnd = now + 24.hours
+        val secureArea = secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
         val mdocCredential = MdocCredential(
             document = document,
             asReplacementFor = null,
             domain = MDOC_AUTH_KEY_DOMAIN,
             secureArea = secureArea,
-            createKeySettings = SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build(),
             docType = documentType.mdocDocumentType!!.docType
-        )
+        ).apply {
+            generateKey(SoftwareCreateKeySettings.Builder()
+                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+                .build())
+        }
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             documentType.mdocDocumentType!!.docType,
-            mdocCredential.attestation.publicKey
+            mdocCredential.getAttestation().publicKey
         )
         msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(

@@ -13,12 +13,14 @@ import com.android.identity.securearea.PassphraseConstraints
  * @param passphraseConstraints constraints on the passphrase, if any.
  */
 class SoftwareKeyInfo internal constructor(
+    alias: String,
     publicKey: EcPublicKey,
     attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
     val isPassphraseProtected: Boolean,
     val passphraseConstraints: PassphraseConstraints?
 ): KeyInfo(
+    alias,
     publicKey,
     keyPurposes,
     attestation

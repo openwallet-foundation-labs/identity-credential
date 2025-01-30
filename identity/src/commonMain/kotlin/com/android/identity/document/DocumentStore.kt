@@ -15,14 +15,21 @@
  */
 package com.android.identity.document
 
+import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.storage.StorageEngine
+import com.android.identity.storage.Storage
+import com.android.identity.storage.StorageTableSpec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Class for storing real-world identity documents.
@@ -44,19 +51,23 @@ import kotlinx.coroutines.runBlocking
  * For more details about documents stored in a [DocumentStore] see the
  * [Document] class.
  *
- * @param storageEngine the [StorageEngine] to use for storing/retrieving documents.
+ * @param storage the [Storage] to use for storing/retrieving documents.
  * @param secureAreaRepository the repository of configured [SecureArea] that can
  * be used.
  * @param credentialFactory the [CredentialFactory] to use for retrieving serialized credentials
  * associated with documents.
  */
 class DocumentStore(
-    private val storageEngine: StorageEngine,
+    storage: Storage,
     private val secureAreaRepository: SecureAreaRepository,
-    private val credentialFactory: CredentialFactory
+    private val credentialFactory: CredentialFactory,
+    internal val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default)
 ) {
     // Use a cache so the same instance is returned by multiple lookupDocument() calls.
     private val documentCache = mutableMapOf<String, Document>()
+    private val storageTableHolder = coroutineScope.async {
+        storage.getTable(tableSpec)
+    }
 
     /**
      * Creates a new document.
@@ -72,14 +83,14 @@ class DocumentStore(
      * @param name an identifier for the document.
      * @return A newly created document.
      */
-    fun createDocument(name: String): Document {
+    suspend fun createDocument(name: String): Document {
         lookupDocument(name)?.let { document ->
             documentCache.remove(name)
             emitOnDocumentDeleted(document)
             document.deleteDocument()
         }
         val transientDocument = Document.create(
-            storageEngine,
+            storageTableHolder.await(),
             secureAreaRepository,
             name,
             this,
@@ -91,11 +102,11 @@ class DocumentStore(
     /**
      * Adds a document created with [createDocument] to the document store.
      *
-     * This makes the document visible to collectors collecing from [eventFlow].
+     * This makes the document visible to collectors collecting from [eventFlow].
      *
      * @param document the document.
      */
-    fun addDocument(document: Document) {
+    suspend fun addDocument(document: Document) {
         document.addToStore()
         documentCache[document.name] = document
         emitOnDocumentAdded(document)
@@ -107,10 +118,10 @@ class DocumentStore(
      * @param name the identifier of the document.
      * @return the document or `null` if not found.
      */
-    fun lookupDocument(name: String): Document? {
+    suspend fun lookupDocument(name: String): Document? {
         val result =
             documentCache[name]
-                ?: Document.lookup(storageEngine, secureAreaRepository, name, this, credentialFactory)
+                ?: Document.lookup(storageTableHolder.await(), secureAreaRepository, name, this, credentialFactory)
                 ?: return null
         documentCache[name] = result
         return result
@@ -121,11 +132,9 @@ class DocumentStore(
      *
      * @return list of all the document names in the store.
      */
-    fun listDocuments(): List<String> = mutableListOf<String>().apply {
-        storageEngine.enumerate()
-            .filter { name -> name.startsWith(Document.DOCUMENT_PREFIX) }
-            .map { name -> name.substring(Document.DOCUMENT_PREFIX.length) }
-            .forEach { name -> add(name) }
+    suspend fun listDocuments(): List<String> {
+        // right now lock is not required
+        return storageTableHolder.await().enumerate()
     }
 
     /**
@@ -135,7 +144,7 @@ class DocumentStore(
      *
      * @param name the identifier of the document.
      */
-    fun deleteDocument(name: String) {
+    suspend fun deleteDocument(name: String) {
         lookupDocument(name)?.let { document ->
             documentCache.remove(name)
             emitOnDocumentDeleted(document)
@@ -173,30 +182,30 @@ class DocumentStore(
         get() = _eventFlow.asSharedFlow()
 
 
-    private fun emitOnDocumentAdded(document: Document) {
-        runBlocking {
-            _eventFlow.emit(Pair(EventType.DOCUMENT_ADDED, document))
-        }
+    private suspend fun emitOnDocumentAdded(document: Document) {
+        _eventFlow.emit(Pair(EventType.DOCUMENT_ADDED, document))
     }
 
-    private fun emitOnDocumentDeleted(document: Document) {
-        runBlocking {
-            _eventFlow.emit(Pair(EventType.DOCUMENT_DELETED, document))
-        }
+    private suspend fun emitOnDocumentDeleted(document: Document) {
+        _eventFlow.emit(Pair(EventType.DOCUMENT_DELETED, document))
     }
 
     // Called by code in Document class
-    internal fun emitOnDocumentChanged(document: Document) {
+    internal suspend fun emitOnDocumentChanged(document: Document) {
         if (documentCache[document.name] == null) {
             // This is to prevent emitting onChanged when creating a document.
             return
         }
-        runBlocking {
-            _eventFlow.emit(Pair(EventType.DOCUMENT_UPDATED, document))
-        }
+        _eventFlow.emit(Pair(EventType.DOCUMENT_UPDATED, document))
     }
 
     companion object {
         const val TAG = "DocumentStore"
+
+        private val tableSpec = StorageTableSpec(
+            name = "DocumentStore",
+            supportPartitions = false,
+            supportExpiration = false
+        )
     }
 }

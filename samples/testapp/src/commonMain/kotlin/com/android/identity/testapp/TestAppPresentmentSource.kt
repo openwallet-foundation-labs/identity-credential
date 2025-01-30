@@ -35,7 +35,7 @@ class TestAppPresentmentSource(
         }
     }
 
-    override fun selectCredentialForPresentment(
+    override suspend fun selectCredentialForPresentment(
         request: Request,
         preSelectedDocument: Document?
     ): List<Credential> {
@@ -54,7 +54,7 @@ class TestAppPresentmentSource(
     }
 }
 
-private fun mdocFindCredentialsForRequest(
+private suspend fun mdocFindCredentialsForRequest(
     request: MdocRequest,
     preSelectedDocument: Document?
 ): List<Credential> {

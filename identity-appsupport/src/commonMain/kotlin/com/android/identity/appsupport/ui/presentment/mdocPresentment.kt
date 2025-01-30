@@ -181,7 +181,7 @@ internal suspend fun mdocPresentment(
     }
 }
 
-private fun calcDocument(
+private suspend fun calcDocument(
     credential: MdocCredential,
     claims: List<MdocClaim>,
     encodedSessionTranscript: ByteArray

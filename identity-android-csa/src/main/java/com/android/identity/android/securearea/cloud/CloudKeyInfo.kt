@@ -11,6 +11,7 @@ import kotlinx.datetime.Instant
  * Cloud Secure Area specific class for information about a key.
  */
 class CloudKeyInfo internal constructor(
+    alias: String,
     attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
 
@@ -56,5 +57,5 @@ class CloudKeyInfo internal constructor(
      */
     val isStrongBoxBacked: Boolean
 
-) : KeyInfo(attestation.publicKey, keyPurposes, attestation)
+) : KeyInfo(alias, attestation.publicKey, keyPurposes, attestation)
 
