@@ -6,7 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.util.AndroidContexts
-import com.android.identity.util.Logger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 
@@ -50,8 +52,11 @@ class MainActivity : FragmentActivity() {
 
         initBouncyCastle()
 
-        setContent {
-            app.Content()
+        CoroutineScope(Dispatchers.Main).launch {
+            app.init()
+            setContent {
+                app.Content()
+            }
         }
     }
 }

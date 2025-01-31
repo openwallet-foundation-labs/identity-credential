@@ -42,11 +42,6 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -113,7 +108,7 @@ object TestAppUtils {
         add(SoftwareSecureArea.create(platformStorage()))
     }
     private val credentialFactory: CredentialFactory = CredentialFactory()
-    val documentTypeRepository: DocumentTypeRepository
+    lateinit var documentTypeRepository: DocumentTypeRepository
 
     val provisionedDocumentTypes = listOf(
         DrivingLicense.getDocumentType(),
@@ -143,26 +138,19 @@ object TestAppUtils {
     lateinit var issuerTrustManager: TrustManager
     lateinit var readerTrustManager: TrustManager
 
-    private val initJob: Job
-
-    init {
+    suspend fun init() {
         credentialFactory.addCredentialImplementation(MdocCredential::class) {
-            document, dataItem -> MdocCredential(document).apply { deserialize(dataItem) }
+                document, dataItem -> MdocCredential(document).apply { deserialize(dataItem) }
         }
         generateKeysAndCerts()
         generateTrustManagers()
+
         documentTypeRepository = DocumentTypeRepository()
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
 
-        initJob = CoroutineScope(Dispatchers.Main).launch {
-            init()
-        }
-    }
-
-    suspend fun init() {
-        val documentStore = DocumentStore(
+        documentStore = DocumentStore(
             platformStorage(),
             secureAreaRepository,
             credentialFactory
@@ -257,7 +245,7 @@ object TestAppUtils {
     }
 
     @OptIn(ExperimentalResourceApi::class)
-    private fun generateTrustManagers() {
+    private suspend fun generateTrustManagers() {
         issuerTrustManager = TrustManager()
         issuerTrustManager.addTrustPoint(
             TrustPoint(
@@ -272,7 +260,7 @@ object TestAppUtils {
             TrustPoint(
                 certificate = readerRootCert,
                 displayName = "OWF IC TestApp",
-                displayIcon = runBlocking { Res.readBytes("files/utopia-brewery.png") }
+                displayIcon = Res.readBytes("files/utopia-brewery.png")
             )
         )
     }
@@ -339,13 +327,11 @@ object TestAppUtils {
         val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
         val exceptions: MutableMap<String, List<String>> = HashMap()
 
-        runBlocking {
-            val cardArt = getDrawableResourceBytes(
-                getSystemResourceEnvironment(),
-                Res.drawable.driving_license_card_art
-            )
-            document.applicationData.setData("cardArt", cardArt)
-        }
+        val cardArt = getDrawableResourceBytes(
+            getSystemResourceEnvironment(),
+            Res.drawable.driving_license_card_art
+        )
+        document.applicationData.setData("cardArt", cardArt)
         document.applicationData.setString("displayName", displayName)
         document.applicationData.setString("displayType", documentType.displayName)
 
