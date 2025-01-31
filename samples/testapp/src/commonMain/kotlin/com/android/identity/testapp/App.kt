@@ -70,6 +70,10 @@ class App() {
 
     private val presentmentModel = PresentmentModel()
 
+    suspend fun init() {
+        TestAppUtils.init()
+    }
+
     @Composable
     @Preview
     fun Content(navController: NavHostController = rememberNavController()) {
