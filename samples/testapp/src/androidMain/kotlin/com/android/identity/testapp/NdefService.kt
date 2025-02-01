@@ -67,21 +67,48 @@ class NdefService: HostApduService() {
         super.onDestroy()
     }
 
+    private lateinit var settingsModel: TestAppSettingsModel
+
     override fun onCreate() {
         Logger.i(TAG, "onCreate")
         super.onCreate()
-        MainActivity.initBouncyCastle()
+        AndroidContexts.setApplicationContext(applicationContext)
+
+        // Note: Every millisecond literally counts here because we're handling a
+        // NFC tap and users tend to remove their phone from the reader really fast.
+        //
+        // So we don't really have time to call App.getInstance() which will initialize
+        // all the dependencies, like the DocumentStore, trusts lists, and so on. We
+        // just initialize the absolute minimum amount of things to get a NFC engagement
+        // done with for now and defer the work in App.getInstance() until
+        // CredmanPresentmentActivity is started in earnest.
+        //
+        // Since this is samples/testapp we do load the settings so it's possible to
+        // experiment with various settings, e.g. whether to use static or negotiated
+        // handover. Even loading settings slow and can take between 10-100ms.
+        // Production-apps will want to just hardcode their settings here and
+        // avoid this extra delay.
+        //
+        runBlocking {
+            val t0 = Clock.System.now()
+            settingsModel = TestAppSettingsModel.create(
+                storage = platformStorage(),
+                readOnly = true
+            )
+            val t1 = Clock.System.now()
+            Logger.i(TAG, "Settings loaded in ${(t1 - t0).inWholeMilliseconds} ms")
+        }
     }
 
     private var started = false
 
     private fun startEngagement() {
+        Logger.i(TAG, "startEngagement")
+
         disableEngagementJob?.cancel()
         disableEngagementJob = null
         listenForCancellationFromUiJob?.cancel()
         listenForCancellationFromUiJob = null
-
-        val settingsModel = App.settingsModel
 
         val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val timeStarted = Clock.System.now()
@@ -228,6 +255,7 @@ class NdefService: HostApduService() {
 
     override fun processCommandApdu(encodedCommandApdu: ByteArray, extras: Bundle?): ByteArray? {
         Logger.i(TAG, "processCommandApdu")
+
         if (!started) {
             started = true
             startEngagement()

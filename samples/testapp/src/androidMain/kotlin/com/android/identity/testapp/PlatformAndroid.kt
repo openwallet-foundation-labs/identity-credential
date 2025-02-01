@@ -3,18 +3,36 @@ package com.android.identity.testapp
 import android.os.Build
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.AndroidContexts
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
-import kotlinx.io.files.Path
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.net.NetworkInterface
+import java.security.Security
 
 actual val platform = Platform.ANDROID
+
+private var platformInitialized = false
+private val platformInitLock = Mutex()
+
+actual suspend fun platformInit() {
+    platformInitLock.withLock {
+        if (platformInitialized) {
+            return
+        }
+        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
+        // based implementation included in the OS itself.
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+        Security.addProvider(BouncyCastleProvider())
+        platformInitialized = true
+    }
+}
 
 actual fun getLocalIpAddress(): String {
     for (iface in NetworkInterface.getNetworkInterfaces()) {

@@ -20,6 +20,9 @@ import com.android.identity.util.AndroidContexts
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -32,14 +35,19 @@ class NfcPresentmentActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        CoroutineScope(Dispatchers.Main).launch {
+            startPresentment(App.getInstance())
+        }
+    }
 
+    private suspend fun startPresentment(app: App) {
         setContent {
             AppTheme {
                 Scaffold { innerPadding ->
                     Presentment(
                         presentmentModel = NdefService.presentmentModel,
-                        documentTypeRepository = TestAppUtils.documentTypeRepository,
-                        source = TestAppPresentmentSource(App.settingsModel),
+                        documentTypeRepository = app.documentTypeRepository,
+                        source = TestAppPresentmentSource(app),
                         onPresentmentComplete = { finish() },
                         appName = stringResource(Res.string.app_name),
                         appIconPainter = painterResource(Res.drawable.app_icon),

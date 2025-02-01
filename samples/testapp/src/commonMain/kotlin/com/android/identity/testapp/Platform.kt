@@ -12,6 +12,8 @@ enum class Platform(val displayName: String) {
 
 expect val platform: Platform
 
+expect suspend fun platformInit()
+
 expect fun getLocalIpAddress(): String
 
 expect val platformIsEmulator: Boolean

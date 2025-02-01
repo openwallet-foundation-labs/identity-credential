@@ -23,7 +23,7 @@ object AndroidContexts {
     val applicationContext: Context
         get() {
             return _applicationContext
-                ?: throw IllegalStateException("Application must use AndroidInitializer to set context")
+                ?: throw IllegalStateException("Application must use AndroidContexts to set context")
         }
     private var _applicationContext: Context? = null
 

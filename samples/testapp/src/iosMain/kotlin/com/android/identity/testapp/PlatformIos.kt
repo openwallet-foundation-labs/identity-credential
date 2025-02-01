@@ -41,6 +41,10 @@ import platform.posix.sockaddr_in6
 
 actual val platform = Platform.IOS
 
+actual suspend fun platformInit() {
+    // Nothing to do
+}
+
 @OptIn(ExperimentalForeignApi::class)
 actual fun getLocalIpAddress(): String {
     val (status, interfaces) = memScoped {

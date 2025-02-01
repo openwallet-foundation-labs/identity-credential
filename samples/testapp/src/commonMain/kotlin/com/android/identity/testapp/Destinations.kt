@@ -21,6 +21,7 @@ import identitycredential.samples.testapp.generated.resources.secure_enclave_sec
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
+import identitycredential.samples.testapp.generated.resources.settings_screen_title
 import org.jetbrains.compose.resources.StringResource
 
 sealed interface Destination {
@@ -31,6 +32,11 @@ sealed interface Destination {
 data object StartDestination : Destination {
     override val route = "start"
     override val title = Res.string.start_screen_title
+}
+
+data object SettingsDestination : Destination {
+    override val route = "settings"
+    override val title = Res.string.settings_screen_title
 }
 
 data object AboutDestination : Destination {
@@ -132,6 +138,7 @@ data object CertificateViewerDestination : Destination {
 
 val appDestinations = listOf(
     StartDestination,
+    SettingsDestination,
     AboutDestination,
     SoftwareSecureAreaDestination,
     AndroidKeystoreSecureAreaDestination,

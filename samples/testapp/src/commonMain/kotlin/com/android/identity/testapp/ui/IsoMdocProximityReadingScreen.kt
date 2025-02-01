@@ -22,7 +22,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -55,9 +54,9 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.DocumentCannedRequest
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.documenttype.DocumentCannedRequest
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
@@ -71,7 +70,7 @@ import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.mdoc.transport.NfcTransportMdocReader
 import com.android.identity.nfc.scanNfcTag
-import com.android.identity.testapp.TestAppSettingsModel
+import com.android.identity.testapp.App
 import com.android.identity.testapp.TestAppUtils
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.util.Constants
@@ -121,7 +120,7 @@ private data class RequestPickerEntry(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalCoroutinesApi::class)
 @Composable
 fun IsoMdocProximityReadingScreen(
-    settingsModel: TestAppSettingsModel,
+    app: App,
     showToast: (message: String) -> Unit,
 ) {
     val availableRequests = mutableListOf<RequestPickerEntry>()
@@ -226,12 +225,13 @@ fun IsoMdocProximityReadingScreen(
                     readerJob = coroutineScope.launch() {
                         try {
                             doReaderFlow(
+                                app = app,
                                 encodedDeviceEngagement = ByteString(data.substring(5).fromBase64Url()),
                                 existingTransport = null,
                                 handover = Simple.NULL,
                                 updateNfcDialogMessage = null,
-                                allowMultipleRequests = settingsModel.readerAllowMultipleRequests.value,
-                                bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value,
+                                allowMultipleRequests = app.settingsModel.readerAllowMultipleRequests.value,
+                                bleUseL2CAP = app.settingsModel.readerBleL2CapEnabled.value,
                                 showToast = showToast,
                                 readerTransport = readerTransport,
                                 readerSessionEncryption = readerSessionEncryption,
@@ -239,7 +239,7 @@ fun IsoMdocProximityReadingScreen(
                                 readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
                                 selectedRequest = selectedRequest,
                                 selectConnectionMethod = { connectionMethods ->
-                                    if (settingsModel.readerAutomaticallySelectTransport.value) {
+                                    if (app.settingsModel.readerAutomaticallySelectTransport.value) {
                                         showToast("Auto-selected first from $connectionMethods")
                                         connectionMethods[0]
                                     } else {
@@ -291,7 +291,7 @@ fun IsoMdocProximityReadingScreen(
                     modifier = Modifier.weight(1.0f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ShowReaderResults(readerMostRecentDeviceResponse, readerSessionTranscript)
+                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -311,8 +311,11 @@ fun IsoMdocProximityReadingScreen(
                                 try {
                                     val encodedDeviceRequest =
                                         TestAppUtils.generateEncodedDeviceRequest(
-                                            selectedRequest.value.sampleRequest,
-                                            readerSessionTranscript.value!!
+                                            request = selectedRequest.value.sampleRequest,
+                                            encodedSessionTranscript = readerSessionTranscript.value!!,
+                                            readerKey = app.readerKey,
+                                            readerCert = app.readerCert,
+                                            readerRootCert = app.readerRootCert
                                         )
                                     readerMostRecentDeviceResponse.value = byteArrayOf()
                                     readerTransport.value!!.sendMessage(
@@ -392,7 +395,7 @@ fun IsoMdocProximityReadingScreen(
                     modifier = Modifier.weight(1.0f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ShowReaderResults(readerMostRecentDeviceResponse, readerSessionTranscript)
+                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Column(
@@ -411,78 +414,6 @@ fun IsoMdocProximityReadingScreen(
             LazyColumn(
                 modifier = Modifier.padding(8.dp)
             ) {
-                item {
-                    SettingHeadline("Transports (NFC Negotiated Handover)")
-                }
-                item {
-                    SettingToggle(
-                        title = "BLE (mdoc central client mode)",
-                        isChecked = settingsModel.readerBleCentralClientModeEnabled.collectAsState().value,
-                        onCheckedChange = { settingsModel.readerBleCentralClientModeEnabled.value = it },
-                    )
-                }
-                item {
-                    SettingToggle(
-                        title = "BLE (mdoc peripheral server mode)",
-                        isChecked = settingsModel.readerBlePeripheralServerModeEnabled.collectAsState().value,
-                        onCheckedChange = { settingsModel.readerBlePeripheralServerModeEnabled.value = it },
-                    )
-                }
-                item {
-                    SettingToggle(
-                        title = "NFC Data Transfer",
-                        isChecked = settingsModel.readerNfcDataTransferEnabled.collectAsState().value,
-                        onCheckedChange = { settingsModel.readerNfcDataTransferEnabled.value = it },
-                    )
-                }
-                item {
-                    SettingToggle(
-                        title = "Automatically select transport",
-                        isChecked = settingsModel.readerAutomaticallySelectTransport.collectAsState().value,
-                        onCheckedChange = { settingsModel.readerAutomaticallySelectTransport.value = it },
-                    )
-                }
-                item {
-                    SettingHeadline("Transport Options")
-                }
-                item {
-                    SettingToggle(
-                        title = "Use L2CAP if available",
-                        isChecked = settingsModel.readerBleL2CapEnabled.collectAsState().value,
-                        onCheckedChange = { settingsModel.readerBleL2CapEnabled.value = it },
-                    )
-                }
-                item {
-                    SettingToggle(
-                        title = "Keep connection open after first request",
-                        isChecked = settingsModel.readerAllowMultipleRequests.collectAsState().value,
-                        onCheckedChange = { settingsModel.readerAllowMultipleRequests.value = it },
-                    )
-                }
-                item {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Button(
-                            onClick = {
-                                settingsModel.resetReaderSettings()
-                            },
-                        ) {
-                            Text(text = "Reset Settings")
-                        }
-                    }
-                }
-                item {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
                 item {
                     RequestPicker(
                         availableRequests,
@@ -509,7 +440,7 @@ fun IsoMdocProximityReadingScreen(
                                 try {
                                     val negotiatedHandoverConnectionMethods = mutableListOf<ConnectionMethod>()
                                     val bleUuid = UUID.randomUUID()
-                                    if (settingsModel.readerBleCentralClientModeEnabled.value) {
+                                    if (app.settingsModel.readerBleCentralClientModeEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
                                             ConnectionMethodBle(
                                                 supportsPeripheralServerMode = false,
@@ -519,7 +450,7 @@ fun IsoMdocProximityReadingScreen(
                                             )
                                         )
                                     }
-                                    if (settingsModel.readerBlePeripheralServerModeEnabled.value) {
+                                    if (app.settingsModel.readerBlePeripheralServerModeEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
                                             ConnectionMethodBle(
                                                 supportsPeripheralServerMode = true,
@@ -529,7 +460,7 @@ fun IsoMdocProximityReadingScreen(
                                             )
                                         )
                                     }
-                                    if (settingsModel.readerNfcDataTransferEnabled.value) {
+                                    if (app.settingsModel.readerNfcDataTransferEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
                                             ConnectionMethodNfc(
                                                 commandDataFieldMaxLength = 0xffff,
@@ -540,10 +471,10 @@ fun IsoMdocProximityReadingScreen(
                                     scanNfcMdocReader(
                                         message = "Hold near credential holder's phone.",
                                         options = MdocTransportOptions(
-                                            bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value
+                                            bleUseL2CAP = app.settingsModel.readerBleL2CapEnabled.value
                                         ),
                                         selectConnectionMethod = { connectionMethods ->
-                                            if (settingsModel.readerAutomaticallySelectTransport.value) {
+                                            if (app.settingsModel.readerAutomaticallySelectTransport.value) {
                                                 showToast("Auto-selected first from $connectionMethods")
                                                 connectionMethods[0]
                                             } else {
@@ -556,12 +487,13 @@ fun IsoMdocProximityReadingScreen(
                                         negotiatedHandoverConnectionMethods = negotiatedHandoverConnectionMethods,
                                         onHandover = { transport, encodedDeviceEngagement, handover, updateMessage ->
                                             doReaderFlow(
+                                                app = app,
                                                 encodedDeviceEngagement = encodedDeviceEngagement,
                                                 existingTransport = transport,
                                                 handover = handover,
                                                 updateNfcDialogMessage = updateMessage,
-                                                allowMultipleRequests = settingsModel.readerAllowMultipleRequests.value,
-                                                bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value,
+                                                allowMultipleRequests = app.settingsModel.readerAllowMultipleRequests.value,
+                                                bleUseL2CAP = app.settingsModel.readerBleL2CapEnabled.value,
                                                 showToast = showToast,
                                                 readerTransport = readerTransport,
                                                 readerSessionEncryption = readerSessionEncryption,
@@ -569,7 +501,7 @@ fun IsoMdocProximityReadingScreen(
                                                 readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
                                                 selectedRequest = selectedRequest,
                                                 selectConnectionMethod = { connectionMethods ->
-                                                    if (settingsModel.readerAutomaticallySelectTransport.value) {
+                                                    if (app.settingsModel.readerAutomaticallySelectTransport.value) {
                                                         showToast("Auto-selected first from $connectionMethods")
                                                         connectionMethods[0]
                                                     } else {
@@ -599,6 +531,7 @@ fun IsoMdocProximityReadingScreen(
 }
 
 private suspend fun doReaderFlow(
+    app: App,
     encodedDeviceEngagement: ByteString,
     existingTransport: MdocTransport?,
     handover: DataItem,
@@ -641,6 +574,7 @@ private suspend fun doReaderFlow(
                     tagInteractionFunc = { tag, updateMessage ->
                         transport.setTag(tag)
                         doReaderFlowWithTransport(
+                            app = app,
                             transport = transport,
                             encodedDeviceEngagement = encodedDeviceEngagement,
                             handover = handover,
@@ -669,6 +603,7 @@ private suspend fun doReaderFlow(
         }
     }
     doReaderFlowWithTransport(
+        app = app,
         transport = transport,
         encodedDeviceEngagement = encodedDeviceEngagement,
         handover = handover,
@@ -687,6 +622,7 @@ private suspend fun doReaderFlow(
 }
 
 private suspend fun doReaderFlowWithTransport(
+    app: App,
     transport: MdocTransport,
     encodedDeviceEngagement: ByteString,
     handover: DataItem,
@@ -720,8 +656,11 @@ private suspend fun doReaderFlowWithTransport(
     readerSessionEncryption.value = sessionEncryption
     readerSessionTranscript.value = encodedSessionTranscript
     val encodedDeviceRequest = TestAppUtils.generateEncodedDeviceRequest(
-        selectedRequest.value.sampleRequest,
-        encodedSessionTranscript
+        request = selectedRequest.value.sampleRequest,
+        encodedSessionTranscript = readerSessionTranscript.value!!,
+        readerKey = app.readerKey,
+        readerCert = app.readerCert,
+        readerRootCert = app.readerRootCert
     )
     try {
         transport.open(eDeviceKey)
@@ -838,6 +777,7 @@ private fun RequestPicker(
 
 @Composable
 private fun ShowReaderResults(
+    app: App,
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
     readerSessionTranscript: MutableState<ByteArray?>,
 ) {
@@ -861,8 +801,8 @@ private fun ShowReaderResults(
             // TODO: show multiple documents
             val documentData = DocumentData.fromMdocDeviceResponseDocument(
                 deviceResponse.documents[0],
-                TestAppUtils.documentTypeRepository,
-                TestAppUtils.issuerTrustManager
+                app.documentTypeRepository,
+                app.issuerTrustManager
             )
             ShowDocumentData(documentData, 0, deviceResponse.documents.size)
         }

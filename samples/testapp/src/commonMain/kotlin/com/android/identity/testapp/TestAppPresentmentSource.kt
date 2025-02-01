@@ -13,17 +13,17 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 class TestAppPresentmentSource(
-    val settingsModel: TestAppSettingsModel
+    val app: App
 ): PresentmentSource {
 
     override val documentTypeRepository: DocumentTypeRepository
-        get() = TestAppUtils.documentTypeRepository
+        get() = app.documentTypeRepository
 
     override fun findTrustPoint(request: Request): TrustPoint? {
         return when (request) {
             is MdocRequest -> {
                 request.requester.certChain?.let {
-                    val trustResult = TestAppUtils.readerTrustManager.verify(it.certificates)
+                    val trustResult = app.readerTrustManager.verify(it.certificates)
                     if (trustResult.isTrusted) {
                         trustResult.trustPoints[0]
                     } else {
@@ -40,7 +40,7 @@ class TestAppPresentmentSource(
         preSelectedDocument: Document?
     ): List<Credential> {
         when (request) {
-            is MdocRequest -> return mdocFindCredentialsForRequest(request, preSelectedDocument)
+            is MdocRequest -> return mdocFindCredentialsForRequest(app, request, preSelectedDocument)
             is VcRequest -> TODO()
         }
 
@@ -50,11 +50,12 @@ class TestAppPresentmentSource(
         credential: Credential,
         request: Request,
     ): Boolean {
-        return settingsModel.presentmentShowConsentPrompt.value
+        return app.settingsModel.presentmentShowConsentPrompt.value
     }
 }
 
 private suspend fun mdocFindCredentialsForRequest(
+    app: App,
     request: MdocRequest,
     preSelectedDocument: Document?
 ): List<Credential> {
@@ -69,8 +70,8 @@ private suspend fun mdocFindCredentialsForRequest(
         }
     }
 
-    for (documentName in TestAppUtils.documentStore.listDocuments()) {
-        val document = TestAppUtils.documentStore.lookupDocument(documentName) ?: continue
+    for (documentName in app.documentStore.listDocuments()) {
+        val document = app.documentStore.lookupDocument(documentName) ?: continue
         val credential = mdocFindCredentialInDocument(request, now, document)
         if (credential != null) {
             result.add(credential)

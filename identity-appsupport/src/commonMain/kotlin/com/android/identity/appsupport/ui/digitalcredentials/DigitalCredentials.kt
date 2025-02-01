@@ -15,7 +15,7 @@ interface DigitalCredentials {
     val available: Boolean
 
     /**
-     * Registers all credentials in the given [DocumentStore] with the platform.
+     * Registers all documents in the given [DocumentStore] with the platform.
      *
      * This also watches the store and updates the registration as documents and credentials
      * are added and removed.
@@ -29,11 +29,15 @@ interface DigitalCredentials {
     )
 
     /**
-     * Stops exporting credentials.
+     * Stops exporting documents.
+     *
+     * All documents from the given store are unregistered with the platform.
      *
      * @param documentStore the [DocumentStore] passed to [startExportingCredentials]
      */
-    suspend fun stopExportingCredentials(documentStore: DocumentStore)
+    suspend fun stopExportingCredentials(
+        documentStore: DocumentStore
+    )
 
     /**
      * The default implementation of the [DigitalCredentials] API on the platform.
@@ -47,8 +51,9 @@ interface DigitalCredentials {
             documentTypeRepository: DocumentTypeRepository,
         ) = defaultStartExportingCredentials(documentStore, documentTypeRepository)
 
-        override suspend fun stopExportingCredentials(documentStore: DocumentStore) =
-            defaultStopExportingCredentials(documentStore)
+        override suspend fun stopExportingCredentials(
+            documentStore: DocumentStore
+        ) = defaultStopExportingCredentials(documentStore)
     }
 }
 

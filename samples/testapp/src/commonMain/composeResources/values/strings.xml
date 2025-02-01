@@ -4,6 +4,7 @@
     <string name="back_button">Back</string>
 
     <string name="start_screen_title">Test App</string>
+    <string name="settings_screen_title">Settings</string>
     <string name="about_screen_title">About</string>
     <string name="software_secure_area_screen_title">Software Secure Area</string>
     <string name="android_keystore_secure_area_screen_title">Android Keystore Secure Area</string>

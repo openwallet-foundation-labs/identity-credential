@@ -51,16 +51,17 @@ import kotlin.coroutines.CoroutineContext
  * For more details about documents stored in a [DocumentStore] see the
  * [Document] class.
  *
- * @param storage the [Storage] to use for storing/retrieving documents.
- * @param secureAreaRepository the repository of configured [SecureArea] that can
+ * @property storage the [Storage] to use for storing/retrieving documents.
+ * @property secureAreaRepository the repository of configured [SecureArea] that can
  * be used.
- * @param credentialFactory the [CredentialFactory] to use for retrieving serialized credentials
+ * @property credentialFactory the [CredentialFactory] to use for retrieving serialized credentials
  * associated with documents.
+ * @property coroutineScope the [CoroutineScope] to use.
  */
 class DocumentStore(
-    storage: Storage,
-    private val secureAreaRepository: SecureAreaRepository,
-    private val credentialFactory: CredentialFactory,
+    val storage: Storage,
+    val secureAreaRepository: SecureAreaRepository,
+    val credentialFactory: CredentialFactory,
     internal val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default)
 ) {
     // Use a cache so the same instance is returned by multiple lookupDocument() calls.
