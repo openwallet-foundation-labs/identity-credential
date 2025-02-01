@@ -48,6 +48,7 @@
             android:name=".CredmanPresentmentActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen"
             android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="androidx.credentials.registry.provider.action.GET_CREDENTIAL" />
@@ -66,6 +67,7 @@
             android:turnScreenOn="true"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen"
             android:launchMode="singleInstance">
         </activity>
 
@@ -81,6 +83,20 @@
             <meta-data
                 android:name="android.nfc.cardemulation.host_apdu_service"
                 android:resource="@xml/nfc_ndef_service" />
+        </service>
+
+        <service
+            android:name=".MdocNfcDataTransferService"
+            android:exported="true"
+            android:label="@string/nfc_ndef_service_description"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/mdoc_nfc_data_transfer_service" />
         </service>
     </application>
 

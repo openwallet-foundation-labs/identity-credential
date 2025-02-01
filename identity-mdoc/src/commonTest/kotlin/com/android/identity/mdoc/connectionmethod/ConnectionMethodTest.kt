@@ -17,6 +17,7 @@ package com.android.identity.mdoc.connectionmethod
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -33,7 +34,7 @@ class ConnectionMethodTest {
         val cm = ConnectionMethodNfc(4096, 32768)
         val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodNfc?
         assertNotNull(decoded)
-        assertEquals(decoded!!.commandDataFieldMaxLength, decoded.commandDataFieldMaxLength)
+        assertEquals(decoded.commandDataFieldMaxLength, decoded.commandDataFieldMaxLength)
         assertEquals(decoded.responseDataFieldMaxLength, decoded.responseDataFieldMaxLength)
         assertEquals(
             """[
@@ -45,6 +46,9 @@ class ConnectionMethodTest {
   }
 ]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false)!!.first
+        val decodedNfc = ConnectionMethodNfc.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC)!!
+        assertEquals(cm, decodedNfc)
     }
 
     @Test
@@ -84,6 +88,9 @@ class ConnectionMethodTest {
             uuidBoth,
             uuidBoth
         )
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false).first
+        val decodedNfc = ConnectionMethodBle.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC, null)!!
+        assertEquals(cm, decodedNfc)
     }
 
     @Test
@@ -112,6 +119,10 @@ class ConnectionMethodTest {
   }
 ]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
+
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false).first
+        val decodedNfc = ConnectionMethodBle.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC, null)!!
+        assertEquals(cm, decodedNfc)
     }
 
     @Test
@@ -140,6 +151,10 @@ class ConnectionMethodTest {
   }
 ]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
+
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false).first
+        val decodedNfc = ConnectionMethodBle.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC, null)!!
+        assertEquals(cm, decodedNfc)
     }
 
     @Test

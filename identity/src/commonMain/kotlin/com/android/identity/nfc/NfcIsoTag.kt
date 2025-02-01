@@ -10,14 +10,22 @@ import kotlin.time.Duration
  * This is an abstract super class intended for OS-specific code to implement the [transceive] method.
  */
 abstract class NfcIsoTag {
+
+    /**
+     * The maximum size of an APDU that can be sent via [transceive].
+     *
+     * This varies depending on the NFC tag reader hardware.
+     */
+    abstract val maxTransceiveLength: Int
+
     /**
      * Sends an APDU to the tag and waits for a response APDU.
      *
-     * @param apdu the [CommandApdu] to send.
+     * @param command the [CommandApdu] to send.
      * @return the [ResponseApdu] which was received.
      * @throws NfcTagLostException if the tag was lost.
      */
-    abstract suspend fun transceive(apdu: CommandApdu): ResponseApdu
+    abstract suspend fun transceive(command: CommandApdu): ResponseApdu
 
     /**
      * Selects an application according to ISO 7816-4 clause 11.2.2.

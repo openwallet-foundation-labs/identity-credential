@@ -1,7 +1,11 @@
 package com.android.identity.testapp
 
+import android.content.ComponentName
+import android.nfc.NfcAdapter
+import android.nfc.cardemulation.CardEmulation
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
@@ -40,15 +44,22 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         AndroidContexts.setCurrentActivity(this)
+        NfcAdapter.getDefaultAdapter(this)?.let {
+            CardEmulation.getInstance(it)?.setPreferredService(this, ComponentName(this, NdefService::class::class.java))
+        }
     }
 
     override fun onPause() {
         super.onPause()
         AndroidContexts.setCurrentActivity(null)
+        NfcAdapter.getDefaultAdapter(this)?.let {
+            CardEmulation.getInstance(it)?.unsetPreferredService(this)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         initBouncyCastle()
 

@@ -20,7 +20,6 @@ import com.android.identity.nfc.ServiceSelectRecord
 import com.android.identity.nfc.TnepStatusRecord
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
-import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
@@ -60,7 +59,7 @@ suspend fun mdocReaderNfcHandover(
         // user will be shown UI to convey another tap should happen. So since we're the mdoc reader, we
         // want to keep scanning...
         //
-        if (e.status == Nfc.RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND) {
+        if (e.status == Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND) {
             Logger.i(TAG, "NDEF application not found, continuing scanning")
             return null
         }

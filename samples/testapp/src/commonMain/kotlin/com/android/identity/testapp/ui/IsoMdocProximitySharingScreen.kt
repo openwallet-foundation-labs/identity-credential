@@ -41,6 +41,7 @@ import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
 import com.android.identity.mdoc.transport.advertiseAndWait
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.testapp.Platform
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.testapp.platform
@@ -137,6 +138,13 @@ fun IsoMdocProximitySharingScreen(
                     title = "BLE (mdoc peripheral server mode)",
                     isChecked = settingsModel.presentmentBlePeripheralServerModeEnabled.collectAsState().value,
                     onCheckedChange = { settingsModel.presentmentBlePeripheralServerModeEnabled.value = it },
+                )
+            }
+            item {
+                SettingToggle(
+                    title = "NFC Data Transfer",
+                    isChecked = settingsModel.presentmentNfcDataTransferEnabled.collectAsState().value,
+                    onCheckedChange = { settingsModel.presentmentNfcDataTransferEnabled.value = it },
                 )
             }
             item {
@@ -260,6 +268,14 @@ fun IsoMdocProximitySharingScreen(
                                         )
                                     )
                                 }
+                                if (settingsModel.presentmentNfcDataTransferEnabled.value) {
+                                    connectionMethods.add(
+                                        ConnectionMethodNfc(
+                                            commandDataFieldMaxLength = 0xffff,
+                                            responseDataFieldMaxLength = 0x10000
+                                        )
+                                    )
+                                }
                                 val options = MdocTransportOptions(
                                     bleUseL2CAP = settingsModel.presentmentBleL2CapEnabled.value
                                 )
@@ -332,6 +348,7 @@ private suspend fun doHolderFlow(
 private val prefixToDisplayNameMap = mapOf<String, String>(
     "ble:central_client_mode:" to "BLE (mdoc central client mode)",
     "ble:peripheral_server_mode:" to "BLE (mdoc peripheral server mode)",
+    "nfc:" to "NFC Data Transfer"
 )
 
 private fun TestAppSettingsModel.swapNegotiatedHandoverOrder(index1: Int, index2: Int) {

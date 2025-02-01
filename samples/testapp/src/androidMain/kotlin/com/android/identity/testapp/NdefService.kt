@@ -18,7 +18,9 @@ import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.nfc.CommandApdu
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
+import com.android.identity.appsupport.ui.presentment.PresentmentTimeout
 import com.android.identity.mdoc.transport.advertiseAndWait
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
@@ -154,6 +156,14 @@ class NdefService: HostApduService() {
                     )
                 )
             }
+            if (settingsModel.presentmentNfcDataTransferEnabled.value) {
+                staticHandoverConnectionMethods.add(
+                    ConnectionMethodNfc(
+                        commandDataFieldMaxLength = 0xffff,
+                        responseDataFieldMaxLength = 0x10000
+                    )
+                )
+            }
         }
 
         engagement = MdocNfcEngagementHelper(
@@ -172,6 +182,7 @@ class NdefService: HostApduService() {
             },
             onError = { error ->
                 Logger.w(TAG, "Engagement failed", error)
+                error.printStackTrace()
                 vibrateError()
                 engagement = null
             },
@@ -237,6 +248,7 @@ class NdefService: HostApduService() {
 
     override fun onDeactivated(reason: Int) {
         Logger.i(TAG, "onDeactivated: reason=$reason")
+        started = false
         // If the reader hasn't connected by the time NFC interaction ends, make sure we only
         // wait for a limited amount of time.
         if (presentmentModel.state.value == PresentmentModel.State.CONNECTING) {
@@ -245,7 +257,7 @@ class NdefService: HostApduService() {
             disableEngagementJob = CoroutineScope(Dispatchers.IO).launch {
                 delay(timeout)
                 if (presentmentModel.state.value == PresentmentModel.State.CONNECTING) {
-                    presentmentModel.setCompleted(Error("Reader didn't connect inside $timeout, closing"))
+                    presentmentModel.setCompleted(PresentmentTimeout("Reader didn't connect inside $timeout, closing"))
                 }
                 engagement = null
                 disableEngagementJob = null

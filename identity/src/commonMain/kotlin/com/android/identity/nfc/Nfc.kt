@@ -17,6 +17,13 @@ object Nfc {
     val NDEF_APPLICATION_ID = ByteString("D2760000850101".fromHex())
 
     /**
+     * The Application ID for ISO mdoc NFC data transfer.
+     *
+     * Reference: ISO/IEC 18013-5:2021 clause 8.3.3.1.2
+     */
+    val ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID = ByteString("A0000002480400".fromHex())
+
+    /**
      * The File Identifier for the NDEF Capability Container file.
      */
     const val NDEF_CAPABILITY_CONTAINER_FILE_ID = 0xe103
@@ -47,7 +54,28 @@ object Nfc {
      *
      * Reference: ISO/IEC 7816-4 clause 5.6
      */
-    const val RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND = 0x6a82
+    const val RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND = 0x6a82
+
+    /**
+     * The [ResponseApdu.status] for indicating that bytes are are still available.
+     *
+     * Reference: ISO/IEC 7816-4 clause 5.3.4
+     */
+    const val RESPONSE_STATUS_CHAINING_RESPONSE_BYTES_STILL_AVAILABLE = 0x6100
+
+    /**
+     * Command chaining control flag indicating this is the last or only part of a chain.
+     *
+     * Reference: ISO/IEC 7816-4 clause 5.4.1
+     */
+    const val CLA_CHAIN_LAST = 0x00
+
+    /**
+     * Command chaining control flag indicating this is not the last part of a chain.
+     *
+     * Reference: ISO/IEC 7816-4 clause 5.4.1
+     */
+    const val CLA_CHAIN_NOT_LAST = 0x10
 
     /**
      * SELECT command.
@@ -95,6 +123,20 @@ object Nfc {
      * Reference: ISO/IEC 7816-4 clause 11.3.5
      */
     const val INS_UPDATE_BINARY = 0xd6
+
+    /**
+     * ENVELOPE command.
+     *
+     * Reference: ISO/IEC 7816-4 clause 11.8.2
+     */
+    const val INS_ENVELOPE = 0xc3
+
+    /**
+     * GET RESPONSE command.
+     *
+     * Reference: ISO/IEC 7816-4 clause 11.8.1
+     */
+    const val INS_GET_RESPONSE = 0xc0
 
     /**
      * RTD Text type, for use with [Tnf.WELL_KNOWN].
@@ -159,4 +201,11 @@ object Nfc {
      * Reference: NFC Forum Connection Handover Technical Specification section 4.1.2.
      */
     const val MIME_TYPE_CONNECTION_HANDOVER_BLE = "application/vnd.bluetooth.le.oob"
+
+    /**
+     * The external type for NFC data transfer.
+     *
+     * Reference: ISO/IEC 18013-5:2021 clause 8.2.2.2.
+     */
+    const val EXTERNAL_TYPE_ISO_18013_5_NFC = "iso.org:18013:nfc"
 }

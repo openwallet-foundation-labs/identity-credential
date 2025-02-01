@@ -13,14 +13,21 @@ internal class NfcIsoTagAndroid(
         private const val TAG = "NfcIsoTagAndroid"
     }
 
-    override suspend fun transceive(apdu: CommandApdu): ResponseApdu {
+    override val maxTransceiveLength: Int
+        get() = tag.maxTransceiveLength
+
+    override suspend fun transceive(command: CommandApdu): ResponseApdu {
+        val encodedCommand = command.encode()
+        check(encodedCommand.size <= maxTransceiveLength) {
+            "APDU is ${encodedCommand.size} bytes which exceeds maxTransceiveLength of $maxTransceiveLength bytes"
+        }
         // Because transceive() blocks the calling thread, we want to ensure this runs in the
         // dedicated thread that was created for interacting with the tag and which onTagDiscovered()
         // was called in.
         //
         val responseApduData = withContext(tagContext) {
             try {
-                tag.transceive(apdu.encode())
+                tag.transceive(encodedCommand)
             } catch (e: TagLostException) {
                 throw NfcTagLostException("Tag was lost", e)
             }

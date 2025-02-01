@@ -97,8 +97,12 @@ abstract class ConnectionMethod {
                 record.type.decodeToString() == Nfc.MIME_TYPE_CONNECTION_HANDOVER_BLE &&
                 record.id.decodeToString() == "0") {
                 return ConnectionMethodBle.fromNdefRecord(record, role, uuid)
+            } else if (record.tnf == NdefRecord.Tnf.EXTERNAL_TYPE &&
+                record.type.decodeToString() == Nfc.EXTERNAL_TYPE_ISO_18013_5_NFC &&
+                record.id.decodeToString() == "nfc") {
+                return ConnectionMethodNfc.fromNdefRecord(record, role)
             }
-            // TODO: add support for Wifi Aware, NFC, and others.
+            // TODO: add support for Wifi Aware and others.
             Logger.w(TAG, "No support for NDEF record $record")
             return null
         }

@@ -47,9 +47,11 @@ private class NfcTagReader<T> {
                     // Note: onTagDiscovered() is called in a dedicated thread and we're not supposed
                     // to return until we're done interrogating the tag.
                     runBlocking {
+                        Logger.i(TAG, "maxTransceiveLength: ${isoDep.maxTransceiveLength}")
+                        val isoTag = NfcIsoTagAndroid(isoDep, currentCoroutineContext())
                         try {
                             val ret = tagInteractionFunc(
-                                NfcIsoTagAndroid(isoDep, currentCoroutineContext()),
+                                isoTag,
                                 { message -> dialogMessage.value = message }
                             )
                             if (ret != null) {
