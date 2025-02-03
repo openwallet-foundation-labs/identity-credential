@@ -5,10 +5,12 @@ import com.android.identity.appsupport.credman.IdentityCredentialEntry
 import com.android.identity.appsupport.credman.IdentityCredentialField
 import com.android.identity.appsupport.credman.IdentityCredentialRegistry
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.Credential
+import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.storage.StorageTable
+import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
@@ -19,8 +21,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
+import kotlinx.io.bytestring.decodeToString
+import kotlinx.io.bytestring.encodeToByteString
 
 private const val TAG = "DigitalCredentials"
 
@@ -28,7 +30,12 @@ private class RegistrationData (
     val documentStore: DocumentStore,
     val documentTypeRepository: DocumentTypeRepository,
     val listeningJob: Job,
-    var mapIdToCredential: Map<Int, Credential>
+)
+
+private val credmanIdTableSpec = StorageTableSpec(
+    name = "CredmanIdMapping",
+    supportPartitions = false,
+    supportExpiration = false
 )
 
 private val exportedStores = mutableMapOf<DocumentStore, RegistrationData>()
@@ -50,7 +57,6 @@ private fun getDataElementDisplayName(
     return dataElementName
 }
 
-
 private suspend fun updateCredman() {
     var idCount = 0
     val entries = mutableListOf<IdentityCredentialEntry>()
@@ -62,7 +68,8 @@ private suspend fun updateCredman() {
         appInfo.nonLocalizedLabel.toString()
     }
     for ((_, regData) in exportedStores) {
-        val mapIdToCredential = mutableMapOf<Int, Credential>()
+        val credmanIdTable = regData.documentStore.storage.getTable(credmanIdTableSpec)
+        credmanIdTable.deleteAll()
         for (documentId in regData.documentStore.listDocuments()) {
             val document = regData.documentStore.lookupDocument(documentId) ?: continue
             val mdocCredential = (document.certifiedCredentials.find { it is MdocCredential }
@@ -123,7 +130,7 @@ private suspend fun updateCredman() {
                 options
             )
 
-            mapIdToCredential[idCount] = mdocCredential
+            credmanIdTable.insert(idCount.toString(), document.name.encodeToByteString())
             entries.add(
                 IdentityCredentialEntry(
                     id = (idCount++).toLong(),
@@ -137,7 +144,6 @@ private suspend fun updateCredman() {
                 )
             )
         }
-        regData.mapIdToCredential = mapIdToCredential
     }
 
     val registry = IdentityCredentialRegistry(entries)
@@ -167,10 +173,9 @@ internal actual suspend fun defaultStartExportingCredentials(
             }
     }
     exportedStores.put(documentStore, RegistrationData(
-        documentStore,
-        documentTypeRepository,
-        listeningJob,
-        mapOf()
+        documentStore = documentStore,
+        documentTypeRepository = documentTypeRepository,
+        listeningJob = listeningJob,
     ))
     updateCredman()
 }
@@ -178,7 +183,7 @@ internal actual suspend fun defaultStartExportingCredentials(
 internal actual suspend fun defaultStopExportingCredentials(
     documentStore: DocumentStore,
 ) {
-    val registrationData = exportedStores.get(documentStore)
+    val registrationData = exportedStores.remove(documentStore)
     if (registrationData == null) {
         return
     }
@@ -186,12 +191,14 @@ internal actual suspend fun defaultStopExportingCredentials(
     updateCredman()
 }
 
-fun DigitalCredentials.Default.getCredentialForId(id: Int): Credential? {
-    for ((_, regData) in exportedStores) {
-        val credential = regData.mapIdToCredential[id]
-        if (credential != null) {
-            return credential
-        }
+suspend fun DocumentStore.lookupForCredmanId(
+    credmanId: Long
+): Document? {
+    val credmanIdTable = storage.getTable(credmanIdTableSpec)
+    val documentId = credmanIdTable.get(credmanId.toString())
+    if (documentId != null) {
+        return lookupDocument(documentId.decodeToString())
     }
     return null
 }
+

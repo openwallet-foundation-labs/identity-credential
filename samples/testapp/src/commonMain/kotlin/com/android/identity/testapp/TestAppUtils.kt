@@ -1,6 +1,5 @@
 package com.android.identity.testapp
 
-import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
@@ -11,20 +10,15 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.credential.CredentialFactory
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
-import com.android.identity.documenttype.DocumentType
-import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.DocumentCannedRequest
+import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
@@ -34,18 +28,12 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.trustmanagement.TrustManager
-import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
 import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
@@ -62,7 +50,10 @@ object TestAppUtils {
 
     fun generateEncodedDeviceRequest(
         request: DocumentCannedRequest,
-        encodedSessionTranscript: ByteArray
+        encodedSessionTranscript: ByteArray,
+        readerKey: EcPrivateKey,
+        readerCert: X509Cert,
+        readerRootCert: X509Cert,
     ): ByteArray {
         val mdocRequest = request.mdocRequest!!
         val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
@@ -101,14 +92,6 @@ object TestAppUtils {
         )
     }
 
-    private lateinit var documentData: NameSpacedData
-    lateinit var documentStore: DocumentStore
-
-    private val secureAreaRepository: SecureAreaRepository = SecureAreaRepository.build {
-        add(SoftwareSecureArea.create(platformStorage()))
-    }
-    private val credentialFactory: CredentialFactory = CredentialFactory()
-    lateinit var documentTypeRepository: DocumentTypeRepository
 
     val provisionedDocumentTypes = listOf(
         DrivingLicense.getDocumentType(),
@@ -116,191 +99,70 @@ object TestAppUtils {
         EUPersonalID.getDocumentType()
     )
 
-    private val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
-    private val certsValidUntil = LocalDate.parse("2034-12-01").atStartOfDayIn(TimeZone.UTC)
-
-    private lateinit var dsKey: EcPrivateKey
-    lateinit var dsKeyPub: EcPublicKey
-    lateinit var dsCert: X509Cert
-
-    private lateinit var iacaKey: EcPrivateKey
-    lateinit var iacaKeyPub: EcPublicKey
-    lateinit var iacaCert: X509Cert
-
-    private lateinit var readerKey: EcPrivateKey
-    lateinit var readerKeyPub: EcPublicKey
-    lateinit var readerCert: X509Cert
-
-    private lateinit var readerRootKey: EcPrivateKey
-    lateinit var readerRootKeyPub: EcPublicKey
-    lateinit var readerRootCert: X509Cert
-
-    lateinit var issuerTrustManager: TrustManager
-    lateinit var readerTrustManager: TrustManager
-
-    suspend fun init() {
-        credentialFactory.addCredentialImplementation(MdocCredential::class) {
-                document, dataItem -> MdocCredential(document).apply { deserialize(dataItem) }
+    suspend fun provisionDocuments(
+        documentStore: DocumentStore,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert
+    ) {
+        if (!documentStore.listDocuments().contains("testDrivingLicense")) {
+            provisionDocument(
+                documentStore,
+                dsKey,
+                dsCert,
+                "testDrivingLicense",
+                DrivingLicense.getDocumentType(),
+                "Erika",
+                "Erika's Driving License"
+            )
         }
-        generateKeysAndCerts()
-        generateTrustManagers()
-
-        documentTypeRepository = DocumentTypeRepository()
-        documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
-        documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
-        documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
-
-        documentStore = DocumentStore(
-            platformStorage(),
-            secureAreaRepository,
-            credentialFactory
-        )
-        provisionDocuments(documentStore)
-    }
-
-    private fun generateKeysAndCerts() {
-        iacaKeyPub = EcPublicKey.fromPem(
-            """
-                -----BEGIN PUBLIC KEY-----
-                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE+QDye70m2O0llPXMjVjxVZz3m5k6agT+
-                wih+L79b7jyqUl99sbeUnpxaLD+cmB3HK3twkA7fmVJSobBc+9CDhkh3mx6n+YoH
-                5RulaSWThWBfMyRjsfVODkosHLCDnbPV
-                -----END PUBLIC KEY-----
-            """.trimIndent().trim(),
-            EcCurve.P384
-        )
-        iacaKey = EcPrivateKey.fromPem(
-            """
-                -----BEGIN PRIVATE KEY-----
-                MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCcRuzXW3pW2h9W8pu5
-                /CSR6JSnfnZVATq+408WPoNC3LzXqJEQSMzPsI9U1q+wZ2yhZANiAAT5APJ7vSbY
-                7SWU9cyNWPFVnPebmTpqBP7CKH4vv1vuPKpSX32xt5SenFosP5yYHccre3CQDt+Z
-                UlKhsFz70IOGSHebHqf5igflG6VpJZOFYF8zJGOx9U4OSiwcsIOds9U=
-                -----END PRIVATE KEY-----
-            """.trimIndent().trim(),
-            iacaKeyPub
-        )
-        iacaCert = MdocUtil.generateIacaCertificate(
-            iacaKey = iacaKey,
-            subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST IACA"),
-            serial = ASN1Integer(1L),
-            validFrom = certsValidFrom,
-            validUntil = certsValidUntil,
-            issuerAltNameUrl = "https://github.com/openwallet-foundation-labs/identity-credential",
-            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential"
-        )
-
-        dsKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        dsKeyPub = dsKey.publicKey
-        dsCert = MdocUtil.generateDsCertificate(
-            iacaCert = iacaCert,
-            iacaKey = iacaKey,
-            dsKey = dsKeyPub,
-            subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST DS"),
-            serial = ASN1Integer(1L),
-            validFrom = certsValidFrom,
-            validUntil = certsValidUntil,
-        )
-
-        readerRootKeyPub = EcPublicKey.fromPem(
-            """
-                -----BEGIN PUBLIC KEY-----
-                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE+QDye70m2O0llPXMjVjxVZz3m5k6agT+
-                wih+L79b7jyqUl99sbeUnpxaLD+cmB3HK3twkA7fmVJSobBc+9CDhkh3mx6n+YoH
-                5RulaSWThWBfMyRjsfVODkosHLCDnbPV
-                -----END PUBLIC KEY-----
-            """.trimIndent().trim(),
-            EcCurve.P384
-        )
-        readerRootKey = EcPrivateKey.fromPem(
-            """
-                -----BEGIN PRIVATE KEY-----
-                MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCcRuzXW3pW2h9W8pu5
-                /CSR6JSnfnZVATq+408WPoNC3LzXqJEQSMzPsI9U1q+wZ2yhZANiAAT5APJ7vSbY
-                7SWU9cyNWPFVnPebmTpqBP7CKH4vv1vuPKpSX32xt5SenFosP5yYHccre3CQDt+Z
-                UlKhsFz70IOGSHebHqf5igflG6VpJZOFYF8zJGOx9U4OSiwcsIOds9U=
-                -----END PRIVATE KEY-----
-            """.trimIndent().trim(),
-            readerRootKeyPub
-        )
-        readerRootCert = MdocUtil.generateReaderRootCertificate(
-            readerRootKey = iacaKey,
-            subject = X500Name.fromName("CN=OWF IC TestApp Reader Root"),
-            serial = ASN1Integer(1L),
-            validFrom = certsValidFrom,
-            validUntil = certsValidUntil,
-        )
-
-        readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        readerKeyPub = readerKey.publicKey
-        readerCert = MdocUtil.generateReaderCertificate(
-            readerRootCert = readerRootCert,
-            readerRootKey = readerRootKey,
-            readerKey = readerKeyPub,
-            subject = X500Name.fromName("CN=OWF IC TestApp Reader Cert"),
-            serial = ASN1Integer(1L),
-            validFrom = certsValidFrom,
-            validUntil = certsValidUntil,
-        )
-    }
-
-    @OptIn(ExperimentalResourceApi::class)
-    private suspend fun generateTrustManagers() {
-        issuerTrustManager = TrustManager()
-        issuerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = iacaCert,
-                displayName = "OWF IC TestApp Issuer",
-                displayIcon = null
-            )
-        )
-
-        readerTrustManager = TrustManager()
-        readerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = readerRootCert,
-                displayName = "OWF IC TestApp",
-                displayIcon = Res.readBytes("files/utopia-brewery.png")
-            )
-        )
-    }
-
-    private suspend fun provisionDocuments(documentStore: DocumentStore) {
-        provisionDocument(
-            "testDrivingLicense",
-            DrivingLicense.getDocumentType(),
-            "Erika",
-            "Erika's Driving License"
-        )
         // Create two PhotoID instances
-        provisionDocument(
-            "testPhotoID",
-            PhotoID.getDocumentType(),
-            "Erika",
-            "Erika's Photo ID"
-        )
-        provisionDocument(
-            "testPhotoID2",
-            PhotoID.getDocumentType(),
-            "Erika #2",
-            "Erika's Photo ID #2"
-        )
-        provisionDocument(
-            "testEUPersonalID",
-            EUPersonalID.getDocumentType(),
-            "Erika",
-            "Erika's Personal ID"
-        )
+        if (!documentStore.listDocuments().contains("testPhotoID")) {
+            provisionDocument(
+                documentStore,
+                dsKey,
+                dsCert,
+                "testPhotoID",
+                PhotoID.getDocumentType(),
+                "Erika",
+                "Erika's Photo ID"
+            )
+        }
+        if (!documentStore.listDocuments().contains("testPhotoID2")) {
+            provisionDocument(
+                documentStore,
+                dsKey,
+                dsCert,
+                "testPhotoID2",
+                PhotoID.getDocumentType(),
+                "Erika #2",
+                "Erika's Photo ID #2"
+            )
+        }
+        if (!documentStore.listDocuments().contains("testEUPersonalID")) {
+            provisionDocument(
+                documentStore,
+                dsKey,
+                dsCert,
+                "testEUPersonalID",
+                EUPersonalID.getDocumentType(),
+                "Erika",
+                "Erika's Personal ID"
+            )
+        }
     }
 
     // TODO: also provision SD-JWT credentials, if applicable
     @OptIn(ExperimentalResourceApi::class)
     private suspend fun provisionDocument(
+        documentStore: DocumentStore,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
         documentId: String,
         documentType: DocumentType,
         givenNameOverride: String,
         displayName: String,
     ) {
+        Logger.i(TAG, "Provisioning $documentId")
         val document = documentStore.createDocument(documentId)
 
         val nsdBuilder = NameSpacedData.Builder()
@@ -318,7 +180,7 @@ object TestAppUtils {
                 }
             }
         }
-        documentData = nsdBuilder.build()
+        val documentData = nsdBuilder.build()
 
         // TODO: move ApplicationData for `documentData`, `cardArt`, `displayName` to real
         //  fields on Document.
@@ -341,7 +203,7 @@ object TestAppUtils {
         val timeSigned = now - 1.hours
         val timeValidityBegin =  now - 1.hours
         val timeValidityEnd = now + 24.hours
-        val secureArea = secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
+        val secureArea = documentStore.secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
         val mdocCredential = MdocCredential(
             document = document,
             asReplacementFor = null,
@@ -392,7 +254,7 @@ object TestAppUtils {
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
             Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                X509CertChain(listOf(dsCert, iacaCert)).toDataItem()
+                X509CertChain(listOf(dsCert)).toDataItem()
             )
         )
         val encodedIssuerAuth = Cbor.encode(

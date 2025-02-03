@@ -4,6 +4,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import com.android.identity.appsupport.ui.presentment.Presentment
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
+import com.android.identity.testapp.App
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.testapp.TestAppPresentmentSource
 import com.android.identity.testapp.TestAppUtils
@@ -18,14 +19,14 @@ private const val TAG = "PresentmentScreen"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PresentmentScreen(
+    app: App,
     presentmentModel: PresentmentModel,
-    settingsModel: TestAppSettingsModel,
     onPresentationComplete: () -> Unit,
 ) {
     Presentment(
         presentmentModel = presentmentModel,
-        documentTypeRepository = TestAppUtils.documentTypeRepository,
-        source = TestAppPresentmentSource(settingsModel),
+        documentTypeRepository = app.documentTypeRepository,
+        source = TestAppPresentmentSource(app),
         onPresentmentComplete = onPresentationComplete,
         appName = stringResource(Res.string.app_name),
         appIconPainter = painterResource(Res.drawable.app_icon),

@@ -10,19 +10,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.appsupport.ui.AppTheme
-import com.android.identity.appsupport.ui.digitalcredentials.DigitalCredentials
-import com.android.identity.appsupport.ui.digitalcredentials.getCredentialForId
+import com.android.identity.appsupport.ui.digitalcredentials.lookupForCredmanId
 import com.android.identity.appsupport.ui.presentment.DigitalCredentialsPresentmentMechanism
 import com.android.identity.appsupport.ui.presentment.Presentment
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
+import com.android.identity.credential.Credential
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
-import com.google.android.gms.identitycredentials.Credential
 import com.google.android.gms.identitycredentials.GetCredentialResponse
 import com.google.android.gms.identitycredentials.IntentHelper
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.json.JSONObject
@@ -39,6 +43,12 @@ class CredmanPresentmentActivity: FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        CoroutineScope(Dispatchers.Main).launch {
+            startPresentment(App.getInstance())
+        }
+    }
+
+    private suspend fun startPresentment(app: App) {
         try {
             val request = IntentHelper.extractGetCredentialRequest(intent)
                 ?: throw IllegalStateException("Error extracting GetCredentialRequest")
@@ -51,20 +61,20 @@ class CredmanPresentmentActivity: FragmentActivity() {
             val json = JSONObject(request.credentialOptions.get(0).requestMatcher)
             val provider = json.getJSONArray("providers").getJSONObject(0)
 
-            val credential = DigitalCredentials.Default.getCredentialForId(credentialId)
-                ?: throw Error("No registered credential for ID $credentialId")
+            val document = app.documentStore.lookupForCredmanId(credentialId.toLong())
+                ?: throw Error("No registered document for ID $credentialId")
 
             val mechanism = object : DigitalCredentialsPresentmentMechanism(
                 appId = callingPackageName,
                 webOrigin = callingOrigin,
                 protocol = provider.getString("protocol"),
                 request = provider.getString("request"),
-                document = credential.document
+                document = document
             ) {
                 override fun sendResponse(response: String) {
                     val bundle = Bundle()
                     bundle.putByteArray("identityToken", response.toByteArray())
-                    val credentialResponse = Credential("type", bundle)
+                    val credentialResponse = com.google.android.gms.identitycredentials.Credential("type", bundle)
 
                     val resultData = Intent()
                     IntentHelper.setGetCredentialResponse(
@@ -95,8 +105,8 @@ class CredmanPresentmentActivity: FragmentActivity() {
                 Scaffold { innerPadding ->
                     Presentment(
                         presentmentModel = presentmentModel,
-                        documentTypeRepository = TestAppUtils.documentTypeRepository,
-                        source = TestAppPresentmentSource(App.settingsModel),
+                        documentTypeRepository = app.documentTypeRepository,
+                        source = TestAppPresentmentSource(app),
                         onPresentmentComplete = { finish() },
                         appName = stringResource(Res.string.app_name),
                         appIconPainter = painterResource(Res.drawable.app_icon),

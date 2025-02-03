@@ -17,6 +17,7 @@
 package com.android.identity.documenttype
 
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.DiagnosticOption
@@ -81,17 +82,24 @@ data class MdocDataElement(
                 DocumentAttributeType.ComplexType -> Cbor.toDiagnostics(value)
 
                 DocumentAttributeType.Date -> {
-                    // value can be either tdate or full-date
-                    val tagNumber = (value as Tagged).tagNumber
+                    // value can be either tdate or full-date or a map as per ISO/IEC 23220-2
+                    // clause 6.3.1.1.3 Date of birth as uncertain or approximate, or both
+                    val taggedValue = if (value is CborMap) {
+                        value.get("birth_date")
+                        // TODO: if available, also use approximate_mask when rendering the value
+                    } else {
+                        value
+                    }
+                    val tagNumber = (taggedValue as Tagged).tagNumber
                     val dt = when (tagNumber) {
                         Tagged.FULL_DATE_STRING -> {
                             LocalDateTime(
-                                LocalDate.parse(value.asTagged.asTstr),
+                                LocalDate.parse(taggedValue.asTagged.asTstr),
                                 LocalTime(0, 0, 0)
                             )
                         }
                         Tagged.DATE_TIME_STRING -> {
-                            val pointInTime = Instant.parse(value.asTagged.asTstr)
+                            val pointInTime = Instant.parse(taggedValue.asTagged.asTstr)
                             pointInTime.toLocalDateTime(timeZone)
                         }
                         else -> {
@@ -102,17 +110,24 @@ data class MdocDataElement(
                 }
 
                 DocumentAttributeType.DateTime -> {
-                    // value can be either tdate or full-date
-                    val tagNumber = (value as Tagged).tagNumber
+                    // value can be either tdate or full-date or a map as per ISO/IEC 23220-2
+                    // clause 6.3.1.1.3 Date of birth as uncertain or approximate, or both
+                    val taggedValue = if (value is CborMap) {
+                        value.get("birth_date")
+                        // TODO: if available, also use approximate_mask when rendering the value
+                    } else {
+                        value
+                    }
+                    val tagNumber = (taggedValue as Tagged).tagNumber
                     val dt = when (tagNumber) {
                         Tagged.FULL_DATE_STRING -> {
                             LocalDateTime(
-                                LocalDate.parse(value.asTagged.asTstr),
+                                LocalDate.parse(taggedValue.asTagged.asTstr),
                                 LocalTime(0, 0, 0)
                             )
                         }
                         Tagged.DATE_TIME_STRING -> {
-                            val pointInTime = Instant.parse(value.asTagged.asTstr)
+                            val pointInTime = Instant.parse(taggedValue.asTagged.asTstr)
                             pointInTime.toLocalDateTime(timeZone)
                         }
                         else -> {

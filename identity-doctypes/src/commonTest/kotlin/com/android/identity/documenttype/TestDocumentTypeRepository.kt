@@ -2,6 +2,7 @@ package com.android.identity.documenttype
 
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
@@ -122,21 +123,26 @@ class TestDocumentTypeRepository {
             mdlNs.dataElements["portrait"]?.renderValue(Bstr(byteArrayOf(1, 2, 3)))
         )
 
-        // CredentialAttributeType.DateTime - supports both tdate and full-date
+        // CredentialAttributeType.DateTime - supports both tdate, full-date, and ISO/IEC 23220-2 maps
         assertEquals(
             "1976-02-03T06:30:00",
             MdocDataElement(
-                DocumentAttribute(
-                    DocumentAttributeType.DateTime,
-                    "",
-                    "",
-                    "",
-                    null,
-                    null
-                ),
+                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
                 false
             ).renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),
+                timeZone = TimeZone.of("Europe/Copenhagen")
+            )
+        )
+        assertEquals(
+            "1976-02-03T06:30:00",
+            MdocDataElement(
+                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
+                false
+            ).renderValue(
+                CborMap.builder()
+                    .put("birth_date", Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString())
+                    .end().build(),
                 timeZone = TimeZone.of("Europe/Copenhagen")
             )
         )
@@ -146,24 +152,29 @@ class TestDocumentTypeRepository {
             assertEquals(
                 "1976-02-03T00:00:00",
                 MdocDataElement(
-                    DocumentAttribute(
-                        DocumentAttributeType.DateTime,
-                        "",
-                        "",
-                        "",
-                        null,
-                        null
-                    ),
+                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
                     false
                 ).renderValue(
                     LocalDate.parse("1976-02-03").toDataItemFullDate(),
                     timeZone = TimeZone.of(zoneId)
                 )
             )
+            assertEquals(
+                "1976-02-03T00:00:00",
+                MdocDataElement(
+                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
+                    false
+                ).renderValue(
+                    CborMap.builder()
+                        .put("birth_date", LocalDate.parse("1976-02-03").toDataItemFullDate())
+                        .end().build(),
+                    timeZone = TimeZone.of(zoneId)
+                )
+            )
         }
 
-        // CredentialAttributeType.Date - supports both tdate and full-date... for tdate
-        // the timezone is taken into account, for full-date it isn't.
+        // CredentialAttributeType.Date - supports both tdate, full-date, and ISO/IEC 23220-2 maps
+        // for tdate the timezone is taken into account, for full-date it isn't.
         assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
@@ -190,6 +201,24 @@ class TestDocumentTypeRepository {
             mdlNs.dataElements["birth_date"]?.renderValue(
                 LocalDate.parse("1976-02-03").toDataItemFullDate(),
                 timeZone = TimeZone.of("America/Los_Angeles")
+            )
+        )
+        assertEquals(
+            "1976-02-03",
+            mdlNs.dataElements["birth_date"]?.renderValue(
+                CborMap.builder()
+                    .put("birth_date", Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString())
+                    .end().build(),
+                timeZone = TimeZone.of("America/New_York")
+            )
+        )
+        assertEquals(
+            "1976-02-03",
+            mdlNs.dataElements["birth_date"]?.renderValue(
+                CborMap.builder()
+                    .put("birth_date", LocalDate.parse("1976-02-03").toDataItemFullDate())
+                    .end().build(),
+                timeZone = TimeZone.of("America/New_York")
             )
         )
 
