@@ -8,6 +8,7 @@ import com.android.identity.crypto.EcPublicKey
  * Concrete [SecureArea] implementations may subclass this to provide additional
  * implementation-specific information about the key.
  *
+ * @param alias the alias for the key.
  * @param publicKey the public part of the key.
  * @param keyPurposes the purposes of the key.
  * @param attestation the attestation for the key.

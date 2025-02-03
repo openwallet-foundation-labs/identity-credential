@@ -438,4 +438,28 @@ object CloudSecureAreaProtocol {
         val zab: ByteArray?,
         val waitDurationMillis: Long
     ) : Command()
+
+    /**
+     * Checks if the given passphrase matches the registered passphrase.
+     *
+     * This can be used in passphrase dialogs to check the passphrase
+     * obtained from the user will work for operations like signing or
+     * key agreement without having to try the whole operation again.
+     *
+     * Wrong passphrase attempts will continue to contribute to policy
+     * enforced by [PassphraseFailureEnforcer].
+     */
+    data class CheckPassphraseRequest(
+        val passphrase: String
+    ) : Command()
+
+    /**
+     * Response for [CheckPassphraseRequest].
+     *
+     * The result is one of [RESULT_OK], [RESULT_WRONG_PASSPHRASE], and
+     * [RESULT_TOO_MANY_PASSPHRASE_ATTEMPTS].
+     */
+    data class CheckPassphraseResponse(
+        val result: Int,
+    ) : Command()
 }

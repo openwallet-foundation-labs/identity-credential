@@ -18,7 +18,9 @@ import com.android.identity.util.fromHex
 import com.android.identity.util.toBase64Url
 
 @Composable
-fun CertificateViewerExamplesScreen(navController: NavHostController) {
+fun CertificateViewerExamplesScreen(
+    onViewCertificate: (encodedCertificateData: String) -> Unit
+) {
     val samplesData = getCertificateExamplesList()
     LazyColumn(
         modifier = Modifier
@@ -27,9 +29,7 @@ fun CertificateViewerExamplesScreen(navController: NavHostController) {
     ) {
         items(samplesData.keys.toList()) { title ->
             TextButton(
-                onClick = { navController.navigate(
-                    "${CertificateViewerDestination.route}/${samplesData[title]}")
-                },
+                onClick = { onViewCertificate(samplesData[title]!!) },
                 content = { Text(title) }
             )
         }

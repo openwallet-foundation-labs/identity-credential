@@ -41,8 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.appsupport.ui.consent.ConsentModalBottomSheet
+import com.android.identity.appsupport.ui.passphrase.PassphrasePromptProvider
 import com.android.identity.document.Document
 import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.securearea.PassphrasePromptView
 import identitycredential.identity_appsupport.generated.resources.Res
 import identitycredential.identity_appsupport.generated.resources.presentment_canceled
 import identitycredential.identity_appsupport.generated.resources.presentment_icon_error
@@ -105,6 +107,8 @@ fun Presentment(
             presentmentModel.reset()
         }
     }
+
+    PassphrasePromptProvider()
 
     val state = presentmentModel.state.collectAsState().value
     when (state) {

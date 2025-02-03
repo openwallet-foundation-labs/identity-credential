@@ -77,14 +77,14 @@ fun PassphraseEntryFieldScreen(
             item {
                 TextButton(
                     onClick = { showEntry.value = Pair(PassphraseConstraints.PASSPHRASE_SIX_CHARS, checkWeakPassphrase)},
-                    content = { Text("Passphrase Six Characters (checkWeak=$checkWeakPassphrase)") }
+                    content = { Text("6-Character Passphrase (checkWeak=$checkWeakPassphrase)") }
                 )
             }
             item {
                 TextButton(
                     onClick = {
                         showEntry.value = Pair(PassphraseConstraints.PASSPHRASE_SIX_CHARS_OR_LONGER, checkWeakPassphrase)},
-                    content = { Text("Passphrase Six Characters or longer (checkWeak=$checkWeakPassphrase)") }
+                    content = { Text("6-Character Passphrase or longer (checkWeak=$checkWeakPassphrase)") }
                 )
             }
             item {

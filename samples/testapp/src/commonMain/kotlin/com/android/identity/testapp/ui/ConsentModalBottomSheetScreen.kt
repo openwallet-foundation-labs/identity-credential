@@ -62,37 +62,6 @@ fun ConsentModalBottomSheetScreen(
         skipPartiallyExpanded = true
     )
 
-    val request = remember {
-        val request = DrivingLicense.getDocumentType().cannedRequests.find { it.id == mdlSampleRequest }!!
-        val namespacesToRequest = mutableMapOf<String, Map<String, Boolean>>()
-        for (ns in request.mdocRequest!!.namespacesToRequest) {
-            val dataElementsToRequest = mutableMapOf<String, Boolean>()
-            for ((de, intentToRetain) in ns.dataElementsToRequest) {
-                dataElementsToRequest[de.attribute.identifier] = intentToRetain
-            }
-            namespacesToRequest[ns.namespace] = dataElementsToRequest
-        }
-        val encodedSessionTranscript = Cbor.encode(CborMap.builder().put("doesn't", "matter").end().build())
-        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
-            .addDocumentRequest(
-                request.mdocRequest!!.docType,
-                namespacesToRequest,
-                null,
-                null,
-                Algorithm.UNSET,
-                null
-            ).generate()
-        val deviceRequest = DeviceRequestParser(encodedDeviceRequest, encodedSessionTranscript)
-            .parse()
-
-        val docTypeRepo = DocumentTypeRepository()
-        docTypeRepo.addDocumentType(DrivingLicense.getDocumentType())
-        deviceRequest.docRequests[0].toMdocRequest(
-            documentTypeRepository = docTypeRepo,
-            mdocCredential = null
-        )
-    }
-
     var cardArt by remember {
         mutableStateOf(ByteArray(0))
     }
@@ -124,10 +93,46 @@ fun ConsentModalBottomSheetScreen(
         }
         VerifierType.UNKNOWN_VERIFIER_WEBSITE ->  {
             Pair(
-                Requester(websiteOrigin = "https://www.example.com"),
+                Requester(
+                    appId = "com.example.browserApp",
+                    websiteOrigin = "https://www.example.com"
+                ),
                 null
             )
         }
+    }
+
+    val request = remember {
+        val request = DrivingLicense.getDocumentType().cannedRequests.find { it.id == mdlSampleRequest }!!
+        val namespacesToRequest = mutableMapOf<String, Map<String, Boolean>>()
+        for (ns in request.mdocRequest!!.namespacesToRequest) {
+            val dataElementsToRequest = mutableMapOf<String, Boolean>()
+            for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                dataElementsToRequest[de.attribute.identifier] = intentToRetain
+            }
+            namespacesToRequest[ns.namespace] = dataElementsToRequest
+        }
+        val encodedSessionTranscript = Cbor.encode(CborMap.builder().put("doesn't", "matter").end().build())
+        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
+            .addDocumentRequest(
+                request.mdocRequest!!.docType,
+                namespacesToRequest,
+                null,
+                null,
+                Algorithm.UNSET,
+                null
+            ).generate()
+        val deviceRequest = DeviceRequestParser(encodedDeviceRequest, encodedSessionTranscript)
+            .parse()
+
+        val docTypeRepo = DocumentTypeRepository()
+        docTypeRepo.addDocumentType(DrivingLicense.getDocumentType())
+        deviceRequest.docRequests[0].toMdocRequest(
+            documentTypeRepository = docTypeRepo,
+            mdocCredential = null,
+            requesterAppId = requester.appId,
+            requesterWebsiteOrigin = requester.websiteOrigin,
+        )
     }
 
     if (sheetState.isVisible && cardArt.size > 0) {

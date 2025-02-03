@@ -668,11 +668,15 @@ object MdocUtil {
  *
  * @param documentTypeRepository a [DocumentTypeRepository] used to determine the display name for claims.
  * @param mdocCredential if set, the returned list is filtered so it only references data
- * elements available in the credential.
+ *     elements available in the credential.
+ * @param requesterAppId the appId if an app is making the request or `null`.
+ * @param requesterWebsiteOrigin the website origin if a website is making the request or `null`.
  */
 fun DeviceRequestParser.DocRequest.toMdocRequest(
     documentTypeRepository: DocumentTypeRepository,
     mdocCredential: MdocCredential?,
+    requesterAppId: String? = null,
+    requesterWebsiteOrigin: String? = null,
 ): MdocRequest {
     val requestedData = mutableMapOf<String, MutableList<Pair<String, Boolean>>>()
     for (namespaceName in namespaces) {
@@ -688,7 +692,9 @@ fun DeviceRequestParser.DocRequest.toMdocRequest(
                 readerCertificateChain
             } else {
                 null
-            }
+            },
+            appId = requesterAppId,
+            websiteOrigin = requesterWebsiteOrigin
         ),
         claims = MdocUtil.generateClaims(
             docType,

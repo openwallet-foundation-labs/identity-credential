@@ -4,5 +4,8 @@ import androidx.compose.runtime.Composable
 
 // This is Android-only for now.
 @Composable
-actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
+actual fun CloudSecureAreaScreen(
+    showToast: (message: String) -> Unit,
+    onViewCertificate: (encodedCertificateData: String) -> Unit
+) {
 }

@@ -1,10 +1,5 @@
 package com.android.identity.secure_area_test_app.ui
 
-import android.os.ConditionVariable
-import android.os.Handler
-import android.os.Looper
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,8 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -28,8 +23,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,14 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -56,24 +48,26 @@ import androidx.compose.ui.window.Dialog
 import androidx.fragment.app.FragmentActivity.MODE_PRIVATE
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.securearea.cloud.CloudCreateKeySettings
-import com.android.identity.android.securearea.cloud.CloudKeyLockedException
-import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
 import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.appsupport.ui.passphrase.PassphrasePromptProvider
+import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.AndroidContexts
 import com.android.identity.storage.ephemeral.EphemeralStorage
 import com.android.identity.util.Logger
+import com.android.identity.util.toBase64Url
 import com.android.identity.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.days
 
@@ -84,7 +78,6 @@ private val TAG = "CloudSecureAreaScreen"
 // Android Studio on.
 //
 private val CSA_URL_DEFAULT: String = "http://10.0.2.2:8080/server/csa"
-private val CSA_WALLET_PIN_DEFAULT: String = "1111"
 
 private var cloudSecureArea: CloudSecureArea? = null
 
@@ -102,8 +95,10 @@ private data class CsaPassphraseTestConfiguration(
 
 // This is Android-only for now.
 @Composable
-actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
-    val showCertificateDialog = remember { mutableStateOf<KeyAttestation?>(null) }
+actual fun CloudSecureAreaScreen(
+    showToast: (message: String) -> Unit,
+    onViewCertificate: (encodedCertificateData: String) -> Unit
+) {
     var connectText by remember { mutableStateOf(
         if (cloudSecureArea == null) {
             "Click to connect to Cloud Secure Area"
@@ -119,51 +114,18 @@ actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
         }
     }
     val showConnectDialog = remember { mutableStateOf(false) }
-    val showPassphraseDialog = remember { mutableStateOf<CsaPassphraseTestConfiguration?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
 
-    if (showCertificateDialog.value != null) {
-        ShowCertificateDialog(showCertificateDialog.value!!.certChain!!,
-            onDismissRequest = {
-                showCertificateDialog.value = null
-            })
-    }
-
-    if (showPassphraseDialog.value != null) {
-        ShowPassphraseDialog(
-            onDismissRequest = {
-                showPassphraseDialog.value = null
-            },
-            onContinueButtonClicked = { passphraseEnteredByUser: String ->
-                val configuration = showPassphraseDialog.value!!
-                coroutineScope.launch {
-                    csaTest(
-                        configuration.keyPurpose,
-                        configuration.curve,
-                        configuration.authRequired,
-                        configuration.authTimeoutMillis,
-                        configuration.userAuthType,
-                        configuration.biometricConfirmationRequired,
-                        configuration.passphrase,
-                        passphraseEnteredByUser,
-                        showToast
-                    )
-                }
-                showPassphraseDialog.value = null
-            }
-        )
-    }
-
+    PassphrasePromptProvider()
 
     if (showConnectDialog.value) {
         CsaConnectDialog(
             sharedPreferences.getString("csaUrl", CSA_URL_DEFAULT)!!,
-            CSA_WALLET_PIN_DEFAULT,
             onDismissRequest = {
                 showConnectDialog.value = false
             },
-            onConnectButtonClicked = { url: String, walletPin: String ->
+            onConnectButtonClicked = { url: String, walletPin: String, constraints: PassphraseConstraints ->
                 sharedPreferences.edit().putString("csaUrl", url).apply()
                 showConnectDialog.value = false
                 coroutineScope.launch {
@@ -175,7 +137,7 @@ actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
                     try {
                         cloudSecureArea!!.register(
                             walletPin,
-                            PassphraseConstraints.PIN_SIX_DIGITS
+                            constraints
                         ) { true }
                         showToast("Registered with CSA")
                         connectText =
@@ -222,7 +184,9 @@ actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
                     val attestation = csaAttestation(showToast)
                     if (attestation != null) {
                         Logger.d(TAG, "attestation: ${attestation.certChain}")
-                        showCertificateDialog.value = attestation
+                        withContext(Dispatchers.Main) {
+                            onViewCertificate(Cbor.encode(attestation.certChain!!.toDataItem()).toBase64Url())
+                        }
                     }
                 }
             })
@@ -309,31 +273,17 @@ actual fun CloudSecureAreaScreen(showToast: (message: String) -> Unit) {
 
                         item {
                             TextButton(onClick = {
-                                if (passphraseRequired) {
-                                    showPassphraseDialog.value =
-                                        CsaPassphraseTestConfiguration(
-                                            keyPurpose,
-                                            curve,
-                                            !userAuthType.isEmpty(),
-                                            if (authTimeout < 0L) 0L else authTimeout,
-                                            userAuthType,
-                                            authTimeout >= 0L,
-                                            if (passphraseRequired) "1111" else null
-                                        )
-                                } else {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        csaTest(
-                                            keyPurpose,
-                                            curve,
-                                            !userAuthType.isEmpty(),
-                                            if (authTimeout < 0L) 0L else authTimeout,
-                                            userAuthType,
-                                            authTimeout >= 0L,
-                                            null,
-                                            null,
-                                            showToast
-                                        )
-                                    }
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    csaTest(
+                                        keyPurpose = keyPurpose,
+                                        curve = curve,
+                                        authRequired = !userAuthType.isEmpty(),
+                                        authTimeoutMillis = if (authTimeout < 0L) 0L else authTimeout,
+                                        userAuthType = userAuthType,
+                                        biometricConfirmationRequired = authTimeout >= 0L,
+                                        passphraseRequired = passphraseRequired,
+                                        showToast = showToast
+                                    )
                                 }
                             })
                             {
@@ -451,29 +401,45 @@ private fun styledX509CertificateText(certificateText: String): AnnotatedString 
     }
 }
 
+private data class CsaPassphraseChoice(
+    val description: String,
+    val constraints: PassphraseConstraints,
+    val passphrase: String,
+)
+
 @Composable
 fun CsaConnectDialog(
     url: String,
-    walletPin: String,
     onDismissRequest: () -> Unit,
-    onConnectButtonClicked: (url: String, walletPin: String) -> Unit,
+    onConnectButtonClicked: (url: String, walletPin: String, constraints: PassphraseConstraints) -> Unit,
 ) {
     var urlTextField by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(url))
     }
-    var walletPinTextField by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(walletPin))
+
+    val walletPinRadioOptions = remember {
+        listOf(
+            CsaPassphraseChoice("4 Digits (1111)", PassphraseConstraints.PIN_FOUR_DIGITS, "1111"),
+            CsaPassphraseChoice("4 Digits (1234)", PassphraseConstraints.PIN_FOUR_DIGITS, "1234"),
+            CsaPassphraseChoice("6 Digits (111111)", PassphraseConstraints.PIN_SIX_DIGITS, "111111"),
+            CsaPassphraseChoice("4+ Digits (12345)", PassphraseConstraints.PIN_FOUR_DIGITS_OR_LONGER, "12345"),
+            CsaPassphraseChoice("4 Chars (abcd)", PassphraseConstraints.PASSPHRASE_FOUR_CHARS, "abcd"),
+            CsaPassphraseChoice("4+ Chars (abcde)", PassphraseConstraints.PASSPHRASE_FOUR_CHARS_OR_LONGER, "abcde"),
+            CsaPassphraseChoice("No Constraints (multipaz)", PassphraseConstraints.NONE, "multipaz"),
+        )
     }
+
+    val (selectedOption, onOptionSelected) = remember { mutableStateOf(walletPinRadioOptions[0]) }
+
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(400.dp)
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text(
@@ -498,18 +464,35 @@ fun CsaConnectDialog(
                 )
 
                 Text(
-                    text = "Wallet PIN",
+                    text = "Knowledge-Based Factor to use",
                     modifier = Modifier.padding(16.dp),
                     textAlign = TextAlign.Start,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                TextField(
-                    value = walletPinTextField,
-                    maxLines = 3,
-                    onValueChange = { walletPinTextField = it },
-                    textStyle = MaterialTheme.typography.bodySmall
-                )
+                walletPinRadioOptions.forEach { entry ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (entry == selectedOption),
+                                onClick = { onOptionSelected(entry) },
+                                role = Role.RadioButton
+                            )
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RadioButton(
+                            selected = (entry == selectedOption),
+                            onClick = null
+                        )
+                        Text(
+                            text = entry.description.toString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier
@@ -524,99 +507,11 @@ fun CsaConnectDialog(
                     TextButton(
                         onClick = { onConnectButtonClicked(
                             urlTextField.text,
-                            walletPinTextField.text
+                            selectedOption.passphrase,
+                            selectedOption.constraints
                         ) },
                     ) {
                         Text("Connect")
-                    }
-                }
-
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShowPassphraseDialog(
-    onDismissRequest: () -> Unit,
-    onContinueButtonClicked: (passphrase: String) -> Unit,
-) {
-    var passphraseTextField by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(""))
-    }
-    var showPassphrase by remember { mutableStateOf(value = false) }
-    Dialog(onDismissRequest = { onDismissRequest() }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(350.dp)
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = "Enter passphrase",
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-                Text(
-                    text = "Use passphrase chosen at CSA registration time " +
-                            "(default is $CSA_WALLET_PIN_DEFAULT).",
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Start,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                TextField(
-                    value = passphraseTextField,
-                    maxLines = 3,
-                    onValueChange = { passphraseTextField = it },
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    visualTransformation = if (showPassphrase) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon = {
-                        if (showPassphrase) {
-                            IconButton(onClick = { showPassphrase = false }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Visibility,
-                                    contentDescription = "hide_password"
-                                )
-                            }
-                        } else {
-                            IconButton(
-                                onClick = { showPassphrase = true }) {
-                                Icon(
-                                    imageVector = Icons.Filled.VisibilityOff,
-                                    contentDescription = "hide_password"
-                                )
-                            }
-                        }
-                    }
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(
-                        onClick = { onDismissRequest() },
-                    ) {
-                        Text("Cancel")
-                    }
-                    TextButton(
-                        onClick = { onContinueButtonClicked(passphraseTextField.text) },
-                    ) {
-                        Text("Continue")
                     }
                 }
 
@@ -656,8 +551,7 @@ private suspend fun csaTest(
     authTimeoutMillis: Long,
     userAuthType: Set<UserAuthenticationType>,
     biometricConfirmationRequired: Boolean,
-    passphrase: String?,
-    passphraseEnteredByUser: String?,
+    passphraseRequired: Boolean,
     showToast: (message: String) -> Unit
 ) {
     Logger.d(
@@ -667,7 +561,7 @@ private suspend fun csaTest(
     try {
         csaTestUnguarded(
             keyPurpose, curve, authRequired, authTimeoutMillis, userAuthType,
-            biometricConfirmationRequired, passphrase, passphraseEnteredByUser, showToast
+            biometricConfirmationRequired, passphraseRequired, showToast
         )
     } catch (e: Throwable) {
         showToast("${e.message}")
@@ -681,8 +575,7 @@ private suspend fun csaTestUnguarded(
     authTimeoutMillis: Long,
     userAuthType: Set<UserAuthenticationType>,
     biometricConfirmationRequired: Boolean,
-    passphrase: String?,
-    passphraseEnteredByUser: String?,
+    passphraseRequired: Boolean,
     showToast: (message: String) -> Unit
 ) {
 
@@ -695,253 +588,38 @@ private suspend fun csaTestUnguarded(
         .setEcCurve(curve)
         .setKeyPurposes(setOf(keyPurpose))
         .setUserAuthenticationRequired(authRequired, authTimeoutMillis, userAuthType)
-    if (passphrase != null) {
+    if (passphraseRequired) {
         builder.setPassphraseRequired(true)
     }
     cloudSecureArea!!.createKey("testKey", builder.build())
 
-    var unlockData = CloudKeyUnlockData(cloudSecureArea!!,"testKey")
-    if (passphraseEnteredByUser != null) {
-        unlockData.passphrase = passphraseEnteredByUser
-    }
-
     if (keyPurpose == KeyPurpose.SIGN) {
         val signingAlgorithm = curve.defaultSigningAlgorithm
-        try {
-            val t0 = System.currentTimeMillis()
-            val signature = cloudSecureArea!!.sign(
-                "testKey",
-                signingAlgorithm,
-                "data".toByteArray(),
-                unlockData)
-            val t1 = System.currentTimeMillis()
-            Logger.d(
-                TAG,
-                "Made signature with key without authentication" +
-                        "r=${signature.r.toHex()} s=${signature.s.toHex()}",
-            )
-            showToast("Signed w/o authn (${t1 - t0} msec)")
-        } catch (e: CloudKeyLockedException) {
-            if (e.reason == CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED) {
-                doUserAuth(
-                    "Unlock to sign with key",
-                    unlockData.cryptoObject,
-                    false,
-                    biometricConfirmationRequired,
-                    onAuthSuccees = {
-                        Logger.d(TAG, "onAuthSuccess")
-
-                        val t0 = System.currentTimeMillis()
-                        val signature = cloudSecureArea!!.sign(
-                            "testKey",
-                            signingAlgorithm,
-                            "data".toByteArray(),
-                            unlockData
-                        )
-                        val t1 = System.currentTimeMillis()
-                        Logger.d(
-                            TAG,
-                            "Made signature with key after authentication" +
-                                    "r=${signature.r.toHex()} s=${signature.s.toHex()}",
-                        )
-                        showToast("Signed after authn (${t1 - t0} msec)")
-                    },
-                    onAuthFailure = {
-                        Logger.d(TAG, "onAuthFailure")
-                    },
-                    onDismissed = {
-                        Logger.d(TAG, "onDismissed")
-                    })
-            } else {
-                e.printStackTrace()
-                showToast("${e.message}")
-            }
-        }
+        val t0 = System.currentTimeMillis()
+        val signature = cloudSecureArea!!.sign(
+            "testKey",
+            signingAlgorithm,
+            "data".toByteArray(),
+            KeyUnlockInteractive(requireConfirmation = biometricConfirmationRequired))
+        val t1 = System.currentTimeMillis()
+        Logger.d(
+            TAG,
+            "Made signature with key " +
+                    "r=${signature.r.toHex()} s=${signature.s.toHex()}",
+        )
+        showToast("EC signature in (${t1 - t0} msec)")
     } else {
         val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
-        try {
-            val t0 = System.currentTimeMillis()
-            val Zab = cloudSecureArea!!.keyAgreement(
-                "testKey",
-                otherKeyPairForEcdh.publicKey,
-                unlockData)
-            val t1 = System.currentTimeMillis()
-            Logger.dHex(
-                TAG,
-                "Calculated ECDH without authentication",
-                Zab)
-            showToast("ECDH w/o authn (${t1 - t0} msec)")
-        } catch (e: CloudKeyLockedException) {
-            if (e.reason == CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED) {
-                doUserAuth(
-                    "Unlock to ECDH with key",
-                    unlockData.cryptoObject,
-                    false,
-                    biometricConfirmationRequired,
-                    onAuthSuccees = {
-                        Logger.d(TAG, "onAuthSuccess")
-
-                        val t0 = System.currentTimeMillis()
-                        val Zab = cloudSecureArea!!.keyAgreement(
-                            "testKey",
-                            otherKeyPairForEcdh.publicKey,
-                            unlockData
-                        )
-                        val t1 = System.currentTimeMillis()
-                        Logger.dHex(
-                            TAG,
-                            "Calculated ECDH after authentication",
-                            Zab
-                        )
-                        showToast("ECDH after authn (${t1 - t0} msec)")
-                    },
-                    onAuthFailure = {
-                        Logger.d(TAG, "onAuthFailure")
-                    },
-                    onDismissed = {
-                        Logger.d(TAG, "onDismissed")
-                    })
-            } else {
-                e.printStackTrace()
-                showToast("${e.message}")
-            }
-        }
-
-    }
-}
-
-private suspend fun doUserAuth(
-    title: String,
-    cryptoObject: BiometricPrompt.CryptoObject?,
-    forceLskf: Boolean,
-    biometricConfirmationRequired: Boolean,
-    onAuthSuccees: suspend () -> Unit,
-    onAuthFailure: suspend () -> Unit,
-    onDismissed: suspend () -> Unit
-) {
-    val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
-        .setTitle("Authentication required")
-        .setConfirmationRequired(biometricConfirmationRequired)
-        .setSubtitle(title)
-    if (forceLskf) {
-        // TODO: this works only on Android 11 or later but for now this is fine
-        //   as this is just a reference/test app and this path is only hit if
-        //   the user actually presses the "Use LSKF" button.  Longer term, we should
-        //   fall back to using KeyGuard which will work on all Android versions.
-        promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-    } else {
-        val canUseBiometricAuth = BiometricManager
-            .from(AndroidContexts.applicationContext)
-            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
-        if (canUseBiometricAuth) {
-            promptInfoBuilder.setNegativeButtonText("Use LSKF")
-        } else {
-            promptInfoBuilder.setDeviceCredentialAllowed(true)
-        }
-    }
-
-    var wasSuccess = false
-    var wasFailure = false
-    var wasDismissed = false
-    val cv = ConditionVariable()
-
-    // Run the prompt on the UI thread, we'll block below on `cv`...
-    CoroutineScope(Dispatchers.Main).launch {
-        val biometricPromptInfo = promptInfoBuilder.build()
-        val biometricPrompt = BiometricPrompt(
-            AndroidContexts.currentActivity!!,
-            object : BiometricPrompt.AuthenticationCallback() {
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    Logger.d(TAG, "onAuthenticationError $errorCode $errString")
-                    if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
-                        wasDismissed = true
-                        cv.open()
-                    } else if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                        val promptInfoBuilderLskf = BiometricPrompt.PromptInfo.Builder()
-                            .setTitle("Authentication required")
-                            .setConfirmationRequired(biometricConfirmationRequired)
-                            .setSubtitle(title)
-                        promptInfoBuilderLskf.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                        val biometricPromptInfoLskf = promptInfoBuilderLskf.build()
-                        val biometricPromptLskf = BiometricPrompt(
-                            AndroidContexts.currentActivity!!,
-                            object : BiometricPrompt.AuthenticationCallback() {
-                                override fun onAuthenticationError(
-                                    errorCode: Int,
-                                    errString: CharSequence
-                                ) {
-                                    super.onAuthenticationError(errorCode, errString)
-                                    Logger.d(
-                                        TAG,
-                                        "onAuthenticationError LSKF $errorCode $errString"
-                                    )
-                                    if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
-                                        wasDismissed = true
-                                        cv.open()
-                                    } else {
-                                        wasFailure = true
-                                        cv.open()
-                                    }
-                                }
-
-                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                                    super.onAuthenticationSucceeded(result)
-                                    Logger.d(TAG, "onAuthenticationSucceeded LSKF $result")
-                                    wasSuccess = true
-                                    cv.open()
-                                }
-
-                                override fun onAuthenticationFailed() {
-                                    super.onAuthenticationFailed()
-                                    Logger.d(TAG, "onAuthenticationFailed LSKF")
-                                }
-                            }
-                        )
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            if (cryptoObject != null) {
-                                biometricPromptLskf.authenticate(
-                                    biometricPromptInfoLskf, cryptoObject
-                                )
-                            } else {
-                                biometricPromptLskf.authenticate(biometricPromptInfoLskf)
-                            }
-                        }, 100)
-                    } else {
-                        wasFailure = true
-                        cv.open()
-                    }
-                }
-
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    Logger.d(TAG, "onAuthenticationSucceeded $result")
-                    wasSuccess = true
-                    cv.open()
-                }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    Logger.d(TAG, "onAuthenticationFailed")
-                }
-            })
-        Logger.d(TAG, "cryptoObject: " + cryptoObject)
-        if (cryptoObject != null) {
-            biometricPrompt.authenticate(biometricPromptInfo, cryptoObject)
-        } else {
-            biometricPrompt.authenticate(biometricPromptInfo)
-        }
-    }
-    cv.block()
-    if (wasSuccess) {
-        Logger.d(TAG, "Reporting success")
-        onAuthSuccees()
-    } else if (wasFailure) {
-        Logger.d(TAG, "Reporting failure")
-        onAuthFailure()
-    } else if (wasDismissed) {
-        Logger.d(TAG, "Reporting dismissed")
-        onDismissed()
+        val t0 = System.currentTimeMillis()
+        val Zab = cloudSecureArea!!.keyAgreement(
+            "testKey",
+            otherKeyPairForEcdh.publicKey,
+            KeyUnlockInteractive(requireConfirmation = biometricConfirmationRequired))
+        val t1 = System.currentTimeMillis()
+        Logger.dHex(
+            TAG,
+            "Calculated ECDH",
+            Zab)
+        showToast("ECDH in (${t1 - t0} msec)")
     }
 }

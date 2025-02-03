@@ -68,6 +68,7 @@ import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
 import com.android.identity.testapp.ui.VerifierType
 import com.android.identity.testapp.ui.CertificateScreen
+import com.android.identity.testapp.ui.PassphrasePromptScreen
 import com.android.identity.testapp.ui.SettingsScreen
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
@@ -157,6 +158,7 @@ class App private constructor() {
     private suspend fun documentStoreInit() {
         val secureAreaRepository: SecureAreaRepository = SecureAreaRepository.build {
             add(SoftwareSecureArea.create(platformStorage()))
+            add(platformSecureAreaProvider().get())
         }
         val credentialFactory: CredentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(MdocCredential::class) {
@@ -390,6 +392,20 @@ class App private constructor() {
             }
             return app!!
         }
+
+        // TODO: Only used in MainViewController.kt because of deadlocks when doing
+        //       `val app = runBlocking { App.getInstance() }`. Investigate.
+        //
+        fun getInstanceAndInitializeInBackground(): App {
+            if (app != null) {
+                return app!!
+            }
+            app = App()
+            CoroutineScope(Dispatchers.IO).launch {
+                app!!.init()
+            }
+            return app!!
+        }
     }
 
     private lateinit var snackbarHostState: SnackbarHostState
@@ -438,6 +454,7 @@ class App private constructor() {
                             onClickCloudSecureArea = { navController.navigate(CloudSecureAreaDestination.route) },
                             onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
+                            onClickPassphrasePrompt = { navController.navigate(PassphrasePromptDestination.route) },
                             onClickIssuanceTestField = { navController.navigate(ProvisioningTestDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
@@ -458,16 +475,29 @@ class App private constructor() {
                         SoftwareSecureAreaScreen(showToast = { message -> showToast(message) })
                     }
                     composable(route = AndroidKeystoreSecureAreaDestination.route) {
-                        AndroidKeystoreSecureAreaScreen(showToast = { message -> showToast(message) })
+                        AndroidKeystoreSecureAreaScreen(
+                            showToast = { message -> showToast(message) },
+                            onViewCertificate = { encodedCertificateData ->
+                                navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")
+                            }
+                        )
                     }
                     composable(route = SecureEnclaveSecureAreaDestination.route) {
                         SecureEnclaveSecureAreaScreen(showToast = { message -> showToast(message) })
                     }
                     composable(route = CloudSecureAreaDestination.route) {
-                        CloudSecureAreaScreen(showToast = { message -> showToast(message) })
+                        CloudSecureAreaScreen(
+                            showToast = { message -> showToast(message) },
+                            onViewCertificate = { encodedCertificateData ->
+                                navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")
+                            }
+                        )
                     }
                     composable(route = PassphraseEntryFieldDestination.route) {
                         PassphraseEntryFieldScreen(showToast = { message -> showToast(message) })
+                    }
+                    composable(route = PassphrasePromptDestination.route) {
+                        PassphrasePromptScreen(showToast = { message -> showToast(message) })
                     }
                     composable(route = ProvisioningTestDestination.route) {
                         ProvisioningTestScreen()
@@ -538,7 +568,11 @@ class App private constructor() {
                         )
                     }
                     composable(route = CertificatesViewerExamplesDestination.route) {
-                        CertificateViewerExamplesScreen(navController = navController)
+                        CertificateViewerExamplesScreen(
+                            onViewCertificate = { encodedCertificateData ->
+                                navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")
+                            }
+                        )
                     }
                     composable(
                         route = CertificateViewerDestination.routeWithArgs,

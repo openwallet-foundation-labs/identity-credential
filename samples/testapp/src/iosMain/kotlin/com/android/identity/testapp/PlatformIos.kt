@@ -3,15 +3,19 @@ package com.android.identity.testapp
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.NativeSQLiteDriver
 import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaProvider
+import com.android.identity.securearea.SecureEnclaveCreateKeySettings
 import com.android.identity.securearea.SecureEnclaveSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
+import com.android.identity.securearea.SecureEnclaveUserAuthType
+import com.android.identity.securearea.software.SoftwareCreateKeySettings
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.Storage
 import com.android.identity.storage.sqlite.SqliteStorage
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.NativePlacement
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.allocPointerTo
 import kotlinx.cinterop.convert
@@ -22,8 +26,10 @@ import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.value
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.io.bytestring.ByteString
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -104,8 +110,13 @@ private val iosStorage = SqliteStorage(
     coroutineContext = newSingleThreadContext("DB")
 )
 
+// SecureEnclaveSecureArea doesn't work on the iOS simulator so use SoftwareSecureArea there
 private val secureEnclaveSecureAreaProvider = SecureAreaProvider {
-    SecureEnclaveSecureArea.create(iosStorage)
+    if (platformIsEmulator) {
+        SoftwareSecureArea.create(iosStorage)
+    } else {
+        SecureEnclaveSecureArea.create(iosStorage)
+    }
 }
 
 actual fun platformStorage(): Storage {
@@ -116,6 +127,23 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return secureEnclaveSecureAreaProvider
 }
 
-actual fun platformKeySetting(clientId: String): CreateKeySettings {
-    return CreateKeySettings()
+actual fun platformCreateKeySettings(
+    challenge: ByteString,
+    keyPurposes: Set<KeyPurpose>,
+    userAuthenticationRequired: Boolean
+): CreateKeySettings {
+    if (platformIsEmulator) {
+        return SoftwareCreateKeySettings.Builder()
+            .setKeyPurposes(keyPurposes)
+            .setPassphraseRequired(userAuthenticationRequired, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
+            .build()
+    } else {
+        return SecureEnclaveCreateKeySettings.Builder()
+            .setKeyPurposes(keyPurposes)
+            .setUserAuthenticationRequired(
+                required = userAuthenticationRequired,
+                userAuthenticationTypes = setOf(SecureEnclaveUserAuthType.USER_PRESENCE)
+            )
+            .build()
+    }
 }

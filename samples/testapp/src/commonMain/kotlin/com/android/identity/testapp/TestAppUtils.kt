@@ -28,12 +28,11 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.software.SoftwareCreateKeySettings
-import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.encodeToByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
@@ -46,7 +45,8 @@ import kotlin.time.Duration.Companion.hours
 object TestAppUtils {
     private const val TAG = "TestAppUtils"
 
-    const val MDOC_AUTH_KEY_DOMAIN = "mdoc_auth_key_domain"
+    const val MDOC_CREDENTIAL_DOMAIN_AUTH = "mdoc_credential_domain_auth"
+    const val MDOC_CREDENTIAL_DOMAIN_NO_AUTH = "mdoc_credential_domain_no_auth"
 
     fun generateEncodedDeviceRequest(
         request: DocumentCannedRequest,
@@ -197,87 +197,96 @@ object TestAppUtils {
         document.applicationData.setString("displayName", displayName)
         document.applicationData.setString("displayType", documentType.displayName)
 
-        // Create an authentication key... make sure the authKey used supports both
-        // mdoc ECDSA and MAC authentication.
-        val now = Clock.System.now()
-        val timeSigned = now - 1.hours
-        val timeValidityBegin =  now - 1.hours
-        val timeValidityEnd = now + 24.hours
-        val secureArea = documentStore.secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
-        val mdocCredential = MdocCredential(
-            document = document,
-            asReplacementFor = null,
-            domain = MDOC_AUTH_KEY_DOMAIN,
-            secureArea = secureArea,
-            docType = documentType.mdocDocumentType!!.docType
-        ).apply {
-            generateKey(SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build())
+        // Create authentication keys...
+        for (domain in listOf(MDOC_CREDENTIAL_DOMAIN_AUTH, MDOC_CREDENTIAL_DOMAIN_NO_AUTH)) {
+            val userAuthenticationRequired = (domain == MDOC_CREDENTIAL_DOMAIN_AUTH)
+
+            val now = Clock.System.now()
+            val timeSigned = now - 1.hours
+            val timeValidityBegin =  now - 1.hours
+            val timeValidityEnd = now + 24.hours
+            val secureArea = platformSecureAreaProvider().get()
+
+            val mdocCredential = MdocCredential(
+                document = document,
+                asReplacementFor = null,
+                domain = domain,
+                secureArea = secureArea,
+                docType = documentType.mdocDocumentType!!.docType
+            ).apply {
+                generateKey(
+                    platformCreateKeySettings(
+                        challenge = "Challenge".encodeToByteString(),
+                        keyPurposes = setOf(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN),
+                        userAuthenticationRequired = userAuthenticationRequired
+                    )
+                )
+            }
+
+            // Generate an MSO and issuer-signed data for this authentication key.
+            val msoGenerator = MobileSecurityObjectGenerator(
+                "SHA-256",
+                documentType.mdocDocumentType!!.docType,
+                mdocCredential.getAttestation().publicKey
+            )
+            msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
+            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
+                documentData,
+                Random,
+                16,
+                overrides
+            )
+            for (nameSpaceName in issuerNameSpaces.keys) {
+                val digests = MdocUtil.calculateDigestsForNameSpace(
+                    nameSpaceName,
+                    issuerNameSpaces,
+                    Algorithm.SHA256
+                )
+                msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
+            }
+
+            val mso = msoGenerator.generate()
+            val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
+
+            // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
+            //
+            // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+            //
+            val protectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                    Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+                )
+            )
+            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                    X509CertChain(listOf(dsCert)).toDataItem()
+                )
+            )
+            val encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                    dsKey,
+                    taggedEncodedMso,
+                    true,
+                    Algorithm.ES256,
+                    protectedHeaders,
+                    unprotectedHeaders
+                ).toDataItem()
+            )
+            val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
+                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
+                encodedIssuerAuth
+            ).generate()
+
+            // Now that we have issuer-provided authentication data we certify the authentication key.
+            mdocCredential.certify(
+                issuerProvidedAuthenticationData,
+                timeValidityBegin,
+                timeValidityEnd
+            )
+
         }
-
-        // Generate an MSO and issuer-signed data for this authentication key.
-        val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
-            documentType.mdocDocumentType!!.docType,
-            mdocCredential.getAttestation().publicKey
-        )
-        msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
-        val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            documentData,
-            Random,
-            16,
-            overrides
-        )
-        for (nameSpaceName in issuerNameSpaces.keys) {
-            val digests = MdocUtil.calculateDigestsForNameSpace(
-                nameSpaceName,
-                issuerNameSpaces,
-                Algorithm.SHA256
-            )
-            msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
-        }
-
-        val mso = msoGenerator.generate()
-        val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
-
-        // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
-        //
-        // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
-        //
-        val protectedHeaders = mapOf<CoseLabel, DataItem>(
-            Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
-            )
-        )
-        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
-            Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                X509CertChain(listOf(dsCert)).toDataItem()
-            )
-        )
-        val encodedIssuerAuth = Cbor.encode(
-            Cose.coseSign1Sign(
-                dsKey,
-                taggedEncodedMso,
-                true,
-                Algorithm.ES256,
-                protectedHeaders,
-                unprotectedHeaders
-            ).toDataItem()
-        )
-        val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-            MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
-            encodedIssuerAuth
-        ).generate()
-
-        // Now that we have issuer-provided authentication data we certify the authentication key.
-        mdocCredential.certify(
-            issuerProvidedAuthenticationData,
-            timeValidityBegin,
-            timeValidityEnd
-        )
 
         documentStore.addDocument(document)
     }

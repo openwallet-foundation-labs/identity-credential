@@ -23,8 +23,9 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.R
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea.Capabilities
+import com.android.identity.biometric.showBiometricPrompt
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.Algorithm
@@ -35,16 +36,19 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.keyPurposeSet
 import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -139,11 +143,10 @@ class AndroidKeystoreSecureArea private constructor(
 
     override suspend fun createKey(
         alias: String?,
-        createKeySettings: com.android.identity.securearea.CreateKeySettings
+        createKeySettings: CreateKeySettings
     ): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
-            // TODO: review if this is the semantics we want
             storageTable.delete(alias)
         }
 
@@ -310,7 +313,6 @@ class AndroidKeystoreSecureArea private constructor(
      */
     suspend fun createKeyForExistingAlias(existingAlias: String) {
         // If the key with the given alias exists, it is silently overwritten.
-        // TODO: review if this is the semantics we want
         storageTable.delete(existingAlias)
         storageTable.insert(existingAlias, ByteString())
 
@@ -431,7 +433,38 @@ class AndroidKeystoreSecureArea private constructor(
         alias: String,
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
-        keyUnlockData: com.android.identity.securearea.KeyUnlockData?
+        keyUnlockData: KeyUnlockData?
+    ): EcSignature {
+        if (keyUnlockData !is KeyUnlockInteractive) {
+            return signNonInteractive(alias, signatureAlgorithm, dataToSign, keyUnlockData)
+        }
+        var unlockData: AndroidKeystoreKeyUnlockData? = null
+        do {
+            try {
+                return signNonInteractive(alias, signatureAlgorithm, dataToSign, unlockData)
+            } catch (_: KeyLockedException) {
+                unlockData = AndroidKeystoreKeyUnlockData(alias)
+                val res = AndroidContexts.applicationContext.resources
+                val keyInfo = getKeyInfo(alias)
+                if (!showBiometricPrompt(
+                        cryptoObject = unlockData.getCryptoObjectForSigning(signatureAlgorithm),
+                        title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
+                        subtitle = keyUnlockData.subtitle ?: res.getString(R.string.aks_auth_default_subtitle),
+                        userAuthenticationTypes = keyInfo.userAuthenticationTypes,
+                        requireConfirmation = keyUnlockData.requireConfirmation
+                    )
+                ) {
+                    throw KeyLockedException("User canceled authentication")
+                }
+            }
+        } while (true)
+    }
+
+    private suspend fun signNonInteractive(
+        alias: String,
+        signatureAlgorithm: Algorithm,
+        dataToSign: ByteArray,
+        keyUnlockData: KeyUnlockData?,
     ): EcSignature {
         val (entry, data) = loadKey(alias)
         val decodedData = Cbor.decode(data)
@@ -480,11 +513,40 @@ class AndroidKeystoreSecureArea private constructor(
         }
     }
 
-    @Throws(KeyLockedException::class)
     override suspend fun keyAgreement(
         alias: String,
         otherKey: EcPublicKey,
-        keyUnlockData: com.android.identity.securearea.KeyUnlockData?
+        keyUnlockData: KeyUnlockData?
+    ): ByteArray {
+        if (keyUnlockData !is KeyUnlockInteractive) {
+            return keyAgreementNonInteractive(alias, otherKey, keyUnlockData)
+        }
+        var unlockData: AndroidKeystoreKeyUnlockData? = null
+        do {
+            try {
+                return keyAgreementNonInteractive(alias, otherKey, unlockData)
+            } catch (_: KeyLockedException) {
+                unlockData = AndroidKeystoreKeyUnlockData(alias)
+                val res = AndroidContexts.applicationContext.resources
+                val keyInfo = getKeyInfo(alias)
+                if (!showBiometricPrompt(
+                        cryptoObject = unlockData.cryptoObjectForKeyAgreement,
+                        title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
+                        subtitle = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_subtitle),
+                        userAuthenticationTypes = keyInfo.userAuthenticationTypes,
+                        requireConfirmation = keyUnlockData.requireConfirmation
+                    )
+                ) {
+                    throw KeyLockedException("User canceled authentication")
+                }
+            }
+        } while (true)
+    }
+
+    private suspend fun keyAgreementNonInteractive(
+        alias: String,
+        otherKey: EcPublicKey,
+        keyUnlockData: KeyUnlockData?
     ): ByteArray {
         val (entry, _) = loadKey(alias)
         return try {
