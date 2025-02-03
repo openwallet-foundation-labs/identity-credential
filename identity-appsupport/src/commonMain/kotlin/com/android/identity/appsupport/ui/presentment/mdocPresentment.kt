@@ -7,7 +7,6 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Tagged
 import com.android.identity.credential.Credential
 import com.android.identity.document.Document
-import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.mdoc.credential.MdocCredential
@@ -22,13 +21,12 @@ import com.android.identity.mdoc.transport.MdocTransportClosedException
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.util.toMdocRequest
 import com.android.identity.request.Request
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 
 private const val TAG = "mdocPresentment"
 
@@ -216,7 +214,7 @@ private suspend fun calcDocument(
         NameSpacedData.Builder().build(),
         credential.secureArea,
         credential.alias,
-        null,
+        KeyUnlockInteractive(),
         keyInfo.publicKey.curve.defaultSigningAlgorithm,
     )
     return documentGenerator.generate()

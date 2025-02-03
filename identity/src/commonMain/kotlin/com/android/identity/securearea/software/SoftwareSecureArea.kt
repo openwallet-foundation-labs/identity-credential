@@ -22,6 +22,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
@@ -29,6 +30,7 @@ import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyPurpose.Companion.encodeSet
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.securearea.PassphrasePromptModel
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.fromDataItem
 import com.android.identity.securearea.keyPurposeSet
@@ -66,7 +68,6 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
     ): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
-            // TODO: review if this is the semantics we want
             storageTable.delete(alias)
         }
 
@@ -191,23 +192,97 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         keyUnlockData: KeyUnlockData?
     ): EcPrivateKey = loadKey(alias, keyUnlockData).privateKey
 
+    private suspend fun<T> interactionHelper(
+        alias: String,
+        keyUnlockData: KeyUnlockData?,
+        op: suspend (unlockData: KeyUnlockData?) -> T,
+    ): T {
+        if (keyUnlockData !is KeyUnlockInteractive) {
+            return op(keyUnlockData)
+        }
+        var softwareKeyUnlockData: SoftwareKeyUnlockData? = null
+        do {
+            try {
+                return op(softwareKeyUnlockData)
+            } catch (_: KeyLockedException) {
+                val keyInfo = getKeyInfo(alias)
+                val constraints = keyInfo.passphraseConstraints ?: PassphraseConstraints.NONE
+                // TODO: translations
+                val defaultSubtitle = if (constraints.requireNumerical) {
+                    "Enter the PIN associated with the document"
+                } else {
+                    "Enter the passphrase associated with the document"
+                }
+                val passphrase = PassphrasePromptModel.requestPassphrase(
+                    title = keyUnlockData.title ?: "Verify it's you",
+                    subtitle = keyUnlockData.subtitle ?: defaultSubtitle,
+                    passphraseConstraints = constraints,
+                    passphraseEvaluator = { enteredPassphrase: String ->
+                        try {
+                            loadKey(alias, SoftwareKeyUnlockData(enteredPassphrase))
+                            null
+                        } catch (_: Throwable) {
+                            // TODO: translations
+                            if (constraints.requireNumerical) {
+                                "Wrong PIN entered. Try again"
+                            } else {
+                                "Wrong passphrase entered. Try again"
+                            }
+                        }
+                    }
+                )
+                if (passphrase == null) {
+                    throw KeyLockedException("User canceled passphrase prompt")
+                }
+                softwareKeyUnlockData = SoftwareKeyUnlockData(passphrase)
+            }
+        } while (true)
+    }
+
     override suspend fun sign(
         alias: String,
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
-    ): EcSignature = loadKey(alias, keyUnlockData).run {
-        require(keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        Crypto.sign(privateKey, signatureAlgorithm, dataToSign)
+    ): EcSignature {
+        return interactionHelper(
+            alias,
+            keyUnlockData,
+            op = { unlockData -> signNonInteractive(alias, signatureAlgorithm, dataToSign, unlockData) }
+        )
+    }
+
+    private suspend fun signNonInteractive(
+        alias: String,
+        signatureAlgorithm: Algorithm,
+        dataToSign: ByteArray,
+        keyUnlockData: KeyUnlockData?
+    ): EcSignature {
+        val keyData = loadKey(alias, keyUnlockData)
+        require(keyData.keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
+        return Crypto.sign(keyData.privateKey, signatureAlgorithm, dataToSign)
     }
 
     override suspend fun keyAgreement(
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray = loadKey(alias, keyUnlockData).run {
-        require(keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
-        Crypto.keyAgreement(privateKey, otherKey)
+    ): ByteArray {
+        return interactionHelper(
+            alias,
+            keyUnlockData,
+            op = { unlockData -> keyAgreementNonInteractive(alias, otherKey, unlockData) }
+        )
+    }
+
+    private suspend fun keyAgreementNonInteractive(
+        alias: String,
+        otherKey: EcPublicKey,
+        keyUnlockData: KeyUnlockData?
+    ): ByteArray {
+        val keyData = loadKey(alias, keyUnlockData)
+        require(keyData.keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
+        return Crypto.keyAgreement(keyData.privateKey, otherKey)
     }
 
     override suspend fun getKeyInfo(alias: String): SoftwareKeyInfo {

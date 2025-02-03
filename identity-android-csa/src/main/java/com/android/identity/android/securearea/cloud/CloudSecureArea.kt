@@ -4,7 +4,9 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
+import com.android.identity.R
 import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.biometric.showBiometricPrompt
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
@@ -18,11 +20,15 @@ import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.fromJavaX509Certificates
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.AttestationExtension
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyInvalidatedException
+import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.securearea.PassphrasePromptModel
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.cloud.CloudSecureAreaProtocol
 import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.CreateKeyRequest0
@@ -55,6 +61,7 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageEngine
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import io.ktor.client.HttpClient
@@ -284,10 +291,10 @@ open class CloudSecureArea protected constructor(
     }
 
     suspend fun unregister() {
-        // TODO: should we send a RPC to server to let them know we're bailing?
-        storageTable.delete(BINDING_KEY)
-        storageTable.delete(REGISTRATION_CONTEXT)
-        storageTable.delete(PASSPHRASE_CONSTRAINTS)
+        // TODO: should we send a RPC to the server to let them know we're bailing?
+        storageTable.delete(key = BINDING_KEY, partitionId = identifier)
+        storageTable.delete(key = REGISTRATION_CONTEXT, partitionId = identifier)
+        storageTable.delete(key = PASSPHRASE_CONSTRAINTS, partitionId = identifier)
         cloudBindingKey = null
         registrationContext = null
         skDevice = null
@@ -482,7 +489,6 @@ open class CloudSecureArea protected constructor(
     ): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
-            // TODO: review if this is the semantics we want
             storageTable.delete(
                 key = alias,
                 partitionId = identifier
@@ -600,8 +606,90 @@ open class CloudSecureArea protected constructor(
         }
     }
 
-    @Throws(com.android.identity.securearea.KeyLockedException::class)
+    private suspend fun<T> interactionHelper(
+        alias: String,
+        keyUnlockData: KeyUnlockData?,
+        op: suspend (unlockData: KeyUnlockData?) -> T,
+    ): T {
+        if (keyUnlockData !is KeyUnlockInteractive) {
+            return op(keyUnlockData)
+        }
+        var cloudKeyUnlockData = CloudKeyUnlockData(this, alias)
+        do {
+            try {
+                return op(cloudKeyUnlockData)
+            } catch (e: CloudKeyLockedException) {
+                val res = AndroidContexts.applicationContext.resources
+                val keyInfo = getKeyInfo(alias)
+                val defaultSubtitle = if (getPassphraseConstraints().requireNumerical) {
+                    res.getString(R.string.csa_auth_default_subtitle_pin)
+                } else {
+                    res.getString(R.string.csa_auth_default_subtitle_passphrase)
+                }
+                when (e.reason) {
+                    CloudKeyLockedException.Reason.WRONG_PASSPHRASE -> {
+                        cloudKeyUnlockData.passphrase = PassphrasePromptModel.requestPassphrase(
+                            title = keyUnlockData.title ?: res.getString(R.string.csa_auth_default_title),
+                            subtitle = keyUnlockData.subtitle ?: defaultSubtitle,
+                            passphraseConstraints = getPassphraseConstraints(),
+                            passphraseEvaluator = { enteredPassphrase: String ->
+                                val result = checkPassphrase(enteredPassphrase)
+                                when (result) {
+                                    CloudSecureAreaProtocol.RESULT_WRONG_PASSPHRASE -> {
+                                        if (getPassphraseConstraints().requireNumerical) {
+                                            res.getString(R.string.csa_auth_wrong_pin)
+                                        } else {
+                                            res.getString(R.string.csa_auth_wrong_passphrase)
+                                        }
+                                    }
+                                    CloudSecureAreaProtocol.RESULT_TOO_MANY_PASSPHRASE_ATTEMPTS -> {
+                                        res.getString(R.string.csa_auth_too_many_attempts)
+                                    }
+                                    CloudSecureAreaProtocol.RESULT_OK -> {
+                                        null
+                                    }
+                                    else -> {
+                                        Logger.w(TAG, "Unexpected result $result when checking passphrase")
+                                        null
+                                    }
+                                }
+                            }
+                        )
+                        if (cloudKeyUnlockData.passphrase == null) {
+                            throw KeyLockedException("User canceled passphrase prompt")
+                        }
+                    }
+                    CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED -> {
+                        if (!showBiometricPrompt(
+                                cryptoObject = cloudKeyUnlockData.cryptoObject,
+                                title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
+                                subtitle = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_subtitle),
+                                userAuthenticationTypes = keyInfo.userAuthenticationTypes,
+                                requireConfirmation = keyUnlockData.requireConfirmation
+                            )
+                        ) {
+                            throw KeyLockedException("User canceled authentication")
+                        }
+                    }
+                }
+            }
+        } while (true)
+    }
+
     override suspend fun sign(
+        alias: String,
+        signatureAlgorithm: Algorithm,
+        dataToSign: ByteArray,
+        keyUnlockData: com.android.identity.securearea.KeyUnlockData?
+    ): EcSignature {
+        return interactionHelper(
+            alias,
+            keyUnlockData,
+            op = { unlockData -> signNonInteractive(alias, signatureAlgorithm, dataToSign, unlockData) }
+        )
+    }
+
+    private suspend fun signNonInteractive(
         alias: String,
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
@@ -725,8 +813,19 @@ open class CloudSecureArea protected constructor(
         return resultingSignature!!
     }
 
-    @Throws(com.android.identity.securearea.KeyLockedException::class)
     override suspend fun keyAgreement(
+        alias: String,
+        otherKey: EcPublicKey,
+        keyUnlockData: com.android.identity.securearea.KeyUnlockData?
+    ): ByteArray {
+        return interactionHelper(
+            alias,
+            keyUnlockData,
+            op = { unlockData -> keyAgreementNonInteractive(alias, otherKey, unlockData) }
+        )
+    }
+
+    private suspend fun keyAgreementNonInteractive(
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: com.android.identity.securearea.KeyUnlockData?
@@ -844,6 +943,16 @@ open class CloudSecureArea protected constructor(
         return Zab!!
     }
 
+    private suspend fun checkPassphrase(
+        passphrase: String,
+    ): Int {
+        setupE2EE(false)
+        val request = CloudSecureAreaProtocol.CheckPassphraseRequest(passphrase)
+        val response = communicateE2EE(request.toCbor())
+        val commandResponse = CloudSecureAreaProtocol.Command.fromCbor(response) as CloudSecureAreaProtocol.CheckPassphraseResponse
+        return commandResponse.result
+    }
+
     override suspend fun getKeyInfo(alias: String): CloudKeyInfo {
         val data = storageTable.get(key = METADATA_PREFIX + alias, partitionId = identifier)
             ?: throw IllegalArgumentException("No key with given alias")
@@ -909,6 +1018,11 @@ open class CloudSecureArea protected constructor(
         map.put("isPassphraseRequired", settings.passphraseRequired)
         map.put("useStrongBox", settings.useStrongBox)
         map.put("attestationCertChain", attestationCertChain.toDataItem())
+        // If the key with the given alias exists, it is silently overwritten.
+        storageTable.delete(
+            key = METADATA_PREFIX + alias,
+            partitionId = identifier
+        )
         storageTable.insert(
             key = METADATA_PREFIX + alias,
             partitionId = identifier,

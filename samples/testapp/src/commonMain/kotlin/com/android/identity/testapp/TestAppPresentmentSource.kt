@@ -63,7 +63,7 @@ private suspend fun mdocFindCredentialsForRequest(
     val result = mutableListOf<Credential>()
 
     if (preSelectedDocument != null) {
-        val credential = mdocFindCredentialInDocument(request, now, preSelectedDocument)
+        val credential = mdocFindCredentialInDocument(app, request, now, preSelectedDocument)
         if (credential != null) {
             result.add(credential)
             return result
@@ -72,7 +72,7 @@ private suspend fun mdocFindCredentialsForRequest(
 
     for (documentName in app.documentStore.listDocuments()) {
         val document = app.documentStore.lookupDocument(documentName) ?: continue
-        val credential = mdocFindCredentialInDocument(request, now, document)
+        val credential = mdocFindCredentialInDocument(app, request, now, document)
         if (credential != null) {
             result.add(credential)
         }
@@ -81,14 +81,20 @@ private suspend fun mdocFindCredentialsForRequest(
 }
 
 private fun mdocFindCredentialInDocument(
+    app: App,
     request: MdocRequest,
     now: Instant,
     document: Document,
 ): Credential? {
+    val domain = if (app.settingsModel.presentmentRequireAuthentication.value) {
+        TestAppUtils.MDOC_CREDENTIAL_DOMAIN_AUTH
+    } else {
+        TestAppUtils.MDOC_CREDENTIAL_DOMAIN_NO_AUTH
+    }
     for (credential in document.certifiedCredentials) {
         if (credential is MdocCredential && credential.docType == request.docType) {
             val credential = document.findCredential(
-                domain = TestAppUtils.MDOC_AUTH_KEY_DOMAIN,
+                domain = domain,
                 now = now
             )
             if (credential != null) {

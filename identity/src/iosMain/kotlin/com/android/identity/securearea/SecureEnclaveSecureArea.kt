@@ -66,7 +66,6 @@ class SecureEnclaveSecureArea private constructor(
     override suspend fun createKey(alias: String?, createKeySettings: CreateKeySettings): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
-            // TODO: review if this is the semantics we want
             storageTable.delete(alias)
         }
 
@@ -144,8 +143,14 @@ class SecureEnclaveSecureArea private constructor(
         val (keyBlob, keyInfo) = loadKey(alias)
         check(signatureAlgorithm == Algorithm.ES256)
         check(keyInfo.keyPurposes.contains(KeyPurpose.SIGN))
-        check(keyUnlockData is SecureEnclaveKeyUnlockData?)
-        return Crypto.secureEnclaveEcSign(keyBlob, dataToSign, keyUnlockData)
+        val unlockData = if (keyUnlockData is KeyUnlockInteractive) {
+            // TODO: create LAContext with title/subtitle from KeyUnlockInteractive
+            null
+        } else {
+            keyUnlockData
+        }
+        check(unlockData is SecureEnclaveKeyUnlockData?)
+        return Crypto.secureEnclaveEcSign(keyBlob, dataToSign, unlockData)
     }
 
     override suspend fun keyAgreement(
@@ -156,8 +161,14 @@ class SecureEnclaveSecureArea private constructor(
         val (keyBlob, keyInfo) = loadKey(alias)
         check(otherKey.curve == EcCurve.P256)
         check(keyInfo.keyPurposes.contains(KeyPurpose.AGREE_KEY))
-        check(keyUnlockData is SecureEnclaveKeyUnlockData?)
-        return Crypto.secureEnclaveEcKeyAgreement(keyBlob, otherKey, keyUnlockData)
+        val unlockData = if (keyUnlockData is KeyUnlockInteractive) {
+            // TODO: create LAContext with title/subtitle from KeyUnlockInteractive
+            null
+        } else {
+            keyUnlockData
+        }
+        check(unlockData is SecureEnclaveKeyUnlockData?)
+        return Crypto.secureEnclaveEcKeyAgreement(keyBlob, otherKey, unlockData)
     }
 
     override suspend fun getKeyInfo(alias: String): KeyInfo {

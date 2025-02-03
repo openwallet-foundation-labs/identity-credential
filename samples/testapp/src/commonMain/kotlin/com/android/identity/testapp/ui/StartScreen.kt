@@ -23,6 +23,7 @@ import identitycredential.samples.testapp.generated.resources.iso_mdoc_multi_dev
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
 import identitycredential.samples.testapp.generated.resources.nfc_screen_title
+import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.provisioning_test_title
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
@@ -37,6 +38,7 @@ fun StartScreen(
     onClickCloudSecureArea: () -> Unit = {},
     onClickSecureEnclaveSecureArea: () -> Unit = {},
     onClickPassphraseEntryField: () -> Unit = {},
+    onClickPassphrasePrompt: () -> Unit = {},
     onClickIssuanceTestField: () -> Unit = {},
     onClickConsentSheetList: () -> Unit = {},
     onClickQrCodes: () -> Unit = {},
@@ -91,6 +93,12 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickPassphraseEntryField) {
                     Text(stringResource(Res.string.passphrase_entry_field_screen_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickPassphrasePrompt) {
+                    Text(stringResource(Res.string.passphrase_prompt_screen_title))
                 }
             }
 

@@ -8,6 +8,7 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,7 +81,7 @@ class TestAppSettingsModel private constructor(
         variable.value = value
 
         if (!readOnly) {
-            CoroutineScope(currentCoroutineContext()).launch {
+            CoroutineScope(Dispatchers.Default).launch {
                 variable.asStateFlow().collect { newValue ->
                     val dataItem = when (defaultValue) {
                         is Boolean -> {
@@ -130,6 +131,7 @@ class TestAppSettingsModel private constructor(
             )
         )
         bind(presentmentShowConsentPrompt, "presentmentShowConsentPrompt", true)
+        bind(presentmentRequireAuthentication, "presentmentRequireAuthentication", true)
 
         bind(readerBleCentralClientModeEnabled, "readerBleCentralClientModeEnabled", true)
         bind(readerBlePeripheralServerModeEnabled, "readerBlePeripheralServerModeEnabled", true)
@@ -147,6 +149,7 @@ class TestAppSettingsModel private constructor(
     val presentmentAllowMultipleRequests = MutableStateFlow<Boolean>(false)
     val presentmentNegotiatedHandoverPreferredOrder = MutableStateFlow<List<String>>(listOf())
     val presentmentShowConsentPrompt = MutableStateFlow<Boolean>(false)
+    val presentmentRequireAuthentication = MutableStateFlow<Boolean>(false)
 
     val readerBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)
     val readerBlePeripheralServerModeEnabled = MutableStateFlow<Boolean>(false)

@@ -15,7 +15,7 @@ import com.android.identity.crypto.X509CertChain
  * support attestation.
  *
  * @param publicKey the key that the attestation is for.
- * @param certChain If set, this contains  X.509 certificate chain attesting to the key.
+ * @param certChain If set, this contains a X.509 certificate chain attesting to the key.
  */
 @CborSerializable
 data class KeyAttestation(

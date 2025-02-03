@@ -21,6 +21,7 @@ import identitycredential.samples.testapp.generated.resources.secure_enclave_sec
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
+import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.settings_screen_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -67,6 +68,11 @@ data object CloudSecureAreaDestination : Destination {
 data object PassphraseEntryFieldDestination : Destination {
     override val route = "passphrase_entry_field"
     override val title = Res.string.passphrase_entry_field_screen_title
+}
+
+data object PassphrasePromptDestination : Destination {
+    override val route = "passphrase_prompt"
+    override val title = Res.string.passphrase_prompt_screen_title
 }
 
 data object ProvisioningTestDestination : Destination {
@@ -145,6 +151,7 @@ val appDestinations = listOf(
     SecureEnclaveSecureAreaDestination,
     CloudSecureAreaDestination,
     PassphraseEntryFieldDestination,
+    PassphrasePromptDestination,
     ProvisioningTestDestination,
     ConsentModalBottomSheetListDestination,
     ConsentModalBottomSheetDestination,

@@ -110,6 +110,7 @@ class CloudSecureAreaServer(
         var clientPassphraseSalt: ByteArray = byteArrayOf(),
         var clientSaltedPassphrase: ByteArray = byteArrayOf(),
         var registrationComplete: Boolean = false,
+        var clientId: String? = null
     ) {
         companion object
     }
@@ -382,6 +383,11 @@ class CloudSecureAreaServer(
             Algorithm.SHA256,
             e2eeState.context!!.clientPassphraseSalt + request0.passphrase.encodeToByteArray()
         )
+        // This is used for [PassphraseFailureEnforcer].
+        e2eeState.context!!.clientId = Crypto.digest(
+            Algorithm.SHA256,
+            Cbor.encode(e2eeState.context!!.deviceBindingKey!!.toDataItem())
+        ).toHex()
         val response0 = CloudSecureAreaProtocol.RegisterStage2Response0(
             e2eeState.context!!.encrypt()
         )
@@ -404,7 +410,6 @@ class CloudSecureAreaServer(
         var passphraseRequired: Boolean = false,
         var cloudKeyStorage: ByteArray? = null,
         var localKey: CoseKey? = null,
-        var clientId: String? = null,
     ) {
         companion object
     }
@@ -430,10 +435,6 @@ class CloudSecureAreaServer(
         state.validFromMillis = request0.validFromMillis
         state.validUntilMillis = request0.validUntilMillis
         state.passphraseRequired = request0.passphraseRequired
-        // This is used for [PassphraseFailureEnforcer].
-        state.clientId = Crypto.digest(
-            Algorithm.SHA256,
-            Cbor.encode(e2eeState.context!!.deviceBindingKey!!.toDataItem())).toHex()
         val response0 = CloudSecureAreaProtocol.CreateKeyResponse0(
             state.cloudChallenge!!,
             encryptCreateKeyState(state)
@@ -566,7 +567,7 @@ class CloudSecureAreaServer(
 
             if (state.keyContext!!.passphraseRequired) {
                 val lockedOutDuration =
-                    passphraseFailureEnforcer.isLockedOut(state.keyContext!!.clientId!!)
+                    passphraseFailureEnforcer.isLockedOut(e2eeState.context!!.clientId!!)
                 if (lockedOutDuration != null) {
                     Logger.i(
                         TAG, "$remoteHost: SignRequest1: Too many wrong passphrase attempts, " +
@@ -588,7 +589,6 @@ class CloudSecureAreaServer(
                         remoteHost,
                         request1.passphrase,
                         e2eeState.context!!,
-                        state.keyContext!!
                     )
                 ) {
                     Logger.d(TAG, "$remoteHost: SignRequest1: Error checking passphrase")
@@ -636,14 +636,13 @@ class CloudSecureAreaServer(
         remoteHost: String,
         givenPassphrase: String?,
         context: RegisterState,
-        keyContext: CreateKeyState
     ): Boolean {
         if (!context.registrationComplete) {
             Logger.d(TAG, "$remoteHost: checkPassphrase: Stage 2 registration not complete")
             return false
         }
         if (givenPassphrase == null) {
-            passphraseFailureEnforcer.recordFailedPassphraseAttempt(keyContext.clientId!!)
+            passphraseFailureEnforcer.recordFailedPassphraseAttempt(context.clientId!!)
             Logger.d(TAG, "$remoteHost: checkPassphrase: Passphrase required but none was supplied")
             return false
         }
@@ -652,7 +651,7 @@ class CloudSecureAreaServer(
             context.clientPassphraseSalt + givenPassphrase.encodeToByteArray()
         )
         if (!saltedPassphrase.contentEquals(context.clientSaltedPassphrase)) {
-            passphraseFailureEnforcer.recordFailedPassphraseAttempt(keyContext.clientId!!)
+            passphraseFailureEnforcer.recordFailedPassphraseAttempt(context.clientId!!)
             Logger.d(TAG, "$remoteHost: checkPassphrase: Wrong passphrase supplied")
             return false
         }
@@ -716,7 +715,7 @@ class CloudSecureAreaServer(
 
             if (state.keyContext!!.passphraseRequired) {
                 val lockedOutDuration =
-                    passphraseFailureEnforcer.isLockedOut(state.keyContext!!.clientId!!)
+                    passphraseFailureEnforcer.isLockedOut(e2eeState.context!!.clientId!!)
                 if (lockedOutDuration != null) {
                     Logger.i(
                         TAG, "$remoteHost: KeyAgreementRequest1: Too many wrong passphrase attempts, " +
@@ -738,7 +737,6 @@ class CloudSecureAreaServer(
                         remoteHost,
                         request1.passphrase,
                         e2eeState.context!!,
-                        state.keyContext!!
                     )
                 ) {
                     Logger.d(TAG, "$remoteHost: KeyAgreementRequest1: Error checking passphrase")
@@ -781,6 +779,43 @@ class CloudSecureAreaServer(
         } catch (e: SignatureException) {
             throw IllegalStateException(e)
         }
+    }
+
+    private fun doCheckPassphrase(
+        remoteHost: String,
+        e2eeState: E2EEState,
+        passphrase: String,
+    ): Int {
+        val lockedOutDuration = passphraseFailureEnforcer.isLockedOut(e2eeState.context!!.clientId!!)
+        if (lockedOutDuration != null) {
+            Logger.i(
+                TAG, "$remoteHost: CheckPassphraseRequest: Too many wrong passphrase attempts, " +
+                        "locked out for $lockedOutDuration"
+            )
+            return CloudSecureAreaProtocol.RESULT_TOO_MANY_PASSPHRASE_ATTEMPTS
+        }
+        if (!checkPassphrase(remoteHost, passphrase, e2eeState.context!!)) {
+            Logger.i(TAG, "$remoteHost: CheckPassphraseRequest: Error checking passphrase")
+            return CloudSecureAreaProtocol.RESULT_WRONG_PASSPHRASE
+        }
+        return CloudSecureAreaProtocol.RESULT_OK
+    }
+
+    private fun doCheckPassphraseRequest(
+        request: CloudSecureAreaProtocol.CheckPassphraseRequest,
+        remoteHost: String,
+        e2eeState: E2EEState
+    ): Pair<Int, ByteArray> {
+        val result = doCheckPassphrase(remoteHost, e2eeState, request.passphrase)
+        val response = CloudSecureAreaProtocol.CheckPassphraseResponse(
+            result,
+        )
+        val encryptedResponse = E2EEResponse(
+            encryptToDevice(e2eeState, response.toCbor()),
+            e2eeState.encrypt()
+        )
+        Logger.d(TAG, "$remoteHost: CheckPassphraseRequest: Sending result $result to client")
+        return Pair(200, encryptedResponse.toCbor())
     }
 
     private fun encryptToDevice(
@@ -855,6 +890,7 @@ class CloudSecureAreaServer(
             is CloudSecureAreaProtocol.SignRequest1 -> doSignRequest1(command, remoteHost, e2eeState!!)
             is CloudSecureAreaProtocol.KeyAgreementRequest0 -> doKeyAgreementRequest0(command, remoteHost, e2eeState!!)
             is CloudSecureAreaProtocol.KeyAgreementRequest1 -> doKeyAgreementRequest1(command, remoteHost, e2eeState!!)
+            is CloudSecureAreaProtocol.CheckPassphraseRequest -> doCheckPassphraseRequest(command, remoteHost, e2eeState!!)
             else -> {
                 Logger.w(TAG, "$remoteHost: Unknown command ${command}, returning 404")
                 Pair(404, "Unknown command".toByteArray())

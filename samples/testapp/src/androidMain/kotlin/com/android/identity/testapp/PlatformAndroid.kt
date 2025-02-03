@@ -3,7 +3,9 @@ package com.android.identity.testapp
 import android.os.Build
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.AndroidContexts
 import com.android.identity.securearea.SecureAreaProvider
@@ -11,6 +13,7 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.net.NetworkInterface
@@ -66,8 +69,19 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return androidKeystoreSecureAreaProvider
 }
 
-actual fun platformKeySetting(clientId: String): CreateKeySettings {
-    return AndroidKeystoreCreateKeySettings.Builder(clientId.toByteArray()).build()
+actual fun platformCreateKeySettings(
+    challenge: ByteString,
+    keyPurposes: Set<KeyPurpose>,
+    userAuthenticationRequired: Boolean
+): CreateKeySettings {
+    return AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
+        .setKeyPurposes(keyPurposes)
+        .setUserAuthenticationRequired(
+            required = userAuthenticationRequired,
+            timeoutMillis = 0,
+            userAuthenticationTypes = setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
+        )
+        .build()
 }
 
 // https://stackoverflow.com/a/21505193/878126

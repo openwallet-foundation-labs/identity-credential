@@ -24,6 +24,7 @@ import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.util.toMdocRequest
 import com.android.identity.request.MdocRequest
 import com.android.identity.request.Request
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -374,7 +375,7 @@ private suspend fun calcDocument(
         NameSpacedData.Builder().build(),
         credential.secureArea,
         credential.alias,
-        null,
+        KeyUnlockInteractive(),
         keyInfo.publicKey.curve.defaultSigningAlgorithm,
     )
     return documentGenerator.generate()

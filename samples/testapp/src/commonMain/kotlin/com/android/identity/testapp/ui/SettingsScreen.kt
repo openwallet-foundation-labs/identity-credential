@@ -210,6 +210,13 @@ fun SettingsScreen(
                 onCheckedChange = { app.settingsModel.presentmentShowConsentPrompt.value = !it },
             )
         }
+        item {
+            SettingToggle(
+                title = "Skip user authentication",
+                isChecked = !app.settingsModel.presentmentRequireAuthentication.collectAsState().value,
+                onCheckedChange = { app.settingsModel.presentmentRequireAuthentication.value = !it },
+            )
+        }
 
         item {
             HorizontalDivider(
