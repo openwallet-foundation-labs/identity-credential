@@ -96,7 +96,6 @@ dependencies {
     implementation(project(":mrtd-reader"))
     implementation(project(":mrtd-reader-android"))
     implementation(project(":jpeg2k"))
-    implementation(project(":identity-android-csa"))
 
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.kotlinx.datetime)

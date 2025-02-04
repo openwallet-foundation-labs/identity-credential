@@ -487,6 +487,7 @@ class App private constructor() {
                     }
                     composable(route = CloudSecureAreaDestination.route) {
                         CloudSecureAreaScreen(
+                            app = this@App,
                             showToast = { message -> showToast(message) },
                             onViewCertificate = { encodedCertificateData ->
                                 navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")

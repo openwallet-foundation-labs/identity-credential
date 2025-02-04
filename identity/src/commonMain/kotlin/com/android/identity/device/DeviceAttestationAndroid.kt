@@ -18,7 +18,7 @@ data class DeviceAttestationAndroid(
         try {
             validateAndroidKeyAttestation(
                 certificateChain,
-                validationData.clientId.encodeToByteString(),
+                validationData.attestationChallenge,
                 validationData.androidGmsAttestation,
                 validationData.androidVerifiedBootGreen,
                 validationData.androidAppSignatureCertificateDigests

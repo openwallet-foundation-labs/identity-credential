@@ -1,4 +1,4 @@
-package com.android.identity.android.securearea.cloud
+package com.android.identity.securearea.cloud
 
 import com.android.identity.securearea.KeyLockedException
 

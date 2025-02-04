@@ -66,7 +66,7 @@ data class DeviceAttestationIos(
 
         // First, validate authData integrity, calculate the hash
         val clientHash =
-            Crypto.digest(Algorithm.SHA256, validationData.clientId.encodeToByteArray())
+            Crypto.digest(Algorithm.SHA256, validationData.attestationChallenge.toByteArray())
         val composite = ByteStringBuilder().apply {
             append(authData)
             append(clientHash)
@@ -88,7 +88,7 @@ data class DeviceAttestationIos(
 
         // Compare the actual hash and its expected value
         if (!octetString.value.contentEquals(authDataHash)) {
-            throw DeviceAttestationException("AuthData or clientId integrity error")
+            throw DeviceAttestationException("AuthData or attestationChallenge integrity error")
         }
 
         // Now, parse and validate the content of authData

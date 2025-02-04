@@ -1,9 +1,12 @@
 package com.android.identity.appsupport.ui.certificateviewer
 
 import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Boolean
+import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.ASN1Sequence
 import com.android.identity.asn1.OID
 import com.android.identity.crypto.X509Cert
+import com.android.identity.securearea.cloud.CloudAttestationExtension
 import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.util.unsignedBigIntToString
 import com.android.identity.util.toHex
@@ -108,11 +111,23 @@ internal data class CertificateViewData(
                         OID.X509_EXTENSION_KEY_USAGE.oid ->
                             cert.keyUsage.joinToString(", ") { it.description }
 
+                        OID.X509_EXTENSION_BASIC_CONSTRAINTS.oid -> {
+                            val seq = ASN1.decode(ext.data.toByteArray()) as ASN1Sequence
+                            val sb = StringBuilder("CA: ${(seq.elements[0] as ASN1Boolean).value}\n")
+                            if (seq.elements.size > 1) {
+                                sb.append("pathLenConstraint: ${(seq.elements[1] as ASN1Integer).toLong()}\n")
+                            }
+                            sb.toString()
+                        }
+
                         OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid ->
                             cert.authorityKeyIdentifier!!.toHex(byteDivider = " ")
 
                         OID.X509_EXTENSION_ANDROID_KEYSTORE_ATTESTATION.oid ->
                             AndroidAttestationExtensionParser(cert).prettyPrint()
+
+                        OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid ->
+                            CloudAttestationExtension.decode(ext.data).prettyPrint()
 
                         else -> {
                             try {

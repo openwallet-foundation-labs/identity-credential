@@ -22,9 +22,9 @@ import kotlin.coroutines.suspendCoroutine
 actual object DeviceCheck {
     actual suspend fun generateAttestation(
         secureArea: SecureArea,
-        clientId: String
+        challenge: ByteString
     ): DeviceAttestationResult {
-        val nonce = Crypto.digest(Algorithm.SHA256, clientId.encodeToByteArray())
+        val nonce = Crypto.digest(Algorithm.SHA256, challenge.toByteArray())
         return suspendCoroutine { continuation ->
             SwiftBridge.generateDeviceAttestation(nonce.toNSData()) { keyId, blob, err ->
                 if (err != null) {

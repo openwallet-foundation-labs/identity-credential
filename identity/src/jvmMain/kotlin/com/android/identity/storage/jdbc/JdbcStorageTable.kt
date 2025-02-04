@@ -11,18 +11,18 @@ import java.sql.SQLException
 import kotlin.random.Random
 
 class JdbcStorageTable(
-    private val owner: JdbcStorage,
+    override val storage: JdbcStorage,
     private val sql: SqlStatementMaker
 ): BaseStorageTable(sql.spec) {
     internal suspend fun init() {
-        owner.withConnection { connection ->
+        storage.withConnection { connection ->
             connection.createStatement().execute(sql.createTableStatement)
         }
     }
 
     override suspend fun get(key: String, partitionId: String?): ByteString? {
         checkPartition(partitionId)
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             val statement = connection.prepareStatement(sql.getStatement)
             var index = 1
             statement.setString(index++, key)
@@ -30,7 +30,7 @@ class JdbcStorageTable(
                 statement.setString(index++, partitionId!!)
             }
             if (spec.supportExpiration) {
-                statement.setLong(index, owner.clock.now().epochSeconds)
+                statement.setLong(index, storage.clock.now().epochSeconds)
             }
             val resultSet = statement.executeQuery()
             if (resultSet.next()) {
@@ -54,7 +54,7 @@ class JdbcStorageTable(
         if (key != null) {
             checkKey(key)
         }
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             var newKey: String
             if (key != null && spec.supportExpiration) {
                 // if there is an entry with this key, but it is expired, it needs to be purged
@@ -65,13 +65,13 @@ class JdbcStorageTable(
                 if (spec.supportPartitions) {
                     purge.setString(index++, partitionId)
                 }
-                purge.setLong(index, owner.clock.now().epochSeconds)
+                purge.setLong(index, storage.clock.now().epochSeconds)
                 purge.executeUpdate()
             }
             var tries = 0
             // Loop until the key we generated is unique (if key is not null, we only loop once).
             while (true) {
-                newKey = key ?: Random.nextBytes(owner.keySize).toBase64Url()
+                newKey = key ?: Random.nextBytes(storage.keySize).toBase64Url()
                 val values = StringBuilder("?, ?")
                 if (spec.supportPartitions) {
                     values.append(", ?")
@@ -131,7 +131,7 @@ class JdbcStorageTable(
         if (expiration != null) {
             checkExpiration(expiration)
         }
-        owner.withConnection { connection ->
+        storage.withConnection { connection ->
             val statement = connection.prepareStatement(
                 if (expiration != null) {
                     sql.updateWithExpirationStatement
@@ -149,7 +149,7 @@ class JdbcStorageTable(
                 statement.setString(index++, partitionId!!)
             }
             if (spec.supportExpiration) {
-                statement.setLong(index, owner.clock.now().epochSeconds)
+                statement.setLong(index, storage.clock.now().epochSeconds)
             }
             val count = statement.executeUpdate()
             if (count != 1) {
@@ -161,7 +161,7 @@ class JdbcStorageTable(
 
     override suspend fun delete(key: String, partitionId: String?): Boolean {
         checkPartition(partitionId)
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             val statement = connection.prepareStatement(sql.deleteStatement)
             statement.setString(1, key)
             var index = 2
@@ -169,7 +169,7 @@ class JdbcStorageTable(
                 statement.setString(index++, partitionId!!)
             }
             if (spec.supportExpiration) {
-                statement.setLong(index, owner.clock.now().epochSeconds)
+                statement.setLong(index, storage.clock.now().epochSeconds)
             }
             val count = statement.executeUpdate()
             count > 0
@@ -177,7 +177,7 @@ class JdbcStorageTable(
     }
 
     override suspend fun deleteAll() {
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             connection.prepareStatement(sql.deleteAllStatement).executeUpdate()
         }
     }
@@ -192,7 +192,7 @@ class JdbcStorageTable(
         if (limit == 0) {
             return listOf()
         }
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             val statement = connection.prepareStatement(
                 if (limit < Int.MAX_VALUE) {
                     sql.enumerateWithLimitStatement
@@ -206,7 +206,7 @@ class JdbcStorageTable(
                 statement.setString(index++, partitionId!!)
             }
             if (spec.supportExpiration) {
-                statement.setLong(index++, owner.clock.now().epochSeconds)
+                statement.setLong(index++, storage.clock.now().epochSeconds)
             }
             if (limit < Int.MAX_VALUE) {
                 statement.setInt(index, limit)
@@ -224,9 +224,9 @@ class JdbcStorageTable(
         if (!spec.supportExpiration) {
             throw IllegalStateException("This table does not support expiration")
         }
-        owner.withConnection { connection ->
+        storage.withConnection { connection ->
             val purge = connection.prepareStatement(sql.purgeExpiredStatement)
-            purge.setLong(1, owner.clock.now().epochSeconds)
+            purge.setLong(1, storage.clock.now().epochSeconds)
             purge.executeUpdate()
         }
     }

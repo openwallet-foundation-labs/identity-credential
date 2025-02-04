@@ -180,6 +180,19 @@ class AndroidAttestationExtensionParser(cert: X509Cert) {
         }
     }
 
+    private fun findAuthorizationListEntry(tag: Int): ASN1Object? {
+        return findAuthorizationListEntry(teeEnforcedAuthorizations, tag)
+            ?:findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
+    }
+
+
+    fun getUserAuthenticationType(): Long {
+        val result = findAuthorizationListEntry(
+            AndroidKeystoreAuthorization.userAuthType.tag
+        ) as ASN1Integer?
+        return result?.toLong() ?: 0
+    }
+
     private enum class VBootState(
         val value: Int,
         val description: String

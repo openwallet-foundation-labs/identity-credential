@@ -5,16 +5,20 @@ import com.android.identity.cose.CoseKey
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcSignature
+import com.android.identity.device.DeviceCheck
+import com.android.identity.device.DeviceAssertion
+import com.android.identity.device.DeviceAttestation
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.RegisterRequest1
+import kotlinx.io.bytestring.ByteString
 
 /**
  * This describes the protocol (messages and constants) between the device and the server
  * for the Cloud Secure Area.
  *
- * Throughout, the term _device_ or _client is used to refer to an Mobile Application (usually a
+ * Throughout, the term _device_ or _client_ is used to refer to an Mobile Application (usually a
  * so-called Wallet App) and using a [SecureArea] implementation which is implementing this
- * protocol (e.g. the [CloudSecureArea] implementation in the `identity-android-csa` library.
+ * protocol, for example the [CloudSecureArea] class.
+ *
  * Similarly, the term _server_ or _cloud_ is used to refer to server-side of the Cloud Secure Area
  * and  _Secure Area_ is used to refer to the part of this server-side which may be implemented
  * in an isolated execution environment with additional protections.
@@ -33,44 +37,53 @@ import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.RegisterReq
  *   - This includes the client and the server exchanging keys (`DeviceBindingKey` and
  *     `CloudBindingKey`) to be used to bootstrap end-to-end encryption between the two parties.
  *     Each key has an attestation to allow both parties to authenticate each other.
- *   - The server authenticates the device using Android Keystore Attestation which enables
- *   restricting the service to e.g. a subset of Android applications only running
- *   on devices with verified boot state GREEN.
+ *   - The server authenticates the device using
+ *     [Android Keystore Attestation](https://developer.android.com/privacy-and-security/security-key-attestation)
+ *     on Android and
+ *     [DCAppAttestService](https://developer.apple.com/documentation/devicecheck/dcappattestservice)
+ *     on iOS. This enables restricting the service to only authorized
+ *     mobile applications that hasn't been tampered with and is running a known good environment.
  *   - The device authenticates the server by inspecting the root certificate of the
- *   attestation and making sure it trusts the public key in the root certificate.
+ *     attestation and making sure it trusts the public key in the root certificate.
  *   - Detailed description in [RegisterRequest0], [RegisterResponse0], [RegisterRequest1],
- *   and [RegisterResponse1].
+ *     and [RegisterResponse1] messages below.
  * - E2EE Setup
  *   - This involves the device and the server exchanging ephemeral keys (`EDeviceKey`
- *   and `ECloudKey`) which are signed by `DeviceBindingKey` and `CloudBindingKey`.
- *   These keys are used to derive symmetric encryption keys (`SKDevice` and `SKCloud`)
- *   used for AES-GCM-128 encryption.
+ *     and `ECloudKey`) which are signed by `DeviceBindingKey` and `CloudBindingKey`.
+ *     These keys are used to derive symmetric encryption keys (`SKDevice` and `SKCloud`)
+ *     used for AES-GCM-128 encryption.
  *   - The derived symmetric encryption keys are intended to only valid for a finite amount
- *   of time, 10 minutes for example. This is enforced by the server asking the device
- *   to go through the E2EE Setup flow again.
+ *     of time, 10 minutes for example. This is enforced by the server asking the device
+ *     to go through the E2EE Setup flow again.
  *   - Detailed description for the E2EE setup flow is in [E2EESetupRequest0],
- *   [E2EESetupResponse0], [E2EESetupRequest1], and [E2EESetupResponse1]. See [E2EERequest]
- *   and [E2EEResponse] for how the symmetric encryption keys are used.
+ *     [E2EESetupResponse0], [E2EESetupRequest1], and [E2EESetupResponse1]. See [E2EERequest]
+ *     and [E2EEResponse] for how the symmetric encryption keys are used.
  * - Stage 2 registration
  *   - This runs after E2EE has been set up and allows for exchange of registration-related
- *   data which needs to be kept confidential. Currently this only includes the passphrase
- *   used to protect keys.
+ *     data which needs to be kept confidential. Currently this only includes the passphrase
+ *     used to protect keys.
  *   - Detailed description in [RegisterStage2Request0] and [RegisterStage2Response0].
  *
  * The following flows are all implemented on top of E2EE and requires stage 2 registration
  * to be complete.
  * - Create Key
  *   - For every key created on the server, a companion key on the local device will
- *     be created. The local key is used to enforce User Authentication requirements
- *     e.g. biometric and Lock Screen Knowledge Factor.
+ *     be created in Secure Hardware (Android Keystore or iOS Secure Enclave). The local
+ *     key is used to enforce User Authentication requirements using the native device
+ *     unlock mechanism (e.g. biometric and passcodes).
  *   - See [CreateKeyRequest0], [CreateKeyResponse0], [CreateKeyRequest1], [CreateKeyResponse1]
- *   for a detailed description of this flow.
+ *     for a detailed description of this flow.
  * - Sign with Key
  *   - See [SignRequest0], [SignResponse0], [SignRequest1], [SignResponse1] for a detailed
- *   description of this flow.
+ *     description of this flow.
  * - Key Agreement with Key
  *   - See [KeyAgreementRequest0], [KeyAgreementResponse0], [KeyAgreementRequest1],
- *   [KeyAgreementResponse1] for a detailed description of this flow.
+ *     [KeyAgreementResponse1] for a detailed description of this flow.
+ * - Passphrase check
+ *    - The purpose of this is for the device to check ahead of time if the passphrase
+ *      the user entered will work. This is useful for UX/UI flows where the client
+ *      wishes to collect the passphrase before checking biometrics.
+ *    - See [CheckPassphraseRequest] and [CheckPassphraseResponse]
  *
  * The protocol is designed so it's possible to implement a 100% stateless server except
  * that the server needs to possess a symmetric encryption key which never leaves the
@@ -84,15 +97,15 @@ import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.RegisterReq
  *
  * The following data types are used in the protocol:
  * ```
- * // A chain of X.509 certificates.
- * //
- * // If the chain only contains a single certificate, a bstr with the encoded
- * // certificate is used. Otherwise an array of encoded certificates is used.
- * //
+ * ; A chain of X.509 certificates.
+ * ;
+ * ; If the chain only contains a single certificate, a bstr with the encoded
+ * ; certificate is used. Otherwise an array of encoded certificates is used.
+ * ;
  * X509CertChain = bstr / [ bstr]
  *
- * // A signature made with a Elliptic Curve Cryptography key.
- * //
+ * ; A signature made with a Elliptic Curve Cryptography key.
+ * ;
  * EcSignature = {
  *   "r" : bstr,
  *   "s" : bstr
@@ -113,15 +126,7 @@ object CloudSecureAreaProtocol {
     }
 
     /**
-     * This is the first message in the Registration flow and it's sent by
-     * the device to the server the first time the device wishes to communicate
-     * with the server.
-     * ```
-     * RegisterRequest0 = {
-     *   "type" : "RegisterRequest0",
-     *   "clientVersion" : tstr,
-     * }
-     * ```
+     * Sent by device a server it has never communicated with before and it wishes to establish communications.
      *
      * @param clientVersion The version of the protocol the client is using. Must be set to "1.0"
      */
@@ -130,38 +135,24 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     /**
-     * This is sent in response to [RegisterRequest0]:
-     * ```
-     * RegisterResponse0 = {
-     *   "type" : "RegisterResponse0",
-     *   "cloudChallenge" : bstr,
-     *   "serverState" : bstr
-     * }
-     * ```
-     * The server generates `cloudChallenge` and stores it in session state. The
-     * `serverState` parameter can be used by the server to store encrypted serialized
-     * state or an identifier of the session.
+     * Message sent by the server to the device sent in response to [RegisterRequest0]:
      *
-     * Upon receiving the message, the device shall create `DeviceBindingKey` - an ECC
-     * key using curve P-256 - in hardware-backed keystore using `cloudChallenge`
-     * as the challenge to be included in the attestation. The device proceeds to prepare
-     * a [RegisterResponse0] message.
+     * @property attestationChallenge the challenge to use for device attestation.
+     * @property cloudChallenge the challenge to use for `DeviceBindingKey`
+     * @property serverState an opaque value representing server state.
      */
     data class RegisterResponse0(
+        val attestationChallenge: ByteString,
         val cloudChallenge: ByteArray,
         val serverState: ByteArray
     ) : Command()
 
     /**
-     * This is sent in response to [RegisterResponse0]:
-     * ```
-     * RegisterRequest1 = {
-     *   "type" : "RegisterRequest1",
-     *   "deviceChallenge" : bstr,
-     *   "deviceBindingKeyAttestation": X509CertChain,
-     *   "serverState": bstr,
-     * }
-     * ```
+     * Message sent by the client to the server in response to [RegisterResponse0].
+     *
+     * The device uses the [DeviceCheck] API to generate a [DeviceAttestation] and
+     * [DeviceAssertion] for the `cloudChallenge` nonce received.
+     *
      * The device includes `deviceBindingKeyAttestation` (which is a list of encoded
      * X509 certificates) and `serverState` described in [RegisterRequest0]. The device
      * also generates `deviceChallenge` which is to be included in this message and also
@@ -184,19 +175,15 @@ object CloudSecureAreaProtocol {
      */
     data class RegisterRequest1(
         val deviceChallenge: ByteArray,
-        val deviceBindingKeyAttestation: X509CertChain,
+        val deviceAttestation: DeviceAttestation,
+        val deviceBindingKey: CoseKey,
+        val deviceBindingKeyAttestation: X509CertChain?,
         val serverState: ByteArray
     ) : Command()
 
     /**
-     * This is sent in response to [RegisterRequest1]:
-     * ```
-     * RegisterResponse1 = {
-     *   "type" : "RegisterResponse1",
-     *   "cloudBindingKeyAttestation" : X509CertChain
-     *   "serverState" : bstr
-     * }
-     * ```
+     * Message sent by the server to the device in response to [RegisterRequest1]:
+     *
      * The server includes `cloudBindingKeyAttestation` (which is a list of encoded
      * X509 certificates) and `serverState` described in [RegisterRequest1].
      *
@@ -219,30 +206,19 @@ object CloudSecureAreaProtocol {
     /**
      * This message is sent when the device wishes to set up end-to-end
      * encryption to the Secure Area of the server.
-     * ```
-     * E2EESetupRequest0 = {
-     *   "type" : "E2EESetupRequest0",
-     *   "registrationContext" : bstr
-     * }
-     * ```
-     * where `registrationContext` is the value obtained from the registration
-     * flow, see [RegisterResponse1].
      *
      * After receiving this message, the server responds with a [E2EESetupResponse0] message.
+     *
+     * @property registrationContext is the value obtained from the registration flow, see [RegisterResponse1].
+     *
      */
     data class E2EESetupRequest0(
         val registrationContext: ByteArray
     ) : Command()
 
     /**
-     * This is sent in response to [E2EESetupRequest0]:
-     * ```
-     * E2EESetupResponse0 = {
-     *   "type" : "E2EESetupResponse0",
-     *   "cloudNonce" : bstr,
-     *   "serverState" : bstr
-     * }
-     * ```
+     * This is sent in response to [E2EESetupRequest0].
+     *
      * When the devices receives this message it shall generate `deviceNonce`
      * and create `EDeviceKey` which shall be a EC key using curve P-256. It
      * is not a requirement to use hardware-backed keystore for `EDeviceKey`.
@@ -257,6 +233,9 @@ object CloudSecureAreaProtocol {
      * ]
      * ```
      * The device proceeds to prepare a [E2EESetupRequest1] message.
+     *
+     * @property cloudNonce
+     * @property serverState
      */
     data class E2EESetupResponse0(
         val cloudNonce: ByteArray,
@@ -297,6 +276,7 @@ object CloudSecureAreaProtocol {
         val eDeviceKey: CoseKey,
         val deviceNonce: ByteArray,
         val signature: EcSignature,
+        val deviceAssertion: DeviceAssertion,
         val serverState: ByteArray
     ) : Command()
 
@@ -376,6 +356,8 @@ object CloudSecureAreaProtocol {
         val validFromMillis: Long,
         val validUntilMillis: Long,
         val passphraseRequired: Boolean,
+        val userAuthenticationRequired: Boolean,
+        val userAuthenticationTypes: Long,
         val challenge: ByteArray
     ) : Command()
 
@@ -385,7 +367,8 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     data class CreateKeyRequest1(
-        val localKeyAttestation: X509CertChain,
+        val localKey: CoseKey,
+        val localKeyAttestation: X509CertChain?,
         val serverState: ByteArray
     ) : Command()
 

@@ -1,13 +1,12 @@
 package com.android.identity.device
 
-import com.android.identity.util.fromBase64Url
-import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encodeToByteString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 
 class DeviceAttestationIosTest {
-    private val clientId = "3og8indEDaOekzKXJ20EMBxW"
+    private val attestationChallenge = "3og8indEDaOekzKXJ20EMBxW"
     private val deviceAttestation = DeviceAttestation.fromCbor(ATTESTATION)
     private val deviceAssertion = DeviceAssertion.fromCbor(ASSERTION)
 
@@ -15,7 +14,7 @@ class DeviceAttestationIosTest {
     fun testValidation() {
         deviceAttestation.validate(
             DeviceAttestationValidationData(
-                clientId = clientId,
+                attestationChallenge = attestationChallenge.encodeToByteString(),
                 iosReleaseBuild = false,
                 iosAppIdentifier = "74HWMG89B3.com.sorotokin.identity.testapp1",
                 androidGmsAttestation = false,

@@ -4,9 +4,9 @@ import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.android.securearea.cloud.CloudKeyLockedException
-import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
-import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.securearea.cloud.CloudKeyLockedException
+import com.android.identity.securearea.cloud.CloudKeyUnlockData
+import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
@@ -188,21 +188,8 @@ private suspend fun showPresentmentFlowImpl(
                             (keyUnlockData as CloudKeyUnlockData).passphrase = passphrase
                         }
 
-                        CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED -> {
-                            val successfulBiometricResult = showBiometricPrompt(
-                                activity = activity,
-                                title = activity.resources.getString(R.string.presentation_biometric_prompt_title),
-                                subtitle = activity.resources.getString(R.string.presentation_biometric_prompt_subtitle),
-                                cryptoObject = (keyUnlockData as CloudKeyUnlockData).cryptoObject,
-                                userAuthenticationTypes = setOf(
-                                    UserAuthenticationType.BIOMETRIC,
-                                    UserAuthenticationType.LSKF
-                                ),
-                                requireConfirmation = false
-                            )
-                            // if user cancelled or was unable to authenticate, throw IllegalStateException
-                            check(successfulBiometricResult) { "Biometric Unsuccessful" }
-                        }
+                        CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED ->
+                            throw IllegalStateException("Unexpected reason USER_NOT_AUTHENTICATED")
                     }
                 }
 

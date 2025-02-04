@@ -10,7 +10,7 @@ import kotlinx.io.bytestring.ByteString
 actual object DeviceCheck {
     actual suspend fun generateAttestation(
         secureArea: SecureArea,
-        clientId: String
+        challenge: ByteString
     ): DeviceAttestationResult {
         return DeviceAttestationResult(
             "",

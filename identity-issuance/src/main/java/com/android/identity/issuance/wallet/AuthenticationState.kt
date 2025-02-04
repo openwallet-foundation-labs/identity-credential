@@ -19,6 +19,7 @@ import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encodeToByteString
 import kotlin.random.Random
 
 @FlowState(flowInterface = AuthenticationFlow::class)
@@ -75,7 +76,7 @@ class AuthenticationState(
                 throw IllegalStateException("Client already registered")
             }
             attestation.validate(DeviceAttestationValidationData(
-                clientId = clientId,
+                attestationChallenge = clientId.encodeToByteString(),
                 iosReleaseBuild = settings.iosReleaseBuild,
                 iosAppIdentifier = settings.iosAppIdentifier,
                 androidGmsAttestation = settings.androidRequireGmsAttestation,

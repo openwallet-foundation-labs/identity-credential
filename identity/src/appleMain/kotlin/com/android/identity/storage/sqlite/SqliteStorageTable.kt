@@ -14,7 +14,7 @@ import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 
 class SqliteStorageTable(
-    private val owner: SqliteStorage,
+    override val storage: SqliteStorage,
     spec: StorageTableSpec
 ): BaseStorageTable(spec) {
     private var sql = SqlStatementMaker(
@@ -32,14 +32,14 @@ class SqliteStorageTable(
     )
 
     internal suspend fun init() {
-        owner.withConnection { connection ->
+        storage.withConnection { connection ->
             connection.execSQL(sql.createTableStatement)
         }
     }
 
     override suspend fun get(key: String, partitionId: String?): ByteString? {
         checkPartition(partitionId)
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             connection.prepare(sql.getStatement).use { statement ->
                 statement.bindText(1, key)
                 var index = 2
@@ -47,7 +47,7 @@ class SqliteStorageTable(
                     statement.bindText(index++, partitionId!!)
                 }
                 if (spec.supportExpiration) {
-                    statement.bindLong(index, owner.clock.now().epochSeconds)
+                    statement.bindLong(index, storage.clock.now().epochSeconds)
                 }
                 if (statement.step()) {
                     ByteString(statement.getBlob(0))
@@ -69,7 +69,7 @@ class SqliteStorageTable(
         }
         checkPartition(partitionId)
         checkExpiration(expiration)
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             var newKey: String
             if (key != null && spec.supportExpiration) {
                 // if there is an entry with this key, but it is expired, it needs to be purged.
@@ -80,14 +80,14 @@ class SqliteStorageTable(
                     if (spec.supportPartitions) {
                         statement.bindText(index++, partitionId!!)
                     }
-                    statement.bindLong(index, owner.clock.now().epochSeconds)
+                    statement.bindLong(index, storage.clock.now().epochSeconds)
                     statement.step()
                 }
             }
             var done = false
             // Loop until the key we generated is unique (if key is not null, we only loop once).
             do {
-                newKey = key ?: Random.nextBytes(owner.keySize).toBase64Url()
+                newKey = key ?: Random.nextBytes(storage.keySize).toBase64Url()
                 connection.prepare(sql.insertStatement).use { statement ->
                     var index = 1
                     if (spec.supportPartitions) {
@@ -136,8 +136,8 @@ class SqliteStorageTable(
         if (expiration != null) {
             checkExpiration(expiration)
         }
-        owner.withConnection { connection ->
-            val nowSeconds = owner.clock.now().epochSeconds
+        storage.withConnection { connection ->
+            val nowSeconds = storage.clock.now().epochSeconds
             val committed = connection.prepare(
                 if (expiration == null) {
                     sql.updateStatement
@@ -168,8 +168,8 @@ class SqliteStorageTable(
 
     override suspend fun delete(key: String, partitionId: String?): Boolean {
         checkPartition(partitionId)
-        return owner.withConnection { connection ->
-            val nowSeconds = owner.clock.now().epochSeconds
+        return storage.withConnection { connection ->
+            val nowSeconds = storage.clock.now().epochSeconds
             connection.prepare(sql.deleteStatement).use { statement ->
                 statement.bindText(1, key)
                 var index = 2
@@ -185,7 +185,7 @@ class SqliteStorageTable(
     }
 
     override suspend fun deleteAll() {
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             connection.prepare(sql.deleteAllStatement).use { statement ->
                 statement.step()
             }
@@ -202,7 +202,7 @@ class SqliteStorageTable(
         if (limit == 0) {
             return listOf()
         }
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             connection.prepare(
                 if (limit < Int.MAX_VALUE) {
                     sql.enumerateWithLimitStatement
@@ -216,7 +216,7 @@ class SqliteStorageTable(
                     statement.bindText(index++, partitionId!!)
                 }
                 if (spec.supportExpiration) {
-                    statement.bindLong(index++, owner.clock.now().epochSeconds)
+                    statement.bindLong(index++, storage.clock.now().epochSeconds)
                 }
                 if (limit < Int.MAX_VALUE) {
                     statement.bindInt(index, limit)
@@ -231,9 +231,9 @@ class SqliteStorageTable(
     }
 
     override suspend fun purgeExpired() {
-        return owner.withConnection { connection ->
+        return storage.withConnection { connection ->
             connection.prepare(sql.purgeExpiredStatement).use { statement ->
-                statement.bindLong(1, owner.clock.now().epochSeconds)
+                statement.bindLong(1, storage.clock.now().epochSeconds)
                 statement.step()
             }
         }

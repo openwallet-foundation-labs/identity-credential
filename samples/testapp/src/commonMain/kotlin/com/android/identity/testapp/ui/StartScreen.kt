@@ -73,11 +73,6 @@ fun StartScreen(
                         TextButton(onClick = onClickAndroidKeystoreSecureArea) {
                             Text(stringResource(Res.string.android_keystore_secure_area_screen_title))
                         }
-
-                        // Cloud Secure Area is Android-only for now.
-                        TextButton(onClick = onClickCloudSecureArea) {
-                            Text(stringResource(Res.string.cloud_secure_area_screen_title))
-                        }
                     }
                 }
 
@@ -87,6 +82,12 @@ fun StartScreen(
                             Text(stringResource(Res.string.secure_enclave_secure_area_screen_title))
                         }
                     }
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickCloudSecureArea) {
+                    Text(stringResource(Res.string.cloud_secure_area_screen_title))
                 }
             }
 

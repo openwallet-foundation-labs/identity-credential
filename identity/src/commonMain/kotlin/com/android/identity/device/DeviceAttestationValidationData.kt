@@ -7,14 +7,16 @@ import kotlinx.io.bytestring.ByteString
  */
 data class DeviceAttestationValidationData(
     /**
-     * Value of the `clientId` parameter passed to [DeviceCheck.generateAttestation] method.
+     * Value of the `challange` parameter passed to [DeviceCheck.generateAttestation] method.
      */
-    val clientId: String,
+    val attestationChallenge: ByteString,
+
     /**
      * Whether a release build is required on iOS. When `false`, both debug and release builds
      * are accepted.
      */
     val iosReleaseBuild: Boolean,
+
     /**
      * iOS app identifier that consists of a team id followed by a dot and app bundle name. If
      * `null`, any app identifier is accepted.
@@ -25,15 +27,18 @@ data class DeviceAttestationValidationData(
      * It must not be `null` if [iosReleaseBuild] is `true`
      */
     val iosAppIdentifier: String?,
+
     /**
      * Ensure that the private key in the Android attestation is certified as legitimate using the
      * Google root private key.
      */
     val androidGmsAttestation: Boolean,
+
     /**
      * Require Android clients to be in verified boot state "green".
      */
     val androidVerifiedBootGreen: Boolean,
+
     /**
      * Allowed list of Android applications. Each element is the bytes of the SHA-256 of
      * a signing certificate, see the

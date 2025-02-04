@@ -15,14 +15,18 @@ expect object DeviceCheck {
      * The only operation that this opaque private key can be used for is generating
      * assertions using [generateAssertion] method.
      *
-     * [secureArea] must be platform-specific [SecureArea]. (Other implementations of [SecureArea]
-     * may or may not be used by this method depending on the platform).
+     * The party requesting the attestation can verify it using [DeviceAttestation.validate]
+     * and can use the object to request further assertions using [generateAssertion].
      *
-     * Validity of the attestation can be verified using [DeviceAttestation.validate].
+     * @param secureArea a platform-specific [SecureArea], on Android use [AndroidKeystoreSecureArea]
+     *   and on iOS use [SecureEnclaveSecureArea].
+     * @param challenge should come from the party requesting the attestation, for freshness.
+     * @return a [DeviceAttestationResult] containing a [DeviceAttestation] which can be sent to the party
+     *   requesting the attestation.
      */
     suspend fun generateAttestation(
         secureArea: SecureArea,
-        clientId: String
+        challenge: ByteString
     ): DeviceAttestationResult
 
     /**
@@ -31,10 +35,15 @@ expect object DeviceCheck {
      *
      * Note that the exact format for the signature is platform-dependent.
      *
-     * [secureArea] must be the same value as was passed to [generateAttestation] method.
-     *
      * Validity of the assertion can be verified using [DeviceAttestation.validateAssertion] using
      * the [DeviceAttestation] object that corresponds to the given [deviceAttestationId].
+     *
+     * @param secureArea must be the same value as was passed to [generateAttestation] method.
+     * @param deviceAttestationId the attestation id from the [DeviceAttestationResult] obtained
+     *   from the [generateAttestation] call.
+     * @param assertion the assertion of make, e.g. [AssertionNonce].
+     * @return a [DeviceAssertion] which contains proof of [assertion] which can be sent to the
+     *   party requesting the assertion.
      */
     suspend fun generateAssertion(
         secureArea: SecureArea,
