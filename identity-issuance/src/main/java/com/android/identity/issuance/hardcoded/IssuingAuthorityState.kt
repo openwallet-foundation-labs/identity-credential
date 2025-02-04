@@ -4,8 +4,10 @@ import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborInt
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.RawCbor
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
@@ -21,6 +23,7 @@ import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -50,6 +53,7 @@ import com.android.identity.issuance.WalletServerSettings
 import com.android.identity.issuance.common.AbstractIssuingAuthorityState
 import com.android.identity.flow.cache
 import com.android.identity.flow.server.getTable
+import com.android.identity.issuance.evidence.DirectAccessDocumentConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEidResolved
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -149,6 +153,7 @@ class IssuingAuthorityState(
                         cardArt = art.toByteArray(),
                         requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
                         mdocConfiguration = null,
+                        directAccessConfiguration = null,
                         sdJwtVcDocumentConfiguration = null
                     ),
                     numberOfCredentialsToRequest = 3,
@@ -397,6 +402,7 @@ class IssuingAuthorityState(
                     builder.build()
                 ),
                 issuerDocument.documentConfiguration!!.sdJwtVcDocumentConfiguration,
+                issuerDocument.documentConfiguration!!.directAccessConfiguration
             )
             updateIssuerDocument(env, documentId, issuerDocument, notifyApplicationOfUpdate)
         }
@@ -438,6 +444,7 @@ class IssuingAuthorityState(
                 builder.build()
             ),
             issuerDocument.documentConfiguration!!.sdJwtVcDocumentConfiguration,
+            issuerDocument.documentConfiguration!!.directAccessConfiguration
         )
         updateIssuerDocument(env, documentId, issuerDocument, true)
     }
@@ -448,14 +455,16 @@ class IssuingAuthorityState(
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
     ): ByteArray = when (format) {
-        CredentialFormat.MDOC_MSO -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey)
+        CredentialFormat.MDOC_MSO -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, false)
         CredentialFormat.SD_JWT_VC -> createPresentationDataSdJwt(env, documentConfiguration, authenticationKey)
+        CredentialFormat.DirectAccess -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, true)
     }
 
     private fun createPresentationDataMdoc(
         env: FlowEnvironment,
         documentConfiguration: DocumentConfiguration,
-        authenticationKey: EcPublicKey
+        authenticationKey: EcPublicKey,
+        isDirectAccess: Boolean
     ): ByteArray {
         val now = Clock.System.now()
 
@@ -485,8 +494,13 @@ class IssuingAuthorityState(
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
         val randomProvider = Random.Default
+        val staticData = if (isDirectAccess) {
+            documentConfiguration.directAccessConfiguration!!.staticData
+        } else {
+            documentConfiguration.mdocConfiguration!!.staticData
+        }
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            documentConfiguration.mdocConfiguration!!.staticData,
+            staticData,
             randomProvider,
             16,
             null
@@ -531,10 +545,38 @@ class IssuingAuthorityState(
             ).toDataItem()
         )
 
-        val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-            issuerNameSpaces,
-            encodedIssuerAuth
-        ).generate()
+        val issuerProvidedAuthenticationData = if (isDirectAccess) {
+            val pemEncodedCert = resources.getStringResource("owf_identity_credential_reader_cert.pem")!!
+            val trustedReaderCert = X509Cert.fromPem(pemEncodedCert)
+            val readerAuth = CborArray.builder()
+                .add((trustedReaderCert.ecPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding)
+                .end().build()
+
+            CborMap.builder().apply {
+                for ((namespace, bytesList) in issuerNameSpaces) {
+                    putArray(namespace).let { innerBuilder ->
+                        bytesList.forEach { encodedIssuerSignedItemMetadata ->
+                            innerBuilder.add(RawCbor(encodedIssuerSignedItemMetadata))
+                        }
+                    }
+                }
+            }.end().build().let { digestIdMappingItem ->
+                Cbor.encode(
+                    CborMap.builder()
+                        .put("docType", docType)
+                        .put("issuerNameSpaces", digestIdMappingItem)
+                        .put("issuerAuth", RawCbor(encodedIssuerAuth))
+                        .put("readerAccess", readerAuth)
+                        .end()
+                        .build()
+                )
+            }
+        } else {
+            StaticAuthDataGenerator(
+                issuerNameSpaces,
+                encodedIssuerAuth
+            ).generate()
+        }
 
         return issuerProvidedAuthenticationData
     }
@@ -766,6 +808,7 @@ class IssuingAuthorityState(
                 vct = EUPersonalID.EUPID_VCT,
                 keyBound = true
             ),
+            directAccessConfiguration = null
         )
     }
 
@@ -786,6 +829,7 @@ class IssuingAuthorityState(
 
         val credType = documentTypeRepository.getDocumentTypeForMdoc(MDL_DOCTYPE)!!
         val staticData: NameSpacedData
+        val staticDataCompressed: NameSpacedData
 
         val path = (collectedEvidence["path"] as EvidenceResponseQuestionMultipleChoice).answerId
         if (path == "hardcoded") {
@@ -793,6 +837,7 @@ class IssuingAuthorityState(
             val jpeg2k = imageFormat is EvidenceResponseQuestionMultipleChoice &&
                     imageFormat.answerId == "devmode_image_format_jpeg2000"
             staticData = fillInSampleData(resources, jpeg2k, credType).build()
+            staticDataCompressed = staticData
         } else if (path == "germanEid") {
             // Make sure we set at least all the mandatory data elements
             val germanEid = collectedEvidence["germanEidCard"] as EvidenceResponseGermanEidResolved
@@ -806,16 +851,16 @@ class IssuingAuthorityState(
             val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
             val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
             val portrait = resources.getRawResource("img_erika_portrait.jpg")!!
+            val portraitCompressed = resources.getRawResource("img_erika_portrait_compressed.jpg")!!
             val signatureOrUsualMark = resources.getRawResource("img_erika_signature.jpg")!!
 
             // Make sure we set at least all the mandatory data elements
             //
-            staticData = NameSpacedData.Builder()
+            val nsBuilder = NameSpacedData.Builder()
                 .putEntryString(MDL_NAMESPACE, "given_name", firstName)
                 .putEntryString(MDL_NAMESPACE, "family_name", lastName)
                 .putEntry(MDL_NAMESPACE, "birth_date",
                     Cbor.encode(dateOfBirth.toDataItemFullDate()))
-                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark",
                     signatureOrUsualMark.toByteArray())
                 .putEntry(MDL_NAMESPACE, "issue_date",
@@ -838,6 +883,12 @@ class IssuingAuthorityState(
 
                 .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
                 .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
+
+            staticData = nsBuilder
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
+                .build()
+            staticDataCompressed = nsBuilder
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portraitCompressed.toByteArray())
                 .build()
         } else {
             val icaoPassiveData = collectedEvidence["passive"]
@@ -869,16 +920,16 @@ class IssuingAuthorityState(
             val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
             val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
             val portrait = decoded.photo ?: resources.getRawResource("img_erika_portrait.jpg")!!
+            val portraitCompressed = decoded.photo ?: resources.getRawResource("img_erika_portrait_compressed.jpg")!!
             val signatureOrUsualMark = decoded.signature ?: resources.getRawResource("img_erika_signature.jpg")!!
 
             // Make sure we set at least all the mandatory data elements
             //
-            staticData = NameSpacedData.Builder()
+            val nsBuilder = NameSpacedData.Builder()
                 .putEntryString(MDL_NAMESPACE, "given_name", firstName)
                 .putEntryString(MDL_NAMESPACE, "family_name", lastName)
                 .putEntry(MDL_NAMESPACE, "birth_date",
                     Cbor.encode(dateOfBirth.toDataItemFullDate()))
-                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark",
                     signatureOrUsualMark.toByteArray())
                 .putEntryNumber(MDL_NAMESPACE, "sex", sex)
@@ -903,8 +954,26 @@ class IssuingAuthorityState(
                 .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
                 .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
                 .putEntryNumber(AAMVA_NAMESPACE, "sex", sex)
+
+            staticData = nsBuilder
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait.toByteArray())
+                .build()
+            staticDataCompressed = nsBuilder
+                .putEntryByteString(MDL_NAMESPACE, "portrait", portraitCompressed.toByteArray())
                 .build()
         }
+
+        var directAccessConfiguration: DirectAccessDocumentConfiguration? = null
+        if (collectedEvidence["directAccess"] != null) {
+            val includeDirectAccess = (collectedEvidence["directAccess"] as EvidenceResponseQuestionMultipleChoice).answerId
+            directAccessConfiguration = if (includeDirectAccess == "yes") {
+                DirectAccessDocumentConfiguration(
+                    docType = MDL_DOCTYPE,
+                    staticData = staticDataCompressed,
+                )
+            } else null
+        }
+
 
         val firstName = staticData.getDataElementString(MDL_NAMESPACE, "given_name")
         return DocumentConfiguration(
@@ -918,6 +987,7 @@ class IssuingAuthorityState(
                 staticData = staticData,
             ),
             sdJwtVcDocumentConfiguration = null,
+            directAccessConfiguration = directAccessConfiguration
         )
     }
 
@@ -1069,6 +1139,7 @@ class IssuingAuthorityState(
                 staticData = staticData,
             ),
             sdJwtVcDocumentConfiguration = null,
+            directAccessConfiguration = null
         )
     }
 
@@ -1110,9 +1181,9 @@ class IssuingAuthorityState(
 
         if (documentType == documentTypeRepository.getDocumentTypeForMdoc(MDL_DOCTYPE)!!) {
             val portrait = resources.getRawResource(if (jpeg2k) {
-                "img_erika_portrait.jpf"
+                "img_erika_portrait_compressed.jpf"
             } else {
-                "img_erika_portrait.jpg"
+                "img_erika_portrait_compressed.jpg"
             })!!.toByteArray()
             val signatureOrUsualMark = resources.getRawResource(if (jpeg2k) {
                 "img_erika_signature.jpf"

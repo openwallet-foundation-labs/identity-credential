@@ -169,7 +169,8 @@ class FunkeIssuingAuthorityState(
                         cardArt = cardArt,
                         requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
                         mdocConfiguration = null,
-                        sdJwtVcDocumentConfiguration = null
+                        sdJwtVcDocumentConfiguration = null,
+                        directAccessConfiguration = null
                     ),
                     // Without key attestation user has to do biometrics approval for every
                     // credential being issued, so request only one. With key attestation we can
@@ -679,7 +680,8 @@ class FunkeIssuingAuthorityState(
                     SdJwtVcDocumentConfiguration(
                         vct = config.format.vct,
                         keyBound = config.proofType != Openid4VciNoProof
-                    )
+                    ),
+                    null
                 )
             }
             is Openid4VciFormatMdoc -> {
@@ -700,6 +702,7 @@ class FunkeIssuingAuthorityState(
                             documentTypeRepository.getDocumentTypeForMdoc(config.format.docType)!!
                         ).build()
                     ),
+                    null,
                     null
                 )
             }
@@ -724,7 +727,8 @@ class FunkeIssuingAuthorityState(
                     SdJwtVcDocumentConfiguration(
                         vct = config.format.vct,
                         keyBound = config.proofType != Openid4VciNoProof
-                    )
+                    ),
+                    null
                 )
             }
             is Openid4VciFormatMdoc -> {
@@ -743,6 +747,7 @@ class FunkeIssuingAuthorityState(
                         config.format.docType,
                         staticData = staticData
                     ),
+                    null,
                     null
                 )
             }
