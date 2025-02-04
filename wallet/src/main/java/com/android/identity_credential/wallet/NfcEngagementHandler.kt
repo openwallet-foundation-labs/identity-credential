@@ -16,12 +16,12 @@
 
 package com.android.identity_credential.wallet
 
-import android.content.Context
 import android.content.pm.PackageManager
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.ContextCompat
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
@@ -29,10 +29,8 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.util.NfcUtil
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class NfcEngagementHandler : HostApduService() {
@@ -57,10 +55,9 @@ class NfcEngagementHandler : HostApduService() {
             // This is invoked _just_ before the NFC tag reader will do a READ_BINARY
             // for the Handover Select message. Vibrate the device to indicate to the
             // user they can start removing the device from the reader.
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            val vibrationPattern = longArrayOf(0, 500, 50, 300)
-            val indexInPatternToRepeat = -1
-            vibrator.vibrate(vibrationPattern, indexInPatternToRepeat)
+            val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+            val vibrationEffect = VibrationEffect.createWaveform(longArrayOf(0, 500, 50, 300), -1)
+            vibrator?.vibrate(vibrationEffect)
         }
 
         override fun onDeviceConnecting() {
@@ -133,8 +130,7 @@ class NfcEngagementHandler : HostApduService() {
             if (hasDocuments && !PresentationActivity.isPresentationActive()) {
                 PresentationActivity.engagementDetected(application.applicationContext)
 
-                val walletApplication = application as WalletApplication
-                val (connectionMethods, options) = walletApplication.settingsModel
+                val (connectionMethods, options) = application.settingsModel
                     .createConnectionMethodsAndOptions()
                 val builder = NfcEngagementHelper.Builder(
                     applicationContext,
@@ -144,7 +140,7 @@ class NfcEngagementHandler : HostApduService() {
                     ContextCompat.getMainExecutor(applicationContext)
                 )
 
-                if (walletApplication.settingsModel.nfcStaticHandoverEnabled.value == true) {
+                if (application.settingsModel.nfcStaticHandoverEnabled.value == true) {
                     builder.useStaticHandover(connectionMethods)
                 } else {
                     builder.useNegotiatedHandover()

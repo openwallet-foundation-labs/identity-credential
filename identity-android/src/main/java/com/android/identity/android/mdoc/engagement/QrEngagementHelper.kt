@@ -38,8 +38,8 @@ class QrEngagementHelper internal constructor(
     connectionMethods: List<ConnectionMethod>?,
     transports: List<DataTransport>?,
     options: DataTransportOptions,
-    private val listener: Listener,
-    private val executor: Executor
+    private val listener: Listener?,
+    private val executor: Executor?
 ) {
     private var inhibitCallbacks = false
     private var transports = mutableListOf<DataTransport>()
@@ -206,41 +206,35 @@ class QrEngagementHelper internal constructor(
     }
 
     // Note: The report*() methods are safe to call from any thread.
-
     private fun reportDeviceConnecting() {
-        Logger.d(TAG, "reportDeviceConnecting")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onDeviceConnecting()
-                }
-            }
-        }
+        reportEvent("reportDeviceConnecting") { listener -> listener.onDeviceConnecting() }
     }
 
     private fun reportDeviceConnected(transport: DataTransport) {
-        Logger.d(TAG, "reportDeviceConnected")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onDeviceConnected(transport)
-                }
-            }
-        }
+        reportEvent("reportDeviceConnected") { listener -> listener.onDeviceConnected(transport) }
     }
 
     private fun reportError(error: Throwable) {
-        Logger.d(TAG, "reportError: error: ", error)
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
+        reportEvent("reportError: error: ", error) { listener -> listener.onError(error) }
+    }
+
+    /** Common reporting code */
+    private fun reportEvent(
+        logMessage: String,
+        logError: Throwable? = null,
+        event: (Listener) -> Unit
+    ) {
+        if (logError != null) {
+            Logger.d(TAG, logMessage, logError)
+        } else {
+            Logger.d(TAG, logMessage)
+        }
+        val currentListener: Listener? = listener
+        val currentExecutor: Executor? = executor
+        if (currentListener != null && currentExecutor != null) {
+            currentExecutor.execute {
                 if (!inhibitCallbacks) {
-                    listener.onError(error)
+                    event(currentListener)
                 }
             }
         }

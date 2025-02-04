@@ -1,5 +1,6 @@
 package com.android.identity.testapp.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.FeatureInfo
 import android.content.pm.PackageManager
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,7 +67,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.days
 
-private val TAG = "AndroidKeystoreSecureAreaScreen"
+private const val TAG = "AndroidKeystoreSecureAreaScreen"
 
 private val androidKeystoreCapabilities: AndroidKeystoreSecureArea.Capabilities by lazy {
     AndroidKeystoreSecureArea.Capabilities(AndroidContexts.applicationContext)
@@ -217,6 +219,7 @@ actual fun AndroidKeystoreSecureAreaScreen(
 
 // Unfortunately this is API is only available to system apps so we
 // have to use reflection to use it.
+@SuppressLint("PrivateApi")
 private fun getFirstApiLevel(): Int =
     try {
         val c = Class.forName("android.os.SystemProperties")
@@ -326,7 +329,7 @@ fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
 @Composable
 private fun ShowCertificateDialog(attestation: X509CertChain,
                           onDismissRequest: () -> Unit) {
-    var certNumber by rememberSaveable() { mutableStateOf(0) }
+    var certNumber by rememberSaveable() { mutableIntStateOf(0) }
     if (certNumber < 0 || certNumber >= attestation.certificates.size) {
         certNumber = 0
     }
@@ -424,9 +427,14 @@ private fun styledX509CertificateText(certificateText: String): AnnotatedString 
 }
 
 private fun getFeatureVersionKeystore(appContext: Context, useStrongbox: Boolean): Int {
-    var feature = PackageManager.FEATURE_HARDWARE_KEYSTORE
+    var feature = "NOT_DEFINED"
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        feature = PackageManager.FEATURE_HARDWARE_KEYSTORE
+    }
     if (useStrongbox) {
-        feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE
+        }
     }
     val pm = appContext.packageManager
     if (pm.hasSystemFeature(feature)) {

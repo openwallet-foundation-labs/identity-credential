@@ -15,8 +15,7 @@
  */
 package com.android.identity.android.storage
 
-import android.util.AtomicFile
-import androidx.test.InstrumentationRegistry
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.toHex
 import kotlinx.io.buffered
@@ -26,22 +25,19 @@ import kotlinx.io.readByteArray
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.io.File
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.util.Arrays
 
 class AndroidStorageTest {
 
     @Before
     fun setup() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         SystemFileSystem.delete(Path(context.dataDir.path, "testdata.bin"), false)
     }
 
     @Test
     fun testStorageImplementation() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storageFile = Path(context.dataDir.path, "testdata.bin")
         val storage = AndroidStorageEngine.Builder(context, storageFile).build()
         storage.deleteAll()
@@ -68,7 +64,7 @@ class AndroidStorageTest {
 
     @Test
     fun testPersistence() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storageFile = Path(context.dataDir.path, "testdata.bin")
         val storage = AndroidStorageEngine.Builder(context, storageFile).build()
         storage.deleteAll()
@@ -85,7 +81,7 @@ class AndroidStorageTest {
 
     @Test
     fun testEncryption() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storageFile = Path(context.dataDir.path, "testdata.bin")
         val data = "xyz123".toByteArray(StandardCharsets.UTF_8)
 
@@ -113,7 +109,7 @@ class AndroidStorageTest {
 
     @Test
     fun testEncryptionLargeValue() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storageFile = Path(context.dataDir.path, "testdata.bin")
 
         // Store 2 MiB of data...

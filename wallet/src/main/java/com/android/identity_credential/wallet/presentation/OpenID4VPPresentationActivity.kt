@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -370,9 +370,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
      * [OutgoingContent] for `application/x-www-form-urlencoded` formatted requests that use
      * US-ASCII encoding.
      */
-    internal class FormData(
-        val formData: Parameters,
-    ) : OutgoingContent.ByteArrayContent() {
+    internal class FormData(formData: Parameters) : OutgoingContent.ByteArrayContent() {
         private val content = formData.formUrlEncode().toByteArray(Charsets.US_ASCII)
 
         override val contentLength: Long = content.size.toLong()
@@ -387,6 +385,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         inputDescriptor: JsonObject,
         now: Instant
     ): Pair<Credential, List<Claim>> {
+        // TODO: b/393388152 - reported as unreachable code?
         return when(credentialFormat) {
             CredentialFormat.MDOC_MSO -> {
                 val credential =
@@ -507,9 +506,6 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 ""
             }
         }
-
-        // TODO: is this line needed?
-        val documentRequest = formatAsDocumentRequest(inputDescriptorObj)
 
         val secureRandom = Random.Default
         val bytes = ByteArray(16)
@@ -670,8 +666,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         //
         return when (credential) {
             is MdocCredential -> {
+                // TODO: b/393388152 - need to verify the "claims as" cast is indeed safe.
+                @Suppress("UNCHECKED_CAST")
                 val request = MdocRequest(
-                    requester = Requester(),  // TODO: pass origin
+                    requester = Requester(),  // TODO: pass origin.
                     claims = claims as List<MdocClaim>,
                     docType = credential.docType
                 )
@@ -696,8 +694,10 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 deviceResponseCbor
             }
             is SdJwtVcCredential -> {
+                // TODO: b/393388152 - need to verify "claims as" cast is indeed safe.
+                @Suppress("UNCHECKED_CAST")
                 val request = VcRequest(
-                    requester = Requester(),  // TODO: pass origin
+                    requester = Requester(),  // TODO: pass origin.
                     claims = claims as List<VcClaim>,
                     vct = credential.vct
                 )
@@ -729,6 +729,7 @@ internal fun parsePathItem(item: String): Pair<String, String> {
     // bracketed direct: "$['dataElem']"
     // or dotted direct: "$.dataElem"
     val regex = Regex(
+        // TODO: b/393388152 - Unnecessary non-capturing group '(?:\"\\$(?:\\['(?<namespace>.+?)'\\])?\\['(?<dataElem1>.+?)'\\]\")'
         "(?:\"\\$(?:\\['(?<namespace>.+?)'\\])?\\['(?<dataElem1>.+?)'\\]\")|" +
         "(?:\"\\$\\.(?<dataElem2>.+)\")")
     val groups = regex.matchEntire(item)?.groups as? MatchNamedGroupCollection
@@ -809,7 +810,7 @@ private suspend fun getAuthorizationRequest(
     val requestUriValue = requestUri.getQueryParameter("request_uri")
         ?: throw IllegalArgumentException("request_uri is not set")
 
-    val httpResponse = httpClient.get(urlString = requestUriValue!!) {
+    val httpResponse = httpClient.get(urlString = requestUriValue) {
         accept(ContentType.parse("application/oauth-authz-req+jwt"))
         accept(ContentType.parse("application/jwt"))
     }.body<String>()

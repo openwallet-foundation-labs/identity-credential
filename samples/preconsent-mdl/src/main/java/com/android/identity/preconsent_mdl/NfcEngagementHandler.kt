@@ -16,13 +16,14 @@
 
 package com.android.identity.preconsent_mdl
 
-import android.content.Context
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.core.content.ContextCompat
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
 import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
@@ -34,6 +35,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.crypto.EcCurve
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 
@@ -45,6 +47,8 @@ class NfcEngagementHandler : HostApduService() {
     private var engagementHelper: NfcEngagementHelper? = null
 
     private lateinit var transferHelper : TransferHelper
+
+    private var isConnected: Boolean = false // Flag to track connection status
 
     private val eDeviceKey by lazy {
         Crypto.createEcPrivateKey(EcCurve.P256)
@@ -60,10 +64,9 @@ class NfcEngagementHandler : HostApduService() {
             // This is invoked _just_ before the NFC tag reader will do a READ_BINARY
             // for the Handover Select message. Vibrate the watch to indicate to the
             // user they can start removing the watch from the reader.
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            val vibrationPattern = longArrayOf(0, 500, 50, 300)
-            val indexInPatternToRepeat = -1
-            vibrator.vibrate(vibrationPattern, indexInPatternToRepeat)
+            val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+            val vibrationEffect = VibrationEffect.createWaveform(longArrayOf(0, 500, 50, 300), -1)
+            vibrator?.vibrate(vibrationEffect)
             transferHelper.setEngagementSent()
         }
 
@@ -73,7 +76,6 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceConnected(transport: DataTransport) {
             Logger.i(TAG, "onDeviceConnected")
-
             transferHelper.setConnected(
                 eDeviceKey,
                 transport,
@@ -82,6 +84,7 @@ class NfcEngagementHandler : HostApduService() {
             )
             engagementHelper?.close()
             engagementHelper = null
+            isConnected = true
         }
 
         override fun onError(error: Throwable) {
@@ -174,7 +177,7 @@ class NfcEngagementHandler : HostApduService() {
         //
         val timeoutSeconds = 15
         Handler(Looper.getMainLooper()).postDelayed({
-            if (engagementHelper != null && transferHelper == null) {
+            if (engagementHelper != null && !isConnected) {
                 Logger.w(TAG, "Reader didn't connect inside $timeoutSeconds seconds, closing")
                 engagementHelper!!.close()
             }

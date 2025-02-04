@@ -24,15 +24,17 @@ import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
-import kotlinx.datetime.format.byUnicodePattern
+import kotlinx.datetime.format.char
+import kotlinx.datetime.until
 import org.bouncycastle.asn1.ASN1UTCTime
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -256,10 +258,25 @@ object DirectAccess {
         TODO("Not yet implemented")
     }
 
+    // TODO: These Time formatting methods (with DateTimeComponents) might benefit from unit tests covering edge cases.
     @Throws(IOException::class)
     private fun encodeValidityTime(instant: Instant): ByteArray {
+        val y2k = Instant.parse("2000-01-01T00:00:00Z")
         val asn1UtcTime = ASN1UTCTime(instant.format(DateTimeComponents.Format {
-            byUnicodePattern("yyMMddHHmmss'Z'")
+            yearTwoDigits(
+                if (y2k.until(
+                        instant,
+                        DateTimeUnit.Companion.SECOND,
+                        TimeZone.UTC
+                    ) >= 0
+                ) 2000 else 1900
+            )
+            monthNumber()
+            dayOfMonth()
+            hour()
+            minute()
+            second()
+            char('Z')
         }))
         return asn1UtcTime.encoded
     }

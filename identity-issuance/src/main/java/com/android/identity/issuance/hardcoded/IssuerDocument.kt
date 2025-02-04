@@ -9,8 +9,10 @@ import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentConfiguration
 import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.evidence.EvidenceResponse
+import com.android.identity.issuance.evidence.toCbor
 import com.android.identity.issuance.fromDataItem
 import com.android.identity.issuance.toDataItem
+import com.android.identity.issuance.evidence.fromCbor
 
 // The document as seen from the issuer's perspective
 data class IssuerDocument(
@@ -25,7 +27,7 @@ data class IssuerDocument(
             val registrationResponse = RegistrationResponse.fromDataItem(map["registrationResponse"])
 
             val stateAsInt = map["state"].asNumber.toInt()
-            val state = DocumentCondition.values().firstOrNull {it.ordinal == stateAsInt}
+            val state = DocumentCondition.entries.firstOrNull {it.ordinal == stateAsInt}
                 ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
             val collectedEvidence = mutableMapOf<String, EvidenceResponse>()

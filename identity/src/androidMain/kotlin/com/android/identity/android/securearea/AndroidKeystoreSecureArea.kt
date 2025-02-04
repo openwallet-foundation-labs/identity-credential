@@ -29,20 +29,20 @@ import com.android.identity.biometric.showBiometricPrompt
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
+import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.keyPurposeSet
 import com.android.identity.storage.Storage
@@ -50,6 +50,14 @@ import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import org.bouncycastle.asn1.ASN1InputStream
+import org.bouncycastle.asn1.ASN1Integer
+import org.bouncycastle.asn1.ASN1Sequence
+import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.InvalidAlgorithmParameterException
@@ -68,12 +76,6 @@ import java.security.spec.ECGenParameterSpec
 import java.security.spec.InvalidKeySpecException
 import java.sql.Date
 import javax.crypto.KeyAgreement
-import kotlinx.datetime.Instant
-import kotlinx.io.bytestring.ByteString
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1Sequence
-import java.io.ByteArrayInputStream
 
 /**
  * An implementation of [SecureArea] using Android Keystore.
@@ -113,6 +115,7 @@ import java.io.ByteArrayInputStream
  *
  * Use [AndroidKeystoreSecureArea.create] to create an instance of this class.
  */
+// TODO: Most of kDocs here appears obsolete with new storageTable.
 class AndroidKeystoreSecureArea private constructor(
     private val context: Context,
     private val storageTable: StorageTable,
@@ -161,9 +164,9 @@ class AndroidKeystoreSecureArea private constructor(
             // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
             AndroidKeystoreCreateKeySettings.Builder("".toByteArray()).build()
         }
-        var kpg: KeyPairGenerator? = null
+
         try {
-            kpg = KeyPairGenerator.getInstance(
+            val kpg = KeyPairGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore"
             )
             var purposes = 0
@@ -240,14 +243,16 @@ class AndroidKeystoreSecureArea private constructor(
                     if (timeoutMillis == 0L) {
                         builder.setUserAuthenticationParameters(0, type)
                     } else {
-                        val timeoutSeconds = Math.max(1, timeoutMillis / 1000).toInt()
+                        val timeoutSeconds = (timeoutMillis / 1000).coerceAtLeast(1).toInt()
                         builder.setUserAuthenticationParameters(timeoutSeconds, type)
                     }
                 } else {
                     if (timeoutMillis == 0L) {
+                        @Suppress("DEPRECATION")
                         builder.setUserAuthenticationValidityDurationSeconds(-1)
                     } else {
-                        val timeoutSeconds = Math.max(1, timeoutMillis / 1000).toInt()
+                        val timeoutSeconds = (timeoutMillis / 1000).coerceAtLeast(1).toInt()
+                        @Suppress("DEPRECATION")
                         builder.setUserAuthenticationValidityDurationSeconds(timeoutSeconds)
                     }
                 }
@@ -286,8 +291,9 @@ class AndroidKeystoreSecureArea private constructor(
         val attestationCerts = mutableListOf<X509Cert>()
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore")
-            // TODO: move to an IO thread
-            ks.load(null)
+            withContext(Dispatchers.IO) {
+                ks.load(null)
+            }
             ks.getCertificateChain(newKeyAlias).forEach { certificate ->
                 attestationCerts.add(X509Cert(certificate.encoded))
             }
@@ -318,12 +324,13 @@ class AndroidKeystoreSecureArea private constructor(
         storageTable.insert(existingAlias, ByteString(), partitionId)
 
         val ks = KeyStore.getInstance("AndroidKeyStore")
-        // TODO: move to an IO thread
-        ks.load(null)
+        withContext(Dispatchers.IO) {
+            ks.load(null)
+        }
         val entry = ks.getEntry(existingAlias, null)
             ?: throw IllegalArgumentException("A key with this alias doesn't exist")
 
-        var keyInfo: android.security.keystore.KeyInfo = try {
+        val keyInfo: android.security.keystore.KeyInfo = try {
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
             try {
@@ -352,10 +359,11 @@ class AndroidKeystoreSecureArea private constructor(
         // attestation
         val attestationCerts = mutableListOf<X509Cert>()
         try {
-            val ks = KeyStore.getInstance("AndroidKeyStore")
-            // TODO: move to an IO thread
-            ks.load(null)
-            ks.getCertificateChain(existingAlias).forEach { certificate ->
+            val keyStore = KeyStore.getInstance("AndroidKeyStore")
+            withContext(Dispatchers.IO) {
+                keyStore.load(null)
+            }
+            keyStore.getCertificateChain(existingAlias).forEach { certificate ->
                 attestationCerts.add(X509Cert(certificate.encoded))
             }
         } catch (e: Exception) {
@@ -383,7 +391,7 @@ class AndroidKeystoreSecureArea private constructor(
         // attestKeyAlias - not available in KeyInfo
 
         // userAuthentication*
-        var userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
+        val userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val ksAuthType = keyInfo.userAuthenticationType
             if (ksAuthType and KeyProperties.AUTH_DEVICE_CREDENTIAL != 0) {
@@ -407,11 +415,11 @@ class AndroidKeystoreSecureArea private constructor(
 
     override suspend fun deleteKey(alias: String) {
         val ks: KeyStore
-        var entry: KeyStore.Entry
         try {
             ks = KeyStore.getInstance("AndroidKeyStore")
-            // TODO: move to an IO thread
-            ks.load(null)
+            withContext(Dispatchers.IO) {
+                ks.load(null)
+            }
             if (!ks.containsAlias(alias)) {
                 Logger.w(TAG, "Key with alias '$alias' doesn't exist")
                 return
@@ -520,12 +528,12 @@ class AndroidKeystoreSecureArea private constructor(
         keyUnlockData: KeyUnlockData?
     ): ByteArray {
         if (keyUnlockData !is KeyUnlockInteractive) {
-            return keyAgreementNonInteractive(alias, otherKey, keyUnlockData)
+            return keyAgreementNonInteractive(alias, otherKey)
         }
-        var unlockData: AndroidKeystoreKeyUnlockData? = null
+        var unlockData: AndroidKeystoreKeyUnlockData?
         do {
             try {
-                return keyAgreementNonInteractive(alias, otherKey, unlockData)
+                return keyAgreementNonInteractive(alias, otherKey)
             } catch (_: KeyLockedException) {
                 unlockData = AndroidKeystoreKeyUnlockData(alias)
                 val res = AndroidContexts.applicationContext.resources
@@ -547,7 +555,6 @@ class AndroidKeystoreSecureArea private constructor(
     private suspend fun keyAgreementNonInteractive(
         alias: String,
         otherKey: EcPublicKey,
-        keyUnlockData: KeyUnlockData?
     ): ByteArray {
         val (entry, _) = loadKey(alias)
         return try {
@@ -580,8 +587,9 @@ class AndroidKeystoreSecureArea private constructor(
             ?: throw IllegalArgumentException("No key with given alias")
 
         val ks = KeyStore.getInstance("AndroidKeyStore")
-        // TODO: move to an IO thread
-        ks.load(null)
+        withContext(Dispatchers.IO) {
+            ks.load(null)
+        }
         // If the LSKF is removed, all auth-bound keys are removed and the result is
         // that KeyStore.getEntry() returns null.
         val entry = ks.getEntry(alias, null)
@@ -855,12 +863,15 @@ class AndroidKeystoreSecureArea private constructor(
             return EcSignature(rPadded, sPadded)
         }
 
-
-
         private fun getFeatureVersionKeystore(appContext: Context, useStrongbox: Boolean): Int {
-            var feature = PackageManager.FEATURE_HARDWARE_KEYSTORE
+            var feature = "NOT_DEFINED"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                feature = PackageManager.FEATURE_HARDWARE_KEYSTORE
+            }
             if (useStrongbox) {
-                feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE
+                }
             }
             val pm = appContext.packageManager
             if (pm.hasSystemFeature(feature)) {

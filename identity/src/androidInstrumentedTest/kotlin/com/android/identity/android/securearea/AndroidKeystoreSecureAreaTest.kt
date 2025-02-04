@@ -15,7 +15,6 @@
  */
 package com.android.identity.android.securearea
 
-import android.content.Context
 import android.content.pm.PackageManager
 import android.icu.util.Calendar
 import android.icu.util.GregorianCalendar
@@ -23,7 +22,7 @@ import android.icu.util.TimeZone
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import androidx.test.InstrumentationRegistry
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.TestUtil
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
@@ -68,7 +67,7 @@ class AndroidKeystoreSecureAreaTest {
         Security.addProvider(BouncyCastleProvider())
 
 
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storage = AndroidStorage(databasePath = null, clock = Clock.System)
         secureAreaProvider = SecureAreaProvider {
             AndroidKeystoreSecureArea.create(context, storage)
@@ -108,7 +107,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     fun testEcKeySigningStrongBox() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE))
         testEcKeySigningHelper(true)
     }
@@ -155,7 +154,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     fun testEcKeySigningAuthBoundStrongBox() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE))
         testEcKeySigningAuthBoundHelper(true)
     }
@@ -273,7 +272,7 @@ class AndroidKeystoreSecureAreaTest {
         val type = setOf<UserAuthenticationType>()
         val challenge = byteArrayOf(1, 2, 3)
         try {
-            val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
+            AndroidKeystoreCreateKeySettings.Builder(challenge)
                 .setUserAuthenticationRequired(true, 42, type)
                 .build()
             Assert.fail("Should not be reached")
@@ -330,7 +329,7 @@ class AndroidKeystoreSecureAreaTest {
     fun testEcKeySigningWithKeyWithoutCorrectPurpose() = runTest {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
@@ -359,7 +358,7 @@ class AndroidKeystoreSecureAreaTest {
     fun testEcdh() {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
@@ -372,7 +371,7 @@ class AndroidKeystoreSecureAreaTest {
     fun testEcdhStrongBox() {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_STRONGBOX_KEYSTORE
         // ECDH is available if FEATURE_STRONGBOX_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_STRONGBOX_KEYSTORE, 100
@@ -469,7 +468,7 @@ class AndroidKeystoreSecureAreaTest {
     fun testEcdhAndSigning() {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
@@ -482,7 +481,7 @@ class AndroidKeystoreSecureAreaTest {
     fun testEcdhAndSigningStrongBox() {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_STRONGBOX_KEYSTORE
         // ECDH is available if FEATURE_STRONGBOX_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_STRONGBOX_KEYSTORE, 100
@@ -547,7 +546,7 @@ class AndroidKeystoreSecureAreaTest {
     fun testEcdhWithoutCorrectPurpose() = runTest {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(
             context.packageManager.hasSystemFeature(
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
@@ -620,7 +619,7 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testAttestationStrongBox() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE))
         testAttestationHelper(true)
     }
@@ -688,26 +687,26 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     @Throws(IOException::class)
     fun testAttestKey() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_KEYSTORE_APP_ATTEST_KEY))
-        testAttestKeyHelper(context, false)
+        testAttestKeyHelper(false)
     }
 
     @Test
     @Throws(IOException::class)
     fun testAttestKeyStrongBox() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_KEYSTORE_APP_ATTEST_KEY))
         Assume.assumeTrue(context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE))
-        testAttestKeyHelper(context, true)
+        testAttestKeyHelper(true)
     }
 
     @Throws(IOException::class)
-    fun testAttestKeyHelper(context: Context, useStrongBox: Boolean) = runTest {
+    fun testAttestKeyHelper(useStrongBox: Boolean) = runTest {
         val ks = secureAreaProvider.get()
         val attestKeyAlias = "icTestAttestKey"
         val attestKeyCertificates: Array<Certificate>
-        var kpg: KeyPairGenerator? = null
+        val kpg: KeyPairGenerator?
         try {
             kpg = KeyPairGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore"
@@ -744,7 +743,7 @@ class AndroidKeystoreSecureAreaTest {
         ks.deleteKey("testKey")
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.isNotEmpty())
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)

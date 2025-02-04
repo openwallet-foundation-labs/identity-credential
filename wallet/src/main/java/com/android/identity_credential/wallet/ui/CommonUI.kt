@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,12 +28,10 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.identity_credential.wallet.R
 
@@ -42,7 +40,7 @@ import com.android.identity_credential.wallet.R
  */
 @Composable
 fun ScreenWithAppBar(
-    title: String,
+    title: String, // TODO: not used param. but passed often.
     navigationIcon: @Composable () -> Unit,
     scrollable: Boolean = true,
     actions: @Composable() (RowScope.() -> Unit) = {},
@@ -99,7 +97,7 @@ fun ScreenWithAppBarAndBackButton(
         navigationIcon = {
         IconButton(onClick = { onBackButtonClick() }) {
             Icon(
-                imageVector = Icons.Filled.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.accessibility_go_back_icon)
             )
         }
@@ -151,7 +149,8 @@ fun KeyValuePairHtml(
     }
 }
 
-@Composable
+// TODO: never used composable, also with shadowed errors. Remove?
+/*@Composable
 fun ColumnWithPortrait(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
@@ -194,7 +193,7 @@ fun ColumnWithPortrait(
             }
         }
     }
-}
+}*/
 
 @Composable
 fun SettingToggle(

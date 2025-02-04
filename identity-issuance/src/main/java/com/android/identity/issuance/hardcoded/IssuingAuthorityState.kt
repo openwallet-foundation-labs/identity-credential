@@ -72,7 +72,6 @@ import com.android.identity.sdjwt.SdJwtVcGenerator
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.Logger
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
@@ -699,7 +698,7 @@ class IssuingAuthorityState(
         } else if (path == "germanEid") {
             // Make sure we set at least all the mandatory data elements
             val germanEid = collectedEvidence["germanEidCard"] as EvidenceResponseGermanEidResolved
-            val personalData = getPersonalData(env, germanEid)
+            val personalData = getPersonalData(germanEid)
             val firstName = personalData["GivenNames"]!!.jsonPrimitive.content
             val lastName = personalData["FamilyNames"]!!.jsonPrimitive.content
             val dateOfBirth = parseDateOfBirth(personalData["DateOfBirth"]!!.jsonPrimitive.content)
@@ -714,7 +713,8 @@ class IssuingAuthorityState(
                 .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
                 .putEntry(EUPID_NAMESPACE, "birth_date",
                     Cbor.encode(dateOfBirth.toDataItemFullDate()))
-                .putEntryNumber(EUPID_NAMESPACE, "age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
+                .putEntryNumber(EUPID_NAMESPACE, "age_in_years",
+                    dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
                 .putEntryNumber(EUPID_NAMESPACE, "age_birth_year", dateOfBirth.year.toLong())
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
@@ -770,7 +770,8 @@ class IssuingAuthorityState(
                 .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
                 .putEntry(EUPID_NAMESPACE, "birth_date",
                     Cbor.encode(dateOfBirth.toDataItemFullDate()))
-                .putEntryNumber(EUPID_NAMESPACE, "age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
+                .putEntryNumber(EUPID_NAMESPACE, "age_in_years",
+                    dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toLong())
                 .putEntryNumber(EUPID_NAMESPACE, "age_birth_year", dateOfBirth.year.toLong())
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
@@ -841,7 +842,7 @@ class IssuingAuthorityState(
         } else if (path == "germanEid") {
             // Make sure we set at least all the mandatory data elements
             val germanEid = collectedEvidence["germanEidCard"] as EvidenceResponseGermanEidResolved
-            val personalData = getPersonalData(env, germanEid)
+            val personalData = getPersonalData(germanEid)
             val firstName = personalData["GivenNames"]!!.jsonPrimitive.content
             val lastName = personalData["FamilyNames"]!!.jsonPrimitive.content
             val dateOfBirth = parseDateOfBirth(personalData["DateOfBirth"]!!.jsonPrimitive.content)
@@ -1018,7 +1019,7 @@ class IssuingAuthorityState(
         } else if (path == "germanEid") {
             // Make sure we set at least all the mandatory data elements
             val germanEid = collectedEvidence["germanEidCard"] as EvidenceResponseGermanEidResolved
-            val personalData = getPersonalData(env, germanEid)
+            val personalData = getPersonalData(germanEid)
             val firstName = personalData["GivenNames"]!!.jsonPrimitive.content
             val lastName = personalData["FamilyNames"]!!.jsonPrimitive.content
             val dateOfBirth = parseDateOfBirth(personalData["DateOfBirth"]!!.jsonPrimitive.content)
@@ -1143,10 +1144,7 @@ class IssuingAuthorityState(
         )
     }
 
-    private suspend fun getPersonalData(
-        env: FlowEnvironment,
-        germanEid: EvidenceResponseGermanEidResolved
-    ): JsonObject {
+    private fun getPersonalData(germanEid: EvidenceResponseGermanEidResolved): JsonObject {
         val germanEidData = germanEid.data
         if (germanEidData == null) {
             Logger.e(TAG, "No data in eId response")
@@ -1206,6 +1204,7 @@ class IssuingAuthorityState(
         return builder
     }
 
+    // TODO: b/393388152 - parameter unused.
     private fun checkEvidence(evidence: Map<String, EvidenceResponse>): Boolean {
         return true
     }

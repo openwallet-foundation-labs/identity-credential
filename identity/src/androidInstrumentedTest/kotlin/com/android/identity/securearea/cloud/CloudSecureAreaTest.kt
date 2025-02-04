@@ -5,7 +5,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.OID
-import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
@@ -24,7 +23,6 @@ import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
@@ -400,7 +398,7 @@ class CloudSecureAreaTest {
         //
         try {
             val spRequest0 = CloudSecureAreaProtocol.RegisterStage2Request0("New Passphrase")
-            val spResponse0 = CloudSecureAreaProtocol.Command.fromCbor(csa.communicateE2EE(spRequest0.toCbor()))
+            CloudSecureAreaProtocol.Command.fromCbor(csa.communicateE2EE(spRequest0.toCbor()))
                     as CloudSecureAreaProtocol.RegisterStage2Response0
             Assert.fail("Expected exception")
         } catch (e: CloudException) {

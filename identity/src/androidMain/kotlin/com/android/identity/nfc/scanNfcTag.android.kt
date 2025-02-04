@@ -3,7 +3,9 @@ package com.android.identity.nfc
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
+import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import com.android.identity.R
@@ -83,14 +85,12 @@ private class NfcTagReader<T> {
 
     private lateinit var originalMessage: String
     private val dialogMessage = mutableStateOf("")
-    private val dialogIcon = mutableStateOf(R.drawable.nfc_tag_reader_icon_scan)
+    private val dialogIcon = mutableIntStateOf(R.drawable.nfc_tag_reader_icon_scan)
 
     private fun vibrate(pattern: List<Int>) {
-        val vibrator = ContextCompat.getSystemService<Vibrator>(
-            AndroidContexts.applicationContext,
-            Vibrator::class.java
-        )
-        vibrator?.vibrate(pattern.map { it.toLong() }.toLongArray(), -1)
+        val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+        val vibrationEffect = VibrationEffect.createWaveform(pattern.map { it.toLong() }.toLongArray(), -1)
+        vibrator?.vibrate(vibrationEffect)
     }
 
     private fun vibrateError() {
@@ -140,7 +140,7 @@ private class NfcTagReader<T> {
                     null
                 )
             }
-            dialogIcon.value = R.drawable.nfc_tag_reader_icon_success
+            dialogIcon.intValue = R.drawable.nfc_tag_reader_icon_success
             vibrateSuccess()
             CoroutineScope(Dispatchers.IO).launch {
                 delay(2.seconds)
@@ -151,7 +151,7 @@ private class NfcTagReader<T> {
             dialog.dismiss()
             return null
         } catch (e: Throwable) {
-            dialogIcon.value = R.drawable.nfc_tag_reader_icon_error
+            dialogIcon.intValue = R.drawable.nfc_tag_reader_icon_error
             dialogMessage.value = e.message!!
             vibrateError()
             CoroutineScope(Dispatchers.IO).launch {

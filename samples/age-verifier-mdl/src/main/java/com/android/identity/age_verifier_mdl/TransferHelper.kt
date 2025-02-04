@@ -25,9 +25,10 @@ import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import java.io.File
 
+// TODO: b/393388152 - PreferenceManager is deprecated. Consider refactoring to AndroidX
 class TransferHelper private constructor(
     private var context: Context,
-    private var activity: Activity
+    private var activity: Activity // TODO: Not used. Remove?
 ) {
 
     companion object {
@@ -102,15 +103,15 @@ class TransferHelper private constructor(
             close()
         }
 
-        override fun onResponseReceived(deviceResponseBytes_: ByteArray) {
+        override fun onResponseReceived(deviceResponseBytes: ByteArray) {
             Logger.d(TAG, "onResponseReceived")
-            deviceResponseBytes = deviceResponseBytes_
+            this@TransferHelper.deviceResponseBytes = deviceResponseBytes
             state.value = State.TRANSACTION_COMPLETE
         }
 
-        override fun onError(error_: Throwable) {
-            Logger.d(TAG, "onError $error")
-            error = error_
+        override fun onError(error: Throwable) {
+            Logger.d(TAG, "onError ${this@TransferHelper.error}")
+            this@TransferHelper.error = error
             state.value = State.TRANSACTION_COMPLETE
         }
     }
@@ -200,6 +201,7 @@ class TransferHelper private constructor(
     }
 
     init {
+        @Suppress("DEPRECATION")
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         val storageFile = File(context.noBackupFilesDir.path, "identity.db")
         storage = AndroidStorage(storageFile.absolutePath)

@@ -16,20 +16,19 @@
 package com.android.identity.android.mdoc.transport
 
 import android.os.ConditionVariable
-import androidx.test.InstrumentationRegistry
 import androidx.test.filters.SmallTest
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.util.fromHex
 import org.junit.Assert
 import org.junit.Test
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-@Suppress("deprecation")
 class DataTransportTcpTest {
     @Test
     @SmallTest
     fun connectAndListen() {
-        val appContext = InstrumentationRegistry.getTargetContext()
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         val verifier = DataTransportTcp(
             appContext,
             DataTransport.Role.MDOC_READER,

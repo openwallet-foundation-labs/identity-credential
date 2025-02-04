@@ -99,10 +99,7 @@ internal class GattClient(
         // BluetoothGatt.refresh() is not public API but can be accessed via introspection...
         try {
             val refreshMethod = gatt.javaClass.getMethod("refresh")
-            var result = false
-            if (refreshMethod != null) {
-                result = refreshMethod.invoke(gatt) as Boolean
-            }
+            val result = refreshMethod.invoke(gatt) as Boolean
             if (result) {
                 Logger.d(TAG, "BluetoothGatt.refresh() invoked successfully")
             } else {
@@ -239,7 +236,7 @@ internal class GattClient(
 
     private var mCharacteristicValueSize = 0
     private val characteristicValueSize: Int
-        private get() {
+        get() {
             if (mCharacteristicValueSize > 0) {
                 return mCharacteristicValueSize
             }
@@ -252,6 +249,7 @@ internal class GattClient(
             return mCharacteristicValueSize
         }
 
+    @Deprecated("Deprecated in Java")
     @SuppressLint("NewApi")
     override fun onCharacteristicRead(
         gatt: BluetoothGatt,
@@ -426,6 +424,7 @@ internal class GattClient(
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onCharacteristicChanged(
         gatt: BluetoothGatt,
         characteristic: BluetoothGattCharacteristic

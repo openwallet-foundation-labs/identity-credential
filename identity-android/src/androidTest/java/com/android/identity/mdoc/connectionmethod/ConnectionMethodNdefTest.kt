@@ -109,14 +109,14 @@ class ConnectionMethodNdefTest {
         Assert.assertEquals(uuidBoth, decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c03110702000000000000000000000000000000",
-            pair.first.toByteArray().toHex()
+            NdefMessage(pair.first).toByteArray().toHex()
         )
         Assert.assertEquals(
             "01013001046d646f63",
             pair.second.toHex()
         )
         val hrPair = NfcUtil.toNdefRecord(cm, listOf(""), false)
-        Assert.assertArrayEquals(pair.first.toByteArray(), hrPair!!.first.toByteArray())
+        Assert.assertArrayEquals(NdefMessage(pair.first).toByteArray(), NdefMessage(hrPair!!.first).toByteArray())
     }
 
     @Test
@@ -161,7 +161,7 @@ class ConnectionMethodNdefTest {
         Assert.assertEquals(uuid, decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c011107b168de3a0000000015cd5b0700000000",
-            pair.first.toByteArray().toHex()
+            NdefMessage(pair.first).toByteArray().toHex()
         )
         Assert.assertEquals(
             "01013001046d646f63",
@@ -176,7 +176,7 @@ class ConnectionMethodNdefTest {
         Assert.assertEquals(uuid, decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c001107b168de3a0000000015cd5b0700000000",
-            pair.first.toByteArray().toHex()
+            NdefMessage(pair.first).toByteArray().toHex()
         )
         Assert.assertEquals("01013000", pair.second!!.toHex())
     }
@@ -223,7 +223,7 @@ class ConnectionMethodNdefTest {
         Assert.assertNull(decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c00110701000000000000000000000000000000",
-            pair.first.toByteArray().toHex()
+            NdefMessage(pair.first).toByteArray().toHex()
         )
         Assert.assertEquals(
             "01013001046d646f63",
@@ -238,7 +238,7 @@ class ConnectionMethodNdefTest {
         Assert.assertNull(decoded.centralClientModeUuid)
         Assert.assertEquals(
             "da2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c01110701000000000000000000000000000000",
-            pair.first.toByteArray().toHex()
+            NdefMessage(pair.first).toByteArray().toHex()
         )
         Assert.assertEquals("01013000", pair.second!!.toHex())
     }

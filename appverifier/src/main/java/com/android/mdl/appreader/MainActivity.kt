@@ -1,23 +1,19 @@
 package com.android.mdl.appreader
 
+import android.app.ComponentCaller
 import android.app.PendingIntent
 import android.content.Intent
 import android.nfc.NfcAdapter
 import android.os.Bundle
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.navigation.Navigation
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.android.mdl.appreader.databinding.ActivityMainBinding
 import com.android.mdl.appreader.util.logDebug
 import com.google.android.material.elevation.SurfaceColors
-import java.security.Security
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 class MainActivity : AppCompatActivity() {
 
@@ -31,12 +27,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // TODO: b/393388152 - statusBarColor and navigationBarColor are deprecated, new impl. needed for compatibility.
         val color = SurfaceColors.SURFACE_2.getColor(this)
+        @Suppress("DEPRECATION")
         window.statusBarColor = color
+        @Suppress("DEPRECATION")
         window.navigationBarColor = color
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupDrawerLayout()
+        onBackPressedDispatcher.addCallback(this) {
+            if (binding.dlMainDrawer.isDrawerOpen(GravityCompat.START)) {
+                binding.dlMainDrawer.closeDrawer(GravityCompat.START)
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
 
         mAdapter = NfcAdapter.getDefaultAdapter(this)
         // Create a generic PendingIntent that will be deliver to this activity. The NFC stack
@@ -45,7 +54,8 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        mPendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        mPendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun setupDrawerLayout() {
@@ -63,20 +73,12 @@ class MainActivity : AppCompatActivity() {
         mAdapter?.disableForegroundDispatch(this)
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
+    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
+        super.onNewIntent(intent, caller)
         logDebug("New intent on Activity $intent")
     }
 
     override fun onSupportNavigateUp(): Boolean {
         return NavigationUI.navigateUp(navController, binding.dlMainDrawer)
-    }
-
-    override fun onBackPressed() {
-        if (binding.dlMainDrawer.isDrawerOpen(GravityCompat.START)) {
-            binding.dlMainDrawer.closeDrawer(GravityCompat.START)
-        } else {
-            super.onBackPressed()
-        }
     }
 }

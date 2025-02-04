@@ -55,8 +55,8 @@ class NfcEngagementHelper private constructor(
     private val options: DataTransportOptions,
     private val negotiatedHandoverWtInt: Int,
     private val negotiatedHandoverMaxNumWaitingTimeExtensions: Int,
-    private val listener: Listener,
-    private val executor: Executor
+    private val listener: Listener?,
+    private val executor: Executor?
 ) {
     private var staticHandoverConnectionMethods: List<ConnectionMethod>? = null
     private var inhibitCallbacks = false
@@ -99,7 +99,7 @@ class NfcEngagementHelper private constructor(
      */
     fun close() {
         inhibitCallbacks = true
-        if (!transports.isEmpty()) {
+        if (transports.isNotEmpty()) {
             var numTransportsClosed = 0
             for (transport in transports) {
                 transport.close()
@@ -582,9 +582,9 @@ class NfcEngagementHelper private constructor(
                 && Arrays.equals(r.type, "Hr".toByteArray())
             ) {
                 val payload = r.payload
-                if (payload.size >= 1 && payload[0].toInt() == 0x15) {
+                if (payload.isNotEmpty() && payload[0].toInt() == 0x15) {
                     val hrEmbMessageData = Arrays.copyOfRange(payload, 1, payload.size)
-                    var hrEmbMessage = try {
+                    try {
                         NdefMessage(hrEmbMessageData)
                     } catch (e: FormatException) {
                         Logger.e(TAG, "handleHandoverRequest: Error parsing embedded HR NdefMessage", e)
@@ -592,8 +592,8 @@ class NfcEngagementHelper private constructor(
                         return NfcUtil.STATUS_WORD_WRONG_PARAMETERS
                     }
                 }
-                val hrEmbMessageRecords = message.records
-                // TODO: actually look at these records...
+                // TODO: actually look at these records:
+                //  hrEmbMessageRecords = message.records
             }
 
             // This parses the various carrier specific NDEF records, see
@@ -655,7 +655,7 @@ class NfcEngagementHelper private constructor(
         return NfcUtil.STATUS_WORD_OK
     }
 
-    private fun calculateStatusMessage(statusCode: Int): ByteArray {
+    private fun calculateStatusMessage(@Suppress("SameParameterValue") statusCode: Int): ByteArray {
         val payload = byteArrayOf(statusCode.toByte())
         val record = NdefRecord(
             NdefRecord.TNF_WELL_KNOWN,
@@ -672,16 +672,14 @@ class NfcEngagementHelper private constructor(
     fun peerIsConnecting(transport: DataTransport) {
         if (!reportedDeviceConnecting) {
             reportedDeviceConnecting = true
-            reportDeviceConnecting()
+            reportDeviceConnecting(transport)
         }
     }
 
     fun peerHasConnected(transport: DataTransport) {
-        // stop listening on other transports
-        //
+        // Stop listening on other transports.
         Logger.d(
-            TAG, "Peer has connected on transport " + transport
-                    + " - shutting down other transports"
+            TAG, "Peer has connected on transport $transport - shutting down other transports"
         )
         for (t in transports) {
             t.setListener(null, null)
@@ -694,66 +692,43 @@ class NfcEngagementHelper private constructor(
     }
 
     // Note: The report*() methods are safe to call from any thread.
-    fun reportTwoWayEngagementDetected() {
-        Logger.d(TAG, "reportTwoWayEngagementDetected")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onTwoWayEngagementDetected()
-                }
-            }
-        }
+    private fun reportTwoWayEngagementDetected() {
+        reportEvent("reportTwoWayEngagementDetected") { listener -> listener.onTwoWayEngagementDetected() }
     }
 
-    fun reportHandoverSelectMessageSent() {
-        Logger.d(TAG, "onHandoverSelectMessageSent")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onHandoverSelectMessageSent()
-                }
-            }
-        }
+    private fun reportHandoverSelectMessageSent() {
+        reportEvent("onHandoverSelectMessageSent") { listener -> listener.onHandoverSelectMessageSent() }
     }
 
-    fun reportDeviceConnecting() {
-        Logger.d(TAG, "reportDeviceConnecting")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onDeviceConnecting()
-                }
-            }
-        }
+    private fun reportDeviceConnecting(transport: DataTransport) {
+        reportEvent("reportDeviceConnecting $transport") { listener -> listener.onDeviceConnecting() }
     }
 
-    fun reportDeviceConnected(transport: DataTransport) {
-        Logger.d(TAG, "reportDeviceConnected")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onDeviceConnected(transport)
-                }
-            }
-        }
+    private fun reportDeviceConnected(transport: DataTransport) {
+        reportEvent("reportDeviceConnected $transport") { listener -> listener.onDeviceConnected(transport) }
     }
 
-    fun reportError(error: Throwable) {
-        Logger.d(TAG, "reportError: error: ", error)
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
+    private fun reportError(error: Throwable) {
+        reportEvent("reportError: error: ", error) { listener -> listener.onError(error) }
+    }
+
+    /** Common reporting code. */
+    private fun reportEvent(
+        logMessage: String,
+        logError: Throwable? = null,
+        event: (Listener) -> Unit
+    ) {
+        if (logError != null) {
+            Logger.d(TAG, logMessage, logError)
+        } else {
+            Logger.d(TAG, logMessage)
+        }
+        val currentListener: Listener? = listener
+        val currentExecutor: Executor? = executor
+        if (currentListener != null && currentExecutor != null) {
+            currentExecutor.execute {
                 if (!inhibitCallbacks) {
-                    listener.onError(error)
+                    event(currentListener)
                 }
             }
         }

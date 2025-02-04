@@ -29,6 +29,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -51,7 +52,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.documenttype.DocumentCannedRequest
@@ -89,8 +90,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
-
-private const val TAG = "ReaderScreen"
 
 @Composable
 fun ReaderScreen(
@@ -169,8 +168,8 @@ private fun WaitForEngagement(
     onNavigate: (String) -> Unit,
 ) {
     val showQrScannerDialog = remember { mutableStateOf(false) }
-    var dropdownExpanded = remember { mutableStateOf(false) }
-    var dropdownSelected = remember { mutableStateOf(availableRequests[0]) }
+    val dropdownExpanded = remember { mutableStateOf(false) }
+    val dropdownSelected = remember { mutableStateOf(availableRequests[0]) }
 
     if (showQrScannerDialog.value) {
         ScanQrCodeDialog(
@@ -287,7 +286,7 @@ private fun RequestPicker(
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = comboBoxExpanded.value) },
-                    modifier = Modifier.menuAnchor()
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
 
                 ExposedDropdownMenu(

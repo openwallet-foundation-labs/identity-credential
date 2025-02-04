@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -133,21 +134,18 @@ fun IsoMdocProximityReadingScreen(
             ))
         }
     }
-    var dropdownExpanded = remember { mutableStateOf(false) }
-    var selectedRequest = remember { mutableStateOf(availableRequests[0]) }
-
+    val dropdownExpanded = remember { mutableStateOf(false) }
+    val selectedRequest = remember { mutableStateOf(availableRequests[0]) }
     val blePermissionState = rememberBluetoothPermissionState()
-
     val coroutineScope = rememberCoroutineScope()
-
     val readerShowQrScanner = remember { mutableStateOf(false) }
-    var readerJob by remember { mutableStateOf<Job?>(null) }
-    var readerTransport = remember { mutableStateOf<MdocTransport?>(null) }
-    var readerSessionEncryption = remember { mutableStateOf<SessionEncryption?>(null) }
-    var readerSessionTranscript = remember { mutableStateOf<ByteArray?>(null) }
-    var readerMostRecentDeviceResponse = remember { mutableStateOf<ByteArray?>(null) }
-
+    val readerTransport = remember { mutableStateOf<MdocTransport?>(null) }
+    val readerSessionEncryption = remember { mutableStateOf<SessionEncryption?>(null) }
+    val readerSessionTranscript = remember { mutableStateOf<ByteArray?>(null) }
+    val readerMostRecentDeviceResponse = remember { mutableStateOf<ByteArray?>(null) }
     val connectionMethodPickerData = remember { mutableStateOf<ConnectionMethodPickerData?>(null) }
+
+    var readerJob by remember { mutableStateOf<Job?>(null) }
 
     if (connectionMethodPickerData.value != null) {
         val radioOptions = connectionMethodPickerData.value!!.connectionMethods
@@ -628,7 +626,7 @@ private suspend fun doReaderFlowWithTransport(
     handover: DataItem,
     updateNfcDialogMessage: ((message: String) -> Unit)?,
     allowMultipleRequests: Boolean,
-    bleUseL2CAP: Boolean,
+    bleUseL2CAP: Boolean, // TODO: unused param. WIP or Remove?
     showToast: (message: String) -> Unit,
     readerTransport: MutableState<MdocTransport?>,
     readerSessionEncryption: MutableState<SessionEncryption?>,
@@ -752,7 +750,7 @@ private fun RequestPicker(
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = comboBoxExpanded.value) },
-                    modifier = Modifier.menuAnchor()
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
 
                 ExposedDropdownMenu(
@@ -781,17 +779,17 @@ private fun ShowReaderResults(
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
     readerSessionTranscript: MutableState<ByteArray?>,
 ) {
-    val deviceResponse = readerMostRecentDeviceResponse.value
-    if (deviceResponse == null || deviceResponse.isEmpty()) {
+    val deviceResponse1 = readerMostRecentDeviceResponse.value
+    if (deviceResponse1 == null || deviceResponse1.isEmpty()) {
         Text(
             text = "Waiting for data",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
         )
     } else {
-        val parser = DeviceResponseParser(deviceResponse, readerSessionTranscript.value!!)
-        val deviceResponse = parser.parse()
-        if (deviceResponse.documents.isEmpty()) {
+        val parser = DeviceResponseParser(deviceResponse1, readerSessionTranscript.value!!)
+        val deviceResponse2 = parser.parse()
+        if (deviceResponse2.documents.isEmpty()) {
             Text(
                 text = "No documents in response",
                 style = MaterialTheme.typography.bodyLarge,
@@ -800,11 +798,11 @@ private fun ShowReaderResults(
         } else {
             // TODO: show multiple documents
             val documentData = DocumentData.fromMdocDeviceResponseDocument(
-                deviceResponse.documents[0],
+                deviceResponse2.documents[0],
                 app.documentTypeRepository,
                 app.issuerTrustManager
             )
-            ShowDocumentData(documentData, 0, deviceResponse.documents.size)
+            ShowDocumentData(documentData, 0, deviceResponse2.documents.size)
         }
     }
 }
@@ -950,10 +948,9 @@ private data class DocumentData(
                     val dataElement = Cbor.decode(encodedDataElementValue)
                     var bitmap: ImageBitmap? = null
                     val (key, value) = if (mdocDataElement != null) {
-                        if (dataElement is Bstr &&
-                            mdocDataElement.attribute.type == DocumentAttributeType.Picture) {
+                        if (dataElement is Bstr && mdocDataElement.attribute.type == DocumentAttributeType.Picture) {
                             try {
-                                bitmap = decodeImage((dataElement as Bstr).value)
+                                bitmap = decodeImage(dataElement.value)
                             } catch (e: Throwable) {
                                 Logger.w(TAG, "Error decoding image for data element $dataElement in " +
                                         "namespace $namespaceName", e)

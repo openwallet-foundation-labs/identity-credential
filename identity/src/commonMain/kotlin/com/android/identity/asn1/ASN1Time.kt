@@ -1,5 +1,6 @@
 package com.android.identity.asn1
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -7,7 +8,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
 import kotlinx.datetime.format
-import kotlinx.datetime.format.byUnicodePattern
+import kotlinx.datetime.format.char
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteStringBuilder
@@ -23,17 +24,16 @@ class ASN1Time(
         val ldt = value.toLocalDateTime(TimeZone.UTC)
         val str = when (tag) {
             ASN1TimeTag.UTC_TIME.tag -> {
-                // Looks like 'yy' makes LocalDateTime.format() yield '+1950' for years before 2000
-                val yearTwoDigits = ldt.year % 100
-                val yearTwoDigitsWithPadding = if (yearTwoDigits < 10) {
-                    "0" + yearTwoDigits.toString()
-                } else {
-                    yearTwoDigits.toString()
+                ldt.format(LocalDateTime.Format {
+                    yearTwoDigits(if (ldt.year < 2000) 1900 else 2000)
+                    monthNumber()
+                    dayOfMonth()
+                    hour()
+                    minute()
+                    second()
+                    char('Z')
                 }
-                val dateTimeFormat = LocalDateTime.Format {
-                    byUnicodePattern("MMddHHmmss'Z'")
-                }
-                yearTwoDigitsWithPadding + ldt.format(dateTimeFormat)
+                )
             }
 
             ASN1TimeTag.GENERALIZED_TIME.tag -> {
@@ -49,13 +49,27 @@ class ASN1Time(
 
                     ldt.format(
                         LocalDateTime.Format {
-                            byUnicodePattern("yyyyMMddHHmmss")
+                            year()
+                            monthNumber()
+                            dayOfMonth()
+                            hour()
+                            minute()
+                            second()
+                            char('.')
+                            chars(nanoAsStr)
+                            char('Z')
                         }
-                    ) + "." + nanoAsStr + "Z"
+                    )
                 } else {
                     ldt.format(
                         LocalDateTime.Format {
-                            byUnicodePattern("yyyyMMddHHmmss'Z'")
+                            year()
+                            monthNumber()
+                            dayOfMonth()
+                            hour()
+                            minute()
+                            second()
+                            char('Z')
                         }
                     )
                 }
