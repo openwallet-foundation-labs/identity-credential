@@ -117,8 +117,19 @@ class AndroidAttestationExtensionParser(cert: X509Cert) {
 
     val softwareEnforcedAuthorizationTags: Set<Int>
         get() = softwareEnforcedAuthorizations.keys
+
     val teeEnforcedAuthorizationTags: Set<Int>
         get() = teeEnforcedAuthorizations.keys
+
+    fun getSoftwareAuthorizationValue(tag: Int): ASN1Object {
+        return findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
+            ?: throw IllegalStateException("Tag not found")
+    }
+
+    fun getTeeAuthorizationValue(tag: Int): ASN1Object {
+        return findAuthorizationListEntry(teeEnforcedAuthorizations, tag)
+            ?: throw IllegalStateException("Tag not found")
+    }
 
     fun getSoftwareAuthorizationInteger(tag: Int): Int? {
         val entry = findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
@@ -159,6 +170,184 @@ class AndroidAttestationExtensionParser(cert: X509Cert) {
     fun getTeeAuthorizationByteString(tag: Int): ByteArray? {
         val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag) as ASN1OctetString?
         return entry?.value
+    }
+
+    private fun renderByteArray(data: ByteArray): String {
+        return if (data.isEmpty()) {
+            "<empty>"
+        } else {
+            "${data.toHex(byteDivider = " ")} (\"${data.decodeToString()}\")"
+        }
+    }
+
+    private enum class VBootState(
+        val value: Int,
+        val description: String
+    ) {
+        VERIFIED(0, "Verified (GREEN)"),
+        SELF_SIGNED(1, "Self-signed (YELLOW)"),
+        UNVERIFIED(2, "Unverified (ORANGE)"),
+        FAILED(3, "Failed (RED)")
+    }
+
+    private val aksVerifiedBootStateToEnum: Map<Int, VBootState> by lazy {
+        VBootState.entries.associateBy { it.value }
+    }
+
+    private enum class AuthorizationType {
+        INT,
+        INT_SET,
+        NULL,
+        OCTET_STRING,
+        ROOT_OF_TRUST,
+        ATTESTATION_APPLICATION_ID
+    }
+
+    // See https://source.android.com/docs/security/features/keystore/attestation#schema for the list
+    // of known authorizations. Add more as needed over time.
+    //
+    private enum class AndroidKeystoreAuthorization(
+        val tag: Int,
+        val type: AuthorizationType,
+    ) {
+        purpose(1, AuthorizationType.INT_SET),
+        algorithm(2, AuthorizationType.INT),
+        keySize(3, AuthorizationType.INT),
+        digest(5, AuthorizationType.INT_SET),
+        padding(6, AuthorizationType.INT_SET),
+        ecCurve(10, AuthorizationType.INT),
+        rsaPublicExponent(200, AuthorizationType.INT),
+        mgfDigest(203, AuthorizationType.INT_SET),
+        rollbackResistance(303, AuthorizationType.NULL),
+        earlyBootOnly(305, AuthorizationType.NULL),
+        activeDateTime(400, AuthorizationType.INT),
+        originationExpireDateTime(401, AuthorizationType.INT),
+        usageExpireDateTime(402, AuthorizationType.INT),
+        usageCountLimit(405, AuthorizationType.INT),
+        noAuthRequired(503, AuthorizationType.NULL),
+        userAuthType(504, AuthorizationType.INT),
+        authTimeout(505, AuthorizationType.INT),
+        allowWhileOnBody(506, AuthorizationType.NULL),
+        trustedUserPresenceRequired(507, AuthorizationType.NULL),
+        trustedConfirmationRequired(508, AuthorizationType.NULL),
+        unlockedDeviceRequired(509, AuthorizationType.NULL),
+        creationDateTime(701, AuthorizationType.INT),
+        origin(702, AuthorizationType.INT),
+        rootOfTrust(704, AuthorizationType.ROOT_OF_TRUST),
+        osVersion(705, AuthorizationType.INT),
+        osPatchLevel(706, AuthorizationType.INT),
+        attestationApplicationId(709, AuthorizationType.ATTESTATION_APPLICATION_ID),
+        attestationIdBrand(710, AuthorizationType.OCTET_STRING),
+        attestationIdDevice(711, AuthorizationType.OCTET_STRING),
+        attestationIdProduct(712, AuthorizationType.OCTET_STRING),
+        attestationIdSerial(713, AuthorizationType.OCTET_STRING),
+        attestationIdImei(714, AuthorizationType.OCTET_STRING),
+        attestationIdMeid(715, AuthorizationType.OCTET_STRING),
+        attestationIdManufacturer(716, AuthorizationType.OCTET_STRING),
+        attestationIdModel(717, AuthorizationType.OCTET_STRING),
+        vendorPatchLevel(718, AuthorizationType.INT),
+        bootPatchLevel(719, AuthorizationType.INT),
+        deviceUniqueAttestation(720, AuthorizationType.NULL),
+        attestationIdSecondImei(723, AuthorizationType.OCTET_STRING),
+        moduleHash(724, AuthorizationType.OCTET_STRING)
+    }
+
+    private val aksTagToEnum: Map<Int, AndroidKeystoreAuthorization> by lazy {
+        AndroidKeystoreAuthorization.entries.associateBy { it.tag }
+    }
+
+    private fun renderAndroidKeystoreAuthorization(
+        tag: Int,
+        value: ASN1Object
+    ): String {
+        try {
+            val authorization = aksTagToEnum[tag]
+            if (authorization != null) {
+                return "  ${authorization.name}: " + when (authorization.type) {
+                    AuthorizationType.INT -> {
+                        (value as ASN1Integer).toLong().toString() + "\n"
+                    }
+
+                    AuthorizationType.INT_SET -> {
+                        (value as ASN1Set).elements.map {
+                            (it as ASN1Integer).toLong().toString()
+                        }.joinToString(", ") + "\n"
+                    }
+
+                    AuthorizationType.NULL -> {
+                        "true\n"
+                    }
+
+                    AuthorizationType.OCTET_STRING -> {
+                        renderByteArray((value as ASN1OctetString).value) + "\n"
+                    }
+
+                    AuthorizationType.ROOT_OF_TRUST -> {
+                        val seq = value as ASN1Sequence
+                        val verifiedBootKey = (seq.elements[0] as ASN1OctetString).value
+                        val deviceLocked = (seq.elements[1] as ASN1Boolean).value
+                        val verifiedBootState = (seq.elements[2] as ASN1Integer).toLong().toInt()
+                        val verifiedBootStateDesc = aksVerifiedBootStateToEnum[verifiedBootState]!!.description
+                        val verifiedBootHash = (seq.elements[3] as ASN1OctetString).value
+                        val sb = StringBuilder("\n")
+                        sb.append("    verifiedBootKey: ${verifiedBootKey.toHex(byteDivider = " ")}\n")
+                        sb.append("    deviceLocked: ${deviceLocked}\n")
+                        sb.append("    verifiedBootState: ${verifiedBootStateDesc}\n")
+                        sb.append("    verifiedBootHash: ${verifiedBootHash.toHex(byteDivider = " ")}\n")
+                        sb.toString()
+                    }
+
+                    AuthorizationType.ATTESTATION_APPLICATION_ID -> {
+                        val sb = StringBuilder("\n")
+                        val seq = ASN1.decode((value as ASN1OctetString).value) as ASN1Sequence
+
+                        sb.append("    Package Infos:\n")
+                        for (item in (seq.elements[0] as ASN1Set).elements) {
+                            val itemSeq = item as ASN1Sequence
+                            val packageName = (itemSeq.elements[0] as ASN1OctetString).value.decodeToString()
+                            val version = (itemSeq.elements[1] as ASN1Integer).toLong()
+                            sb.append("      $packageName (version $version)\n")
+                        }
+                        sb.append("    Signature Digests:\n")
+                        for (item in (seq.elements[1] as ASN1Set).elements) {
+                            sb.append("      ${(item as ASN1OctetString).value.toHex(byteDivider = " ")}\n")
+                        }
+                        sb.toString()
+                    }
+                }
+            } else {
+                return "  $tag: ${ASN1.print(value).trim()}\n"
+            }
+        } catch (e: Throwable) {
+            return "  $tag: Error rendering: ${e.message}"
+        }
+    }
+
+    fun prettyPrint(): String {
+        val sb = StringBuilder()
+        sb.append(
+            """
+                Version: $attestationVersion
+                Security Level: $attestationSecurityLevel
+                KeyMint Version: $keymasterVersion
+                KeyMint Security Level: $keymasterSecurityLevel
+                Challenge: ${renderByteArray(attestationChallenge)}
+                UniqueId: ${renderByteArray(uniqueId)}
+            """.trimIndent()
+        )
+        sb.append("\n\n")
+        sb.append("Software Enforced Authorizations:\n")
+        for (tag in softwareEnforcedAuthorizationTags) {
+            val obj = getSoftwareAuthorizationValue(tag)
+            sb.append(renderAndroidKeystoreAuthorization(tag, obj))
+        }
+        sb.append("\n")
+        sb.append("Hardware Enforced Authorizations:\n")
+        for (tag in teeEnforcedAuthorizationTags) {
+            val obj = getTeeAuthorizationValue(tag)
+            sb.append(renderAndroidKeystoreAuthorization(tag, obj))
+        }
+        return sb.toString()
     }
 
     companion object {

@@ -32,8 +32,8 @@
     <string name="certificate_viewer_k_type">Type</string>
     <string name="certificate_viewer_k_serial_number">Serial Number</string>
     <string name="certificate_viewer_k_version">Version</string>
-    <string name="certificate_viewer_k_issued">Issued</string>
-    <string name="certificate_viewer_k_expired">Expired</string>
+    <string name="certificate_viewer_k_issued">Issued On</string>
+    <string name="certificate_viewer_k_expired">Expires On</string>
     <string name="certificate_viewer_sub_subject">Subject</string>
     <string name="certificate_viewer_sub_issuer">Issuer</string>
     <string name="certificate_viewer_k_country_name">Country Name</string>
