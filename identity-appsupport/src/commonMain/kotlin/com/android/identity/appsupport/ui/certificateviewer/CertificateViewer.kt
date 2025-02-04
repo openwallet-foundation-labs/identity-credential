@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.identity.appsupport.ui.certificateviewer.CertificateViewData.Companion.from
 import com.android.identity.asn1.ASN1Integer
@@ -41,6 +42,7 @@ import com.android.identity.crypto.X509CertChain
 import identitycredential.identity_appsupport.generated.resources.Res
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_accessibility_error_icon
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_accessibility_info_icon
+import identitycredential.identity_appsupport.generated.resources.certificate_viewer_critical_ext
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_common_name
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_country_name
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_expired
@@ -57,11 +59,14 @@ import identitycredential.identity_appsupport.generated.resources.certificate_vi
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_type
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_version
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_no_certificates_in_chain
+import identitycredential.identity_appsupport.generated.resources.certificate_viewer_non_critical_ext
+import identitycredential.identity_appsupport.generated.resources.certificate_viewer_oid
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_basic_info
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_extensions
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_issuer
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_public_key_info
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_subject
+import identitycredential.identity_appsupport.generated.resources.certificate_viewer_value
 import identitycredential.identity_appsupport.generated.resources.certificate_viewer_version_text
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -72,6 +77,7 @@ import kotlin.time.Duration.Companion.hours
 
 private val PAGER_INDICATOR_HEIGHT = 30.dp
 private val PAGER_INDICATOR_PADDING = 8.dp
+private val indent = arrayOf(0.dp, 8.dp, 16.dp, 24.dp)
 
 /**
  * Display X509CertChain or x509Cert, with corresponding list of additional warnings and infos.
@@ -202,10 +208,14 @@ private fun CertificateView(
 
             Subtitle(stringResource(Res.string.certificate_viewer_sub_basic_info))
             KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_type), data.type)
-            KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_version),
-                stringResource(Res.string.certificate_viewer_version_text, data.version))
-            KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_serial_number),
-                data.serialNumber)
+            KeyValuePairLine(
+                stringResource(Res.string.certificate_viewer_k_version),
+                stringResource(Res.string.certificate_viewer_version_text, data.version)
+            )
+            KeyValuePairLine(
+                stringResource(Res.string.certificate_viewer_k_serial_number),
+                data.serialNumber
+            )
             KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_issued), data.issued)
             KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_expired), data.expired)
 
@@ -224,18 +234,32 @@ private fun CertificateView(
             }
 
             Subtitle(stringResource(Res.string.certificate_viewer_sub_public_key_info))
-            KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_pk_algorithm),
-                data.pkAlgorithm)
-            KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_pk_named_curve),
-                data.pkNamedCurve)
-            KeyValuePairLine(stringResource(Res.string.certificate_viewer_k_pk_value),
-                data.pkValue)
+            KeyValuePairLine(
+                stringResource(Res.string.certificate_viewer_k_pk_algorithm),
+                data.pkAlgorithm
+            )
+            KeyValuePairLine(
+                stringResource(Res.string.certificate_viewer_k_pk_named_curve),
+                data.pkNamedCurve
+            )
+            KeyValuePairLine(
+                stringResource(Res.string.certificate_viewer_k_pk_value),
+                data.pkValue
+            )
 
-            // TODO: Extensions are going to need a bit more work, like conveying criticality and
-            //  pretty-printing well-known extensions.
             if (data.extensions.isNotEmpty()) {
                 Subtitle(stringResource(Res.string.certificate_viewer_sub_extensions))
-                data.extensions.forEach { (key, value) -> KeyValuePairLine(key, value) }
+                Column {
+                    data.extensions.forEach { (isCritical, oid, value) ->
+                        SubHeading1(
+                            stringResource(
+                                if (isCritical) Res.string.certificate_viewer_critical_ext
+                                else Res.string.certificate_viewer_non_critical_ext
+                            )
+                        )
+                        OidValuePairColumn(oid, value)
+                    }
+                }
             }
         }
     }
@@ -254,6 +278,30 @@ private fun Subtitle(text: String) {
 }
 
 @Composable
+private fun SubHeading1(text: String) {
+    Text(
+        modifier = Modifier
+            .padding(start = indent[1], top = 6.dp)
+            .fillMaxWidth(),
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+private fun SubHeading2(text: String) {
+    Text(
+        modifier = Modifier
+            .padding(start = indent[2], top = 6.dp)
+            .fillMaxWidth(),
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
 private fun KeyValuePairLine(
     key: String,
     valueText: String
@@ -264,7 +312,7 @@ private fun KeyValuePairLine(
 
     Column(
         Modifier.fillMaxWidth()
-            .padding(horizontal = 8.dp)
+            .padding(start = indent[1], bottom = 6.dp)
     ) {
         Text(
             text = key,
@@ -275,6 +323,29 @@ private fun KeyValuePairLine(
             text = valueText,
             style = MaterialTheme.typography.bodyMedium
         )
+    }
+}
+
+@Composable
+private fun OidValuePairColumn(
+    oid: String,
+    valueText: String
+) {
+    if (valueText.isEmpty()) {
+        return
+    }
+
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 6.dp)
+    ) {
+        SubHeading2(stringResource(Res.string.certificate_viewer_oid))
+        Text(
+            modifier = Modifier.padding(start = indent[2]),
+            text = oid,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        SubHeading2(stringResource(Res.string.certificate_viewer_value))
+        DisplayIndentedText(valueText)
     }
 }
 
@@ -334,6 +405,34 @@ private fun WarningCard(text: String) {
     }
 }
 
+/**
+ * Parse hierarchical output of the ASN1.print() to display it line by line with indentation of
+ * 2dp (default) per space character in the original plain text indentation of each line.
+ * That allows to precisely control the screen output indentation regardless of the font size/style
+ * used in the app Theme, as well as preventing long lines wrapping to the start of the column.
+ */
+@Composable
+private fun DisplayIndentedText(text: String, indentationStep: Dp = 12.dp) {
+    var indentationLevel = 0
+    var indentationSize = 0
+    Column(Modifier.padding(start = indent[2])) {
+        text.lines().forEach { line ->
+            line.takeWhile { it == ' ' }.length.let { spaceCount ->
+                when {
+                    spaceCount > indentationSize -> indentationLevel++
+                    spaceCount < indentationSize -> indentationLevel--
+                }
+                indentationSize = spaceCount
+                Text(
+                    modifier = Modifier.padding(start = indentationStep * indentationLevel),
+                    text = line.trimStart(),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
 @Preview
 @Composable
 private fun PreviewCertificate() {
@@ -383,7 +482,8 @@ private fun validateParameters(
     if (x509CertChain != null) {
         val listSize = x509CertChain.certificates.size
         if ((infos != null && infos.size != listSize)
-            || (warnings != null && warnings.size != listSize)) {
+            || (warnings != null && warnings.size != listSize)
+        ) {
             val message = buildString {
                 append("The list size of ")
                 if (infos != null && infos.size != listSize) {

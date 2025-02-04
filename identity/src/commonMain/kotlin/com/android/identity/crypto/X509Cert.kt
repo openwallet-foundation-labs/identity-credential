@@ -19,6 +19,7 @@ import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -326,6 +327,28 @@ class X509Cert(
             val extVal = getExtensionValue(OID.X509_EXTENSION_KEY_USAGE.oid) ?: return emptySet()
             check(criticalExtensionOIDs.contains(OID.X509_EXTENSION_KEY_USAGE.oid))
             return X509KeyUsage.decodeSet(ASN1.decode(extVal) as ASN1BitString)
+        }
+
+    /** The list of decoded extensions information. */
+    val extensions: List<X509Extension>
+        get() {
+            val extSeq = getExtensionsSeq() ?: return emptyList()
+            return buildList {
+                for (ext in extSeq.elements) {
+                    ext as ASN1Sequence
+                    val dataField =
+                        (ext.elements[(if (ext.elements.size == 3) 2 else 1)] as ASN1OctetString)
+                            .value
+                    add(
+                        X509Extension(
+                            oid = (ext.elements[0] as ASN1ObjectIdentifier).oid,
+                            isCritical = (ext.elements.size == 3)
+                                    && (ext.elements[1] as ASN1Boolean).value,
+                            data = ByteString(dataField)
+                        )
+                    )
+                }
+            }
         }
 
     companion object {
