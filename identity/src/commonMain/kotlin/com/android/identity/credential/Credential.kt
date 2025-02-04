@@ -332,6 +332,12 @@ open class Credential {
     open fun addSerializedData(builder: MapBuilder<CborBuilder>) {}
 
     /**
+     * Method which can be overridden by [Credential] subclasses to perform
+     * necessary operations when the [Document] is being deleted.
+     */
+    open fun onDocumentDeletion() {}
+
+    /**
      * Serializes the credential.
      *
      * @return a [DataItem] with all of the credential information.

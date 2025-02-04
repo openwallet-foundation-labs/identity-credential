@@ -181,6 +181,10 @@ class DirectAccessCredential: Credential {
         builder.put("signingCert", signingCert.toDataItem())
     }
 
+    override fun onDocumentDeletion() {
+        DirectAccess.clearDocumentSlot(documentSlot)
+    }
+
     override suspend fun certify(
         issuerProvidedAuthenticationData: ByteArray,
         validFrom: Instant,

@@ -351,6 +351,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 } else {
                     documentConfiguration.sdJwtVcDocumentConfiguration?.vct == docType
                 }
+            CredentialFormat.DirectAccess -> throw IllegalStateException("OpenID4VP should not be " +
+                    "requesting Direct Access credential type.")
         }
     }
 
@@ -412,6 +414,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 )
                 return Pair(credential, claims)
             }
+            CredentialFormat.DirectAccess -> throw IllegalStateException("OpenID4VP should not be " +
+                    "requesting Direct Access credential type.")
         }
     }
 
@@ -995,6 +999,8 @@ internal fun createPresentationSubmission(
     val vpFormats = when (credentialFormat) {
         CredentialFormat.MDOC_MSO -> setOf("jwt_vc", "vc+sd-jwt")
         CredentialFormat.SD_JWT_VC -> setOf("mso_mdoc")
+        CredentialFormat.DirectAccess -> throw IllegalStateException("OpenID4VP should not be " +
+                "requesting Direct Access credential type.")
     }
 
     val descriptorMaps = ArrayList<DescriptorMap>()

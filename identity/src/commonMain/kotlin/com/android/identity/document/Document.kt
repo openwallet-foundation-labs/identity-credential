@@ -225,6 +225,9 @@ class Document private constructor(
     }
 
     internal suspend fun deleteDocument() {
+        for (credential in (_pendingCredentials + _certifiedCredentials)) {
+            credential.onDocumentDeletion()
+        }
         _pendingCredentials.clear()
         _certifiedCredentials.clear()
         storageTable.delete(name)
