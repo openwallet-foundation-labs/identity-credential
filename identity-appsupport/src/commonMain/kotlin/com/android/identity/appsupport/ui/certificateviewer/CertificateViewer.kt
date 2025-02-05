@@ -73,6 +73,7 @@ import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import kotlin.math.max
 import kotlin.time.Duration.Companion.hours
 
 private val PAGER_INDICATOR_HEIGHT = 30.dp
@@ -238,10 +239,12 @@ private fun CertificateView(
                 stringResource(Res.string.certificate_viewer_k_pk_algorithm),
                 data.pkAlgorithm
             )
-            KeyValuePairLine(
-                stringResource(Res.string.certificate_viewer_k_pk_named_curve),
-                data.pkNamedCurve
-            )
+            if (data.pkNamedCurve != null) {
+                KeyValuePairLine(
+                    stringResource(Res.string.certificate_viewer_k_pk_named_curve),
+                    data.pkNamedCurve
+                )
+            }
             KeyValuePairLine(
                 stringResource(Res.string.certificate_viewer_k_pk_value),
                 data.pkValue
@@ -405,30 +408,16 @@ private fun WarningCard(text: String) {
     }
 }
 
-/**
- * Parse hierarchical output of the ASN1.print() to display it line by line with indentation of
- * 2dp (default) per space character in the original plain text indentation of each line.
- * That allows to precisely control the screen output indentation regardless of the font size/style
- * used in the app Theme, as well as preventing long lines wrapping to the start of the column.
- */
 @Composable
-private fun DisplayIndentedText(text: String, indentationStep: Dp = 12.dp) {
-    var indentationLevel = 0
-    var indentationSize = 0
+private fun DisplayIndentedText(text: String, indentationStep: Dp = 6.dp) {
     Column(Modifier.padding(start = indent[2])) {
         text.lines().forEach { line ->
-            line.takeWhile { it == ' ' }.length.let { spaceCount ->
-                when {
-                    spaceCount > indentationSize -> indentationLevel++
-                    spaceCount < indentationSize -> indentationLevel--
-                }
-                indentationSize = spaceCount
-                Text(
-                    modifier = Modifier.padding(start = indentationStep * indentationLevel),
-                    text = line.trimStart(),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            val numSpaces = max(0, line.indexOfFirst { it != ' ' })
+            Text(
+                modifier = Modifier.padding(start = indentationStep * numSpaces),
+                text = line.trimStart(),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

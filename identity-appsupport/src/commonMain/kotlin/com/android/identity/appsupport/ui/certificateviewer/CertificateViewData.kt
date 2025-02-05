@@ -1,9 +1,10 @@
 package com.android.identity.appsupport.ui.certificateviewer
 
 import com.android.identity.asn1.ASN1
+import com.android.identity.asn1.ASN1Sequence
 import com.android.identity.asn1.OID
-import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509Cert
+import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.util.unsignedBigIntToString
 import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
@@ -31,18 +32,16 @@ internal data class CertificateViewData(
     val subject: Map<String, String> = emptyMap(),
     val issuer: Map<String, String> = emptyMap(),
     val pkAlgorithm: String,
-    val pkNamedCurve: String,
+    val pkNamedCurve: String?,
     val pkValue: String,
     val extensions: List<Triple<Boolean, String, String>> = emptyList(),
 ) {
 
     companion object {
 
-        val notAvail = "" // Composables wouldn't show keys with empty data.
-
         /** Map Certificate data to View fields. */
         fun from(cert: X509Cert): CertificateViewData {
-            val type = "X.509"
+            val type = "X.509 Certificate"
 
             val version = runCatching { cert.version.toString() }
                 .getOrElse { _ -> "" }
@@ -75,16 +74,11 @@ internal data class CertificateViewData(
             val pkAlgorithm: String = OID.lookupByOid(cert.signatureAlgorithmOid)?.description
                     ?: "Unexpected algorithm OID ${cert.signatureAlgorithmOid}"
 
-            val pkNamedCurve: String =
-                if (cert.signatureAlgorithm in listOf(Algorithm.RS256, Algorithm.RS384, Algorithm.RS512))
-                    notAvail // RSA doesn't have a named curve.
-                else {
-                    runCatching { cert.ecPublicKey.curve.name }.getOrElse { e ->
-                        e.message ?: notAvail }
-                }
+            val pkNamedCurve: String? = runCatching { cert.ecPublicKey.curve.name }.getOrNull()
 
-            val pkValue: String = runCatching { cert.signature.toHex(byteDivider = " ") }
-                .getOrElse { e -> e.message ?: notAvail }
+            val pkValue: String = ASN1.encode(
+                (ASN1.decode(cert.tbsCertificate) as ASN1Sequence).elements[6]
+            ).toHex(byteDivider = " ")
 
             val extensions = formatExtensions(cert)
 
@@ -117,6 +111,9 @@ internal data class CertificateViewData(
                         OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid ->
                             cert.authorityKeyIdentifier!!.toHex(byteDivider = " ")
 
+                        OID.X509_EXTENSION_ANDROID_KEYSTORE_ATTESTATION.oid ->
+                            AndroidAttestationExtensionParser(cert).prettyPrint()
+
                         else -> {
                             try {
                                 // Most extensions are ASN.1 so we opportunistically try and decode
@@ -134,7 +131,7 @@ internal data class CertificateViewData(
                     } else {
                         ext.oid
                     }
-                    Triple(ext.isCritical, oid, displayValue)
+                    Triple(ext.isCritical, oid, displayValue.trim())
                 }
 
         }
@@ -158,6 +155,5 @@ internal data class CertificateViewData(
         }
     }
 }
-
 
 
