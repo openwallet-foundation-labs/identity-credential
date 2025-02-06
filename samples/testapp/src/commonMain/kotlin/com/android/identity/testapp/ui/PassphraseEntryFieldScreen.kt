@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.securearea.PassphraseConstraints
+import org.multipaz.compose.ui.PassphraseEntryField
 
 @Composable
 fun PassphraseEntryFieldScreen(

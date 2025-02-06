@@ -63,11 +63,10 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.DocumentCannedRequest
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
@@ -89,6 +88,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
+import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
 
 private const val TAG = "ReaderScreen"
 

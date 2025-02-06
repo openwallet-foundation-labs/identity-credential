@@ -1,12 +1,12 @@
 package com.android.identity.testapp.ui
 
 import androidx.compose.runtime.Composable
-import com.android.identity.appsupport.ui.certificateviewer.CertificateViewer
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.fromBase64Url
+import org.multipaz.compose.ui.certificateviewer.CertificateViewer
 
 /**
  * Populate and compose the certificate chain screen.

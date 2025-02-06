@@ -9,9 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.android.identity.appsupport.ui.consent.ConsentModalBottomSheet
 import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.request.Requester
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.Algorithm
@@ -21,10 +19,12 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.util.toMdocRequest
+import com.android.identity.request.Requester
 import com.android.identity.trustmanagement.TrustPoint
 import identitycredential.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.multipaz.compose.ui.consent.ConsentModalBottomSheet
 
 private const val IACA_CERT_PEM =
     """

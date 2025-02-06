@@ -41,9 +41,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.decodeImage
-import com.android.identity.appsupport.ui.permissions.rememberBluetoothPermissionState
-import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DataItem
@@ -89,6 +86,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.compose.ui.decodeImage
+import org.multipaz.compose.ui.permissions.rememberBluetoothPermissionState
+import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 

@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui.passphrase
+package org.multipaz.compose.ui.passphrase
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState

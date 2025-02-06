@@ -9,15 +9,13 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.request.Claim
-import com.android.identity.appsupport.ui.consent.ConsentModalBottomSheet
 import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.request.Request
-import com.android.identity.request.Requester
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.compose.ui.consent.ConsentModalBottomSheet
 import kotlin.coroutines.resume
 
 /**

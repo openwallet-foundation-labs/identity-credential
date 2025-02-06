@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui
+package org.multipaz.compose.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance

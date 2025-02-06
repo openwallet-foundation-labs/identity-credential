@@ -11,10 +11,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.passphrase.PassphrasePromptBottomSheet
 import com.android.identity.securearea.PassphraseConstraints
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.multipaz.compose.ui.passphrase.PassphrasePromptBottomSheet
 
 @Composable
 fun PassphrasePromptScreen(
