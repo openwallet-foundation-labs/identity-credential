@@ -1,7 +1,7 @@
 package com.android.identity.sdjwt
 
 import com.android.identity.asn1.ASN1Integer
-import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.CredentialLoader
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.Crypto
@@ -10,6 +10,7 @@ import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
+import com.android.identity.document.SimpleDocumentMetadata
 import com.android.identity.sdjwt.SdJwtVerifiableCredential.AttributeNotDisclosedException
 import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
@@ -44,7 +45,7 @@ import kotlin.time.Duration.Companion.hours
 class SdJwtVcTest {
     private lateinit var storage: EphemeralStorage
     private lateinit var secureAreaRepository: SecureAreaRepository
-    private lateinit var credentialFactory: CredentialFactory
+    private lateinit var credentialLoader: CredentialLoader
     private lateinit var storageEngine: EphemeralStorageEngine
 
     private lateinit var document: Document
@@ -61,9 +62,9 @@ class SdJwtVcTest {
         secureAreaRepository = SecureAreaRepository.build {
             add(SoftwareSecureArea.create(storage))
         }
-        credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
-            document, dataItem ->  KeyBoundSdJwtVcCredential(document).apply { deserialize(dataItem) }
+        credentialLoader = CredentialLoader()
+        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
+            document ->  KeyBoundSdJwtVcCredential(document)
         }
     }
 
@@ -71,30 +72,27 @@ class SdJwtVcTest {
         val documentStore = DocumentStore(
             storage,
             secureAreaRepository,
-            credentialFactory
+            credentialLoader,
+            SimpleDocumentMetadata::create
         )
 
         // Create the credential on the holder device...
-        document = documentStore.createDocument(
-            "testDocument",
-        )
+        document = documentStore.createDocument()
 
         // Create an authentication key...
         timeSigned = Clock.System.now()
         timeValidityBegin = timeSigned.plus(1.hours)
         timeValidityEnd = timeSigned.plus(10.days)
-        credential = KeyBoundSdJwtVcCredential(
+        credential = KeyBoundSdJwtVcCredential.create(
             document,
             null,
             "domain",
             secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!,
             "IdentityCredential",
-        ).apply {
-            generateKey(SoftwareCreateKeySettings.Builder()
+            SoftwareCreateKeySettings.Builder()
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build(),
-            )
-        }
+                .build()
+        )
 
         // at the issuer, start creating the credential...
         val identityAttributes = buildJsonObject {

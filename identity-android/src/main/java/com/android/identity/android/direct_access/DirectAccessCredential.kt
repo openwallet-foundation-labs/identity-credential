@@ -21,7 +21,7 @@ import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MapBuilder
 import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.CredentialLoader
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
@@ -88,8 +88,8 @@ class DirectAccessCredential: Credential {
      * Constructs a new [DirectAccessCredential].
      *
      * @param document the document to add the credential to.
-     * @param asReplacementFor the credential this credential will replace, if
-     *      not null
+     * @param asReplacementForIdentifier identifier of the credential this credential will replace,
+     *      if not null
      * @param domain the domain of the credential
      * @param docType the docType of the credential
      * @param documentSlot the slot in the Direct Access applet that the document
@@ -97,22 +97,20 @@ class DirectAccessCredential: Credential {
      */
     constructor(
         document: Document,
-        asReplacementFor: Credential?,
+        asReplacementForIdentifier: String?,
         domain: String,
-        docType: String,
-        documentSlot: Int
-    ) : super(document, asReplacementFor, domain) {
+        docType: String
+    ) : super(document, asReplacementForIdentifier, domain) {
         this.docType = docType
-        this.documentSlot = documentSlot
 
-        DirectAccess.createCredential(this.documentSlot).let {
+        val metadata = document.metadata
+        check(metadata is DirectAccessDocumentMetadata) {
+            "To use DirectAccessCredential, document's metadata must implement DirectAccessDocumentMetadata"
+        }
+        val documentSlot = metadata.directAccessDocumentSlot
+        DirectAccess.createCredential(documentSlot).let {
             signingCert = it.first
             encryptedPresentationData = it.second
-        }
-
-        // Only the leaf constructor should add the credential to the document.
-        if (this::class == DirectAccessCredential::class) {
-            addToDocument()
         }
     }
 
@@ -133,7 +131,7 @@ class DirectAccessCredential: Credential {
      * [addSerializedData].
      *
      * This is required for all [Credential] implementations since it's used by
-     * [CredentialFactory.createCredential] when loading a [Document] instance
+     * [CredentialLoader.loadCredential] when loading a [Document] instance
      * from disk. Since the credential is serialized by the [Document] and stored
      * in [DocumentStore] in its serialized CBOR form, creation of a
      * [DirectAccessCredential] via deserialization does not require
@@ -145,7 +143,6 @@ class DirectAccessCredential: Credential {
     override suspend fun deserialize(dataItem: DataItem) {
         super.deserialize(dataItem)
         docType = dataItem["docType"].asTstr
-        documentSlot = dataItem["documentSlot"].asNumber.toInt()
         encryptedPresentationData = dataItem["encryptedPresentationData"].asBstr
         signingCert = X509CertChain.fromDataItem(dataItem["signingCert"])
     }
@@ -169,20 +166,14 @@ class DirectAccessCredential: Credential {
             return KeyAttestation(signingCert.certificates.first().ecPublicKey, signingCert)
         }
 
-    var documentSlot: Int = 0
     private lateinit var encryptedPresentationData: ByteArray
     private lateinit var signingCert: X509CertChain
 
     override fun addSerializedData(builder: MapBuilder<CborBuilder>) {
         super.addSerializedData(builder)
         builder.put("docType", docType)
-        builder.put("documentSlot", documentSlot)
         builder.put("encryptedPresentationData", encryptedPresentationData)
         builder.put("signingCert", signingCert.toDataItem())
-    }
-
-    override fun onDocumentDeletion() {
-        DirectAccess.clearDocumentSlot(documentSlot)
     }
 
     override suspend fun certify(
@@ -191,8 +182,12 @@ class DirectAccessCredential: Credential {
         validUntil: Instant
     ) {
         // update presentation package
-        encryptedPresentationData = DirectAccess.certifyCredential(documentSlot,
-            issuerProvidedAuthenticationData, encryptedPresentationData)
+        val metadata = document.metadata as DirectAccessDocumentMetadata
+        encryptedPresentationData = DirectAccess.certifyCredential(
+            metadata.directAccessDocumentSlot,
+            issuerProvidedAuthenticationData,
+            encryptedPresentationData
+        )
         // TODO: Add applet functionality such that validFrom and validUntil are passed to the applet
         // and considered when presenting
         super.certify(issuerProvidedAuthenticationData, validFrom, validUntil)
@@ -203,6 +198,8 @@ class DirectAccessCredential: Credential {
      * (ie. this credential would be the one used during presentation).
      */
     fun setAsActiveCredential() {
+        val metadata = document.metadata as DirectAccessDocumentMetadata
+        val documentSlot = metadata.directAccessDocumentSlot
         DirectAccess.setActiveCredential(documentSlot, encryptedPresentationData)
     }
 }

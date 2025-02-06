@@ -30,7 +30,7 @@ import com.android.identity.appsupport.ui.digitalcredentials.DigitalCredentials
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.CredentialLoader
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
@@ -160,14 +160,15 @@ class App private constructor() {
             add(SoftwareSecureArea.create(platformStorage()))
             add(platformSecureAreaProvider().get())
         }
-        val credentialFactory: CredentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class) {
-                document, dataItem -> MdocCredential(document).apply { deserialize(dataItem) }
+        val credentialLoader: CredentialLoader = CredentialLoader()
+        credentialLoader.addCredentialImplementation(MdocCredential::class) {
+            document -> MdocCredential(document)
         }
         documentStore = DocumentStore(
             platformStorage(),
             secureAreaRepository,
-            credentialFactory
+            credentialLoader,
+            TestDocumentMetadata::create
         )
     }
 
