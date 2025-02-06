@@ -1,16 +1,14 @@
 package com.android.identity.util
 
-import com.android.identity.asn1.ASN1
-import com.android.identity.asn1.ASN1OctetString
-import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.securearea.AttestationExtension
 import kotlinx.io.bytestring.ByteString
+
+private const val TAG = "validateAndroidKeyAttestation"
 
 fun validateAndroidKeyAttestation(
     chain: X509CertChain,
-    nonce: ByteString?,
+    challenge: ByteString?,
     requireGmsAttestation: Boolean,
     requireVerifiedBootGreen: Boolean,
     requireAppSignatureCertificateDigests: List<ByteString>,
@@ -38,7 +36,7 @@ fun validateAndroidKeyAttestation(
         val parser = AndroidAttestationExtensionParser(chain.certificates.first())
 
         // Challenge must match...
-        check(nonce == null || nonce == ByteString(parser.attestationChallenge)) {
+        check(challenge == null || challenge == ByteString(parser.attestationChallenge)) {
             "Challenge didn't match what was expected"
         }
 
@@ -67,7 +65,7 @@ fun validateAndroidKeyAttestation(
             Logger.d(TAG,
                 "Digest $n: ${parser.applicationSignatureDigests[n].toByteArray().toBase64Url()}")
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         throw IllegalArgumentException("Error parsing Android Attestation Extension", e)
     }
 }
@@ -109,39 +107,3 @@ private val GOOGLE_ATTESTATION_ROOT_CERTIFICATE = X509Cert.fromPem(
     wDB5y0USicV3YgYGmi+NZfhA4URSh77Yd6uuJOJENRaNVTzk
     -----END CERTIFICATE-----
 """.trimIndent())
-
-private const val TAG = "validateKeyAttestation"
-
-fun isCloudKeyAttestation(chain: X509CertChain): Boolean {
-    return chain.certificates.first()
-        .getExtensionValue(AttestationExtension.ATTESTATION_OID) != null
-}
-
-fun validateCloudKeyAttestation(
-    chain: X509CertChain,
-    nonce: ByteString,
-    trustedRootKeys: Set<ByteString>
-) {
-    check(chain.validate()) {
-        "Certificate chain did not validate"
-    }
-    val certificates = chain.certificates
-    val leafX509Cert = certificates.first()
-    val extensionDerEncodedString = leafX509Cert.getExtensionValue(AttestationExtension.ATTESTATION_OID)
-        ?: throw IllegalStateException(
-            "No attestation extension at OID ${AttestationExtension.ATTESTATION_OID}")
-
-    val challengeInAttestation = ByteString(AttestationExtension.decode(extensionDerEncodedString))
-    if (challengeInAttestation != nonce) {
-        throw IllegalStateException("Challenge in attestation does match expected nonce")
-    }
-
-    val rootPublicKey = certificates.last().ecPublicKey.toDataItem()
-    val trusted = trustedRootKeys.firstOrNull { trustedKey ->
-        Cbor.decode(trustedKey.toByteArray()) == rootPublicKey
-    }
-
-    if (trusted == null) {
-        throw IllegalArgumentException("Unexpected cloud attestation root")
-    }
-}

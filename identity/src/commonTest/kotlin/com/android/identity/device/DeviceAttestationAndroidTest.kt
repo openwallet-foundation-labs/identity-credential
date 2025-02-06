@@ -2,6 +2,7 @@ package com.android.identity.device
 
 import com.android.identity.util.fromBase64Url
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encodeToByteString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
@@ -12,7 +13,7 @@ class DeviceAttestationAndroidTest {
         val deviceAttestation = DeviceAttestation.fromCbor(ATTESTATION_PIXEL7A)
         deviceAttestation.validate(
             DeviceAttestationValidationData(
-                clientId = CLIENT_ID_PIXEL7A,
+                attestationChallenge = ATTESTATION_CHALLENGE_PIXEL7A.encodeToByteString(),
                 iosReleaseBuild = false,
                 iosAppIdentifier = "",
                 androidGmsAttestation = true,
@@ -36,7 +37,7 @@ class DeviceAttestationAndroidTest {
         val deviceAttestation = DeviceAttestation.fromCbor(ATTESTATION_EMULATOR_PIXEL3A)
         deviceAttestation.validate(
             DeviceAttestationValidationData(
-                clientId = CLIENT_ID_EMULATOR_PIXEL3A,
+                attestationChallenge = ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A.encodeToByteString(),
                 iosReleaseBuild = false,
                 iosAppIdentifier = "",
                 androidGmsAttestation = false,
@@ -58,7 +59,7 @@ class DeviceAttestationAndroidTest {
     companion object {
         // Test data obtained by adding temporary server code to capture and save it.
 
-        private const val CLIENT_ID_PIXEL7A = "ax8S6Z5dKhX7ywLxLx3ZzrVo"
+        private const val ATTESTATION_CHALLENGE_PIXEL7A = "ax8S6Z5dKhX7ywLxLx3ZzrVo"
 
         @OptIn(ExperimentalEncodingApi::class)
         val ATTESTATION_PIXEL7A = Base64.decode("""
@@ -136,7 +137,7 @@ class DeviceAttestationAndroidTest {
             nXr2kvwW8/b88CmEDGiYrTGMWzCflf7ok794bhED/HU4n/TBxABCvWsOLH3J67oeqOkUpksdePyjs9I=
         """.trimIndent().replace("\n", ""))
 
-        private const val CLIENT_ID_EMULATOR_PIXEL3A = "0F3iune5s98CkH3fGpwMDwL6"
+        private const val ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A = "0F3iune5s98CkH3fGpwMDwL6"
 
         @OptIn(ExperimentalEncodingApi::class)
         val ATTESTATION_EMULATOR_PIXEL3A = Base64.decode("""

@@ -11,12 +11,13 @@ import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.cloud.CloudCreateKeySettings
-import com.android.identity.android.securearea.cloud.CloudKeyInfo
-import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.android.securearea.cloud.CloudKeyLockedException
-import com.android.identity.android.securearea.cloud.CloudKeyUnlockData
+import com.android.identity.securearea.cloud.CloudCreateKeySettings
+import com.android.identity.securearea.cloud.CloudKeyInfo
+import com.android.identity.securearea.cloud.CloudSecureArea
+import com.android.identity.securearea.cloud.CloudUserAuthType
+import com.android.identity.securearea.cloud.CloudKeyLockedException
+import com.android.identity.securearea.cloud.CloudKeyUnlockData
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
@@ -358,17 +359,11 @@ class DocumentModel(
                     if (!deviceKeyInfo.isUserAuthenticationRequired) {
                         "None"
                     } else {
-                        val authTimeoutString =
-                            if (deviceKeyInfo.userAuthenticationTimeoutMillis > 0) {
-                                String.format(
-                                    "Timeout %.1f Seconds",
-                                    deviceKeyInfo.userAuthenticationTimeoutMillis / 1000
-                                )
-                            } else {
-                                "Every use"
-                            }
-                        renderUserAuthenticationTypes(deviceKeyInfo.userAuthenticationTypes) +
-                                " ($authTimeoutString)"
+                        renderUserAuthenticationTypes(
+                            UserAuthenticationType.decodeSet(
+                                CloudUserAuthType.encodeSet(deviceKeyInfo.userAuthenticationTypes)
+                            )
+                        )
                     }
                 kvPairs.put("User Authentication", userAuthString)
                 val isPassphraseRequired =
@@ -1109,21 +1104,8 @@ suspend fun signWithUnlock(
                             (keyUnlockData as CloudKeyUnlockData).passphrase = passphrase
                         }
 
-                        CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED -> {
-                            val successfulBiometricResult = showBiometricPrompt(
-                                activity = activity,
-                                title = activity.resources.getString(R.string.presentation_biometric_prompt_title),
-                                subtitle = activity.resources.getString(R.string.presentation_biometric_prompt_subtitle),
-                                cryptoObject = (keyUnlockData as CloudKeyUnlockData).cryptoObject,
-                                userAuthenticationTypes = setOf(
-                                    UserAuthenticationType.BIOMETRIC,
-                                    UserAuthenticationType.LSKF
-                                ),
-                                requireConfirmation = false
-                            )
-                            // if user cancelled or was unable to authenticate, throw IllegalStateException
-                            check(successfulBiometricResult) { "Biometric Unsuccessful" }
-                        }
+                        CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED ->
+                            throw IllegalStateException("Unexpected reason USER_NOT_AUTHENTICATED")
                     }
                 }
 

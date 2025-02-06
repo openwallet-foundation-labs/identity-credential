@@ -68,7 +68,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.appsupport.ui.getDefaultImageVector
 import com.android.identity.documenttype.Icon

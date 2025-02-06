@@ -35,7 +35,8 @@ import kotlinx.io.bytestring.ByteString
  * object is used.
  */
 class SecureEnclaveSecureArea private constructor(
-    private val storageTable: StorageTable
+    private val storageTable: StorageTable,
+    private val partitionId: String
 ): SecureArea {
 
     companion object {
@@ -44,15 +45,19 @@ class SecureEnclaveSecureArea private constructor(
         /**
          * Creates an instance of [SecureEnclaveSecureArea].
          *
-         * @param storage the storage engine to use for storing key material.
+         * @param storage the storage engine to use for storing key metadata.
+         * @param partitionId the partitionId to use for [storage].
          */
-        suspend fun create(storage: Storage): SecureEnclaveSecureArea {
-            return SecureEnclaveSecureArea(storage.getTable(tableSpec))
+        suspend fun create(
+            storage: Storage,
+            partitionId: String = "default"
+        ): SecureEnclaveSecureArea {
+            return SecureEnclaveSecureArea(storage.getTable(tableSpec), partitionId)
         }
 
         private val tableSpec = StorageTableSpec(
             name = "SecureEnclaveSecureArea",
-            supportPartitions = false,
+            supportPartitions = true,
             supportExpiration = false
         )
     }
@@ -66,7 +71,7 @@ class SecureEnclaveSecureArea private constructor(
     override suspend fun createKey(alias: String?, createKeySettings: CreateKeySettings): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
-            storageTable.delete(alias)
+            storageTable.delete(alias, partitionId)
         }
 
         val settings = if (createKeySettings is SecureEnclaveCreateKeySettings) {
@@ -105,11 +110,11 @@ class SecureEnclaveSecureArea private constructor(
         map.put("curve", settings.ecCurve.coseCurveIdentifier)
         map.put("publicKey", publicKey.toDataItem())
         map.put("keyBlob", keyBlob)
-        return storageTable.insert(alias, ByteString(Cbor.encode(map.end().build())))
+        return storageTable.insert(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
     }
 
     private suspend fun loadKey(alias: String): Pair<ByteArray, SecureEnclaveKeyInfo> {
-        val data = storageTable.get(alias)
+        val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
         val map = Cbor.decode(data.toByteArray())
@@ -131,7 +136,7 @@ class SecureEnclaveSecureArea private constructor(
     }
 
     override suspend fun deleteKey(alias: String) {
-        storageTable.delete(alias)
+        storageTable.delete(alias, partitionId)
     }
 
     override suspend fun sign(

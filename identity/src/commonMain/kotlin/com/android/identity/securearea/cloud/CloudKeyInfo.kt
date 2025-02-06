@@ -1,7 +1,5 @@
-package com.android.identity.android.securearea.cloud
+package com.android.identity.securearea.cloud
 
-import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.crypto.X509CertChain
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyPurpose
@@ -21,21 +19,9 @@ class CloudKeyInfo internal constructor(
     val isUserAuthenticationRequired: Boolean,
 
     /**
-     * The timeout for user authentication.
-     *
-     * This is the timeout in milliseconds or 0 if user authentication is needed for
-     * every use of the key.
+     * User authentication types permitted.
      */
-    val userAuthenticationTimeoutMillis: Long,
-
-    /**
-     * The user authentication type.
-     *
-     * @return a combination of the flags [UserAuthenticationType.LSKF] and
-     * [UserAuthenticationType.BIOMETRIC] or 0 if user authentication is
-     * not required.
-     */
-    val userAuthenticationTypes: Set<UserAuthenticationType>,
+    val userAuthenticationTypes: Set<CloudUserAuthType>,
 
     /**
      * The point in time before which the key is not valid, if available.
@@ -52,10 +38,5 @@ class CloudKeyInfo internal constructor(
      */
     val isPassphraseRequired: Boolean,
 
-    /**
-     * Whether the local key is backed by StrongBox.
-     */
-    val isStrongBoxBacked: Boolean
-
-) : KeyInfo(alias, attestation.publicKey, keyPurposes, attestation)
+    ) : KeyInfo(alias, attestation.publicKey, keyPurposes, attestation)
 

@@ -19,7 +19,8 @@ import kotlin.Boolean
 /**
  * A model for settings for samples/testapp.
  *
- * TODO: Port [CloudSecureAreaScreen] and [ProvisioningTestScreen] to use this.
+ * TODO: Port [ProvisioningTestScreen] to use this.
+ *
  * @param storage the [Storage] to use for storing/retrieving documents.
  */
 class TestAppSettingsModel private constructor(
@@ -74,6 +75,7 @@ class TestAppSettingsModel private constructor(
             val dataItem = Cbor.decode(it.toByteArray())
             when (defaultValue) {
                 is Boolean -> { dataItem.asBoolean as T }
+                is String -> { dataItem.asTstr as T }
                 is List<*> -> { dataItem.asArray.map { dataItem -> (dataItem as Tstr).value } as T}
                 else -> { throw IllegalStateException("Type not supported") }
             }
@@ -86,6 +88,10 @@ class TestAppSettingsModel private constructor(
                     val dataItem = when (defaultValue) {
                         is Boolean -> {
                             (newValue as Boolean).toDataItem()
+                        }
+
+                        is String -> {
+                            (newValue as String).toDataItem()
                         }
 
                         is List<*> -> {
@@ -139,6 +145,8 @@ class TestAppSettingsModel private constructor(
         bind(readerBleL2CapEnabled, "readerBleL2CapEnabled", true)
         bind(readerAutomaticallySelectTransport, "readerAutomaticallySelectTransport", false)
         bind(readerAllowMultipleRequests, "readerAllowMultipleRequests", false)
+
+        bind(cloudSecureAreaUrl, "cloudSecureAreaUrl", CSA_URL_DEFAULT)
     }
 
     val presentmentBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)
@@ -157,4 +165,12 @@ class TestAppSettingsModel private constructor(
     val readerBleL2CapEnabled = MutableStateFlow<Boolean>(false)
     val readerAutomaticallySelectTransport = MutableStateFlow<Boolean>(false)
     val readerAllowMultipleRequests = MutableStateFlow<Boolean>(false)
+
+    val cloudSecureAreaUrl = MutableStateFlow<String>(CSA_URL_DEFAULT)
 }
+
+// On the Android Emulator, 10.0.2.2 points to the host so this will work
+// nicely if you are running the server on the same machine you are running
+// Android Studio on.
+//
+private val CSA_URL_DEFAULT: String = "http://10.0.2.2:8080/server/csa"

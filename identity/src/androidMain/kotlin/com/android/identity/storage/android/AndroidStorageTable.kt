@@ -15,7 +15,7 @@ import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 
 internal class AndroidStorageTable(
-    private val owner: AndroidStorage,
+    override val storage: AndroidStorage,
     spec: StorageTableSpec
 ): BaseStorageTable(spec) {
     private val sql = SqlStatementMaker(
@@ -28,18 +28,18 @@ internal class AndroidStorageTable(
     )
 
     suspend fun init() {
-        owner.withDatabase { database ->
+        storage.withDatabase { database ->
             database.execSQL(sql.createTableStatement)
         }
     }
 
     override suspend fun get(key: String, partitionId: String?): ByteString? {
         checkPartition(partitionId)
-        return owner.withDatabase { database ->
+        return storage.withDatabase { database ->
             val cursor = database.query(
                 sql.tableName,
                 arrayOf("data"),
-                sql.conditionWithExpiration(owner.clock.now().epochSeconds),
+                sql.conditionWithExpiration(storage.clock.now().epochSeconds),
                 whereArgs(key, partitionId),
                 null,
                 null,
@@ -77,20 +77,20 @@ internal class AndroidStorageTable(
         }
         checkPartition(partitionId)
         checkExpiration(expiration)
-        return owner.withDatabase { database ->
+        return storage.withDatabase { database ->
             if (key != null && spec.supportExpiration) {
                 // if there is an entry with this key, but it is expired, it needs to be purged.
                 // Purging expired keys does not interfere with operation atomicity
                 database.delete(
                     sql.tableName,
-                    sql.purgeExpiredWithIdCondition(owner.clock.now().epochSeconds),
+                    sql.purgeExpiredWithIdCondition(storage.clock.now().epochSeconds),
                     whereArgs(key, partitionId)
                 )
             }
             var newKey: String
             var done = false
             do {
-                newKey = key ?: Random.nextBytes(owner.keySize).toBase64Url()
+                newKey = key ?: Random.nextBytes(storage.keySize).toBase64Url()
                 val values = ContentValues().apply {
                     put("id", newKey)
                     if (spec.supportPartitions) {
@@ -123,8 +123,8 @@ internal class AndroidStorageTable(
         if (expiration != null) {
             checkExpiration(expiration)
         }
-        owner.withDatabase { database ->
-            val nowSeconds = owner.clock.now().epochSeconds
+        storage.withDatabase { database ->
+            val nowSeconds = storage.clock.now().epochSeconds
             val values = ContentValues().apply {
                 if (expiration != null) {
                     put("expiration", expiration.epochSeconds)
@@ -146,8 +146,8 @@ internal class AndroidStorageTable(
 
     override suspend fun delete(key: String, partitionId: String?): Boolean {
         checkPartition(partitionId)
-        return owner.withDatabase { database ->
-            val nowSeconds = owner.clock.now().epochSeconds
+        return storage.withDatabase { database ->
+            val nowSeconds = storage.clock.now().epochSeconds
             val count = database.delete(
                 sql.tableName,
                 sql.conditionWithExpiration(nowSeconds),
@@ -158,7 +158,7 @@ internal class AndroidStorageTable(
     }
 
     override suspend fun deleteAll() {
-        owner.withDatabase { database ->
+        storage.withDatabase { database ->
             database.execSQL(sql.deleteAllStatement)
         }
     }
@@ -173,11 +173,11 @@ internal class AndroidStorageTable(
         if (limit == 0) {
             return listOf()
         }
-        return owner.withDatabase { database ->
+        return storage.withDatabase { database ->
             val cursor = database.query(
                 sql.tableName,
                 arrayOf("id"),
-                sql.enumerateConditionWithExpiration(owner.clock.now().epochSeconds),
+                sql.enumerateConditionWithExpiration(storage.clock.now().epochSeconds),
                 whereArgs(afterKey ?: "", partitionId),
                 null,
                 null,
@@ -194,9 +194,9 @@ internal class AndroidStorageTable(
     }
 
     override suspend fun purgeExpired() {
-        owner.withDatabase { database ->
+        storage.withDatabase { database ->
             database.execSQL(sql.purgeExpiredStatement
-                .replace("?", owner.clock.now().epochSeconds.toString()))
+                .replace("?", storage.clock.now().epochSeconds.toString()))
         }
     }
 

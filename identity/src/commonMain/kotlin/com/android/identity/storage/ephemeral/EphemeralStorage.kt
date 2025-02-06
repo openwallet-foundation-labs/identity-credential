@@ -11,7 +11,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
 class EphemeralStorage(clock: Clock = Clock.System) : BaseStorage(clock) {
     override suspend fun createTable(tableSpec: StorageTableSpec): BaseStorageTable {
         val clockToUse = if (tableSpec.supportExpiration) clock else StoppedClock
-        return EphemeralStorageTable(tableSpec, clockToUse)
+        return EphemeralStorageTable(this, tableSpec, clockToUse)
     }
 
     suspend fun serialize(): ByteString {
@@ -24,15 +24,15 @@ class EphemeralStorage(clock: Clock = Clock.System) : BaseStorage(clock) {
 
     companion object {
         fun deserialize(data: ByteString, clock: Clock = Clock.System): EphemeralStorage {
+            val storage = EphemeralStorage(clock)
             var offset = 0
             val bytes = data.toByteArray()
             val tables = mutableListOf<EphemeralStorageTable>()
             while (offset < bytes.size) {
-                val (newOffset, table) = EphemeralStorageTable.deserialize(clock, bytes, offset)
+                val (newOffset, table) = EphemeralStorageTable.deserialize(storage, clock, bytes, offset)
                 offset = newOffset
                 tables.add(table)
             }
-            val storage = EphemeralStorage(clock)
             storage.initTables(tables)
             return storage
         }

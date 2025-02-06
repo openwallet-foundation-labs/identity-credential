@@ -19,6 +19,11 @@ import kotlinx.io.bytestring.ByteString
  */
 interface StorageTable {
     /**
+     * The [Storage] the table belongs to.
+     */
+    val storage: Storage
+
+    /**
      * Gets data.
      *
      * This gets data previously stored with [StorageTable.insert].

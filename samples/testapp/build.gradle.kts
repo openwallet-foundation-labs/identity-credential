@@ -71,7 +71,6 @@ kotlin {
                 implementation(libs.ktor.client.android)
                 implementation(libs.play.services.identity.credentials)
                 implementation(project(":identity-android"))
-                implementation(project(":identity-android-csa"))
             }
         }
 

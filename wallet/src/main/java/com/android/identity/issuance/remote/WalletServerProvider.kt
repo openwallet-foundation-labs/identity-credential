@@ -40,6 +40,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encodeToByteString
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -307,7 +308,7 @@ class WalletServerProvider(
             // new client
             val result = DeviceCheck.generateAttestation(
                 secureAreaProvider.get(),
-                challenge.clientId
+                challenge.clientId.encodeToByteString()
             )
             deviceAttestation = result.deviceAttestation
             connectionData = WalletServerConnectionData(

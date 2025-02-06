@@ -115,7 +115,8 @@ import java.io.ByteArrayInputStream
  */
 class AndroidKeystoreSecureArea private constructor(
     private val context: Context,
-    private val storageTable: StorageTable
+    private val storageTable: StorageTable,
+    private val partitionId: String
 ) : SecureArea {
     override val identifier: String
         get() = IDENTIFIER
@@ -147,11 +148,11 @@ class AndroidKeystoreSecureArea private constructor(
     ): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
-            storageTable.delete(alias)
+            storageTable.delete(alias, partitionId)
         }
 
         // This will throw an exception if an already-used alias is given.
-        val newKeyAlias = storageTable.insert(alias, ByteString())
+        val newKeyAlias = storageTable.insert(alias, ByteString(), partitionId)
 
         val aSettings: AndroidKeystoreCreateKeySettings
         aSettings = if (createKeySettings is AndroidKeystoreCreateKeySettings) {
@@ -313,8 +314,8 @@ class AndroidKeystoreSecureArea private constructor(
      */
     suspend fun createKeyForExistingAlias(existingAlias: String) {
         // If the key with the given alias exists, it is silently overwritten.
-        storageTable.delete(existingAlias)
-        storageTable.insert(existingAlias, ByteString())
+        storageTable.delete(existingAlias, partitionId)
+        storageTable.insert(existingAlias, ByteString(), partitionId)
 
         val ks = KeyStore.getInstance("AndroidKeyStore")
         // TODO: move to an IO thread
@@ -416,7 +417,7 @@ class AndroidKeystoreSecureArea private constructor(
                 return
             }
             ks.deleteEntry(alias)
-            storageTable.delete(alias)
+            storageTable.delete(alias, partitionId)
         } catch (e: CertificateException) {
             throw IllegalStateException("Error loading keystore", e)
         } catch (e: IOException) {
@@ -575,7 +576,7 @@ class AndroidKeystoreSecureArea private constructor(
     // @throws IllegalArgumentException if the key doesn't exist.
     // @throws KeyInvalidatedException if LSKF was removed and the key is no longer available.
     private suspend fun loadKey(alias: String): Pair<KeyStore.Entry, ByteArray> {
-        val data = storageTable.get(alias)
+        val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
         val ks = KeyStore.getInstance("AndroidKeyStore")
@@ -672,7 +673,7 @@ class AndroidKeystoreSecureArea private constructor(
         map.put("useStrongBox", settings.useStrongBox)
         map.put("attestation", attestation.toDataItem())
         map.put("curve", settings.ecCurve.coseCurveIdentifier)
-        storageTable.update(alias, ByteString(Cbor.encode(map.end().build())))
+        storageTable.update(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
     }
 
     /**
@@ -792,15 +793,20 @@ class AndroidKeystoreSecureArea private constructor(
         /**
          * Creates an instance of AndroidKeystoreSecureArea.
          *
-         * @param storage the storage engine to use for storing key material.
+         * @param storage the storage engine to use for storing key metadata.
+         * @param partitionId the partitionId to use for [storage].
          */
-        suspend fun create(context: Context, storage: Storage): AndroidKeystoreSecureArea {
-            return AndroidKeystoreSecureArea(context, storage.getTable(tableSpec))
+        suspend fun create(
+            context: Context,
+            storage: Storage,
+            partitionId: String = "default",
+        ): AndroidKeystoreSecureArea {
+            return AndroidKeystoreSecureArea(context, storage.getTable(tableSpec), partitionId)
         }
 
         private val tableSpec = StorageTableSpec(
             name = "AndroidKeystoreSecureArea",
-            supportPartitions = false,
+            supportPartitions = true,
             supportExpiration = false
         )
 

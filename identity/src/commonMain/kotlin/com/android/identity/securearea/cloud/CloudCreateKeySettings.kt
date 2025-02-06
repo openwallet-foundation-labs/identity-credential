@@ -1,7 +1,5 @@
-package com.android.identity.android.securearea.cloud
+package com.android.identity.securearea.cloud
 
-import android.os.Build
-import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
@@ -26,14 +24,9 @@ class CloudCreateKeySettings private constructor(
     val userAuthenticationRequired: Boolean,
 
     /**
-     * User authentication timeout, if any.
+     * User authentication types permitted.
      */
-    val userAuthenticationTimeoutMillis: Long,
-
-    /**
-     * User authentication type.
-     */
-    val userAuthenticationType: Set<UserAuthenticationType>,
+    val userAuthenticationTypes: Set<CloudUserAuthType>,
 
     /**
      * Point in time before which the key is not valid, if available.
@@ -49,12 +42,6 @@ class CloudCreateKeySettings private constructor(
      * Whether the key is protected by a passphrase.
      */
     val passphraseRequired: Boolean,
-
-    /**
-     * Whether StrongBox is used for the local key.
-     */
-    val useStrongBox: Boolean
-
 ) : CreateKeySettings(keyPurposes, ecCurve) {
 
     /**
@@ -66,12 +53,10 @@ class CloudCreateKeySettings private constructor(
         private var keyPurposes = setOf(KeyPurpose.SIGN)
         private var ecCurve = EcCurve.P256
         private var userAuthenticationRequired = false
-        private var userAuthenticationTimeoutMillis: Long = 0
-        private var userAuthenticationTypes = setOf<UserAuthenticationType>()
+        private var userAuthenticationTypes = setOf<CloudUserAuthType>()
         private var validFrom: Instant? = null
         private var validUntil: Instant? = null
         private var passphraseRequired = false
-        private var useStrongBox = false
 
         /**
          * Apply settings from configuration object.
@@ -82,12 +67,10 @@ class CloudCreateKeySettings private constructor(
         fun applyConfiguration(configuration: SecureAreaConfigurationCloud) = apply {
             setKeyPurposes(KeyPurpose.decodeSet(configuration.purposes))
             setEcCurve(EcCurve.fromInt(configuration.curve))
-            setUseStrongBox(configuration.useStrongBox)
             setPassphraseRequired(configuration.passphraseRequired)
             setUserAuthenticationRequired(
                 configuration.userAuthenticationRequired,
-                configuration.userAuthenticationTimeoutMillis,
-                UserAuthenticationType.decodeSet(configuration.userAuthenticationTypes)
+                CloudUserAuthType.decodeSet(configuration.userAuthenticationTypes)
             )
         }
 
@@ -120,41 +103,24 @@ class CloudCreateKeySettings private constructor(
         /**
          * Specify if user authentication is required to use the key.
          *
-         * On devices with prior to API 30, `userAuthenticationType` must be
-         * [UserAuthenticationType.LSKF] combined with [UserAuthenticationType.BIOMETRIC].
-         * On API 30 and later either flag may be used independently. The value cannot
-         * be empty if user authentication is required.
-         *
          * By default, no user authentication is required.
          *
          * @param required True if user authentication is required, false otherwise.
-         * @param timeoutMillis If 0, user authentication is required for every use of
-         * the key, otherwise it's required within the given amount of milliseconds.
-         * @param userAuthenticationTypes a combination of the flags
-         * [UserAuthenticationType.LSKF] and [UserAuthenticationType.BIOMETRIC].
+         * @param types a combination of the flags [CloudUserAuthType.PASSCODE]
+         *     and [CloudSecureAreaUserAuthType.BIOMETRIC]. Cannot be empty if [required] is `true`.
          * @return the builder.
          */
         fun setUserAuthenticationRequired(
             required: Boolean,
-            timeoutMillis: Long,
-            userAuthenticationTypes: Set<UserAuthenticationType>
+            types: Set<CloudUserAuthType>
         ) = apply {
-            if (required) {
-                require(!userAuthenticationTypes.isEmpty()) {
-                    "userAuthenticationType must be set when user authentication is required"
-                }
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    require(
-                        userAuthenticationTypes === setOf(
-                            UserAuthenticationType.LSKF,
-                            UserAuthenticationType.BIOMETRIC
-                        )
-                    ) { "Only LSKF and Strong Biometric supported on this API level" }
+            userAuthenticationRequired = required
+            userAuthenticationTypes = types
+            if (userAuthenticationRequired) {
+                check(!userAuthenticationTypes.isEmpty()) {
+                    "userAuthenticationTypes cannot be empty if user authentication is required"
                 }
             }
-            userAuthenticationRequired = required
-            userAuthenticationTimeoutMillis = timeoutMillis
-            this.userAuthenticationTypes = userAuthenticationTypes
         }
 
         /**
@@ -172,18 +138,6 @@ class CloudCreateKeySettings private constructor(
         ) = apply {
             this.validFrom = validFrom
             this.validUntil = validUntil
-        }
-
-        /**
-         * Specify if StrongBox Android Keystore should be used for the local key, if available.
-         *
-         * By default StrongBox isn't used.
-         *
-         * @param useStrongBox Whether to use StrongBox for the local key.
-         * @return the builder.
-         */
-        fun setUseStrongBox(useStrongBox: Boolean) = apply {
-            this.useStrongBox = useStrongBox
         }
 
         /**
@@ -206,12 +160,10 @@ class CloudCreateKeySettings private constructor(
                 ecCurve,
                 attestationChallenge,
                 userAuthenticationRequired,
-                userAuthenticationTimeoutMillis,
                 userAuthenticationTypes,
                 validFrom,
                 validUntil,
                 passphraseRequired,
-                useStrongBox,
             )
         }
     }

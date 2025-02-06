@@ -29,7 +29,7 @@ import androidx.work.WorkerParameters
 import com.android.identity.android.direct_access.DirectAccess
 import com.android.identity.android.direct_access.DirectAccessCredential
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.cloud.CloudSecureArea
+import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore

@@ -3,9 +3,9 @@ package com.android.identity.storage.ephemeral
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
-import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.storage.KeyExistsStorageException
 import com.android.identity.storage.NoRecordStorageException
+import com.android.identity.storage.Storage
 import com.android.identity.storage.base.BaseStorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.toBase64Url
@@ -19,9 +19,11 @@ import kotlin.math.abs
 import kotlin.random.Random
 
 internal class EphemeralStorageTable(
+    override val storage: Storage,
     spec: StorageTableSpec,
     private val clock: Clock
 ): BaseStorageTable(spec) {
+
     private val lock = Mutex()
     private var storedData = mutableListOf<EphemeralStorageItem>()
     private var earliestExpiration: Instant = Instant.DISTANT_FUTURE
@@ -199,11 +201,16 @@ internal class EphemeralStorageTable(
     companion object {
         val EMPTY = ByteString()
 
-        internal fun deserialize(clock: Clock, input: ByteArray, offset: Int): Pair<Int, EphemeralStorageTable> {
+        internal fun deserialize(
+            storage: EphemeralStorage,
+            clock: Clock,
+            input: ByteArray,
+            offset: Int
+        ): Pair<Int, EphemeralStorageTable> {
             val (offset1, specData) = Cbor.decode(input, offset)
             val spec = StorageTableSpec.decodeByteString(ByteString(specData.asBstr))
             val (offset2, tableData) = Cbor.decode(input, offset1)
-            val table = EphemeralStorageTable(spec, clock)
+            val table = EphemeralStorageTable(storage, spec, clock)
             for (itemData in tableData.asArray) {
                 val item = EphemeralStorageItem.fromDataItem(itemData)
                 if (table.earliestExpiration > item.expiration) {

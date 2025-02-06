@@ -1,6 +1,7 @@
 package com.android.identity.securearea.cloud
 
 import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.OID
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.annotation.CborSerializable
@@ -12,8 +13,10 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.javaX509Certificates
-import com.android.identity.securearea.AttestationExtension
+import com.android.identity.crypto.X509KeyUsage
+import com.android.identity.device.DeviceAttestation
+import com.android.identity.device.DeviceAttestationIos
+import com.android.identity.device.DeviceAttestationValidationData
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.CreateKeyRequest0
 import com.android.identity.securearea.cloud.CloudSecureAreaProtocol.CreateKeyResponse1
@@ -31,22 +34,15 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.ephemeral.EphemeralStorage
 import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.util.Logger
-import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
+import com.android.identity.util.validateAndroidKeyAttestation
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
-import java.io.IOException
 import java.nio.ByteBuffer
-import java.security.InvalidKeyException
-import java.security.NoSuchAlgorithmException
-import java.security.NoSuchProviderException
-import java.security.SignatureException
-import java.security.cert.CertificateException
-import java.util.Arrays
 import java.util.Locale
 import kotlin.random.Random
 
@@ -60,9 +56,14 @@ import kotlin.random.Random
  * @param attestationKeyCertification a certification of the attestation key.
  * @param cloudRootAttestationKey the private key used to sign attestations for `CloudBindingKey`.
  * @param cloudRootAttestationKeyCertification a certification of the attestation key for `CloudBindingKey`.
- * @param requireGmsAttestation whether to require attestations made for local key on clients is using the Google root.
- * @param requireVerifiedBootGreen whether to require clients are in verified boot state green
- * @param requireAppSignatureCertificateDigests the allowed list of applications that can use the
+ * @param e2eeKeyLimitSeconds Re-keying interval for end-to-end encryption.
+ * @param iosReleaseBuild Whether a release build is required on iOS. When `false`, both debug and release builds
+ *   are accepted.
+ * @param iosAppIdentifier iOS app identifier that consists of a team id followed by a dot and app bundle name. If
+ *   `null`, any app identifier is accepted. It must not be `null` if [iosReleaseBuild] is `true`
+ * @param androidGmsAttestation whether to require attestations made for local key on clients is using the Google root.
+ * @param androidVerifiedBootGreen whether to require clients are in verified boot state green.
+ * @param androidAppSignatureCertificateDigests the allowed list of applications that can use the
  *   service. Each element is the bytes of the SHA-256 of a signing certificate, see the
  *   [Signature](https://developer.android.com/reference/android/content/pm/Signature) class in
  *   the Android SDK for details. If empty, allow any app.
@@ -79,9 +80,11 @@ class CloudSecureAreaServer(
     private val cloudRootAttestationKeyIssuer: String,
     private val cloudRootAttestationKeyCertification: X509CertChain,
     private val e2eeKeyLimitSeconds: Int,
-    private val requireGmsAttestation: Boolean,
-    private val requireVerifiedBootGreen: Boolean,
-    private val requireAppSignatureCertificateDigests: List<ByteArray>,
+    private val iosReleaseBuild: Boolean,
+    private val iosAppIdentifier: String?,
+    private val androidGmsAttestation: Boolean,
+    private val androidVerifiedBootGreen: Boolean,
+    private val androidAppSignatureCertificateDigests: List<ByteString>,
     private val passphraseFailureEnforcer: PassphraseFailureEnforcer
 ) {
     private fun encryptState(plaintext: ByteArray): ByteArray {
@@ -104,13 +107,15 @@ class CloudSecureAreaServer(
     @CborSerializable
     data class RegisterState(
         var clientVersion: String = "",
+        var attestationChallenge: ByteString? = null,
         var cloudChallenge: ByteArray? = null,
         var cloudBindingKey: CoseKey? = null,
         var deviceBindingKey: CoseKey? = null,
         var clientPassphraseSalt: ByteArray = byteArrayOf(),
         var clientSaltedPassphrase: ByteArray = byteArrayOf(),
         var registrationComplete: Boolean = false,
-        var clientId: String? = null
+        var clientId: String? = null,
+        var deviceAttestation: DeviceAttestation? = null
     ) {
         companion object
     }
@@ -120,80 +125,6 @@ class CloudSecureAreaServer(
     private fun RegisterState.Companion.decrypt(encryptedState: ByteArray) =
         fromCbor(decryptState(encryptedState))
 
-    private fun validateAndroidKeystoreAttestation(
-        attestation: X509CertChain,
-        cloudChallenge: ByteArray,
-        remoteHost: String
-    ) {
-        val x509certs = attestation.javaX509Certificates
-        // First check that all the certificates sign each other...
-        for (n in 0 until x509certs.size - 1) {
-            val cert = x509certs[n]
-            val nextCert = x509certs[n + 1]
-            try {
-                cert.verify(nextCert.publicKey)
-            } catch (e: NoSuchAlgorithmException) {
-                throw IllegalStateException("Error verifying signature", e)
-            } catch (e: InvalidKeyException) {
-                throw IllegalStateException("Error verifying signature", e)
-            } catch (e: SignatureException) {
-                throw IllegalStateException("Error verifying signature", e)
-            } catch (e: CertificateException) {
-                throw IllegalStateException("Error verifying signature", e)
-            } catch (e: NoSuchProviderException) {
-                throw IllegalStateException("Error verifying signature", e)
-            }
-        }
-        val rootCertificatePublicKey = x509certs[x509certs.size - 1].publicKey
-        if (requireGmsAttestation) {
-            // Must match the well-known Google root
-            // TODO: check X and Y instead
-            check(
-                Arrays.equals(
-                    GOOGLE_ROOT_ATTESTATION_KEY,
-                    rootCertificatePublicKey.encoded)
-            ) { "Unexpected attestation root" }
-        }
-
-        // Finally, check the Attestation Extension...
-        try {
-            val parser = AndroidAttestationExtensionParser(attestation.certificates.first())
-
-            // Challenge must match...
-            check(cloudChallenge.contentEquals(parser.attestationChallenge)) {
-                "Challenge didn't match what was expected"
-            }
-
-            if (requireVerifiedBootGreen) {
-                // Verified Boot state must VERIFIED
-                check(parser.verifiedBootState ==
-                        AndroidAttestationExtensionParser.VerifiedBootState.GREEN)
-                { "Verified boot state is not GREEN" }
-            }
-
-            if (requireAppSignatureCertificateDigests.size > 0) {
-                check (parser.applicationSignatureDigests.size == requireAppSignatureCertificateDigests.size)
-                { "Number Signing certificates mismatch" }
-                for (n in 0..<parser.applicationSignatureDigests.size) {
-                    check (parser.applicationSignatureDigests[n].toByteArray().contentEquals(
-                        requireAppSignatureCertificateDigests[n]))
-                    { "Signing certificate $n mismatch" }
-                }
-            }
-
-            // Log the digests for easy copy-pasting into config file.
-            Logger.d(TAG, "$remoteHost: Accepting Android client with ${parser.applicationSignatureDigests.size} " +
-                    "signing certificates digests")
-            for (n in 0..<parser.applicationSignatureDigests.size) {
-                Logger.d(TAG,
-                    "$remoteHost: Digest $n: ${parser.applicationSignatureDigests[n].toByteArray().toHex()}")
-            }
-
-        } catch (e: IOException) {
-            throw IllegalStateException("Error parsing Android Attestation Extension", e)
-        }
-    }
-
     private fun doRegisterRequest0(request0: RegisterRequest0,
                                    remoteHost: String): Pair<Int, ByteArray> {
         val state = RegisterState()
@@ -201,10 +132,12 @@ class CloudSecureAreaServer(
         state.registrationComplete = false
         state.clientPassphraseSalt = byteArrayOf()
         state.clientSaltedPassphrase = byteArrayOf()
+        state.attestationChallenge = ByteString(Random.Default.nextBytes(32))
         state.cloudChallenge = Random.Default.nextBytes(32)
         val response0 = RegisterResponse0(
-            state.cloudChallenge!!,
-            state.encrypt()
+            attestationChallenge = state.attestationChallenge!!,
+            cloudChallenge = state.cloudChallenge!!,
+            serverState = state.encrypt()
         )
         Logger.d(TAG, "$remoteHost: RegisterRequest0: Sending challenge to client")
         return Pair(200, response0.toCbor())
@@ -213,20 +146,48 @@ class CloudSecureAreaServer(
     private fun doRegisterRequest1(request1: RegisterRequest1,
                                    remoteHost: String): Pair<Int, ByteArray> {
         val state = RegisterState.decrypt(request1.serverState)
+
+        // Validate device attestation and assertion
         try {
-            validateAndroidKeystoreAttestation(
-                request1.deviceBindingKeyAttestation,
-                state.cloudChallenge!!,
-                remoteHost
+            request1.deviceAttestation.validate(
+                DeviceAttestationValidationData(
+                    attestationChallenge = state.attestationChallenge!!,
+                    iosReleaseBuild = iosReleaseBuild,
+                    iosAppIdentifier = iosAppIdentifier,
+                    androidGmsAttestation = androidGmsAttestation,
+                    androidVerifiedBootGreen = androidVerifiedBootGreen,
+                    androidAppSignatureCertificateDigests = androidAppSignatureCertificateDigests
+                )
             )
-        } catch (e: IllegalStateException) {
-            Logger.w(TAG, "$remoteHost: RegisterRequest1: Android Keystore attestation did not validate", e)
+        } catch (e: Throwable) {
+            Logger.w(TAG, "$remoteHost: RegisterRequest1: Device Attestation did not validate", e)
+            e.printStackTrace()
             return Pair(403, e.message!!.toByteArray())
         }
-        state.deviceBindingKey = request1.deviceBindingKeyAttestation.certificates[0].ecPublicKey.toCoseKey()
+        state.deviceAttestation = request1.deviceAttestation
 
-        // This is used to re-initialize E2EE so it's used quite a bit. Give it a long
-        // validity period.
+        // iOS devices don't have key attestation for the locally created key but other platforms do, including
+        // Android. So we check that the attestation is valid and matches what we requested.
+        if (state.deviceAttestation !is DeviceAttestationIos) {
+            try {
+                validateAndroidKeyAttestation(
+                    chain = request1.deviceBindingKeyAttestation!!,
+                    challenge = ByteString(state.cloudChallenge!!),
+                    requireGmsAttestation = androidGmsAttestation,
+                    requireVerifiedBootGreen = androidVerifiedBootGreen,
+                    requireAppSignatureCertificateDigests = androidAppSignatureCertificateDigests
+                )
+                // Check that device created the key without user authentication.
+                val attestation = AndroidAttestationExtensionParser(request1.deviceBindingKeyAttestation!!.certificates[0])
+                check(attestation.getUserAuthenticationType() == 0L)
+            } catch (e: Throwable) {
+                Logger.w(TAG, "$remoteHost: RegisterRequest1: Android Keystore attestation did not validate", e)
+                return Pair(403, e.message!!.toByteArray())
+            }
+        }
+        state.deviceBindingKey = request1.deviceBindingKey
+
+        // This is used to re-initialize E2EE so it's used quite a bit. Give it a long validity period.
         val cloudBindingKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val cloudBindingKeyValidFrom = Clock.System.now()
         val cloudBindingKeyValidUntil = cloudBindingKeyValidFrom.plus(
@@ -247,10 +208,15 @@ class CloudSecureAreaServer(
                 )
                     .includeSubjectKeyIdentifier()
                     .setAuthorityKeyIdentifierToCertificate(cloudRootAttestationKeyCertification.certificates[0])
+                    .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
                     .addExtension(
-                        oid = AttestationExtension.ATTESTATION_OID,
+                        oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
                         critical = false,
-                        value = AttestationExtension.encode(request1.deviceChallenge)
+                        value = CloudAttestationExtension(
+                            challenge = ByteString(request1.deviceChallenge),
+                            passphrase = false,
+                            userAuthentication = setOf()
+                        ).encode().toByteArray()
                     )
                     .build()
             ) + cloudRootAttestationKeyCertification.certificates
@@ -312,6 +278,8 @@ class CloudSecureAreaServer(
             Algorithm.ES256,
             request1.signature
         )) { "Error verifying signature" }
+
+        state.context!!.deviceAttestation!!.validateAssertion(request1.deviceAssertion)
 
         // OK, the device's EDeviceKey checks out. Time for us to generate ECloudKey,
         // sign over it with CloudBindingKey, and send it to the device for verification
@@ -408,6 +376,8 @@ class CloudSecureAreaServer(
         var validFromMillis: Long = 0,
         var validUntilMillis: Long = 0,
         var passphraseRequired: Boolean = false,
+        var userAuthenticationRequired: Boolean = false,
+        var userAuthenticationTypes: Long = 0,
         var cloudKeyStorage: ByteArray? = null,
         var localKey: CoseKey? = null,
     ) {
@@ -435,6 +405,8 @@ class CloudSecureAreaServer(
         state.validFromMillis = request0.validFromMillis
         state.validUntilMillis = request0.validUntilMillis
         state.passphraseRequired = request0.passphraseRequired
+        state.userAuthenticationRequired = request0.userAuthenticationRequired
+        state.userAuthenticationTypes = request0.userAuthenticationTypes
         val response0 = CloudSecureAreaProtocol.CreateKeyResponse0(
             state.cloudChallenge!!,
             encryptCreateKeyState(state)
@@ -453,16 +425,31 @@ class CloudSecureAreaServer(
         e2eeState: E2EEState
     ): Pair<Int, ByteArray> {
         val state = decryptCreateKeyState(request1.serverState)
-        try {
-            validateAndroidKeystoreAttestation(
-                request1.localKeyAttestation,
-                state.cloudChallenge!!,
-                remoteHost
-            )
-        } catch (e: IllegalStateException) {
-            throw IllegalStateException("Error verifying signature")
+
+        // iOS devices don't have key attestation for the locally created key but other platforms do, including
+        // Android. So we check that the attestation is valid and matches what we requested.
+        if (e2eeState.context!!.deviceAttestation !is DeviceAttestationIos) {
+            try {
+                validateAndroidKeyAttestation(
+                    chain = request1.localKeyAttestation!!,
+                    challenge = ByteString(state.cloudChallenge!!),
+                    requireGmsAttestation = androidGmsAttestation,
+                    requireVerifiedBootGreen = androidVerifiedBootGreen,
+                    requireAppSignatureCertificateDigests = androidAppSignatureCertificateDigests
+                )
+                // Check that device created the key with the requested user authentication.
+                val attestation = AndroidAttestationExtensionParser(request1.localKeyAttestation!!.certificates[0])
+                if (state.userAuthenticationRequired) {
+                    check(attestation.getUserAuthenticationType() == state.userAuthenticationTypes)
+                } else {
+                    check(attestation.getUserAuthenticationType() == 0L)
+                }
+            } catch (e: Throwable) {
+                throw IllegalStateException("doCreateKeyRequest1: Android Keystore attestation did not validate", e)
+            }
         }
-        state.localKey = request1.localKeyAttestation.certificates.get(0).ecPublicKey.toCoseKey()
+
+        state.localKey = request1.localKey
         val storage = EphemeralStorage()
         val secureArea = SoftwareSecureArea.create(storage)
         val builder = SoftwareCreateKeySettings.Builder()
@@ -477,23 +464,33 @@ class CloudSecureAreaServer(
         val keyInfo = secureArea.getKeyInfo("CloudKey")
 
         val attestationCert = X509Cert.Builder(
-                publicKey = keyInfo.publicKey,
-                signingKey = attestationKey,
-                signatureAlgorithm = attestationKeySignatureAlgorithm,
-                serialNumber = ASN1Integer(1L),
-                subject = X500Name.fromName("CN=Cloud Secure Area Key"),
-                issuer = X500Name.fromName(attestationKeyIssuer),
-                validFrom = Instant.fromEpochMilliseconds(state.validFromMillis),
-                validUntil = Instant.fromEpochMilliseconds(state.validUntilMillis)
+            publicKey = keyInfo.publicKey,
+            signingKey = attestationKey,
+            signatureAlgorithm = attestationKeySignatureAlgorithm,
+            serialNumber = ASN1Integer(1L),
+            subject = X500Name.fromName("CN=Cloud Secure Area Key"),
+            issuer = X500Name.fromName(attestationKeyIssuer),
+            validFrom = Instant.fromEpochMilliseconds(state.validFromMillis),
+            validUntil = Instant.fromEpochMilliseconds(state.validUntilMillis)
+        )
+            .includeSubjectKeyIdentifier()
+            .setAuthorityKeyIdentifierToCertificate(attestationKeyCertification.certificates[0])
+            .setKeyUsage(keyInfo.keyPurposes.map { keyPurpose ->
+                when (keyPurpose) {
+                    KeyPurpose.AGREE_KEY -> X509KeyUsage.KEY_AGREEMENT
+                    KeyPurpose.SIGN -> X509KeyUsage.DIGITAL_SIGNATURE
+                }
+            }.toSet())
+            .addExtension(
+                oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
+                critical = false,
+                value = CloudAttestationExtension(
+                    challenge = ByteString(state.challenge!!),
+                    passphrase = state.passphraseRequired,
+                    userAuthentication = CloudUserAuthType.decodeSet(state.userAuthenticationTypes)
+                ).encode().toByteArray()
             )
-                .includeSubjectKeyIdentifier()
-                .setAuthorityKeyIdentifierToCertificate(attestationKeyCertification.certificates[0])
-                .addExtension(
-                    oid = AttestationExtension.ATTESTATION_OID,
-                    critical = false,
-                    value = AttestationExtension.encode(state.challenge!!)
-                )
-                .build()
+            .build()
 
         state.cloudKeyStorage = storage.serialize().toByteArray()
         val response1 = CreateKeyResponse1(
@@ -623,11 +620,7 @@ class CloudSecureAreaServer(
                 e2eeState.encrypt()
             )
             return Pair(200, encryptedResponse1.toCbor())
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException(e)
-        } catch (e: InvalidKeyException) {
-            throw IllegalStateException(e)
-        } catch (e: SignatureException) {
+        } catch (e: Throwable) {
             throw IllegalStateException(e)
         }
     }
@@ -772,11 +765,7 @@ class CloudSecureAreaServer(
                 e2eeState.encrypt()
             )
             return Pair(200, encryptedResponse1.toCbor())
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException(e)
-        } catch (e: InvalidKeyException) {
-            throw IllegalStateException(e)
-        } catch (e: SignatureException) {
+        } catch (e: Throwable) {
             throw IllegalStateException(e)
         }
     }
@@ -922,10 +911,5 @@ class CloudSecureAreaServer(
             }
 
         var lastCounter = Long.MIN_VALUE
-
-        // This public key is from https://developer.android.com/training/articles/security-key-attestation
-        private val GOOGLE_ROOT_ATTESTATION_KEY =
-            "30820222300d06092a864886f70d01010105000382020f003082020a0282020100afb6c7822bb1a701ec2bb42e8bcc541663abef982f32c77f7531030c97524b1b5fe809fbc72aa9451f743cbd9a6f1335744aa55e77f6b6ac3535ee17c25e639517dd9c92e6374a53cbfe258f8ffbb6fd129378a22a4ca99c452d47a59f3201f44197ca1ccd7e762fb2f53151b6feb2fffd2b6fe4fe5bc6bd9ec34bfe08239daafceb8eb5a8ed2b3acd9c5e3a7790e1b51442793159859811ad9eb2a96bbdd7a57c93a91c41fccd27d67fd6f671aa0b815261ad384fa37944864604ddb3d8c4f920a19b1656c2f14ad6d03c56ec060899041c1ed1a5fe6d3440b556bad1d0a152589c53e55d370762f0122eef91861b1b0e6c4c80927499c0e9bec0b83e3bc1f93c72c049604bbd2f1345e62c3f8e26dbec06c94766f3c128239d4f4312fad8123887e06becf567583bf8355a81feeabaf99a83c8df3e2a322afc672bf120b135158b6821ceaf309b6eee77f98833b018daa10e451f06a374d50781f359082966bb778b9308942698e74e0bcd24628a01c2cc03e51f0b3e5b4ac1e4df9eaf9ff6a492a77c1483882885015b422ce67b80b88c9b48e13b607ab545c723ff8c44f8f2d368b9f6520d31145ebf9e862ad71df6a3bfd2450959d653740d97a12f368b13ef66d5d0a54a6e2f5d9a6fef446832bc67844725861f093dd0e6f3405da89643ef0f4d69b6420051fdb93049673e36950580d3cdf4fbd08bc58483952600630203010001"
-                .fromHex()
     }
 }

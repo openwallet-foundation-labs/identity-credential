@@ -1,5 +1,6 @@
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.get
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -76,6 +77,8 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.cio)
 
                 // TODO: Strictly speaking this should be moved to androidMain deps but it's here right
                 // now to make the build work.
@@ -131,6 +134,8 @@ kotlin {
                 // TODO: once compatibility issues are resolved, SqliteStorage and this
                 // dependency can be moved into commonMain.
                 implementation(libs.androidx.sqlite)
+                implementation(libs.androidx.sqlite.framework)
+                implementation(libs.ktor.client.darwin)
             }
         }
 
@@ -151,6 +156,7 @@ kotlin {
                 implementation(libs.androidx.test.junit)
                 implementation(libs.androidx.espresso.core)
                 implementation(libs.compose.junit4)
+                implementation(project(":identity-csa"))
             }
         }
 
