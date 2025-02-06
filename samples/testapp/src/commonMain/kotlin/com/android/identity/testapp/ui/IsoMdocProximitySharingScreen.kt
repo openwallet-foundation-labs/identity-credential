@@ -17,10 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.permissions.rememberBluetoothPermissionState
 import com.android.identity.appsupport.ui.presentment.MdocPresentmentMechanism
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.appsupport.ui.qrcode.ShowQrCodeDialog
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Crypto
@@ -40,6 +38,8 @@ import com.android.identity.util.toBase64Url
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.compose.ui.permissions.rememberBluetoothPermissionState
+import org.multipaz.compose.ui.qrcode.ShowQrCodeDialog
 
 private const val TAG = "IsoMdocProximitySharingScreen"
 

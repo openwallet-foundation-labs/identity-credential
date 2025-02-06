@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.appsupport.ui.PassphraseEntryField
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
@@ -39,6 +38,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.compose.ui.PassphraseEntryField
 import kotlin.coroutines.resume
 
 /**

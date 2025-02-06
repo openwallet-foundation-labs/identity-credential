@@ -9,14 +9,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.appsupport.ui.AppTheme
+import org.multipaz.compose.ui.AppTheme
 import com.android.identity.appsupport.ui.digitalcredentials.lookupForCredmanId
 import com.android.identity.appsupport.ui.presentment.DigitalCredentialsPresentmentMechanism
-import com.android.identity.appsupport.ui.presentment.Presentment
+import org.multipaz.compose.ui.presentment.Presentment
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.credential.Credential
-import com.android.identity.document.Document
-import com.android.identity.document.DocumentStore
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.google.android.gms.identitycredentials.GetCredentialResponse

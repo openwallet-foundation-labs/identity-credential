@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui.permissions
+package org.multipaz.compose.ui.permissions
 
 import android.Manifest
 import androidx.compose.runtime.Composable

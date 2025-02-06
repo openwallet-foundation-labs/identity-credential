@@ -31,7 +31,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.android.identity.appsupport.ui.passphrase.PassphrasePromptProvider
 import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
@@ -53,6 +52,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import org.multipaz.compose.ui.passphrase.PassphrasePromptProvider
 import kotlin.time.Duration.Companion.days
 
 private val TAG = "CloudSecureAreaScreen"

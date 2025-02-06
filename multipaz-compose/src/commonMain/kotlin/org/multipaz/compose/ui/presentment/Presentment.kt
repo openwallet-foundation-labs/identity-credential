@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui.presentment
+package org.multipaz.compose.ui.presentment
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -40,24 +40,25 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.appsupport.ui.consent.ConsentModalBottomSheet
-import com.android.identity.appsupport.ui.passphrase.PassphrasePromptProvider
+import com.android.identity.appsupport.ui.presentment.PresentmentCanceled
+import com.android.identity.appsupport.ui.presentment.PresentmentModel
+import com.android.identity.appsupport.ui.presentment.PresentmentSource
+import com.android.identity.appsupport.ui.presentment.PresentmentTimeout
 import com.android.identity.document.Document
 import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.securearea.PassphrasePromptView
-import identitycredential.identity_appsupport.generated.resources.Res
-import identitycredential.identity_appsupport.generated.resources.presentment_canceled
-import identitycredential.identity_appsupport.generated.resources.presentment_icon_error
-import identitycredential.identity_appsupport.generated.resources.presentment_icon_success
-import identitycredential.identity_appsupport.generated.resources.presentment_connecting_to_reader
-import identitycredential.identity_appsupport.generated.resources.presentment_document_picker_cancel
-import identitycredential.identity_appsupport.generated.resources.presentment_document_picker_continue
-import identitycredential.identity_appsupport.generated.resources.presentment_document_picker_text
-import identitycredential.identity_appsupport.generated.resources.presentment_document_picker_title
-import identitycredential.identity_appsupport.generated.resources.presentment_error
-import identitycredential.identity_appsupport.generated.resources.presentment_success
-import identitycredential.identity_appsupport.generated.resources.presentment_timeout
-import identitycredential.identity_appsupport.generated.resources.presentment_waiting_for_request
+import identitycredential.multipaz_compose.generated.resources.Res
+import identitycredential.multipaz_compose.generated.resources.presentment_canceled
+import identitycredential.multipaz_compose.generated.resources.presentment_connecting_to_reader
+import identitycredential.multipaz_compose.generated.resources.presentment_document_picker_cancel
+import identitycredential.multipaz_compose.generated.resources.presentment_document_picker_continue
+import identitycredential.multipaz_compose.generated.resources.presentment_document_picker_text
+import identitycredential.multipaz_compose.generated.resources.presentment_document_picker_title
+import identitycredential.multipaz_compose.generated.resources.presentment_error
+import identitycredential.multipaz_compose.generated.resources.presentment_icon_error
+import identitycredential.multipaz_compose.generated.resources.presentment_icon_success
+import identitycredential.multipaz_compose.generated.resources.presentment_success
+import identitycredential.multipaz_compose.generated.resources.presentment_timeout
+import identitycredential.multipaz_compose.generated.resources.presentment_waiting_for_request
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -66,6 +67,8 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.multipaz.compose.ui.consent.ConsentModalBottomSheet
+import org.multipaz.compose.ui.passphrase.PassphrasePromptProvider
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "Presentment"

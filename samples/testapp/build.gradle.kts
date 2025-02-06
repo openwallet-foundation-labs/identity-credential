@@ -97,6 +97,7 @@ kotlin {
                 implementation(project(":identity-doctypes"))
                 implementation(project(":identity-flow"))
                 implementation(project(":identity-issuance-api"))
+                implementation(project(":multipaz-compose"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)
                 implementation(libs.ktor.client.core)

@@ -9,12 +9,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.identity.appsupport.ui.passphrase.PassphrasePromptProvider
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -25,6 +24,7 @@ import com.android.identity.util.toHex
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.multipaz.compose.ui.passphrase.PassphrasePromptProvider
 
 private val TAG = "SoftwareSecureAreaScreen"
 

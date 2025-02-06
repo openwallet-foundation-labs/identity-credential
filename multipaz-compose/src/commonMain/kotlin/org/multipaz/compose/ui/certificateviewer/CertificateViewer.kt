@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui.certificateviewer
+package org.multipaz.compose.ui.certificateviewer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.android.identity.appsupport.ui.certificateviewer.CertificateViewData
 import com.android.identity.appsupport.ui.certificateviewer.CertificateViewData.Companion.from
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.OID
@@ -39,35 +40,35 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import identitycredential.identity_appsupport.generated.resources.Res
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_accessibility_error_icon
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_accessibility_info_icon
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_critical_ext
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_common_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_country_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_expired
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_issued
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_locality_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_org_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_org_unit_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_other_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_pk_algorithm
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_pk_named_curve
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_pk_value
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_serial_number
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_state_name
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_type
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_k_version
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_no_certificates_in_chain
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_non_critical_ext
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_oid
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_basic_info
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_extensions
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_issuer
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_public_key_info
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_sub_subject
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_value
-import identitycredential.identity_appsupport.generated.resources.certificate_viewer_version_text
+import identitycredential.multipaz_compose.generated.resources.Res
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_accessibility_error_icon
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_accessibility_info_icon
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_critical_ext
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_common_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_country_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_expired
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_issued
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_locality_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_org_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_org_unit_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_other_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_pk_algorithm
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_pk_named_curve
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_pk_value
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_serial_number
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_state_name
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_type
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_k_version
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_no_certificates_in_chain
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_non_critical_ext
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_oid
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_sub_basic_info
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_sub_extensions
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_sub_issuer
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_sub_public_key_info
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_sub_subject
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_value
+import identitycredential.multipaz_compose.generated.resources.certificate_viewer_version_text
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.StringResource
@@ -242,7 +243,7 @@ private fun CertificateView(
             if (data.pkNamedCurve != null) {
                 KeyValuePairLine(
                     stringResource(Res.string.certificate_viewer_k_pk_named_curve),
-                    data.pkNamedCurve
+                    data.pkNamedCurve!!
                 )
             }
             KeyValuePairLine(

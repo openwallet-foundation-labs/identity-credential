@@ -20,9 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.permissions.rememberBluetoothPermissionState
-import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
-import com.android.identity.appsupport.ui.qrcode.ShowQrCodeDialog
 import com.android.identity.testapp.getLocalIpAddress
 import com.android.identity.testapp.multidevicetests.MultiDeviceTestsClient
 import com.android.identity.testapp.multidevicetests.MultiDeviceTestsServer
@@ -38,6 +35,9 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.multipaz.compose.ui.permissions.rememberBluetoothPermissionState
+import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
+import org.multipaz.compose.ui.qrcode.ShowQrCodeDialog
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 

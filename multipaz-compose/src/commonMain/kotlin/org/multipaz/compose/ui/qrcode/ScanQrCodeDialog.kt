@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui.qrcode
+package org.multipaz.compose.ui.qrcode
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

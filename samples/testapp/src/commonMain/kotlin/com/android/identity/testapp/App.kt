@@ -2,6 +2,10 @@ package com.android.identity.testapp
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -12,10 +16,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,7 +26,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.appsupport.ui.AppTheme
 import com.android.identity.appsupport.ui.digitalcredentials.DigitalCredentials
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
 import com.android.identity.asn1.ASN1Integer
@@ -52,6 +51,7 @@ import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.testapp.ui.AboutScreen
 import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
+import com.android.identity.testapp.ui.CertificateScreen
 import com.android.identity.testapp.ui.CertificateViewerExamplesScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
@@ -60,16 +60,15 @@ import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
 import com.android.identity.testapp.ui.NfcScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
+import com.android.identity.testapp.ui.PassphrasePromptScreen
 import com.android.identity.testapp.ui.PresentmentScreen
 import com.android.identity.testapp.ui.ProvisioningTestScreen
 import com.android.identity.testapp.ui.QrCodesScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
+import com.android.identity.testapp.ui.SettingsScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
 import com.android.identity.testapp.ui.StartScreen
 import com.android.identity.testapp.ui.VerifierType
-import com.android.identity.testapp.ui.CertificateScreen
-import com.android.identity.testapp.ui.PassphrasePromptScreen
-import com.android.identity.testapp.ui.SettingsScreen
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
@@ -89,6 +88,7 @@ import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.multipaz.compose.ui.AppTheme
 
 /**
  * Application singleton.

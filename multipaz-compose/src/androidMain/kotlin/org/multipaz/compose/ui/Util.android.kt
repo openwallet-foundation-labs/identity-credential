@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui
+package org.multipaz.compose.ui
 
 import android.graphics.BitmapFactory
 import android.os.Build

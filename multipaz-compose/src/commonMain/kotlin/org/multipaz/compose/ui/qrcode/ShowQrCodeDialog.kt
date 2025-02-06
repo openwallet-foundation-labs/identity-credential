@@ -1,4 +1,4 @@
-package com.android.identity.appsupport.ui.qrcode
+package org.multipaz.compose.ui.qrcode
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import identitycredential.identity_appsupport.generated.resources.Res
-import identitycredential.identity_appsupport.generated.resources.show_qr_code_dialog_qr_content_description
+import identitycredential.multipaz_compose.generated.resources.Res
+import identitycredential.multipaz_compose.generated.resources.show_qr_code_dialog_qr_content_description
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import org.jetbrains.compose.resources.stringResource
 

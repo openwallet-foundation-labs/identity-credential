@@ -93,6 +93,7 @@ dependencies {
     implementation(project(":identity-issuance-api"))
     implementation(project(":identity-issuance"))
     implementation(project(":identity-appsupport"))
+    implementation(project(":multipaz-compose"))
     implementation(project(":mrtd-reader"))
     implementation(project(":mrtd-reader-android"))
     implementation(project(":jpeg2k"))

@@ -68,9 +68,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.securearea.cloud.CloudSecureArea
-import com.android.identity.appsupport.ui.PassphraseEntryField
-import com.android.identity.appsupport.ui.getDefaultImageVector
 import com.android.identity.documenttype.Icon
 import com.android.identity.issuance.ApplicationSupport
 import com.android.identity.issuance.LandingUrlUnknownException
@@ -100,6 +97,7 @@ import com.android.identity.mrtd.MrtdNfcDataReader
 import com.android.identity.mrtd.MrtdNfcReader
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.FaceImageClassifier
 import com.android.identity_credential.wallet.NfcTunnelScanner
@@ -120,6 +118,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.multipaz.compose.ui.PassphraseEntryField
+import org.multipaz.compose.ui.getDefaultImageVector
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "EvidenceRequest"

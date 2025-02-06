@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,13 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.qrcode.ScanQrCodeDialog
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.util.Logger
@@ -43,6 +40,7 @@ import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
 
 private const val TAG = "AddToWalletScreen"
 

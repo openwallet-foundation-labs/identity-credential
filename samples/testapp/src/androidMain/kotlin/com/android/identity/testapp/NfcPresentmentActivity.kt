@@ -14,8 +14,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.appsupport.ui.AppTheme
-import com.android.identity.appsupport.ui.presentment.Presentment
+import org.multipaz.compose.ui.AppTheme
+import org.multipaz.compose.ui.presentment.Presentment
 import com.android.identity.util.AndroidContexts
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon

@@ -26,7 +26,7 @@ import kotlin.collections.mapValues
  * All data fields of the Certificate as needed for display on the screen.
  * Also defining and using two extension methods to map Certificate fields.
  */
-internal data class CertificateViewData(
+data class CertificateViewData(
     val type: String,
     val serialNumber: String,
     val version: String,
