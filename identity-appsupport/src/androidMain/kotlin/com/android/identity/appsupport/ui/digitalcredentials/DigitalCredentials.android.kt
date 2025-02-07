@@ -1,10 +1,14 @@
 package com.android.identity.appsupport.ui.digitalcredentials
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.appsupport.credman.IdentityCredentialEntry
 import com.android.identity.appsupport.credman.IdentityCredentialField
 import com.android.identity.appsupport.credman.IdentityCredentialRegistry
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentAdded
 import com.android.identity.document.DocumentDeleted
@@ -16,6 +20,7 @@ import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
+import com.google.android.gms.identitycredentials.RegistrationRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -31,6 +36,7 @@ import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import java.io.ByteArrayOutputStream
 
 private const val TAG = "DigitalCredentials"
 
@@ -66,7 +72,6 @@ private fun getDataElementDisplayName(
 }
 
 private suspend fun updateCredman() {
-    var idCount = 0
     val entries = mutableListOf<IdentityCredentialEntry>()
     val context = AndroidContexts.applicationContext
     val appInfo = context.applicationInfo
@@ -75,6 +80,9 @@ private suspend fun updateCredman() {
     } else {
         appInfo.nonLocalizedLabel.toString()
     }
+
+    val docsBuilder = CborArray.builder()
+
     for ((_, regData) in exportedStores) {
         val credmanIdTable = regData.documentStore.storage.getTable(credmanIdTableSpec)
         credmanIdTable.deleteAll()
@@ -100,9 +108,34 @@ private suspend fun updateCredman() {
             val nameSpacedData = documentMetadata.nameSpacedData
             val displayName = documentMetadata.displayName!!
 
-            Logger.i(TAG, "exporting $displayName as $idCount")
+            val options = BitmapFactory.Options()
+            options.inMutable = true
+            val credBitmap = BitmapFactory.decodeByteArray(
+                cardArt,
+                0,
+                cardArt.size,
+                options
+            )
+            val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 128, 128, true)
+            val stream = ByteArrayOutputStream()
+            scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            val cardArtResized = stream.toByteArray()
+            Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+
+            val docBuilder = CborMap.builder()
+            docBuilder.put("title", displayName)
+            docBuilder.put("subtitle", appName)
+            docBuilder.put("bitmap", cardArtResized)
+            val mdocBuilder = CborMap.builder()
+            mdocBuilder.put("id", mdocCredential.identifier)
+            mdocBuilder.put("docType", mdocCredential.docType)
+
+            Logger.i(TAG, "exporting $displayName as ${mdocCredential.identifier}")
+
+            val mdocNsMapBuilder = mdocBuilder.putMap("namespaces")
 
             nameSpacedData.nameSpaceNames.map { nameSpaceName ->
+                val mdocNsBuilder = mdocNsMapBuilder.putMap(nameSpaceName)
                 nameSpacedData.getDataElementNames(nameSpaceName).map { dataElementName ->
                     val fieldName = nameSpaceName + "." + dataElementName
                     val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
@@ -127,39 +160,51 @@ private suspend fun updateCredman() {
                             displayValue = valueString
                         )
                     )
+
+                    val dataElementBuilder = mdocNsBuilder.putArray(dataElementName)
+                    dataElementBuilder.add(dataElementDisplayName)
+                    dataElementBuilder.add(valueString)
                 }
+                mdocNsBuilder.end()
             }
 
-            val options = BitmapFactory.Options()
-            options.inMutable = true
-            val credBitmap = BitmapFactory.decodeByteArray(
-                cardArt,
-                0,
-                cardArt.size,
-                options
-            )
-
-            credmanIdTable.insert(idCount.toString(), document.identifier.encodeToByteString())
-            entries.add(
-                IdentityCredentialEntry(
-                    id = (idCount++).toLong(),
-                    format = "mdoc",
-                    title = displayName,
-                    subtitle = appName,
-                    icon = credBitmap,
-                    fields = fields.toList(),
-                    disclaimer = null,
-                    warning = null,
-                )
-            )
+            credmanIdTable.insert(mdocCredential.identifier, document.identifier.encodeToByteString())
+            docBuilder.put("mdoc", mdocBuilder.end().build())
+            docsBuilder.add(docBuilder.end().build())
         }
     }
 
+    val credentialsCbor = Cbor.encode(docsBuilder.end().build())
+    Logger.iCbor(TAG, "cborCredentials", credentialsCbor)
+
+    /*
     val registry = IdentityCredentialRegistry(entries)
     val client = IdentityCredentialManager.Companion.getClient(context)
     client.registerCredentials(registry.toRegistrationRequest(context))
         .addOnSuccessListener { Logger.i(TAG, "CredMan registry succeeded") }
         .addOnFailureListener { Logger.i(TAG, "CredMan registry failed $it") }
+    */
+
+    val client = IdentityCredentialManager.Companion.getClient(context)
+    client.registerCredentials(
+        RegistrationRequest(
+            credentials = credentialsCbor,
+            matcher = loadMatcher(context),
+            type = "com.credman.IdentityCredential",
+            requestType = "",
+            protocolTypes = emptyList(),
+        )
+    )
+        .addOnSuccessListener { Logger.i(TAG, "CredMan registry succeeded") }
+        .addOnFailureListener { Logger.i(TAG, "CredMan registry failed $it") }
+}
+
+private fun loadMatcher(context: Context): ByteArray {
+    val stream = context.assets.open("identitycredentialmatcher.wasm");
+    val matcher = ByteArray(stream.available())
+    stream.read(matcher)
+    stream.close()
+    return matcher
 }
 
 internal actual val defaultAvailable = true
@@ -212,10 +257,10 @@ internal actual suspend fun defaultStopExportingCredentials(
 }
 
 suspend fun DocumentStore.lookupForCredmanId(
-    credmanId: Long
+    credentialId: String
 ): Document? {
     val credmanIdTable = storage.getTable(credmanIdTableSpec)
-    val documentId = credmanIdTable.get(credmanId.toString())
+    val documentId = credmanIdTable.get(credentialId)
     if (documentId != null) {
         return lookupDocument(documentId.decodeToString())
     }

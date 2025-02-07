@@ -215,8 +215,8 @@ class ShowDocumentFragment : Fragment() {
                 chain = certChain,
                 //customValidators = customValidators
             )
-            if (result.trustChain.any()) {
-                certChain = result.trustChain
+            if (result.trustChain != null) {
+                certChain = result.trustChain!!.certificates
             }
             if (!result.isTrusted) {
                 sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error?.message}<br>")
