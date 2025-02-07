@@ -2,6 +2,7 @@ package com.android.identity.crypto
 
 import com.android.identity.util.UUID
 import com.android.identity.util.fromJavaUuid
+import com.android.identity.util.toBase64Url
 import com.google.crypto.tink.HybridDecrypt
 import com.google.crypto.tink.HybridEncrypt
 import com.google.crypto.tink.InsecureSecretKeyAccess
@@ -19,9 +20,38 @@ import com.google.crypto.tink.proto.KeyData
 import com.google.crypto.tink.proto.KeyStatusType
 import com.google.crypto.tink.proto.Keyset
 import com.google.crypto.tink.proto.OutputPrefixType
-import com.google.crypto.tink.shaded.protobuf.ByteString
+import com.google.crypto.tink.shaded.protobuf.ByteString as TinkByteString
 import com.google.crypto.tink.subtle.EllipticCurves
+import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWEHeader
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
+import com.nimbusds.jose.crypto.ECDHDecrypter
+import com.nimbusds.jose.crypto.ECDHEncrypter
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
+import com.nimbusds.jose.proc.JWSKeySelector
+import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jose.util.Base64URL
+import com.nimbusds.jwt.EncryptedJWT
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
+import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.agreement.X448Agreement
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -587,7 +617,7 @@ actual object Crypto {
 
         val hpkePublicKey = HpkePublicKey.newBuilder()
             .setVersion(0)
-            .setPublicKey(ByteString.copyFrom(encodedKey))
+            .setPublicKey(TinkByteString.copyFrom(encodedKey))
             .setParams(params)
             .build()
 
@@ -619,7 +649,7 @@ actual object Crypto {
             val javaPrivateKey = privateKey.javaPrivateKey as ECPrivateKey
             val hpkePrivateKey = HpkePrivateKey.newBuilder()
                 .setPublicKey(hpkePublicKey)
-                .setPrivateKey(ByteString.copyFrom(javaPrivateKey.s.toByteArray()))
+                .setPrivateKey(TinkByteString.copyFrom(javaPrivateKey.s.toByteArray()))
                 .build()
 
             val privateKeyData = KeyData.newBuilder()
@@ -800,4 +830,102 @@ actual object Crypto {
         return true
     }
 
+    internal actual fun encryptJwtEcdhEs(
+        key: EcPublicKey,
+        encAlgorithm: Algorithm,
+        claims: JsonObject,
+        apu: ByteString,
+        apv: ByteString
+    ): JsonElement {
+        val responseEncryptionAlg = JWEAlgorithm.parse("ECDH-ES")
+        val responseEncryptionMethod = EncryptionMethod.parse(encAlgorithm.jwseAlgorithmIdentifier)
+        val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
+            .agreementPartyUInfo(Base64URL(apu.toByteArray().toBase64Url()))
+            .agreementPartyUInfo(Base64URL(apv.toByteArray().toBase64Url()))
+            .build()
+        val keySet = JWKSet(JWK.parseFromPEMEncodedObjects(key.toPem()))
+        val claimSet = JWTClaimsSet.parse(claims.toString())
+        val eJwt = EncryptedJWT(jweHeader, claimSet)
+        eJwt.encrypt(ECDHEncrypter(keySet.keys[0] as ECKey))
+        return JsonPrimitive(eJwt.serialize())
+    }
+
+    internal actual fun decryptJwtEcdhEs(
+        encryptedJwt: JsonElement,
+        recipientKey: EcPrivateKey
+    ): JsonObject {
+        val encryptedJWT = EncryptedJWT.parse(encryptedJwt.jsonPrimitive.content)
+        val encKey = ECKey(
+            Curve.P_256,
+            recipientKey.publicKey.javaPublicKey as ECPublicKey,
+            recipientKey.javaPrivateKey as ECPrivateKey,
+            null, null, null, null, null, null, null, null, null
+        )
+        val decrypter = ECDHDecrypter(encKey)
+        encryptedJWT.decrypt(decrypter)
+        return Json.decodeFromString<JsonObject>(encryptedJWT.jwtClaimsSet.toString())
+    }
+
+    internal actual fun jwsSign(
+        key: EcPrivateKey,
+        signatureAlgorithm: Algorithm,
+        claimsSet: JsonObject,
+        type: String?,
+        x5c: X509CertChain?
+    ): JsonElement {
+        val ecKey = ECKey(
+            Curve.P_256,
+            key.publicKey.javaPublicKey as ECPublicKey,
+            key.javaPrivateKey as ECPrivateKey,
+            null, null, null, null, null, null, null, null, null
+        )
+        check(signatureAlgorithm == Algorithm.ES256)
+        val builder = JWSHeader.Builder(JWSAlgorithm.ES256)
+        if (x5c != null) {
+            builder.x509CertChain(x5c.certificates.map { cert ->
+                com.nimbusds.jose.util.Base64.from(cert.encodedCertificate.toBase64Url())
+            })
+        }
+        if (type != null) {
+            builder.type(JOSEObjectType(type))
+        }
+        builder.keyID(ecKey.getKeyID())
+        val signedJWT = SignedJWT(
+            builder.build(),
+            JWTClaimsSet.parse(claimsSet.toString())
+        )
+        val signer: JWSSigner = ECDSASigner(ecKey)
+        signedJWT.sign(signer)
+        return Json.parseToJsonElement(signedJWT.serialize())
+    }
+
+    internal actual fun jwsVerify(
+        signedJwt: JsonElement,
+        publicKey: EcPublicKey
+    ) {
+        val sjwt = SignedJWT.parse(signedJwt.jsonPrimitive.content)
+        val jwtProcessor = DefaultJWTProcessor<SecurityContext>()
+        jwtProcessor.jwsTypeVerifier = DefaultJOSEObjectTypeVerifier(
+            sjwt.header.type,
+            JOSEObjectType.JWT,
+            JOSEObjectType(""),
+            null,
+        )
+        jwtProcessor.jwsKeySelector = JWSKeySelector { _, _ ->
+            listOf(publicKey.javaPublicKey)
+        }
+        jwtProcessor.process(sjwt, null)
+    }
+
+    internal actual fun jwsGetInfo(
+        signedJwt: JsonElement
+    ): JwsInfo {
+        val sjwt = SignedJWT.parse(signedJwt.jsonPrimitive.content)
+        val x5c = sjwt.header?.x509CertChain?.mapNotNull { runCatching { X509Cert(it.decode()) }.getOrNull() }
+        return JwsInfo(
+            claimsSet = Json.parseToJsonElement(sjwt.jwtClaimsSet.toString()).jsonObject,
+            type = sjwt.header.type?.toString(),
+            x5c = x5c?.let { X509CertChain(it) }
+        )
+    }
 }

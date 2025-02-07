@@ -76,6 +76,9 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
+
+                // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
+                implementation(libs.nimbus.oauth2.oidc.sdk)
             }
         }
 
@@ -133,6 +136,8 @@ kotlin {
                 implementation(libs.hsqldb)
                 implementation(libs.mysql)
                 implementation(libs.postgresql)
+                implementation(libs.nimbus.oauth2.oidc.sdk)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
 

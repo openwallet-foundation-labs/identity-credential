@@ -264,7 +264,7 @@ class App private constructor() {
 
     private val bundledReaderRootCert: X509Cert by lazy {
         MdocUtil.generateReaderRootCertificate(
-            readerRootKey = iacaKey,
+            readerRootKey = bundledReaderRootKey,
             subject = X500Name.fromName("CN=OWF IC TestApp Reader Root"),
             serial = ASN1Integer(1L),
             validFrom = certsValidFrom,

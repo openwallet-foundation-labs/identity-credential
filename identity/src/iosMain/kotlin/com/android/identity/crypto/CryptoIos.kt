@@ -10,6 +10,9 @@ import com.android.identity.util.UUID
 import com.android.identity.util.toByteArray
 import com.android.identity.util.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import platform.Foundation.NSData
 import platform.Foundation.NSUUID
 
@@ -334,5 +337,45 @@ actual object Crypto {
             }
         }
         return true
+    }
+
+    internal actual fun encryptJwtEcdhEs(
+        key: EcPublicKey,
+        encAlgorithm: Algorithm,
+        claims: JsonObject,
+        apu: ByteString,
+        apv: ByteString
+    ): JsonElement {
+        throw NotImplementedError("This is not yet implemented")
+    }
+
+    internal actual fun decryptJwtEcdhEs(
+        encryptedJwt: JsonElement,
+        recipientKey: EcPrivateKey
+    ): JsonObject {
+        throw NotImplementedError("This is not yet implemented")
+    }
+
+    internal actual fun jwsSign(
+        key: EcPrivateKey,
+        signatureAlgorithm: Algorithm,
+        claimsSet: JsonObject,
+        type: String?,
+        x5c: X509CertChain?
+    ): JsonElement {
+        throw NotImplementedError("This is not yet implemented")
+    }
+
+    internal actual fun jwsVerify(
+        signedJwt: JsonElement,
+        publicKey: EcPublicKey
+    ) {
+        throw NotImplementedError("This is not yet implemented")
+    }
+
+    internal actual fun jwsGetInfo(
+        signedJwt: JsonElement
+    ): JwsInfo {
+        throw NotImplementedError("This is not yet implemented")
     }
 }

@@ -70,6 +70,8 @@ kotlin {
                 implementation(libs.androidx.biometrics)
                 implementation(libs.ktor.client.android)
                 implementation(libs.play.services.identity.credentials)
+                implementation(libs.androidx.credentials)
+                implementation(libs.androidx.credentials.registry.provider)
                 implementation(project(":identity-android"))
             }
         }
