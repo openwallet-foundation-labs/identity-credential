@@ -80,6 +80,9 @@ kotlin {
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
 
+                // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
+                implementation(libs.nimbus.oauth2.oidc.sdk)
+
                 // TODO: Strictly speaking this should be moved to androidMain deps but it's here right
                 // now to make the build work.
                 implementation(compose.runtime)
@@ -144,6 +147,8 @@ kotlin {
                 implementation(libs.hsqldb)
                 implementation(libs.mysql)
                 implementation(libs.postgresql)
+                implementation(libs.nimbus.oauth2.oidc.sdk)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
 

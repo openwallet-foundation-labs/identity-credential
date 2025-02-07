@@ -17,6 +17,8 @@ async function onLoad() {
         var selected = target.getAttribute('value')
         if (selected === 'w3c_dc_preview' ||
             selected === 'w3c_dc_arf' ||
+            selected === 'w3c_dc_mdoc_api' ||
+            selected === 'w3c_dc_openid4vp' ||
             selected === 'openid4vp_plain' ||
             selected === 'openid4vp_eudi' ||
             selected === 'openid4vp_mdoc' ||
@@ -25,8 +27,14 @@ async function onLoad() {
             preferredProtocol = selectedProtocol
             protocolDropdown.innerHTML = target.innerHTML
 
-            const scheme = document.getElementById("scheme-form");
-            scheme.hidden = selected !== 'openid4vp_custom';
+            const scheme = document.getElementById("scheme-form")
+            scheme.hidden = (selected !== 'openid4vp_custom')
+
+            const openid4vp_sign_request_checkbox = document.getElementById("openid4vp-sign-request")
+            openid4vp_sign_request_checkbox.hidden = (selected !== 'w3c_dc_openid4vp')
+
+            const openid4vp_encrypt_response_checkbox = document.getElementById("openid4vp-encrypt-response")
+            openid4vp_encrypt_response_checkbox.hidden = (selected !== 'w3c_dc_openid4vp')
         }
     })
 
@@ -187,6 +195,8 @@ async function requestDocument(format, docType, requestId) {
                     requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
+                    signRequest: false,
+                    encryptResponse: true
                 }
             )
             dcRequestCredential(response.sessionId, 'preview', JSON.parse(response.dcRequestString))
@@ -203,9 +213,47 @@ async function requestDocument(format, docType, requestId) {
                     requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
+                    signRequest: true,
+                    encryptResponse: true
                 }
             )
             dcRequestCredential(response.sessionId, 'austroads-request-forwarding-v2', JSON.parse(response.dcRequestString))
+        } catch (err) {
+            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+        }
+    } else if (selectedProtocol === "w3c_dc_mdoc_api") {
+        try {
+            const response = await callServer(
+                'dcBegin',
+                {
+                    format: format,
+                    docType: docType,
+                    requestId: requestId,
+                    protocol: selectedProtocol,
+                    origin: location.origin,
+                    signRequest: true,
+                    encryptResponse: true
+                }
+            )
+            dcRequestCredential(response.sessionId, 'org.iso.mdoc', JSON.parse(response.dcRequestString))
+        } catch (err) {
+            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+        }
+    } else if (selectedProtocol === "w3c_dc_openid4vp") {
+        try {
+            const response = await callServer(
+                'dcBegin',
+                {
+                    format: format,
+                    docType: docType,
+                    requestId: requestId,
+                    protocol: selectedProtocol,
+                    origin: location.origin,
+                    signRequest: document.getElementById("openid4vp-sign-request-input").checked,
+                    encryptResponse: document.getElementById("openid4vp-encrypt-response-input").checked
+                }
+            )
+            dcRequestCredential(response.sessionId, 'openid4vp', JSON.parse(response.dcRequestString))
         } catch (err) {
             alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
         }

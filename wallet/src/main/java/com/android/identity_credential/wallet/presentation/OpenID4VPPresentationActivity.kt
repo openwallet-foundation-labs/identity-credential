@@ -570,16 +570,21 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         }
 
         Logger.i(TAG, "Setting vp_token: $vpToken")
-        val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
+        val claimSetObj = buildJsonObject {
             // put("id_token", idToken) // depends on response type, only supporting vp_token for now
             put("state", authorizationRequest.state)
             put("vp_token", vpToken)
             put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
-        }))
+        }
+        val claimSet = JWTClaimsSet.parse(Json.encodeToString(claimSetObj))
+
+        Logger.i(TAG, "claimSetObj = $claimSetObj")
 
         // If the request provided the right fields so we can encrypt the response, encrypt it.
         val jwtResponse =
             maybeEncryptJwtResponse(claimSet, authorizationRequest, generatedNonce, httpClient)
+
+        Logger.i(TAG, "jwtResponse = ${jwtResponse.serialize()}")
 
         // send response
         Logger.i(TAG, "Sending response to ${authorizationRequest.responseUri}")

@@ -1,6 +1,7 @@
 package com.android.identity.trustmanagement
 
 import com.android.identity.crypto.X509Cert
+import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.toHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -25,12 +26,17 @@ class TrustManager {
     /**
      * Nested class containing the result of the verification of a certificate
      * chain.
+     *
+     * @property isTrusted trust if a trust point was found.
+     * @property trustChain the chain that was built, is `null` if [isTrusted] is `false`.
+     * @property trustPoints the set of trust points that matched, is empty if [isTrusted] is `false`.
+     * @property error a [Throwable] indicating if an error occurred validating the trust chain.
      */
-    class TrustResult(
-        var isTrusted: Boolean,
-        var trustChain: List<X509Cert> = listOf(),
-        var trustPoints: List<TrustPoint> = listOf(),
-        var error: Throwable? = null
+    data class TrustResult(
+        val isTrusted: Boolean,
+        val trustChain: X509CertChain? = null,
+        val trustPoints: List<TrustPoint> = emptyList(),
+        val error: Throwable? = null
     )
 
     /**
@@ -81,14 +87,14 @@ class TrustManager {
                 return TrustResult(
                     isTrusted = true,
                     trustPoints = trustPoints,
-                    trustChain = completeChain
+                    trustChain = X509CertChain(completeChain)
                 )
             } catch (e: Throwable) {
                 // there are validation errors, but the trust chain could be built.
                 return TrustResult(
                     isTrusted = false,
                     trustPoints = trustPoints,
-                    trustChain = completeChain,
+                    trustChain = X509CertChain(completeChain),
                     error = e
                 )
             }
@@ -105,7 +111,7 @@ class TrustManager {
                 if (trustPoint != null) {
                     return TrustResult(
                         isTrusted = true,
-                        trustChain = chain,
+                        trustChain = X509CertChain(chain),
                         listOf(trustPoint),
                         error = null
                     )
