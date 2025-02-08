@@ -15,21 +15,21 @@
  */
 package com.android.identity.credential
 
-import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.Cbor
 import com.android.identity.document.Document
 import kotlin.reflect.KClass
 
 /**
  * A class that aids in creation of credentials from serialized data.
  *
- * The [CredentialFactory] is initially empty, but in the
+ * The [CredentialLoader] is initially empty, but in the
  * [com.android.identity.credential] package, there are well known [Credential] implementations
  * which can be added using the [addCredentialImplementation] method. In addition,
  * applications may add their own [Credential] implementations.
  */
-class CredentialFactory {
+class CredentialLoader {
     private val createCredentialFunctions:
-            MutableMap<String, suspend (Document, DataItem) -> Credential> = mutableMapOf()
+            MutableMap<String, suspend (Document) -> Credential> = mutableMapOf()
 
     /**
      * Add a new [Credential] implementation to the repository.
@@ -39,21 +39,26 @@ class CredentialFactory {
      */
     fun addCredentialImplementation(
         credentialType: KClass<out Credential>,
-        createCredentialFunction: suspend (Document, DataItem) -> Credential
+        createCredentialFunction: suspend (Document) -> Credential
     ) = createCredentialFunctions.put(credentialType.simpleName!!, createCredentialFunction)
 
     /**
-     * Creates a [Credential] from serialized data.
+     * Loads a [Credential] from storage
      *
      * @param document The document associated with the credential
-     * @param dataItem The serialized credential
+     * @param identifier Credential identifier
      * @return a credential instance
      * @throws IllegalStateException if there is no registered type for the serialized data.
      */
-    suspend fun createCredential(document: Document, dataItem: DataItem): Credential {
+    suspend fun loadCredential(document: Document, identifier: String): Credential? {
+        val blob = Credential.load(document, identifier) ?: return null
+        val dataItem = Cbor.decode(blob.toByteArray())
         val credentialType = dataItem["credentialType"].asTstr
         val createCredentialFunction = createCredentialFunctions[credentialType]
             ?: throw IllegalStateException("Credential type $credentialType not registered")
-        return createCredentialFunction.invoke(document, dataItem)
+        val credential = createCredentialFunction.invoke(document)
+        credential._identifier = identifier
+        credential.deserialize(dataItem)
+        return credential
     }
 }

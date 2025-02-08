@@ -26,7 +26,7 @@ import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.CredentialLoader
 import com.android.identity.document.DocumentStore
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -72,7 +72,7 @@ class TransferHelper private constructor(private val context: Context) {
 
     var secureAreaRepository: SecureAreaRepository
     var documentStore: DocumentStore
-    private var credentialFactory: CredentialFactory
+    private var credentialLoader: CredentialLoader
 
     private var sharedPreferences: SharedPreferences
     private var storage: Storage
@@ -104,11 +104,16 @@ class TransferHelper private constructor(private val context: Context) {
         secureAreaRepository = SecureAreaRepository.build {
             add(AndroidKeystoreSecureArea.create(context, storage))
         }
-        credentialFactory = CredentialFactory()
-        credentialFactory.addCredentialImplementation(MdocCredential::class) {
-            document, dataItem -> MdocCredential(document).apply { deserialize(dataItem) }
+        credentialLoader = CredentialLoader()
+        credentialLoader.addCredentialImplementation(MdocCredential::class) {
+            document -> MdocCredential(document)
         }
-        documentStore = DocumentStore(storage, secureAreaRepository, credentialFactory)
+        documentStore = DocumentStore(
+            storage = storage,
+            secureAreaRepository = secureAreaRepository,
+            credentialLoader = credentialLoader,
+            documentMetadataFactory = PreconsentDocumentMetadata::create
+        )
         state.value = State.NOT_CONNECTED
     }
 

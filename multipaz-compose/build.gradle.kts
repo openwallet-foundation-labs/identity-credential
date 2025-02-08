@@ -56,6 +56,7 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.qrose)
                 implementation(libs.easyqrscan)
+                implementation(libs.kotlinx.io.core)
             }
         }
         val androidMain by getting {
