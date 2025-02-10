@@ -19,11 +19,14 @@ import com.android.identity.credential.CredentialLoader
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.Storage
+import com.android.identity.storage.StorageTable
+import com.android.identity.storage.StorageTableSpec
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Class for storing real-world identity documents.
@@ -50,17 +53,27 @@ import kotlinx.coroutines.sync.withLock
  * be used.
  * @property credentialLoader the [CredentialLoader] to use for retrieving serialized credentials
  * associated with documents.
+ * @property documentMetadataFactory function that creates [DocumentMetadata] instances
+ * for documents in this [DocumentStore]
+ * @property documentTableSpec [StorageTableSpec] that defines the table for [DocumentMetadata]
+ * persistent storage, it must not have expiration or partitions enabled.
  */
 class DocumentStore(
     val storage: Storage,
     internal val secureAreaRepository: SecureAreaRepository,
     internal val credentialLoader: CredentialLoader,
-    internal val documentMetadataFactory: DocumentMetadataFactory
+    internal val documentMetadataFactory: DocumentMetadataFactory,
+    private val documentTableSpec: StorageTableSpec = Document.defaultTableSpec
 ) {
     // Use a cache so the same instance is returned by multiple lookupDocument() calls.
     // Cache is protected by the lock. Once the document is loaded it is never evicted.
     private val lock = Mutex()
     private val documentCache = mutableMapOf<String, Document>()
+
+    init {
+        check(!documentTableSpec.supportExpiration)
+        check(!documentTableSpec.supportPartitions)
+    }
 
     /**
      * Creates a new document.
@@ -73,7 +86,9 @@ class DocumentStore(
     suspend fun createDocument(
         metadataInitializer: suspend (metadata: DocumentMetadata) -> Unit = {}
     ): Document {
-        val document = Document.create(this)
+        val table = storage.getTable(documentTableSpec)
+        val documentIdentifier = table.insert(key = null, ByteString())
+        val document = Document(this, documentIdentifier)
         document.metadata = documentMetadataFactory(
             document.identifier,
             null,
@@ -96,7 +111,11 @@ class DocumentStore(
     suspend fun lookupDocument(identifier: String): Document? {
         return lock.withLock {
             documentCache.getOrPut(identifier) {
-                Document.lookup(this, identifier) ?: return@withLock null
+                val table = getDocumentTable()
+                val blob = table.get(identifier) ?: return@withLock null
+                val document = Document(this, identifier)
+                document.metadata = documentMetadataFactory(identifier, blob, document::saveMetadata)
+                document
             }
         }
     }
@@ -108,7 +127,7 @@ class DocumentStore(
      */
     suspend fun listDocuments(): List<String> {
         // right now lock is not required
-        return Document.enumerate(this)
+        return storage.getTable(documentTableSpec).enumerate()
     }
 
     /**
@@ -147,6 +166,10 @@ class DocumentStore(
 
     internal suspend fun emitOnDocumentChanged(documentId: String) {
         _eventFlow.emit(DocumentUpdated(documentId))
+    }
+
+    internal suspend fun getDocumentTable(): StorageTable {
+        return storage.getTable(documentTableSpec)
     }
 
     companion object {

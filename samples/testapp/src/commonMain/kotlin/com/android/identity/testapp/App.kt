@@ -165,10 +165,11 @@ class App private constructor() {
             document -> MdocCredential(document)
         }
         documentStore = DocumentStore(
-            platformStorage(),
-            secureAreaRepository,
-            credentialLoader,
-            TestDocumentMetadata::create
+            storage = platformStorage(),
+            secureAreaRepository = secureAreaRepository,
+            credentialLoader = credentialLoader,
+            documentMetadataFactory = TestAppDocumentMetadata::create,
+            documentTableSpec = testDocumentTableSpec
         )
     }
 
@@ -407,6 +408,12 @@ class App private constructor() {
             }
             return app!!
         }
+
+        private val testDocumentTableSpec = StorageTableSpec(
+            name = "TestAppDocuments",
+            supportExpiration = false,
+            supportPartitions = false
+        )
     }
 
     private lateinit var snackbarHostState: SnackbarHostState

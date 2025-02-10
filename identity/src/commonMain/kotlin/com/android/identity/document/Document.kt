@@ -78,7 +78,7 @@ import kotlin.concurrent.Volatile
  * @param store the [DocumentStore] that holds this [Document].
  * @param identifier the persistent id of the document which can be used with [DocumentStore].
  */
-class Document private constructor(
+class Document internal constructor(
     internal val store: DocumentStore,
     val identifier: String,
 ) {
@@ -184,7 +184,7 @@ class Document private constructor(
         if (deleted) {
             Logger.w(TAG, "Attempt to save deleted document '$identifier'")
         } else {
-            store.storage.getTable(documentTableSpec).update(identifier, blob)
+            store.getDocumentTable().update(identifier, blob)
             store.emitOnDocumentChanged(identifier)
         }
     }
@@ -197,7 +197,7 @@ class Document private constructor(
         for (credential in getCredentials()) {
             credential.deleteCredential()
         }
-        val documentTable = store.storage.getTable(documentTableSpec)
+        val documentTable = store.getDocumentTable()
         lock.withLock {
             credentialCache.clear()
             documentTable.delete(identifier)
@@ -326,32 +326,10 @@ class Document private constructor(
     companion object {
         private const val TAG = "Document"
 
-        private val documentTableSpec = StorageTableSpec(
+        val defaultTableSpec = StorageTableSpec(
             name = "Documents",
             supportPartitions = false,
             supportExpiration = false
         )
-
-        // Called by DocumentStore.listDocuments()
-        internal suspend fun enumerate(store: DocumentStore): List<String> {
-            return store.storage.getTable(documentTableSpec).enumerate()
-        }
-
-        // Called by DocumentStore.createDocument().
-        internal suspend fun create(store: DocumentStore): Document {
-            val table = store.storage.getTable(documentTableSpec)
-            val documentIdentifier = table.insert(key = null, ByteString())
-            val document = Document(store, documentIdentifier)
-            return document
-        }
-
-        // Called by DocumentStore.lookupDocument().
-        internal suspend fun lookup(store: DocumentStore, identifier: String): Document? {
-            val table = store.storage.getTable(documentTableSpec)
-            val blob = table.get(identifier) ?: return null
-            val document = Document(store, identifier)
-            document.metadata = store.documentMetadataFactory(identifier, blob, document::saveMetadata)
-            return document
-        }
     }
 }
