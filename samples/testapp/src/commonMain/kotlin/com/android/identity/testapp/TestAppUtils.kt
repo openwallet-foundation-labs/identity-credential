@@ -177,7 +177,7 @@ object TestAppUtils {
         )
 
         val document = documentStore.createDocument {
-            val metadata = it as TestDocumentMetadata
+            val metadata = it as TestAppDocumentMetadata
             metadata.initialize(
                 displayName = displayName,
                 typeDisplayName = documentType.displayName,
