@@ -84,7 +84,7 @@ class SdJwtVcGenerator(
         )
         val bodyStr = body.toString()
 
-        val toBeSigned = "$headerStr.$bodyStr".toByteArray(Charsets.US_ASCII)
+        val toBeSigned = "$headerStr.$bodyStr".encodeToByteArray()
         val signature = sign(toBeSigned, issuer)
         val signatureStr = (signature.r + signature.s).toBase64Url()
 

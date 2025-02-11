@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.jvm.JvmStatic
 
 /**
  * Superclass for JSON objects that can be serialized into (and deserialized from) base64 strings,
@@ -23,14 +24,14 @@ abstract class JwtJsonObject {
 
     private fun toJsonObject() = buildJsonObject(buildJson())
 
-    override fun toString() = toJsonObject().toString().toByteArray().toBase64Url()
+    override fun toString() = toJsonObject().toString().encodeToByteArray().toBase64Url()
 
     protected companion object {
         @JvmStatic
         protected fun parse(input: String): JsonObject {
             return Json.decodeFromString(
                 JsonObject.serializer(),
-                String(input.fromBase64Url()))
+                input.fromBase64Url().decodeToString())
         }
     }
 }

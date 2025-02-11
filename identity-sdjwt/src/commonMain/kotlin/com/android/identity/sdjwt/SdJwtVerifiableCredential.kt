@@ -109,7 +109,7 @@ class SdJwtVerifiableCredential(
         val headerObj = JwtHeader.fromString(header)
         val bodyObj = JwtBody.fromString(body)
 
-        val toBeVerified = "$header.$body".toByteArray(Charsets.US_ASCII)
+        val toBeVerified = "$header.$body".encodeToByteArray()
         val signature = EcSignature.fromCoseEncoded(signature.fromBase64Url())
 
         if(!verify(headerObj, bodyObj, toBeVerified, signature)) {
@@ -140,10 +140,10 @@ class SdJwtVerifiableCredential(
             if (secureArea != null && alias != null) {
                 val keyInfo = secureArea.getKeyInfo(alias)
                 val keyBindingHeaderStr = KeyBindingHeader(keyInfo.signingAlgorithm).toString()
-                val sdHash = Crypto.digest(this.sdHashAlg, toString().toByteArray()).toBase64Url()
+                val sdHash = Crypto.digest(this.sdHashAlg, toString().encodeToByteArray()).toBase64Url()
                 val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
 
-                val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".toByteArray(Charsets.US_ASCII)
+                val toBeSigned = "$keyBindingHeaderStr.$keyBindingBodyStr".encodeToByteArray()
                 val signature = secureArea.sign(alias, toBeSigned, keyUnlockData)
                 val signatureStr = signature.toCoseEncoded().toBase64Url()
                 listOf(keyBindingHeaderStr, keyBindingBodyStr, signatureStr)

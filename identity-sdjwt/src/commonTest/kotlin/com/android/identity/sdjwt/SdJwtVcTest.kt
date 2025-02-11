@@ -157,7 +157,7 @@ class SdJwtVcTest {
         //
 
         credential.certify(
-            sdJwt.toString().toByteArray(),
+            sdJwt.toString().encodeToByteArray(),
             timeValidityBegin,
             timeValidityEnd
         )
