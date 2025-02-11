@@ -34,7 +34,7 @@ class Disclosure(
     val value: JsonElement
 
     init {
-        val contentsString = String(disclosure.fromBase64Url(), Charsets.UTF_8)
+        val contentsString = disclosure.fromBase64Url().decodeToString()
         val contents = Json.decodeFromString(JsonArray.serializer(), contentsString).jsonArray
         key = contents[1].jsonPrimitive.content
         value = contents[2]
@@ -62,7 +62,7 @@ class Disclosure(
     override fun toString(): String = disclosure
 
     val hash
-        get() = Crypto.digest(digestAlg, toString().toByteArray()).toBase64Url()
+        get() = Crypto.digest(digestAlg, toString().encodeToByteArray()).toBase64Url()
 
     companion object {
         private fun calculateDisclosure(key: String, value: JsonElement, random: Random): String {
@@ -71,7 +71,7 @@ class Disclosure(
                 add(JsonPrimitive(key))
                 add(value)
             }
-            return disclosureArray.toString().toByteArray(Charsets.UTF_8).toBase64Url()
+            return disclosureArray.toString().encodeToByteArray().toBase64Url()
         }
     }
 }
