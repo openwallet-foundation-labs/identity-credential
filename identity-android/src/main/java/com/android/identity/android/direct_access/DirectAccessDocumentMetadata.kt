@@ -13,6 +13,8 @@ interface DirectAccessDocumentMetadata: DocumentMetadata {
     var directAccessDocumentSlot: Int
 
     override suspend fun documentDeleted() {
-        DirectAccess.clearDocumentSlot(directAccessDocumentSlot)
+        if (directAccessDocumentSlot >= 0) {
+            DirectAccess.clearDocumentSlot(directAccessDocumentSlot)
+        }
     }
 }
