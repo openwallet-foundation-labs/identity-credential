@@ -14,6 +14,7 @@ import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.addCborArray
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.credential.Credential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -73,7 +74,7 @@ class DigitalCredentialsPresentmentTest {
     }
 
     private data class ShownConsentPrompt(
-        val document: Document,
+        val credential: Credential,
         val request: Request,
         val trustPoint: TrustPoint?
     )
@@ -93,6 +94,7 @@ class DigitalCredentialsPresentmentTest {
         dcql: JsonObject
     ): TestOpenID4VPResponse {
         documentStoreTestHarness.initialize()
+        documentStoreTestHarness.provisionStandardDocuments()
 
         val presentmentModel = PresentmentModel()
 
@@ -163,8 +165,11 @@ class DigitalCredentialsPresentmentTest {
             source = presentmentSource,
             mechanism = presentmentMechanism,
             dismissable = dismissable,
-            showConsentPrompt = { document, request, trustPoint ->
-                shownConsentPrompts.add(ShownConsentPrompt(document, request, trustPoint))
+            showDocumentPicker = {
+                null
+            },
+            showConsentPrompt = { credential, request, trustPoint ->
+                shownConsentPrompts.add(ShownConsentPrompt(credential, request, trustPoint))
                 true
             }
         )

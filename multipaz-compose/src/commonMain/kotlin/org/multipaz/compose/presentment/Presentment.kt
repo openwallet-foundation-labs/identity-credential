@@ -268,7 +268,7 @@ private fun ConsentPrompt(
     appIconPainter: Painter?,
     showCancelAsBack: Boolean
 ) {
-    val documentMetadata = presentmentModel.consentData.document.metadata
+    val documentMetadata = presentmentModel.consentData.credential.document.metadata
     val cardArt = documentMetadata.cardArt?.let { remember { it.toByteArray().decodeToImageBitmap() } }
     // TODO: use sheetGesturesEnabled=false when available - see
     //  https://issuetracker.google.com/issues/288211587 for details
@@ -279,6 +279,8 @@ private fun ConsentPrompt(
     ConsentModalBottomSheet(
         sheetState = sheetState,
         request = presentmentModel.consentData.request,
+        credential = presentmentModel.consentData.credential,
+        documentTypeRepository = presentmentModel.source!!.documentTypeRepository,
         documentName = documentMetadata.displayName!!,
         documentDescription = documentMetadata.typeDisplayName!!,
         documentCardArt = cardArt,

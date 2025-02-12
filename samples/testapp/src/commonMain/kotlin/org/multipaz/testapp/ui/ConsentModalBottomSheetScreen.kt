@@ -24,16 +24,29 @@ import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.painterResource
+import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.compose.consent.ConsentModalBottomSheet
+import org.multipaz.credential.Credential
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.buildX509Cert
+import org.multipaz.document.DocumentStore
+import org.multipaz.document.buildDocumentStore
 import org.multipaz.request.MdocRequest
+import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.testapp.platformAppIcon
 import org.multipaz.testapp.platformAppName
 import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.trustmanagement.TrustPoint
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 private val READER_CERT_CHAIN = X509CertChain(listOf(
     X509Cert.fromPem(
@@ -95,6 +108,8 @@ b35NiZ8FdVHgC2ut4fDQTRN4
 fun ConsentModalBottomSheetScreen(
     mdlSampleRequest: String,
     verifierType: VerifierType,
+    documentTypeRepository: DocumentTypeRepository,
+    secureAreaRepository: SecureAreaRepository,
     showToast: (message: String) -> Unit,
     onSheetConfirmed: () -> Unit,
     onSheetDismissed: () -> Unit,
@@ -113,9 +128,41 @@ fun ConsentModalBottomSheetScreen(
     var relyingPartyDisplayIcon by remember {
         mutableStateOf(ByteString())
     }
+    var credential by remember {
+        mutableStateOf<Credential?>(null)
+    }
     LaunchedEffect(Unit) {
         cardArt = Res.readBytes("files/utopia_driving_license_card_art.png")
         relyingPartyDisplayIcon = ByteString(Res.readBytes("files/utopia-brewery.png"))
+
+        val st = EphemeralStorage()
+        val ds = buildDocumentStore(st, secureAreaRepository) {}
+        val document = ds.createDocument()
+        val dsKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val validFrom = Clock.System.now()
+        val validUntil = Clock.System.now() + 10.days
+        val dsCert = buildX509Cert(
+            publicKey = dsKey.publicKey,
+            signingKey = dsKey,
+            signatureAlgorithm = dsKey.curve.defaultSigningAlgorithmFullySpecified,
+            serialNumber = ASN1Integer.fromRandom(numBits = 128),
+            subject = X500Name.fromName("CN=Test"),
+            issuer = X500Name.fromName("CN=Test"),
+            validFrom = validFrom,
+            validUntil = validUntil,
+        ) {}
+        credential = DrivingLicense.getDocumentType().createMdocCredentialWithSampleData(
+            document = document,
+            secureArea = SoftwareSecureArea.create(st),
+            createKeySettings = CreateKeySettings(),
+            dsKey = dsKey,
+            dsCertChain = X509CertChain(listOf(dsCert)),
+            signedAt = validFrom,
+            validFrom = validFrom,
+            validUntil = validUntil,
+            expectedUpdate = null,
+            domain = "mdoc"
+        )
         sheetState.show()
     }
 
@@ -285,6 +332,8 @@ fun ConsentModalBottomSheetScreen(
         ConsentModalBottomSheet(
             sheetState = sheetState,
             request = request,
+            credential = credential!!,
+            documentTypeRepository = documentTypeRepository,
             documentName = "Erika's Driving License",
             documentDescription = "Driving License",
             documentCardArt = cardArtImage,

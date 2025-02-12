@@ -703,7 +703,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PLACE,
-                null
+                "037".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,

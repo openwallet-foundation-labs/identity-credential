@@ -20,6 +20,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.multipaz.credential.Credential
 import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -39,7 +40,7 @@ internal suspend fun uriSchemePresentment(
         documents: List<Document>,
     ) -> Document?,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean

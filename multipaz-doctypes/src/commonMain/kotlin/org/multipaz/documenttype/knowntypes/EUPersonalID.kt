@@ -230,7 +230,7 @@ object EUPersonalID {
                     put("region", JsonPrimitive(SampleData.RESIDENT_STATE))
                     put("locality", JsonPrimitive(SampleData.RESIDENT_CITY))
                     put("postal_code", JsonPrimitive(SampleData.RESIDENT_POSTAL_CODE))
-                    put("street", JsonPrimitive(SampleData.RESIDENT_STREET))
+                    put("street_address", JsonPrimitive(SampleData.RESIDENT_STREET))
                     put("house_number", JsonPrimitive(SampleData.RESIDENT_HOUSE_NUMBER))
                 }
             )

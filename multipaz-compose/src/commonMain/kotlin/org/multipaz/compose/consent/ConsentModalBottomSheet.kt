@@ -64,12 +64,16 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.stringResource
+import org.multipaz.claim.Claim
+import org.multipaz.claim.findMatchingClaims
 import org.multipaz.compose.ApplicationInfo
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.certificateviewer.X509CertViewer
 import org.multipaz.compose.getApplicationInfo
 import org.multipaz.compose.getOutlinedImageVector
+import org.multipaz.credential.Credential
 import org.multipaz.crypto.X509Cert
+import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.multipaz_compose.generated.resources.Res
 import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_back
 import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_cancel
@@ -122,6 +126,8 @@ private const val TAG = "ConsentModalBottomSheet"
 fun ConsentModalBottomSheet(
     sheetState: SheetState,
     request: Request,
+    credential: Credential,
+    documentTypeRepository: DocumentTypeRepository?,
     documentName: String,
     documentDescription: String,
     documentCardArt: ImageBitmap?,
@@ -199,6 +205,8 @@ fun ConsentModalBottomSheet(
                     ) {
                         RequestSection(
                             request = request,
+                            credential = credential,
+                            documentTypeRepository = documentTypeRepository,
                             trustPoint = trustPoint,
                             appInfo = appInfo,
                             onViewCertificateClicked = {
@@ -439,14 +447,18 @@ private fun DocumentSection(
 @Composable
 private fun RequestSection(
     request: Request,
+    credential: Credential,
+    documentTypeRepository: DocumentTypeRepository?,
     trustPoint: TrustPoint?,
     appInfo: ApplicationInfo?,
     onViewCertificateClicked: () -> Unit,
 ) {
     val useColumns = request.requestedClaims.size > 5
-    val (storedFields, notStoredFields) = request.requestedClaims.partition {
-        it is MdocRequestedClaim && it.intentToRetain == true
+    val (storedFieldsRequested, notStoredFieldsRequested) = request.requestedClaims.partition {
+        it is MdocRequestedClaim && it.intentToRetain
     }
+    val storedFields = credential.getClaims(documentTypeRepository).findMatchingClaims(storedFieldsRequested)
+    val notStoredFields = credential.getClaims(documentTypeRepository).findMatchingClaims(notStoredFieldsRequested)
 
     val sections = mutableListOf<@Composable () -> Unit>()
 
@@ -601,7 +613,7 @@ private fun RequestSection(
 
 @Composable
 private fun DataElementGridView(
-    claims: List<RequestedClaim>,
+    claims: List<Claim>,
     useColumns: Boolean
 ) {
     if (!useColumns) {
@@ -639,7 +651,7 @@ private fun DataElementGridView(
 @Composable
 private fun DataElementView(
     modifier: Modifier,
-    claim: RequestedClaim,
+    claim: Claim,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,

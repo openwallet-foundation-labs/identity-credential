@@ -4,6 +4,13 @@ import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
 import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -1123,6 +1130,94 @@ class CborTests {
                 },
                 options = setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
             ).trim()
+        )
+    }
+
+    @Test
+    fun testToJson() {
+        assertEquals(JsonPrimitive("AQIDBA"),Bstr(byteArrayOf(1, 2, 3, 4)).toJson())
+
+        assertEquals("Hello \"World\"",Tstr("Hello \"World\"").toJson().jsonPrimitive.content)
+        assertEquals(JsonPrimitive(42),Uint(42UL).toJson())
+        assertEquals(JsonPrimitive(-25),Nint(25UL).toJson())
+
+        assertEquals(JsonPrimitive(42.0),CborDouble(42.0).toJson())
+        assertEquals(JsonNull,CborDouble(Double.NaN).toJson())
+        assertEquals(JsonNull,CborDouble(Double.NEGATIVE_INFINITY).toJson())
+        assertEquals(JsonNull,CborDouble(Double.POSITIVE_INFINITY).toJson())
+        assertEquals(JsonPrimitive(-25.0f),CborFloat(-25.0f).toJson())
+        assertEquals(JsonNull,CborFloat(Float.NaN).toJson())
+        assertEquals(JsonNull,CborFloat(Float.NEGATIVE_INFINITY).toJson())
+        assertEquals(JsonNull,CborFloat(Float.POSITIVE_INFINITY).toJson())
+
+        assertEquals(
+            buildJsonArray {
+                add(1)
+                add(2)
+                add("foobar")
+            },
+            buildCborArray {
+                add(1)
+                add(2)
+                add("foobar")
+            }.toJson()
+        )
+
+        assertEquals(
+            buildJsonObject {
+                put("a", 1)
+                put("b", 2)
+                put("c", "foobar")
+                put("42", "bazPos")
+                put("-25", "bazNeg")
+                put("42.0", "bazDPos")
+                put("-25.0", "bazFNeg")
+                put("h'01020304'", "bazBin")
+            },
+            buildCborMap {
+                put("a", 1)
+                put("b", 2)
+                put("c", "foobar")
+                put(42, "bazPos")
+                put(-25, "bazNeg")
+                put(CborDouble(42.0), Tstr("bazDPos"))
+                put(CborFloat(-25.0f), Tstr("bazFNeg"))
+                put(Bstr(byteArrayOf(1, 2, 3, 4)), Tstr("bazBin"))
+            }.toJson()
+        )
+
+        assertEquals(JsonPrimitive(true),Simple.TRUE.toJson())
+        assertEquals(JsonPrimitive(false),Simple.FALSE.toJson())
+        assertEquals(JsonNull,Simple.NULL.toJson())
+        assertEquals(JsonNull,Simple(42U).toJson())
+
+        assertEquals(
+            JsonPrimitive("AQIDDw"),
+            Tagged(
+                tagNumber = Tagged.ENCODING_HINT_BASE64URL,
+                taggedItem = Bstr(byteArrayOf(1, 2, 3, 15)),
+            ).toJson()
+        )
+        assertEquals(
+            JsonPrimitive("AQIDDw=="),
+            Tagged(
+                tagNumber = Tagged.ENCODING_HINT_BASE64_WITH_PADDING,
+                taggedItem = Bstr(byteArrayOf(1, 2, 3, 15)),
+            ).toJson()
+        )
+        assertEquals(
+            JsonPrimitive("0102030F"),
+            Tagged(
+                tagNumber = Tagged.ENCODING_HINT_HEX,
+                taggedItem = Bstr(byteArrayOf(1, 2, 3, 15)),
+            ).toJson()
+        )
+        assertEquals(
+            JsonPrimitive("AQIDDw"),
+            Tagged(
+                tagNumber = 42,
+                taggedItem = Bstr(byteArrayOf(1, 2, 3, 15)),
+            ).toJson()
         )
     }
 }

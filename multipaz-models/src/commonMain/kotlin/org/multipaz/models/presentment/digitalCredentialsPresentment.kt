@@ -44,6 +44,7 @@ import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
+import org.multipaz.credential.Credential
 import org.multipaz.mdoc.zkp.ZkSystem
 import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.models.openid.OpenID4VP
@@ -56,8 +57,11 @@ internal suspend fun digitalCredentialsPresentment(
     source: PresentmentSource,
     mechanism: DigitalCredentialsPresentmentMechanism,
     dismissable: MutableStateFlow<Boolean>,
+    showDocumentPicker: suspend (
+        documents: List<Document>,
+    ) -> Document?,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean
@@ -76,6 +80,7 @@ internal suspend fun digitalCredentialsPresentment(
             documentTypeRepository = documentTypeRepository,
             presentmentMechanism = mechanism,
             source = source,
+            showDocumentPicker = showDocumentPicker,
             showConsentPrompt = showConsentPrompt
         )
         "austroads-request-forwarding-v2" -> digitalCredentialsArfProtocol(
@@ -100,7 +105,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
     presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean
@@ -200,7 +205,11 @@ private suspend fun digitalCredentialsPreviewProtocol(
         ),
         docType = docType
     )
-    if (!showConsentPrompt(mdocCredential.document, request, null)) {
+    if (!showConsentPrompt(
+            mdocCredential,
+            request,
+            null
+        )) {
         throw PresentmentCanceled("The user did not consent")
     }
 
@@ -247,8 +256,11 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     documentTypeRepository: DocumentTypeRepository,
     presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
+    showDocumentPicker: suspend (
+        documents: List<Document>,
+    ) -> Document?,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean
@@ -283,7 +295,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         version = version,
         document = presentmentMechanism.document,
         source = source,
-        showDocumentPicker = null,
+        showDocumentPicker = showDocumentPicker,
         showConsentPrompt = showConsentPrompt,
         origin = origin,
         request = req,
@@ -301,7 +313,7 @@ private suspend fun digitalCredentialsArfProtocol(
     presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean
@@ -361,7 +373,11 @@ private suspend fun digitalCredentialsArfProtocol(
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
     val trustPoint = source.findTrustPoint(request)
-    if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+    if (!showConsentPrompt(
+            mdocCredential,
+            request,
+            trustPoint
+        )) {
         throw PresentmentCanceled("The user did not consent")
     }
 
@@ -406,7 +422,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean
@@ -468,8 +484,8 @@ private suspend fun digitalCredentialsMdocApiProtocol(
                 }
 
                 val matchingZkSystemSpec = zkSystem.getMatchingSystemSpec(
-                    requesterSupportedZkSpecs,
-                    requestBeforeFiltering
+                    zkSystemSpecs = requesterSupportedZkSpecs,
+                    requestedClaims = requestBeforeFiltering.requestedClaims
                 )
                 if (matchingZkSystemSpec != null) {
                     zkSystemMatch = zkSystem
@@ -499,7 +515,11 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
     val trustPoint = source.findTrustPoint(request)
-    if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+    if (!showConsentPrompt(
+            mdocCredential,
+            request,
+            trustPoint
+        )) {
         throw PresentmentCanceled("The user did not consent")
     }
 

@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.credential.Credential
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
@@ -201,12 +201,12 @@ class PresentmentModel {
     /**
      * Data to include in the consent prompt.
      *
-     * @property document the document being presented
+     * @property credential the credential being presented
      * @property request the request, including who made the request.
      * @property trustPoint a [TrustPoint] if the requester is trusted, null otherwise
      */
     data class ConsentData(
-        val document: Document,
+        val credential: Credential,
         val request: Request,
         val trustPoint: TrustPoint?
     )
@@ -330,8 +330,8 @@ class PresentmentModel {
                         showDocumentPicker = { documents ->
                             showDocumentPicker(documents)
                         },
-                        showConsentPrompt = { document, request, trustPoint ->
-                            showConsentPrompt(document, request, trustPoint)
+                        showConsentPrompt = { credential, request, trustPoint ->
+                            showConsentPrompt(credential, request, trustPoint)
                         },
                     )
                 }
@@ -341,9 +341,12 @@ class PresentmentModel {
                         source = source!!,
                         mechanism = mechanism as DigitalCredentialsPresentmentMechanism,
                         dismissable = _dismissable,
-                        showConsentPrompt = { document, request, trustPoint ->
-                            showConsentPrompt(document, request, trustPoint)
-                        }
+                        showDocumentPicker = { documents ->
+                            showDocumentPicker(documents)
+                        },
+                        showConsentPrompt = { credential, request, trustPoint ->
+                            showConsentPrompt(credential, request, trustPoint)
+                        },
                     )
                 }
                 is UriSchemePresentmentMechanism -> {
@@ -355,9 +358,9 @@ class PresentmentModel {
                         showDocumentPicker = { documents ->
                             showDocumentPicker(documents)
                         },
-                        showConsentPrompt = { document, request, trustPoint ->
-                            showConsentPrompt(document, request, trustPoint)
-                        }
+                        showConsentPrompt = { credential, request, trustPoint ->
+                            showConsentPrompt(credential, request, trustPoint)
+                        },
                     )
                 }
                 else -> throw IllegalStateException("Unsupported mechanism $mechanism")
@@ -411,12 +414,12 @@ class PresentmentModel {
     private var consentDataContinuation: CancellableContinuation<Boolean>? = null
 
     private suspend fun showConsentPrompt(
-       document: Document,
-       request: Request,
-       trustPoint: TrustPoint?
+        credential: Credential,
+        request: Request,
+        trustPoint: TrustPoint?
     ): Boolean {
         check(_state.value == State.PROCESSING)
-        _consentData = ConsentData(document, request, trustPoint)
+        _consentData = ConsentData(credential, request, trustPoint)
         _state.value = State.WAITING_FOR_CONSENT
         val ret = suspendCancellableCoroutine<Boolean> { continuation ->
             consentDataContinuation = continuation

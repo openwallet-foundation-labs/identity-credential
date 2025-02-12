@@ -1012,6 +1012,8 @@ class App private constructor (val promptModel: PromptModel) {
                         ConsentModalBottomSheetScreen(
                             mdlSampleRequest = mdlSampleRequest,
                             verifierType = verifierType,
+                            documentTypeRepository = documentTypeRepository,
+                            secureAreaRepository = secureAreaRepository,
                             showToast = { message -> showToast(message) },
                             onSheetConfirmed = { navController.popBackStack() },
                             onSheetDismissed = { navController.popBackStack() },

@@ -12,6 +12,7 @@ import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.request.JsonRequest
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
+import org.multipaz.request.RequestedClaim
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustManager
@@ -44,6 +45,21 @@ abstract class PresentmentSource(
     abstract suspend fun selectCredential(
         document: Document?,
         request: Request,
+        keyAgreementPossible: List<EcCurve>,
+    ): Credential?
+
+    /**
+     * Chooses a credential from a document.
+     *
+     * @param document the [Document] to pick a credential from.
+     * @param requestedClaims the requested claims.
+     * @param keyAgreementPossible if non-empty, a credential using Key Agreement may be returned provided
+     *   its private key is one of the given curves.
+     * @return a [Credential] belonging to [document] that may be presented or `null`.
+     */
+    abstract suspend fun selectCredential(
+        document: Document,
+        requestedClaims: List<RequestedClaim>,
         keyAgreementPossible: List<EcCurve>,
     ): Credential?
 }

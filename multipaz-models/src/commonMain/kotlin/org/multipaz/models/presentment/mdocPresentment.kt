@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.credential.Credential
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.zkp.ZkSystem
 import org.multipaz.mdoc.zkp.ZkSystemSpec
@@ -43,7 +44,7 @@ internal suspend fun mdocPresentment(
         documents: List<Document>,
     ) -> Document?,
     showConsentPrompt: suspend (
-        document: Document,
+        credential: Credential,
         request: Request,
         trustPoint: TrustPoint?
     ) -> Boolean,
@@ -140,8 +141,8 @@ internal suspend fun mdocPresentment(
                             }
 
                             val matchingZkSystemSpec = zkSystem.getMatchingSystemSpec(
-                                requesterSupportedZkSpecs,
-                                requestWithoutFiltering
+                                zkSystemSpecs = requesterSupportedZkSpecs,
+                                requestedClaims = requestWithoutFiltering.requestedClaims
                             )
                             if (matchingZkSystemSpec != null) {
                                 zkSystemMatch = zkSystem
@@ -180,7 +181,7 @@ internal suspend fun mdocPresentment(
                 // credential that can satisfy the request...
                 //
                 val trustPoint = source.findTrustPoint(request)
-                if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+                if (!showConsentPrompt(mdocCredential, request, trustPoint)) {
                     continue
                 }
 
