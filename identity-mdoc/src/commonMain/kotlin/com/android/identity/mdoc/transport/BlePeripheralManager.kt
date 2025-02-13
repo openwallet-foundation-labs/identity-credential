@@ -12,7 +12,7 @@ internal interface BlePeripheralManager {
         client2ServerCharacteristicUuid: UUID,
         server2ClientCharacteristicUuid: UUID,
         identCharacteristicUuid: UUID?,
-        l2capUuid: UUID?
+        l2capCharacteristicUuid: UUID?
     )
 
     fun setCallbacks(
@@ -46,7 +46,7 @@ internal interface BlePeripheralManager {
 
     // The PSM if listening on L2CAP.
     //
-    // This is guaranteed to be available after [advertiseService] is called if the `l2capUuid` passed
+    // This is guaranteed to be available after [advertiseService] is called if the `l2capCharacteristicUuid` passed
     // to [setUuids] isn't `null`.
     //
     val l2capPsm: Int?

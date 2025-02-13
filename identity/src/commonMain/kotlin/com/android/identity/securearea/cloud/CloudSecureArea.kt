@@ -14,12 +14,12 @@ import com.android.identity.crypto.EcSignature
 import com.android.identity.device.AssertionNonce
 import com.android.identity.device.DeviceCheck
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.PassphrasePromptModel
 import com.android.identity.securearea.SecureArea
@@ -108,7 +108,7 @@ internal expect fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
  * contains the URL to connect to.
  *
  * The [identifier] is used as a prefix for the Android Keystore alias space and also as a prefix
- * for all keys used in the passed-in [storageEngine]. As such, it's safe to use the same
+ * for all keys used in the passed-in [storageTable]. As such, it's safe to use the same
  * [StorageEngine] instance for multiple [CloudSecureArea] instances.
  *
  * @param storageTable the storage to use for storing metadata about keys.
@@ -399,7 +399,7 @@ open class CloudSecureArea protected constructor(
             }
 
             // Now we can derive SKDevice and SKCloud
-            val Zab = Crypto.keyAgreement(eDeviceKey, response1.eCloudKey.ecPublicKey)
+            val zab = Crypto.keyAgreement(eDeviceKey, response1.eCloudKey.ecPublicKey)
             val salt = Crypto.digest(
                 Algorithm.SHA256,
                 Cbor.encode(
@@ -412,14 +412,14 @@ open class CloudSecureArea protected constructor(
             )
             skDevice = Crypto.hkdf(
                 Algorithm.HMAC_SHA256,
-                Zab,
+                zab,
                 salt,
                 "SKDevice".encodeToByteArray(),
                 32
             )
             skCloud = Crypto.hkdf(
                 Algorithm.HMAC_SHA256,
-                Zab,
+                zab,
                 salt,
                 "SKCloud".encodeToByteArray(),
                 32
@@ -573,7 +573,7 @@ open class CloudSecureArea protected constructor(
         if (keyUnlockData !is KeyUnlockInteractive) {
             return op(keyUnlockData)
         }
-        var cloudKeyUnlockData = CloudKeyUnlockData(this, alias)
+        val cloudKeyUnlockData = CloudKeyUnlockData(this, alias)
         do {
             try {
                 return op(cloudKeyUnlockData)
@@ -592,8 +592,7 @@ open class CloudSecureArea protected constructor(
                             subtitle = keyUnlockData.subtitle ?: defaultSubtitle,
                             passphraseConstraints = getPassphraseConstraints(),
                             passphraseEvaluator = { enteredPassphrase: String ->
-                                val result = checkPassphrase(enteredPassphrase)
-                                when (result) {
+                                when (val result = checkPassphrase(enteredPassphrase)) {
                                     CloudSecureAreaProtocol.RESULT_WRONG_PASSPHRASE -> {
                                         if (getPassphraseConstraints().requireNumerical) {
                                             "Wrong PIN entered. Try again"
@@ -730,7 +729,7 @@ open class CloudSecureArea protected constructor(
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
     ): ByteArray {
-        var Zab: ByteArray? = null
+        var zab: ByteArray? = null
         val keyContext = storageTable.get(key = alias, partitionId = identifier)
         setupE2EE(false)
         var response: ByteArray
@@ -772,7 +771,7 @@ open class CloudSecureArea protected constructor(
             val response1 = CloudSecureAreaProtocol.Command.fromCbor(response) as KeyAgreementResponse1
             when (response1.result) {
                 CloudSecureAreaProtocol.RESULT_OK -> {
-                    Zab = response1.zab
+                    zab = response1.zab
                 }
 
                 CloudSecureAreaProtocol.RESULT_WRONG_PASSPHRASE -> {
@@ -790,7 +789,7 @@ open class CloudSecureArea protected constructor(
                 else -> throw CloudException("Unexpected result ${response1.result}")
             }
         } while (tryAgain)
-        return Zab!!
+        return zab!!
     }
 
     private suspend fun checkPassphrase(

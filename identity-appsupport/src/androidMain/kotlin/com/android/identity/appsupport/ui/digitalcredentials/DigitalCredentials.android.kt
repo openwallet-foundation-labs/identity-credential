@@ -177,7 +177,8 @@ internal actual suspend fun defaultStartExportingCredentials(
         documentTypeRepository = documentTypeRepository,
         listeningJob = listeningJob,
     ))
-    updateCredman()
+    // TODO: b/393388152 - new racing condition here (doc.metadata might be not initialized yet).
+    //updateCredman()
 }
 
 internal actual suspend fun defaultStopExportingCredentials(

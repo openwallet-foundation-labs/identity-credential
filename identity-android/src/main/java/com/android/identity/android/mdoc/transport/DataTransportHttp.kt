@@ -28,9 +28,10 @@ import com.android.volley.RequestQueue
 import com.android.volley.Response
 import com.android.volley.toolbox.HttpHeaderParser
 import com.android.volley.toolbox.Volley
-import java.io.DataInputStream
+import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URI
@@ -71,44 +72,41 @@ class DataTransportHttp(
     //
     // Returns null on error.
     fun readMessageFromSocket(inputStream: InputStream?): ByteArray? {
-        val dis = DataInputStream(inputStream)
+        // TODO: Add tests to this method.
+        if (inputStream == null) {
+            throw IllegalArgumentException("inputStream cannot be null")
+        }
+
+        val reader = BufferedReader(InputStreamReader(inputStream))
         var contentLength = -1
+
         try {
-            // Loop to read headers.
             while (true) {
-                val line = dis.readLine()
-                    ?: // End of stream...
-                    return ByteArray(0)
+                val line = reader.readLine() ?: break
                 if (line.lowercase().startsWith("content-length:")) {
-                    contentLength = try {
-                        line.substring(15).trim { it <= ' ' }.toInt()
-                    } catch (e: NumberFormatException) {
-                        Logger.w(TAG, "Error parsing Content-Length line '$line'")
-                        return null
-                    }
+                    val lengthStr = line.substring(15).trim()
+                    contentLength = lengthStr.toIntOrNull() ?: continue
                 }
-                if (line.length == 0) {
-                    // End of headers...
-                    if (contentLength == -1) {
-                        Logger.w(TAG, "No Content-Length header")
-                        return null
-                    }
+                if (line.isEmpty() && contentLength >= 0) {
                     if (contentLength > MAX_MESSAGE_SIZE) {
-                        Logger.w(
-                            TAG, "Content-Length $contentLength rejected "
-                                    + "exceeds max size of $MAX_MESSAGE_SIZE"
-                        )
-                        return null
+                        throw IOException("Content length exceeds MAX_MESSAGE_SIZE")
                     }
-                    val data = ByteArray(contentLength)
-                    dis.readFully(data)
-                    return data
+                    val charArray = CharArray(contentLength)
+                    var charsRead = 0
+                    while (charsRead < contentLength) {
+                        val readChars = reader.read(charArray, charsRead, contentLength - charsRead)
+                        if (readChars == -1) { // End of stream reached before reading all characters
+                            throw IOException("Unexpected end of stream")
+                        }
+                        charsRead += readChars
+                    }
+                    return String(charArray, 0, charsRead).toByteArray()
                 }
             }
         } catch (e: IOException) {
             Logger.w(TAG, "Caught exception while reading", e)
-            return null
         }
+        return null
     }
 
     private fun connectAsMdocReader() {
@@ -231,7 +229,7 @@ class DataTransportHttp(
         socketWriterThread = object : Thread() {
             override fun run() {
                 while (socket!!.isConnected) {
-                    var messageToSend: ByteArray? = null
+                    var messageToSend: ByteArray?
                     try {
                         messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
                         if (messageToSend == null) {
@@ -329,11 +327,11 @@ Content-Type: application/cbor
     /**
      * Creates a new request with the given method.
      *
-     * @param method        the request [Method] to use
-     * @param url           URL to fetch the string at
-     * @param body          the data to POST
-     * @param listener      Listener to receive the String response
-     * @param errorListener Error mListener, or null to ignore errors
+     * @param method        the request method ID to use.
+     * @param url           URL to fetch the string at.
+     * @param body          the data to POST.
+     * @param listener      Listener to receive the String response.
+     * @param errorListener Error mListener, or null to ignore errors.
      */
     internal class CborRequest(
         method: Int,

@@ -198,9 +198,10 @@ private data class DCArfResponse(
 )
 
 /**
- * Verifier servlet.
+ * Verifier servlet (may trigger warning as unused in the code).
  *
- * This is using the configuration and storage interfaces from [ServerEnvironment].
+ * This is using the configuration and storage interfaces from
+ * [com.android.identity.server.ServerEnvironment].
  */
 class VerifierServlet : BaseHttpServlet() {
 
@@ -783,12 +784,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         val (singleUseReaderKeyPriv, singleUseReaderKeyCertChain) = createSingleUseReaderKey()
 
-        val readerPub = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
-        val readerPriv = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+        val readerPublic = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
+        val readerPrivate = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+
+        // TODO: b/393388152: ECKey is deprecated, but might be current library dependency.
+        @Suppress("DEPRECATION")
         val readerKey = ECKey(
             Curve.P_256,
-            readerPub,
-            readerPriv,
+            readerPublic,
+            readerPrivate,
             null,
             null,
             null,
@@ -897,12 +901,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             val response = kvPairs["response"]
             val encryptedJWT = EncryptedJWT.parse(response)
 
-            val encPub = session.encryptionKey.publicKey.javaPublicKey as ECPublicKey
-            val encPriv = session.encryptionKey.javaPrivateKey as ECPrivateKey
+            val encPublic = session.encryptionKey.publicKey.javaPublicKey as ECPublicKey
+            val encPrivate = session.encryptionKey.javaPrivateKey as ECPrivateKey
+
+            // TODO: b/393388152: ECKey is deprecated, but might be current library dependency.
+            @Suppress("DEPRECATION")
             val encKey = ECKey(
                 Curve.P_256,
-                encPub,
-                encPriv,
+                encPublic,
+                encPrivate,
                 null,
                 null,
                 null,

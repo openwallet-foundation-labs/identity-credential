@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -21,8 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -82,14 +83,21 @@ class MainActivity : ComponentActivity() {
         }
 
     private val appPermissions: Array<String> =
-        if (android.os.Build.VERSION.SDK_INT >= 31) {
+        if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             arrayOf(
                 Manifest.permission.BLUETOOTH_ADVERTISE,
                 Manifest.permission.BLUETOOTH_SCAN,
                 Manifest.permission.BLUETOOTH_CONNECT,
                 Manifest.permission.NEARBY_WIFI_DEVICES
             )
-        } else {
+        } else if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.BLUETOOTH_ADVERTISE,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+            )
+        }
+    else {
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
             )
@@ -184,10 +192,14 @@ class MainActivity : ComponentActivity() {
             IdentityCredentialTheme {
                 val navController = rememberNavController()
 
-                var stateDisplay = remember { mutableStateOf("Idle") }
+                val stateDisplay = remember { mutableStateOf("Idle") }
 
                 transferHelper.getState().observe(this as LifecycleOwner) { state ->
                     when (state) {
+                        null -> {
+                            // TODO: b/393388152 - Enum argument can be null in Java,
+                            //  but exhaustive when contains no null branch.
+                        }
                         TransferHelper.State.IDLE -> {
                             Logger.i(TAG, "idle")
                             stateDisplay.value = "Idle"
@@ -206,7 +218,7 @@ class MainActivity : ComponentActivity() {
                             val deviceRequestGenerator = DeviceRequestGenerator(
                                 transferHelper.getSessionTranscript()
                             )
-                            var request =
+                            val request =
                                 if (transferHelper.getIncludePortraitInRequest()) {
                                     mapOf(
                                         Pair(
@@ -284,7 +296,7 @@ class MainActivity : ComponentActivity() {
                         NavHost(navController = navController, startDestination = "MainScreen")
                         {
                             composable("MainScreen") {
-                                MainScreen(navController, stateDisplay)
+                                MainScreen(stateDisplay)
                             }
                             composable("ResultScreen") {
                                 ResultScreen(navController)
@@ -297,7 +309,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun MainScreen(navController: NavController, stateDisplay: MutableState<String>) {
+    fun MainScreen(stateDisplay: MutableState<String>) {
         val includePortraitInRequest = remember { mutableStateOf(transferHelper.getIncludePortraitInRequest()) }
         val bleCentralClientDataTransferEnabled = remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
         val blePeripheralServerDataTransferEnabled = remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
@@ -366,7 +378,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    Divider()
+                    HorizontalDivider()
                     SettingSectionTitle(title = "Request")
                     SettingToggle(
                         title = "Include Portrait in Request",
@@ -516,10 +528,10 @@ class MainActivity : ComponentActivity() {
                         Column { Text(text = "DeviceResponse: $resultSize bytes") }
                     }
 
-                    Divider()
+                    HorizontalDivider()
                     Column { Text(text = "Engagement: $engagementMethod") }
                     Column { Text(text = "Connection: $connectionMethod") }
-                    Divider()
+                    HorizontalDivider()
                     val scanningText = if (durationMillisScanning > 0) {
                         "$durationMillisScanning ms"
                     } else {
@@ -530,7 +542,7 @@ class MainActivity : ComponentActivity() {
                     Column { Text(text = "Scanning: $scanningText") }
                     Column { Text(text = "Request Sent to Response Received: $durationMillisRequestToResponse ms") }
                     Column { Text(text = "Total transaction time: $durationMillisTotal ms") }
-                    Divider()
+                    HorizontalDivider()
                     Column {
                         Button(onClick = {
                             transferHelper.close()

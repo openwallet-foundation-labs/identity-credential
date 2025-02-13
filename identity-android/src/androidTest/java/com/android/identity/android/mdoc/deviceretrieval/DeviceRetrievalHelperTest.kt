@@ -16,7 +16,7 @@
 package com.android.identity.android.mdoc.deviceretrieval
 
 import android.os.ConditionVariable
-import androidx.test.InstrumentationRegistry
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
@@ -86,7 +86,6 @@ import java.util.concurrent.Executors
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
-@Suppress("deprecation")
 class DeviceRetrievalHelperTest {
     companion object {
         private const val CREDENTIAL_DOMAIN = "domain"
@@ -118,7 +117,7 @@ class DeviceRetrievalHelperTest {
         secureAreaRepository = SecureAreaRepository.build {
             add(
                 AndroidKeystoreSecureArea.create(
-                    InstrumentationRegistry.getTargetContext(),
+                    InstrumentationRegistry.getInstrumentation().targetContext,
                     storage
                 )
             )
@@ -243,7 +242,7 @@ class DeviceRetrievalHelperTest {
     @Test
     fun testPresentation() = runBlocking {
         asyncSetup()
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val condVarDeviceConnected = ConditionVariable()
         val condVarDeviceDisconnected = ConditionVariable()
 
@@ -459,7 +458,7 @@ class DeviceRetrievalHelperTest {
     @Throws(Exception::class)
     fun testPresentationVerifierDisconnects() = runBlocking {
         asyncSetup()
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val executor: Executor = Executors.newSingleThreadExecutor()
         val condVarDeviceConnected = ConditionVariable()
         val condVarDeviceRequestReceived = ConditionVariable()
@@ -564,7 +563,7 @@ class DeviceRetrievalHelperTest {
                 condVarOnError.open()
             }
         }
-        val presentation = DeviceRetrievalHelper.Builder(
+        DeviceRetrievalHelper.Builder(
             context,
             listener,
             context.mainExecutor,

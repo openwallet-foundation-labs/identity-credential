@@ -16,7 +16,7 @@
 package com.android.identity.android.mdoc.transport
 
 import android.os.ConditionVariable
-import androidx.test.InstrumentationRegistry
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
 import com.android.identity.util.fromHex
 import org.junit.Assert
@@ -24,13 +24,12 @@ import org.junit.Test
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-@Suppress("deprecation")
 class DataTransportHttpTest {
 
     // TODO: add tests for TLS support
     @Test
     fun uriParsing() {
-        val appContext = InstrumentationRegistry.getTargetContext()
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         val options = DataTransportOptions.Builder().build()
         var cm = ConnectionMethodHttp("http://www.example.com/mdlReader/session123")
         var transport = DataTransport.fromConnectionMethod(
@@ -66,7 +65,7 @@ class DataTransportHttpTest {
         Assert.assertTrue(transport.useTls)
         cm = ConnectionMethodHttp("unsupported://www.example.com/mdocreader/s43")
         try {
-            transport = DataTransport.fromConnectionMethod(
+            DataTransport.fromConnectionMethod(
                 appContext, cm, DataTransport.Role.MDOC, options
             ) as DataTransportHttp
             Assert.fail()
@@ -77,7 +76,7 @@ class DataTransportHttpTest {
 
     @Test
     fun connectAndListen() {
-        val appContext = InstrumentationRegistry.getTargetContext()
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         val verifier = DataTransportHttp(
             appContext,
             DataTransport.Role.MDOC_READER,

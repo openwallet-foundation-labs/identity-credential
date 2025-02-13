@@ -3,6 +3,7 @@ package com.android.identity.testapp
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.ContextCompat
 import com.android.identity.cbor.DataItem
@@ -47,11 +48,9 @@ class NdefService: HostApduService() {
 
 
     private fun vibrate(pattern: List<Int>) {
-        val vibrator = ContextCompat.getSystemService<Vibrator>(
-            AndroidContexts.applicationContext,
-            Vibrator::class.java
-        )
-        vibrator?.vibrate(pattern.map { it.toLong() }.toLongArray(), -1)
+        val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+        val vibrationEffect = VibrationEffect.createWaveform(pattern.map { it.toLong() }.toLongArray(), -1)
+        vibrator?.vibrate(vibrationEffect)
     }
 
     private fun vibrateError() {

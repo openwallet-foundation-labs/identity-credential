@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package com.android.identity.crypto
 
 import com.android.identity.util.UUID
@@ -84,7 +86,7 @@ expect object Crypto {
     /**
      * Computes an HKDF.
      *
-     * @param macAlgorithm must be one of [Algorithm.HMAC_SHA256], [Algorithm.HMAC_SHA384], [Algorithm.HMAC_SHA512].
+     * @param algorithm must be one of [Algorithm.HMAC_SHA256], [Algorithm.HMAC_SHA384], [Algorithm.HMAC_SHA512].
      * @param ikm the input keying material.
      * @param salt optional salt. A possibly non-secret random value. If no salt is provided (ie. if
      * salt has length 0) then an array of 0s of the same size as the hash digest is used as salt.

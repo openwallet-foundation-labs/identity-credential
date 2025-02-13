@@ -94,7 +94,7 @@ import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-
+// TODO: b/393388152 - Multiple unused methods.
 /**
  * Utility functions.
  */
@@ -296,7 +296,7 @@ object Util {
      *  * Also throws `IllegalArgumentException` if `value == null`.
      *
      */
-    fun <T : V?, V> castTo(clazz: Class<T>, value: V?): T =
+    private inline fun <reified T : V?, V> castTo(clazz: Class<T>, value: V?): T =
         if (value == null || !clazz.isAssignableFrom(value.javaClass)) {
             throw IllegalArgumentException("Expected type $clazz")
         } else {

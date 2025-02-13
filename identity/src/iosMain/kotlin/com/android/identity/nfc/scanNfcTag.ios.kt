@@ -36,13 +36,12 @@ private class NfcTagReader<T> {
             session: NFCTagReaderSession,
             didInvalidateWithError: NSError
         ) {
-            val nsError = didInvalidateWithError
-            if (nsError.domain == NFCErrorDomain &&
-                nsError.code == NFCReaderSessionInvalidationErrorUserCanceled) {
+            if (didInvalidateWithError.domain == NFCErrorDomain &&
+                didInvalidateWithError.code == NFCReaderSessionInvalidationErrorUserCanceled) {
                 continuation?.resumeWithException(DialogCanceledException())
                 continuation = null
             } else {
-                continuation?.resumeWithException(nsError.toKotlinError())
+                continuation?.resumeWithException(didInvalidateWithError.toKotlinError())
                 continuation = null
             }
         }
@@ -56,20 +55,16 @@ private class NfcTagReader<T> {
             session: NFCTagReaderSession,
             didDetectTags: List<*>
         ) {
-            val tags = didDetectTags as List<NFCTagProtocol>
             // Currently we only consider the first tag. We might need to look at all tags.
-            val tag = tags[0]
-            session.connectToTag(tag, { error ->
+            val tag = didDetectTags[0] as NFCTagProtocol
+            session.connectToTag(tag) { error ->
                 if (error != null) {
                     Logger.e(TAG, "Connection failed", error.toKotlinError())
                 } else {
                     val isoTag = NfcIsoTagIos(tag as NFCISO7816TagProtocol)
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            val ret = tagInteractionFunc(
-                                isoTag,
-                                { message -> session.alertMessage = message }
-                            )
+                            val ret = tagInteractionFunc(isoTag) { message -> session.alertMessage = message }
                             if (ret != null) {
                                 continuation?.resume(ret, null)
                                 continuation = null
@@ -82,7 +77,7 @@ private class NfcTagReader<T> {
                         }
                     }
                 }
-            })
+            }
         }
     }
 
@@ -108,10 +103,10 @@ private class NfcTagReader<T> {
             updateMessage: (message: String) -> Unit
         ) -> T?
     ): T? {
-        check(NFCTagReaderSession.readingAvailable == true) { "The device doesn't support NFC tag reading" }
+        check(NFCTagReaderSession.readingAvailable) { "The device doesn't support NFC tag reading" }
 
         try {
-            val ret = suspendCancellableCoroutine<T> { continuation ->
+            val ret = suspendCancellableCoroutine { continuation ->
                 this.continuation = continuation
                 this.tagInteractionFunc = tagInteractionFunc
                 session.setAlertMessage(alertMessage)

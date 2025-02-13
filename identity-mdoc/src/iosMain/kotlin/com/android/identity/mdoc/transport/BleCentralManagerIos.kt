@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.asSink
@@ -47,7 +48,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.min
 
-internal class BleCentralManagerIos: BleCentralManager {
+internal class BleCentralManagerIos : BleCentralManager {
     companion object {
         private const val TAG = "BleCentralManagerIos"
         private const val L2CAP_CHUNK_SIZE = 512
@@ -64,13 +65,13 @@ internal class BleCentralManagerIos: BleCentralManager {
         client2ServerCharacteristicUuid: UUID,
         server2ClientCharacteristicUuid: UUID,
         identCharacteristicUuid: UUID?,
-        l2capCharacteristicUuid: UUID?,
+        l2capUuid: UUID?,
     ) {
         this.stateCharacteristicUuid = stateCharacteristicUuid
         this.client2ServerCharacteristicUuid = client2ServerCharacteristicUuid
         this.server2ClientCharacteristicUuid = server2ClientCharacteristicUuid
         this.identCharacteristicUuid = identCharacteristicUuid
-        this.l2capCharacteristicUuid = l2capCharacteristicUuid
+        this.l2capCharacteristicUuid = l2capUuid
     }
 
     private lateinit var onError: (error: Throwable) -> Unit
@@ -140,6 +141,7 @@ internal class BleCentralManagerIos: BleCentralManager {
         continuation.resumeWithException(exception)
     }
 
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     private val peripheralDelegate = object : NSObject(), CBPeripheralDelegateProtocol {
 
         override fun peripheral(
@@ -165,7 +167,10 @@ internal class BleCentralManagerIos: BleCentralManager {
             error: NSError?
         ) {
             val service = didDiscoverCharacteristicsForService
-            Logger.d(TAG, "didDiscoverCharacteristicsForService service=$service error=${error?.toKotlinError()}")
+            Logger.d(
+                TAG,
+                "didDiscoverCharacteristicsForService service=$service error=${error?.toKotlinError()}"
+            )
             if (waitFor?.state == WaitState.PERIPHERAL_DISCOVER_CHARACTERISTICS) {
                 if (error != null) {
                     resumeWaitWithException(error.toKotlinError())
@@ -183,8 +188,11 @@ internal class BleCentralManagerIos: BleCentralManager {
             error: NSError?
         ) {
             val characteristic = didUpdateValueForCharacteristic
-            Logger.d(TAG, "didUpdateValueForCharacteristic characteristic=$characteristic error=${error?.toKotlinError()}")
-            if (didUpdateValueForCharacteristic == readCharacteristic) {
+            Logger.d(
+                TAG,
+                "didUpdateValueForCharacteristic characteristic=$characteristic error=${error?.toKotlinError()}"
+            )
+            if (characteristic == readCharacteristic) {
                 try {
                     handleIncomingData(characteristic.value!!.toByteArray())
                 } catch (error: Throwable) {
@@ -203,7 +211,8 @@ internal class BleCentralManagerIos: BleCentralManager {
                     if (characteristic == stateCharacteristic) {
                         if (characteristic.value?.toByteArray() contentEquals byteArrayOf(
                                 BleTransportConstants.STATE_CHARACTERISTIC_END.toByte()
-                        )) {
+                            )
+                        ) {
                             Logger.i(TAG, "Received transport-specific termination message")
                             runBlocking {
                                 incomingMessages.send(byteArrayOf())
@@ -293,19 +302,27 @@ internal class BleCentralManagerIos: BleCentralManager {
                     // Because this is not fatal and some buggy implementations do this, we treat
                     // it just as a warning, not an error.
                     Logger.w(TAG, "Server2Client received ${chunk.size} bytes which is not the " +
-                            "expected $maxCharacteristicSize bytes")
+                            "expected $maxCharacteristicSize bytes"
+                    )
                 }
             }
 
             else -> {
-                throw Error("Invalid first byte ${chunk[0]} in Server2Client data chunk, " +
-                        "expected 0 or 1")
+                throw Error(
+                    "Invalid first byte ${chunk[0]} in Server2Client data chunk, " +
+                            "expected 0 or 1"
+                )
             }
         }
     }
 
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     private val centralManagerDelegate = object : NSObject(), CBCentralManagerDelegateProtocol {
         override fun centralManagerDidUpdateState(cbCentralManager: CBCentralManager) {
+            // TODO: b/393388152 - error: "centralManager must be initialized",
+            //  also "cbCentralManager doesn't match super type param. name",
+            //  also cbCentralManager param is not used in this method.
+            //  IOS impl. review required.
             Logger.d(TAG, "didUpdateState state=${centralManager.state}")
             if (waitFor?.state == WaitState.POWER_ON) {
                 if (centralManager.state == CBCentralManagerStatePoweredOn) {
@@ -476,9 +493,12 @@ internal class BleCentralManagerIos: BleCentralManager {
                 setWaitCondition(WaitState.PERIPHERAL_DISCOVER_CHARACTERISTICS, continuation)
                 peripheral!!.discoverCharacteristics(
                     characteristicUUIDs = null,
-                    service as CBService,
+                    service,
                 )
             }
+
+            // Suppressing as all objects in list from the library appear to be subclassing CBCharacteristic. */
+            @Suppress("UNCHECKED_CAST")
             processCharacteristics(service.characteristics as List<CBCharacteristic>)
         }
 
@@ -644,8 +664,10 @@ internal class BleCentralManagerIos: BleCentralManager {
         for (offset in 0 until messageWithHeader.size step L2CAP_CHUNK_SIZE) {
             val size = min(L2CAP_CHUNK_SIZE, messageWithHeader.size - offset)
             val chunk = messageWithHeader.slice(IntRange(offset, offset + size - 1)).toByteArray()
-            l2capSink?.write(chunk)
-            l2capSink?.flush()
+            withContext(Dispatchers.IO) {
+                l2capSink?.write(chunk)
+                l2capSink?.flush()
+            }
         }
     }
 }

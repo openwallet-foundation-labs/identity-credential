@@ -15,8 +15,8 @@
  */
 package com.android.identity.android.mdoc.engagement
 
-import androidx.test.InstrumentationRegistry
 import androidx.test.filters.SmallTest
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.util.NfcUtil
@@ -39,11 +39,9 @@ import org.junit.Before
 import org.junit.Test
 import java.security.Security
 import java.util.Arrays
-import java.util.OptionalLong
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-@Suppress("deprecation")
 class NfcEnagementHelperTest {
     @Before
     fun setup() {
@@ -57,8 +55,8 @@ class NfcEnagementHelperTest {
     @SmallTest
     @Throws(Exception::class)
     fun testStaticHandover() {
-        var helper: NfcEngagementHelper? = null
-        val context = InstrumentationRegistry.getTargetContext()
+        val helper: NfcEngagementHelper?
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val listener: NfcEngagementHelper.Listener = object : NfcEngagementHelper.Listener {
             override fun onTwoWayEngagementDetected() {}
@@ -198,8 +196,8 @@ class NfcEnagementHelperTest {
 
     @Throws(Exception::class)
     private fun testNegotiatedHandoverHelper(useLargeRequestMessage: Boolean) {
-        var helper: NfcEngagementHelper? = null
-        val context = InstrumentationRegistry.getTargetContext()
+        val helper: NfcEngagementHelper?
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val listener: NfcEngagementHelper.Listener = object : NfcEngagementHelper.Listener {
             override fun onTwoWayEngagementDetected() {}
@@ -415,7 +413,8 @@ class NfcEnagementHelperTest {
             if (ndefMessage.size < 256 - 2) {
                 // Fits in a single UPDATE_BINARY command
                 val data = ByteArray(ndefMessage.size + 2)
-                data[0] = (ndefMessage.size / 0x100 and 0xff).toByte()
+                @Suppress("KotlinConstantConditions")
+                data[0] = (ndefMessage.size / 0x100 and 0xff).toByte() // = 0x00
                 data[1] = (ndefMessage.size and 0xff).toByte()
                 System.arraycopy(ndefMessage, 0, data, 2, ndefMessage.size)
                 responseApdu = helper.nfcProcessCommandApdu(
@@ -483,7 +482,7 @@ class NfcEnagementHelperTest {
             Assert.assertEquals((ndefMessageSize + 2).toLong(), responseApdu.size.toLong())
             Assert.assertEquals(0x90, (responseApdu[ndefMessageSize].toInt() and 0xff).toLong())
             Assert.assertEquals(0x00, (responseApdu[ndefMessageSize + 1].toInt() and 0xff).toLong())
-            return Arrays.copyOf(responseApdu, responseApdu.size - 2)
+            return responseApdu.copyOf(responseApdu.size - 2)
         }
     }
 }

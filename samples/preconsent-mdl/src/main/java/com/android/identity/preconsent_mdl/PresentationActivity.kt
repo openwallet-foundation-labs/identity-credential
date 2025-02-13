@@ -27,8 +27,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -89,7 +89,7 @@ class PresentationActivity : ComponentActivity() {
         setContent {
             IdentityCredentialTheme {
 
-                var stateDisplay = remember { mutableStateOf("Idle") }
+                val stateDisplay = remember { mutableStateOf("Idle") }
                 val coroutineScope = rememberCoroutineScope()
 
                 transferHelper.getState().observe(this as LifecycleOwner) { state ->
@@ -195,7 +195,7 @@ class PresentationActivity : ComponentActivity() {
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-                                Divider()
+                                HorizontalDivider()
                                 Column() {
                                     Text(
                                         text = "State: ${stateDisplay.value}",
@@ -203,7 +203,7 @@ class PresentationActivity : ComponentActivity() {
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-                                Divider()
+                                HorizontalDivider()
                                 Column {
                                     Text(
                                         text = "Tap to Engagement Sent: $durationMillisTapToEngagement ms",
@@ -239,7 +239,7 @@ class PresentationActivity : ComponentActivity() {
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
-                                Divider()
+                                HorizontalDivider()
                                 Column {
                                     Button(onClick = { finish() }) {
                                         Text("Close")

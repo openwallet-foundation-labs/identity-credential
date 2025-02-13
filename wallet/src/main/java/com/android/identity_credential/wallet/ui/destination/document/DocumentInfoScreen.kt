@@ -20,9 +20,9 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -260,12 +260,12 @@ fun DocumentInfoScreen(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_delete)) },
                     leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                     onClick = {
-                        showMenu = false;
+                        showMenu = false
                         showDeleteConfirmationDialog = true
                     }
                 )
                 if (settingsModel.developerModeEnabled.value == true) {
-                    Divider()
+                    HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text(text = stringResource(R.string.document_info_screen_menu_item_request_update)) },
                         leadingIcon = {

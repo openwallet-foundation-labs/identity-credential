@@ -9,7 +9,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,9 +33,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -101,7 +100,7 @@ fun MainScreen(
         drawerContent = {
             ModalDrawerSheet {
                 Text(stringResource(R.string.wallet_drawer_title), modifier = Modifier.padding(16.dp))
-                Divider()
+                HorizontalDivider()
                 NavigationDrawerItem(
                     icon = { Icon(imageVector = Icons.Filled.Add, contentDescription = null) },
                     label = { Text(text = stringResource(R.string.wallet_drawer_add)) },

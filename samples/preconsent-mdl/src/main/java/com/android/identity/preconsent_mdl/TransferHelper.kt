@@ -41,6 +41,8 @@ import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
 import java.io.File
 
+// TODO: b/393388152 - PreferenceManager is deprecated. Consider refactoring to AndroidX.
+@Suppress("DEPRECATION")
 class TransferHelper private constructor(private val context: Context) {
 
     companion object {
@@ -315,7 +317,7 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun getEngagementSentToRequestAvailableDurationMillis(): Long {
-        return timestampRequestAvailable - timestampEngagementSent;
+        return timestampRequestAvailable - timestampEngagementSent
     }
 
     fun getRequestToResponseDurationMillis(): Long {

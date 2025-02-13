@@ -15,7 +15,7 @@
  */
 package com.android.identity.android.document
 
-import androidx.test.InstrumentationRegistry
+import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.TestUtil
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
@@ -46,7 +46,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
     @Before
     fun setup() {
-        val context = InstrumentationRegistry.getTargetContext()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         storage = AndroidStorage(":memory:")
         secureAreaRepository = SecureAreaRepository.build {
             add(AndroidKeystoreSecureArea.create(context, storage))

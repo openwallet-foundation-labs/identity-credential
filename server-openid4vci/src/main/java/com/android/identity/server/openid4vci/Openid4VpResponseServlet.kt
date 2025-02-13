@@ -25,6 +25,7 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.time.Duration.Companion.minutes
 
+/** Servlet class (may trigger warning as unused in the code). */
 class Openid4VpResponseServlet: BaseServlet() {
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
         val stateCode = req.getParameter("state")!!
@@ -36,13 +37,15 @@ class Openid4VpResponseServlet: BaseServlet() {
 
         val encryptedJWT = EncryptedJWT.parse(req.getParameter("response")!!)
 
-        val encPub = state.pidReadingKey!!.publicKey.javaPublicKey as ECPublicKey
-        val encPriv = state.pidReadingKey!!.javaPrivateKey as ECPrivateKey
+        val encPublic = state.pidReadingKey!!.publicKey.javaPublicKey as ECPublicKey
+        val encPrivate = state.pidReadingKey!!.javaPrivateKey as ECPrivateKey
 
+        // TODO: b/393388152: ECKey is deprecated, but might be current library dependency.
+        @Suppress("DEPRECATION")
         val encKey = ECKey(
             Curve.P_256,
-            encPub,
-            encPriv,
+            encPublic,
+            encPrivate,
             null,
             null,
             null,

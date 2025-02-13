@@ -16,6 +16,8 @@ import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.RegistrationFlow
 import com.android.identity.issuance.RequestCredentialsFlow
 import com.android.identity.issuance.evidence.EvidenceResponse
+import com.android.identity.issuance.evidence.fromCbor
+import com.android.identity.issuance.evidence.toCbor
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.RegistrationResponse
@@ -130,7 +132,7 @@ abstract class SimpleIssuingAuthority(
                 val registrationResponse = RegistrationResponse.fromDataItem(map["registrationResponse"])
 
                 val stateAsInt = map["state"].asNumber.toInt()
-                val state = DocumentCondition.values().firstOrNull {it.ordinal == stateAsInt}
+                val state = DocumentCondition.entries.firstOrNull {it.ordinal == stateAsInt}
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
                 val collectedEvidence = mutableMapOf<String, EvidenceResponse>()

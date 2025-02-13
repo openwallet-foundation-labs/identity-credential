@@ -2,15 +2,14 @@ package com.android.identity_credential.wallet.ui.destination.settings
 
 import android.content.Intent
 import androidx.annotation.StringRes
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
@@ -31,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -360,18 +360,16 @@ private fun LinkText(
     text: String,
     onClicked: () -> Unit,
 ) {
-    ClickableText(buildAnnotatedString {
-        withStyle(
-            style = SpanStyle(
-                color = Color.Blue,
-                textDecoration = TextDecoration.Underline,
-            )
-        ) {
-            append(text)
+    Text(
+        text = buildAnnotatedString {
+            withStyle(style = SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline)) {
+                append(text)
+            }
+        },
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures { onClicked() }
         }
-    }) {
-        onClicked()
-    }
+    )
 }
 
 internal abstract class ConfirmServerChange(

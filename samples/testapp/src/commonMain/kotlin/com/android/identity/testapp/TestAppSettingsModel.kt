@@ -9,7 +9,6 @@ import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -19,9 +18,7 @@ import kotlin.Boolean
 /**
  * A model for settings for samples/testapp.
  *
- * TODO: Port [ProvisioningTestScreen] to use this.
- *
- * @param storage the [Storage] to use for storing/retrieving documents.
+ * TODO: Port [com.android.identity.testapp.ui.ProvisioningTestScreen] to use this.
  */
 class TestAppSettingsModel private constructor(
     private val readOnly: Boolean
@@ -30,8 +27,6 @@ class TestAppSettingsModel private constructor(
     private lateinit var settingsTable: StorageTable
 
     companion object {
-        private const val TAG = "TestAppSettingsModel"
-
         private val tableSpec = StorageTableSpec(
             name = "TestAppSettings",
             supportPartitions = false,
@@ -66,17 +61,17 @@ class TestAppSettingsModel private constructor(
 
     private val boundItems = mutableListOf<BoundItem<*>>()
 
-    private suspend fun<T> bind(
+    private suspend inline fun<reified T> bind(
         variable: MutableStateFlow<T>,
         key: String,
         defaultValue: T
     ) {
         val value = settingsTable.get(key)?.let {
             val dataItem = Cbor.decode(it.toByteArray())
-            when (defaultValue) {
-                is Boolean -> { dataItem.asBoolean as T }
-                is String -> { dataItem.asTstr as T }
-                is List<*> -> { dataItem.asArray.map { dataItem -> (dataItem as Tstr).value } as T}
+            when (T::class) {
+                Boolean::class -> { dataItem.asBoolean as T }
+                String::class -> { dataItem.asTstr as T }
+                List::class -> { dataItem.asArray.map { item -> (item as Tstr).value } as T}
                 else -> { throw IllegalStateException("Type not supported") }
             }
         } ?: defaultValue
@@ -85,18 +80,18 @@ class TestAppSettingsModel private constructor(
         if (!readOnly) {
             CoroutineScope(Dispatchers.Default).launch {
                 variable.asStateFlow().collect { newValue ->
-                    val dataItem = when (defaultValue) {
-                        is Boolean -> {
+                    val dataItem = when (T::class) {
+                        Boolean::class -> {
                             (newValue as Boolean).toDataItem()
                         }
 
-                        is String -> {
+                        String::class -> {
                             (newValue as String).toDataItem()
                         }
 
-                        is List<*> -> {
+                        List::class -> {
                             val builder = CborArray.builder()
-                            (newValue as List<String>).forEach { builder.add(Tstr(it)) }
+                            (newValue as List<*>).forEach { builder.add(Tstr(it as String)) }
                             builder.end().build()
                         }
 

@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -78,7 +78,6 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -108,7 +107,7 @@ fun ProvisionDocumentScreen(
                 }
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.accessibility_go_back_icon)
                 )
             }
@@ -332,26 +331,11 @@ fun ProvisionDocumentScreen(
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center,
                         text = if (error is IssuingAuthorityException) {
-                            error.message!!  // Human-readable message from the server
+                            error.message  // Human-readable message from the server.
                         } else {
                             stringResource(R.string.provisioning_error,
                                 provisioningViewModel.error.toString())
                         }
-                    )
-                }
-            }
-
-            else -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge,
-                        textAlign = TextAlign.Center,
-                        text = stringResource(R.string.provisioning_unexpected,
-                            provisioningViewModel.state.value)
                     )
                 }
             }
@@ -495,6 +479,8 @@ private suspend fun showPresentmentFlowAndGetDeviceResponse(
     websiteOrigin: String?,
     encodedSessionTranscript: ByteArray,
 ): ByteArray {
+    // TODO: Need to verify the "as cast" is indeed safe here (e.g. it will crash if VcClaim:Claim is on that list too).
+    @Suppress("UNCHECKED_CAST")
     val request = MdocRequest(
         requester = Requester(websiteOrigin = websiteOrigin),
         claims = claims as List<MdocClaim>,

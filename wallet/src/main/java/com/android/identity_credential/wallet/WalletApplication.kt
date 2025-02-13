@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.Application
 import android.app.NotificationChannel
@@ -71,6 +72,8 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.toJavaDuration
 
+// TODO: b/393388152 - PreferenceManager is deprecated. Consider refactoring to AndroidX.
+@Suppress("DEPRECATION")
 class WalletApplication : Application() {
     companion object {
         private const val TAG = "WalletApplication"
@@ -106,7 +109,7 @@ class WalletApplication : Application() {
     val issuerTrustManager = TrustManager()
 
     // lazy instantiations
-    val sharedPreferences: SharedPreferences by lazy {
+    private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(applicationContext)
     }
 
@@ -445,7 +448,7 @@ class WalletApplication : Application() {
         NotificationManagerCompat.from(applicationContext).notify(notificationId, builder.build())
     }
 
-    private suspend fun getWalletApplicationInformation(): WalletApplicationCapabilities {
+    private fun getWalletApplicationInformation(): WalletApplicationCapabilities {
         val now = Clock.System.now()
 
         val keystoreCapabilities = AndroidKeystoreSecureArea.Capabilities(applicationContext)
@@ -495,6 +498,7 @@ class WalletApplication : Application() {
                 /* || SystemProperties.getProp("ro.kernel.qemu") == "1") */
     }
 
+    @SuppressLint("ObsoleteSdkInt")
     private fun isAusweisSdkProcess(): Boolean {
         val ausweisServiceName = "ausweisapp2_service"
         if (Build.VERSION.SDK_INT >= 28) {

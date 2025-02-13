@@ -7,27 +7,24 @@
         android:required="true" />
     <uses-feature
         android:name="android.hardware.nfc"
+        android:required="true"
+        tools:ignore="UnnecessaryRequiredFeature" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
         android:required="true" />
 
     <uses-permission android:name="Manifest.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.NFC" />
-
-    <uses-permission android:name="android.permission.NFC"/>
-    <uses-feature android:name="android.hardware.nfc" android:required="true"/>
-    <uses-feature
-        android:name="android.hardware.camera.any"
-        android:required="true" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
@@ -44,7 +41,6 @@
             android:name=".MainActivity"
             android:launchMode="singleTop"
             android:exported="true"
-            android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.IdentityCredential">
             <intent-filter>
@@ -97,7 +93,6 @@
         </activity>
 
         <activity
-            android:label="@string/app_name"
             android:name=".credman.CredmanPresentationActivity"
             android:enabled="true"
             android:exported="true"

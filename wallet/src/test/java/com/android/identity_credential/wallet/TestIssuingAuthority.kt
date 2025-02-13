@@ -16,38 +16,34 @@ import kotlinx.io.bytestring.ByteString
 import kotlin.time.Duration.Companion.seconds
 
 class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine(), {}) {
-    companion object {
-        private const val TAG = "TestIssuingAuthority"
-    }
 
-    var configuration: IssuingAuthorityConfiguration
+    private var configuration = IssuingAuthorityConfiguration(
+        identifier = "mDL_SelfSigned",
+        issuingAuthorityName = "Test IA",
+        issuingAuthorityLogo = byteArrayOf(1, 2, 3),
+        issuingAuthorityDescription = "mDL from Test IA",
+        pendingDocumentInformation = com.android.identity.issuance.DocumentConfiguration(
+            displayName = "mDL for Test IA (proofing pending)",
+            typeDisplayName = "Driving License",
+            cardArt = byteArrayOf(1, 2, 3),
+            requireUserAuthenticationToViewDocument = false,
+            mdocConfiguration = MdocDocumentConfiguration(
+                "org.iso.18013.5.1.mDL",
+                NameSpacedData.Builder().build(),
+            ),
+            sdJwtVcDocumentConfiguration = null,
+            directAccessConfiguration = null
+        ),
+        maxUsesPerCredentials = 1,
+        minCredentialValidityMillis = 1000L,
+        numberOfCredentialsToRequest = 3
+    )
 
     override fun getMrtdAccessData(collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData? {
         return null
     }
 
     init {
-        configuration = IssuingAuthorityConfiguration(
-            identifier = "mDL_SelfSigned",
-            issuingAuthorityName = "Test IA",
-            issuingAuthorityLogo = byteArrayOf(1, 2, 3),
-            issuingAuthorityDescription = "mDL from Test IA",
-            pendingDocumentInformation = com.android.identity.issuance.DocumentConfiguration(
-                displayName = "mDL for Test IA (proofing pending)",
-                typeDisplayName = "Driving License",
-                cardArt = byteArrayOf(1, 2, 3),
-                requireUserAuthenticationToViewDocument = false,
-                mdocConfiguration = MdocDocumentConfiguration(
-                    "org.iso.18013.5.1.mDL",
-                    NameSpacedData.Builder().build(),
-                ),
-                sdJwtVcDocumentConfiguration = null,
-                directAccessConfiguration = null
-            ),
-            maxUsesPerCredentials = 1,
-            minCredentialValidityMillis = 1000L,
-            numberOfCredentialsToRequest = 3
-        )
 
         // This is used in testing, see SelfSignedMdlTest
         delayForProofingAndIssuance = 3.seconds

@@ -8,13 +8,5 @@ import com.android.identity.cbor.Cbor
  */
 @CborSerializable
 sealed class EvidenceResponse {
-    fun toCbor(): ByteArray {
-        return Cbor.encode(toDataItem())
-    }
-
-    companion object {
-        fun fromCbor(encodedValue: ByteArray): EvidenceResponse {
-            return fromDataItem(Cbor.decode(encodedValue))
-        }
-    }
+    companion object
 }

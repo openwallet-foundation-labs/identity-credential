@@ -1,6 +1,7 @@
 package com.android.mdl.appreader.fragment
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -9,11 +10,13 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import android.provider.Settings
 import android.util.Base64
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
@@ -37,7 +40,6 @@ import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
-import com.android.mdl.appreader.home.RequestingDocumentState
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
@@ -69,6 +71,7 @@ class RequestOptionsFragment() : Fragment() {
         }
         return permissions
     }
+    private lateinit var intentSenderLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     private val permissionsLauncher = registerForActivityResult(RequestMultiplePermissions()) { permissions ->
         permissions.entries.forEach { permission ->
@@ -96,12 +99,19 @@ class RequestOptionsFragment() : Fragment() {
                         onSelectionUpdated = createRequestViewModel::onRequestUpdate,
                         onRequestConfirm = { onRequestConfirmed(it.isCustomMdlRequest) },
                         onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) },
-                        onRequestPreviewProtocol = { onRequestViaCredman("preview", it)},
-                        onRequestOpenId4VPProtocol = { onRequestViaCredman("openid4vp", it)}
+                        onRequestPreviewProtocol = { onRequestViaCredman("preview")},
+                        onRequestOpenId4VPProtocol = { onRequestViaCredman("openid4vp")}
                     )
                 }
             }
         }
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        intentSenderLauncher = registerForActivityResult(
+            ActivityResultContracts.StartIntentSenderForResult()
+        ) {}
     }
 
     private fun buildPreviewProtocolRequestJson(
@@ -144,7 +154,7 @@ class RequestOptionsFragment() : Fragment() {
         return json.toString()
     }
 
-    private fun onRequestViaCredman(protocol: String, state: RequestingDocumentState) {
+    private fun onRequestViaCredman(protocol: String) {
 
         val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
 
@@ -160,17 +170,27 @@ class RequestOptionsFragment() : Fragment() {
         //  results. The only case where this applies is the "Request mDL + micov with linkage"
         //  option in the reader.
         val requestedDocuments = calcRequestDocumentList()
-        val requestedDocument = requestedDocuments.getAll().get(0)
+        val requestedDocument = requestedDocuments.getAll()[0]
 
 
-        val request = when(protocol) {
-            "preview" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
-            "openid4vp" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
+        val request = when (protocol) {
+            "preview" -> buildPreviewProtocolRequestJson(
+                requestedDocument,
+                nonce,
+                readerKey.publicKey
+            )
+
+            "openid4vp" -> buildPreviewProtocolRequestJson(
+                requestedDocument,
+                nonce,
+                readerKey.publicKey
+            )
+
             else -> ""
         }
 
         val digitalCredentialsRequest = JSONObject()
-        val provider =  JSONObject()
+        val provider = JSONObject()
         provider.put("protocol", protocol)
         provider.put("request", request)
         digitalCredentialsRequest.put("providers", JSONArray().put(provider))
@@ -187,13 +207,15 @@ class RequestOptionsFragment() : Fragment() {
             credentialOptions = listOf(option),
             data = Bundle(),
             origin = null,
-            resultReceiver = object: ResultReceiver(null) {
+            resultReceiver = object : ResultReceiver(null) {
                 override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                     super.onReceiveResult(resultCode, resultData)
                     Logger.i(TAG, "Got a result $resultCode $resultData")
                     try {
-                        val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
-                        val responseJson = String(response.credential.data.getByteArray("identityToken")!!)
+                        val response =
+                            IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
+                        val responseJson =
+                            String(response.credential.data.getByteArray("identityToken")!!)
                         Logger.i(TAG, "Response JSON $responseJson")
 
                         val bundle = Bundle()
@@ -201,14 +223,15 @@ class RequestOptionsFragment() : Fragment() {
                         bundle.putByteArray("nonce", nonce)
 
                         requireActivity().runOnUiThread {
-                            findNavController().navigate(RequestOptionsFragmentDirections
-                                .toShowDeviceResponse(
-                                    bundle,
-                                    KeyPair(
-                                        readerKey.publicKey.javaPublicKey,
-                                        readerKey.javaPrivateKey
+                            findNavController().navigate(
+                                RequestOptionsFragmentDirections
+                                    .toShowDeviceResponse(
+                                        bundle,
+                                        KeyPair(
+                                            readerKey.publicKey.javaPublicKey,
+                                            readerKey.javaPrivateKey
+                                        )
                                     )
-                                )
                             )
                         }
                     } catch (e: GetCredentialException) {
@@ -224,8 +247,10 @@ class RequestOptionsFragment() : Fragment() {
 
                 }
             }
-        )).addOnSuccessListener {result ->
-            startIntentSenderForResult(result.pendingIntent.intentSender, 777, null, 0, 0, 0, null)
+        )).addOnSuccessListener { result ->
+            intentSenderLauncher.launch(
+                IntentSenderRequest.Builder(result.pendingIntent.intentSender).build()
+            )
         }.addOnFailureListener {
             logError("Error with get-cred intent generation", it)
         }

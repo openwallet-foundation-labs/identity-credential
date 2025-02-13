@@ -7,6 +7,7 @@ import kotlinx.io.bytestring.ByteString
  * Generates statements validating device/OS/app integrity. Details of these
  * statements are inherently platform-specific.
  */
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 expect object DeviceCheck {
     /**
      * Generates a device attestation that proves the integrity of the device/OS/wallet app

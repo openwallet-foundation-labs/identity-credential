@@ -122,12 +122,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
     private fun generateSignedJWT(claimsSet: JWTClaimsSet) : SignedJWT {
         val (singleUseReaderKeyPriv, singleUseReaderKeyCertChain) = createSingleUseReaderKey()
-        val readerPub = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
-        val readerPriv = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+        val readerPublic = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
+        val readerPrivate = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+
+        // TODO: b/393388152: ECKey is deprecated, but might be current library dependency.
+        @Suppress("DEPRECATION")
         val readerKey = ECKey(
             Curve.P_256,
-            readerPub,
-            readerPriv,
+            readerPublic,
+            readerPrivate,
             null,
             null,
             null,
@@ -277,7 +280,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                     "\"name\":\"EUDI PID\"," +
                     "\"purpose\":\"We need to verify your identity\"," +
                     "\"format\":{\"mso_mdoc\":{\"alg\":[\"ES256\",\"ES384\",\"ES512\",\"EdDSA\",\"ESB256\",\"ESB320\",\"ESB384\",\"ESB512\"]}}," +
-                    "\"constraints\":{\"fields\":[{\"path\":[\"\$['eu.europa.ec.eudiw.pid.1']['age_over_18']\"],\"intent_to_retain\":false}]}}]," +
+                    "\"constraints\":{\"fields\":[{\"path\":[\"${'$'}['eu.europa.ec.eudiw.pid.1']['age_over_18']\"],\"intent_to_retain\":false}]}}]," +
                 "\"id\":\"32f54163-7166-48f1-93d8-ff217bdb0653\"}"),
             authRequest.presentationDefinition
         )
@@ -321,17 +324,17 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                     "[{\"id\":\"org.iso.18013.5.1.mDL \"," +
                     "\"format\":{\"mso_mdoc\":{\"alg\":[\"ES256\",\"ES384\",\"ES512\",\"EdDSA\",\"ESB256\",\"ESB320\",\"ESB384\",\"ESB512\"]}}," +
                     "\"constraints\":{\"fields\":" +
-                        "[{\"path\":[\"\$['org.iso.18013.5.1']['birth_date']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['document_number']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['driving_privileges']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['expiry_date']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['family_name']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['given_name']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['issue_date']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['issuing_authority']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['issuing_country']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['portrait']\"],\"intent_to_retain\":false}," +
-                        "{\"path\":[\"\$['org.iso.18013.5.1']['un_distinguishing_sign']\"],\"intent_to_retain\":false}]," +
+                        "[{\"path\":[\"${'$'}['org.iso.18013.5.1']['birth_date']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['document_number']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['driving_privileges']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['expiry_date']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['family_name']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['given_name']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['issue_date']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['issuing_authority']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['issuing_country']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['portrait']\"],\"intent_to_retain\":false}," +
+                        "{\"path\":[\"${'$'}['org.iso.18013.5.1']['un_distinguishing_sign']\"],\"intent_to_retain\":false}]," +
                     "\"limit_disclosure\":\"required\"}}]," +
                     "\"id\":\"mDL-sample-req\"}\n"),
             authRequest.presentationDefinition

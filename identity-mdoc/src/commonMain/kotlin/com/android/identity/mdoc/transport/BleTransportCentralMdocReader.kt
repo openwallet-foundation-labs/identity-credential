@@ -6,13 +6,10 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +18,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class BleTransportCentralMdocReader(
     override val role: Role,
@@ -52,7 +48,7 @@ internal class BleTransportCentralMdocReader(
             client2ServerCharacteristicUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6"),
             server2ClientCharacteristicUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6"),
             identCharacteristicUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6"),
-            l2capUuid = if (options.bleUseL2CAP) {
+            l2capCharacteristicUuid = if (options.bleUseL2CAP) {
                 UUID.fromString("0000000b-a123-48ce-896b-4c76973373e6")
             } else {
                 null

@@ -12,7 +12,6 @@ import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.util.Logger
 import com.android.identity.mrtd.mrtdSetLogger
 import com.android.identity.util.UUID
@@ -200,7 +199,7 @@ class SettingsModel(
 
     fun createLogSharingIntent(context: Context): Intent {
         // NB: authority must match what given for <provider> in the manifest.
-        val authority = BuildConfig.javaClass.`package`.name
+        val authority = BuildConfig.javaClass.`package`!!.name
         // NB: must be context for which the <provider> is defined in the manifest.
         val shareUri = FileProvider.getUriForFile(context, authority, File(logFile.toString()))
         val sharingIntent = Intent(Intent.ACTION_SEND)

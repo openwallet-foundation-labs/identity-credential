@@ -14,4 +14,27 @@ data class TrustPoint(
     val certificate: X509Cert,
     val displayName: String? = null,
     val displayIcon: ByteArray? = null
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as TrustPoint
+
+        if (certificate != other.certificate) return false
+        if (displayName != other.displayName) return false
+        if (displayIcon != null) {
+            if (other.displayIcon == null) return false
+            if (!displayIcon.contentEquals(other.displayIcon)) return false
+        } else if (other.displayIcon != null) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = certificate.hashCode()
+        result = 31 * result + (displayName?.hashCode() ?: 0)
+        result = 31 * result + (displayIcon?.contentHashCode() ?: 0)
+        return result
+    }
+}
