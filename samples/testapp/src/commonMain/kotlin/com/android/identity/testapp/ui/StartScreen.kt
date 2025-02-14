@@ -26,6 +26,7 @@ import identitycredential.samples.testapp.generated.resources.nfc_screen_title
 import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.provisioning_test_title
 import identitycredential.samples.testapp.generated.resources.qr_codes_screen_title
+import identitycredential.samples.testapp.generated.resources.rich_text_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import org.jetbrains.compose.resources.stringResource
@@ -47,6 +48,7 @@ fun StartScreen(
     onClickIsoMdocProximityReading: () -> Unit = {},
     onClickMdocTransportMultiDeviceTesting: () -> Unit = {},
     onClickCertificatesViewerExamples: () -> Unit = {},
+    onClickRichText: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -145,6 +147,12 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickCertificatesViewerExamples) {
                     Text(stringResource(Res.string.certificate_viewer_examples_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickRichText) {
+                    Text(stringResource(Res.string.rich_text_title))
                 }
             }
         }

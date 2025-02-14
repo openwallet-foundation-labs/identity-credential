@@ -22,6 +22,7 @@ import identitycredential.samples.testapp.generated.resources.software_secure_ar
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
 import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
+import identitycredential.samples.testapp.generated.resources.rich_text_title
 import identitycredential.samples.testapp.generated.resources.settings_screen_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -142,6 +143,11 @@ data object CertificateViewerDestination : Destination {
     )
 }
 
+data object RichTextDestination : Destination {
+    override val route = "rich_text"
+    override val title = Res.string.rich_text_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -163,4 +169,5 @@ val appDestinations = listOf(
     PresentmentDestination,
     CertificatesViewerExamplesDestination,
     CertificateViewerDestination,
+    RichTextDestination
 )
