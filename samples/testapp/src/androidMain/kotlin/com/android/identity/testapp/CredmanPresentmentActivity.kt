@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.json.JSONObject
+import org.multipaz.compose.ui.UiProvider
 
 class CredmanPresentmentActivity: FragmentActivity() {
     companion object {
@@ -100,6 +101,7 @@ class CredmanPresentmentActivity: FragmentActivity() {
         setContent {
             AppTheme {
                 Scaffold { innerPadding ->
+                    UiProvider()
                     Presentment(
                         presentmentModel = presentmentModel,
                         documentTypeRepository = app.documentTypeRepository,

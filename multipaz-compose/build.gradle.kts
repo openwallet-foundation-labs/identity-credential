@@ -63,6 +63,7 @@ kotlin {
             dependencies {
                 implementation(libs.accompanist.permissions)
                 implementation(libs.androidx.material)
+                implementation(libs.androidx.biometrics)
             }
         }
     }
