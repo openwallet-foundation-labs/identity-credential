@@ -1,5 +1,7 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.appendUInt8
+import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -16,7 +18,7 @@ data class HandoverSelectRecord(
     fun generateNdefRecord(): NdefRecord {
         check(version < 256) { "Version must fit in one byte" }
         val bsb = ByteStringBuilder()
-        bsb.append(version.toByte())
+        bsb.appendUInt8(version)
         bsb.append(embeddedMessage.encode())
         return NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
@@ -31,9 +33,9 @@ data class HandoverSelectRecord(
                 record.type != Nfc.RTD_HANDOVER_SELECT) {
                 return null
             }
-            val version = record.payload[0].toInt().and(0xff)
+            val version = record.payload.getUInt8(0)
             val embeddedMessage = NdefMessage.fromEncoded(record.payload.substring(1).toByteArray())
-            return HandoverSelectRecord(version, embeddedMessage)
+            return HandoverSelectRecord(version.toInt(), embeddedMessage)
         }
     }
 }

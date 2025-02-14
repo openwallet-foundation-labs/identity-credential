@@ -1,6 +1,12 @@
 package com.android.identity.nfc
 
-import kotlinx.io.bytestring.ByteStringBuilder
+import com.android.identity.util.ByteDataReader
+import com.android.identity.util.appendByteString
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt8
+import com.android.identity.util.getUInt8
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.encodeToByteString
 import kotlin.math.pow
 import kotlin.time.Duration
 
@@ -30,24 +36,22 @@ data class ServiceParameterRecord(
      * @return a [NdefRecord].
      */
     fun generateNdefRecord(): NdefRecord {
-        check(tnepVersion >= 0 && tnepVersion < 256)
         check(serviceNameUri.length < 256) { "Service name length must fit in a byte" }
         check(tnepCommunicationMode >= 0 && tnepCommunicationMode < 256)
         check(wtInt >= 0 && wtInt < 64)
         check(nWait >= 0 && nWait < 16)
-        val bsb = ByteStringBuilder()
-        bsb.append(tnepVersion.toByte())
-        bsb.append(serviceNameUri.length.toByte())
-        bsb.append(serviceNameUri.encodeToByteArray())
-        bsb.append(tnepCommunicationMode.toByte())
-        bsb.append(wtInt.toByte())
-        bsb.append(nWait.toByte())
-        bsb.append((maxNdefSize/0x100).toByte())
-        bsb.append(maxNdefSize.and(0xff).toByte())
         return NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
             type = Nfc.RTD_SERVICE_PARAMETER,
-            payload = bsb.toByteString()
+            payload = buildByteString {
+                appendUInt8(tnepVersion)
+                appendUInt8(serviceNameUri.length)
+                appendByteString(serviceNameUri.encodeToByteString())
+                appendUInt8(tnepCommunicationMode)
+                appendUInt8(wtInt)
+                appendUInt8(nWait)
+                appendUInt16(maxNdefSize)
+            }
         )
     }
 
@@ -56,7 +60,7 @@ data class ServiceParameterRecord(
          * Checks if a record is a Service Parameter record and parses it if so.
          *
          * @param record the record to check
-         * @return a [Nfc.ServiceParameterRecord] or `null`.
+         * @return a [com.android.identity.nfc.ServiceParameterRecord] or `null`.
          */
         fun fromNdefRecord(record: NdefRecord): ServiceParameterRecord? {
             if (record.tnf != NdefRecord.Tnf.WELL_KNOWN ||
@@ -66,17 +70,19 @@ data class ServiceParameterRecord(
 
             val p = record.payload
             require(p.size >= 1) { "Unexpected length of Service Parameter Record" }
-            val serviceNameLen = p[1].toInt().and(0xff)
+            val serviceNameLen = p.getUInt8(1).toInt()
             require(p.size == serviceNameLen + 7) { "Unexpected length of body in Service Parameter Record" }
 
-            return ServiceParameterRecord(
-                tnepVersion = p[0].toInt().and(0xff),
-                serviceNameUri = p.toByteArray().decodeToString(2, serviceNameLen + 2),
-                tnepCommunicationMode = p[2 + serviceNameLen].toInt().and(0xff),
-                wtInt = p[3 + serviceNameLen].toInt().and(0xff),
-                nWait = p[4 + serviceNameLen].toInt().and(0xff),
-                maxNdefSize = (p[5 + serviceNameLen].toInt().and(0xff)) * 0x100 + (p[6 + serviceNameLen].toInt().and(0xff))
-            )
+            return with (ByteDataReader(p)) {
+                ServiceParameterRecord(
+                    tnepVersion = getUInt8().toInt(),
+                    serviceNameUri = skip(1).getString(serviceNameLen),
+                    tnepCommunicationMode = getUInt8().toInt(),
+                    wtInt = getUInt8().toInt(),
+                    nWait = getUInt8().toInt(),
+                    maxNdefSize = getUInt16().toInt()
+                )
+            }
         }
     }
 }
