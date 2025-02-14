@@ -23,5 +23,6 @@
     <string name="certificate_viewer_title">Certificate Viewer</string>
     <string name="provisioning_test_title">Test provisioning</string>
     <string name="presentment_title">Presentment</string>
+    <string name="rich_text_title">Rich text</string>
 
 </resources>

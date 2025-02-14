@@ -64,6 +64,7 @@ import com.android.identity.testapp.ui.PassphrasePromptScreen
 import com.android.identity.testapp.ui.PresentmentScreen
 import com.android.identity.testapp.ui.ProvisioningTestScreen
 import com.android.identity.testapp.ui.QrCodesScreen
+import com.android.identity.testapp.ui.RichTextScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SettingsScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
@@ -471,6 +472,7 @@ class App private constructor() {
                             onClickIsoMdocProximityReading = { navController.navigate(IsoMdocProximityReadingDestination.route) },
                             onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
                             onClickCertificatesViewerExamples = { navController.navigate(CertificatesViewerExamplesDestination.route) },
+                            onClickRichText = { navController.navigate(RichTextDestination.route) },
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -591,6 +593,9 @@ class App private constructor() {
                             CertificateViewerDestination.CERTIFICATE_DATA
                         )!!
                         CertificateScreen(certData)
+                    }
+                    composable(route = RichTextDestination.route) {
+                        RichTextScreen()
                     }
                 }
             }
