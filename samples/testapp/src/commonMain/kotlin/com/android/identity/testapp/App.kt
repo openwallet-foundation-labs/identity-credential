@@ -90,6 +90,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.ui.AppTheme
+import org.multipaz.compose.ui.UiProvider
 
 /**
  * Application singleton.
@@ -446,6 +447,8 @@ class App private constructor() {
                 },
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             ) { innerPadding ->
+
+                UiProvider()
 
                 NavHost(
                     navController = navController,

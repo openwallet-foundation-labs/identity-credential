@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- showBiometricPrompt.kt -->
+    <string name="biometric_prompt_negative_btn_lskf">Use PIN</string>
+    <string name="biometric_prompt_negative_btn_no_lskf">Cancel</string>
+
+    <!-- NfcTagReaderModalBottomSheet -->
+    <string name="nfc_tag_reader_modal_bottom_sheet_ready_to_scan">Ready to Scan</string>
+    <string name="nfc_tag_reader_modal_bottom_sheet_cancel">Cancel</string>
+
+</resources>

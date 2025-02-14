@@ -25,7 +25,6 @@ import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
 import com.android.identity.R
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea.Capabilities
-import com.android.identity.biometric.showBiometricPrompt
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.Algorithm
@@ -48,6 +47,7 @@ import com.android.identity.securearea.keyPurposeSet
 import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
+import com.android.identity.ui.UiModelAndroid
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -455,7 +455,7 @@ class AndroidKeystoreSecureArea private constructor(
                 unlockData = AndroidKeystoreKeyUnlockData(alias)
                 val res = AndroidContexts.applicationContext.resources
                 val keyInfo = getKeyInfo(alias)
-                if (!showBiometricPrompt(
+                if (!UiModelAndroid.showBiometricPrompt(
                         cryptoObject = unlockData.getCryptoObjectForSigning(signatureAlgorithm),
                         title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
                         subtitle = keyUnlockData.subtitle ?: res.getString(R.string.aks_auth_default_subtitle),
@@ -538,7 +538,7 @@ class AndroidKeystoreSecureArea private constructor(
                 unlockData = AndroidKeystoreKeyUnlockData(alias)
                 val res = AndroidContexts.applicationContext.resources
                 val keyInfo = getKeyInfo(alias)
-                if (!showBiometricPrompt(
+                if (!UiModelAndroid.showBiometricPrompt(
                         cryptoObject = unlockData.cryptoObjectForKeyAgreement,
                         title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
                         subtitle = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_subtitle),

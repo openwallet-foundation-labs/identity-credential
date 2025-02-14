@@ -5,10 +5,9 @@ import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.VibrationEffect
 import android.os.Vibrator
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
-import com.android.identity.R
+import com.android.identity.ui.ScanNfcTagDialogIcon
+import com.android.identity.ui.UiModelAndroid
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import kotlinx.coroutines.CancellableContinuation
@@ -18,6 +17,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -84,8 +84,9 @@ private class NfcTagReader<T> {
         ) -> T?
 
     private lateinit var originalMessage: String
-    private val dialogMessage = mutableStateOf("")
-    private val dialogIcon = mutableIntStateOf(R.drawable.nfc_tag_reader_icon_scan)
+    private val dialogMessage = MutableStateFlow<String>("")
+    private val dialogIcon = MutableStateFlow<ScanNfcTagDialogIcon>(ScanNfcTagDialogIcon.READY_TO_SCAN)
+    private lateinit var dialogMessageJob: Job
 
     private fun vibrate(pattern: List<Int>) {
         val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
@@ -108,6 +109,7 @@ private class NfcTagReader<T> {
             updateMessage: (message: String) -> Unit
         ) -> T?,
     ): T? {
+
         if (disableReaderModeJob != null) {
             disableReaderModeJob!!.cancel()
             disableReaderModeJob = null
@@ -115,18 +117,16 @@ private class NfcTagReader<T> {
 
         originalMessage = message
         dialogMessage.value = message
+
+        dialogMessageJob = CoroutineScope(currentCoroutineContext()).launch {
+            UiModelAndroid.showScanNfcTagDialog(
+                message = dialogMessage,
+                icon = dialogIcon
+            )
+            continuation?.resumeWithException(DialogCanceledException())
+        }
+
         val fragmentActivity = AndroidContexts.currentActivity ?: throw IllegalStateException("No current activity")
-        val dialog = NfcTagReaderModalBottomSheet(
-            dialogMessage = dialogMessage,
-            dialogIcon = dialogIcon,
-            onDismissed = {
-                continuation?.resumeWithException(DialogCanceledException())
-            }
-        )
-        dialog.show(
-            fragmentActivity.supportFragmentManager,
-            "nfc_tag_reader_modal_bottom_sheet"
-        )
         this.tagInteractionFunc = tagInteractionFunc
 
         try {
@@ -140,23 +140,23 @@ private class NfcTagReader<T> {
                     null
                 )
             }
-            dialogIcon.intValue = R.drawable.nfc_tag_reader_icon_success
+            dialogIcon.value = ScanNfcTagDialogIcon.SUCCESS
             vibrateSuccess()
             CoroutineScope(Dispatchers.IO).launch {
                 delay(2.seconds)
-                dialog.dismiss()
+                dialogMessageJob.cancel()
             }
             return ret
         } catch (_: DialogCanceledException) {
-            dialog.dismiss()
+            dialogMessageJob.cancel()
             return null
         } catch (e: Throwable) {
-            dialogIcon.intValue = R.drawable.nfc_tag_reader_icon_error
+            dialogIcon.value = ScanNfcTagDialogIcon.ERROR
             dialogMessage.value = e.message!!
             vibrateError()
             CoroutineScope(Dispatchers.IO).launch {
                 delay(2.seconds)
-                dialog.dismiss()
+                dialogMessageJob.cancel()
             }
             throw e
         } finally {

@@ -68,7 +68,6 @@ import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.ui.consent.ConsentModalBottomSheet
-import org.multipaz.compose.ui.passphrase.PassphrasePromptProvider
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "Presentment"
@@ -110,8 +109,6 @@ fun Presentment(
             presentmentModel.reset()
         }
     }
-
-    PassphrasePromptProvider()
 
     val state = presentmentModel.state.collectAsState().value
     when (state) {

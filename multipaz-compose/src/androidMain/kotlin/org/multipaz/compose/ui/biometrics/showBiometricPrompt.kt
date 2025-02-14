@@ -1,26 +1,25 @@
-package com.android.identity.biometric
+package org.multipaz.compose.ui.biometrics
 
 import android.os.Handler
 import android.os.Looper
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.biometric.BiometricPrompt.CryptoObject
-import androidx.biometric.BiometricPrompt.PromptInfo
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.util.AndroidContexts
-import com.android.identity.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.multipaz.compose.R
 import kotlin.coroutines.resumeWithException
-
-private const val TAG = "showBiometricPrompt"
 
 /**
  * Prompts user for authentication.
+ *
+ * To dismiss the prompt programmatically, cancel the job the coroutine was launched in.
  *
  * @param cryptoObject optional [CryptoObject] to be associated with the authentication.
  * @param title the title for the authentication prompt.
@@ -35,7 +34,7 @@ suspend fun showBiometricPrompt(
     title: String,
     subtitle: String,
     userAuthenticationTypes: Set<UserAuthenticationType>,
-    requireConfirmation: Boolean,
+    requireConfirmation: Boolean
 ): Boolean {
     // BiometricPrompt must be called from the UI thread.
     return withContext(Dispatchers.Main) {
@@ -155,7 +154,7 @@ private class ShowBiometricPrompt(
                 activity.applicationContext.resources.getString(R.string.biometric_prompt_negative_btn_no_lskf)
             }
 
-        val biometricPromptInfo = PromptInfo.Builder()
+        val biometricPromptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
             .setNegativeButtonText(negativeTxt)
@@ -172,7 +171,7 @@ private class ShowBiometricPrompt(
     private fun authenticateLskf() {
         lskfOnNegativeBtn = false
 
-        val lskfPromptInfo = PromptInfo.Builder()
+        val lskfPromptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
             .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)

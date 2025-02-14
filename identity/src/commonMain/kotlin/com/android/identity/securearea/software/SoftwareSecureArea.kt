@@ -30,7 +30,6 @@ import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyPurpose.Companion.encodeSet
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.PassphrasePromptModel
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.fromDataItem
 import com.android.identity.securearea.keyPurposeSet
@@ -38,6 +37,7 @@ import com.android.identity.securearea.toDataItem
 import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
+import com.android.identity.ui.UiModel
 import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 
@@ -213,7 +213,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
                 } else {
                     "Enter the passphrase associated with the document"
                 }
-                val passphrase = PassphrasePromptModel.requestPassphrase(
+                val passphrase = UiModel.requestPassphrase(
                     title = keyUnlockData.title ?: "Verify it's you",
                     subtitle = keyUnlockData.subtitle ?: defaultSubtitle,
                     passphraseConstraints = constraints,

@@ -24,7 +24,6 @@ import com.android.identity.util.toHex
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import org.multipaz.compose.ui.passphrase.PassphrasePromptProvider
 
 private val TAG = "SoftwareSecureAreaScreen"
 
@@ -38,8 +37,6 @@ fun SoftwareSecureAreaScreen(
     showToast: (message: String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-
-    PassphrasePromptProvider()
 
     LazyColumn(
         modifier = Modifier.padding(8.dp)

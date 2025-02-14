@@ -1,11 +1,4 @@
 <resources>
-    <!-- NfcTagReaderModalBottomSheet -->
-    <string name="nfc_tag_reader_modal_bottom_sheet_ready_to_scan">Ready to Scan</string>
-
-    <!-- showBiometricPrompt -->
-    <string name="biometric_prompt_negative_btn_lskf">Use PIN</string>
-    <string name="biometric_prompt_negative_btn_no_lskf">Cancel</string>
-
     <!-- AndroidKeystoreSecureArea -->
     <string name="aks_auth_default_title">Verify it\'s you</string>
     <string name="aks_auth_default_subtitle">Authentication is required to share the document</string>
@@ -17,5 +10,4 @@
     <string name="csa_auth_wrong_pin">Wrong PIN entered. Try again</string>
     <string name="csa_auth_wrong_passphrase">Wrong passphrase entered. Try again</string>
     <string name="csa_auth_too_many_attempts">Too many attempts. Try again later</string>
-
 </resources>

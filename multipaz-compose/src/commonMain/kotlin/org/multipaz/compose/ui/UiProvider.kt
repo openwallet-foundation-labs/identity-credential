@@ -1,19 +1,23 @@
-package org.multipaz.compose.ui.passphrase
+package org.multipaz.compose.ui
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.PassphrasePromptModel
-import com.android.identity.securearea.PassphrasePromptView
+import com.android.identity.ui.UiModel
+import com.android.identity.ui.UiView
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.compose.ui.passphrase.PassphrasePromptBottomSheet
 import kotlin.coroutines.resume
 
 private data class PassphraseRequestData(
@@ -25,20 +29,21 @@ private data class PassphraseRequestData(
 )
 
 /**
- * A composable for asking the user for a passphrase.
+ * A composable for providing UI services to the low-level libraries.
  *
- * This connects to the underlying libraries using [PassphrasePromptModel] when the composable is
- * part of the composition. It shows requests using a modal bottom sheet. Applications wishing
- * to use [SecureArea] instances using passphrases should include this composable on screens
- * that are visible when using keys that may need to be unlocked.
+ * This connects to the underlying libraries using [UiModel] and [UIModelAndroid] when the
+ * composable is part of the composition.
+ *
  */
+@Composable
+expect fun UiProvider(lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PassphrasePromptProvider() {
-
+fun UiProviderCommon(lifecycleOwner: LifecycleOwner) {
     val showPassphrasePrompt = remember { mutableStateOf<PassphraseRequestData?>(null) }
 
-    val provider = object: PassphrasePromptView {
+    val provider = object: UiView {
         override suspend fun requestPassphrase(
             title: String,
             subtitle: String,
@@ -53,18 +58,26 @@ fun PassphrasePromptProvider() {
                     passphraseEvaluator = passphraseEvaluator,
                     continuation = continuation
                 )
+                continuation.invokeOnCancellation {
+                    showPassphrasePrompt.value = null
+                }
             }
             showPassphrasePrompt.value = null
             return passphrase
         }
     }
 
-    LaunchedEffect(provider) {
-        PassphrasePromptModel.registerView(provider)
-    }
-    DisposableEffect(provider) {
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) {
+                UiModel.registerView(provider)
+            } else if (event == Lifecycle.Event.ON_STOP) {
+                UiModel.unregisterView(provider)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            PassphrasePromptModel.unregisterView(provider)
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

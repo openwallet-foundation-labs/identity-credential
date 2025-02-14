@@ -52,7 +52,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import org.multipaz.compose.ui.passphrase.PassphrasePromptProvider
 import kotlin.time.Duration.Companion.days
 
 private val TAG = "CloudSecureAreaScreen"
@@ -82,8 +81,6 @@ fun CloudSecureAreaScreen(
     val showConnectDialog = remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
-
-    PassphrasePromptProvider()
 
     if (showConnectDialog.value) {
         CsaConnectDialog(
