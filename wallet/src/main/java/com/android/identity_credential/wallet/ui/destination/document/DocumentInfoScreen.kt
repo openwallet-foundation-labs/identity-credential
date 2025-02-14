@@ -41,7 +41,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.android.identity.android.securearea.ScreenLockRequiredException
+import com.android.identity.securearea.ScreenLockRequiredException
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R

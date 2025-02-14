@@ -1,9 +1,9 @@
 package com.android.identity_credential.wallet.presentation
 
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.AndroidKeystoreKeyUnlockData
+import com.android.identity.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.securearea.cloud.CloudKeyLockedException
 import com.android.identity.securearea.cloud.CloudKeyUnlockData
 import com.android.identity.securearea.cloud.CloudSecureArea

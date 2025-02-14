@@ -17,8 +17,8 @@ package com.android.identity.android.document
 
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.TestUtil
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.CredentialLoader
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.document.DocumentStore

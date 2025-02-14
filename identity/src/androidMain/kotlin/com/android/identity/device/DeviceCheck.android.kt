@@ -1,6 +1,6 @@
 package com.android.identity.device
 
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.SecureArea
 import kotlinx.io.bytestring.ByteString

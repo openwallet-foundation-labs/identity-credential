@@ -25,7 +25,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.CredentialLoader
 import com.android.identity.document.DocumentStore
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod

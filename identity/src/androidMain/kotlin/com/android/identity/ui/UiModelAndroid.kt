@@ -1,7 +1,7 @@
 package com.android.identity.ui
 
 import androidx.biometric.BiometricPrompt
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.util.Logger
 import kotlinx.coroutines.flow.StateFlow
 

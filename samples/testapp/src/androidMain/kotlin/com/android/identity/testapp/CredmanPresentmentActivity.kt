@@ -9,10 +9,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
-import org.multipaz.compose.ui.AppTheme
+import org.multipaz.compose.AppTheme
 import com.android.identity.appsupport.ui.digitalcredentials.lookupForCredmanId
 import com.android.identity.appsupport.ui.presentment.DigitalCredentialsPresentmentMechanism
-import org.multipaz.compose.ui.presentment.Presentment
+import org.multipaz.compose.presentment.Presentment
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.json.JSONObject
-import org.multipaz.compose.ui.UiProvider
+import org.multipaz.compose.UiProvider
 
 class CredmanPresentmentActivity: FragmentActivity() {
     companion object {

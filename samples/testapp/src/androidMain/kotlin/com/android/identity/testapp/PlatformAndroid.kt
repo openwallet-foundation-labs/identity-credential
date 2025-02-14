@@ -1,9 +1,9 @@
 package com.android.identity.testapp
 
 import android.os.Build
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea

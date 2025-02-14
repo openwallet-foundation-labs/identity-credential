@@ -1,7 +1,7 @@
 package com.android.identity.ui
 
 import androidx.biometric.BiometricPrompt.CryptoObject
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.UserAuthenticationType
 import kotlinx.coroutines.flow.StateFlow
 
 /**

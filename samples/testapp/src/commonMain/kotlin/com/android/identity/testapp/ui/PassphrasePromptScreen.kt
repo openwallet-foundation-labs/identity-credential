@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.securearea.PassphraseConstraints
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.multipaz.compose.ui.passphrase.PassphrasePromptBottomSheet
+import org.multipaz.compose.passphrase.PassphrasePromptBottomSheet
 
 @Composable
 fun PassphrasePromptScreen(

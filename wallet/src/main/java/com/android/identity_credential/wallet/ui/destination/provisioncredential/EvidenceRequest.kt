@@ -118,8 +118,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import org.multipaz.compose.ui.PassphraseEntryField
-import org.multipaz.compose.ui.getDefaultImageVector
+import org.multipaz.compose.PassphraseEntryField
+import org.multipaz.compose.getDefaultImageVector
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "EvidenceRequest"

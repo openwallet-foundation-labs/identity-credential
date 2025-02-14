@@ -15,7 +15,7 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
-import org.multipaz.compose.ui.consent.ConsentModalBottomSheet
+import org.multipaz.compose.consent.ConsentModalBottomSheet
 import kotlin.coroutines.resume
 
 /**

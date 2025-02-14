@@ -9,8 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.multipaz.compose.ui.qrcode.ShowQrCodeDialog
-import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
+import org.multipaz.compose.qrcode.ShowQrCodeDialog
+import org.multipaz.compose.qrcode.ScanQrCodeDialog
 
 @Composable
 fun QrCodesScreen(
