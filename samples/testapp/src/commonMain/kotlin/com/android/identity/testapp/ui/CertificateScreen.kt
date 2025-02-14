@@ -6,7 +6,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.fromBase64Url
-import org.multipaz.compose.ui.certificateviewer.CertificateViewer
+import org.multipaz.compose.certificateviewer.CertificateViewer
 
 /**
  * Populate and compose the certificate chain screen.

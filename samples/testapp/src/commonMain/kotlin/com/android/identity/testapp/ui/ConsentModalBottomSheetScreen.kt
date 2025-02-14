@@ -24,7 +24,7 @@ import com.android.identity.trustmanagement.TrustPoint
 import identitycredential.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.multipaz.compose.ui.consent.ConsentModalBottomSheet
+import org.multipaz.compose.consent.ConsentModalBottomSheet
 
 private const val IACA_CERT_PEM =
     """

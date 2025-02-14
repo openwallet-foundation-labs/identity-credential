@@ -7,11 +7,11 @@ import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.direct_access.DirectAccess
 import com.android.identity.android.direct_access.DirectAccessCredential
 import com.android.identity.securearea.SecureArea
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.securearea.AndroidKeystoreKeyInfo
+import com.android.identity.securearea.AndroidKeystoreKeyUnlockData
+import com.android.identity.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.securearea.cloud.CloudCreateKeySettings
 import com.android.identity.securearea.cloud.CloudKeyInfo
 import com.android.identity.securearea.cloud.CloudSecureArea

@@ -40,7 +40,7 @@ import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
+import org.multipaz.compose.qrcode.ScanQrCodeDialog
 
 private const val TAG = "AddToWalletScreen"
 

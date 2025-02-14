@@ -45,9 +45,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve

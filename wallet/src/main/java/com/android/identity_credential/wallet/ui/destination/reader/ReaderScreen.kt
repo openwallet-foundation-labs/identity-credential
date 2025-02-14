@@ -89,7 +89,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
-import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
+import org.multipaz.compose.qrcode.ScanQrCodeDialog
 
 @Composable
 fun ReaderScreen(

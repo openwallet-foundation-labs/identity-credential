@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.io.bytestring.encodeToByteString
-import org.multipaz.compose.ui.webview.RichText
+import org.multipaz.compose.webview.RichText
 
 @Composable
 fun RichTextScreen() {

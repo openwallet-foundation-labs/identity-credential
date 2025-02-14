@@ -126,7 +126,7 @@ kotlin {
             }
         }
 
-        val appleMain by getting {
+        val iosMain by getting {
             dependencies {
                 // This dependency is needed for SqliteStorage implementation.
                 // KMP-compatible version is still alpha and it is not compatible with
@@ -160,7 +160,7 @@ kotlin {
             }
         }
 
-        val appleTest by getting {
+        val iosTest by getting {
             dependencies {
                 implementation(libs.androidx.sqlite)
                 implementation(libs.androidx.sqlite.framework)

@@ -1,7 +1,7 @@
 package com.android.identity.issuance.remote
 
 import android.content.Context
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
 import com.android.identity.device.AssertionNonce

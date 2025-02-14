@@ -21,7 +21,7 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.mdoc.transport.DataTransportTcp
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor.encode

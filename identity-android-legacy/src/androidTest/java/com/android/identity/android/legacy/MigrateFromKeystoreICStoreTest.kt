@@ -22,7 +22,7 @@ import com.android.identity.android.legacy.Util.cborEncode
 import com.android.identity.android.legacy.Util.cborEncodeBytestring
 import com.android.identity.android.legacy.Util.cborEncodeNumber
 import com.android.identity.android.legacy.Util.cborEncodeString
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Cbor.toDiagnostics
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.crypto.Algorithm

@@ -10,7 +10,7 @@ import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.multipaz.compose.ui.presentment.Presentment
+import org.multipaz.compose.presentment.Presentment
 
 private const val TAG = "PresentmentScreen"
 

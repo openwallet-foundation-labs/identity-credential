@@ -38,7 +38,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
-import org.multipaz.compose.ui.PassphraseEntryField
+import org.multipaz.compose.PassphraseEntryField
 import kotlin.coroutines.resume
 
 /**

@@ -89,8 +89,8 @@ import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import org.multipaz.compose.ui.AppTheme
-import org.multipaz.compose.ui.UiProvider
+import org.multipaz.compose.AppTheme
+import org.multipaz.compose.UiProvider
 
 /**
  * Application singleton.

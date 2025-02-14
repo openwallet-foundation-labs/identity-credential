@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.AttributeDisplayInfoHtml
 import com.android.identity_credential.wallet.AttributeDisplayInfoImage

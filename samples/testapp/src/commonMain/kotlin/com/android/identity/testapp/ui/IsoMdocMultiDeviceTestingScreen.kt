@@ -35,9 +35,9 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.multipaz.compose.ui.permissions.rememberBluetoothPermissionState
-import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
-import org.multipaz.compose.ui.qrcode.ShowQrCodeDialog
+import org.multipaz.compose.permissions.rememberBluetoothPermissionState
+import org.multipaz.compose.qrcode.ScanQrCodeDialog
+import org.multipaz.compose.qrcode.ShowQrCodeDialog
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 

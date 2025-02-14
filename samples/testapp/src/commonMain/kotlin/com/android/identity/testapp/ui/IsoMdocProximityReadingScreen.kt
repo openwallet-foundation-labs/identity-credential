@@ -87,9 +87,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.compose.ui.decodeImage
-import org.multipaz.compose.ui.permissions.rememberBluetoothPermissionState
-import org.multipaz.compose.ui.qrcode.ScanQrCodeDialog
+import org.multipaz.compose.decodeImage
+import org.multipaz.compose.permissions.rememberBluetoothPermissionState
+import org.multipaz.compose.qrcode.ScanQrCodeDialog
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 

@@ -38,8 +38,8 @@ import com.android.identity.util.toBase64Url
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.compose.ui.permissions.rememberBluetoothPermissionState
-import org.multipaz.compose.ui.qrcode.ShowQrCodeDialog
+import org.multipaz.compose.permissions.rememberBluetoothPermissionState
+import org.multipaz.compose.qrcode.ShowQrCodeDialog
 
 private const val TAG = "IsoMdocProximitySharingScreen"
 

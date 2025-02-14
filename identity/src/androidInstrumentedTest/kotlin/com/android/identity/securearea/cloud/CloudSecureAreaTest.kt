@@ -2,7 +2,7 @@ package com.android.identity.securearea.cloud
 
 import android.content.pm.PackageManager
 import androidx.test.platform.app.InstrumentationRegistry
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.OID
 import com.android.identity.crypto.Algorithm

@@ -8,8 +8,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
-import org.multipaz.compose.ui.AppTheme
-import org.multipaz.compose.ui.presentment.Presentment
+import org.multipaz.compose.AppTheme
+import org.multipaz.compose.presentment.Presentment
 import com.android.identity.util.AndroidContexts
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.multipaz.compose.ui.UiProvider
+import org.multipaz.compose.UiProvider
 
 class NfcPresentmentActivity : FragmentActivity() {
     companion object {

@@ -7,7 +7,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.biometric.BiometricPrompt.PromptInfo
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity_credential.wallet.R
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
