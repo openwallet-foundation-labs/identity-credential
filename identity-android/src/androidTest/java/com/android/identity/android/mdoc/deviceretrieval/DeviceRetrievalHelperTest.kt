@@ -70,6 +70,7 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
+import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Constants
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock.System.now
@@ -113,14 +114,11 @@ class DeviceRetrievalHelperTest {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
+        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().targetContext)
+
         storage = AndroidStorage(":memory:")
         secureAreaRepository = SecureAreaRepository.build {
-            add(
-                AndroidKeystoreSecureArea.create(
-                    InstrumentationRegistry.getInstrumentation().targetContext,
-                    storage
-                )
-            )
+            add(AndroidKeystoreSecureArea.create(storage))
         }
         val credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(MdocCredential::class) { document ->

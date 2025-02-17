@@ -31,6 +31,7 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.toEcPublicKey
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.android.AndroidStorage
+import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
@@ -47,7 +48,8 @@ class MigrateFromKeystoreICStoreTest {
     fun testMigrateToCredentialStore() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storage = AndroidStorage(":memory:")
-        val aksSecureArea = AndroidKeystoreSecureArea.create(context, storage)
+        AndroidContexts.setApplicationContext(context)
+        val aksSecureArea = AndroidKeystoreSecureArea.create(storage)
         val icStore = Utility.getIdentityCredentialStore(context)
 
         val noAuthProfile =

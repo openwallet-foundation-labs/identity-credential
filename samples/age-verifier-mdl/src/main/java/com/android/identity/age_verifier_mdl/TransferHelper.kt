@@ -206,7 +206,7 @@ class TransferHelper private constructor(
         val storageFile = File(context.noBackupFilesDir.path, "identity.db")
         storage = AndroidStorage(storageFile.absolutePath)
         androidKeystoreSecureAreaProvider = SecureAreaProvider {
-            AndroidKeystoreSecureArea.create(context, storage)
+            AndroidKeystoreSecureArea.create(storage)
         }
         state.value = State.IDLE
 

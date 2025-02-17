@@ -1,6 +1,7 @@
 package org.multipaz.compose.permissions
 
 import android.Manifest
+import android.os.Build
 import androidx.compose.runtime.Composable
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
@@ -24,11 +25,15 @@ private class AccompanistBluetoothPermissionState(
 actual fun rememberBluetoothPermissionState(): BluetoothPermissionState {
     return AccompanistBluetoothPermissionState(
         rememberMultiplePermissionsState(
-            listOf(
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_ADVERTISE,
-            )
+            if (Build.VERSION.SDK_INT >= 31) {
+                listOf(
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                )
+            } else {
+                listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
         )
     )
 }

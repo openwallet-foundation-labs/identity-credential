@@ -21,14 +21,14 @@ private val androidStorage: AndroidStorage by lazy {
 }
 
 private val androidKeystoreSecureAreaProvider = SecureAreaProvider {
-    AndroidKeystoreSecureArea.create(AndroidContexts.applicationContext, androidStorage)
+    AndroidKeystoreSecureArea.create(androidStorage)
 }
 
 internal actual suspend fun cloudSecureAreaGetPlatformSecureArea(
     storage: Storage,
     partitionId: String,
 ): SecureArea {
-    return AndroidKeystoreSecureArea.create(AndroidContexts.applicationContext, androidStorage)
+    return AndroidKeystoreSecureArea.create(androidStorage)
 }
 
 internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(

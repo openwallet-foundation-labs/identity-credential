@@ -40,15 +40,13 @@ data class SignedVical(
     ): ByteArray {
         val certInfosBuilder = CborArray.builder()
         for (certInfo in vical.certificateInfos) {
-            val cert = X509Cert(certInfo.certificate)
-
             val docTypesBuilder = CborArray.builder()
             certInfo.docType.forEach { docTypesBuilder.add(it) }
 
             certInfosBuilder.addMap()
-                .put("certificate", certInfo.certificate)
-                .put("serialNumber", Tagged(2, Bstr(cert.serialNumber.value)))
-                .put("ski", cert.subjectKeyIdentifier!!)
+                .put("certificate", certInfo.certificate.encodedCertificate)
+                .put("serialNumber", Tagged(Tagged.UNSIGNED_BIGNUM, Bstr(certInfo.certificate.serialNumber.value)))
+                .put("ski", certInfo.certificate.subjectKeyIdentifier!!)
                 .put("docType", docTypesBuilder.end().build())
                 .end()
         }
@@ -135,7 +133,7 @@ data class SignedVical(
                     (it as CborArray).items.map { it.asTstr }
                 }
                 certificateInfos.add(VicalCertificateInfo(
-                    certBytes,
+                    X509Cert(certBytes),
                     docType,
                     certProfiles
                 ))

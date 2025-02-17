@@ -61,17 +61,17 @@ class VicalGeneratorTest {
                 vicalIssueID = vicalIssueID,
                 listOf(
                     VicalCertificateInfo(
-                        certificate = issuer1Cert.encodedCertificate,
+                        certificate = issuer1Cert,
                         docType = listOf("org.iso.18013.5.1.mDL"),
                         certificateProfiles = listOf("")
                     ),
                     VicalCertificateInfo(
-                        certificate = issuer2Cert.encodedCertificate,
+                        certificate = issuer2Cert,
                         docType = listOf("org.iso.18013.5.1.mDL"),
                         certificateProfiles = null
                     ),
                     VicalCertificateInfo(
-                        certificate = issuer3Cert.encodedCertificate,
+                        certificate = issuer3Cert,
                         docType = listOf("org.iso.18013.5.1.mDL", "eu.europa.ec.eudi.pid.1"),
                         certificateProfiles = null
                     ),
@@ -96,8 +96,8 @@ class VicalGeneratorTest {
         assertEquals(vicalIssueID, decodedSignedVical.vical.vicalIssueID)
         assertEquals(3, decodedSignedVical.vical.certificateInfos.size)
 
-        assertContentEquals(
-            issuer1Cert.encodedCertificate,
+        assertEquals(
+            issuer1Cert,
             decodedSignedVical.vical.certificateInfos[0].certificate
         )
         assertContentEquals(
@@ -106,8 +106,8 @@ class VicalGeneratorTest {
         )
         assertEquals(null, decodedSignedVical.vical.certificateInfos[0].certificateProfiles)
 
-        assertContentEquals(
-            issuer2Cert.encodedCertificate,
+        assertEquals(
+            issuer2Cert,
             decodedSignedVical.vical.certificateInfos[1].certificate
         )
         assertContentEquals(
@@ -116,8 +116,8 @@ class VicalGeneratorTest {
         )
         assertEquals(null, decodedSignedVical.vical.certificateInfos[1].certificateProfiles)
 
-        assertContentEquals(
-            issuer3Cert.encodedCertificate,
+        assertEquals(
+            issuer3Cert,
             decodedSignedVical.vical.certificateInfos[2].certificate
         )
         assertContentEquals(

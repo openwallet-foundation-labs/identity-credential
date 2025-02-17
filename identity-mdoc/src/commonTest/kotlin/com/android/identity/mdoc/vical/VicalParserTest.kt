@@ -979,16 +979,15 @@ Mbff+DlHy77+wXISb35NiZ8FdVHgC2ut4fDQTRN4
 -----END CERTIFICATE-----
             """.trimIndent()
             ),
-            X509Cert(ci.certificate)
-        )
-        val ciCert = X509Cert(ci.certificate)
-        assertEquals(
-            "C=ZZ,CN=OWF Identity Credential TEST IACA",
-            ciCert.subject.name
+            ci.certificate
         )
         assertEquals(
             "C=ZZ,CN=OWF Identity Credential TEST IACA",
-            ciCert.issuer.name
+            ci.certificate.subject.name
+        )
+        assertEquals(
+            "C=ZZ,CN=OWF Identity Credential TEST IACA",
+            ci.certificate.issuer.name
         )
         assertEquals(
             "org.iso.18013.5.1.mDL, org.iso.23220.photoid.1, org.micov.1, org.iso.7367.1.mVRC",
@@ -1044,16 +1043,15 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
 -----END CERTIFICATE-----
             """.trimIndent()
             ),
-            X509Cert(ci.certificate)
-        )
-        val ciCert = X509Cert(ci.certificate)
-        assertEquals(
-            "CN=Fast Enterprises Root,O=Maryland MVA,L=Glen Burnie,C=US,ST=US-MD",
-            ciCert.subject.name
+            ci.certificate
         )
         assertEquals(
             "CN=Fast Enterprises Root,O=Maryland MVA,L=Glen Burnie,C=US,ST=US-MD",
-            ciCert.issuer.name
+            ci.certificate.subject.name
+        )
+        assertEquals(
+            "CN=Fast Enterprises Root,O=Maryland MVA,L=Glen Burnie,C=US,ST=US-MD",
+            ci.certificate.issuer.name
         )
         assertEquals(
             "org.iso.18013.5.1.mDL",

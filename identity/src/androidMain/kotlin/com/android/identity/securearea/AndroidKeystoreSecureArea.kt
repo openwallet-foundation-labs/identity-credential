@@ -80,7 +80,6 @@ import javax.crypto.KeyAgreement
 /**
  * An implementation of [SecureArea] using Android Keystore.
  *
- *
  * Keys created using this implementation are hardware-backed, that is the private key
  * material is designed to never leave Secure Hardware. In this context Secure Hardware
  * can mean either the TEE (Trusted Execution Environment) or an SE (Secure Element),
@@ -115,12 +114,12 @@ import javax.crypto.KeyAgreement
  *
  * Use [AndroidKeystoreSecureArea.create] to create an instance of this class.
  */
-// TODO: Most of kDocs here appears obsolete with new storageTable.
 class AndroidKeystoreSecureArea private constructor(
-    private val context: Context,
     private val storageTable: StorageTable,
     private val partitionId: String
 ) : SecureArea {
+    private val context: Context = AndroidContexts.applicationContext
+
     override val identifier: String
         get() = IDENTIFIER
 
@@ -130,12 +129,6 @@ class AndroidKeystoreSecureArea private constructor(
     private val keymintTeeFeatureLevel: Int
     private val keymintSbFeatureLevel: Int
 
-    /**
-     * Constructs a new [AndroidKeystoreSecureArea].
-     *
-     * @param context the application context.
-     * @param storageEngine the storage engine to use for storing metadata about keys.
-     */
     init {
         keymintTeeFeatureLevel = getFeatureVersionKeystore(
             context, false
@@ -697,21 +690,13 @@ class AndroidKeystoreSecureArea private constructor(
      * [FEATURE_HARDWARE_KEYSTORE](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE) and
      * [FEATURE_STRONGBOX_KEYSTORE](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_STRONGBOX_KEYSTORE) to determine the KeyMint version for both
      * the normal hardware-backed keystore and - if available - the StrongBox-backed keystore.
-     *
-     * @param context the application context.
      */
-    class Capabilities(context: Context) {
-        private val keyguardManager: KeyguardManager
-        private val apiLevel: Int
-        private val teeFeatureLevel: Int
-        private val sbFeatureLevel: Int
-
-        init {
-            keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            teeFeatureLevel = getFeatureVersionKeystore(context, false)
-            sbFeatureLevel = getFeatureVersionKeystore(context, true)
-            apiLevel = Build.VERSION.SDK_INT
-        }
+    class Capabilities {
+        private val context = AndroidContexts.applicationContext
+        private val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        private val apiLevel = Build.VERSION.SDK_INT
+        private val teeFeatureLevel = getFeatureVersionKeystore(context, false)
+        private val sbFeatureLevel = getFeatureVersionKeystore(context, true)
 
         val secureLockScreenSetup: Boolean
             /**
@@ -805,11 +790,10 @@ class AndroidKeystoreSecureArea private constructor(
          * @param partitionId the partitionId to use for [storage].
          */
         suspend fun create(
-            context: Context,
             storage: Storage,
             partitionId: String = "default",
         ): AndroidKeystoreSecureArea {
-            return AndroidKeystoreSecureArea(context, storage.getTable(tableSpec), partitionId)
+            return AndroidKeystoreSecureArea(storage.getTable(tableSpec), partitionId)
         }
 
         private val tableSpec = StorageTableSpec(

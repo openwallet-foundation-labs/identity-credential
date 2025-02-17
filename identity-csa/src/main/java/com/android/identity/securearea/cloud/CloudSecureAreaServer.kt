@@ -440,7 +440,11 @@ class CloudSecureAreaServer(
                 // Check that device created the key with the requested user authentication.
                 val attestation = AndroidAttestationExtensionParser(request1.localKeyAttestation!!.certificates[0])
                 if (state.userAuthenticationRequired) {
-                    check(attestation.getUserAuthenticationType() == state.userAuthenticationTypes)
+                    val attestationExtensionUserAuthType = attestation.getUserAuthenticationType()
+                    check(attestationExtensionUserAuthType == state.userAuthenticationTypes) {
+                        "Requested userAuthType ${state.userAuthenticationTypes} for the local key but the Android " +
+                        "attestation extension contains ${attestationExtensionUserAuthType}"
+                    }
                 } else {
                     check(attestation.getUserAuthenticationType() == 0L)
                 }

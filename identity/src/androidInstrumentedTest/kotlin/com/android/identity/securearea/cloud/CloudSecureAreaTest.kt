@@ -163,9 +163,7 @@ class CloudSecureAreaTest {
     @Test
     fun testAttestationCorrectness() = runTest {
         // This test only works if a Device Lock is setup.
-        val aksCapabilities = AndroidKeystoreSecureArea.Capabilities(
-            AndroidContexts.applicationContext,
-        )
+        val aksCapabilities = AndroidKeystoreSecureArea.Capabilities()
         assumeTrue(aksCapabilities.secureLockScreenSetup)
 
         val csa = LoopbackCloudSecureArea(EphemeralStorage().getTable(tableSpec), null)

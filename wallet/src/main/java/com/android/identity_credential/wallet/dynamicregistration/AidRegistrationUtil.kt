@@ -35,6 +35,9 @@ object AidRegistrationUtil {
 
     fun routeAidsToHost(context: Context) {
         val nfcAdapter = NfcAdapter.getDefaultAdapter(context)
+        if (nfcAdapter == null) {
+            return
+        }
         val cardEmulation = CardEmulation.getInstance(nfcAdapter!!)
         val nfcEngagementHandlerComponent =
             ComponentName(context, NFC_ENGAGEMENT_HANDLER)
@@ -59,6 +62,9 @@ object AidRegistrationUtil {
 
     fun routeAidsToSe(context: Context) {
         val nfcAdapter = NfcAdapter.getDefaultAdapter(context)
+        if (nfcAdapter == null) {
+            return
+        }
         val cardEmulation = CardEmulation.getInstance(nfcAdapter)
         val offHostNfcPresentationHandlerComponent =
             ComponentName(context, OFF_HOST_NFC_PRESENTATION_HANDLER)
@@ -77,9 +83,7 @@ object AidRegistrationUtil {
                 listOf(AID_TYPE_4_TAG_NDEF_APPLICATION, AID_MDL_DATA_TRANSFER)
             )
         ) {
-            Logger.d(
-                TAG, "Failed to dynamically register offHostNfcDataTransferHandlerComponent"
-            )
+            Logger.d(TAG, "Failed to dynamically register offHostNfcDataTransferHandlerComponent")
         }
     }
 }

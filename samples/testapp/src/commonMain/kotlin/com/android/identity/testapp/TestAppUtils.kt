@@ -207,7 +207,7 @@ object TestAppUtils {
                 docType = documentType.mdocDocumentType!!.docType,
                 createKeySettings = platformCreateKeySettings(
                     challenge = "Challenge".encodeToByteString(),
-                    keyPurposes = setOf(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN),
+                    keyPurposes = setOf(KeyPurpose.SIGN),
                     userAuthenticationRequired = userAuthenticationRequired
                 )
             )

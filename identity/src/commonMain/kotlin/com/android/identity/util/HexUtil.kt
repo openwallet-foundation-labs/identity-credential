@@ -12,16 +12,35 @@ object HexUtil {
      * @param bytes the byte array to encode.
      * @param upperCase if `true`, will use upper-case characters, otherwise lower-case is used.
      * @param byteDivider a string to separate bytes (hex pairs).
+     * @param decodeAsString if `true`, will include the value decoded as a string with only
+     *   printable characters.
      * @return a string with hexadecimal numbers optionally separated by [byteDivider].
      */
-    fun toHex(bytes: ByteArray, upperCase: Boolean = false, byteDivider: String = ""): String {
+    fun toHex(
+        bytes: ByteArray,
+        upperCase: Boolean = false,
+        byteDivider: String = "",
+        decodeAsString: Boolean = false
+    ): String {
         val sb = StringBuilder(bytes.size * 2)
         for (n in 0 until bytes.size) {
             val b = bytes[n]
             val digits = if (upperCase) HEX_DIGITS_UPPER else HEX_DIGITS_LOWER
+            if (n != 0) {
+                sb.append(byteDivider)
+            }
             sb.append(digits[b.toInt().and(0xff) shr 4])
             sb.append(digits[b.toInt().and(0x0f)])
-            sb.append(byteDivider)
+        }
+        if (decodeAsString) {
+            val str = bytes.decodeToString().map { char ->
+                if (char.isISOControl() || char.isWhitespace()) {
+                    '.'
+                } else {
+                    char
+                }
+            }.joinToString("")
+            sb.append(" (\"${str}\")")
         }
         return sb.toString()
     }
@@ -50,8 +69,8 @@ object HexUtil {
 /**
  * Extension to encode a [ByteArray] to a string with hexadecimal numbers.
  */
-fun ByteArray.toHex(upperCase: Boolean = false, byteDivider: String = ""): String =
-    HexUtil.toHex(this, upperCase = upperCase, byteDivider = byteDivider)
+fun ByteArray.toHex(upperCase: Boolean = false, byteDivider: String = "", decodeAsString: Boolean = false): String =
+    HexUtil.toHex(this, upperCase = upperCase, byteDivider = byteDivider, decodeAsString = decodeAsString)
 
 /**
  * Extension to decode a [ByteArray] from a string with hexadecimal numbers.

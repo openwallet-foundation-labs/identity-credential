@@ -138,6 +138,12 @@ internal class BleCentralManagerAndroid : BleCentralManager {
     private var characteristicIdent: BluetoothGattCharacteristic? = null
     private var characteristicL2cap: BluetoothGattCharacteristic? = null
 
+    init {
+        if (bluetoothManager.adapter == null) {
+            throw IllegalStateException("Bluetooth is not available on this device")
+        }
+    }
+
     private class ConnectionFailedException(
         message: String
     ) : Throwable(message)

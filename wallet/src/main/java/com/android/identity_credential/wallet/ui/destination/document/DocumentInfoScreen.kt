@@ -49,10 +49,10 @@ import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
-import com.android.identity_credential.wallet.ui.durationFromNowText
 import com.android.identity_credential.wallet.util.asFormattedDateTimeInCurrentTimezone
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
+import org.multipaz.compose.datetime.durationFromNowText
 import java.util.*
 
 

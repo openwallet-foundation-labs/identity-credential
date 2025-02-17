@@ -131,16 +131,21 @@ fun IsoMdocProximitySharingScreen(
                                 if (connectionMethods.isEmpty()) {
                                     showToast("No connection methods selected")
                                 } else {
-                                    doHolderFlow(
-                                        connectionMethods = connectionMethods,
-                                        handover = Simple.NULL,
-                                        options = options,
-                                        allowMultipleRequests = settingsModel.presentmentAllowMultipleRequests.value,
-                                        showToast = showToast,
-                                        presentmentModel = presentmentModel,
-                                        showQrCode = showQrCode,
-                                        onNavigateToPresentationScreen = onNavigateToPresentmentScreen,
-                                    )
+                                    try {
+                                        doHolderFlow(
+                                            connectionMethods = connectionMethods,
+                                            handover = Simple.NULL,
+                                            options = options,
+                                            allowMultipleRequests = settingsModel.presentmentAllowMultipleRequests.value,
+                                            showToast = showToast,
+                                            presentmentModel = presentmentModel,
+                                            showQrCode = showQrCode,
+                                            onNavigateToPresentationScreen = onNavigateToPresentmentScreen,
+                                        )
+                                    } catch (e: Throwable) {
+                                        e.printStackTrace()
+                                        showToast("Error: $e")
+                                    }
                                 }
                             }
                         },

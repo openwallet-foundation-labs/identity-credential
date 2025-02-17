@@ -9,13 +9,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
+import com.android.identity.asn1.ASN1Integer
+import com.android.identity.asn1.ASN1String
 import com.android.identity.cbor.Cbor
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.testapp.CertificateViewerDestination
+import com.android.identity.crypto.X509KeyUsage
 import com.android.identity.util.fromHex
 import com.android.identity.util.toBase64Url
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 
 @Composable
 fun CertificateViewerExamplesScreen(
@@ -37,40 +44,76 @@ fun CertificateViewerExamplesScreen(
 }
 
 private fun getCertificateExamplesList(): Map<String, String> {
-    /**
-     * Example of the chain to be displayed.
-     * Copied from [package com.android.identity.crypto] X509CertTests.androidKeyCertChain.
-     */
-    // This is Maryland's IACA certificate (IACA_Root_2024.cer) downloaded from
-    // https://mva.maryland.gov/Pages/MDMobileID_Googlewallet.aspx
-    // (Copied from [package com.android.identity.crypto] X509CertTestsJvm.exampleX509Cert).
-    val mlIaca =
+
+    // Code used to generate futureCert below (we're using PEM b/c generating it every time is slow)
+    /*
+    val futureName = X500Name(
+        mapOf(
+            "2.5.4.3" to ASN1String("David"),
+            "2.5.4.999" to ASN1String("Name w/ Unknown OID")
+        )
+    )
+    val futureKey = Crypto.createEcPrivateKey(EcCurve.P256)
+    val futureValidFrom = LocalDateTime.parse("2080-01-01T00:00:00").toInstant(TimeZone.currentSystemDefault())
+    val futureValidUntil = LocalDateTime.parse("2085-07-01T00:00:00").toInstant(TimeZone.currentSystemDefault())
+    val futureCert = X509Cert.Builder(
+        publicKey = futureKey.publicKey,
+        signingKey = futureKey,
+        signatureAlgorithm = futureKey.curve.defaultSigningAlgorithm,
+        serialNumber = ASN1Integer(1L),
+        subject = futureName,
+        issuer = futureName,
+        validFrom = futureValidFrom,
+        validUntil = futureValidUntil
+    )
+        .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+        .includeSubjectKeyIdentifier()
+        .build()
+    println("future cert: ${futureCert.toPem()}")
+    */
+
+    // Certificate valid in the distant future (Jan 2080 to Jul 2085) w/ unknown X500 component
+    val futureCert =
         X509Cert.fromPem(
             """
------BEGIN CERTIFICATE-----
-MIICxjCCAmygAwIBAgITJkV7El8K11IXqY7mz96n/EhiITAKBggqhkjOPQQDAjBq
-MQ4wDAYDVQQIEwVVUy1NRDELMAkGA1UEBhMCVVMxFDASBgNVBAcTC0dsZW4gQnVy
-bmllMRUwEwYDVQQKEwxNYXJ5bGFuZCBNVkExHjAcBgNVBAMTFUZhc3QgRW50ZXJw
-cmlzZXMgUm9vdDAeFw0yNDAxMDUwNTAwMDBaFw0yOTAxMDQwNTAwMDBaMGoxDjAM
-BgNVBAgTBVVTLU1EMQswCQYDVQQGEwJVUzEUMBIGA1UEBxMLR2xlbiBCdXJuaWUx
-FTATBgNVBAoTDE1hcnlsYW5kIE1WQTEeMBwGA1UEAxMVRmFzdCBFbnRlcnByaXNl
-cyBSb290MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaWcKIqlAWboV93RAa5ad
-0LJBn8W0/yYwtOyUlxuTxoo4SPkorKmOz3EhThC+U4WRrt13aSnCsJtK+waBFghX
-u6OB8DCB7TAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNV
-HQ4EFgQUTprRzaFBJ1SLjJsO01tlLCQ4YF0wPAYDVR0SBDUwM4EWbXZhY3NAbWRv
-dC5zdGF0ZS5tZC51c4YZaHR0cHM6Ly9tdmEubWFyeWxhbmQuZ292LzBYBgNVHR8E
-UTBPME2gS6BJhkdodHRwczovL215bXZhLm1hcnlsYW5kLmdvdjo1NDQzL01EUC9X
-ZWJTZXJ2aWNlcy9DUkwvbURML3Jldm9jYXRpb25zLmNybDAQBgkrBgEEAYPFIQEE
-A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
-8lJuYL/nDxMCIHHkAyIJcQlQmKDUVkBr3heUd5N9Y8GWdbWnbHuwe7Om
------END CERTIFICATE-----
-        """.trimIndent()
+                -----BEGIN CERTIFICATE-----
+                MIIBgjCCASigAwIBAgIBATAKBggqhkjOPQQDAjAvMQ4wDAYDVQQDDAVEYXZpZDEdMBsGBFUEh2cM
+                E05hbWUgdy8gVW5rbm93biBPSUQwIhgPMjA4MDAxMDEwNTAwMDBaGA8yMDg1MDcwMTA0MDAwMFow
+                LzEOMAwGA1UEAwwFRGF2aWQxHTAbBgRVBIdnDBNOYW1lIHcvIFVua25vd24gT0lEMFkwEwYHKoZI
+                zj0CAQYIKoZIzj0DAQcDQgAE1CgghTPXemvJkkaP+oO93oRchJEzNG3/qaF/URzMQAXTlPGHvmNt
+                lVSvYBj85DDYyhBKKse3fWu/LMlZbcqgKqMxMC8wDgYDVR0PAQH/BAQDAgeAMB0GA1UdDgQWBBQy
+                CH/StxdG1hNF99u2JxqplGUL2DAKBggqhkjOPQQDAgNIADBFAiBUThbdDx0+EQ4u0wXV6RXsXeL/
+                RTcuL8RYTHAk0F5zTQIhANIDHOhb8mPPYEv6yp5igQKvaMHANv+tCw0BmB1xSCho
+                -----END CERTIFICATE-----
+            """.trimIndent().trim()
+        )
+
+    // This is Maryland's IACA certificate (IACA_Root_2024.cer) downloaded from
+    // https://mva.maryland.gov/Pages/MDMobileID_Googlewallet.aspx
+    val mdIaca =
+        X509Cert.fromPem(
+            """
+                -----BEGIN CERTIFICATE-----
+                MIICxjCCAmygAwIBAgITJkV7El8K11IXqY7mz96n/EhiITAKBggqhkjOPQQDAjBq
+                MQ4wDAYDVQQIEwVVUy1NRDELMAkGA1UEBhMCVVMxFDASBgNVBAcTC0dsZW4gQnVy
+                bmllMRUwEwYDVQQKEwxNYXJ5bGFuZCBNVkExHjAcBgNVBAMTFUZhc3QgRW50ZXJw
+                cmlzZXMgUm9vdDAeFw0yNDAxMDUwNTAwMDBaFw0yOTAxMDQwNTAwMDBaMGoxDjAM
+                BgNVBAgTBVVTLU1EMQswCQYDVQQGEwJVUzEUMBIGA1UEBxMLR2xlbiBCdXJuaWUx
+                FTATBgNVBAoTDE1hcnlsYW5kIE1WQTEeMBwGA1UEAxMVRmFzdCBFbnRlcnByaXNl
+                cyBSb290MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaWcKIqlAWboV93RAa5ad
+                0LJBn8W0/yYwtOyUlxuTxoo4SPkorKmOz3EhThC+U4WRrt13aSnCsJtK+waBFghX
+                u6OB8DCB7TAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNV
+                HQ4EFgQUTprRzaFBJ1SLjJsO01tlLCQ4YF0wPAYDVR0SBDUwM4EWbXZhY3NAbWRv
+                dC5zdGF0ZS5tZC51c4YZaHR0cHM6Ly9tdmEubWFyeWxhbmQuZ292LzBYBgNVHR8E
+                UTBPME2gS6BJhkdodHRwczovL215bXZhLm1hcnlsYW5kLmdvdjo1NDQzL01EUC9X
+                ZWJTZXJ2aWNlcy9DUkwvbURML3Jldm9jYXRpb25zLmNybDAQBgkrBgEEAYPFIQEE
+                A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
+                8lJuYL/nDxMCIHHkAyIJcQlQmKDUVkBr3heUd5N9Y8GWdbWnbHuwe7Om
+                -----END CERTIFICATE-----
+            """.trimIndent()
         )
 
     // This is a key attestation recorded from an Android device and traces up to a Google CA.
-    // It contains both EC and RSA keys of various sizes making it an useful test vector for
-    // X509Cert implementations.
-    // (Copied from [package com.android.identity.crypto] X509CertTests.androidKeyCertChain).
     val chainGkey = X509CertChain(
         listOf(
             "308202ce30820273a003020102020101300a06082a8648ce3d040302303931293027060355040313203037653832313634373436306364383232663631363063383565386138616261310c300a060355040a1303544545301e170d3234303631383032313533335a170d3234303731383032313533335a301f311d301b06035504031314416e64726f6964204b657973746f7265204b65793059301306072a8648ce3d020106082a8648ce3d03010703420004ac858c2a816562929c5c69bfd64aacaf7c2e84c0db4f0b71a6a1dd153a72265c1b91fb8608e39bedf168a56634966b6fd4c140796397ce3171e50c8a5a30ebc6a382018430820180300e0603551d0f0101ff0404030207803082016c060a2b06010401d6790201110482015c308201580202012c0a01010202012c0a010104094368616c6c656e6765040030818ebf831008020601902920cc83bf83110802060190c39f9483bf83120802060190c39f9483bf853d08020601902920cca4bf85455a045830563130302e0429636f6d2e616e64726f69642e6964656e746974792e7365637572655f617265615f746573745f61707002010131220420e180e58c9e4bfb40d5e68e528be1a668e70361537528b8eda19bf900863f11223081a9a1053103020102a203020103a30402020100a5053103020104aa03020101bf837803020103bf83790302010abf853e03020100bf85404c304a042000000000000000000000000000000000000000000000000000000000000000000101000a01020420c95b9d89c2adc6bed35d630cfb43e8f514a99e521a0944348009e6651d7c5414bf85410502030222e0bf8542050203031647bf854e0602040134b3c1bf854f0602040134b3c1300a06082a8648ce3d0403020349003046022100bb9878eabc1ea4bbf095d77aba6ebb93ea24988f3bdbc87b2894be22aa905767022100a1f10252af737d4d836b6a222422f0e037b23efbea3bed882ef7db8ebd16ac68".fromHex(),
@@ -82,8 +125,9 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
     )
 
     val examples = mapOf(
-        "Key attestation certificate chain" to Cbor.encode(chainGkey.toDataItem()).toBase64Url(),
-        "MD IACA single certificate" to Cbor.encode(mlIaca.toDataItem()).toBase64Url(), // Single.
+        "Expired Android Keystore Attestation chain" to Cbor.encode(chainGkey.toDataItem()).toBase64Url(),
+        "Maryland IACA certificate" to Cbor.encode(mdIaca.toDataItem()).toBase64Url(),
+        "Certificate valid in the future w/ unknown X500 component" to Cbor.encode(futureCert.toDataItem()).toBase64Url(),
     )
 
     return examples

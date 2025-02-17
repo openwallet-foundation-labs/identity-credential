@@ -325,7 +325,6 @@ class X509Cert(
     val keyUsage: Set<X509KeyUsage>
         get() {
             val extVal = getExtensionValue(OID.X509_EXTENSION_KEY_USAGE.oid) ?: return emptySet()
-            check(criticalExtensionOIDs.contains(OID.X509_EXTENSION_KEY_USAGE.oid))
             return X509KeyUsage.decodeSet(ASN1.decode(extVal) as ASN1BitString)
         }
 

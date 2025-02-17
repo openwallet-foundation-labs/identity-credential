@@ -62,7 +62,7 @@ actual fun platformStorage(): Storage {
 }
 
 private val androidKeystoreSecureAreaProvider = SecureAreaProvider {
-    AndroidKeystoreSecureArea.create(AndroidContexts.applicationContext, androidStorage)
+    AndroidKeystoreSecureArea.create(androidStorage)
 }
 
 actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {

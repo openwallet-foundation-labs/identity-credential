@@ -18,6 +18,26 @@ class HexUtilTest {
     }
 
     @Test
+    fun toHexDecodeAsString() {
+        assertEquals(
+            " (\"\")",
+            HexUtil.toHex(
+                byteArrayOf(),
+                byteDivider = " ",
+                decodeAsString = true
+            )
+        )
+        assertEquals(
+            "00 ff 13 ab 0b 41 42 43 (\".�.�.ABC\")",
+            HexUtil.toHex(
+                byteArrayOf(0x00, 0xff.toByte(), 0x13, 0xab.toByte(), 0x0b, 0x41, 0x42, 0x43),
+                byteDivider = " ",
+                decodeAsString = true
+            )
+        )
+    }
+
+    @Test
     fun fromHex() {
         assertContentEquals(ByteArray(0), HexUtil.fromHex(""))
         assertContentEquals(

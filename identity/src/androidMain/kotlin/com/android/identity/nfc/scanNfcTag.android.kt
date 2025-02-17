@@ -74,7 +74,7 @@ private class NfcTagReader<T> {
         }
     }
 
-    private val adapter = NfcAdapter.getDefaultAdapter(AndroidContexts.applicationContext)
+    private val adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(AndroidContexts.applicationContext)
 
     private var continuation: CancellableContinuation<T>? = null
 
@@ -109,6 +109,9 @@ private class NfcTagReader<T> {
             updateMessage: (message: String) -> Unit
         ) -> T?,
     ): T? {
+        if (adapter == null) {
+            throw IllegalStateException("NFC is not supported on this device")
+        }
 
         if (disableReaderModeJob != null) {
             disableReaderModeJob!!.cancel()

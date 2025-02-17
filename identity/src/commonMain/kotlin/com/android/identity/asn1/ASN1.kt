@@ -226,7 +226,7 @@ object ASN1 {
                 try {
                     sb.append("$label ${obj.toLong()}\n")
                 } catch (e: IllegalStateException) {
-                    sb.append("$label ${obj.value.toHex()}\n")
+                    sb.append("$label ${obj.value.toHex(byteDivider = " ")}\n")
                 }
             }
             is ASN1Null -> {
@@ -238,7 +238,8 @@ object ASN1 {
                 sb.append("\n")
             }
             is ASN1OctetString -> {
-                sb.append("OCTET STRING (${obj.value.size} byte) ${obj.value.toHex()}\n")
+                sb.append("OCTET STRING (${obj.value.size} byte) " +
+                        "${obj.value.toHex(byteDivider = " ", decodeAsString = true)}\n")
             }
             is ASN1BitString -> {
                 sb.append("BIT STRING (${obj.value.size*8 - obj.numUnusedBits} bit) ${obj.renderBitString()}\n")
@@ -305,12 +306,12 @@ object ASN1 {
                     for (n in IntRange(1, indent + 2)) {
                         sb.append(" ")
                     }
-                    sb.append("(${obj.content.size} byte) ${obj.content.toHex()}\n")
+                    sb.append(obj.content.toHex(byteDivider = " ", decodeAsString = true) + "\n")
                 }
             }
             is ASN1RawObject -> {
                 sb.append("UNSUPPORTED TAG class=${obj.cls} encoding=${obj.enc} ")
-                sb.append("tag=${obj.tag} value=${obj.content.toHex()}")
+                sb.append("tag=${obj.tag} value=${obj.content.toHex(byteDivider = " ", decodeAsString = true)}")
             }
             is ASN1PrimitiveValue -> {
                 //throw IllegalStateException()
