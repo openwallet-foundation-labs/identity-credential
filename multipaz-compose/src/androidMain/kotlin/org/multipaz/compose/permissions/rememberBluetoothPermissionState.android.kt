@@ -10,19 +10,19 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 @OptIn(ExperimentalPermissionsApi::class)
 private class AccompanistBluetoothPermissionState(
     val multiplePermissionsState: MultiplePermissionsState
-) : BluetoothPermissionState {
+) : PermissionState {
 
     override val isGranted: Boolean
         get() = multiplePermissionsState.allPermissionsGranted
 
-    override fun launchPermissionRequest() {
+    override suspend fun launchPermissionRequest() {
         multiplePermissionsState.launchMultiplePermissionRequest()
     }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-actual fun rememberBluetoothPermissionState(): BluetoothPermissionState {
+actual fun rememberBluetoothPermissionState(): PermissionState {
     return AccompanistBluetoothPermissionState(
         rememberMultiplePermissionsState(
             if (Build.VERSION.SDK_INT >= 31) {

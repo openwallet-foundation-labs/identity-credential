@@ -22,8 +22,10 @@ import identitycredential.samples.testapp.generated.resources.software_secure_ar
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
 import identitycredential.samples.testapp.generated.resources.document_store_screen_title
+import identitycredential.samples.testapp.generated.resources.notifications_title
 import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.rich_text_title
+import identitycredential.samples.testapp.generated.resources.screen_lock_title
 import identitycredential.samples.testapp.generated.resources.settings_screen_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -154,6 +156,16 @@ data object RichTextDestination : Destination {
     override val title = Res.string.rich_text_title
 }
 
+data object NotificationsDestination : Destination {
+    override val route = "notifications"
+    override val title = Res.string.notifications_title
+}
+
+data object ScreenLockDestination : Destination {
+    override val route = "screen_lock"
+    override val title = Res.string.screen_lock_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -176,5 +188,7 @@ val appDestinations = listOf(
     PresentmentDestination,
     CertificatesViewerExamplesDestination,
     CertificateViewerDestination,
-    RichTextDestination
+    RichTextDestination,
+    NotificationsDestination,
+    ScreenLockDestination,
 )
