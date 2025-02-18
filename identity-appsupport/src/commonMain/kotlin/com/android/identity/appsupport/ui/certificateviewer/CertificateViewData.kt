@@ -4,21 +4,17 @@ import com.android.identity.asn1.ASN1
 import com.android.identity.asn1.ASN1Boolean
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.ASN1Sequence
+import com.android.identity.asn1.ASN1String
+import com.android.identity.asn1.ASN1TaggedObject
 import com.android.identity.asn1.OID
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.crypto.X509Cert
 import com.android.identity.securearea.cloud.CloudAttestationExtension
 import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.util.unsignedBigIntToString
 import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
-import kotlinx.datetime.format
-import kotlinx.datetime.format.DateTimeComponents
-import kotlinx.datetime.format.DateTimeComponents.Companion.Format
-import kotlinx.datetime.format.DateTimeFormat
-import kotlinx.datetime.format.DayOfWeekNames
-import kotlinx.datetime.format.MonthNames
-import kotlinx.datetime.format.Padding
-import kotlinx.datetime.format.char
 import kotlin.collections.mapValues
 
 /**
@@ -27,25 +23,23 @@ import kotlin.collections.mapValues
  * Also defining and using two extension methods to map Certificate fields.
  */
 data class CertificateViewData(
-    val type: String,
     val serialNumber: String,
     val version: String,
-    val issued: String,
-    val expired: String,
+    val validFrom: Instant,
+    val validUntil: Instant,
     val subject: Map<String, String> = emptyMap(),
     val issuer: Map<String, String> = emptyMap(),
     val pkAlgorithm: String,
     val pkNamedCurve: String?,
     val pkValue: String,
     val extensions: List<Triple<Boolean, String, String>> = emptyList(),
+    val pem: String,
 ) {
 
     companion object {
 
         /** Map Certificate data to View fields. */
         fun from(cert: X509Cert): CertificateViewData {
-            val type = "X.509 Certificate"
-
             val version = runCatching { cert.version.toString() }
                 .getOrElse { _ -> "" }
                 .let { versionString ->
@@ -66,9 +60,8 @@ data class CertificateViewData(
                 }
             }
 
-            val issued = cert.validityNotBefore.formatWithRfc1123()
-
-            val expired = cert.validityNotAfter.formatWithRfc1123()
+            val validFrom = cert.validityNotBefore
+            val validUntil = cert.validityNotAfter
 
             val subject = cert.subject.components.mapValues { it.value.value }
 
@@ -86,17 +79,17 @@ data class CertificateViewData(
             val extensions = formatExtensions(cert)
 
             return CertificateViewData(
-                type,
                 serialNumber,
                 version,
-                issued,
-                expired,
+                validFrom,
+                validUntil,
                 subject,
                 issuer,
                 pkAlgorithm,
                 pkNamedCurve,
                 pkValue,
-                extensions
+                extensions,
+                cert.toPem()
             )
         }
 
@@ -126,6 +119,12 @@ data class CertificateViewData(
                         OID.X509_EXTENSION_ANDROID_KEYSTORE_ATTESTATION.oid ->
                             AndroidAttestationExtensionParser(cert).prettyPrint()
 
+                        OID.X509_EXTENSION_ANDROID_KEYSTORE_PROVISIONING_INFORMATION.oid ->
+                            Cbor.toDiagnostics(
+                                ext.data.toByteArray(),
+                                setOf(DiagnosticOption.PRETTY_PRINT),
+                            )
+
                         OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid ->
                             CloudAttestationExtension.decode(ext.data).prettyPrint()
 
@@ -136,7 +135,7 @@ data class CertificateViewData(
                                 ASN1.print(ASN1.decode(ext.data.toByteArray())!!)
                             } catch (_: Throwable) {
                                 // If decoding fails, fall back to hex encoding.
-                                ext.data.toByteArray().toHex(byteDivider = " ")
+                                ext.data.toByteArray().toHex(byteDivider = " ", decodeAsString = true)
                             }
                         }
                     }
@@ -149,24 +148,6 @@ data class CertificateViewData(
                     Triple(ext.isCritical, oid, displayValue.trim())
                 }
 
-        }
-
-        private fun Instant.formatWithRfc1123(): String {
-            // Modified RFC_1123: Thu, Jan 4 2029 00:00
-            val rfc1123mod: DateTimeFormat<DateTimeComponents> = Format {
-                dayOfWeek(DayOfWeekNames.ENGLISH_ABBREVIATED)
-                chars(", ")
-                monthName(MonthNames.ENGLISH_ABBREVIATED)
-                char(' ')
-                dayOfMonth(Padding.NONE)
-                char(' ')
-                year()
-                char(' ')
-                hour()
-                char(':')
-                minute()
-            }
-            return format(rfc1123mod)
         }
     }
 }

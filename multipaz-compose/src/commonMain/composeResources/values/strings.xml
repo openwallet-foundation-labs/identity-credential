@@ -24,16 +24,11 @@
     <string name="show_qr_code_dialog_qr_content_description">QR code image</string>
 
     <!-- CertificateViewer -->
-    <string name="certificate_viewer_no_certificates_in_chain">No certificates in the chain.</string>
-    <string name="certificate_viewer_no_cert_data_warning">No certificate data provided.</string>
-    <string name="certificate_viewer_accessibility_info_icon">An info icon</string>
-    <string name="certificate_viewer_accessibility_error_icon">An error icon</string>
     <string name="certificate_viewer_sub_basic_info">Basic Information</string>
     <string name="certificate_viewer_k_type">Type</string>
     <string name="certificate_viewer_k_serial_number">Serial Number</string>
-    <string name="certificate_viewer_k_version">Version</string>
-    <string name="certificate_viewer_k_issued">Issued On</string>
-    <string name="certificate_viewer_k_expired">Expires On</string>
+    <string name="certificate_viewer_k_valid_from">Valid From</string>
+    <string name="certificate_viewer_k_valid_until">Valid Until</string>
     <string name="certificate_viewer_sub_subject">Subject</string>
     <string name="certificate_viewer_sub_issuer">Issuer</string>
     <string name="certificate_viewer_k_country_name">Country Name</string>
@@ -42,7 +37,7 @@
     <string name="certificate_viewer_k_org_unit_name">Organizational Unit</string>
     <string name="certificate_viewer_k_locality_name">Locality</string>
     <string name="certificate_viewer_k_state_name">State or Province</string>
-    <string name="certificate_viewer_k_other_name">&lt;Other Name&gt;</string>
+    <string name="certificate_viewer_k_other_name">Other Name (OID %1$s)</string>
     <string name="certificate_viewer_sub_public_key_info">Public Key Information</string>
     <string name="certificate_viewer_k_pk_algorithm">Algorithm</string>
     <string name="certificate_viewer_k_pk_named_curve">Named Curve</string>
@@ -54,6 +49,9 @@
     <string name="certificate_viewer_critical_ext">Critical Extension</string>
     <string name="certificate_viewer_non_critical_ext">Non-Critical Extension</string>
     <string name="certificate_viewer_value_digital_signature">Digital Signature</string>
+    <string name="certificate_viewer_validity_in_the_past">This certificate is no longer valid, it expired %1$s</string>
+    <string name="certificate_viewer_validity_in_the_future">This certificate is not yet valid, it will be valid %1$s</string>
+    <string name="certificate_viewer_valid_now">Currently valid, will expire %1$s</string>
 
     <!-- Presentment -->
     <string name="presentment_connecting_to_reader">Connecting to reader</string>
@@ -72,5 +70,42 @@
     <string name="passphrase_pin_screen_cancel">Cancel</string>
     <string name="passphrase_pin_screen_done">Done</string>
     <string name="passphrase_prompt_bottom_sheet_cancel">Cancel</string>
+
+    <!-- durationFromNowText -->
+    <string name="duration_just_now">just now</string>
+    <string name="duration_in_a_few_moments">in a few moments</string>
+    <string name="duration_less_than_a_minute">less than a minute</string>
+    <string name="duration_years_and_months">%1$s and %2$s</string>
+    <string name="duration_months_and_days">%1$s and %2$s</string>
+    <string name="duration_weeks_and_days">%1$s and %2$s</string>
+    <string name="duration_days_and_hours">%1$s and %2$s</string>
+    <string name="duration_hours_and_minutes">%1$s and %2$s</string>
+    <string name="duration_time_ago">%1$s ago</string>
+    <string name="duration_time_from_now">%1$s from now</string>
+    <!-- TODO: figure out if we have to have separate string for past and future durations -->
+    <plurals name="duration_year">
+        <item quantity="one">%1$d year</item>
+        <item quantity="other">%1$d years</item>
+    </plurals>
+    <plurals name="duration_month">
+        <item quantity="one">%1$d month</item>
+        <item quantity="other">%1$d months</item>
+    </plurals>
+    <plurals name="duration_day">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="duration_week">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weeks</item>
+    </plurals>
+    <plurals name="duration_hour">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <plurals name="duration_minute">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
 
 </resources>

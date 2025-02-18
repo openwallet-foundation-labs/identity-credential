@@ -104,7 +104,7 @@ class TransferHelper private constructor(private val context: Context) {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         storage = AndroidStorage(storagePath)
         secureAreaRepository = SecureAreaRepository.build {
-            add(AndroidKeystoreSecureArea.create(context, storage))
+            add(AndroidKeystoreSecureArea.create(storage))
         }
         credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(MdocCredential::class) {

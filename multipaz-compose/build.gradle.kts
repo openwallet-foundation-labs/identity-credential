@@ -1,6 +1,8 @@
 import org.gradle.kotlin.dsl.implementation
+import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -13,6 +15,9 @@ kotlin {
     jvmToolchain(17)
 
     androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
@@ -59,6 +64,14 @@ kotlin {
                 implementation(libs.kotlinx.io.core)
             }
         }
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutine.test)
+                @OptIn(ExperimentalComposeLibrary::class)
+                implementation(compose.uiTest)
+            }
+        }
         val androidMain by getting {
             dependencies {
                 implementation(libs.accompanist.permissions)
@@ -85,7 +98,8 @@ android {
     dependencies {
         debugImplementation(compose.uiTooling)
         debugImplementation(libs.androidx.ui.tooling.preview)
-        implementation(libs.kotlinx.datetime)
+        androidTestImplementation(libs.compose.junit4)
+        debugImplementation(libs.compose.test.manifest)
     }
 
     packaging {

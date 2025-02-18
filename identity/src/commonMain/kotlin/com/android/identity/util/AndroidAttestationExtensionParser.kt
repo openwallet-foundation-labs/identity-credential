@@ -350,15 +350,23 @@ class AndroidAttestationExtensionParser(cert: X509Cert) {
         )
         sb.append("\n\n")
         sb.append("Software Enforced Authorizations:\n")
-        for (tag in softwareEnforcedAuthorizationTags) {
-            val obj = getSoftwareAuthorizationValue(tag)
-            sb.append(renderAndroidKeystoreAuthorization(tag, obj))
+        if (softwareEnforcedAuthorizationTags.isEmpty()) {
+            sb.append("  <empty>")
+        } else {
+            for (tag in softwareEnforcedAuthorizationTags) {
+                val obj = getSoftwareAuthorizationValue(tag)
+                sb.append(renderAndroidKeystoreAuthorization(tag, obj))
+            }
         }
         sb.append("\n")
         sb.append("Hardware Enforced Authorizations:\n")
-        for (tag in teeEnforcedAuthorizationTags) {
-            val obj = getTeeAuthorizationValue(tag)
-            sb.append(renderAndroidKeystoreAuthorization(tag, obj))
+        if (teeEnforcedAuthorizationTags.isEmpty()) {
+            sb.append("  <empty>")
+        } else {
+            for (tag in teeEnforcedAuthorizationTags) {
+                val obj = getTeeAuthorizationValue(tag)
+                sb.append(renderAndroidKeystoreAuthorization(tag, obj))
+            }
         }
         return sb.toString()
     }

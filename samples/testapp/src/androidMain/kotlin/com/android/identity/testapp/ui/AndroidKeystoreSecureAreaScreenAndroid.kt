@@ -70,7 +70,7 @@ import kotlin.time.Duration.Companion.days
 private const val TAG = "AndroidKeystoreSecureAreaScreen"
 
 private val androidKeystoreCapabilities: AndroidKeystoreSecureArea.Capabilities by lazy {
-    AndroidKeystoreSecureArea.Capabilities(AndroidContexts.applicationContext)
+    AndroidKeystoreSecureArea.Capabilities()
 }
 
 private val keymintVersionTee: Int by lazy {
@@ -118,10 +118,15 @@ actual fun AndroidKeystoreSecureAreaScreen(
         item {
             TextButton(onClick = {
                 coroutineScope.launch {
-                    val attestation = aksAttestation(false)
-                    Logger.d(TAG, "attestation: " + attestation)
-                    withContext(Dispatchers.Main) {
-                        onViewCertificate(Cbor.encode(attestation.certChain!!.toDataItem()).toBase64Url())
+                    try {
+                        val attestation = aksAttestation(false)
+                        Logger.d(TAG, "attestation: " + attestation)
+                        withContext(Dispatchers.Main) {
+                            onViewCertificate(Cbor.encode(attestation.certChain!!.toDataItem()).toBase64Url())
+                        }
+                    } catch (e: Throwable) {
+                        e.printStackTrace();
+                        showToast("${e.message}")
                     }
                 }
             })
@@ -136,10 +141,17 @@ actual fun AndroidKeystoreSecureAreaScreen(
         item {
             TextButton(onClick = {
                 coroutineScope.launch {
-                    val attestation = aksAttestation(true)
-                    Logger.d(TAG, "attestation: " + attestation)
-                    withContext(Dispatchers.Main) {
-                        onViewCertificate(Cbor.encode(attestation.certChain!!.toDataItem()).toBase64Url())
+                    try {
+                        val attestation = aksAttestation(true)
+                        Logger.d(TAG, "attestation: " + attestation)
+                        withContext(Dispatchers.Main) {
+                            onViewCertificate(
+                                Cbor.encode(attestation.certChain!!.toDataItem()).toBase64Url()
+                            )
+                        }
+                    } catch (e: Throwable) {
+                        e.printStackTrace();
+                        showToast("${e.message}")
                     }
                 }
             })

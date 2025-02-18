@@ -176,15 +176,15 @@ class X509CertTests {
         assertEquals(expectedSubjectKeyIdentifier.toHex(), cert.subjectKeyIdentifier!!.toHex())
         assertEquals(expectedSubjectKeyIdentifier.toHex(), cert.authorityKeyIdentifier!!.toHex())
         assertEquals(
-            "OCTET STRING (20 byte) ${expectedSubjectKeyIdentifier.toHex()}",
+            "OCTET STRING (20 byte) ${expectedSubjectKeyIdentifier.toHex(byteDivider = " ", decodeAsString = true)}",
             ASN1.print(ASN1.decode(cert.getExtensionValue(OID.X509_EXTENSION_SUBJECT_KEY_IDENTIFIER.oid)!!)!!).trim()
         )
         assertEquals(
             """
                 SEQUENCE (1 elem)
                   [0] (1 elem)
-                    (20 byte) ${expectedSubjectKeyIdentifier.toHex()}
-            """.trimIndent(),
+                    ${expectedSubjectKeyIdentifier.toHex(byteDivider = " ", decodeAsString = true)}
+            """.trimIndent().trim(),
             ASN1.print(ASN1.decode(cert.getExtensionValue(OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid)!!)!!).trim()
         )
     }

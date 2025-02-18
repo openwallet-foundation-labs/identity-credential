@@ -381,7 +381,7 @@ fun MainScreenContent(
             ) {
                 OutlinedButton(
                     onClick = {
-                        if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
+                        if (!AndroidKeystoreSecureArea.Capabilities().secureLockScreenSetup) {
                             showDeviceLockNotSetupWarning = true
                         } else if (!hasProximityPresentationPermissions.allPermissionsGranted) {
                             showProximityPresentationPermissionsMissing = true
@@ -477,7 +477,7 @@ fun MainScreenNoDocumentsAvailable(
             modifier = Modifier.padding(16.dp),
             shape = RoundedCornerShape(16.dp),
             onClick = {
-            if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
+            if (!AndroidKeystoreSecureArea.Capabilities().secureLockScreenSetup) {
                 showDeviceLockNotSetupWarning = true
             } else {
                 onNavigate(WalletDestination.AddToWallet.route)

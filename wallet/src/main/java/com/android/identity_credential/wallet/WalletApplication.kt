@@ -165,7 +165,7 @@ class WalletApplication : Application() {
 
         // init AndroidKeyStoreSecureArea
         secureAreaProvider = SecureAreaProvider {
-            AndroidKeystoreSecureArea.create(applicationContext, storage)
+            AndroidKeystoreSecureArea.create(storage)
         }
 
         // init SecureAreaRepository
@@ -268,10 +268,9 @@ class WalletApplication : Application() {
             resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
         )
         for (certInfo in signedVical.vical.certificateInfos) {
-            val cert = X509Cert(certInfo.certificate)
             issuerTrustManager.addTrustPoint(
                 TrustPoint(
-                    cert,
+                    certInfo.certificate,
                     null,
                     null
                 )
@@ -451,7 +450,7 @@ class WalletApplication : Application() {
     private fun getWalletApplicationInformation(): WalletApplicationCapabilities {
         val now = Clock.System.now()
 
-        val keystoreCapabilities = AndroidKeystoreSecureArea.Capabilities(applicationContext)
+        val keystoreCapabilities = AndroidKeystoreSecureArea.Capabilities()
 
         return WalletApplicationCapabilities(
             generatedAt = now,

@@ -64,6 +64,22 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          */
         const val DATE_TIME_NUMBER = 1L
 
+        /**
+         * Unsigned bignum.
+         *
+         * Bignums are encoded as a byte string data item, which is interpreted as an unsigned
+         * integer n in network byte order. Contained items of other types are invalid. For tag
+         * number 2, the value of the bignum is n.
+         */
+        const val UNSIGNED_BIGNUM = 2L
+
+        /**
+         * Negative bignum.
+         *
+         * For tag number 3, the value of the bignum is -1 - n. The preferred serialization of
+         * the byte string is to leave out any leading zeroes.
+         */
+        const val NEGATIVE_BIGNUM = 3L
 
         /**
          * Encoded CBOR data item.

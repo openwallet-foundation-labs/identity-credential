@@ -144,6 +144,12 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
     private var advertiser: BluetoothLeAdvertiser? = null
     private var device: BluetoothDevice? = null
 
+    init {
+        if (bluetoothManager.adapter == null) {
+            throw IllegalStateException("Bluetooth is not available on this device")
+        }
+    }
+
     private val gattServerCallback = object: BluetoothGattServerCallback() {
 
         override fun onServiceAdded(status: Int, service: BluetoothGattService?) {

@@ -35,6 +35,7 @@ import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.AndroidAttestationExtensionParser
+import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -66,11 +67,10 @@ class AndroidKeystoreSecureAreaTest {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
-
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().targetContext)
         val storage = AndroidStorage(databasePath = null, clock = Clock.System)
         secureAreaProvider = SecureAreaProvider {
-            AndroidKeystoreSecureArea.create(context, storage)
+            AndroidKeystoreSecureArea.create(storage)
         }
     }
 

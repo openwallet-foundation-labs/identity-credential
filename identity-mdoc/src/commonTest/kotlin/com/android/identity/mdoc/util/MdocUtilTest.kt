@@ -327,22 +327,22 @@ class MdocUtilTest {
         )
         assertEquals(
             """
-            SEQUENCE (1 elem)
-              [6] (1 elem)
-                (29 byte) 687474703a2f2f7777772e6578616d706c652e636f6d2f697373756572
-            """.trimIndent(),
+                SEQUENCE (1 elem)
+                  [6] (1 elem)
+                    68 74 74 70 3a 2f 2f 77 77 77 2e 65 78 61 6d 70 6c 65 2e 63 6f 6d 2f 69 73 73 75 65 72 ("http://www.example.com/issuer")
+            """.trimIndent().trim(),
             ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
                 OID.X509_EXTENSION_ISSUER_ALT_NAME.oid)!!)!!).trim()
         )
         assertEquals(
             """
-            SEQUENCE (1 elem)
-              SEQUENCE (1 elem)
-                [0] (1 elem)
-                  [0] (1 elem)
-                    [6] (1 elem)
-                      (33 byte) 687474703a2f2f7777772e6578616d706c652e636f6d2f6973737565722f63726c
-            """.trimIndent(),
+                SEQUENCE (1 elem)
+                  SEQUENCE (1 elem)
+                    [0] (1 elem)
+                      [0] (1 elem)
+                        [6] (1 elem)
+                          68 74 74 70 3a 2f 2f 77 77 77 2e 65 78 61 6d 70 6c 65 2e 63 6f 6d 2f 69 73 73 75 65 72 2f 63 72 6c ("http://www.example.com/issuer/crl")
+            """.trimIndent().trim(),
             ASN1.print(ASN1.decode(iacaCert.getExtensionValue(
                 OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!)!!).trim()
         )

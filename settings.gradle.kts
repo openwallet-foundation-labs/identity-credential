@@ -1,6 +1,21 @@
 rootProject.name = "IdentityCredential"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
+// As per https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html#-o0tm8i_54
+// "Currently, you cannot run common Compose Multiplatform tests using android (local) test
+// configurations, so gutter icons in Android Studio, for example, won't be helpful."
+//
+// This is not a problem because the tests will get run as part of the multipaz-compose:connectedCheck
+// tasks.
+//
+// When this starts working again, we can remove the lines below.
+//
+startParameter.excludedTaskNames +=
+    listOf(
+        ":multipaz-compose:testDebugUnitTest",
+        ":multipaz-compose:testReleaseUnitTest"
+    )
+
 pluginManagement {
     repositories {
         google {

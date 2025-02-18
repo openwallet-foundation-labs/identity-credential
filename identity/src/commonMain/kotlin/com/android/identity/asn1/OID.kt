@@ -37,7 +37,7 @@ enum class OID(
     LOCALITY_NAME("2.5.4.7", "localityName (X.520 DN component)"),
     STATE_OR_PROVINCE_NAME("2.5.4.8", "stateOrProvinceName (X.520 DN component)"),
     ORGANIZATION_NAME("2.5.4.10", "organizationName (X.520 DN component)"),
-    ORGANIZATIONAL_UNIT_NAME("organizationalUnitName (X.520 DN component)", ""),
+    ORGANIZATIONAL_UNIT_NAME("2.5.4.11", "organizationalUnitName (X.520 DN component)"),
 
     X509_EXTENSION_KEY_USAGE("2.5.29.15", "keyUsage (X.509 extension)"),
     X509_EXTENSION_EXTENDED_KEY_USAGE("2.5.29.37", "extKeyUsage (X.509 extension)"),
@@ -47,6 +47,7 @@ enum class OID(
     X509_EXTENSION_ISSUER_ALT_NAME("2.5.29.18", "issuerAltName (X.509 extension)"),
     X509_EXTENSION_CRL_DISTRIBUTION_POINTS("2.5.29.31", "cRLDistributionPoints (X.509 extension)"),
     X509_EXTENSION_ANDROID_KEYSTORE_ATTESTATION("1.3.6.1.4.1.11129.2.1.17", "Android Keystore Key Attestation (X.509 extension)"),
+    X509_EXTENSION_ANDROID_KEYSTORE_PROVISIONING_INFORMATION("1.3.6.1.4.1.11129.2.1.30", "Android Keystore Provisioning Information (X.509 extension)"),
     X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION("1.3.6.1.4.1.11129.2.1.49", "Multipaz Key Attestation (X.509 extension)"),
 
     ISO_18013_5_MDL_DS("1.0.18013.5.1.2", "Mobile Driving Licence (mDL) Document Signer (DS)"),
@@ -58,6 +59,33 @@ enum class OID(
             OID.entries.associateBy({it.oid}, {it})
         }
 
+        /**
+         * Checks if a given string is exists in the [OID] enumeration.
+         *
+         * @param oid the OID as a string in dotted-decimal notation.
+         * @return the entry in the [OID] enumeration or `null` if not found.
+         */
         fun lookupByOid(oid: String): OID? = stringToOid[oid]
+
+        /**
+         * Checks if a given string is encoded as an OID.
+         *
+         * @param `true` if encoded as a valid OID, `false` otherwise.
+         */
+        fun isOid(str: String): Boolean {
+            val components = str.split(".")
+            for (component in components) {
+                try {
+                    component.toLong(10)
+                } catch (_: Throwable) {
+                    return false
+                }
+            }
+            // First component must be 0, 1, or 2
+            return when (components[0]) {
+                "0", "1", "2" -> true
+                else -> false
+            }
+        }
     }
 }

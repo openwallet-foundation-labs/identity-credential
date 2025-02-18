@@ -68,10 +68,9 @@ class VerifierApp : Application() {
             resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
         )
         for (certInfo in signedVical.vical.certificateInfos) {
-            val cert = X509Cert(certInfo.certificate)
             trustManagerInstance.addTrustPoint(
                 TrustPoint(
-                    cert,
+                    certInfo.certificate,
                     null,
                     null
                 )

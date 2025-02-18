@@ -480,13 +480,13 @@ class ASN1Tests {
 
         assertEquals(
             """
-            SEQUENCE (6 elem)
-              OCTET STRING (1 byte) e0
-              OCTET STRING (1 byte) c0
-              OCTET STRING (1 byte) f8
-              OCTET STRING (1 byte) ff
-              OCTET STRING (2 byte) ff00
-              OCTET STRING (3 byte) ff0080
+                SEQUENCE (6 elem)
+                  OCTET STRING (1 byte) e0 ("�")
+                  OCTET STRING (1 byte) c0 ("�")
+                  OCTET STRING (1 byte) f8 ("�")
+                  OCTET STRING (1 byte) ff ("�")
+                  OCTET STRING (2 byte) ff 00 ("�.")
+                  OCTET STRING (3 byte) ff 00 80 ("�.�")
             """.trimIndent(),
             ASN1.print(ASN1Sequence(listOf(
                 ASN1OctetString("e0".fromHex()),
@@ -518,8 +518,8 @@ class ASN1Tests {
 
         assertEquals(
             """
-            SEQUENCE (1 elem)
-              UNSUPPORTED TAG class=UNIVERSAL encoding=PRIMITIVE tag=9 value=1011
+                SEQUENCE (1 elem)
+                  UNSUPPORTED TAG class=UNIVERSAL encoding=PRIMITIVE tag=9 value=10 11 ("..")
             """.trimIndent(),
             ASN1.print(ASN1Sequence(listOf(
                 ASN1RawObject(ASN1TagClass.UNIVERSAL, ASN1Encoding.PRIMITIVE, 0x09, byteArrayOf(16, 17))
@@ -564,89 +564,90 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
     @Test
     fun testPrettyPrint() {
         val certificate = ASN1.decode(exampleX509Cert.encodedCertificate)
-        assertEquals("""            
-            SEQUENCE (3 elem)
-              SEQUENCE (8 elem)
-                [0] (1 elem)
-                  INTEGER 2
-                INTEGER 26457b125f0ad75217a98ee6cfdea7fc486221
-                SEQUENCE (1 elem)
-                  OBJECT IDENTIFIER 1.2.840.10045.4.3.2 ECDSA coupled with SHA-256
-                SEQUENCE (5 elem)
-                  SET (1 elem)
+        assertEquals(
+            """
+                SEQUENCE (3 elem)
+                  SEQUENCE (8 elem)
+                    [0] (1 elem)
+                      INTEGER 2
+                    INTEGER 26 45 7b 12 5f 0a d7 52 17 a9 8e e6 cf de a7 fc 48 62 21
+                    SEQUENCE (1 elem)
+                      OBJECT IDENTIFIER 1.2.840.10045.4.3.2 ECDSA coupled with SHA-256
+                    SEQUENCE (5 elem)
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.8 stateOrProvinceName (X.520 DN component)
+                          PrintableString US-MD
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.6 countryName (X.520 DN component)
+                          PrintableString US
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.7 localityName (X.520 DN component)
+                          PrintableString Glen Burnie
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.10 organizationName (X.520 DN component)
+                          PrintableString Maryland MVA
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.3 commonName (X.520 DN component)
+                          PrintableString Fast Enterprises Root
                     SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.8 stateOrProvinceName (X.520 DN component)
-                      PrintableString US-MD
-                  SET (1 elem)
+                      UTCTime 2024-01-05T05:00:00Z
+                      UTCTime 2029-01-04T05:00:00Z
+                    SEQUENCE (5 elem)
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.8 stateOrProvinceName (X.520 DN component)
+                          PrintableString US-MD
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.6 countryName (X.520 DN component)
+                          PrintableString US
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.7 localityName (X.520 DN component)
+                          PrintableString Glen Burnie
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.10 organizationName (X.520 DN component)
+                          PrintableString Maryland MVA
+                      SET (1 elem)
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.4.3 commonName (X.520 DN component)
+                          PrintableString Fast Enterprises Root
                     SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.6 countryName (X.520 DN component)
-                      PrintableString US
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.7 localityName (X.520 DN component)
-                      PrintableString Glen Burnie
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.10 organizationName (X.520 DN component)
-                      PrintableString Maryland MVA
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.3 commonName (X.520 DN component)
-                      PrintableString Fast Enterprises Root
-                SEQUENCE (2 elem)
-                  UTCTime 2024-01-05T05:00:00Z
-                  UTCTime 2029-01-04T05:00:00Z
-                SEQUENCE (5 elem)
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.8 stateOrProvinceName (X.520 DN component)
-                      PrintableString US-MD
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.6 countryName (X.520 DN component)
-                      PrintableString US
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.7 localityName (X.520 DN component)
-                      PrintableString Glen Burnie
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.10 organizationName (X.520 DN component)
-                      PrintableString Maryland MVA
-                  SET (1 elem)
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.4.3 commonName (X.520 DN component)
-                      PrintableString Fast Enterprises Root
-                SEQUENCE (2 elem)
-                  SEQUENCE (2 elem)
-                    OBJECT IDENTIFIER 1.2.840.10045.2.1 Elliptic curve public key cryptography
-                    OBJECT IDENTIFIER 1.2.840.10045.3.1.7 NIST Curve P-256
-                  BIT STRING (520 bit) 0000010001101001011001110000101000100010101010010100000001011001101110100001010111110111011101000100000001101011100101101001110111010000101100100100000110011111110001011011010011111111001001100011000010110100111011001001010010010111000110111001001111000110100010100011100001001000111110010010100010101100101010011000111011001111011100010010000101001110000100001011111001010011100001011001000110101110110111010111011101101001001010011100001010110000100110110100101011111011000001101000000100010110000010000101011110111011
-                [3] (1 elem)
-                  SEQUENCE (6 elem)
-                    SEQUENCE (3 elem)
-                      OBJECT IDENTIFIER 2.5.29.15 keyUsage (X.509 extension)
-                      BOOLEAN true
-                      OCTET STRING (4 byte) 03020106
-                    SEQUENCE (3 elem)
-                      OBJECT IDENTIFIER 2.5.29.19 basicConstraints (X.509 extension)
-                      BOOLEAN true
-                      OCTET STRING (8 byte) 30060101ff020100
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.29.14 subjectKeyIdentifier (X.509 extension)
-                      OCTET STRING (22 byte) 04144e9ad1cda14127548b8c9b0ed35b652c2438605d
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.29.18 issuerAltName (X.509 extension)
-                      OCTET STRING (53 byte) 303381166d76616373406d646f742e73746174652e6d642e7573861968747470733a2f2f6d76612e6d6172796c616e642e676f762f
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 2.5.29.31 cRLDistributionPoints (X.509 extension)
-                      OCTET STRING (81 byte) 304f304da04ba049864768747470733a2f2f6d796d76612e6d6172796c616e642e676f763a353434332f4d44502f57656253657276696365732f43524c2f6d444c2f7265766f636174696f6e732e63726c
-                    SEQUENCE (2 elem)
-                      OBJECT IDENTIFIER 1.3.6.1.4.1.58017.1
-                      OCTET STRING (3 byte) 4d4450
-              SEQUENCE (1 elem)
-                OBJECT IDENTIFIER 1.2.840.10045.4.3.2 ECDSA coupled with SHA-256
-              BIT STRING (568 bit) 0011000001000101000000100010000100000000100111010111110111111110000100111000000100111001011101010000111110111001000110110101101011100110010010101101001001010011010110111011111101011001000000100010000011010011011010011011110010001011111100100101001001101110011000001011111111100111000011110001001100000010001000000111000111100100000000110010001000001001011100010000100101010000100110001010000011010100010101100100000001101011110111100001011110010100011101111001001101111101011000111100000110010110011101011011010110100111011011000111101110110000011110111011001110100110
+                      SEQUENCE (2 elem)
+                        OBJECT IDENTIFIER 1.2.840.10045.2.1 Elliptic curve public key cryptography
+                        OBJECT IDENTIFIER 1.2.840.10045.3.1.7 NIST Curve P-256
+                      BIT STRING (520 bit) 0000010001101001011001110000101000100010101010010100000001011001101110100001010111110111011101000100000001101011100101101001110111010000101100100100000110011111110001011011010011111111001001100011000010110100111011001001010010010111000110111001001111000110100010100011100001001000111110010010100010101100101010011000111011001111011100010010000101001110000100001011111001010011100001011001000110101110110111010111011101101001001010011100001010110000100110110100101011111011000001101000000100010110000010000101011110111011
+                    [3] (1 elem)
+                      SEQUENCE (6 elem)
+                        SEQUENCE (3 elem)
+                          OBJECT IDENTIFIER 2.5.29.15 keyUsage (X.509 extension)
+                          BOOLEAN true
+                          OCTET STRING (4 byte) 03 02 01 06 ("....")
+                        SEQUENCE (3 elem)
+                          OBJECT IDENTIFIER 2.5.29.19 basicConstraints (X.509 extension)
+                          BOOLEAN true
+                          OCTET STRING (8 byte) 30 06 01 01 ff 02 01 00 ("0...�...")
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.29.14 subjectKeyIdentifier (X.509 extension)
+                          OCTET STRING (22 byte) 04 14 4e 9a d1 cd a1 41 27 54 8b 8c 9b 0e d3 5b 65 2c 24 38 60 5d ("..N��͡A'T���.�[e,${'$'}8`]")
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.29.18 issuerAltName (X.509 extension)
+                          OCTET STRING (53 byte) 30 33 81 16 6d 76 61 63 73 40 6d 64 6f 74 2e 73 74 61 74 65 2e 6d 64 2e 75 73 86 19 68 74 74 70 73 3a 2f 2f 6d 76 61 2e 6d 61 72 79 6c 61 6e 64 2e 67 6f 76 2f ("03�.mvacs@mdot.state.md.us�.https://mva.maryland.gov/")
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 2.5.29.31 cRLDistributionPoints (X.509 extension)
+                          OCTET STRING (81 byte) 30 4f 30 4d a0 4b a0 49 86 47 68 74 74 70 73 3a 2f 2f 6d 79 6d 76 61 2e 6d 61 72 79 6c 61 6e 64 2e 67 6f 76 3a 35 34 34 33 2f 4d 44 50 2f 57 65 62 53 65 72 76 69 63 65 73 2f 43 52 4c 2f 6d 44 4c 2f 72 65 76 6f 63 61 74 69 6f 6e 73 2e 63 72 6c ("0O0M�K�I�Ghttps://mymva.maryland.gov:5443/MDP/WebServices/CRL/mDL/revocations.crl")
+                        SEQUENCE (2 elem)
+                          OBJECT IDENTIFIER 1.3.6.1.4.1.58017.1
+                          OCTET STRING (3 byte) 4d 44 50 ("MDP")
+                  SEQUENCE (1 elem)
+                    OBJECT IDENTIFIER 1.2.840.10045.4.3.2 ECDSA coupled with SHA-256
+                  BIT STRING (568 bit) 0011000001000101000000100010000100000000100111010111110111111110000100111000000100111001011101010000111110111001000110110101101011100110010010101101001001010011010110111011111101011001000000100010000011010011011010011011110010001011111100100101001001101110011000001011111111100111000011110001001100000010001000000111000111100100000000110010001000001001011100010000100101010000100110001010000011010100010101100100000001101011110111100001011110010100011101111001001101111101011000111100000110010110011101011011010110100111011011000111101110110000011110111011001110100110
             """.trimIndent(),
             ASN1.print(certificate!!).trim()
         )
