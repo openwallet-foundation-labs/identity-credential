@@ -21,6 +21,7 @@ import identitycredential.samples.testapp.generated.resources.secure_enclave_sec
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
+import identitycredential.samples.testapp.generated.resources.document_store_screen_title
 import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.rich_text_title
 import identitycredential.samples.testapp.generated.resources.settings_screen_title
@@ -44,6 +45,11 @@ data object SettingsDestination : Destination {
 data object AboutDestination : Destination {
     override val route = "about"
     override val title = Res.string.about_screen_title
+}
+
+data object DocumentStoreDestination : Destination {
+    override val route = "document_store"
+    override val title = Res.string.document_store_screen_title
 }
 
 data object SoftwareSecureAreaDestination : Destination {
@@ -152,6 +158,7 @@ val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
     AboutDestination,
+    DocumentStoreDestination,
     SoftwareSecureAreaDestination,
     AndroidKeystoreSecureAreaDestination,
     SecureEnclaveSecureAreaDestination,

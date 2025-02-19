@@ -1,6 +1,5 @@
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.get
-import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -9,8 +8,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.jetbrainsCompose)
-    alias(libs.plugins.compose.compiler)
     id("maven-publish")
 }
 
@@ -79,10 +76,6 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
-
-                // TODO: Strictly speaking this should be moved to androidMain deps but it's here right
-                // now to make the build work.
-                implementation(compose.runtime)
             }
         }
 
@@ -90,7 +83,7 @@ kotlin {
             kotlin.srcDir("build/generated/ksp/metadata/commonTest/kotlin")
             dependencies {
                 implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutine.test)
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
 
@@ -119,10 +112,6 @@ kotlin {
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
                 implementation(libs.androidx.biometrics)
-
-                implementation(compose.foundation)
-                implementation(compose.material3)
-                implementation(libs.androidx.material)
             }
         }
 
@@ -155,7 +144,7 @@ kotlin {
                 implementation(libs.androidx.sqlite.bundled)
                 implementation(libs.androidx.test.junit)
                 implementation(libs.androidx.espresso.core)
-                implementation(libs.compose.junit4)
+                implementation(libs.kotlinx.coroutines.android)
                 implementation(project(":identity-csa"))
             }
         }
@@ -213,11 +202,7 @@ android {
         }
     }
 
-    buildFeatures {
-        compose = true
-    }
     dependencies {
-        debugImplementation(compose.uiTooling)
     }
 }
 

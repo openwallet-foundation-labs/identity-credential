@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.credentials
-
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.compose.compiler)
@@ -143,7 +141,7 @@ dependencies {
     implementation(libs.bouncy.castle.bcprov)
 
     testImplementation(libs.kotlin.test)
-    testImplementation(libs.kotlinx.coroutine.test)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.client.mock)
 
     androidTestImplementation(libs.androidx.test.junit)

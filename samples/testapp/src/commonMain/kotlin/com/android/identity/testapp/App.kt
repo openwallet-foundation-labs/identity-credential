@@ -46,6 +46,7 @@ import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
@@ -55,6 +56,7 @@ import com.android.identity.testapp.ui.CertificateScreen
 import com.android.identity.testapp.ui.CertificateViewerExamplesScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
+import com.android.identity.testapp.ui.DocumentStoreScreen
 import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
 import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
@@ -75,6 +77,7 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.back_button
+import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -103,6 +106,7 @@ class App private constructor() {
 
     lateinit var documentTypeRepository: DocumentTypeRepository
 
+    lateinit var softwareSecureArea: SoftwareSecureArea
     lateinit var documentStore: DocumentStore
 
     lateinit var iacaKey: EcPrivateKey
@@ -132,7 +136,6 @@ class App private constructor() {
             Pair(::dsInit, "dsInit"),
             Pair(::readerRootInit, "readerRootInit"),
             Pair(::readerInit, "readerInit"),
-            Pair(::documentsInit, "documentsInit"),
             Pair(::trustManagersInit, "trustManagersInit"),
         )
         val begin = Clock.System.now()
@@ -158,9 +161,24 @@ class App private constructor() {
     }
 
     private suspend fun documentStoreInit() {
+        softwareSecureArea = SoftwareSecureArea.create(platformStorage())
         val secureAreaRepository: SecureAreaRepository = SecureAreaRepository.build {
-            add(SoftwareSecureArea.create(platformStorage()))
+            add(softwareSecureArea)
             add(platformSecureAreaProvider().get())
+            addFactory(CloudSecureArea.IDENTIFIER_PREFIX) { identifier ->
+                val queryString = identifier.substring(CloudSecureArea.IDENTIFIER_PREFIX.length + 1)
+                val params = queryString.split("&").map {
+                    val parts = it.split("=", ignoreCase = false, limit = 2)
+                    parts[0] to parts[1].decodeURLPart()
+                }.toMap()
+                val cloudSecureAreaUrl = params["url"]!!
+                Logger.i(TAG, "Creating CSA with url $cloudSecureAreaUrl for $identifier")
+                CloudSecureArea.create(
+                    platformStorage(),
+                    identifier,
+                    cloudSecureAreaUrl
+                )
+            }
         }
         val credentialLoader: CredentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(MdocCredential::class) {
@@ -172,14 +190,6 @@ class App private constructor() {
             credentialLoader = credentialLoader,
             documentMetadataFactory = TestAppDocumentMetadata::create,
             documentTableSpec = testDocumentTableSpec
-        )
-    }
-
-    private suspend fun documentsInit() {
-        TestAppUtils.provisionDocuments(
-            documentStore,
-            dsKey,
-            dsCert
         )
     }
 
@@ -461,6 +471,7 @@ class App private constructor() {
                     composable(route = StartDestination.route) {
                         StartScreen(
                             onClickAbout = { navController.navigate(AboutDestination.route) },
+                            onClickDocumentStore = { navController.navigate(DocumentStoreDestination.route) },
                             onClickSoftwareSecureArea = { navController.navigate(SoftwareSecureAreaDestination.route) },
                             onClickAndroidKeystoreSecureArea = { navController.navigate(AndroidKeystoreSecureAreaDestination.route) },
                             onClickCloudSecureArea = { navController.navigate(CloudSecureAreaDestination.route) },
@@ -483,6 +494,16 @@ class App private constructor() {
                     }
                     composable(route = AboutDestination.route) {
                         AboutScreen()
+                    }
+                    composable(route = DocumentStoreDestination.route) {
+                        DocumentStoreScreen(
+                            documentStore = documentStore,
+                            softwareSecureArea = softwareSecureArea,
+                            settingsModel = settingsModel,
+                            dsKey = dsKey,
+                            dsCert = dsCert,
+                            showToast = { message: String -> showToast(message) }
+                        )
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {
                         SoftwareSecureAreaScreen(showToast = { message -> showToast(message) })

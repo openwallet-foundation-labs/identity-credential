@@ -6,7 +6,10 @@ import com.android.identity.appsupport.credman.IdentityCredentialField
 import com.android.identity.appsupport.credman.IdentityCredentialRegistry
 import com.android.identity.cbor.Cbor
 import com.android.identity.document.Document
+import com.android.identity.document.DocumentAdded
+import com.android.identity.document.DocumentDeleted
 import com.android.identity.document.DocumentStore
+import com.android.identity.document.DocumentUpdated
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.storage.StorageTableSpec
@@ -15,13 +18,19 @@ import com.android.identity.util.Logger
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.sample
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "DigitalCredentials"
 
@@ -155,6 +164,7 @@ private suspend fun updateCredman() {
 
 internal actual val defaultAvailable = true
 
+@OptIn(FlowPreview::class)
 internal actual suspend fun defaultStartExportingCredentials(
     documentStore: DocumentStore,
     documentTypeRepository: DocumentTypeRepository,
@@ -178,6 +188,16 @@ internal actual suspend fun defaultStartExportingCredentials(
         listeningJob = listeningJob,
     ))
     updateCredman()
+
+    // To avoid continually updating Credman when documents are added one after the other, sample
+    // only every 10 seconds.
+    documentStore.eventFlow
+        .sample(10.seconds)
+        .onEach { event ->
+            Logger.i(TAG, "DocumentStore event ${event::class.simpleName} ${event.documentId}")
+            updateCredman()
+        }
+        .launchIn(CoroutineScope(Dispatchers.IO))
 }
 
 internal actual suspend fun defaultStopExportingCredentials(

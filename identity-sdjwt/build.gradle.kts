@@ -20,5 +20,5 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.bouncy.castle.bcprov)
     testImplementation(libs.bouncy.castle.bcpkix)
-    testImplementation(libs.kotlinx.coroutine.test)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
