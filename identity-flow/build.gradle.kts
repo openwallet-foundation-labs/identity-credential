@@ -40,7 +40,7 @@ kotlin {
             dependencies {
                 implementation(projects.processorAnnotations)
                 implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutine.test)
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
     }

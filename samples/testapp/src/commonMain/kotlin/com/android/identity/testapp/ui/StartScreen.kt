@@ -19,6 +19,7 @@ import identitycredential.samples.testapp.generated.resources.certificate_viewer
 import identitycredential.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import identitycredential.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.consent_modal_bottom_sheet_list_screen_title
+import identitycredential.samples.testapp.generated.resources.document_store_screen_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_multi_device_testing_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import identitycredential.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
@@ -34,6 +35,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun StartScreen(
     onClickAbout: () -> Unit = {},
+    onClickDocumentStore: () -> Unit = {},
     onClickSoftwareSecureArea: () -> Unit = {},
     onClickAndroidKeystoreSecureArea: () -> Unit = {},
     onClickCloudSecureArea: () -> Unit = {},
@@ -60,6 +62,12 @@ fun StartScreen(
             item {
                 TextButton(onClick = onClickAbout) {
                     Text(stringResource(Res.string.about_screen_title))
+                }
+            }
+
+            item {
+                TextButton(onClick = onClickDocumentStore) {
+                    Text(stringResource(Res.string.document_store_screen_title))
                 }
             }
 

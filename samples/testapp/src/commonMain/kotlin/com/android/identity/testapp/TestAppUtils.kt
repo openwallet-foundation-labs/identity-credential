@@ -27,13 +27,18 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
+import identitycredential.samples.testapp.generated.resources.photo_id_card_art
+import identitycredential.samples.testapp.generated.resources.pid_card_art
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
@@ -100,8 +105,14 @@ object TestAppUtils {
         EUPersonalID.getDocumentType()
     )
 
-    suspend fun provisionDocuments(
+    suspend fun provisionTestDocuments(
         documentStore: DocumentStore,
+        secureArea: SecureArea,
+        secureAreaCreateKeySettingsFunc: (
+            challenge: ByteString,
+            keyPurposes: Set<KeyPurpose>,
+            userAuthenticationRequired: Boolean
+        ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert
     ) {
@@ -112,35 +123,47 @@ object TestAppUtils {
         }
         provisionDocument(
             documentStore,
+            secureArea,
+            secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
             DrivingLicense.getDocumentType(),
             "Erika",
-            "Erika's Driving License"
+            "Erika's Driving License",
+            Res.drawable.driving_license_card_art
         )
         provisionDocument(
             documentStore,
+            secureArea,
+            secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
             PhotoID.getDocumentType(),
             "Erika",
-            "Erika's Photo ID"
+            "Erika's Photo ID",
+            Res.drawable.photo_id_card_art
         )
         provisionDocument(
             documentStore,
+            secureArea,
+            secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
             PhotoID.getDocumentType(),
             "Erika #2",
-            "Erika's Photo ID #2"
+            "Erika's Photo ID #2",
+            Res.drawable.photo_id_card_art
         )
         provisionDocument(
             documentStore,
+            secureArea,
+            secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
             EUPersonalID.getDocumentType(),
             "Erika",
-            "Erika's Personal ID"
+            "Erika's Personal ID",
+            Res.drawable.pid_card_art
         )
     }
 
@@ -148,11 +171,18 @@ object TestAppUtils {
     @OptIn(ExperimentalResourceApi::class)
     private suspend fun provisionDocument(
         documentStore: DocumentStore,
+        secureArea: SecureArea,
+        secureAreaCreateKeySettingsFunc: (
+                challenge: ByteString,
+                keyPurposes: Set<KeyPurpose>,
+                userAuthenticationRequired: Boolean
+            ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
         documentType: DocumentType,
         givenNameOverride: String,
         displayName: String,
+        cardArtResource: DrawableResource,
     ) {
         val nsdBuilder = NameSpacedData.Builder()
         for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
@@ -173,7 +203,7 @@ object TestAppUtils {
 
         val cardArt = getDrawableResourceBytes(
             getSystemResourceEnvironment(),
-            Res.drawable.driving_license_card_art
+            cardArtResource,
         )
 
         val document = documentStore.createDocument {
@@ -197,7 +227,6 @@ object TestAppUtils {
             val timeSigned = now - 1.hours
             val timeValidityBegin =  now - 1.hours
             val timeValidityEnd = now + 24.hours
-            val secureArea = platformSecureAreaProvider().get()
 
             val mdocCredential = MdocCredential.create(
                 document = document,
@@ -205,10 +234,10 @@ object TestAppUtils {
                 domain = domain,
                 secureArea = secureArea,
                 docType = documentType.mdocDocumentType!!.docType,
-                createKeySettings = platformCreateKeySettings(
-                    challenge = "Challenge".encodeToByteString(),
-                    keyPurposes = setOf(KeyPurpose.SIGN),
-                    userAuthenticationRequired = userAuthenticationRequired
+                createKeySettings = secureAreaCreateKeySettingsFunc(
+                    "Challenge".encodeToByteString(),
+                    setOf(KeyPurpose.SIGN),
+                    userAuthenticationRequired
                 )
             )
 

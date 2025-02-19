@@ -98,22 +98,6 @@ internal expect fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
 
 /**
  * An implementation of [SecureArea] using a Secure Area managed by an external server.
- *
- * The given [identifier] must start with `CloudSecureArea` and if the application is only using
- * a single instance of [CloudSecureArea], just using this string as the identifier is fine.
- *
- * For applications using multiple instances of [CloudSecureArea], a common format for the
- * identifier is `CloudSecureArea?id=1234567890&url=https://csa.example.com/csa-server` where the
- * `id` parameter is a unique identifier for the document and the `url` parameter
- * contains the URL to connect to.
- *
- * The [identifier] is used as a prefix for the Android Keystore alias space and also as a prefix
- * for all keys used in the passed-in [storageTable]. As such, it's safe to use the same
- * [StorageEngine] instance for multiple [CloudSecureArea] instances.
- *
- * @param storageTable the storage to use for storing metadata about keys.
- * @param identifier an identifier for the Cloud Secure Area.
- * @param serverUrl the URL the Cloud Secure Area is using.
  */
 open class CloudSecureArea protected constructor(
     private val storageTable: StorageTable,
@@ -243,6 +227,14 @@ open class CloudSecureArea protected constructor(
                 deviceChallenge,
                 onAuthorizeRootOfTrust,
             )
+
+            // TODO: Need deleteAll() to take a partitionId
+            storageTable.enumerate(partitionId = identifier).forEach {
+                storageTable.delete(
+                    key = it,
+                    partitionId = identifier
+                )
+            }
 
             // Ready to go...
             deviceAttestationId = deviceAttestationResult.deviceAttestationId
@@ -890,7 +882,21 @@ open class CloudSecureArea protected constructor(
         /**
          * Creates an instance of [CloudSecureArea].
          *
+         * The given [identifier] must start with `CloudSecureArea` and if the application is only using
+         * a single instance of [CloudSecureArea], just using this string as the identifier is fine.
+         *
+         * For applications using multiple instances of [CloudSecureArea], a common format for the
+         * identifier is `CloudSecureArea?id=1234567890&url=https://csa.example.com/csa-server` where the
+         * `id` parameter is a unique identifier for the document and the `url` parameter
+         * contains the URL to connect to.
+         *
+         * The [identifier] is used as a prefix for the Android Keystore alias space and also as a prefix
+         * for all keys used in the passed-in [storageTable]. As such, it's safe to use the same
+         * [StorageEngine] instance for multiple [CloudSecureArea] instances.
+         *
          * @param storage the storage engine to use for storing key material.
+         * @param identifier an identifier for the Cloud Secure Area.
+         * @param serverUrl the URL the Cloud Secure Area is using.
          */
         suspend fun create(
             storage: Storage,
