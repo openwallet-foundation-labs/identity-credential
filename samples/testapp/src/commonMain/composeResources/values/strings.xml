@@ -25,5 +25,7 @@
     <string name="provisioning_test_title">Test provisioning</string>
     <string name="presentment_title">Presentment</string>
     <string name="rich_text_title">Rich text</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="screen_lock_title">Screen Lock</string>
 
 </resources>

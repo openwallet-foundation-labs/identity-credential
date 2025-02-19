@@ -61,12 +61,14 @@ import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
 import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
 import com.android.identity.testapp.ui.NfcScreen
+import com.android.identity.testapp.ui.NotificationsScreen
 import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
 import com.android.identity.testapp.ui.PassphrasePromptScreen
 import com.android.identity.testapp.ui.PresentmentScreen
 import com.android.identity.testapp.ui.ProvisioningTestScreen
 import com.android.identity.testapp.ui.QrCodesScreen
 import com.android.identity.testapp.ui.RichTextScreen
+import com.android.identity.testapp.ui.ScreenLockScreen
 import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.testapp.ui.SettingsScreen
 import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
@@ -487,6 +489,8 @@ class App private constructor() {
                             onClickMdocTransportMultiDeviceTesting = { navController.navigate(IsoMdocMultiDeviceTestingDestination.route) },
                             onClickCertificatesViewerExamples = { navController.navigate(CertificatesViewerExamplesDestination.route) },
                             onClickRichText = { navController.navigate(RichTextDestination.route) },
+                            onClickNotifications = { navController.navigate(NotificationsDestination.route) },
+                            onClickScreenLock = { navController.navigate(ScreenLockDestination.route) }
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -620,6 +624,16 @@ class App private constructor() {
                     }
                     composable(route = RichTextDestination.route) {
                         RichTextScreen()
+                    }
+                    composable(route = NotificationsDestination.route) {
+                        NotificationsScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = ScreenLockDestination.route) {
+                        ScreenLockScreen(
+                            showToast = { message -> showToast(message) }
+                        )
                     }
                 }
             }

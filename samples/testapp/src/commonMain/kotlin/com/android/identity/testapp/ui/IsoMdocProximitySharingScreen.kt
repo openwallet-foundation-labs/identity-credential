@@ -14,6 +14,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ fun IsoMdocProximitySharingScreen(
     onNavigateToPresentmentScreen: () -> Unit,
     showToast: (message: String) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val blePermissionState = rememberBluetoothPermissionState()
 
     val showQrCode = remember { mutableStateOf<ByteString?>(null) }
@@ -76,7 +78,11 @@ fun IsoMdocProximitySharingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(
-                onClick = { blePermissionState.launchPermissionRequest() }
+                onClick = {
+                    coroutineScope.launch {
+                        blePermissionState.launchPermissionRequest()
+                    }
+                }
             ) {
                 Text("Request BLE permissions")
             }

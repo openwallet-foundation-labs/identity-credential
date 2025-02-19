@@ -15,6 +15,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.jetbrains.compose.resources.getString
+import org.multipaz.compose.notifications.NotificationManagerAndroid
 import java.io.File
 import java.net.NetworkInterface
 import java.security.Security
@@ -35,6 +37,10 @@ actual suspend fun platformInit() {
         Security.addProvider(BouncyCastleProvider())
         platformInitialized = true
     }
+    NotificationManagerAndroid.setSmallIcon(R.drawable.ic_stat_name)
+    NotificationManagerAndroid.setChannelTitle(
+        AndroidContexts.applicationContext.getString(R.string.notification_channel_title)
+    )
 }
 
 actual fun getLocalIpAddress(): String {

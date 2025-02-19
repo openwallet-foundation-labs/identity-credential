@@ -151,7 +151,11 @@ fun IsoMdocMultiDeviceTestingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(
-                onClick = { blePermissionState.launchPermissionRequest() }
+                onClick = {
+                    coroutineScope.launch {
+                        blePermissionState.launchPermissionRequest()
+                    }
+                }
             ) {
                 Text("Request BLE permissions")
             }

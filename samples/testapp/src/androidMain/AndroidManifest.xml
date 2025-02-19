@@ -35,6 +35,9 @@
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- For posting notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         tools:targetApi="31"
         android:allowBackup="true"
