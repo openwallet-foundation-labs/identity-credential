@@ -17,22 +17,25 @@
 package com.android.identity.documenttype
 
 import com.android.identity.cbor.DataItem
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Class containing the metadata of an attribute/data element/claim of a Document Type
  *
- * @param type the datatype of this attribute.
- * @param identifier the identifier of this attribute.
- * @param displayName the name suitable for display of the attribute.
- * @param description a description of the attribute.
- * @param icon the icon for the attribute, if available.
- * @param sampleValue a sample value for the attribute, if available.
+ * @property type the datatype of this attribute.
+ * @property identifier the identifier of this attribute.
+ * @property displayName the name suitable for display of the attribute.
+ * @property description a description of the attribute.
+ * @property icon the icon for the attribute, if available.
+ * @property sampleValueMdoc a sample value for the attribute, if available.
+ * @property sampleValueVc a sample value for the attribute, if available.
  */
-class DocumentAttribute(
+data class DocumentAttribute(
     val type: DocumentAttributeType,
     val identifier: String,
     val displayName: String,
     val description: String,
     val icon: Icon?,
-    val sampleValue: DataItem?
+    val sampleValueMdoc: DataItem?,
+    val sampleValueVc: JsonElement?
 )

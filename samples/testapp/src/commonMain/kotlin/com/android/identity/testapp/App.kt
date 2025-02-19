@@ -45,6 +45,8 @@ import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.vical.SignedVical
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.cloud.CloudSecureArea
@@ -57,7 +59,10 @@ import com.android.identity.testapp.ui.CertificateScreen
 import com.android.identity.testapp.ui.CertificateViewerExamplesScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
 import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
+import com.android.identity.testapp.ui.CredentialClaimsViewerScreen
+import com.android.identity.testapp.ui.CredentialViewerScreen
 import com.android.identity.testapp.ui.DocumentStoreScreen
+import com.android.identity.testapp.ui.DocumentViewerScreen
 import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
 import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
 import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
@@ -111,6 +116,7 @@ class App private constructor() {
 
     lateinit var softwareSecureArea: SoftwareSecureArea
     lateinit var documentStore: DocumentStore
+    lateinit var documentModel: DocumentModel
 
     lateinit var iacaKey: EcPrivateKey
     lateinit var iacaCert: X509Cert
@@ -134,6 +140,7 @@ class App private constructor() {
             Pair(::settingsInit, "settingsInit"),
             Pair(::documentTypeRepositoryInit, "documentTypeRepositoryInit"),
             Pair(::documentStoreInit, "documentStoreInit"),
+            Pair(::documentModelInit, "documentModelInit"),
             Pair(::keyStorageInit, "keyStorageInit"),
             Pair(::iacaInit, "iacaInit"),
             Pair(::dsInit, "dsInit"),
@@ -187,6 +194,12 @@ class App private constructor() {
         credentialLoader.addCredentialImplementation(MdocCredential::class) {
             document -> MdocCredential(document)
         }
+        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
+                document -> KeyBoundSdJwtVcCredential(document)
+        }
+        credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential::class) {
+                document -> KeylessSdJwtVcCredential(document)
+        }
         documentStore = DocumentStore(
             storage = platformStorage(),
             secureAreaRepository = secureAreaRepository,
@@ -194,6 +207,14 @@ class App private constructor() {
             documentMetadataFactory = TestAppDocumentMetadata::create,
             documentTableSpec = testDocumentTableSpec
         )
+    }
+
+    private suspend fun documentModelInit() {
+        documentModel = DocumentModel(
+            scope = CoroutineScope(Dispatchers.IO),
+            documentStore = documentStore
+        )
+        documentModel.initialize()
     }
 
     private suspend fun trustManagersInit() {
@@ -549,11 +570,72 @@ class App private constructor() {
                     composable(route = DocumentStoreDestination.route) {
                         DocumentStoreScreen(
                             documentStore = documentStore,
+                            documentModel = documentModel,
                             softwareSecureArea = softwareSecureArea,
                             settingsModel = settingsModel,
                             dsKey = dsKey,
                             dsCert = dsCert,
-                            showToast = { message: String -> showToast(message) }
+                            showToast = { message: String -> showToast(message) },
+                            onViewDocument = { documentId ->
+                                navController.navigate(DocumentViewerDestination.route + "/${documentId}")
+                            }
+                        )
+                    }
+                    composable(
+                        route = DocumentViewerDestination.routeWithArgs,
+                        arguments = DocumentViewerDestination.arguments
+                    ) { backStackEntry ->
+                        val documentId = backStackEntry.arguments?.getString(
+                            DocumentViewerDestination.DOCUMENT_ID
+                        )!!
+                        DocumentViewerScreen(
+                            documentModel = documentModel,
+                            documentId = documentId,
+                            showToast = ::showToast,
+                            onViewCredential = { documentId, credentialId ->
+                                navController.navigate(CredentialViewerDestination.route + "/${documentId}/${credentialId}")
+                            }
+                        )
+                    }
+                    composable(
+                        route = CredentialViewerDestination.routeWithArgs,
+                        arguments = CredentialViewerDestination.arguments
+                    ) { backStackEntry ->
+                        val documentId = backStackEntry.arguments?.getString(
+                            CredentialViewerDestination.DOCUMENT_ID
+                        )!!
+                        val credentialId = backStackEntry.arguments?.getString(
+                            CredentialViewerDestination.CREDENTIAL_ID
+                        )!!
+                        CredentialViewerScreen(
+                            documentModel = documentModel,
+                            documentId = documentId,
+                            credentialId = credentialId,
+                            showToast = ::showToast,
+                            onViewCertificateChain = { encodedCertificateData: String ->
+                                navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")
+                            },
+                            onViewCredentialClaims = { documentId, credentialId ->
+                                navController.navigate(CredentialClaimsViewerDestination.route + "/${documentId}/${credentialId}")
+                            }
+                        )
+                    }
+                    composable(
+                        route = CredentialClaimsViewerDestination.routeWithArgs,
+                        arguments = CredentialClaimsViewerDestination.arguments
+                    ) { backStackEntry ->
+                        val documentId = backStackEntry.arguments?.getString(
+                            CredentialViewerDestination.DOCUMENT_ID
+                        )!!
+                        val credentialId = backStackEntry.arguments?.getString(
+                            CredentialViewerDestination.CREDENTIAL_ID
+                        )!!
+                        CredentialClaimsViewerScreen(
+                            documentModel = documentModel,
+                            documentTypeRepository = documentTypeRepository,
+                            documentId = documentId,
+                            credentialId = credentialId,
+                            showToast = ::showToast,
                         )
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {

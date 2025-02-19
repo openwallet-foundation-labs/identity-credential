@@ -21,8 +21,11 @@ import identitycredential.samples.testapp.generated.resources.secure_enclave_sec
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.start_screen_title
 import identitycredential.samples.testapp.generated.resources.certificate_viewer_title
+import identitycredential.samples.testapp.generated.resources.credential_claims_viewer_title
+import identitycredential.samples.testapp.generated.resources.credential_viewer_title
 import identitycredential.samples.testapp.generated.resources.document_store_screen_title
 import identitycredential.samples.testapp.generated.resources.notifications_title
+import identitycredential.samples.testapp.generated.resources.document_viewer_title
 import identitycredential.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import identitycredential.samples.testapp.generated.resources.rich_text_title
 import identitycredential.samples.testapp.generated.resources.screen_lock_title
@@ -52,6 +55,40 @@ data object AboutDestination : Destination {
 data object DocumentStoreDestination : Destination {
     override val route = "document_store"
     override val title = Res.string.document_store_screen_title
+}
+
+data object DocumentViewerDestination : Destination {
+    override val route = "document_viewer"
+    override val title = Res.string.document_viewer_title
+    const val DOCUMENT_ID = "document_id_arg"
+    val routeWithArgs = "$route/{$DOCUMENT_ID}"
+    val arguments = listOf(
+        navArgument(DOCUMENT_ID) { type = NavType.StringType },
+    )
+}
+
+data object CredentialViewerDestination : Destination {
+    override val route = "credential_viewer"
+    override val title = Res.string.credential_viewer_title
+    const val DOCUMENT_ID = "document_id_arg"
+    const val CREDENTIAL_ID = "credential_id_arg"
+    val routeWithArgs = "$route/{$DOCUMENT_ID}/{$CREDENTIAL_ID}"
+    val arguments = listOf(
+        navArgument(DOCUMENT_ID) { type = NavType.StringType },
+        navArgument(CREDENTIAL_ID) { type = NavType.StringType },
+    )
+}
+
+data object CredentialClaimsViewerDestination : Destination {
+    override val route = "claims_viewer"
+    override val title = Res.string.credential_claims_viewer_title
+    const val DOCUMENT_ID = "document_id_arg"
+    const val CREDENTIAL_ID = "credential_id_arg"
+    val routeWithArgs = "$route/{$DOCUMENT_ID}/{$CREDENTIAL_ID}"
+    val arguments = listOf(
+        navArgument(DOCUMENT_ID) { type = NavType.StringType },
+        navArgument(CREDENTIAL_ID) { type = NavType.StringType },
+    )
 }
 
 data object SoftwareSecureAreaDestination : Destination {
@@ -171,6 +208,9 @@ val appDestinations = listOf(
     SettingsDestination,
     AboutDestination,
     DocumentStoreDestination,
+    DocumentViewerDestination,
+    CredentialViewerDestination,
+    CredentialClaimsViewerDestination,
     SoftwareSecureAreaDestination,
     AndroidKeystoreSecureAreaDestination,
     SecureEnclaveSecureAreaDestination,

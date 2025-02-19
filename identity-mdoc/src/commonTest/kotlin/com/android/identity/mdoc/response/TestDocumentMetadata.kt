@@ -23,7 +23,7 @@ class TestDocumentMetadata private constructor(
         get() = null
 
     @Volatile
-    override var nameSpacedData: NameSpacedData
+    var nameSpacedData: NameSpacedData
         private set
 
     init {

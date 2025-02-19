@@ -7,6 +7,6 @@ package com.android.identity.request
  */
 data class VcRequest(
     override val requester: Requester,
-    override val claims: List<VcClaim>,
+    override val requestedClaims: List<VcRequestedClaim>,
     val vct: String
-): Request(requester, claims)
+): Request(requester, requestedClaims)

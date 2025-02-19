@@ -1,6 +1,10 @@
 package com.android.identity.sdjwt.credential
 
+import com.android.identity.claim.Claim
+import com.android.identity.claim.VcClaim
 import com.android.identity.credential.Credential
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.sdjwt.SdJwtVerifiableCredential
 
 /**
  * A SD-JWT VC credential, according to [draft-ietf-oauth-sd-jwt-vc-03]
@@ -15,8 +19,32 @@ interface SdJwtVcCredential {
      * (https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
      */
     val vct: String
+
     /**
-     * The issuer-provided data associated with the credential. See [Credential.issuerProvidedData]
+     * The issuer-provided data associated with the credential, see [Credential.issuerProvidedData].
+     *
+     * This data must be the encoded string containing the SD-JWT VC. The SD-JWT VC itself is by
+     * disclosures: `<header>.<body>.<signature>~<Disclosure 1>~<Disclosure 2>~...~<Disclosure N>~`
      */
     val issuerProvidedData: ByteArray
+
+    fun getClaimsImpl(
+        documentTypeRepository: DocumentTypeRepository?
+    ): List<VcClaim> {
+        val ret = mutableListOf<VcClaim>()
+        val sdJwt = SdJwtVerifiableCredential.fromString(issuerProvidedData.decodeToString())
+        val dt = documentTypeRepository?.getDocumentTypeForVc(vct)
+        for (disclosure in sdJwt.disclosures) {
+            val attribute = dt?.vcDocumentType?.claims?.get(disclosure.key)
+            ret.add(
+                VcClaim(
+                    displayName = dt?.vcDocumentType?.claims?.get(disclosure.key)?.displayName ?: disclosure.key,
+                    attribute = attribute,
+                    claimName = disclosure.key,
+                    value = disclosure.value
+                )
+            )
+        }
+        return ret
+    }
 }

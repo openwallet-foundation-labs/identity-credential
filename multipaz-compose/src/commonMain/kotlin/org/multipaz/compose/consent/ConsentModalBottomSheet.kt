@@ -43,9 +43,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.android.identity.appsupport.ui.consent.ConsentDocument
 import org.multipaz.compose.getOutlinedImageVector
-import com.android.identity.request.Claim
-import com.android.identity.request.MdocClaim
+import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Request
+import com.android.identity.request.RequestedClaim
 import com.android.identity.trustmanagement.TrustPoint
 import identitycredential.multipaz_compose.generated.resources.Res
 import identitycredential.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_cancel
@@ -284,9 +284,9 @@ private fun RequestSection(
     request: Request,
     trustPoint: TrustPoint?,
 ) {
-    val useColumns = request.claims.size > 5
-    val (storedFields, notStoredFields) = request.claims.partition {
-        it is MdocClaim && it.intentToRetain == true
+    val useColumns = request.requestedClaims.size > 5
+    val (storedFields, notStoredFields) = request.requestedClaims.partition {
+        it is MdocRequestedClaim && it.intentToRetain == true
     }
 
     Column(
@@ -399,7 +399,7 @@ private fun RequestSection(
 
 @Composable
 private fun DataElementGridView(
-    claims: List<Claim>,
+    claims: List<RequestedClaim>,
     useColumns: Boolean
 ) {
     if (!useColumns) {
@@ -437,7 +437,7 @@ private fun DataElementGridView(
 @Composable
 private fun DataElementView(
     modifier: Modifier,
-    claim: Claim,
+    claim: RequestedClaim,
 ) {
     Row(
         horizontalArrangement = Arrangement.Start,

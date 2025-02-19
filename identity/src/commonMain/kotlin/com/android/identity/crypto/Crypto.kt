@@ -216,8 +216,8 @@ expect object Crypto {
         key: EcPublicKey,
         encAlgorithm: Algorithm,
         claims: JsonObject,
-        apu: ByteString,
-        apv: ByteString
+        apu: String,
+        apv: String
     ): JsonElement
 
     // TODO: replace with non-platform specific code

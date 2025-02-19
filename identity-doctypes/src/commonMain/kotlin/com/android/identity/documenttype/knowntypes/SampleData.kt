@@ -55,13 +55,16 @@ internal object SampleData {
     const val AGE_OVER_65 = false
     const val AGE_OVER_68 = false
     const val ISSUING_JURISDICTION = "State of Utopia"
-    const val NATIONALITY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
+    const val NATIONALITY = "ZZ"         // Note: ZZ is a user-assigned country-code as per ISO 3166-1
+    const val SECOND_NATIONALITY = "XZ"  // Note: XZ is a user-assigned country-code as per ISO 3166-1
     const val RESIDENT_STREET = "Sample Street"
     const val RESIDENT_HOUSE_NUMBER = "123"
     const val RESIDENT_POSTAL_CODE = "12345"
     const val RESIDENT_CITY = "Sample City"
     const val RESIDENT_STATE = "Sample State"
     const val RESIDENT_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
+    const val EMAIL_ADDRESS = "erika.mustermann@example.com"
+    const val MOBILE_PHONE_NUMBER = "+155555555555"
 
     //Movie ticket specific sample data
     const val TICKET_NUMBER = 123456789

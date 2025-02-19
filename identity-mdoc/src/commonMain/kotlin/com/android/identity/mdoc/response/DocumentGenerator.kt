@@ -29,6 +29,7 @@ import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.mdoc.issuersigned.IssuerNamespaces
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -51,6 +52,7 @@ class DocumentGenerator
     private var errors: Map<String, Map<String, Long>>? = null
     private var issuerNamespaces: Map<String, List<ByteArray>>? = null
     private var deviceSigned: DataItem? = null
+    private var issuerNamespacesNew: IssuerNamespaces? = null
 
     /**
      * Sets document errors.
@@ -76,6 +78,10 @@ class DocumentGenerator
      */
     fun setIssuerNamespaces(issuerNameSpaces: Map<String, List<ByteArray>>?) = apply {
         issuerNamespaces = issuerNameSpaces
+    }
+
+    fun setIssuerNamespaces(issuerNamespaces: IssuerNamespaces) {
+        this.issuerNamespacesNew = issuerNamespaces
     }
 
     private suspend fun setDeviceNamespaces(
@@ -240,7 +246,17 @@ class DocumentGenerator
     fun generate(): ByteArray {
         checkNotNull(deviceSigned) { "DeviceSigned isn't set" }
         val issuerSignedMapBuilder = CborMap.builder()
-        if (issuerNamespaces != null) {
+        if (issuerNamespacesNew != null) {
+            val insOuter = CborMap.builder()
+            for ((namespace, innerMap) in issuerNamespacesNew!!.data) {
+                val insInner = insOuter.putArray(namespace)
+                for ((_, issuerSignedItem) in innerMap) {
+                    insInner.add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(issuerSignedItem.toDataItem()))))
+                }
+            }
+            insOuter.end()
+            issuerSignedMapBuilder.put("nameSpaces", insOuter.end().build())
+        } else if (issuerNamespaces != null) {
             val insOuter = CborMap.builder()
             for (ns in issuerNamespaces!!.keys) {
                 val insInner = insOuter.putArray(ns)

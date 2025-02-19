@@ -99,6 +99,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var document: Document
+    private lateinit var nameSpacedData: NameSpacedData
     private lateinit var mdocCredential: MdocCredential
     private lateinit var timeSigned: Instant
     private lateinit var timeValidityBegin: Instant
@@ -135,12 +136,11 @@ class DeviceRetrievalHelperTest {
     private suspend fun asyncSetup() {
         // Create the document...
         document = documentStore.createDocument()
-        val nameSpacedData = NameSpacedData.Builder()
+        nameSpacedData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryBoolean(AAMVA_NAMESPACE, "real_id", true)
             .build()
-        (document.metadata as SimpleDocumentMetadata).setNameSpacedData(nameSpacedData)
 
         // Create a credential... make sure the credential used supports both
         // mdoc ECDSA and MAC authentication.
@@ -401,7 +401,7 @@ class DeviceRetrievalHelperTest {
                     val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
                         mergeIssuerNamesSpaces(
                             generateDocumentRequest(request),
-                            document.metadata.nameSpacedData,
+                            nameSpacedData,
                             staticAuthData
                         )
                     generator.addDocument(

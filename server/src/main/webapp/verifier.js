@@ -1,6 +1,7 @@
 
 // Keep in sync with verifier.html
-var selectedProtocol = 'w3c_dc_preview'
+var selectedProtocol = 'w3c_dc_openid4vp'
+
 // If the user clicks on one of the protocol entries, that becomes both the selected and the
 // preferred protocol. If the selected protocol is disabled (because, for instance, the user selects
 // a document that doesn't support the selected protocol), the selected protocol will be updated but
@@ -95,11 +96,11 @@ function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
 
 function updateProtocolOptions(mdocOrVc) {
     const protocolDropdown = document.getElementById('protocolDropdown')
-    const w3cOptions = document.querySelectorAll('.w3c-option');
+    const mdocOnly = document.querySelectorAll('.mdoc-only');
 
     if (mdocOrVc === 'mdoc') {
-        // Enable W3C options for mdoc entries
-        w3cOptions.forEach(option => {
+        // Enable mdoc-only options for mdoc entries
+        mdocOnly.forEach(option => {
             option.classList.remove('disabled');
             option.removeAttribute('disabled');
             // If the preferred protocol was just reenabled, set it as the selected protocol.
@@ -109,8 +110,8 @@ function updateProtocolOptions(mdocOrVc) {
             }
         });
     } else {
-        // Disable W3C options for non-mdoc entries
-        w3cOptions.forEach(option => {
+        // Disable mdoc-only options for non-mdoc entries
+        mdocOnly.forEach(option => {
             option.classList.add('disabled');
             option.setAttribute('disabled', 'disabled');
             if (selectedProtocol == option.getAttribute('value')) {
@@ -124,6 +125,11 @@ function updateProtocolOptions(mdocOrVc) {
             protocolDropdown.innerHTML = firstEnabledOption.innerHTML;
         }
     }
+
+    const openid4vp_sign_request_checkbox = document.getElementById("openid4vp-sign-request")
+    openid4vp_sign_request_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp')
+    const openid4vp_encrypt_response_checkbox = document.getElementById("openid4vp-encrypt-response")
+    openid4vp_encrypt_response_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp')
 }
 
 async function onLoadRedirect() {
@@ -201,7 +207,7 @@ async function requestDocument(format, docType, requestId) {
             )
             dcRequestCredential(response.sessionId, 'preview', JSON.parse(response.dcRequestString))
         } catch (err) {
-            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+            alert("Something went wrong: " + err)
         }
     } else if (selectedProtocol === "w3c_dc_arf") {
         try {
@@ -219,7 +225,7 @@ async function requestDocument(format, docType, requestId) {
             )
             dcRequestCredential(response.sessionId, 'austroads-request-forwarding-v2', JSON.parse(response.dcRequestString))
         } catch (err) {
-            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+            alert("Something went wrong: " + err)
         }
     } else if (selectedProtocol === "w3c_dc_mdoc_api") {
         try {
@@ -237,7 +243,7 @@ async function requestDocument(format, docType, requestId) {
             )
             dcRequestCredential(response.sessionId, 'org.iso.mdoc', JSON.parse(response.dcRequestString))
         } catch (err) {
-            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+            alert("Something went wrong: " + err)
         }
     } else if (selectedProtocol === "w3c_dc_openid4vp") {
         try {
@@ -255,7 +261,7 @@ async function requestDocument(format, docType, requestId) {
             )
             dcRequestCredential(response.sessionId, 'openid4vp', JSON.parse(response.dcRequestString))
         } catch (err) {
-            alert("Our implementation for W3C Digital Credentials protocol currently only supports mdoc.")
+            alert("Something went wrong: " + err)
         }
     }
 }

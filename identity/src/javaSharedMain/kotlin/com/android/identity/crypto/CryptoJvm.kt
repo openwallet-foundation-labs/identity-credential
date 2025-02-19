@@ -834,14 +834,14 @@ actual object Crypto {
         key: EcPublicKey,
         encAlgorithm: Algorithm,
         claims: JsonObject,
-        apu: ByteString,
-        apv: ByteString
+        apu: String,
+        apv: String
     ): JsonElement {
         val responseEncryptionAlg = JWEAlgorithm.parse("ECDH-ES")
         val responseEncryptionMethod = EncryptionMethod.parse(encAlgorithm.jwseAlgorithmIdentifier)
         val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
-            .agreementPartyUInfo(Base64URL(apu.toByteArray().toBase64Url()))
-            .agreementPartyUInfo(Base64URL(apv.toByteArray().toBase64Url()))
+            .agreementPartyUInfo(Base64URL(apu))
+            .agreementPartyVInfo(Base64URL(apv))
             .build()
         val keySet = JWKSet(JWK.parseFromPEMEncodedObjects(key.toPem()))
         val claimSet = JWTClaimsSet.parse(claims.toString())

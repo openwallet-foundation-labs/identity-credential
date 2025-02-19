@@ -46,8 +46,8 @@ class JsonWebEncryptionTests {
             claimsSet = claims,
             recipientPublicKey = recipientKey.publicKey,
             encAlg = encAlg,
-            apu = ByteString(1, 2, 3),
-            apv = ByteString(4, 5, 6)
+            apu = byteArrayOf(1, 2, 3).toBase64Url(),
+            apv = byteArrayOf(4, 5, 6).toBase64Url()
         )
 
         // Use Nimbus to decrypt

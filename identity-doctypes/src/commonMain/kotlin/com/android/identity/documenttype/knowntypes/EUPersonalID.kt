@@ -16,12 +16,16 @@
 
 package com.android.identity.documenttype.knowntypes
 
+import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.toDataItem
 import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
+import com.android.identity.util.fromBase64Url
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 
 /**
  * Object containing the metadata of the EU Personal ID Document Type.
@@ -48,7 +52,8 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.PERSON,
-                SampleData.FAMILY_NAME.toDataItem()
+                SampleData.FAMILY_NAME.toDataItem(),
+                JsonPrimitive(SampleData.FAMILY_NAME)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -58,7 +63,8 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.PERSON,
-                SampleData.GIVEN_NAME.toDataItem()
+                SampleData.GIVEN_NAME.toDataItem(),
+                JsonPrimitive(SampleData.GIVEN_NAME)
             )
             .addAttribute(
                 DocumentAttributeType.Date,
@@ -68,7 +74,8 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.TODAY,
-                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
+                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate(),
+                JsonPrimitive(SampleData.BIRTH_DATE)
             )
             .addAttribute(
                 DocumentAttributeType.Number,
@@ -78,7 +85,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.TODAY,
-                SampleData.AGE_IN_YEARS.toDataItem()
+                SampleData.AGE_IN_YEARS.toDataItem(),
+                JsonPrimitive(SampleData.AGE_IN_YEARS)
             )
             .addAttribute(
                 DocumentAttributeType.Number,
@@ -88,7 +96,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.TODAY,
-                SampleData.AGE_BIRTH_YEAR.toDataItem()
+                SampleData.AGE_BIRTH_YEAR.toDataItem(),
+                JsonPrimitive(SampleData.AGE_BIRTH_YEAR)
             )
             .addAttribute(
                 DocumentAttributeType.Boolean,
@@ -98,7 +107,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.TODAY,
-                SampleData.AGE_OVER_18.toDataItem()
+                SampleData.AGE_OVER_18.toDataItem(),
+                JsonPrimitive(SampleData.AGE_OVER_18)
             )
             .addAttribute(
                 DocumentAttributeType.Boolean,
@@ -108,7 +118,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.TODAY,
-                SampleData.AGE_OVER_21.toDataItem()
+                SampleData.AGE_OVER_21.toDataItem(),
+                JsonPrimitive(SampleData.AGE_OVER_21)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -118,7 +129,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PERSON,
-                SampleData.FAMILY_NAME_BIRTH.toDataItem()
+                SampleData.FAMILY_NAME_BIRTH.toDataItem(),
+                JsonPrimitive(SampleData.FAMILY_NAME_BIRTH)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -128,17 +140,19 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PERSON,
-                SampleData.GIVEN_NAME_BIRTH.toDataItem()
+                SampleData.GIVEN_NAME_BIRTH.toDataItem(),
+                JsonPrimitive(SampleData.GIVEN_NAME_BIRTH)
             )
             .addAttribute(
                 DocumentAttributeType.String,
                 "birth_place",
                 "Place of Birth",
                 "Country and municipality or state/province where the PID holder was born",
-                false,
+                true,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.BIRTH_PLACE.toDataItem()
+                SampleData.BIRTH_PLACE.toDataItem(),
+                JsonPrimitive(SampleData.BIRTH_PLACE)
             )
             .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -148,7 +162,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.BIRTH_COUNTRY.toDataItem()
+                SampleData.BIRTH_COUNTRY.toDataItem(),
+                JsonPrimitive(SampleData.BIRTH_COUNTRY)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -158,7 +173,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.BIRTH_STATE.toDataItem()
+                SampleData.BIRTH_STATE.toDataItem(),
+                JsonPrimitive(SampleData.BIRTH_STATE)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -168,7 +184,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.BIRTH_CITY.toDataItem()
+                SampleData.BIRTH_CITY.toDataItem(),
+                JsonPrimitive(SampleData.BIRTH_CITY)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -178,7 +195,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_ADDRESS.toDataItem()
+                SampleData.RESIDENT_ADDRESS.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_ADDRESS)
             )
             .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -188,7 +206,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_COUNTRY.toDataItem()
+                SampleData.RESIDENT_COUNTRY.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_COUNTRY)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -198,7 +217,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_STATE.toDataItem()
+                SampleData.RESIDENT_STATE.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_STATE)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -208,7 +228,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_CITY.toDataItem()
+                SampleData.RESIDENT_CITY.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_CITY)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -218,7 +239,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_POSTAL_CODE.toDataItem()
+                SampleData.RESIDENT_POSTAL_CODE.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_POSTAL_CODE)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -228,7 +250,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_STREET.toDataItem()
+                SampleData.RESIDENT_STREET.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_STREET)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -238,37 +261,48 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.PLACE,
-                SampleData.RESIDENT_HOUSE_NUMBER.toDataItem()
+                SampleData.RESIDENT_HOUSE_NUMBER.toDataItem(),
+                JsonPrimitive(SampleData.RESIDENT_HOUSE_NUMBER)
             )
             .addAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
-                "gender",
-                "Gender",
-                "PID holder’s gender",
+                "sex",
+                "Sex",
+                "PID holder’s sex",
                 false,
                 EUPID_NAMESPACE,
                 Icon.EMERGENCY,
-                SampleData.SEX_ISO218.toDataItem()
+                SampleData.SEX_ISO218.toDataItem(),
+                JsonPrimitive(SampleData.SEX_ISO218)
             )
             .addAttribute(
-                DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
+                DocumentAttributeType.ComplexType,
                 "nationality",
                 "Nationality",
                 "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User.",
                 true,
                 EUPID_NAMESPACE,
                 Icon.LANGUAGE,
-                SampleData.NATIONALITY.toDataItem()
+                CborArray.builder()
+                    .add(SampleData.NATIONALITY)
+                    .add(SampleData.SECOND_NATIONALITY)
+                    .end()
+                    .build(),
+                buildJsonArray {
+                    add(JsonPrimitive(SampleData.NATIONALITY))
+                    add(JsonPrimitive(SampleData.SECOND_NATIONALITY))
+                }
             )
             .addAttribute(
                 DocumentAttributeType.Date,
                 "issuance_date",
                 "Date of Issue",
                 "Date (and possibly time) when the PID was issued.",
-                true,
+                false,
                 EUPID_NAMESPACE,
                 Icon.DATE_RANGE,
-                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
+                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate(),
+                JsonPrimitive(SampleData.ISSUE_DATE)
             )
             .addAttribute(
                 DocumentAttributeType.Date,
@@ -278,7 +312,8 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate(),
+                JsonPrimitive(SampleData.EXPIRY_DATE)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -290,7 +325,8 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.ACCOUNT_BALANCE,
-                SampleData.ISSUING_AUTHORITY_EU_PID.toDataItem()
+                SampleData.ISSUING_AUTHORITY_EU_PID.toDataItem(),
+                JsonPrimitive(SampleData.ISSUING_AUTHORITY_EU_PID)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -300,17 +336,19 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.NUMBERS,
-                SampleData.DOCUMENT_NUMBER.toDataItem()
+                SampleData.DOCUMENT_NUMBER.toDataItem(),
+                JsonPrimitive(SampleData.DOCUMENT_NUMBER)
             )
             .addAttribute(
                 DocumentAttributeType.String,
-                "administrative_number",
-                "Administrative Number",
+                "personal_administrative_number",
+                "Personal Administrative Number",
                 "A number assigned by the PID Provider for audit control or other purposes.",
                 false,
                 EUPID_NAMESPACE,
                 Icon.NUMBERS,
-                SampleData.ADMINISTRATIVE_NUMBER.toDataItem()
+                SampleData.ADMINISTRATIVE_NUMBER.toDataItem(),
+                JsonPrimitive(SampleData.ADMINISTRATIVE_NUMBER)
             )
             .addAttribute(
                 DocumentAttributeType.String,
@@ -322,7 +360,8 @@ object EUPersonalID {
                 false,
                 EUPID_NAMESPACE,
                 Icon.ACCOUNT_BALANCE,
-                SampleData.ISSUING_JURISDICTION.toDataItem()
+                SampleData.ISSUING_JURISDICTION.toDataItem(),
+                JsonPrimitive(SampleData.ISSUING_JURISDICTION)
             )
             .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -333,7 +372,41 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.ACCOUNT_BALANCE,
-                SampleData.ISSUING_COUNTRY.toDataItem()
+                SampleData.ISSUING_COUNTRY.toDataItem(),
+                JsonPrimitive(SampleData.ISSUING_COUNTRY)
+            )
+            .addAttribute(
+                DocumentAttributeType.Picture,
+                "portrait",
+                "Photo of Holder",
+                "A reproduction of the PID holder’s portrait.",
+                false,
+                EUPID_NAMESPACE,
+                Icon.ACCOUNT_BOX,
+                SampleData.PORTRAIT_BASE64URL.fromBase64Url().toDataItem(),
+                JsonPrimitive(SampleData.PORTRAIT_BASE64URL)
+            )
+            .addAttribute(
+                DocumentAttributeType.String,
+                "email_address",
+                "Email Address of Holder",
+                "Electronic mail address of the user to whom the person identification data relates, in conformance with [RFC 5322].",
+                false,
+                EUPID_NAMESPACE,
+                Icon.PLACE,
+                SampleData.EMAIL_ADDRESS.toDataItem(),
+                JsonPrimitive(SampleData.EMAIL_ADDRESS)
+            )
+            .addAttribute(
+                DocumentAttributeType.String,
+                "mobile_phone_number",
+                "Mobile Phone of Holder",
+                "Mobile telephone number of the User to whom the person identification data relates, starting with the '+' symbol as the international code prefix and the country code, followed by numbers only.",
+                false,
+                EUPID_NAMESPACE,
+                Icon.PLACE,
+                SampleData.MOBILE_PHONE_NUMBER.toDataItem(),
+                JsonPrimitive(SampleData.MOBILE_PHONE_NUMBER)
             )
             .addSampleRequest(
                 id = "age_over_18",
@@ -346,6 +419,17 @@ object EUPersonalID {
                 vcClaims = listOf("age_over_18")
             )
             .addSampleRequest(
+                id = "age_over_18_and_portrait",
+                displayName = "Age Over 18 + Portrait",
+                mdocDataElements = mapOf(
+                    EUPID_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                        "portrait" to false,
+                    )
+                ),
+                vcClaims = listOf("age_over_18", "portrait")
+            )
+            .addSampleRequest(
                 id = "mandatory",
                 displayName = "Mandatory Data Elements",
                 mdocDataElements = mapOf(
@@ -353,8 +437,8 @@ object EUPersonalID {
                         "family_name" to false,
                         "given_name" to false,
                         "birth_date" to false,
-                        "age_over_18" to false,
-                        "issuance_date" to false,
+                        "birth_place" to false,
+                        "nationality" to false,
                         "expiry_date" to false,
                         "issuing_authority" to false,
                         "issuing_country" to false
@@ -364,8 +448,8 @@ object EUPersonalID {
                     "family_name",
                     "given_name",
                     "birth_date",
-                    "age_over_18",
-                    "issuance_date",
+                    "birth_place",
+                    "nationality",
                     "expiry_date",
                     "issuing_authority",
                     "issuing_country"

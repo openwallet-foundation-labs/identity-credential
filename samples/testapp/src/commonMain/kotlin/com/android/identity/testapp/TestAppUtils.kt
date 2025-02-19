@@ -3,7 +3,9 @@ package com.android.identity.testapp
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.RawCbor
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
@@ -15,18 +17,21 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
+import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
-import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentCannedRequest
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.mdoc.issuersigned.buildIssuerNamespaces
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
-import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.sdjwt.Issuer
+import com.android.identity.sdjwt.SdJwtVcGenerator
+import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
+import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
@@ -36,8 +41,11 @@ import identitycredential.samples.testapp.generated.resources.driving_license_ca
 import identitycredential.samples.testapp.generated.resources.photo_id_card_art
 import identitycredential.samples.testapp.generated.resources.pid_card_art
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
@@ -53,6 +61,8 @@ object TestAppUtils {
 
     const val MDOC_CREDENTIAL_DOMAIN_AUTH = "mdoc_credential_domain_auth"
     const val MDOC_CREDENTIAL_DOMAIN_NO_AUTH = "mdoc_credential_domain_no_auth"
+    const val SDJWT_CREDENTIAL_DOMAIN_AUTH = "sdjwt_credential_domain_auth"
+    const val SDJWT_CREDENTIAL_DOMAIN_NO_AUTH = "sdjwt_credential_domain_no_auth"
 
     fun generateEncodedDeviceRequest(
         request: DocumentCannedRequest,
@@ -162,7 +172,7 @@ object TestAppUtils {
             dsCert,
             EUPersonalID.getDocumentType(),
             "Erika",
-            "Erika's Personal ID",
+            "Erika's EU PID",
             Res.drawable.pid_card_art
         )
     }
@@ -184,23 +194,6 @@ object TestAppUtils {
         displayName: String,
         cardArtResource: DrawableResource,
     ) {
-        val nsdBuilder = NameSpacedData.Builder()
-        for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
-            for ((deName, de) in ns.dataElements) {
-                val sampleValue = de.attribute.sampleValue
-                if (sampleValue != null) {
-                    if (deName.startsWith("given_name")) {
-                        nsdBuilder.putEntry(nsName, deName, Cbor.encode(Tstr(givenNameOverride)))
-                    } else {
-                        nsdBuilder.putEntry(nsName, deName, Cbor.encode(sampleValue))
-                    }
-                } else {
-                    Logger.w(TAG, "No sample value for data element $deName")
-                }
-            }
-        }
-        val documentData = nsdBuilder.build()
-
         val cardArt = getDrawableResourceBytes(
             getSystemResourceEnvironment(),
             cardArtResource,
@@ -212,21 +205,80 @@ object TestAppUtils {
                 displayName = displayName,
                 typeDisplayName = documentType.displayName,
                 cardArt = ByteString(cardArt),
-                nameSpacedData = documentData
             )
         }
 
-        val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
-        val exceptions: MutableMap<String, List<String>> = HashMap()
+        val now = Clock.System.now()
+        val signedAt = now - 1.hours
+        val validFrom =  now - 1.hours
+        val validUntil = now + 24.hours
+
+        if (documentType.mdocDocumentType != null) {
+            addMdocCredentials(
+                document = document,
+                documentType = documentType,
+                secureArea = secureArea,
+                secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
+                signedAt = signedAt,
+                validFrom = validFrom,
+                validUntil = validUntil,
+                dsKey = dsKey,
+                dsCert = dsCert,
+                givenNameOverride = givenNameOverride
+            )
+        }
+
+        if (documentType.vcDocumentType != null) {
+            addSdJwtVcCredentials(
+                document = document,
+                documentType = documentType,
+                secureArea = secureArea,
+                secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
+                signedAt = signedAt,
+                validFrom = validFrom,
+                validUntil = validUntil,
+                dsKey = dsKey,
+                dsCert = dsCert,
+                givenNameOverride = givenNameOverride
+            )
+        }
+    }
+
+    private suspend fun addMdocCredentials(
+        document: Document,
+        documentType: DocumentType,
+        secureArea: SecureArea,
+        secureAreaCreateKeySettingsFunc: (ByteString, Set<KeyPurpose>, Boolean) -> CreateKeySettings,
+        signedAt: Instant,
+        validFrom: Instant,
+        validUntil: Instant,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
+        givenNameOverride: String
+    ) {
+        val issuerNamespaces = buildIssuerNamespaces {
+            for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
+                addNamespace(nsName) {
+                    for ((deName, de) in ns.dataElements) {
+                        val sampleValue = de.attribute.sampleValueMdoc
+                        if (sampleValue != null) {
+                            val value = if (deName.startsWith("given_name")) {
+                                Tstr(givenNameOverride)
+                            } else {
+                                sampleValue
+                            }
+                            addDataElement(deName, value)
+                        } else {
+                            Logger.w(TAG, "No sample value for data element $deName")
+                        }
+                    }
+                }
+            }
+        }
 
         // Create authentication keys...
         for (domain in listOf(MDOC_CREDENTIAL_DOMAIN_AUTH, MDOC_CREDENTIAL_DOMAIN_NO_AUTH)) {
             val userAuthenticationRequired = (domain == MDOC_CREDENTIAL_DOMAIN_AUTH)
-
-            val now = Clock.System.now()
-            val timeSigned = now - 1.hours
-            val timeValidityBegin =  now - 1.hours
-            val timeValidityEnd = now + 24.hours
 
             val mdocCredential = MdocCredential.create(
                 document = document,
@@ -247,21 +299,8 @@ object TestAppUtils {
                 documentType.mdocDocumentType!!.docType,
                 mdocCredential.getAttestation().publicKey
             )
-            msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
-            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-                documentData,
-                Random,
-                16,
-                overrides
-            )
-            for (nameSpaceName in issuerNameSpaces.keys) {
-                val digests = MdocUtil.calculateDigestsForNameSpace(
-                    nameSpaceName,
-                    issuerNameSpaces,
-                    Algorithm.SHA256
-                )
-                msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
-            }
+            msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, null)
+            msoGenerator.addValueDigests(issuerNamespaces)
 
             val mso = msoGenerator.generate()
             val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
@@ -292,18 +331,87 @@ object TestAppUtils {
                     unprotectedHeaders
                 ).toDataItem()
             )
-            val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
-                encodedIssuerAuth
-            ).generate()
+            val issuerProvidedAuthenticationData = Cbor.encode(
+                CborMap.builder()
+                    .put("nameSpaces", issuerNamespaces.toDataItem())
+                    .put("issuerAuth", RawCbor(encodedIssuerAuth))
+                    .end()
+                    .build()
+            )
 
             // Now that we have issuer-provided authentication data we certify the authentication key.
             mdocCredential.certify(
                 issuerProvidedAuthenticationData,
-                timeValidityBegin,
-                timeValidityEnd
+                validFrom,
+                validUntil
+            )
+        }
+
+    }
+
+    private suspend fun addSdJwtVcCredentials(
+        document: Document,
+        documentType: DocumentType,
+        secureArea: SecureArea,
+        secureAreaCreateKeySettingsFunc: (ByteString, Set<KeyPurpose>, Boolean) -> CreateKeySettings,
+        signedAt: Instant,
+        validFrom: Instant,
+        validUntil: Instant,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
+        givenNameOverride: String
+    ) {
+        if (documentType.vcDocumentType == null) {
+            return
+        }
+
+        val identityAttributes = buildJsonObject {
+            for ((claimName, attribute) in documentType.vcDocumentType!!.claims) {
+                val sampleValue = attribute.sampleValueVc
+                if (sampleValue != null) {
+                    val value = if (claimName.startsWith("given_name")) {
+                        JsonPrimitive(givenNameOverride)
+                    } else {
+                        sampleValue
+                    }
+                    put(claimName, value)
+                } else {
+                    Logger.w(TAG, "No sample value for claim $claimName")
+                }
+            }
+        }
+
+        for (domain in listOf(SDJWT_CREDENTIAL_DOMAIN_AUTH, SDJWT_CREDENTIAL_DOMAIN_NO_AUTH)) {
+            val userAuthenticationRequired = (domain == SDJWT_CREDENTIAL_DOMAIN_AUTH)
+
+            val credential = KeyBoundSdJwtVcCredential.create(
+                document = document,
+                asReplacementForIdentifier = null,
+                domain = domain,
+                secureArea = secureArea,
+                vct = documentType.vcDocumentType!!.type,
+                createKeySettings = secureAreaCreateKeySettingsFunc(
+                    "Challenge".encodeToByteString(),
+                    setOf(KeyPurpose.SIGN),
+                    userAuthenticationRequired
+                )
             )
 
+            val sdJwtVcGenerator = SdJwtVcGenerator(
+                vct = credential.vct,
+                payload = identityAttributes,
+                issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1"), // TODO
+            )
+            sdJwtVcGenerator.publicKey = JsonWebKey(credential.getAttestation().publicKey)
+            sdJwtVcGenerator.timeSigned = signedAt
+            sdJwtVcGenerator.timeValidityBegin = validFrom
+            sdJwtVcGenerator.timeValidityEnd = validUntil
+            val sdJwt = sdJwtVcGenerator.generateSdJwt(dsKey)
+            credential.certify(
+                sdJwt.toString().encodeToByteArray(),
+                validFrom,
+                validUntil
+            )
         }
     }
 

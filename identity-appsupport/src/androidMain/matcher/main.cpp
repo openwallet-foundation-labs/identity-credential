@@ -5,7 +5,7 @@ extern "C" {
 }
 
 #include "CredentialDatabase.h"
-#include "MdocRequest.h"
+#include "Request.h"
 
 extern "C" int main() {
     CallingAppInfo* appInfo = (CallingAppInfo*) malloc(sizeof(CallingAppInfo));
@@ -36,29 +36,29 @@ extern "C" int main() {
             const char* protocolRequestValue = cJSON_GetStringValue(protocolRequest);
             cJSON* protocolRequestJson = cJSON_Parse(protocolRequestValue);
 
-            std::unique_ptr<MdocRequest> mdocRequest;
+            std::unique_ptr<Request> request;
             if (protocolValue == "preview") {
                 // The OG "preview" protocol.
                 //
-                mdocRequest = std::move(MdocRequest::parsePreview(protocolRequestJson));
+                request = std::move(Request::parsePreview(protocolRequestJson));
             } else if (protocolValue == "openid4vp") {
                 // 18013-7 Annex D
                 //
-                mdocRequest = std::move(MdocRequest::parseOpenID4VP(protocolRequestJson));
+                request = std::move(Request::parseOpenID4VP(protocolRequestJson));
             } else if (protocolValue == "org.iso.mdoc") {
                 // 18013-7 Annex C
                 //
-                mdocRequest = std::move(MdocRequest::parseMdocApi(protocolRequestJson));
+                request = std::move(Request::parseMdocApi(protocolRequestJson));
             } else if (protocolValue == "austroads-request-forwarding-v2") {
                 // From a matcher point of view, ARFv2 is structurally equivalent to mdoc-api
                 //
-                mdocRequest = std::move(MdocRequest::parseMdocApi(protocolRequestJson));
+                request = std::move(Request::parseMdocApi(protocolRequestJson));
             }
 
-            if (mdocRequest) {
+            if (request) {
                 for (auto& credential : db->credentials) {
-                    if (credential.mdocMatchesRequest(*mdocRequest)) {
-                        credential.mdocAddCredentialToPicker(*mdocRequest);
+                    if (credential.matchesRequest(*request)) {
+                        credential.addCredentialToPicker(*request);
                     }
                 }
             }

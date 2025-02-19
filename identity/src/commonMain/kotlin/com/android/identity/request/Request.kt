@@ -9,9 +9,9 @@ package com.android.identity.request
  * W3C Verifiable Credentials.
  *
  * @property requester the entity making the request.
- * @property claims the claims being requested.
+ * @property requestedClaims the claims being requested.
  */
 sealed class Request(
     open val requester: Requester,
-    open val claims: List<Claim>
+    open val requestedClaims: List<RequestedClaim>
 )
