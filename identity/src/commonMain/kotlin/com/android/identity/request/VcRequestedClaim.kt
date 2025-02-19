@@ -3,15 +3,12 @@ package com.android.identity.request
 import com.android.identity.documenttype.DocumentAttribute
 
 /**
- * Claims for VC credentials.
+ * A request for a claim in a VC credential.
  *
- * @param claimName the claim name.
+ * @property claimName the claim name.
  */
-data class VcClaim(
+data class VcRequestedClaim(
     override val displayName: String,
     override val attribute: DocumentAttribute?,
-    val claimName: String
-) : Claim(displayName, attribute) {
-    companion object {
-    }
-}
+    val claimName: String,
+): RequestedClaim(displayName, attribute)

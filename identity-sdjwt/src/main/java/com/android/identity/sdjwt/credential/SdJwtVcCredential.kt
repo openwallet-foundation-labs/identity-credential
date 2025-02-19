@@ -1,6 +1,8 @@
 package com.android.identity.sdjwt.credential
 
+import com.android.identity.claim.Claim
 import com.android.identity.credential.Credential
+import com.android.identity.documenttype.DocumentTypeRepository
 
 /**
  * A SD-JWT VC credential, according to [draft-ietf-oauth-sd-jwt-vc-03]
@@ -15,8 +17,17 @@ interface SdJwtVcCredential {
      * (https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)
      */
     val vct: String
+
     /**
-     * The issuer-provided data associated with the credential. See [Credential.issuerProvidedData]
+     * The issuer-provided data associated with the credential, see [Credential.issuerProvidedData].
+     *
+     * This data must be the bytes of TODO
      */
     val issuerProvidedData: ByteArray
+
+    fun getClaims(
+        documentTypeRepository: DocumentTypeRepository?
+    ): List<Claim> {
+        TODO("Not yet implemented")
+    }
 }

@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.request.Claim
+import com.android.identity.claim.Claim
 import com.android.identity.request.Requester
 import com.android.identity.credential.Credential
 import com.android.identity.crypto.Algorithm
@@ -52,7 +52,7 @@ import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.trustmanagement.TrustPoint
@@ -483,7 +483,7 @@ private suspend fun showPresentmentFlowAndGetDeviceResponse(
     @Suppress("UNCHECKED_CAST")
     val request = MdocRequest(
         requester = Requester(websiteOrigin = websiteOrigin),
-        claims = claims as List<MdocClaim>,
+        requestedClaims = claims as List<MdocClaim>,
         docType = mdocCredential.docType
     )
     val documentCborBytes = showMdocPresentmentFlow(

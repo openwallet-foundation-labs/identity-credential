@@ -28,10 +28,11 @@ import com.android.identity.securearea.SecureArea
  *
  * This associates a key from a [SecureArea] to a [Credential]
  */
-open class SecureAreaBoundCredential : Credential {
+abstract class SecureAreaBoundCredential : Credential {
     companion object {
         private const val TAG = "SecureAreaBoundCredential"
 
+        /*
         suspend fun create(
             document: Document,
             asReplacementForIdentifier: String?,
@@ -48,6 +49,7 @@ open class SecureAreaBoundCredential : Credential {
                 generateKey(createKeySettings)
             }
         }
+         */
     }
 
     /**

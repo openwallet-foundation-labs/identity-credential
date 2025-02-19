@@ -29,12 +29,10 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import com.android.identity.request.Claim
-import com.android.identity.request.Requester
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.Claim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
 import com.android.identity.request.Request
-import com.android.identity.request.VcClaim
 import com.android.identity.request.VcRequest
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.ui.prompt.consent.showConsentPrompt
@@ -217,7 +215,7 @@ suspend fun showMdocPresentmentFlow(
         document,
         credential
     ) { keyUnlockData: KeyUnlockData? ->
-        mdocSignAndGenerate(request.claims, credential, encodedSessionTranscript, keyUnlockData)
+        mdocSignAndGenerate(request.requestedClaims, credential, encodedSessionTranscript, keyUnlockData)
     }
 }
 
@@ -240,7 +238,7 @@ suspend fun showSdJwtPresentmentFlow(
         val sdJwt = SdJwtVerifiableCredential.fromString(
             String(credential.issuerProvidedData, Charsets.US_ASCII))
 
-        val requestedAttributes = request.claims.map { it.claimName }.toSet()
+        val requestedAttributes = request.requestedClaims.map { it.claimName }.toSet()
         Logger.i(
             TAG, "Filtering requested attributes (${requestedAttributes.joinToString()}) " +
                     "from disclosed attributes (${sdJwt.disclosures.joinToString { it.key }})")

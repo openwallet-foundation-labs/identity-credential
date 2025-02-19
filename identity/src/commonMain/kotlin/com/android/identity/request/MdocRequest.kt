@@ -7,6 +7,6 @@ package com.android.identity.request
  */
 data class MdocRequest(
     override val requester: Requester,
-    override val claims: List<MdocClaim>,
+    override val requestedClaims: List<MdocRequestedClaim>,
     val docType: String,
-): Request(requester, claims)
+): Request(requester, requestedClaims)

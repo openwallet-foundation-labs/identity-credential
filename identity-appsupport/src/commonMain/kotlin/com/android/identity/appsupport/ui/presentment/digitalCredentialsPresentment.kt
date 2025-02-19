@@ -1,7 +1,6 @@
 package com.android.identity.appsupport.ui.presentment
 
 import com.android.identity.request.Requester
-import com.android.identity.request.MdocClaim
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
@@ -23,6 +22,7 @@ import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.util.toMdocRequest
 import com.android.identity.request.MdocRequest
+import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Request
 import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
@@ -119,7 +119,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
     val mdocCredentials = source.selectCredentialForPresentment(
         request = MdocRequest(
             requester = Requester(websiteOrigin = presentationMechanism.webOrigin),
-            claims = MdocUtil.generateClaims(
+            requestedClaims = MdocUtil.generateClaims(
                 docType = docType,
                 requestedData = requestedData,
                 documentTypeRepository = documentTypeRepository,
@@ -180,7 +180,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
 
     val request = MdocRequest(
         requester = Requester(websiteOrigin = presentationMechanism.webOrigin),
-        claims = MdocUtil.generateClaims(
+        requestedClaims = MdocUtil.generateClaims(
             docType = docType,
             requestedData = requestedData,
             documentTypeRepository = documentTypeRepository,
@@ -201,7 +201,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
         credential = mdocCredential,
-        claims = request.claims,
+        requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
     val deviceResponse = deviceResponseGenerator.generate()
@@ -310,7 +310,7 @@ private suspend fun digitalCredentialsArfProtocol(
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
         credential = mdocCredential,
-        claims = request.claims,
+        requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
     val deviceResponse = deviceResponseGenerator.generate()
@@ -342,11 +342,11 @@ private suspend fun digitalCredentialsArfProtocol(
 
 private suspend fun calcDocument(
     credential: MdocCredential,
-    claims: List<MdocClaim>,
+    requestedClaims: List<MdocRequestedClaim>,
     encodedSessionTranscript: ByteArray
 ): ByteArray {
     val nsAndDataElements = mutableMapOf<String, MutableList<String>>()
-    claims.forEach {
+    requestedClaims.forEach {
         nsAndDataElements.getOrPut(it.namespaceName, { mutableListOf() }).add(it.dataElementName)
     }
 

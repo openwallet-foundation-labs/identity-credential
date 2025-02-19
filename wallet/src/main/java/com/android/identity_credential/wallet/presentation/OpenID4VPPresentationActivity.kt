@@ -54,12 +54,12 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
-import com.android.identity.request.Claim
+import com.android.identity.claim.Claim
 import com.android.identity.request.Requester
-import com.android.identity.request.VcClaim
+import com.android.identity.claim.VcClaim
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
 import com.android.identity.request.VcRequest
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
@@ -670,7 +670,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 @Suppress("UNCHECKED_CAST")
                 val request = MdocRequest(
                     requester = Requester(),  // TODO: pass origin.
-                    claims = claims as List<MdocClaim>,
+                    requestedClaims = claims as List<MdocClaim>,
                     docType = credential.docType
                 )
                 val documentResponse = showMdocPresentmentFlow(
@@ -698,7 +698,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 @Suppress("UNCHECKED_CAST")
                 val request = VcRequest(
                     requester = Requester(),  // TODO: pass origin.
-                    claims = claims as List<VcClaim>,
+                    requestedClaims = claims as List<VcClaim>,
                     vct = credential.vct
                 )
                 showSdJwtPresentmentFlow(

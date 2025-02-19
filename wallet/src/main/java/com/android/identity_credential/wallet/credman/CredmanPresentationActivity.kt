@@ -44,7 +44,7 @@ import com.android.identity.util.fromBase64Url
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import com.android.identity.request.Requester
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
 import com.google.android.gms.identitycredentials.Credential
 import org.json.JSONObject
@@ -220,7 +220,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val claims = docRequest.toMdocRequest(
                         documentTypeRepository = walletApp.documentTypeRepository,
                         mdocCredential = mdocCredential
-                    ).claims
+                    ).requestedClaims
 
                     val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
                     if (encryptionInfo.asArray.get(0).asTstr != "ARFEncryptionv2") {
@@ -415,7 +415,7 @@ class CredmanPresentationActivity : FragmentActivity() {
             activity = this@CredmanPresentationActivity,
             request = MdocRequest(
                 requester = Requester(websiteOrigin = websiteOrigin),
-                claims = claims,
+                requestedClaims = claims,
                 docType = mdocCredential.docType
             ),
             document = ConsentDocument(

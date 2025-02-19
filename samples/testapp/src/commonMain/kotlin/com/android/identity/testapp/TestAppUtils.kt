@@ -3,7 +3,9 @@ package com.android.identity.testapp
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.RawCbor
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
@@ -23,6 +25,7 @@ import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.mdoc.issuersigned.buildIssuerNamespaces
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.request.DeviceRequestGenerator
@@ -184,22 +187,25 @@ object TestAppUtils {
         displayName: String,
         cardArtResource: DrawableResource,
     ) {
-        val nsdBuilder = NameSpacedData.Builder()
-        for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
-            for ((deName, de) in ns.dataElements) {
-                val sampleValue = de.attribute.sampleValue
-                if (sampleValue != null) {
-                    if (deName.startsWith("given_name")) {
-                        nsdBuilder.putEntry(nsName, deName, Cbor.encode(Tstr(givenNameOverride)))
-                    } else {
-                        nsdBuilder.putEntry(nsName, deName, Cbor.encode(sampleValue))
+        val issuerNamespaces = buildIssuerNamespaces {
+            for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
+                addNamespace(nsName) {
+                    for ((deName, de) in ns.dataElements) {
+                        val sampleValue = de.attribute.sampleValue
+                        if (sampleValue != null) {
+                            val value = if (deName.startsWith("given_name")) {
+                                Tstr(givenNameOverride)
+                            } else {
+                                sampleValue
+                            }
+                            addDataElement(deName, value)
+                        } else {
+                            Logger.w(TAG, "No sample value for data element $deName")
+                        }
                     }
-                } else {
-                    Logger.w(TAG, "No sample value for data element $deName")
                 }
             }
         }
-        val documentData = nsdBuilder.build()
 
         val cardArt = getDrawableResourceBytes(
             getSystemResourceEnvironment(),
@@ -212,12 +218,9 @@ object TestAppUtils {
                 displayName = displayName,
                 typeDisplayName = documentType.displayName,
                 cardArt = ByteString(cardArt),
-                nameSpacedData = documentData
+                nameSpacedData = NameSpacedData.Builder().build() // TODO: remove
             )
         }
-
-        val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
-        val exceptions: MutableMap<String, List<String>> = HashMap()
 
         // Create authentication keys...
         for (domain in listOf(MDOC_CREDENTIAL_DOMAIN_AUTH, MDOC_CREDENTIAL_DOMAIN_NO_AUTH)) {
@@ -248,20 +251,7 @@ object TestAppUtils {
                 mdocCredential.getAttestation().publicKey
             )
             msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
-            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-                documentData,
-                Random,
-                16,
-                overrides
-            )
-            for (nameSpaceName in issuerNameSpaces.keys) {
-                val digests = MdocUtil.calculateDigestsForNameSpace(
-                    nameSpaceName,
-                    issuerNameSpaces,
-                    Algorithm.SHA256
-                )
-                msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
-            }
+            msoGenerator.addValueDigests(issuerNamespaces)
 
             val mso = msoGenerator.generate()
             val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
@@ -292,10 +282,13 @@ object TestAppUtils {
                     unprotectedHeaders
                 ).toDataItem()
             )
-            val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
-                encodedIssuerAuth
-            ).generate()
+            val issuerProvidedAuthenticationData = Cbor.encode(
+                CborMap.builder()
+                    .put("nameSpaces", issuerNamespaces.toDataItem())
+                    .put("issuerAuth", RawCbor(encodedIssuerAuth))
+                    .end()
+                    .build()
+            )
 
             // Now that we have issuer-provided authentication data we certify the authentication key.
             mdocCredential.certify(
@@ -303,7 +296,6 @@ object TestAppUtils {
                 timeValidityBegin,
                 timeValidityEnd
             )
-
         }
     }
 

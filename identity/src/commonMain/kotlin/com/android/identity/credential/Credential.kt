@@ -20,9 +20,11 @@ import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MapBuilder
+import com.android.identity.claim.Claim
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.DocumentUtil
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.securearea.SecureArea
 import com.android.identity.storage.StorageTableSpec
 import kotlinx.coroutines.sync.Mutex
@@ -75,7 +77,7 @@ import kotlin.concurrent.Volatile
  * [CredentialLoader.loadCredential] which is used when loading a [Document] instance from disk
  * and deserializing its [Credential] instances.
  */
-open class Credential {
+abstract class Credential {
     // NB: when this lock is held, don't attempt to call anything that requires also
     // Document.lock or DocumentStore.lock as it will cause a deadlock, as there are code
     // paths that obtain this lock when Document.lock and possibly DocumentStore.lock are
@@ -142,7 +144,7 @@ open class Credential {
     suspend fun addToDocument() {
         check(_identifier == null)
         val table = document.store.storage.getTable(credentialTableSpec)
-        val blob = ByteString(Cbor.encode(toCbor()))
+        val blob = ByteString(Cbor.encode(toDataItem()))
         _identifier = table.insert(key = null, partitionId = document.identifier, data = blob)
         document.addCredential(this)
     }
@@ -300,7 +302,7 @@ open class Credential {
      *
      * @return a [DataItem] with all of the credential information.
      */
-    fun toCbor(): DataItem {
+    private fun toDataItem(): DataItem {
         val builder = CborMap.builder()
             .put("credentialType", this::class.simpleName!!)  // used by CredentialFactory
             .put("domain", domain)
@@ -323,9 +325,23 @@ open class Credential {
     private suspend fun save() {
         check(lock.isLocked)
         val table = document.store.storage.getTable(credentialTableSpec)
-        val blob = ByteString(Cbor.encode(toCbor()))
+        val blob = ByteString(Cbor.encode(toDataItem()))
         table.update(partitionId = document.identifier, key = identifier, data = blob)
     }
+
+    /**
+     * Gets the claims in the credential.
+     *
+     * If a [DocumentTypeRepository] is passed, it will be used to look up the document type
+     * and if a type is found, it'll be used to populate the the [Claim.attribute] field of
+     * the resulting claims.
+     *
+     * @param documentTypeRepository a [DocumentTypeRepository] or `null`.
+     * @return a list of claims with values.
+     */
+    abstract fun getClaims(
+        documentTypeRepository: DocumentTypeRepository?
+    ): List<Claim>
 
     companion object {
         private const val TAG = "Credential"

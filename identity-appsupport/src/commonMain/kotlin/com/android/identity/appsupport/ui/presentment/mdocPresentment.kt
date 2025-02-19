@@ -1,6 +1,5 @@
 package com.android.identity.appsupport.ui.presentment
 
-import com.android.identity.request.MdocClaim
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
@@ -20,6 +19,7 @@ import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.mdoc.transport.MdocTransportClosedException
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.util.toMdocRequest
+import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Request
 import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
@@ -142,7 +142,7 @@ internal suspend fun mdocPresentment(
 
                 deviceResponseGenerator.addDocument(calcDocument(
                     credential = mdocCredential,
-                    claims = request.claims,
+                    requestedClaims = request.requestedClaims,
                     encodedSessionTranscript = encodedSessionTranscript,
                 ))
             }
@@ -181,11 +181,11 @@ internal suspend fun mdocPresentment(
 
 private suspend fun calcDocument(
     credential: MdocCredential,
-    claims: List<MdocClaim>,
+    requestedClaims: List<MdocRequestedClaim>,
     encodedSessionTranscript: ByteArray
 ): ByteArray {
     val nsAndDataElements = mutableMapOf<String, MutableList<String>>()
-    claims.forEach {
+    requestedClaims.forEach {
         nsAndDataElements.getOrPut(it.namespaceName, { mutableListOf() }).add(it.dataElementName)
     }
 

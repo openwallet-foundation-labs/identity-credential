@@ -115,11 +115,13 @@ class CloudCreateKeySettings private constructor(
             types: Set<CloudUserAuthType>
         ) = apply {
             userAuthenticationRequired = required
-            userAuthenticationTypes = types
             if (userAuthenticationRequired) {
+                userAuthenticationTypes = types
                 check(!userAuthenticationTypes.isEmpty()) {
                     "userAuthenticationTypes cannot be empty if user authentication is required"
                 }
+            } else {
+                userAuthenticationTypes = emptySet()
             }
         }
 
