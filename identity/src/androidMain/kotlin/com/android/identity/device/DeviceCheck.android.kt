@@ -32,7 +32,6 @@ actual object DeviceCheck {
         val assertionData = assertion.toCbor()
         val signature = secureArea.sign(
             alias = deviceAttestationId,
-            signatureAlgorithm = Algorithm.ES256,
             dataToSign = assertionData,
             keyUnlockData = null
         )

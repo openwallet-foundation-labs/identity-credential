@@ -146,12 +146,10 @@ private suspend fun seTestUnguarded(
     val keyUnlockData = SecureEnclaveKeyUnlockData(laContext)
 
     if (keyPurpose == KeyPurpose.SIGN) {
-        val signingAlgorithm = Algorithm.ES256
         val dataToSign = "data".encodeToByteArray()
         val t0 = Clock.System.now()
         val signature = secureEnclaveSecureArea.sign(
             "testKey",
-            signingAlgorithm,
             dataToSign,
             keyUnlockData
         )

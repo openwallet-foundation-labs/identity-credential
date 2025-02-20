@@ -445,11 +445,9 @@ private suspend fun csaTestUnguarded(
     cloudSecureArea!!.createKey("testKey", builder.build())
 
     if (keyPurpose == KeyPurpose.SIGN) {
-        val signingAlgorithm = curve.defaultSigningAlgorithm
         val t0 = Clock.System.now()
         val signature = cloudSecureArea!!.sign(
             "testKey",
-            signingAlgorithm,
             "data".encodeToByteArray(),
             KeyUnlockInteractive())
         val t1 = Clock.System.now()

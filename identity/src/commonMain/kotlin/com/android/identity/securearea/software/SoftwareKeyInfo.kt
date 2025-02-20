@@ -1,5 +1,6 @@
 package com.android.identity.securearea.software
 
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
@@ -17,11 +18,13 @@ class SoftwareKeyInfo internal constructor(
     publicKey: EcPublicKey,
     attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
+    signingAlgorithm: Algorithm,
     val isPassphraseProtected: Boolean,
     val passphraseConstraints: PassphraseConstraints?
 ): KeyInfo(
     alias,
     publicKey,
     keyPurposes,
+    signingAlgorithm,
     attestation
 )

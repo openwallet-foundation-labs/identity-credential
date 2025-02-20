@@ -1,8 +1,10 @@
 package com.android.identity.securearea
 
 import android.os.Build
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.CreateKeySettings.Companion.defaultSigningAlgorithm
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.config.SecureAreaConfigurationAndroidKeystore
 import kotlinx.datetime.Instant
@@ -15,6 +17,8 @@ class AndroidKeystoreCreateKeySettings private constructor(
     keyPurposes: Set<KeyPurpose>,
 
     ecCurve: EcCurve,
+
+    signingAlgorithm: Algorithm,
 
     /**
      * The attestation challenge.
@@ -68,6 +72,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
     class Builder(private val attestationChallenge: ByteArray) {
         private var keyPurposes = setOf(KeyPurpose.SIGN)
         private var curve = EcCurve.P256
+        private var signingAlgorithm = Algorithm.UNSET
         private var userAuthenticationRequired = false
         private var userAuthenticationTimeoutMillis: Long = 0
 
@@ -119,6 +124,17 @@ class AndroidKeystoreCreateKeySettings private constructor(
          */
         fun setEcCurve(curve: EcCurve): Builder {
             this.curve = curve
+            return this
+        }
+
+        /**
+         * Sets the signing algorithm.
+         *
+         * This is only relevant if [KeyPurpose.SIGN] is used. If unset, an appropriate
+         * default is selected using [defaultSigningAlgorithm].
+         */
+        fun setSigningAlgorithm(algorithm: Algorithm): Builder {
+            this.signingAlgorithm = algorithm
             return this
         }
 
@@ -214,9 +230,13 @@ class AndroidKeystoreCreateKeySettings private constructor(
          * @return a new [CreateKeySettings].
          */
         fun build(): AndroidKeystoreCreateKeySettings {
+            if (keyPurposes.contains(KeyPurpose.SIGN) && signingAlgorithm == Algorithm.UNSET) {
+                signingAlgorithm = defaultSigningAlgorithm(keyPurposes, curve)
+            }
             return AndroidKeystoreCreateKeySettings(
                 keyPurposes,
                 curve,
+                signingAlgorithm,
                 attestationChallenge,
                 userAuthenticationRequired,
                 userAuthenticationTimeoutMillis,

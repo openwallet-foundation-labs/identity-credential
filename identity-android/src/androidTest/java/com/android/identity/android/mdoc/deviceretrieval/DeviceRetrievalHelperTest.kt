@@ -206,13 +206,13 @@ class DeviceRetrievalHelperTest {
         //
         // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
         //
-        val protectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
-            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+        val protectedHeaders = mapOf<CoseLabel, DataItem>(
+            CoseNumberLabel(Cose.COSE_LABEL_ALG) to
+                    Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
         )
-        val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
-            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertChain(listOf(documentSignerCert)).toDataItem()
+        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN) to
+                    X509CertChain(listOf(documentSignerCert)).toDataItem()
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(
@@ -415,8 +415,7 @@ class DeviceRetrievalHelperTest {
                                 deviceSignedData,
                                 mdocCredential.secureArea,
                                 mdocCredential.alias,
-                                null,
-                                Algorithm.ES256
+                                null
                             )
                             .generate()
                     )

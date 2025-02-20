@@ -1,5 +1,6 @@
 package com.android.identity.securearea.cloud
 
+import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyPurpose
@@ -12,6 +13,7 @@ class CloudKeyInfo internal constructor(
     alias: String,
     attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
+    signingAlgorithm: Algorithm,
 
     /**
      * Whether user authentication is required to use the key.
@@ -37,6 +39,5 @@ class CloudKeyInfo internal constructor(
      * Whether the key is passphrase protected.
      */
     val isPassphraseRequired: Boolean,
-
-    ) : KeyInfo(alias, attestation.publicKey, keyPurposes, attestation)
+) : KeyInfo(alias, attestation.publicKey, keyPurposes, signingAlgorithm, attestation)
 

@@ -736,7 +736,6 @@ private suspend fun calcDocument(
         credential.secureArea,
         credential.alias,
         KeyUnlockInteractive(),
-        keyInfo.publicKey.curve.defaultSigningAlgorithm,
     )
     return documentGenerator.generate()
 }

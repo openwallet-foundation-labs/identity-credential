@@ -289,8 +289,7 @@ class PresentationActivity : ComponentActivity() {
                     NameSpacedData.Builder().build(),
                     credential.secureArea,
                     credential.alias,
-                    null,
-                    Algorithm.ES256
+                    null
                 )
                 .generate()
         )

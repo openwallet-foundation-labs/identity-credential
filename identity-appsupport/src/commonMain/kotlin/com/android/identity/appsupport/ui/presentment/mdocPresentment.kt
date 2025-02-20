@@ -209,13 +209,11 @@ private suspend fun calcDocument(
     )
     documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
 
-    val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
     documentGenerator.setDeviceNamespacesSignature(
         NameSpacedData.Builder().build(),
         credential.secureArea,
         credential.alias,
         KeyUnlockInteractive(),
-        keyInfo.publicKey.curve.defaultSigningAlgorithm,
     )
     return documentGenerator.generate()
 }

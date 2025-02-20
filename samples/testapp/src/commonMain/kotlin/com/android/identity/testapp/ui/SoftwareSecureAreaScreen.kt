@@ -151,12 +151,10 @@ private suspend fun swTestUnguarded(
     )
 
     if (keyPurpose == KeyPurpose.SIGN) {
-        val signingAlgorithm = curve.defaultSigningAlgorithm
         try {
             val t0 = Clock.System.now()
             val signature = softwareSecureArea.sign(
                 "testKey",
-                signingAlgorithm,
                 "data".encodeToByteArray(),
                 interactiveUnlock,
             )

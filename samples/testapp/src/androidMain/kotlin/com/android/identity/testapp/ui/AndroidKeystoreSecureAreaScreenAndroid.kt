@@ -541,12 +541,10 @@ private suspend fun aksTestUnguarded(
     )
 
     if (keyPurpose == KeyPurpose.SIGN) {
-        val signingAlgorithm = curve.defaultSigningAlgorithm
         val dataToSign = "data".toByteArray()
         val t0 = System.currentTimeMillis()
         val signature = androidKeystoreSecureArea.sign(
             "testKey",
-            signingAlgorithm,
             dataToSign,
             KeyUnlockInteractive(requireConfirmation = biometricConfirmationRequired))
         val t1 = System.currentTimeMillis()

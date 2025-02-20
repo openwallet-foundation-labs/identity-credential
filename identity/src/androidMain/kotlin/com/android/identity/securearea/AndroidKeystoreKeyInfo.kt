@@ -1,5 +1,6 @@
 package com.android.identity.securearea
 
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
@@ -14,6 +15,7 @@ class AndroidKeystoreKeyInfo internal constructor(
     publicKey: EcPublicKey,
     attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
+    signingAlgorithm: Algorithm,
 
     /**
      * The attest key alias for the key, if any.
@@ -53,4 +55,4 @@ class AndroidKeystoreKeyInfo internal constructor(
      * The point in time after which the key is not valid, if set.
      */
     val validUntil: Instant?
-) : KeyInfo(alias, publicKey, keyPurposes, attestation)
+) : KeyInfo(alias, publicKey, keyPurposes, signingAlgorithm, attestation)
