@@ -10,6 +10,7 @@ import kotlinx.datetime.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
 
@@ -152,8 +153,8 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
             assertTrue(it.isTrusted)
-            assertEquals(3, it.trustChain.size)
-            assertEquals(caCertificate, it.trustChain.last())
+            assertEquals(3, it.trustChain!!.certificates.size)
+            assertEquals(caCertificate, it.trustChain.certificates.last())
         }
     }
 
@@ -167,8 +168,8 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsValidInThePastCertificate)).let {
             assertEquals("Certificate is no longer valid", it.error?.message)
             assertFalse(it.isTrusted)
-            assertEquals(3, it.trustChain.size)
-            assertEquals(caCertificate, it.trustChain.last())
+            assertEquals(3, it.trustChain!!.certificates.size)
+            assertEquals(caCertificate, it.trustChain.certificates.last())
         }
     }
 
@@ -182,8 +183,8 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsValidInTheFutureCertificate)).let {
             assertEquals("Certificate is not yet valid", it.error?.message)
             assertFalse(it.isTrusted)
-            assertEquals(3, it.trustChain.size)
-            assertEquals(caCertificate, it.trustChain.last())
+            assertEquals(3, it.trustChain!!.certificates.size)
+            assertEquals(caCertificate, it.trustChain.certificates.last())
         }
     }
 
@@ -196,8 +197,8 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
             assertTrue(it.isTrusted)
-            assertEquals(2, it.trustChain.size)
-            assertEquals(intermediateCertificate, it.trustChain.last())
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(intermediateCertificate, it.trustChain.certificates.last())
         }
     }
 
@@ -210,8 +211,8 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsCertificate, intermediateCertificate)).let {
             assertEquals(null, it.error)
             assertTrue(it.isTrusted)
-            assertEquals(3, it.trustChain.size)
-            assertEquals(caCertificate, it.trustChain.last())
+            assertEquals(3, it.trustChain!!.certificates.size)
+            assertEquals(caCertificate, it.trustChain.certificates.last())
         }
     }
 
@@ -224,8 +225,8 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
             assertTrue(it.isTrusted)
-            assertEquals(1, it.trustChain.size)
-            assertEquals(dsCertificate, it.trustChain.last())
+            assertEquals(1, it.trustChain!!.certificates.size)
+            assertEquals(dsCertificate, it.trustChain.certificates.last())
         }
     }
 
@@ -240,15 +241,15 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
             assertTrue(it.isTrusted)
-            assertEquals(3, it.trustChain.size)
-            assertEquals(caCertificate, it.trustChain.last())
+            assertEquals(3, it.trustChain!!.certificates.size)
+            assertEquals(caCertificate, it.trustChain.certificates.last())
         }
 
         trustManager.verify(listOf(ds2Certificate)).let {
             assertEquals(null, it.error)
             assertTrue(it.isTrusted)
-            assertEquals(2, it.trustChain.size)
-            assertEquals(ca2Certificate, it.trustChain.last())
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(ca2Certificate, it.trustChain.certificates.last())
         }
     }
 
@@ -259,7 +260,7 @@ class TrustManagerTest {
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals("No trusted root certificate could not be found", it.error?.message)
             assertFalse(it.isTrusted)
-            assertEquals(0, it.trustChain.size)
+            assertNull(it.trustChain)
         }
     }
 }
