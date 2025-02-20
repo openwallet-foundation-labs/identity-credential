@@ -1,5 +1,7 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.getUInt16
+import com.android.identity.util.putUInt16
 import kotlinx.coroutines.delay
 import kotlinx.io.bytestring.ByteString
 import kotlin.time.Duration
@@ -64,7 +66,7 @@ abstract class NfcIsoTag {
                 ins = Nfc.INS_SELECT,
                 p1 = Nfc.INS_SELECT_P1_FILE,
                 p2 = Nfc.INS_SELECT_P2_FILE,
-                payload = ByteString(encodeShort(fileId)),
+                payload = ByteString(fileId.encodeShort()),
                 le = 0
             )
         )
@@ -83,7 +85,7 @@ abstract class NfcIsoTag {
      */
     suspend fun readBinary(offset: Int, length: Int): ByteArray {
         require(length > 0) { "Length must be positive" }
-        require(offset >= 0 && offset < 0x10000) { "Offset must be between 0 and 0x10000" }
+        require(offset in 0..0xffff) { "Offset must be between 0 and 0x10000" }
         val response = transceive(
             CommandApdu(
                 cla = 0,
@@ -107,8 +109,8 @@ abstract class NfcIsoTag {
      * @param data the data to write, cannot be larger than 255 bytes.
      * @throws NfcCommandFailedException if the command fails.
      */
-    suspend fun updateBinary(offset: Int, data: ByteArray) {
-        require(data.size > 0) { "Data to write must be non-empty" }
+    private suspend fun updateBinary(offset: Int, data: ByteArray) {
+        require(data.isNotEmpty()) { "Data to write must be non-empty" }
         require(data.size < 256) { "Data cannot be larger than 255 bytes" }
 
         //
@@ -138,20 +140,20 @@ abstract class NfcIsoTag {
         wtInt: Int = 0,
         nWait: Int = 0
     ): NdefMessage {
-        var nWait_ = nWait
+        var nWaitCounter = nWait
         var replyLen: Int
         do {
-            replyLen = decodeShort(readBinary(0x0000, 2))
+            replyLen = readBinary(0x0000, 2).getUInt16(0).toInt()
             if (replyLen > 0) {
                 break
             }
 
             // As per [TNEP] 4.1.7 if the tag sends an empty NDEF message it means that
             // it's requesting extra time... honor this if we can.
-            if (nWait_ > 0) {
+            if (nWaitCounter > 0) {
                 val tWait = Duration.fromWtInt(wtInt)
                 delay(tWait)
-                nWait_--
+                nWaitCounter--
             } else {
                 throw IllegalStateException("NDEF message with length 0 but no time extensions left")
             }
@@ -189,10 +191,10 @@ abstract class NfcIsoTag {
         //
         // For debugging, this optimization can be turned off by setting this to |true|:
         if (!NDEF_TRANSACT_BYPASS_UPDATE_BINARY_OPTIMIZATION && encodedNdefMessage.size < 256 - 2) {
-            updateBinary(0, encodeShort(encodedNdefMessage.size) + encodedNdefMessage)
+            updateBinary(0, encodedNdefMessage.size.encodeShort() + encodedNdefMessage)
         } else {
             // First command is UPDATE_BINARY to reset length
-            updateBinary(0, encodeShort(0))
+            updateBinary(0, 0.encodeShort())
 
             // Subsequent commands are UPDATE_BINARY with payload, chopped into bits no longer
             // than 255 bytes each
@@ -207,7 +209,7 @@ abstract class NfcIsoTag {
             }
 
             // Final command is UPDATE_BINARY to write the length
-            updateBinary(0, encodeShort(encodedNdefMessage.size))
+            updateBinary(0, encodedNdefMessage.size.encodeShort())
         }
         val tWait = Duration.fromWtInt(wtInt)
         delay(tWait)
@@ -224,8 +226,6 @@ abstract class NfcIsoTag {
     }
 }
 
-private fun encodeShort(value: Int): ByteArray =
-    byteArrayOf(value.shr(8).and(0xff).toByte(), value.and(0xff).toByte())
+// TODO: b/393388370 perhaps add a bunch of these to the ByteArray Util?
+private fun Int.encodeShort(): ByteArray = ByteArray(2).apply { putUInt16(0, toUInt() ) }
 
-private fun decodeShort(encoded: ByteArray) =
-    encoded[0].toInt().and(0xff).shl(8) + encoded[1].toInt().and(0xff)

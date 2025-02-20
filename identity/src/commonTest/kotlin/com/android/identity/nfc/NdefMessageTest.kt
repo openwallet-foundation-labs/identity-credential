@@ -285,35 +285,35 @@ class NdefMessageTest {
             ),
             // smart poster with absolute uri
             Pair(
-                "http://www.android.com",
+                "http://www.android.com1",
                 NdefRecord(
                     NdefRecord.Tnf.WELL_KNOWN,
                     type = Nfc.RTD_SMART_POSTER,
                     payload = ByteString(NdefMessage(listOf(
-                        NdefRecord(NdefRecord.Tnf.ABSOLUTE_URI, type = "http://www.android.com".encodeToByteString())
+                        NdefRecord(NdefRecord.Tnf.ABSOLUTE_URI, type = "http://www.android.com1".encodeToByteString())
                     )).encode())
                 )
             ),
             // smart poster with wkt uri
             Pair(
-                "http://www.android.com",
+                "http://www.android.com2",
                 NdefRecord(
                     NdefRecord.Tnf.WELL_KNOWN,
                     type = Nfc.RTD_SMART_POSTER,
                     payload = ByteString(NdefMessage(listOf(
-                        NdefRecord.createUri("http://www.android.com")
+                        NdefRecord.createUri("http://www.android.com2")
                     )).encode())
                 )
             ),
             // smart poster with text and wkt uri
             Pair(
-                "http://www.android.com",
+                "http://www.android.com3",
                 NdefRecord(
                     NdefRecord.Tnf.WELL_KNOWN,
                     type = Nfc.RTD_SMART_POSTER,
                     payload = ByteString(NdefMessage(listOf(
                         NdefRecord(NdefRecord.Tnf.WELL_KNOWN, Nfc.RTD_TEXT, ByteString(), ByteString()),
-                        NdefRecord.createUri("http://www.android.com")
+                        NdefRecord.createUri("http://www.android.com3")
                     )).encode())
                 )
             ),

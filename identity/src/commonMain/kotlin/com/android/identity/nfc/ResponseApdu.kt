@@ -1,9 +1,10 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.ByteDataReader
+import com.android.identity.util.getUInt16
+import com.android.identity.util.putUInt8
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.bytestring.append
 
 /**
  * A response APDU according to ISO/IEC 7816-4.
@@ -39,11 +40,11 @@ data class ResponseApdu(
      * @return the bytes of the APDU.
      */
     fun encode(): ByteArray {
-        val bsb = ByteStringBuilder()
-        bsb.append(payload)
-        bsb.append(sw1.toByte())
-        bsb.append(sw2.toByte())
-        return bsb.toByteString().toByteArray()
+        return ByteArray(payload.size + 2). apply {
+            payload.copyInto(this)
+            putUInt8(payload.size, sw1.toUInt())
+            putUInt8(payload.size + 1, sw2.toUInt())
+        }
     }
 
     companion object {
@@ -55,10 +56,9 @@ data class ResponseApdu(
          */
         fun decode(encoded: ByteArray): ResponseApdu {
             require(encoded.size >= 2)
-            val payload = ByteString(encoded, 0, encoded.size - 2)
-            val sw1 = encoded[encoded.size - 2].toInt().and(0xff)
-            val sw2 = encoded[encoded.size - 1].toInt().and(0xff)
-            val status = sw1.shl(8) + sw2
+            val reader = ByteDataReader(encoded)
+            val payload = reader.getByteString(encoded.size - 2)
+            val status = reader.getUInt16().toInt()
             return ResponseApdu(status, payload)
         }
     }

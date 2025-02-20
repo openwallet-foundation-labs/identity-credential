@@ -1,6 +1,9 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.appendUInt8
+import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.decodeToString
 
 data class ServiceSelectRecord(
     val serviceName: String
@@ -9,7 +12,7 @@ data class ServiceSelectRecord(
     fun toNdefRecord(): NdefRecord {
         require(serviceName.length < 256) { "Service Name length must be shorter than 256" }
         val bsb = ByteStringBuilder()
-        bsb.append(serviceName.length.toByte())
+        bsb.appendUInt8(serviceName.length)
         bsb.append(serviceName.encodeToByteArray())
         return NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
@@ -26,9 +29,9 @@ data class ServiceSelectRecord(
             }
 
             require(record.payload.size >= 1) { "Unexpected length of Service Select Record" }
-            val serviceNameLen = record.payload[0].toInt().and(0xff)
+            val serviceNameLen = record.payload.getUInt8(0).toInt()
             require(record.payload.size == serviceNameLen + 1) { "Unexpected length of body in Service Select Record" }
-            return ServiceSelectRecord(record.payload.toByteArray().decodeToString(1))
+            return ServiceSelectRecord(record.payload.decodeToString().drop(1))
         }
     }
 }

@@ -5,7 +5,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
 
 /** ByteStringBuffer extension functions to append commonly used types. */
 
-// Writers
+//region Writers
 
 fun ByteStringBuilder.appendInt8(value: Int, validRange: IntRange = Byte.MIN_VALUE..Byte.MAX_VALUE) {
     require(value in validRange) { "Value $value is out of Int8 range" }
@@ -187,7 +187,16 @@ fun ByteStringBuilder.appendUInt64Le(
     appendUInt64Le(value.toULong(), validRange)
 }
 
-// Readers
+fun ByteStringBuilder.appendArray(bArray:ByteArray) {
+    if (bArray.isNotEmpty()) append(bArray)
+}
+
+fun ByteStringBuilder.appendBstring(bString:ByteString) {
+    append(bString.toByteArray())
+}
+//endregion
+
+//region Readers
 
 fun ByteString.getInt8(offset: Int): Byte {
     require(size >= Byte.SIZE_BYTES) { "Buffer size is less than Int8 size" }
@@ -354,3 +363,5 @@ fun ByteString.getUInt64Le(offset: Int): ULong {
     return ((b8 shl 56) or (b7 shl 48) or (b6 shl 40) or (b5 shl 32) or (b4 shl 24) or (b3 shl 16) or (b2 shl 8) or b1)
         .toULong()
 }
+
+//endregion

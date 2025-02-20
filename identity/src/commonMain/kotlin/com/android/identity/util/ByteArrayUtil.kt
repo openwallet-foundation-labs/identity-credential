@@ -1,5 +1,8 @@
 package com.android.identity.util
 
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.ByteStringBuilder
+
 /**
  * ByteArray extension functions for consistent reading and writing commonly used types.
  */
@@ -234,4 +237,43 @@ fun ByteArray.getUInt64Le(offset: Int): ULong {
     return ((b8 shl 56) or (b7 shl 48) or (b6 shl 40) or (b5 shl 32) or (b4 shl 24) or (b3 shl 16) or (b2 shl 8) or b1)
         .toULong()
 }
+
+fun ByteArray.getByteString(offset: Int, numBytes: Int): ByteString {
+    require(offset >= 0) { "Offset must be non-negative" }
+    require(numBytes >= 0) { "Number of bytes must be non-negative" }
+    require(offset + numBytes <= size) { "Offset and number of bytes must be within the bounds of the array" }
+
+    if (numBytes == 0) return ByteString()
+
+    return with(ByteStringBuilder()) {
+        append(copyOfRange(offset, offset + numBytes))
+        toByteString()
+    }
+}
+
+fun ByteArray.getString(offset: Int, numBytes: Int): String = decodeToString(offset, offset + numBytes, true)
+
+fun ByteArray.getNullTerminatedString(offset: Int): String {
+    require(offset >= 0) { "Offset must be non-negative" }
+    require(offset <= size) { "Offset must be within the bounds of the array" }
+
+    if (offset == size) return ""
+
+    var end = -1
+    for (i in offset until size) {
+        if (this[i] == 0.toByte()) {
+            end = i
+            break
+        }
+    }
+    require (end != -1) { "Null terminator not found" }
+
+    val length = end - offset
+    if (length == 0) return ""
+
+    // As Utf8
+    return decodeToString(offset, end, true)
+}
+
+
 

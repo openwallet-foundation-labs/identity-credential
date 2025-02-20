@@ -64,7 +64,7 @@ class MdocNfcEngagementHelper(
             "Can't use both static and negotiated handover at the same time"
         }
         if (static) {
-            check(!staticHandoverMethods.isEmpty()) {
+            check(staticHandoverMethods!!.isNotEmpty()) {
                 "Must have at least one ConnectionMethod for static handover"
             }
         }

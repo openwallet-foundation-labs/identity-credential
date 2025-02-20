@@ -1,12 +1,14 @@
 package com.android.identity.nfc
 
-import kotlinx.io.Buffer
+import com.android.identity.util.ByteDataReader
+import com.android.identity.util.appendBstring
+import com.android.identity.util.appendUInt32
+import com.android.identity.util.appendUInt8
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
-import kotlinx.io.readByteString
 
 /**
  * An immutable NDEF Record.
@@ -68,14 +70,14 @@ data class NdefRecord(
     }
 
     /**
-     * Encodes the record into a [Buffer].
+     * Encodes the record into a [ByteStringBuilder].
      *
-     * @param buf the [Buffer] to append the encoding of the record to.
+     * @param bsb the [ByteStringBuilder] to append the encoding of the record to other records.
      * @param isMessageBegin set to `true` if this is the first record of a message.
      * @param isMessageEnd set to `true` if this is the last record of a message.
      */
     internal fun encode(
-        buf: Buffer,
+        bsb: ByteStringBuilder,
         isMessageBegin: Boolean,
         isMessageEnd: Boolean
     ) {
@@ -87,19 +89,19 @@ data class NdefRecord(
         if (isShortRecord) flags = flags or FLAG_SR
         if (idLengthPresent) flags = flags or FLAG_IL
 
-        buf.writeByte(flags.toByte())
-        buf.writeByte(type.size.toByte())
+        bsb.appendUInt8(flags)
+        bsb.appendUInt8(type.size.toByte().toInt()) //TODO: b/393388370 - fails in tests without .toByte() which ignores higher byte of Int.
         if (isShortRecord) {
-            buf.writeByte(payload.size.toByte())
+            bsb.appendUInt8(payload.size)
         } else {
-            buf.writeInt(payload.size)
+            bsb.appendUInt32(payload.size)
         }
         if (idLengthPresent) {
-            buf.writeByte(id.size.toByte())
+            bsb.appendUInt8(id.size)
         }
-        buf.write(type.toByteArray())
-        buf.write(id.toByteArray())
-        buf.write(payload.toByteArray())
+        bsb.appendBstring(type)
+        bsb.appendBstring(id)
+        bsb.appendBstring(payload)
     }
 
     /**
@@ -176,16 +178,15 @@ data class NdefRecord(
          */
         internal fun fromEncoded(encoded: ByteArray): List<NdefRecord> {
             try {
-                val buf = Buffer()
-                buf.write(encoded)
                 val records = mutableListOf<NdefRecord>()
                 var chunkBsb: ByteStringBuilder? = null
                 var chunkTnf: Tnf = Tnf.EMPTY
                 var type = ByteString()
                 var id = ByteString()
 
-                while (!buf.exhausted()) {
-                    val flags = buf.readByte().toInt().and(0xff)
+                val reader = ByteDataReader(encoded)
+                while (!reader.exhausted()) {
+                    val flags = reader.getUInt8().toInt()
                     val isMessageBegin = flags.and(FLAG_MB) != 0x00
                     val isMessageEnd = flags.and(FLAG_ME) != 0x00
                     val isChunkedFlag = flags.and(FLAG_CF) != 0x00
@@ -194,29 +195,29 @@ data class NdefRecord(
                     var tnf = Tnf.entries[flags.and(0x07)]
 
                     if (records.size == 0 && chunkBsb == null) {
-                        check(isMessageBegin == true)
+                        check(isMessageBegin)
                     }
 
-                    val typeLength = buf.readByte().toInt().and(0xff)
+                    val typeLength = reader.getUInt8().toInt()
                     val payloadLength = if (isShortRecord) {
-                        buf.readByte().toInt().and(0xff)
+                        reader.getUInt8().toInt()
                     } else {
-                        buf.readInt()
+                        reader.getUInt32().toInt()
                     }
-                    val idLength = if (idLengthPresent) {
-                        buf.readByte().toInt().and(0xff)
+                    val idLength: Int = if (idLengthPresent) {
+                        reader.getUInt8().toInt()
                     } else {
                         0
                     }
                     if (chunkBsb == null) {
-                        type = buf.readByteString(typeLength)
-                        id = buf.readByteString(idLength)
+                        type = reader.getByteString(typeLength)
+                        id = reader.getByteString(idLength)
                     }
 
-                    var payload = buf.readByteString(payloadLength)
+                    var payload = reader.getByteString(payloadLength)
 
-                    if (buf.exhausted()) {
-                        check(isMessageEnd == true)
+                    if (reader.exhausted()) {
+                        check(isMessageEnd)
                     }
 
                     if (tnf == Tnf.EMPTY && id.size != 0) {

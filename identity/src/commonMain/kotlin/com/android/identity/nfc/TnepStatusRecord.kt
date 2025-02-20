@@ -1,5 +1,6 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteString
 
 data class TnepStatusRecord(
@@ -22,7 +23,7 @@ data class TnepStatusRecord(
                 return null
             }
             require(record.payload.size == 1)
-            return TnepStatusRecord(record.payload[0].toInt().and(0xff))
+            return TnepStatusRecord(record.payload.getUInt8(0).toInt())
         }
     }
 }

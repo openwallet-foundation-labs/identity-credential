@@ -1,10 +1,6 @@
 package com.android.identity.nfc
 
-import kotlinx.io.Buffer
-import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.bytestring.encodeToByteString
-import kotlinx.io.readByteArray
 
 /**
  * An immutable NDEF message.
@@ -20,14 +16,14 @@ data class NdefMessage(
      * @return the encoded message.
      */
     fun encode(): ByteArray {
-        val buf = Buffer()
+        val bsb = ByteStringBuilder()
         for (idx in records.indices) {
             val record = records[idx]
             val mb = (idx == 0)                  // first record
             val me = (idx == records.size - 1)   // last record
-            record.encode(buf, mb, me)
+            record.encode(bsb, mb, me)
         }
-        return buf.readByteArray()
+        return bsb.toByteString().toByteArray()
     }
 
     companion object {
