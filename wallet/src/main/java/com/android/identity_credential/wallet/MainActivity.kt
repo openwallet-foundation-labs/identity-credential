@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.compose.rememberNavController
+import com.android.identity.util.AndroidContexts
 import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
 import com.android.identity_credential.wallet.dynamicregistration.AidRegistrationUtil
 import com.android.identity_credential.wallet.navigation.WalletDestination
@@ -41,6 +42,7 @@ import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.multipaz.compose.UiProvider
 
 class MainActivity : FragmentActivity() {
     companion object {
@@ -66,6 +68,16 @@ class MainActivity : FragmentActivity() {
             Manifest.permission.NFC to R.string.permission_nfc,
             Manifest.permission.ACCESS_FINE_LOCATION to R.string.permission_bluetooth_connect
         ))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AndroidContexts.setCurrentActivity(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AndroidContexts.setCurrentActivity(null)
     }
 
     override fun onStart() {
@@ -100,8 +112,8 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    UiProvider()
                     val navController = rememberNavController()
-
                     val route = routeRequest.observeAsState()
                     LaunchedEffect(route.value) {
                         if (route.value != null) {

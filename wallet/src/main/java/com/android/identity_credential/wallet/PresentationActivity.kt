@@ -71,6 +71,7 @@ import com.android.identity_credential.wallet.presentation.showMdocPresentmentFl
 import com.android.identity.request.MdocClaim
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.util.toMdocRequest
+import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -293,6 +294,16 @@ class PresentationActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AndroidContexts.setCurrentActivity(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AndroidContexts.setCurrentActivity(null)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
