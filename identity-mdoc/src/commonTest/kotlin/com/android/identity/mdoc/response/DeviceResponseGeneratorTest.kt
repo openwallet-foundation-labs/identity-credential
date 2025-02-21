@@ -245,7 +245,6 @@ class DeviceResponseGeneratorTest {
                     mdocCredential.secureArea,
                     mdocCredential.alias,
                     null,
-                    Algorithm.ES256
                 )
                 .generate()
         )
@@ -384,8 +383,7 @@ class DeviceResponseGeneratorTest {
                     deviceSignedData,
                     mdocCredential.secureArea,
                     mdocCredential.alias,
-                    null,
-                    Algorithm.ES256
+                    null
                 )
                 .generate()
         )
@@ -448,8 +446,7 @@ class DeviceResponseGeneratorTest {
                     deviceSignedData,
                     mdocCredential.secureArea,
                     mdocCredential.alias,
-                    null,
-                    Algorithm.ES256
+                    null
                 )
                 .generate()
         )
@@ -513,8 +510,7 @@ class DeviceResponseGeneratorTest {
                     NameSpacedData.Builder().build(),
                     mdocCredential.secureArea,
                     mdocCredential.alias,
-                    null,
-                    Algorithm.ES256
+                    null
                 )
                 .generate()
         )

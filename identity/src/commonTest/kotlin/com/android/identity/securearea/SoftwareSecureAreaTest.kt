@@ -51,7 +51,7 @@ class SoftwareSecureAreaTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", Algorithm.ES256, byteArrayOf(1, 2), null)
+            ks.sign("testKey", byteArrayOf(1, 2), null)
             fail()
         } catch (e: IllegalArgumentException) {
             // Expected path.
@@ -79,7 +79,7 @@ class SoftwareSecureAreaTest {
         assertNull(keyInfo.passphraseConstraints)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -139,7 +139,7 @@ class SoftwareSecureAreaTest {
         )
         val dataToSign = byteArrayOf(4, 5, 6)
         try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
             fail("Signing shouldn't work with a key w/o purpose SIGN")
         } catch (e: IllegalArgumentException) {
             assertEquals("Key does not have purpose SIGN", e.message)
@@ -223,7 +223,7 @@ class SoftwareSecureAreaTest {
 
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -284,7 +284,6 @@ class SoftwareSecureAreaTest {
         try {
             ks.sign(
                 "testKey",
-                Algorithm.ES256,
                 dataToSign,
                 null
             )
@@ -297,7 +296,6 @@ class SoftwareSecureAreaTest {
         try {
             ks.sign(
                 "testKey",
-                Algorithm.ES256,
                 dataToSign,
                 SoftwareKeyUnlockData("wrongPassphrase")
             )
@@ -310,7 +308,6 @@ class SoftwareSecureAreaTest {
         val signature = try {
             ks.sign(
                 "testKey",
-                Algorithm.ES256,
                 dataToSign,
                 SoftwareKeyUnlockData(passphrase)
             )
@@ -347,7 +344,7 @@ class SoftwareSecureAreaTest {
         val certChain = keyInfo.attestation
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -382,18 +379,6 @@ class SoftwareSecureAreaTest {
             EcCurve.ED448
         ).intersect(Crypto.supportedCurves)
         for (ecCurve in curvesSupportingSigning) {
-            ks.createKey(
-                "testKey",
-                SoftwareCreateKeySettings.Builder()
-                    .setEcCurve(ecCurve)
-                    .build()
-            )
-            val keyInfo = ks.getKeyInfo("testKey")
-            assertNotNull(keyInfo)
-                assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
-            assertEquals(ecCurve, keyInfo.publicKey.curve)
-            assertFalse(keyInfo.isPassphraseProtected)
-            assertNull(keyInfo.passphraseConstraints)
             val signatureAlgorithms = when (ecCurve) {
                 EcCurve.P256,
                 EcCurve.P384,
@@ -402,11 +387,11 @@ class SoftwareSecureAreaTest {
                 EcCurve.BRAINPOOLP320R1,
                 EcCurve.BRAINPOOLP384R1,
                 EcCurve.BRAINPOOLP512R1 -> {
-                        arrayOf(
-                            Algorithm.ES256,
-                            Algorithm.ES384,
-                            Algorithm.ES512
-                        )
+                    arrayOf(
+                        Algorithm.ES256,
+                        Algorithm.ES384,
+                        Algorithm.ES512
+                    )
                 }
                 EcCurve.ED25519,
                 EcCurve.ED448 -> {
@@ -415,9 +400,23 @@ class SoftwareSecureAreaTest {
                 else -> throw AssertionError()
             }
             for (signatureAlgorithm in signatureAlgorithms) {
+                ks.createKey(
+                    "testKey",
+                    SoftwareCreateKeySettings.Builder()
+                        .setEcCurve(ecCurve)
+                        .setSigningAlgorithm(signatureAlgorithm)
+                        .build()
+                )
+                val keyInfo = ks.getKeyInfo("testKey")
+                assertNotNull(keyInfo)
+                    assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+                assertEquals(ecCurve, keyInfo.publicKey.curve)
+                assertFalse(keyInfo.isPassphraseProtected)
+                assertNull(keyInfo.passphraseConstraints)
+                assertEquals(signatureAlgorithm, keyInfo.signingAlgorithm)
                 val dataToSign = byteArrayOf(4, 5, 6)
                 val derSignature = try {
-                    ks.sign("testKey", signatureAlgorithm, dataToSign, null)
+                    ks.sign("testKey", dataToSign, null)
                 } catch (e: KeyLockedException) {
                     throw AssertionError(e)
                 }

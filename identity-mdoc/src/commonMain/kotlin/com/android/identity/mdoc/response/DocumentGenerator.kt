@@ -83,7 +83,7 @@ class DocumentGenerator
         secureArea: SecureArea,
         keyAlias: String,
         keyUnlockData: KeyUnlockData?,
-        signatureAlgorithm: Algorithm,
+        useMac: Boolean,
         eReaderKey: EcPublicKey?
     ) = apply {
         val mapBuilder = CborMap.builder()
@@ -110,20 +110,14 @@ class DocumentGenerator
         val deviceAuthenticationBytes = Cbor.encode(Tagged(24, Bstr(deviceAuthentication)))
         var encodedDeviceSignature: ByteArray? = null
         var encodedDeviceMac: ByteArray? = null
-        if (signatureAlgorithm !== Algorithm.UNSET) {
+        if (!useMac) {
             encodedDeviceSignature = Cbor.encode(
                 Cose.coseSign1Sign(
                     secureArea,
                     keyAlias,
                     deviceAuthenticationBytes,
                     false,
-                    signatureAlgorithm,
-                    mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
-                        )
-                    ),
+                    mapOf(),
                     mapOf(),
                     keyUnlockData
                 ).toDataItem()
@@ -190,16 +184,15 @@ class DocumentGenerator
         dataElements: NameSpacedData,
         secureArea: SecureArea,
         keyAlias: String,
-        keyUnlockData: KeyUnlockData?,
-        signatureAlgorithm: Algorithm
+        keyUnlockData: KeyUnlockData?
     ) = apply {
         setDeviceNamespaces(
             dataElements,
             secureArea,
             keyAlias,
             keyUnlockData,
-            signatureAlgorithm,
-            null
+            useMac = false,
+            eReaderKey = null
         )
     }
 
@@ -229,8 +222,8 @@ class DocumentGenerator
             secureArea,
             keyAlias,
             keyUnlockData,
-            Algorithm.UNSET,
-            eReaderKey
+            useMac = true,
+            eReaderKey = eReaderKey
         )
     }
 

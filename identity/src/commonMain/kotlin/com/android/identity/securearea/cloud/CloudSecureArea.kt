@@ -354,7 +354,6 @@ open class CloudSecureArea protected constructor(
             )
             val signature = platformSecureArea.sign(
                 "DeviceBindingKey",
-                Algorithm.ES256,
                 dataToSign,
                 null
             )
@@ -477,7 +476,7 @@ open class CloudSecureArea protected constructor(
     override suspend fun createKey(
         alias: String?,
         createKeySettings: CreateKeySettings
-    ): KeyInfo {
+    ): CloudKeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(
@@ -502,9 +501,15 @@ open class CloudSecureArea protected constructor(
             if (cSettings.validUntil != null) {
                 validUntil = cSettings.validUntil.toEpochMilliseconds()
             }
+            val signingAlgorithmCose = if (cSettings.signingAlgorithm == Algorithm.UNSET) {
+                null
+            } else {
+                cSettings.signingAlgorithm.coseAlgorithmIdentifier
+            }
             val request0 = CreateKeyRequest0(
                 cSettings.keyPurposes,
                 cSettings.ecCurve,
+                signingAlgorithmCose,
                 validFrom,
                 validUntil,
                 cSettings.passphraseRequired,
@@ -620,20 +625,18 @@ open class CloudSecureArea protected constructor(
 
     override suspend fun sign(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         return interactionHelper(
             alias,
             keyUnlockData,
-            op = { unlockData -> signNonInteractive(alias, signatureAlgorithm, dataToSign, unlockData) }
+            op = { unlockData -> signNonInteractive(alias, dataToSign, unlockData) }
         )
     }
 
     private suspend fun signNonInteractive(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
@@ -656,8 +659,7 @@ open class CloudSecureArea protected constructor(
             }
         }
 
-        val request0 =
-            SignRequest0(signatureAlgorithm.coseAlgorithmIdentifier, dataToSign, keyContext!!.toByteArray())
+        val request0 = SignRequest0(dataToSign, keyContext!!.toByteArray())
         response = communicateE2EE(request0.toCbor())
         val response0 = CloudSecureAreaProtocol.Command.fromCbor(response) as SignResponse0
         val dataToSignLocally = Cbor.encode(
@@ -668,7 +670,6 @@ open class CloudSecureArea protected constructor(
         )
         val signatureLocal = platformSecureArea.sign(
             alias = getLocalKeyAlias(alias),
-            signatureAlgorithm = Algorithm.ES256,
             dataToSign = dataToSignLocally,
         )
         val request1 = SignRequest1(
@@ -748,7 +749,6 @@ open class CloudSecureArea protected constructor(
         )
         val signatureLocal = platformSecureArea.sign(
             alias = getLocalKeyAlias(alias),
-            signatureAlgorithm = Algorithm.ES256,
             dataToSign = dataToSignLocally,
         )
         val request1 = KeyAgreementRequest1(
@@ -802,6 +802,11 @@ open class CloudSecureArea protected constructor(
         val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
         val userAuthenticationTypes = CloudUserAuthType.decodeSet(map["userAuthenticationTypes"].asNumber)
         val isPassphraseRequired = map["isPassphraseRequired"].asBoolean
+        val signatureAlgorithm = if (map.hasKey("signingAlgorithm")) {
+            Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
+        } else {
+            Algorithm.UNSET
+        }
         var validFrom: Instant? = null
         var validUntil: Instant? = null
         if (map.hasKey("validFrom")) {
@@ -815,6 +820,7 @@ open class CloudSecureArea protected constructor(
             alias,
             KeyAttestation(attestationCertChain.certificates[0].ecPublicKey, attestationCertChain),
             KeyPurpose.decodeSet(keyPurposes),
+            signatureAlgorithm,
             userAuthenticationRequired,
             userAuthenticationTypes,
             validFrom,
@@ -835,6 +841,7 @@ open class CloudSecureArea protected constructor(
         Logger.d(TAG, "attestation len = ${attestationCertChain.certificates.size}")
         val map = CborMap.builder()
         map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))
+        map.put("signingAlgorithm", settings.signingAlgorithm.coseAlgorithmIdentifier)
         map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
         map.put("userAuthenticationTypes", CloudUserAuthType.encodeSet(settings.userAuthenticationTypes))
         if (settings.validFrom != null) {

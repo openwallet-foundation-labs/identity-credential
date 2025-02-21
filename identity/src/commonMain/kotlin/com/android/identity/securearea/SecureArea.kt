@@ -15,7 +15,6 @@
  */
 package com.android.identity.securearea
 
-import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 
@@ -89,10 +88,10 @@ interface SecureArea {
      *
      * If the key needs unlocking before use (for example user authentication
      * in any shape or form) and `keyUnlockData` isn't set or doesn't contain
-     * what's needed, [KeyLockedException] is thrown.
+     * what's needed, [KeyLockedException] is thrown. Signature algorithm must be specified at key
+     * creation time using [CreateKeySettings.signingAlgorithm].
      *
      * @param alias The alias of the EC key to sign with.
-     * @param signatureAlgorithm the signature algorithm to use.
      * @param dataToSign the data to sign.
      * @param keyUnlockData data used to unlock the key, `null`, or a [KeyUnlockInteractive] to
      *     handle user authentication automatically.
@@ -105,7 +104,6 @@ interface SecureArea {
      */
     suspend fun sign(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData? = KeyUnlockInteractive()
     ): EcSignature

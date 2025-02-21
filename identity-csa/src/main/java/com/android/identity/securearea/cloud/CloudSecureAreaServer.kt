@@ -373,6 +373,7 @@ class CloudSecureAreaServer(
         var cloudChallenge: ByteArray? = null,
         var purposes: Set<KeyPurpose> = emptySet(),
         var curve: EcCurve = EcCurve.P256,
+        var signingAlgorithm: Int? = null,
         var validFromMillis: Long = 0,
         var validUntilMillis: Long = 0,
         var passphraseRequired: Boolean = false,
@@ -402,6 +403,7 @@ class CloudSecureAreaServer(
         state.cloudChallenge = Random.Default.nextBytes(32)
         state.purposes = request0.purposes
         state.curve = request0.curve
+        state.signingAlgorithm = request0.signingAlgorithm
         state.validFromMillis = request0.validFromMillis
         state.validUntilMillis = request0.validUntilMillis
         state.passphraseRequired = request0.passphraseRequired
@@ -610,7 +612,6 @@ class CloudSecureAreaServer(
             val secureArea = SoftwareSecureArea.create(storage)
             val signature = secureArea.sign(
                 "CloudKey",
-                Algorithm.ES256,
                 state.dataToSign!!,
                 null
             )

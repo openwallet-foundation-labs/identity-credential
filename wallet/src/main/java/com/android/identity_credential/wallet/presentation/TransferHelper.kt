@@ -226,8 +226,7 @@ class TransferHelper(
                         NameSpacedData.Builder().build(),
                         credential.secureArea,
                         credential.alias,
-                        keyUnlockData,
-                        Algorithm.ES256
+                        keyUnlockData
                     )
                     .generate()
             )

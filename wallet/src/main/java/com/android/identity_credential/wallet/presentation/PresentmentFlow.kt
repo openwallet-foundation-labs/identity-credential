@@ -78,13 +78,12 @@ private suspend fun showPresentmentFlowImpl(
             // The only way we should get a KeyLockedException is if this is a secure area bound
             // credential.
             val secureAreaBoundCredential = credential as SecureAreaBoundCredential
-            when (secureAreaBoundCredential.secureArea) {
+            when (val secureArea = secureAreaBoundCredential.secureArea) {
                 // show Biometric prompt
                 is AndroidKeystoreSecureArea -> {
                     val unlockData =
-                        AndroidKeystoreKeyUnlockData(secureAreaBoundCredential.alias)
-                    val cryptoObject =
-                        unlockData.getCryptoObjectForSigning(Algorithm.ES256)
+                        AndroidKeystoreKeyUnlockData(secureArea, secureAreaBoundCredential.alias)
+                    val cryptoObject = unlockData.getCryptoObjectForSigning()
 
                     // update KeyUnlockData to be used on the next loop iteration
                     keyUnlockData = unlockData
@@ -259,9 +258,8 @@ suspend fun showSdJwtPresentmentFlow(
             secureAreaBoundCredential?.secureArea,
             secureAreaBoundCredential?.alias,
             keyUnlockData,
-            Algorithm.ES256,
-            nonce!!,
-            clientId!!
+            nonce,
+            clientId
         ).toString().toByteArray(Charsets.US_ASCII)
     }
 }
@@ -285,8 +283,7 @@ private suspend fun mdocSignAndGenerate(
         NameSpacedData.Builder().build(),
         credential.secureArea,
         credential.alias,
-        keyUnlockData,
-        Algorithm.ES256
+        keyUnlockData
     )
     // increment the credential's usage count since it just finished signing the data successfully
     credential.increaseUsageCount()

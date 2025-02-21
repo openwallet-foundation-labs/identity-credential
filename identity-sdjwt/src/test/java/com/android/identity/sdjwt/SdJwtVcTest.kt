@@ -195,7 +195,6 @@ class SdJwtVcTest {
             credential.secureArea,
             credential.alias,
             null,
-            Algorithm.ES256,
             nonceStr,
             "https://example-verifier.com"
         ).toString()

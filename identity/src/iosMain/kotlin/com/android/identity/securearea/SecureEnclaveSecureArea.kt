@@ -74,10 +74,18 @@ class SecureEnclaveSecureArea private constructor(
             storageTable.delete(alias, partitionId)
         }
 
+        // If key is used to sign, Algorithm.ES256 is the only option
+        check(!createKeySettings.keyPurposes.contains(KeyPurpose.SIGN) ||
+                createKeySettings.signingAlgorithm == Algorithm.ES256)
+
         val settings = if (createKeySettings is SecureEnclaveCreateKeySettings) {
             createKeySettings
         } else {
-            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
+            // If user passed in a generic SecureArea.CreateKeySettings, honor that (although
+            // only key settings can really be honored).
+            check(createKeySettings.ecCurve == EcCurve.P256)
+            check(!createKeySettings.keyPurposes.contains(KeyPurpose.SIGN) ||
+                createKeySettings.signingAlgorithm == Algorithm.ES256)
             SecureEnclaveCreateKeySettings.Builder()
                 .setKeyPurposes(createKeySettings.keyPurposes)
                 .build()
@@ -129,6 +137,7 @@ class SecureEnclaveSecureArea private constructor(
             alias,
             publicKey,
             keyPurposes,
+            Algorithm.ES256,
             userAuthenticationRequired,
             userAuthenticationTypes)
 
@@ -141,12 +150,10 @@ class SecureEnclaveSecureArea private constructor(
 
     override suspend fun sign(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         val (keyBlob, keyInfo) = loadKey(alias)
-        check(signatureAlgorithm == Algorithm.ES256)
         check(keyInfo.keyPurposes.contains(KeyPurpose.SIGN))
         val unlockData = if (keyUnlockData is KeyUnlockInteractive) {
             // TODO: create LAContext with title/subtitle from KeyUnlockInteractive
