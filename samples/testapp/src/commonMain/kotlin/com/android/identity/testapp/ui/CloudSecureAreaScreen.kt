@@ -1,6 +1,7 @@
 package com.android.identity.secure_area_test_app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +10,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -319,6 +323,35 @@ fun CsaConnectDialog(
                         imeAction = ImeAction.Done,
                     )
                 )
+
+                // Provide a dropdown so it's easy to select common CSA URLs.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    val expanded = remember { mutableStateOf(false) }
+                    Button(onClick = { expanded.value = !expanded.value }) {
+                        Text("Select URL")
+                    }
+                    DropdownMenu(
+                        expanded = expanded.value,
+                        onDismissRequest = { expanded.value = false }
+                    ) {
+                        for (urlOption in listOf(
+                            "http://10.0.2.2:8080/server/csa",
+                            "http://localhost:8080/server/csa",
+                            "https://ws.davidz25.net/server/csa"
+                        )) {
+                            DropdownMenuItem(
+                                text = { Text(urlOption) },
+                                onClick = {
+                                    urlTextField = TextFieldValue(urlOption)
+                                    expanded.value = false
+                                })
+                        }
+                    }
+                }
 
                 Text(
                     text = "Knowledge-Based Factor to use",
