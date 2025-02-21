@@ -69,7 +69,7 @@ fun UiProviderCommon(lifecycleOwner: LifecycleOwner) {
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
+            if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                 UiModel.registerView(provider)
             } else if (event == Lifecycle.Event.ON_STOP) {
                 UiModel.unregisterView(provider)
