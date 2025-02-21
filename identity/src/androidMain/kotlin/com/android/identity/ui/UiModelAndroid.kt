@@ -64,6 +64,7 @@ object UiModelAndroid: UiViewAndroid {
     ) {
         currentView?.let {
             it.showScanNfcTagDialog(message, icon)
+            return
         }
         throw UiViewNotAvailableException(
             "No UIViewAndroid registered. Is UIProvider() or similar included in the current composition?"
