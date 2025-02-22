@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION") // For the deprecated PreferenceManager only.
 package org.multipaz.age_verifier_mdl
 
 import android.annotation.SuppressLint
