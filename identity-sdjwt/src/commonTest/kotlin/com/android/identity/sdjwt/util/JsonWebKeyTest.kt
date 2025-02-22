@@ -4,19 +4,11 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.junit.Before
-import org.junit.Test
-import java.security.Security
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class JsonWebKeyTest {
-
-    @Before
-    fun setup() {
-        Security.insertProviderAt(BouncyCastleProvider(), 1)
-    }
 
     @Test
     fun testP256() {
@@ -74,6 +66,12 @@ class JsonWebKeyTest {
     }
 
     private fun parseAndEncode(curve: EcCurve) {
+        // TODO: use assumeTrue() when available in kotlin-test
+        if (!Crypto.supportedCurves.contains(curve)) {
+            println("Curve $curve not supported on platform")
+            return
+        }
+
         val pubKey = Crypto.createEcPrivateKey(curve).publicKey
         val jwk = JsonWebKey(pubKey).asJwk
         assertTrue("jwk" in jwk.keys)
