@@ -28,17 +28,14 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
-import java.security.Security
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 import kotlin.test.Ignore
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 
@@ -46,7 +43,6 @@ class SdJwtVcTest {
     private lateinit var storage: EphemeralStorage
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var credentialLoader: CredentialLoader
-    private lateinit var storageEngine: EphemeralStorageEngine
 
     private lateinit var document: Document
     private lateinit var timeValidityBegin: Instant
@@ -55,20 +51,16 @@ class SdJwtVcTest {
     private lateinit var issuerCert: X509Cert
     private lateinit var credential: KeyBoundSdJwtVcCredential
 
-    @Before
-    fun setup() {
-        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    private suspend fun provisionCredential() {
         storage = EphemeralStorage()
         secureAreaRepository = SecureAreaRepository.build {
             add(SoftwareSecureArea.create(storage))
         }
         credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
-            document ->  KeyBoundSdJwtVcCredential(document)
+                document ->  KeyBoundSdJwtVcCredential(document)
         }
-    }
 
-    private suspend fun provisionCredential() {
         val documentStore = DocumentStore(
             storage,
             secureAreaRepository,
@@ -170,8 +162,7 @@ class SdJwtVcTest {
 
         // on the holder device, let's prepare a presentation
         // we'll start by reading back the SD-JWT issued to us for the auth key
-        val sdJwt = SdJwtVerifiableCredential.fromString(
-            String(credential.issuerProvidedData, Charsets.US_ASCII))
+        val sdJwt = SdJwtVerifiableCredential.fromString(credential.issuerProvidedData.decodeToString())
 
         // let's check that all the possible disclosures are still attached to the SD-JWT
         val allDisclosures = sdJwt.disclosures.map { it.key }.toSet()
@@ -187,7 +178,7 @@ class SdJwtVcTest {
         val filteredSdJwt = sdJwt.discloseOnly(requestedAttributes)
 
         // we presumably received a nonce from the verifier
-        val nonce: ByteArray = "some-example-nonce".toByteArray()
+        val nonce: ByteArray = "some-example-nonce".encodeToByteArray()
         val nonceStr = Base64.UrlSafe.encode(nonce)
 
         // time to create the presentation (on the holder device) for the verifier:
