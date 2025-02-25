@@ -17,7 +17,7 @@ import kotlin.random.Random
  *
  * @param digestAlg for hashing the disclosures (optional, defaults to sha-256)
  * @param random for creating random salts for the disclosures (optional)
- * @param docType document type, to be included in the clear in the VC (optional)
+ * @param vct document type, to be included in the clear in the VC (optional)
  * @param payload all the attributes to be included undisclosed (hashed) in the VC
  * @param issuer information about the issuer, to be included in the VC, in particular
  *               the URL for key metadata and the signing algorithm used.
@@ -34,7 +34,7 @@ import kotlin.random.Random
 class SdJwtVcGenerator(
     private val digestAlg: Algorithm = Algorithm.SHA256,
     private val random: Random = Random.Default,
-    private val docType: String = "IdentityCredential",
+    private val vct: String = "IdentityCredential",
     private val payload: JsonObject,
     private val issuer: Issuer) {
 
@@ -76,7 +76,7 @@ class SdJwtVcGenerator(
             disclosureHashes,
             digestAlg,
             issuer.iss,
-            docType,
+            vct,
             timeSigned,
             timeValidityBegin,
             timeValidityEnd,

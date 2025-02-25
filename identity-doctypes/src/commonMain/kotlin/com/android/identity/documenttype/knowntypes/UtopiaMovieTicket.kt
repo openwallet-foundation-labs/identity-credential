@@ -6,6 +6,7 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Object containing the metadata of the Utopia Movie Ticket Document Type.
@@ -25,7 +26,7 @@ object UtopiaMovieTicket {
                 "Ticket Number",
                 "Ticket identification/reference number issued at the purchase time.",
                 Icon.NUMBERS,
-                SampleData.TICKET_NUMBER.toDataItem()
+                JsonPrimitive(SampleData.TICKET_NUMBER)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -33,7 +34,7 @@ object UtopiaMovieTicket {
                 "Cinema Theater",
                 "Cinema theater name, and/or address/location of the admission.",
                 Icon.PLACE,
-                SampleData.CINEMA_ID.toDataItem()
+                JsonPrimitive(SampleData.CINEMA_ID)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -41,7 +42,7 @@ object UtopiaMovieTicket {
                 "Movie Title",
                 "Movie name, title, and any other show identification information.",
                 Icon.TODAY,
-                SampleData.MOVIE_ID.toDataItem()
+                JsonPrimitive(SampleData.MOVIE_ID)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -49,7 +50,7 @@ object UtopiaMovieTicket {
                 "Age Rating Code",
                 "Movie rating code for age restrictions.",
                 Icon.TODAY,
-                SampleData.MOVIE_RATING.toDataItem()
+                JsonPrimitive(SampleData.MOVIE_RATING)
             )
             .addVcAttribute(
                 DocumentAttributeType.DateTime,
@@ -57,7 +58,7 @@ object UtopiaMovieTicket {
                 "Date",
                 "Year-month-day of the admission purchased.",
                 Icon.DATE_RANGE,
-                LocalDate.parse(SampleData.MOVIE_DATE).toDataItemFullDate()
+                JsonPrimitive(SampleData.MOVIE_DATE)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -65,7 +66,7 @@ object UtopiaMovieTicket {
                 "Time",
                 "Hour and minute of the show start (theater clock).",
                 Icon.CALENDAR_CLOCK,
-               SampleData.MOVIE_TIME.toDataItem()
+                JsonPrimitive(SampleData.MOVIE_TIME)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -73,7 +74,7 @@ object UtopiaMovieTicket {
                 "Theater",
                 "Name or number of the theater in a multi-theater cinema building.",
                 Icon.TODAY,
-                SampleData.THEATRE_NAME.toDataItem()
+                JsonPrimitive(SampleData.THEATRE_NAME)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -81,7 +82,7 @@ object UtopiaMovieTicket {
                 "Seat",
                 "Seat number or code (e.g. row/seat).",
                 Icon.NUMBERS,
-                SampleData.THEATRE_SEAT.toDataItem()
+                JsonPrimitive(SampleData.THEATRE_SEAT)
             )
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
@@ -89,7 +90,7 @@ object UtopiaMovieTicket {
                 "Parking",
                 "Flag if car parking is prepaid with the ticket purchase.",
                 Icon.DIRECTIONS_CAR,
-                SampleData.CINEMA_PARKING.toDataItem()
+                JsonPrimitive(SampleData.CINEMA_PARKING)
             )
             .addSampleRequest(
                 id = "is_parking_prepaid",

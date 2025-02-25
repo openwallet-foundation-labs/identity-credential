@@ -44,8 +44,8 @@ import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.request.DeviceRequestParser
-import com.android.identity.request.MdocClaim
 import com.android.identity.request.MdocRequest
+import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Requester
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
@@ -632,14 +632,14 @@ object MdocUtil {
      * @param mdocCredential if set, the returned list is filtered so it only references data
      *     elements available in the credential.
      */
-    fun generateClaims(
+    fun generateRequestedClaims(
         docType: String,
         requestedData: Map<String, List<Pair<String, Boolean>>>,
         documentTypeRepository: DocumentTypeRepository,
         mdocCredential: MdocCredential?,
-    ): List<MdocClaim> {
+    ): List<MdocRequestedClaim> {
         val mdocDocumentType = documentTypeRepository.getDocumentTypeForMdoc(docType)?.mdocDocumentType
-        val ret = mutableListOf<MdocClaim>()
+        val ret = mutableListOf<MdocRequestedClaim>()
         for ((namespaceName, listOfDe) in requestedData) {
             for ((dataElementName, intentToRetain) in listOfDe) {
                 val attribute =
@@ -649,12 +649,12 @@ object MdocUtil {
                         ?.get(dataElementName)
                         ?.attribute
                 ret.add(
-                    MdocClaim(
-                        attribute?.displayName ?: dataElementName,
-                        attribute,
-                        namespaceName,
-                        dataElementName,
-                        intentToRetain
+                    MdocRequestedClaim(
+                        displayName = attribute?.displayName ?: dataElementName,
+                        attribute = attribute,
+                        namespaceName = namespaceName,
+                        dataElementName = dataElementName,
+                        intentToRetain = intentToRetain,
                     )
                 )
             }
@@ -696,7 +696,7 @@ fun DeviceRequestParser.DocRequest.toMdocRequest(
             appId = requesterAppId,
             websiteOrigin = requesterWebsiteOrigin
         ),
-        claims = MdocUtil.generateClaims(
+        requestedClaims = MdocUtil.generateRequestedClaims(
             docType,
             requestedData,
             documentTypeRepository,
@@ -723,9 +723,9 @@ private fun calcAvailableDataElements(
 }
 
 private fun filterConsentFields(
-    list: List<MdocClaim>,
+    list: List<MdocRequestedClaim>,
     credential: MdocCredential?
-): List<MdocClaim> {
+): List<MdocRequestedClaim> {
     if (credential == null) {
         return list
     }

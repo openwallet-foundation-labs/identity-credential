@@ -343,8 +343,8 @@ actual object Crypto {
         key: EcPublicKey,
         encAlgorithm: Algorithm,
         claims: JsonObject,
-        apu: ByteString,
-        apv: ByteString
+        apu: String,
+        apv: String
     ): JsonElement {
         throw NotImplementedError("This is not yet implemented")
     }

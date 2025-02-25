@@ -15,9 +15,11 @@
  */
 package com.android.identity.document
 
+import com.android.identity.claim.Claim
 import com.android.identity.credential.CredentialLoader
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.EcCurve
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
@@ -45,8 +47,8 @@ class DocumentUtilTest {
         }
         credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(
-            SecureAreaBoundCredential::class
-        ) { document -> SecureAreaBoundCredential(document) }
+            TestSecureAreaBoundCredential::class
+        ) { document -> TestSecureAreaBoundCredential(document) }
     }
 
     @Test
@@ -75,7 +77,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = { credentialToReplace ->
-                SecureAreaBoundCredential.create(
+                TestSecureAreaBoundCredential.create(
                     document,
                     credentialToReplace,
                     managedCredDomain,
@@ -111,7 +113,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = { credentialToReplace ->
-                SecureAreaBoundCredential.create(
+                TestSecureAreaBoundCredential.create(
                     document,
                     credentialToReplace,
                     managedCredDomain,
@@ -138,7 +140,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = { credentialToReplace ->
-                SecureAreaBoundCredential.create(
+                TestSecureAreaBoundCredential.create(
                     document,
                     credentialToReplace,
                     managedCredDomain,
@@ -168,7 +170,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = { credentialToReplace ->
-                SecureAreaBoundCredential.create(
+                TestSecureAreaBoundCredential.create(
                     document,
                     credentialToReplace,
                     managedCredDomain,
@@ -222,7 +224,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = { credentialToReplace ->
-                val credential = SecureAreaBoundCredential.create(
+                val credential = TestSecureAreaBoundCredential.create(
                     document,
                     credentialToReplace,
                     managedCredDomain,
@@ -271,4 +273,42 @@ class DocumentUtilTest {
             assertContentEquals(expectedData[count++], credential.issuerProvidedData)
         }
     }
+
+    class TestSecureAreaBoundCredential : SecureAreaBoundCredential {
+        companion object {
+            suspend fun create(
+                document: Document,
+                asReplacementForIdentifier: String?,
+                domain: String,
+                secureArea: SecureArea,
+                createKeySettings: CreateKeySettings
+            ): TestSecureAreaBoundCredential {
+                return TestSecureAreaBoundCredential(
+                    document,
+                    asReplacementForIdentifier,
+                    domain,
+                    secureArea,
+                ).apply {
+                    generateKey(createKeySettings)
+                }
+            }
+        }
+
+        private constructor(
+            document: Document,
+            asReplacementForIdentifier: String?,
+            domain: String,
+            secureArea: SecureArea,
+        ) : super(document, asReplacementForIdentifier, domain, secureArea) {
+        }
+
+        constructor(
+            document: Document
+        ) : super(document) {}
+
+        override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
+            throw NotImplementedError()
+        }
+    }
+
 }

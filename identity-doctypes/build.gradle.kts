@@ -35,6 +35,7 @@ kotlin {
                 implementation(project(":identity"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.bytestring)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
 

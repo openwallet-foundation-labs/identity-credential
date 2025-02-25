@@ -3,8 +3,11 @@ package com.android.identity.sdjwt.credential
 import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MapBuilder
+import com.android.identity.claim.Claim
+import com.android.identity.claim.VcClaim
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.document.Document
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 
@@ -87,5 +90,9 @@ class KeyBoundSdJwtVcCredential : SecureAreaBoundCredential, SdJwtVcCredential {
     override fun addSerializedData(builder: MapBuilder<CborBuilder>) {
         super.addSerializedData(builder)
         builder.put("vct", vct)
+    }
+
+    override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<VcClaim> {
+        return getClaimsImpl(documentTypeRepository)
     }
 }

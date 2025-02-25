@@ -4,9 +4,9 @@
 #include "base64.h"
 #include "cppbor_parse.h"
 
-#include "MdocRequest.h"
+#include "Request.h"
 
-std::unique_ptr<MdocRequest> MdocRequest::parsePreview(cJSON* requestJson) {
+std::unique_ptr<Request> Request::parsePreview(cJSON* requestJson) {
 
     cJSON* selector = cJSON_GetObjectItem(requestJson, "selector");
     cJSON* docType = cJSON_GetObjectItem(selector, "doctype");
@@ -27,7 +27,7 @@ std::unique_ptr<MdocRequest> MdocRequest::parsePreview(cJSON* requestJson) {
         dataElements.push_back(MdocRequestDataElement(namespaceName, dataElementName, intentToRetain));
     }
 
-    return std::unique_ptr<MdocRequest> { new MdocRequest(docTypeValue, dataElements) };
+    return std::unique_ptr<Request> { new Request(docTypeValue, dataElements) };
 }
 
 std::string base64UrlDecode(const std::string& data) {
@@ -50,7 +50,7 @@ std::string base64UrlDecode(const std::string& data) {
     return from_base64(s);
 }
 
-std::unique_ptr<MdocRequest> MdocRequest::parseMdocApi(cJSON* requestJson) {
+std::unique_ptr<Request> Request::parseMdocApi(cJSON* requestJson) {
     cJSON* deviceRequestJson = cJSON_GetObjectItem(requestJson, "deviceRequest");
     std::string deviceRequestBase64 = std::string(cJSON_GetStringValue(deviceRequestJson));
 
@@ -85,12 +85,14 @@ std::unique_ptr<MdocRequest> MdocRequest::parseMdocApi(cJSON* requestJson) {
         }
     }
 
-    return std::unique_ptr<MdocRequest> { new MdocRequest(docTypeValue, dataElements) };
+    return std::unique_ptr<Request> { new Request(docTypeValue, dataElements) };
 }
 
-std::unique_ptr<MdocRequest> MdocRequest::parseOpenID4VP(cJSON* requestJson) {
+std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* requestJson) {
     std::string docTypeValue = "";
     auto dataElements = std::vector<MdocRequestDataElement>();
+    std::vector<std::string> vctValues;
+    auto vcClaims = std::vector<VcRequestedClaim>();
 
     // Handle signed request... the payload of the JWS is between the first and second '.' characters.
     cJSON* request = cJSON_GetObjectItem(requestJson, "request");
@@ -133,8 +135,29 @@ std::unique_ptr<MdocRequest> MdocRequest::parseOpenID4VP(cJSON* requestJson) {
                 // TODO: intent_to_retain
                 dataElements.push_back(MdocRequestDataElement(namespaceName, claimName));
             }
+        } else if (format == "dc+sd-jwt") {
+            cJSON* meta = cJSON_GetObjectItem(credential, "meta");
+            cJSON* vctValuesObj = cJSON_GetObjectItem(meta, "vct_values");
+            cJSON* vctValueObj;
+            cJSON_ArrayForEach(vctValueObj, vctValuesObj) {
+                vctValues.push_back(std::string(cJSON_GetStringValue(vctValueObj)));
+            }
+
+            cJSON* claim;
+            cJSON* claims = cJSON_GetObjectItem(credential, "claims");
+            cJSON_ArrayForEach(claim, claims) {
+                cJSON *path = cJSON_GetObjectItem(claim, "path");
+                // TODO: support longer paths
+                auto claimName = std::string(cJSON_GetStringValue(cJSON_GetArrayItem(path, 0)));
+                vcClaims.push_back(VcRequestedClaim(claimName));
+            }
         }
     }
 
-    return std::unique_ptr<MdocRequest> { new MdocRequest(docTypeValue, dataElements) };
+    return std::unique_ptr<Request> { new Request(
+            docTypeValue,
+            dataElements,
+            vctValues,
+            vcClaims
+    ) };
 }

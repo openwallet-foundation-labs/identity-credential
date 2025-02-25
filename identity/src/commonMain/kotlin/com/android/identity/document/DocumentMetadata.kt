@@ -43,10 +43,6 @@ interface DocumentMetadata {
      */
     val issuerLogo: ByteString?
 
-    // TODO: remove this?
-    val nameSpacedData: NameSpacedData
-        get() = emptyNamespacedData
-
     /**
      * Called when the document that this [DocumentMetadata] associated with is deleted.
      */

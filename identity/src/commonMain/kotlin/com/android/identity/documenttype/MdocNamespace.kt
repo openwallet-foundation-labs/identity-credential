@@ -60,7 +60,7 @@ class MdocNamespace private constructor(
             sampleValue: DataItem?,
         ) = apply {
             dataElements[identifier] = MdocDataElement(
-                DocumentAttribute(type, identifier, displayName, description, icon, sampleValue),
+                DocumentAttribute(type, identifier, displayName, description, icon, sampleValue, null),
                 mandatory
             )
         }

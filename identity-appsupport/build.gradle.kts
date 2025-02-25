@@ -40,6 +40,7 @@ kotlin {
             dependencies {
                 implementation(project(":identity"))
                 implementation(project(":identity-mdoc"))
+                implementation(project(":identity-sdjwt"))
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)

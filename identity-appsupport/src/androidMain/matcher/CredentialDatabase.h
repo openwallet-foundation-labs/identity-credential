@@ -6,23 +6,27 @@
 #include <vector>
 #include <map>
 
-#include "MdocRequest.h"
+#include "Request.h"
 
 struct MdocDataElement;
+struct VcClaim;
 
 struct Credential {
     std::string title;
     std::string subtitle;
     std::vector<uint8_t> bitmap;
 
-    // This is the empty string if not available as an ISO mdoc.
-    std::string mdocId;
-    std::string mdocDocType;
+    std::string id;
+
+    std::string mdocDocType;   // This is the empty string if not available as an ISO mdoc.
     std::map<std::string, MdocDataElement> dataElements;
 
-    bool mdocMatchesRequest(const MdocRequest& request);
+    std::string vcVct;   // This is the empty string if not available as a VC.
+    std::map<std::string, VcClaim> vcClaims;
 
-    void mdocAddCredentialToPicker(const MdocRequest& request);
+    bool matchesRequest(const Request& request);
+
+    void addCredentialToPicker(const Request& request);
 };
 
 struct MdocDataElement {
@@ -30,6 +34,14 @@ struct MdocDataElement {
 
     std::string namespaceName;
     std::string dataElementName;
+    std::string displayName;
+    std::string value;
+};
+
+struct VcClaim {
+    ~VcClaim() {}
+
+    std::string claimName;
     std::string displayName;
     std::string value;
 };

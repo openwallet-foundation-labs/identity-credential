@@ -17,6 +17,7 @@
 package com.android.identity.documenttype
 
 import com.android.identity.cbor.DataItem
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Class representing the metadata of a Document Type
@@ -86,7 +87,8 @@ class DocumentType private constructor(
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
          * @param icon the icon, if available.
-         * @param sampleValue a sample value for the attribute, if available.
+         * @param sampleValueMdoc a sample value for the attribute for ISO mdoc credentials, if available.
+         * @param sampleValueVc a sample value for the attribute for VC credentials, if available.
          */
         fun addAttribute(
             type: DocumentAttributeType,
@@ -96,11 +98,12 @@ class DocumentType private constructor(
             mandatory: Boolean,
             mdocNamespace: String,
             icon: Icon? = null,
-            sampleValue: DataItem? = null,
+            sampleValueMdoc: DataItem? = null,
+            sampleValueVc: JsonElement? = null,
         ) = apply {
             addMdocAttribute(type, identifier, displayName, description, mandatory,
-                mdocNamespace, icon, sampleValue)
-            addVcAttribute(type, identifier, displayName, description, icon, sampleValue)
+                mdocNamespace, icon, sampleValueMdoc)
+            addVcAttribute(type, identifier, displayName, description, icon, sampleValueVc)
         }
 
         /**
@@ -114,7 +117,8 @@ class DocumentType private constructor(
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
          * @param icon the icon, if available.
-         * @param sampleValue a sample value for the attribute, if available.
+         * @param sampleValueMdoc a sample value for the attribute for ISO mdoc credentials, if available.
+         * @param sampleValueVc a sample value for the attribute for VC credentials, if available.
          */
         fun addAttribute(
             type: DocumentAttributeType,
@@ -125,7 +129,8 @@ class DocumentType private constructor(
             mandatory: Boolean,
             mdocNamespace: String,
             icon: Icon? = null,
-            sampleValue: DataItem? = null
+            sampleValueMdoc: DataItem? = null,
+            sampleValueVc: JsonElement? = null,
         ) = apply {
             addMdocAttribute(
                 type,
@@ -135,9 +140,9 @@ class DocumentType private constructor(
                 mandatory,
                 mdocNamespace,
                 icon,
-                sampleValue
+                sampleValueMdoc
             )
-            addVcAttribute(type, vcIdentifier, displayName, description, icon, sampleValue)
+            addVcAttribute(type, vcIdentifier, displayName, description, icon, sampleValueVc)
         }
 
         /**
@@ -190,7 +195,7 @@ class DocumentType private constructor(
             displayName: String,
             description: String,
             icon: Icon? = null,
-            sampleValue: DataItem? = null
+            sampleValue: JsonElement? = null
         ) = apply {
             vcBuilder?.addClaim(type, identifier, displayName, description, icon, sampleValue)
                 ?: throw Exception("The VC Document Type was not initialized")

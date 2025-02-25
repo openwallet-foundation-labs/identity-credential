@@ -627,7 +627,7 @@ class IssuingAuthorityState(
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random.Default,
             payload = identityAttributes,
-            docType = EUPersonalID.EUPID_VCT,
+            vct = EUPersonalID.EUPID_VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 
@@ -1167,11 +1167,11 @@ class IssuingAuthorityState(
         val builder = NameSpacedData.Builder()
         for ((namespaceName, namespace) in documentType.mdocDocumentType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {
-                if (dataElement.attribute.sampleValue != null) {
+                if (dataElement.attribute.sampleValueMdoc != null) {
                     builder.putEntry(
                         namespaceName,
                         dataElementName,
-                        Cbor.encode(dataElement.attribute.sampleValue!!)
+                        Cbor.encode(dataElement.attribute.sampleValueMdoc!!)
                     )
                 }
             }

@@ -215,7 +215,7 @@ class CredentialServlet : BaseServlet() {
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random,
             payload = identityAttributes,
-            docType = EUPersonalID.EUPID_VCT,
+            vct = EUPersonalID.EUPID_VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 

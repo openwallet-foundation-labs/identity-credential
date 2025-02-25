@@ -16,16 +16,16 @@ object JsonWebEncryption {
      * @param claimsSet the claims set to encrypt.
      * @param recipientPublicKey the public key to encrypt to.
      * @param encAlg the encryption algorithm, [Algorithm.A128GCM], [Algorithm.A192GCM], or [Algorithm.A256GCM].
-     * @param apu agreement PartyUInfo (apu) parameter.
-     * @param apv agreement PartyVInfo (apv) parameter.
+     * @param apu agreement PartyUInfo (apu) parameter, must be base64url encoded.
+     * @param apv agreement PartyVInfo (apv) parameter, must be base64url encoded.
      * @return a [JsonElement] with the encrypted JWT.
      */
     fun encrypt(
         claimsSet: JsonObject,
         recipientPublicKey: EcPublicKey,
         encAlg: Algorithm,
-        apu: ByteString,
-        apv: ByteString
+        apu: String,
+        apv: String
     ): JsonElement {
         return Crypto.encryptJwtEcdhEs(
             key = recipientPublicKey,

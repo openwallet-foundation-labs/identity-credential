@@ -17,12 +17,17 @@ package com.android.identity.android.document
 
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.TestUtil
+import com.android.identity.claim.Claim
 import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.CredentialLoader
 import com.android.identity.credential.SecureAreaBoundCredential
+import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.SimpleDocumentMetadata
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
@@ -53,8 +58,8 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
             add(AndroidKeystoreSecureArea.create(storage))
         }
         credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(SecureAreaBoundCredential::class) {
-            document -> SecureAreaBoundCredential(document)
+        credentialLoader.addCredentialImplementation(TestSecureAreaBoundCredential::class) {
+            document -> TestSecureAreaBoundCredential(document)
         }
     }
 
@@ -72,7 +77,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         val authKeyChallenge = byteArrayOf(20, 21, 22)
         val secureArea =
             secureAreaRepository.getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
-        val pendingCredential = SecureAreaBoundCredential.create(
+        val pendingCredential = TestSecureAreaBoundCredential.create(
             document,
             null,
             CREDENTIAL_DOMAIN,
@@ -99,5 +104,42 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         Assert.assertSame(document2, document)
 
         Assert.assertNull(documentStore.lookupDocument("nonExistingDocument"))
+    }
+
+    class TestSecureAreaBoundCredential : SecureAreaBoundCredential {
+        companion object {
+            suspend fun create(
+                document: Document,
+                asReplacementForIdentifier: String?,
+                domain: String,
+                secureArea: SecureArea,
+                createKeySettings: CreateKeySettings
+            ): TestSecureAreaBoundCredential {
+                return TestSecureAreaBoundCredential(
+                    document,
+                    asReplacementForIdentifier,
+                    domain,
+                    secureArea,
+                ).apply {
+                    generateKey(createKeySettings)
+                }
+            }
+        }
+
+        private constructor(
+            document: Document,
+            asReplacementForIdentifier: String?,
+            domain: String,
+            secureArea: SecureArea,
+        ) : super(document, asReplacementForIdentifier, domain, secureArea) {
+        }
+
+        constructor(
+            document: Document
+        ) : super(document) {}
+
+        override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
+            throw NotImplementedError()
+        }
     }
 }

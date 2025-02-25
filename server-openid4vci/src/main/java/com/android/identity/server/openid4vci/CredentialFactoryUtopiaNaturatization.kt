@@ -63,7 +63,7 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random,
             payload = identityAttributes,
-            docType = UtopiaNaturalization.VCT,
+            vct = UtopiaNaturalization.VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 

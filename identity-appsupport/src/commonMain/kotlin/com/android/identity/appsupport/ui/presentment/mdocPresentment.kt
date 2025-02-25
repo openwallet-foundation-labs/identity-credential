@@ -1,6 +1,5 @@
 package com.android.identity.appsupport.ui.presentment
 
-import com.android.identity.request.MdocClaim
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
@@ -10,16 +9,16 @@ import com.android.identity.document.Document
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.mdoc.credential.MdocCredential
+import com.android.identity.mdoc.issuersigned.IssuerNamespaces
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
-import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.sessionencryption.SessionEncryption
 import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.mdoc.transport.MdocTransportClosedException
-import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.util.toMdocRequest
+import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Request
 import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
@@ -129,6 +128,9 @@ internal suspend fun mdocPresentment(
                     documentTypeRepository = documentTypeRepository,
                     mdocCredential = mdocCredential
                 )
+                // TODO: deal with request.requestedClaims.size == 0, probably tell the user there is no
+                // credential that can satisfy the request...
+                //
                 val trustPoint = source.findTrustPoint(request)
                 val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
                     credential = mdocCredential,
@@ -142,9 +144,10 @@ internal suspend fun mdocPresentment(
 
                 deviceResponseGenerator.addDocument(calcDocument(
                     credential = mdocCredential,
-                    claims = request.claims,
+                    requestedClaims = request.requestedClaims,
                     encodedSessionTranscript = encodedSessionTranscript,
                 ))
+                mdocCredential.increaseUsageCount()
             }
 
             val encodedDeviceResponse = deviceResponseGenerator.generate()
@@ -181,33 +184,23 @@ internal suspend fun mdocPresentment(
 
 private suspend fun calcDocument(
     credential: MdocCredential,
-    claims: List<MdocClaim>,
+    requestedClaims: List<MdocRequestedClaim>,
     encodedSessionTranscript: ByteArray
 ): ByteArray {
-    val nsAndDataElements = mutableMapOf<String, MutableList<String>>()
-    claims.forEach {
-        nsAndDataElements.getOrPut(it.namespaceName, { mutableListOf() }).add(it.dataElementName)
-    }
-
-    val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
-
-    val documentData = credential.document.metadata.nameSpacedData
-    val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-        nsAndDataElements,
-        documentData,
-        staticAuthData
-    )
-    val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
+    val issuerSigned = Cbor.decode(credential.issuerProvidedData)
+    val issuerNamespaces = IssuerNamespaces.fromDataItem(issuerSigned["nameSpaces"])
+    val issuerAuthCoseSign1 = issuerSigned["issuerAuth"].asCoseSign1
     val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
     val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
     val mso = MobileSecurityObjectParser(encodedMso).parse()
 
     val documentGenerator = DocumentGenerator(
         mso.docType,
-        staticAuthData.issuerAuth,
+        Cbor.encode(issuerSigned["issuerAuth"]),
         encodedSessionTranscript,
     )
-    documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
+
+    documentGenerator.setIssuerNamespaces(issuerNamespaces.filter(requestedClaims))
 
     documentGenerator.setDeviceNamespacesSignature(
         NameSpacedData.Builder().build(),
@@ -215,5 +208,6 @@ private suspend fun calcDocument(
         credential.alias,
         KeyUnlockInteractive(),
     )
+
     return documentGenerator.generate()
 }

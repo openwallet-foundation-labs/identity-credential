@@ -3,8 +3,11 @@ package com.android.identity.sdjwt.credential
 import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MapBuilder
+import com.android.identity.claim.Claim
+import com.android.identity.claim.VcClaim
 import com.android.identity.credential.Credential
 import com.android.identity.document.Document
+import com.android.identity.documenttype.DocumentTypeRepository
 
 class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
     override lateinit var vct: String
@@ -64,5 +67,9 @@ class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
                 addToDocument()
             }
         }
+    }
+
+    override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<VcClaim> {
+        return getClaimsImpl(documentTypeRepository)
     }
 }

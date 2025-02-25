@@ -44,8 +44,9 @@ import com.android.identity.util.fromBase64Url
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import com.android.identity.request.Requester
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
+import com.android.identity.request.MdocRequestedClaim
 import com.google.android.gms.identitycredentials.Credential
 import org.json.JSONObject
 
@@ -72,7 +73,7 @@ class CredmanPresentationActivity : FragmentActivity() {
     private val walletApp: WalletApplication by lazy {
         application as WalletApplication
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -128,7 +129,7 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                 lifecycleScope.launch {
                     val mdocCredential = getMdocCredentialForCredentialId(credentialId)
-                    val claims = MdocUtil.generateClaims(
+                    val claims = MdocUtil.generateRequestedClaims(
                         docType,
                         requestedData,
                         walletApp.documentTypeRepository,
@@ -220,7 +221,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val claims = docRequest.toMdocRequest(
                         documentTypeRepository = walletApp.documentTypeRepository,
                         mdocCredential = mdocCredential
-                    ).claims
+                    ).requestedClaims
 
                     val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
                     if (encryptionInfo.asArray.get(0).asTstr != "ARFEncryptionv2") {
@@ -329,7 +330,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                 }
                 lifecycleScope.launch {
                     val mdocCredential = getMdocCredentialForCredentialId(credentialId)
-                    val claims = MdocUtil.generateClaims(
+                    val claims = MdocUtil.generateRequestedClaims(
                         docType,
                         requestedData,
                         walletApp.documentTypeRepository,
@@ -397,7 +398,7 @@ class CredmanPresentationActivity : FragmentActivity() {
      * Show the Presentment Flow and handle producing the DeviceResponse CBOR bytes.
      *
      * @param mdocCredential the credential.
-     * @param claims the list of fields to request.
+     * @param requestedClaims the list of fields to request.
      * @param trustPoint The trust point, if known.
      * @param websiteOrigin the Website Origin, if known.
      * @param encodedSessionTranscript CBOR bytes.
@@ -405,7 +406,7 @@ class CredmanPresentationActivity : FragmentActivity() {
      */
     private suspend fun showPresentmentFlowAndGetDeviceResponse(
         mdocCredential: MdocCredential,
-        claims: List<MdocClaim>,
+        requestedClaims: List<MdocRequestedClaim>,
         trustPoint: TrustPoint?,
         websiteOrigin: String?,
         encodedSessionTranscript: ByteArray,
@@ -415,7 +416,7 @@ class CredmanPresentationActivity : FragmentActivity() {
             activity = this@CredmanPresentationActivity,
             request = MdocRequest(
                 requester = Requester(websiteOrigin = websiteOrigin),
-                claims = claims,
+                requestedClaims = requestedClaims,
                 docType = mdocCredential.docType
             ),
             document = ConsentDocument(

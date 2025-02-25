@@ -15,12 +15,15 @@
  */
 package com.android.identity.document
 
+import com.android.identity.claim.Claim
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialLoader
 import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.EcCurve
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.Storage
@@ -62,8 +65,8 @@ class DocumentStoreTest {
         }
         credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(
-            SecureAreaBoundCredential::class
-        ) { document -> SecureAreaBoundCredential(document) }
+            TestSecureAreaBoundCredential::class
+        ) { document -> TestSecureAreaBoundCredential(document) }
         credentialLoader.addCredentialImplementation(
             Credential::class
         ) { document -> TestCredential(document) }
@@ -267,7 +270,7 @@ class DocumentStoreTest {
         // Create and certify five replacements
         n = 0
         while (n < 5) {
-            SecureAreaBoundCredential.create(
+            TestSecureAreaBoundCredential.create(
                 document,
                 null,
                 CREDENTIAL_DOMAIN,
@@ -343,7 +346,7 @@ class DocumentStoreTest {
         // Create ten pending credentials and certify four of them
         n = 0
         while (n < 4) {
-            SecureAreaBoundCredential.create(
+            TestSecureAreaBoundCredential.create(
                 document,
                 null,
                 CREDENTIAL_DOMAIN,
@@ -373,7 +376,7 @@ class DocumentStoreTest {
         assertEquals(0, document.getPendingCredentials().size.toLong())
         n = 0
         while (n < 6) {
-            SecureAreaBoundCredential.create(
+            TestSecureAreaBoundCredential.create(
                 document,
                 null,
                 CREDENTIAL_DOMAIN,
@@ -409,8 +412,8 @@ class DocumentStoreTest {
         val it2 = certified2.sortedBy { it.identifier }.iterator()
         n = 0
         while (n < 4) {
-            val doc1 = it1.next() as SecureAreaBoundCredential
-            val doc2 = it2.next() as SecureAreaBoundCredential
+            val doc1 = it1.next() as TestSecureAreaBoundCredential
+            val doc2 = it2.next() as TestSecureAreaBoundCredential
             assertEquals(doc1.identifier, doc2.identifier)
             assertEquals(doc1.alias, doc2.alias)
             assertEquals(doc1.validFrom, doc2.validFrom)
@@ -424,8 +427,8 @@ class DocumentStoreTest {
         val itp2 = pending2.sortedBy { it.identifier }.iterator()
         n = 0
         while (n < 6) {
-            val doc1 = itp1.next() as SecureAreaBoundCredential
-            val doc2 = itp2.next() as SecureAreaBoundCredential
+            val doc1 = itp1.next() as TestSecureAreaBoundCredential
+            val doc2 = itp2.next() as TestSecureAreaBoundCredential
             assertEquals(doc1.identifier, doc2.identifier)
             assertEquals(doc1.alias, doc2.alias)
             assertEquals(doc1.getAttestation(), doc2.getAttestation())
@@ -492,7 +495,7 @@ class DocumentStoreTest {
         // check it below.
         var n = 0
         while (n < 10) {
-            SecureAreaBoundCredential.create(
+            TestSecureAreaBoundCredential.create(
                 document,
                 null,
                 CREDENTIAL_DOMAIN,
@@ -561,7 +564,7 @@ class DocumentStoreTest {
         assertEquals(0, document.getPendingCredentials().size.toLong())
         val secureArea = secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
         for (n in 0..9) {
-            val pendingCredential = SecureAreaBoundCredential.create(
+            val pendingCredential = TestSecureAreaBoundCredential.create(
                 document,
                 null,
                 CREDENTIAL_DOMAIN,
@@ -580,7 +583,7 @@ class DocumentStoreTest {
         // Now replace the fifth credential
         val credToReplace = document.getCertifiedCredentials()[5] as SecureAreaBoundCredential
         assertContentEquals(byteArrayOf(0, 5), credToReplace.issuerProvidedData)
-        val pendingCredential = SecureAreaBoundCredential.create(
+        val pendingCredential = TestSecureAreaBoundCredential.create(
             document,
             credToReplace.identifier,
             CREDENTIAL_DOMAIN,
@@ -622,7 +625,7 @@ class DocumentStoreTest {
         // Test the case where the replacement credential is prematurely deleted. The credential
         // being replaced should no longer reference it has a replacement...
         val toBeReplaced = document.getCertifiedCredentials()[0]
-        var replacement = SecureAreaBoundCredential.create(
+        var replacement = TestSecureAreaBoundCredential.create(
             document,
             toBeReplaced.identifier,
             CREDENTIAL_DOMAIN,
@@ -636,7 +639,7 @@ class DocumentStoreTest {
 
         // Similarly, test the case where the credential to be replaced is prematurely deleted.
         // The replacement credential should no longer indicate it's a replacement credential.
-        replacement = SecureAreaBoundCredential.create(
+        replacement = TestSecureAreaBoundCredential.create(
             document,
             toBeReplaced.identifier,
             CREDENTIAL_DOMAIN,
@@ -654,6 +657,47 @@ class DocumentStoreTest {
             : super(document, asReplacementFor, domain) {}
 
         constructor(document: Document) : super(document)
+
+        override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
+            throw NotImplementedError()
+        }
+    }
+
+    class TestSecureAreaBoundCredential : SecureAreaBoundCredential {
+        companion object {
+            suspend fun create(
+                document: Document,
+                asReplacementForIdentifier: String?,
+                domain: String,
+                secureArea: SecureArea,
+                createKeySettings: CreateKeySettings
+            ): TestSecureAreaBoundCredential {
+                return TestSecureAreaBoundCredential(
+                    document,
+                    asReplacementForIdentifier,
+                    domain,
+                    secureArea,
+                ).apply {
+                    generateKey(createKeySettings)
+                }
+            }
+        }
+
+        private constructor(
+            document: Document,
+            asReplacementForIdentifier: String?,
+            domain: String,
+            secureArea: SecureArea,
+        ) : super(document, asReplacementForIdentifier, domain, secureArea) {
+        }
+
+        constructor(
+            document: Document
+        ) : super(document) {}
+
+        override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
+            throw NotImplementedError()
+        }
     }
 
     val Document.simpleMetadata: SimpleDocumentMetadata

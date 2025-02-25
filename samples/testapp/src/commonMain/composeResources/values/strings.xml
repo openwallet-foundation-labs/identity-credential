@@ -7,6 +7,9 @@
     <string name="settings_screen_title">Settings</string>
     <string name="about_screen_title">About</string>
     <string name="document_store_screen_title">Document Store</string>
+    <string name="document_viewer_title">Document Viewer</string>
+    <string name="credential_viewer_title">Credential</string>
+    <string name="credential_claims_viewer_title">Credential Claims</string>
     <string name="software_secure_area_screen_title">Software Secure Area</string>
     <string name="android_keystore_secure_area_screen_title">Android Keystore Secure Area</string>
     <string name="secure_enclave_secure_area_screen_title">Secure Enclave Secure Area</string>

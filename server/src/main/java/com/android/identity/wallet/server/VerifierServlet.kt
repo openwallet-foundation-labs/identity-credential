@@ -43,9 +43,7 @@ import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
-import com.android.identity.util.fromHex
 import com.android.identity.util.toBase64Url
-import com.android.identity.util.toHex
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -72,9 +70,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -148,13 +146,14 @@ data class Session(
     val requestDocType: String,     // mdoc DocType or VC vct
     val requestId: String,          // DocumentWellKnownRequest.id
     val protocol: Protocol,
-    val nonce: String,
+    val nonce: ByteString,
     val origin: String,
     val encryptionKey: EcPrivateKey,
     val signRequest: Boolean = true,
     val encryptResponse: Boolean = true,
     var responseUri: String? = null,
     var deviceResponse: ByteArray? = null,
+    var verifiablePresentation: String? = null,
     var sessionTranscript: ByteArray? = null,
     var responseWasEncrypted: Boolean = false,
 ) {
@@ -542,7 +541,7 @@ class VerifierServlet : BaseHttpServlet() {
     ) {
         val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
         val request = Json.decodeFromString<DCBeginRequest>(requestString)
-        Logger.i(TAG, "foo ${request.protocol}")
+        Logger.i(TAG, "format ${request.format} protocol ${request.protocol}")
 
         val protocol = when (request.protocol) {
             // Keep in sync with verifier.html
@@ -563,7 +562,7 @@ class VerifierServlet : BaseHttpServlet() {
 
         // Create a new session
         val session = Session(
-            nonce = Random.Default.nextBytes(16).toHex(),
+            nonce = ByteString(Random.Default.nextBytes(16)),
             origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
             requestFormat = request.format,
@@ -588,10 +587,11 @@ class VerifierServlet : BaseHttpServlet() {
 
         val dcRequestString = mdocCalcDcRequestString(
             documentTypeRepo,
+            request.format,
             session,
             lookupWellknownRequest(session.requestFormat, session.requestDocType, session.requestId),
             session.protocol,
-            session.nonce.fromHex(),
+            session.nonce,
             session.origin,
             session.encryptionKey,
             session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate,
@@ -644,7 +644,19 @@ class VerifierServlet : BaseHttpServlet() {
         }
 
         try {
-            handleGetDataMdoc(session, resp)
+            when (session.requestFormat) {
+                "mdoc" -> {
+                    handleGetDataMdoc(session, resp)
+                }
+                "vc" -> {
+                    val clientIdToUse = if (session.signRequest) {
+                        "x509_san_uri:${session.origin}/server/verifier.html"
+                    } else {
+                        "web-origin:${session.origin}"
+                    }
+                    handleGetDataSdJwt(session, resp, clientIdToUse)
+                }
+            }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
             resp.status = HttpServletResponse.SC_BAD_REQUEST
@@ -664,7 +676,7 @@ class VerifierServlet : BaseHttpServlet() {
         val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(tokenBase64.fromBase64Url())
         val uncompressed = (session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
         session.sessionTranscript = generateBrowserSessionTranscript(
-            session.nonce.fromHex(),
+            session.nonce,
             session.origin,
             Crypto.digest(Algorithm.SHA256, uncompressed)
         )
@@ -692,7 +704,7 @@ class VerifierServlet : BaseHttpServlet() {
         val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
 
         val arfEncryptionInfo = CborMap.builder()
-            .put("nonce", session.nonce.fromHex())
+            .put("nonce", session.nonce.toByteArray())
             .put("readerPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
             .end()
             .build()
@@ -749,7 +761,7 @@ class VerifierServlet : BaseHttpServlet() {
         val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
 
         val arfEncryptionInfo = CborMap.builder()
-            .put("nonce", session.nonce.fromHex())
+            .put("nonce", session.nonce.toByteArray())
             .put("recipientPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
             .end()
             .build()
@@ -796,43 +808,51 @@ class VerifierServlet : BaseHttpServlet() {
     ) {
         val response = Json.parseToJsonElement(credentialResponse).jsonObject
 
-        val vpTokenObj = response["vp_token"]!!
-        val vpToken = if (vpTokenObj is JsonObject) {
-            // Response is not encrypted
-            vpTokenObj.jsonObject
-        } else {
+        val encryptedResponse = response["response"]
+        val vpToken = if (encryptedResponse != null) {
             session.responseWasEncrypted = true
-            JsonWebEncryption.decrypt(vpTokenObj, session.encryptionKey)
-        }
-        val deviceResponse = vpToken["cred1"]!!.jsonPrimitive.content.fromBase64Url()
-
-        val effectiveClientId = if (session.signRequest) {
-            "x509_san_uri:${session.origin}/server/verifier.html"
+            val decryptedResponse = JsonWebEncryption.decrypt(encryptedResponse, session.encryptionKey).jsonObject
+            decryptedResponse["vp_token"]!!.jsonObject
         } else {
-            "web-origin:${session.origin}"
+            response["vp_token"]!!.jsonObject
         }
-        val handoverInfo = Cbor.encode(
-            CborArray.builder()
-                .add(session.origin)
-                .add(effectiveClientId)
-                .add(session.nonce.fromHex().toBase64Url())
-                .end()
-                .build()
-        )
-        session.sessionTranscript = Cbor.encode(
-            CborArray.builder()
-                .add(Simple.NULL) // DeviceEngagementBytes
-                .add(Simple.NULL) // EReaderKeyBytes
-                .addArray()
-                .add("OpenID4VPDCAPIHandover")
-                .add(Crypto.digest(Algorithm.SHA256, handoverInfo))
-                .end()
-                .end()
-                .build()
-        )
-        Logger.iCbor(TAG, "handoverInfo", handoverInfo)
-        Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
-        session.deviceResponse = deviceResponse
+        Logger.i(TAG, "vp_token: ${vpToken.toString()}")
+        val vpTokenForCred = vpToken["cred1"]!!.jsonPrimitive.content
+
+        when (session.requestFormat) {
+            "mdoc" -> {
+                val effectiveClientId = if (session.signRequest) {
+                    "x509_san_uri:${session.origin}/server/verifier.html"
+                } else {
+                    "web-origin:${session.origin}"
+                }
+                val handoverInfo = Cbor.encode(
+                    CborArray.builder()
+                        .add(session.origin)
+                        .add(effectiveClientId)
+                        .add(session.nonce.toByteArray().toBase64Url())
+                        .end()
+                        .build()
+                )
+                session.sessionTranscript = Cbor.encode(
+                    CborArray.builder()
+                        .add(Simple.NULL) // DeviceEngagementBytes
+                        .add(Simple.NULL) // EReaderKeyBytes
+                        .addArray()
+                        .add("OpenID4VPDCAPIHandover")
+                        .add(Crypto.digest(Algorithm.SHA256, handoverInfo))
+                        .end()
+                        .end()
+                        .build()
+                )
+                Logger.iCbor(TAG, "handoverInfo", handoverInfo)
+                Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
+                session.deviceResponse = vpTokenForCred.fromBase64Url()
+            }
+            "vc" -> {
+                session.verifiablePresentation = vpTokenForCred
+            }
+        }
     }
 
     private fun handleOpenID4VPBegin(
@@ -863,7 +883,7 @@ class VerifierServlet : BaseHttpServlet() {
 
         // Create a new session
         val session = Session(
-            nonce = Random.Default.nextBytes(16).toHex(),
+            nonce = ByteString(Random.Default.nextBytes(16)),
             origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
             requestFormat = request.format,
@@ -966,7 +986,7 @@ class VerifierServlet : BaseHttpServlet() {
             .claim("response_uri", responseUri)
             .claim("response_type", "vp_token")
             .claim("response_mode", "direct_post.jwt")
-            .claim("nonce", session.nonce)
+            .claim("nonce", session.nonce.toByteArray().toBase64Url())
             .claim("state", sessionId)
             .claim("presentation_definition", presentationDefinition)
             .claim("client_metadata", calcClientMetadata(session, session.requestFormat))
@@ -1075,7 +1095,7 @@ class VerifierServlet : BaseHttpServlet() {
             if (session.requestFormat == "mdoc") {
                 session.deviceResponse = vpToken.fromBase64Url()
             } else {
-                session.deviceResponse = vpToken.toByteArray()
+                session.verifiablePresentation = vpToken
             }
 
             // According to ISO 23220-4, the mdoc profile is required to have the apv and apu params
@@ -1143,7 +1163,7 @@ class VerifierServlet : BaseHttpServlet() {
         try {
             when (session.requestFormat) {
                 "mdoc" -> handleGetDataMdoc(session, resp)
-                "vc" -> handleGetDataSdJwt(session, resp)
+                "vc" -> handleGetDataSdJwt(session, resp, clientId)
             }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
@@ -1204,26 +1224,14 @@ class VerifierServlet : BaseHttpServlet() {
     private fun handleGetDataSdJwt(
         session: Session,
         resp: HttpServletResponse,
+        clientIdToUse: String,
     ) {
-        val presentationString = session.deviceResponse!!.decodeToString()
+        val presentationString = session.verifiablePresentation!!
         Logger.d(TAG, "Handling SD-JWT: $presentationString")
         val presentation = SdJwtVerifiablePresentation.fromString(presentationString)
-        val nonceStr = session.nonce
-
-        // on the verifier, check that the key binding can be verified with the
-        // key mentioned in the SD-JWT:
-        val isKeyBound = presentation.verifyKeyBinding(
-            checkAudience = { clientId == it },
-            checkNonce = { nonceStr == it },
-            checkCreationTime = { true /* TODO: sometimes flaky it < Clock.System.now() */ }
-        )
-
-        // also on the verifier, check the signature over the SD-JWT from the issuer
-        // TODO: We need to verify the issuer signature. Where do we get the public
-        // key of the issuer?
-        //presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
 
         val lines = mutableListOf<OpenID4VPResultLine>()
+
         for (disclosure in presentation.sdJwtVc.disclosures.sortedBy { it.key }) {
             val valueToAdd = when (disclosure.value) {
                 is JsonPrimitive -> disclosure.value.jsonPrimitive.content
@@ -1253,9 +1261,30 @@ class VerifierServlet : BaseHttpServlet() {
             disclosedClaims.add(key)
             Logger.i(TAG, "Adding special case $key: $value")
         }
-        if (!isKeyBound) {
-            lines.add(OpenID4VPResultLine("Key bound", "false"))
+
+        // on the verifier, check that the key binding can be verified with the
+        // key mentioned in the SD-JWT:
+        Logger.i(TAG, "using client_id ${clientIdToUse}")
+        try {
+            if (presentation.verifyKeyBinding(
+                    checkAudience = { clientIdToUse == it },
+                    checkNonce = {
+                        session.nonce.toByteArray().toBase64Url() == it
+                    },
+                    checkCreationTime = { true /* TODO: sometimes flaky it < Clock.System.now() */ }
+                )) {
+                lines.add(OpenID4VPResultLine("Key-binding", "Verified"))
+            } else {
+                lines.add(OpenID4VPResultLine("Key-binding", "Not Key-bound"))
+            }
+        } catch (e: Throwable) {
+            lines.add(OpenID4VPResultLine("Key-binding", "Verification failed: ${e.message}"))
         }
+
+        // also on the verifier, check the signature over the SD-JWT from the issuer
+        // TODO: We need to verify the issuer signature. Where do we get the public
+        // key of the issuer?
+        //presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
 
         val json = Json { ignoreUnknownKeys = true }
         resp.outputStream.write(json.encodeToString(OpenID4VPResultData(lines)).encodeToByteArray())
@@ -1294,10 +1323,11 @@ private fun createSessionTranscriptOpenID4VP(
 
 private fun mdocCalcDcRequestString(
     documentTypeRepository: DocumentTypeRepository,
+    format: String,
     session: Session,
     request: DocumentCannedRequest,
     protocol: Protocol,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1341,8 +1371,9 @@ private fun mdocCalcDcRequestString(
             )
         }
         Protocol.W3C_DC_OPENID4VP -> {
-            return mdocCalcDcRequestStringOpenID4VP(
+            return calcDcRequestStringOpenID4VP(
                 documentTypeRepository,
+                format,
                 session,
                 request,
                 nonce,
@@ -1364,7 +1395,7 @@ private fun mdocCalcDcRequestString(
 private fun mdocCalcDcRequestStringPreview(
     documentTypeRepository: DocumentTypeRepository,
     request: DocumentCannedRequest,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerPublicKey: EcPublicKeyDoubleCoordinate
     ): String {
@@ -1390,17 +1421,18 @@ private fun mdocCalcDcRequestStringPreview(
     }
     selector.put("fields", fields)
 
-    top.put("nonce", nonce.toBase64Url())
+    top.put("nonce", nonce.toByteArray().toBase64Url())
     top.put("readerPublicKey", readerPublicKey.asUncompressedPointEncoding.toBase64Url())
 
     return top.toString(JSONStyle.NO_COMPRESS)
 }
 
-private fun mdocCalcDcRequestStringOpenID4VP(
+private fun calcDcRequestStringOpenID4VP(
     documentTypeRepository: DocumentTypeRepository,
+    format: String,
     session: Session,
     request: DocumentCannedRequest,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1420,6 +1452,14 @@ private fun mdocCalcDcRequestStringOpenID4VP(
         put("vp_formats", buildJsonObject {
             putJsonObject("mso_mdoc") {
                 putJsonArray("alg") {
+                    add(JsonPrimitive("ES256"))
+                }
+            }
+            putJsonObject("dc+sd-jwt") {
+                putJsonArray("sd-jwt_alg_values") {
+                    add(JsonPrimitive("ES256"))
+                }
+                putJsonArray("kb-jwt_alg_values") {
                     add(JsonPrimitive("ES256"))
                 }
             }
@@ -1453,25 +1493,49 @@ private fun mdocCalcDcRequestStringOpenID4VP(
         if (signRequest) {
             put("client_id", JsonPrimitive("x509_san_uri:${session.origin}/server/verifier.html"))
         }
-        put("nonce", JsonPrimitive(nonce.toBase64Url()))
+        put("nonce", JsonPrimitive(nonce.toByteArray().toBase64Url()))
 
         putJsonObject("dcql_query") {
             putJsonArray("credentials") {
-                addJsonObject {
-                    put("id", JsonPrimitive("cred1"))
-                    put("format", JsonPrimitive("mso_mdoc"))
-                    putJsonObject("meta") {
-                        put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
-                    }
-                    putJsonArray("claims") {
-                        for (ns in request.mdocRequest!!.namespacesToRequest) {
-                            for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                if (format == "vc") {
+                    addJsonObject {
+                        put("id", JsonPrimitive("cred1"))
+                        put("format", JsonPrimitive("dc+sd-jwt"))
+                        putJsonObject("meta") {
+                            put("vct_values",
+                                buildJsonArray {
+                                    add(JsonPrimitive(request.vcRequest!!.vct))
+                                }
+                            )
+                        }
+                        putJsonArray("claims") {
+                            // TODO: support path-based claims, e.g. ["address", "postal_code"]
+                            for (claim in request.vcRequest!!.claimsToRequest) {
                                 addJsonObject {
                                     putJsonArray("path") {
-                                        add(JsonPrimitive(ns.namespace))
-                                        add(JsonPrimitive(de.attribute.identifier))
+                                        add(JsonPrimitive(claim.identifier))
                                     }
-                                    put("intent_to_retain", JsonPrimitive(intentToRetain))
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    addJsonObject {
+                        put("id", JsonPrimitive("cred1"))
+                        put("format", JsonPrimitive("mso_mdoc"))
+                        putJsonObject("meta") {
+                            put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
+                        }
+                        putJsonArray("claims") {
+                            for (ns in request.mdocRequest!!.namespacesToRequest) {
+                                for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                                    addJsonObject {
+                                        putJsonArray("path") {
+                                            add(JsonPrimitive(ns.namespace))
+                                            add(JsonPrimitive(de.attribute.identifier))
+                                        }
+                                        put("intent_to_retain", JsonPrimitive(intentToRetain))
+                                    }
                                 }
                             }
                         }
@@ -1500,7 +1564,7 @@ private fun mdocCalcDcRequestStringOpenID4VP(
 private fun mdocCalcDcRequestStringArf(
     documentTypeRepository: DocumentTypeRepository,
     request: DocumentCannedRequest,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1508,7 +1572,7 @@ private fun mdocCalcDcRequestStringArf(
     readerAuthKeyCertification: X509CertChain
 ): String {
     val arfEncryptionInfo = CborMap.builder()
-        .put("nonce", nonce)
+        .put("nonce", nonce.toByteArray())
         .put("readerPublicKey", readerPublicKey.toCoseKey().toDataItem())
         .end()
         .build()
@@ -1560,7 +1624,7 @@ private fun mdocCalcDcRequestStringArf(
 private fun mdocCalcDcRequestStringMdocApi(
     documentTypeRepository: DocumentTypeRepository,
     request: DocumentCannedRequest,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1568,7 +1632,7 @@ private fun mdocCalcDcRequestStringMdocApi(
     readerAuthKeyCertification: X509CertChain
 ): String {
     val encryptionParameters = CborMap.builder()
-        .put("nonce", nonce)
+        .put("nonce", nonce.toByteArray())
         .put("recipientPublicKey", readerPublicKey.toCoseKey().toDataItem())
         .end()
         .build()
@@ -1795,7 +1859,7 @@ private fun parseCredentialDocument(encodedCredentialDocument: ByteArray
 //      pkRHash
 //    ]
 private fun generateBrowserSessionTranscript(
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     requesterIdHash: ByteArray
 ): ByteArray {
@@ -1818,7 +1882,7 @@ private fun generateBrowserSessionTranscript(
             .add(Simple.NULL) // EReaderKeyBytes
             .addArray() // BrowserHandover
             .add(BROWSER_HANDOVER_V1)
-            .add(nonce)
+            .add(nonce.toByteArray())
             .add(originInfoBytes)
             .add(requesterIdHash)
             .end()
