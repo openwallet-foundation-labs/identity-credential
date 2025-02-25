@@ -901,7 +901,12 @@ private data class DocumentData(
             if (document.issuerSignedAuthenticated) {
                 val trustResult = issuerTrustManager.verify(document.issuerCertificateChain.certificates)
                 if (trustResult.isTrusted) {
-                    infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
+                    if (trustResult.trustPoints[0].displayName != null) {
+                        infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
+                    } else {
+                        infos.add("Issuer with name '${trustResult.trustPoints[0].certificate.subject.name}' " +
+                                "is in a trust list")
+                    }
                 } else {
                     warnings.add("Issuer is not in trust list")
                 }

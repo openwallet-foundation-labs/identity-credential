@@ -44,6 +44,7 @@ import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.mdoc.vical.SignedVical
 import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.cloud.CloudSecureArea
@@ -359,6 +360,17 @@ class App private constructor() {
     @OptIn(ExperimentalResourceApi::class)
     private suspend fun generateTrustManagers() {
         issuerTrustManager = TrustManager()
+        val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
+        for (certInfo in signedVical.vical.certificateInfos) {
+            println("certInfo: ${certInfo.certificate.subject.name}")
+            issuerTrustManager.addTrustPoint(
+                TrustPoint(
+                    certInfo.certificate,
+                    null,
+                    null
+                )
+            )
+        }
         issuerTrustManager.addTrustPoint(
             TrustPoint(
                 certificate = iacaCert,
@@ -368,6 +380,41 @@ class App private constructor() {
         )
 
         readerTrustManager = TrustManager()
+        val readerCertFileNames = listOf(
+            "Animo Reader CA.cer",
+            "Bundesdruckerei Reader CA.cer",
+            "CLR Labs Reader CA.cer",
+            "Credence ID Reader CA.cer",
+            "Fast Enterprises Reader CA.cer",
+            "Fime Reader CA 1.cer",
+            "Fime Reader CA 2.cer",
+            "Google Reader CA.cer",
+            "Idakto Reader CA.cer",
+            "Idemia Reader CA.cer",
+            "LapID Reader CA.cer",
+            "MATTR Reader CA.cer",
+            "Nearform Reader CA.cer",
+            "OGCIO Reader CA.cer",
+            "RDW Test Reader CA.cer",
+            "Scytales Reader CA.cer",
+            "SpruceID Reader CA.cer",
+            "Thales Reader CA 1.cer",
+            "Thales Reader CA 2.cer",
+            "Thales Root CA.cer",
+            "Toppan Reader CA.cer",
+            "Zetes Reader CA.cer"
+        )
+        for (readerCertFileName in readerCertFileNames) {
+            val certData = Res.readBytes("files/20250225 Reader CA Certificates/" + readerCertFileName)
+            val x509Cert = X509Cert.fromPem(certData.decodeToString())
+            readerTrustManager.addTrustPoint(
+                TrustPoint(
+                    certificate = x509Cert,
+                    displayName = readerCertFileName.substringBeforeLast("."),
+                    displayIcon = null
+                )
+            )
+        }
         readerTrustManager.addTrustPoint(
             TrustPoint(
                 certificate = readerRootCert,
