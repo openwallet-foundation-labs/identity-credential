@@ -1,6 +1,5 @@
 package com.android.identity.issuance
 
-import com.android.identity.android.direct_access.DirectAccessCredential
 import com.android.identity.document.Document
 
 /**
@@ -25,16 +24,6 @@ object DocumentExtensions {
      */
     val Document.documentIdentifier: String
         get() = walletDocumentMetadata.documentIdentifier
-
-    /** Returns whether or not the document has any [DirectAccessCredential]s associated with it */
-    suspend fun Document.hasDirectAccessCredentials(): Boolean {
-        for (credential in getCredentials()) {
-            if (credential is DirectAccessCredential) {
-                return true
-            }
-        }
-        return false
-    }
 
     /**
      * The number of times a [DocumentConfiguration] has been downloaded from the issuer.
