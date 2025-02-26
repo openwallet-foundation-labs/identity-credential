@@ -29,6 +29,7 @@ import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.securearea.KeyAttestation
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * An mdoc credential, according to
@@ -145,7 +146,7 @@ class DirectAccessCredential: Credential {
     override suspend fun deserialize(dataItem: DataItem) {
         super.deserialize(dataItem)
         docType = dataItem["docType"].asTstr
-        encryptedPresentationData = dataItem["encryptedPresentationData"].asBstr
+        encryptedPresentationData = ByteString(dataItem["encryptedPresentationData"].asBstr) //TODO: b/393388370 - Cbor+
         signingCert = X509CertChain.fromDataItem(dataItem["signingCert"])
     }
 
@@ -168,13 +169,13 @@ class DirectAccessCredential: Credential {
             return KeyAttestation(signingCert.certificates.first().ecPublicKey, signingCert)
         }
 
-    private lateinit var encryptedPresentationData: ByteArray
+    private lateinit var encryptedPresentationData: ByteString
     private lateinit var signingCert: X509CertChain
 
     override fun addSerializedData(builder: MapBuilder<CborBuilder>) {
         super.addSerializedData(builder)
         builder.put("docType", docType)
-        builder.put("encryptedPresentationData", encryptedPresentationData)
+        builder.put("encryptedPresentationData", encryptedPresentationData.toByteArray()) //TODO: b/393388370 - Cbor+
         builder.put("signingCert", signingCert.toDataItem())
     }
 

@@ -6,6 +6,7 @@ import com.android.identity.util.appendUInt16
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlin.math.pow
 import kotlin.time.Duration
 
@@ -36,20 +37,18 @@ data class ServiceParameterRecord(
      */
     fun generateNdefRecord(): NdefRecord {
         check(serviceNameUri.length < 256) { "Service name length must fit in a byte" }
-
-        val bsb = ByteStringBuilder()
-        bsb.appendUInt8(tnepVersion)
-        bsb.appendUInt8(serviceNameUri.length)
-        bsb.appendArray(serviceNameUri.encodeToByteArray())
-        bsb.appendUInt8(tnepCommunicationMode)
-        bsb.appendUInt8(wtInt)
-        bsb.appendUInt8(nWait)
-        bsb.appendUInt16(maxNdefSize)
-
         return NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
             type = Nfc.RTD_SERVICE_PARAMETER,
-            payload = bsb.toByteString()
+            payload = buildByteString {
+                appendUInt8(tnepVersion)
+                appendUInt8(serviceNameUri.length)
+                appendArray(serviceNameUri.encodeToByteArray())
+                appendUInt8(tnepCommunicationMode)
+                appendUInt8(wtInt)
+                appendUInt8(nWait)
+                appendUInt16(maxNdefSize)
+            }
         )
     }
 

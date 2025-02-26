@@ -1,5 +1,6 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.experimental.or
 
@@ -31,7 +32,7 @@ class Simple(val value: UInt) : DataItem(MajorType.SPECIAL) {
         /** The [Simple] value for UNDEFINED */
         val UNDEFINED = Simple(23U)
 
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Simple> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, Simple> {
             val (newOffset, value) = Cbor.decodeLength(encodedCbor, offset)
             if (newOffset - offset > 1 && value < 32UL) {
                 throw IllegalArgumentException("two-byte simple value must be >= 32")

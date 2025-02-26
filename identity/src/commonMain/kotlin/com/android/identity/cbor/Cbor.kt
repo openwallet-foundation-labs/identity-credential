@@ -1,7 +1,13 @@
 package com.android.identity.cbor
 
+import com.android.identity.util.getUInt16
+import com.android.identity.util.getUInt32
+import com.android.identity.util.getUInt64
+import com.android.identity.util.getUInt8
+import kotlinx.io.bytestring.ByteString
 import kotlin.math.pow
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.toHexString
 import kotlin.experimental.or
 
 /**
@@ -72,51 +78,26 @@ object Cbor {
     // throws IllegalArgumentException if not enough data or if additionalInformation
     // field is invalid
     //
-    internal fun decodeLength(encodedCbor: ByteArray, offset: Int): Pair<Int, ULong> {
+    internal fun decodeLength(encodedCbor: ByteString, offset: Int): Pair<Int, ULong> {
         val additionalInformation: Int
         try {
             additionalInformation = encodedCbor[offset].toInt().and(0x1f)
             if (additionalInformation < 24) {
                 return Pair(offset + 1, additionalInformation.toULong())
             }
-            when (additionalInformation) {
-                24 -> return Pair(offset + 2, encodedCbor[offset + 1].toULong().and(0xffUL))
-                25 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 8) +
-                            encodedCbor[offset + 2].toULong().and(0xffUL)
-                    return Pair(offset + 3, length)
-                }
-
-                26 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 24) +
-                            (encodedCbor[offset + 2].toULong().and(0xffUL) shl 16) +
-                            (encodedCbor[offset + 3].toULong().and(0xffUL) shl 8) +
-                            encodedCbor[offset + 4].toULong().and(0xffUL)
-                    return Pair(offset + 5, length)
-                }
-
-                27 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 56) +
-                            (encodedCbor[offset + 2].toULong().and(0xffUL) shl 48) +
-                            (encodedCbor[offset + 3].toULong().and(0xffUL) shl 40) +
-                            (encodedCbor[offset + 4].toULong().and(0xffUL) shl 32) +
-                            (encodedCbor[offset + 5].toULong().and(0xffUL) shl 24) +
-                            (encodedCbor[offset + 6].toULong().and(0xffUL) shl 16) +
-                            (encodedCbor[offset + 7].toULong().and(0xffUL) shl 8) +
-                            encodedCbor[offset + 8].toULong().and(0xffUL)
-                    return Pair(offset + 9, length)
-                }
-
-                31 ->
-                    return Pair(offset + 1, 0UL)  // indefinite length
-                else -> {}
+            return when (additionalInformation) {
+                24 -> Pair(offset + 2, encodedCbor.getUInt8(offset + 1).toULong())
+                25 -> Pair(offset + 3, encodedCbor.getUInt16(offset + 1).toULong())
+                26 -> Pair(offset + 5, encodedCbor.getUInt32(offset +1).toULong())
+                27 -> Pair(offset + 9, encodedCbor.getUInt64(offset+1))
+                31 -> Pair(offset + 1, 0UL)  // indefinite length
+                else -> throw IllegalArgumentException(
+                    "Illegal additional information value $additionalInformation at offset $offset"
+                )
             }
         } catch (e: IndexOutOfBoundsException) {
             throw IllegalArgumentException("Out of data at offset $offset", e)
         }
-        throw IllegalArgumentException(
-            "Illegal additional information value $additionalInformation at offset $offset"
-        )
     }
 
     // This is based on the C code in https://www.rfc-editor.org/rfc/rfc8949.html#section-appendix.d
@@ -143,7 +124,7 @@ object Cbor {
      * decoded data item.
      * @throws IllegalArgumentException if the data isn't valid CBOR.
      */
-    fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, DataItem> {
+    fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, DataItem> {
         try {
             val first = encodedCbor[offset]
             val majorType = MajorType.fromInt(first.toInt().and(0xff) ushr 5)
@@ -230,7 +211,7 @@ object Cbor {
      * @return a [DataItem] with the decoded data.
      * @throws IllegalArgumentException if bytes are left over or the data isn't valid CBOR.
      */
-    fun decode(encodedCbor: ByteArray): DataItem {
+    fun decode(encodedCbor: ByteString): DataItem {
         val (newOffset, item) = decode(encodedCbor, 0)
         if (newOffset != encodedCbor.size) {
             throw IllegalArgumentException(
@@ -266,6 +247,7 @@ object Cbor {
         // For now just use this heuristic.
         allDataItemsNonCompound(items, options) && items.size < 8
 
+    @OptIn(ExperimentalStdlibApi::class)
     private fun toDiagnostics(
         sb: StringBuilder,
         indent: Int,
@@ -285,7 +267,7 @@ object Cbor {
         }
 
         if (item is RawCbor) {
-            toDiagnostics(sb, indent, decode(item.encodedCbor), tagNumberOfParent, options)
+            toDiagnostics(sb, indent, decode(ByteString(item.encodedCbor)), tagNumberOfParent, options)
             return
         }
 
@@ -304,17 +286,19 @@ object Cbor {
                             sb.append("indefinite-size byte-string")
                         } else {
                             sb.append("(_")
-                            var count = 0
-                            for (chunk in item.chunks) {
-                                if (count++ == 0) {
-                                    sb.append(" h'")
-                                } else {
-                                    sb.append(", h'")
-                                }
-                                for (b in chunk) {
-                                    sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
-                                    sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
-                                }
+                            item.chunks.forEach {
+                                sb.append(it.toHexString(HexFormat {
+                                    upperCase = true
+                                    number {
+                                        removeLeadingZeros = false
+                                        prefix = "h'"
+                                        suffix = "\'"
+                                    }
+                                    bytes {
+                                        bytesPerGroup = 1
+                                        groupSeparator = ", "
+                                    }
+                                }))
                                 sb.append('\'')
                             }
                             sb.append(')')
@@ -340,10 +324,9 @@ object Cbor {
                                 }
                             } else {
                                 sb.append("h'")
-                                for (b in item.value) {
-                                    sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
-                                    sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
-                                }
+                                val b = item.value
+                                sb.append(HEX_DIGITS[b[0].toInt().and(0xff) shr 4])
+                                sb.append(HEX_DIGITS[b[1].toInt().and(0x0f)])
                                 sb.append("'")
                             }
                         }

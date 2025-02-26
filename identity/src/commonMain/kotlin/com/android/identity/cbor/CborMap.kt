@@ -1,5 +1,6 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -42,7 +43,7 @@ class CborMap(
             return MapBuilder(CborBuilder(dataItem), dataItem)
         }
 
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborMap> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, CborMap> {
             val lowBits = encodedCbor[offset].toInt().and(0x1f)
             if (lowBits == 31) {
                 // indefinite length

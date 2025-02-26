@@ -1,6 +1,7 @@
 package com.android.identity.crypto
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCXDHPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -125,10 +126,12 @@ val EcPublicKey.javaPublicKey: PublicKey
 
                     else -> throw IllegalArgumentException("Unsupported curve with id $curve")
                 }
-                val bsb = ByteStringBuilder()
-                bsb.append(prefix)
-                bsb.append(x)
-                kf.generatePublic(X509EncodedKeySpec(bsb.toByteString().toByteArray()))
+                kf.generatePublic(X509EncodedKeySpec(
+                    buildByteString {
+                        append(prefix)
+                        append(x)
+                    }.toByteArray()
+                ))
             } catch (e: Exception) {
                 // any exception, such as NoSuchAlgorithmException, InvalidKeySpecException, IOException, NoSuchProviderException
                 throw IllegalStateException("Unexpected error", e)

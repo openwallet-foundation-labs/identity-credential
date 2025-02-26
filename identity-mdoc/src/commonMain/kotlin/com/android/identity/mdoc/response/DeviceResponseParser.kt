@@ -34,6 +34,7 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for parsing the bytes of `DeviceResponse`
@@ -219,7 +220,7 @@ class DeviceResponseParser(
         private fun parseDeviceSigned(
             deviceSigned: DataItem,
             docType: String,
-            encodedSessionTranscript: ByteArray,
+            encodedSessionTranscript: ByteString,
             deviceKey: EcPublicKey,
             eReaderKey: EcPrivateKey?,
             builder: Document.Builder
@@ -304,8 +305,8 @@ class DeviceResponseParser(
         }
 
         internal fun parse(
-            encodedDeviceResponse: ByteArray?,
-            encodedSessionTranscript: ByteArray,
+            encodedDeviceResponse: ByteString?,
+            encodedSessionTranscript: ByteString,
             eReaderKey: EcPrivateKey?
         ) {
             val deviceResponse = Cbor.decode(encodedDeviceResponse!!)
@@ -373,7 +374,7 @@ class DeviceResponseParser(
          */
         lateinit var issuerCertificateChain: X509CertChain
 
-        private data class EntryData(var value: ByteArray, var digestMatch: Boolean)
+        private data class EntryData(var value: ByteString, var digestMatch: Boolean)
 
         private var deviceData = mutableMapOf<String, MutableMap<String, EntryData>>()
         private var issuerData = mutableMapOf<String, MutableMap<String, EntryData>>()
@@ -492,7 +493,7 @@ class DeviceResponseParser(
         fun getIssuerEntryData(
             namespaceName: String,
             name: String
-        ): ByteArray {
+        ): ByteString {
             val innerMap = issuerData[namespaceName]
                 ?: throw IllegalArgumentException("Namespace not in data")
             val entryData = innerMap[name]
@@ -527,7 +528,7 @@ class DeviceResponseParser(
         fun getIssuerEntryByteString(
             namespaceName: String,
             name: String
-        ): ByteArray = getIssuerEntryData(namespaceName, name).let { value ->
+        ): ByteString = getIssuerEntryData(namespaceName, name).let { value ->
             Cbor.decode(value).asBstr
         }
 

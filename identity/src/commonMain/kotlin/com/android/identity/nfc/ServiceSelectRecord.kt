@@ -1,8 +1,10 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.appendArray
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.decodeToString
 
 data class ServiceSelectRecord(
@@ -11,13 +13,13 @@ data class ServiceSelectRecord(
 
     fun toNdefRecord(): NdefRecord {
         require(serviceName.length < 256) { "Service Name length must be shorter than 256" }
-        val bsb = ByteStringBuilder()
-        bsb.appendUInt8(serviceName.length)
-        bsb.append(serviceName.encodeToByteArray())
         return NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
             type = Nfc.RTD_SERVICE_SELECT,
-            payload = bsb.toByteString()
+            payload = buildByteString {
+                appendUInt8(serviceName.length)
+                appendArray(serviceName.encodeToByteArray())
+            }
         )
     }
 

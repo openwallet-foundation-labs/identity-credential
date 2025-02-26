@@ -7,6 +7,7 @@ import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.toCoseLabel
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * EC Public Key with two coordinates.
@@ -51,13 +52,11 @@ data class EcPublicKeyDoubleCoordinate(
      * This is the reverse operation of [fromUncompressedPointEncoding].
      */
     val asUncompressedPointEncoding: ByteArray
-        get() {
-            val builder = ByteStringBuilder()
-            builder.append(0x04)
-            builder.append(x)
-            builder.append(y)
-            return builder.toByteString().toByteArray()
-        }
+        get() = buildByteString {
+            append(0x04)
+            append(x)
+            append(y)
+        }.toByteArray()
 
     companion object {
         /**

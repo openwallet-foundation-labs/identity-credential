@@ -23,6 +23,11 @@ import com.android.identity.cbor.Cbor.decode
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.Logger
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendBstring
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt8
+import com.android.identity.util.getUInt16
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
@@ -31,10 +36,12 @@ import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.char
 import kotlinx.datetime.until
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.isNotEmpty
 import org.bouncycastle.asn1.ASN1UTCTime
-import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -94,51 +101,42 @@ object DirectAccess {
             return true
         }
 
-    private fun setShort(buf: ByteArray, offset: Int, value: Short) {
-        buf[offset] = (value.toInt() shr 8 and 0xFF).toByte()
-        buf[offset + 1] = (value.toInt() and 0xFF).toByte()
-    }
-
-    private fun getAPDUResponseStatus(input: ByteArray): Int {
+    private fun getAPDUResponseStatus(input: ByteString): Int {
         // Last two bytes are the status SW0SW1
-        val SW0 = input[input.size - 2]
-        val SW1 = input[input.size - 1]
-        return SW0.toInt() shl 8 or SW1.toInt() and 0xFFFF
+        return input.getUInt16(input.size-2).toInt()
     }
 
     @Throws(IOException::class)
-    private fun makeCommandApdu(data: ByteArray): ByteArray {
+    private fun makeCommandApdu(data: ByteString): ByteString {
         // TODO: Handle non extended length.
         check(data.size <= 0xffff) {
             "The length of the data exceeds the maximum length of extended APDU (63535)"
         }
-        val bos = ByteArrayOutputStream()
-        bos.write(0) // CLS
-        bos.write(INS_ENVELOPE.toInt()) // INS
-        bos.write(0) // P1
-        bos.write(0) // P2
-        // Send extended length APDU always as response size is not known to HAL.
-        // Case 1: Lc > 0  CLS | INS | P1 | P2 | 00 | 2 bytes of Lc | CommandData | 2 bytes of Le
-        // all set to 00.
-        // Case 2: Lc = 0  CLS | INS | P1 | P2 | 3 bytes of Le all set to 00.
-        bos.write(0x00)
-        // Extended length 3 bytes, starts with 0x00
-        if (data.isNotEmpty()) {
-            bos.write(data.size shr 8)
-            bos.write(data.size and 0xFF)
-            // Data
-            bos.write(data)
+        return buildByteString {
+            append(0) // CLS
+            append(INS_ENVELOPE) // INS
+            append(0) // P1
+            append(0) // P2
+            // Send extended length APDU always as response size is not known to HAL.
+            // Case 1: Lc > 0  CLS | INS | P1 | P2 | 00 | 2 bytes of Lc | CommandData | 2 bytes of Le
+            // all set to 00.
+            // Case 2: Lc = 0  CLS | INS | P1 | P2 | 3 bytes of Le all set to 00.
+            append(0)
+            // Extended length 3 bytes, starts with 0x00
+            if (data.isNotEmpty()) {
+                appendUInt16(data.size)
+                appendBstring(data)
+            }
+            append(0)
+            append(0)
         }
-        bos.write(0)
-        bos.write(0)
-        return bos.toByteArray()
     }
 
     @Throws(IOException::class)
     private fun sendApdu(
         cmd: Int,
         slot: Int,
-        data: ByteArray,
+        data: ByteString,
         offset: Int,
         length: Int,
         operation: Byte,
@@ -146,25 +144,22 @@ object DirectAccess {
         check(slot in 0..127) {
             "slot is out of the valid range (0-127)"
         }
-        val bb = ByteBuffer.allocate(length)
-        bb.put(data, offset, length)
-        val scratchpad = ByteArray(2)
-        val bos = ByteArrayOutputStream()
-        // set instruction
-        setShort(scratchpad, 0, cmd.toShort())
-        bos.write(scratchpad)
-        bos.write(slot)
-        bos.write(operation.toInt())
-        bos.write(Cbor.encode((Bstr(bb.array()))))
-        val beginApdu = makeCommandApdu(bos.toByteArray())
+        val beginApdu = makeCommandApdu(
+            buildByteString {
+                appendUInt16(cmd) // set instruction
+                appendUInt8(slot)
+                append(operation)
+                appendArray(Cbor.encode((Bstr(data.substring(offset, offset+length).toByteArray()))))
+            }
+        )
 
-        val response: ByteArray = transport.sendData(beginApdu)
+        val response: ByteString = transport.sendData(beginApdu)
         val status = getAPDUResponseStatus(response)
         check(APDU_RESPONSE_STATUS_OK == status) {
             "Operation failed. Response status: $status" }
         if (response.size > 2) {
-            val input = response.copyOf(response.size - 2)
-            return decode(input).asBstr
+            val input = response.substring(response.size - 2)
+            return decode(input.toByteArray()).asBstr
         }
         return null
     }
@@ -185,20 +180,13 @@ object DirectAccess {
      * @return ID of the allocated slot, -1 if no slot is available
      */
     fun allocateDocumentSlot(): Int {
-        val apdu: ByteArray?
-        val response: ByteArray?
         try {
             transport.closeConnection()
             transport.openConnection()
 
-            val scratchpad = ByteArray(2)
-            val bos = ByteArrayOutputStream()
             // set instruction
-            setShort(scratchpad, 0, CMD_MDOC_CREATE.toShort())
-            bos.write(scratchpad)
-            apdu = makeCommandApdu(bos.toByteArray())
-
-            response = transport.sendData(apdu)
+            val apdu = makeCommandApdu(buildByteString { appendUInt16(CMD_MDOC_CREATE.toUInt())})
+            val response = transport.sendData(apdu)
             check(response.size == 3) {
                 "allocateDocumentSlot APDU response size != 3"
             }
@@ -227,14 +215,14 @@ object DirectAccess {
             transport.closeConnection()
             transport.openConnection()
 
-            val scratchpad = ByteArray(2)
-            val bos = ByteArrayOutputStream()
-            setShort(scratchpad, 0, CMD_MDOC_DELETE_CREDENTIAL.toShort())
-            bos.write(scratchpad)
-            bos.write(documentSlot)
-            val apdu = makeCommandApdu(bos.toByteArray())
+            val apdu = makeCommandApdu(
+                buildByteString {
+                    appendUInt16(CMD_MDOC_DELETE_CREDENTIAL.toShort().toInt())
+                    append(documentSlot.toByte())
+                }
+            )
 
-            val response: ByteArray = transport.sendData(apdu)
+            val response  = transport.sendData(apdu)
             val status = getAPDUResponseStatus(response)
             if (APDU_RESPONSE_STATUS_OK != status) {
                 Logger.i(TAG, "clearDocumentSlot failed. Response status: $status")
@@ -297,44 +285,33 @@ object DirectAccess {
      */
     fun createCredential(
         documentSlot: Int
-    ): Pair<X509CertChain, ByteArray> {
-        val response: ByteArray?
+    ): Pair<X509CertChain, ByteString> {
         try {
             transport.closeConnection()
             transport.openConnection()
-
-            val scratchpad = ByteArray(2)
-            val bos = ByteArrayOutputStream()
-            // set instruction
-            setShort(scratchpad, 0, CMD_MDOC_CREATE_PRESENTATION_PKG.toShort())
-            bos.write(scratchpad)
-            bos.write(documentSlot)
 
             // TODO: @venkat the validity duration should be set during certification as opposed to creation
             val now = Clock.System.now()
             val notBeforeBytes = encodeValidityTime(now)
             val notAfterBytes = encodeValidityTime(now + 3650.days)
+            val apdu = makeCommandApdu(
+                buildByteString {
+                    appendUInt16(notBeforeBytes.size)
+                    appendArray(notBeforeBytes)
+                    appendUInt16(notAfterBytes.size)
+                    appendArray(notAfterBytes)
+                }
+            )
 
-            // Set Not Before
-            setShort(scratchpad, 0, notBeforeBytes.size.toShort())
-            bos.write(scratchpad)
-            bos.write(notBeforeBytes)
-
-            // Set Not After
-            setShort(scratchpad, 0, notAfterBytes.size.toShort())
-            bos.write(scratchpad)
-            bos.write(notAfterBytes)
-            val apdu = makeCommandApdu(bos.toByteArray())
-
-            response = transport.sendData(apdu)
+            val response = transport.sendData(apdu)
             val status = getAPDUResponseStatus(response)
             check(APDU_RESPONSE_STATUS_OK == status) {
                 "createPresentationPackage failed. Response status: $status" }
-            val input = response.copyOf(response.size - 2)
+            val input = response.substring(response.size - 2)
 
             var signingCert: X509CertChain? = null
             var encryptedData: ByteArray? = null
-            val map = decode(input)
+            val map = decode(input.toByteArray()) //TODO: b/393388370 - CBor+
             val keys = map.asMap.keys
             for (keyItem in keys) {
                 val value = keyItem.asNumber.toInt()
@@ -351,7 +328,7 @@ object DirectAccess {
                     else -> throw IllegalStateException("createPresentationPackage unknown key item")
                 }
             }
-            return Pair(signingCert!!, encryptedData!!)
+            return Pair(signingCert!!, ByteString(encryptedData!!))
         } catch (e: IOException) {
             Logger.d(TAG, "Failed to create presentation package")
             throw java.lang.IllegalStateException("Failed to create presentation package", e)
@@ -392,50 +369,50 @@ object DirectAccess {
     fun certifyCredential(
         documentSlot: Int,
         credentialData: ByteArray,
-        encryptedPresentationData: ByteArray
-    ): ByteArray {
-        val bao = ByteArrayOutputStream()
+        encryptedPresentationData: ByteString
+    ): ByteString {
+        val bsb = ByteStringBuilder()
         try {
             transport.closeConnection()
             transport.openConnection()
             // BEGIN
-            val encryptedData = encryptedPresentationData
-            bao.write(sendApdu(
+            sendApdu(
                 cmd = CMD_MDOC_PROVISION_DATA,
                 slot = documentSlot,
-                data = encryptedData,
+                data = encryptedPresentationData,
                 offset = 0,
-                length = encryptedData.size,
+                length = encryptedPresentationData.size,
                 operation= PROVISION_BEGIN
-            ))
+            )?.let { bsb.appendArray(it) }
 
             // UPDATE
-            val encodedCredData = Cbor.encode(Bstr(credentialData))
+            val encodedCredData = ByteString(Cbor.encode(Bstr(credentialData))) //TODO: b/393388370 - Cbor+
             var remaining = encodedCredData.size
             var start = 0
             val maxTransmitBufSize = 512
             while (remaining > maxTransmitBufSize) {
-                bao.write(sendApdu(
+                sendApdu(
                     cmd = CMD_MDOC_PROVISION_DATA,
                     slot = documentSlot,
                     data = encodedCredData,
                     offset = start,
                     length = maxTransmitBufSize,
                     operation = PROVISION_UPDATE
-                ))
+                )?.let { bsb.appendArray(it) } //TODO: b/393388370 - Perhaps the null should not update start/remaining?
                 start += maxTransmitBufSize
                 remaining -= maxTransmitBufSize
             }
 
             // Finish
-            bao.write(sendApdu(
+            sendApdu(
                 cmd = CMD_MDOC_PROVISION_DATA,
                 slot = documentSlot,
                 data = encodedCredData,
                 offset = start,
                 length = remaining,
                 operation = PROVISION_FINISH
-            ))
+            )?.let { bsb.appendArray(it) }
+
         } catch (e: IOException) {
             throw java.lang.IllegalStateException("Failed to provision credential data $e")
         } finally {
@@ -443,7 +420,7 @@ object DirectAccess {
         }
 
         // Return updated presentation package.
-        return bao.toByteArray()
+        return bsb.toByteString()
     }
 
     /**
@@ -492,20 +469,20 @@ object DirectAccess {
      */
     fun setActiveCredential(
         documentSlot: Int,
-        encryptedPresentationData: ByteArray?
+        encryptedPresentationData: ByteString?
     ) {
         try {
             transport.closeConnection()
             transport.openConnection()
-            val encryptedData = encryptedPresentationData
-            var remaining = encryptedData!!.size // TODO: allow for null/clearing active cred
+
+            var remaining = encryptedPresentationData!!.size // TODO: allow for null/clearing active cred
             var start = 0
             val maxTransmitBufSize = 512
             // BEGIN
             sendApdu(
                 CMD_MDOC_SWAP_IN,
                 documentSlot,
-                encryptedData,
+                encryptedPresentationData,
                 0,
                 maxTransmitBufSize,
                 PROVISION_BEGIN
@@ -518,7 +495,7 @@ object DirectAccess {
                 sendApdu(
                     CMD_MDOC_SWAP_IN,
                     documentSlot,
-                    encryptedData,
+                    encryptedPresentationData,
                     start,
                     maxTransmitBufSize,
                     PROVISION_UPDATE
@@ -531,7 +508,7 @@ object DirectAccess {
             sendApdu(
                 CMD_MDOC_SWAP_IN,
                 documentSlot,
-                encryptedData,
+                encryptedPresentationData,
                 start,
                 remaining,
                 PROVISION_FINISH

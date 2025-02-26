@@ -1,5 +1,6 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -13,7 +14,7 @@ class Uint(val value: ULong) : CborInt(MajorType.UNSIGNED_INTEGER) {
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Uint> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, Uint> {
             val (newOffset, value) = Cbor.decodeLength(encodedCbor, offset)
             return Pair(newOffset, Uint(value))
         }

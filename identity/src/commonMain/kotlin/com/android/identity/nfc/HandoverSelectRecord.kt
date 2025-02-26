@@ -1,8 +1,10 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.appendArray
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * Handover Select record.
@@ -18,13 +20,13 @@ data class HandoverSelectRecord(
     fun generateNdefRecord(): NdefRecord {
         // TODO: b/393388370 - Redundant check, but could point at the need of a custom error message param in Byte methods?
         check(version < 256) { "Version must fit in one byte" }
-        val bsb = ByteStringBuilder()
-        bsb.appendUInt8(version)
-        bsb.append(embeddedMessage.encode())
         return NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
             type = Nfc.RTD_HANDOVER_SELECT,
-            payload = bsb.toByteString()
+            payload = buildByteString {
+                appendUInt8(version)
+                appendArray(embeddedMessage.encode())
+            }
         )
     }
 

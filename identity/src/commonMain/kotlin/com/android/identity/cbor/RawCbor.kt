@@ -1,6 +1,9 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.toHexString
 
 /**
  * Data item for raw CBOR.
@@ -14,24 +17,23 @@ import kotlinx.io.bytestring.ByteStringBuilder
  *
  * @param encodedCbor the bytes of valid CBOR.
  */
-class RawCbor(val encodedCbor: ByteArray)
+class RawCbor(val encodedCbor: ByteString)
     : DataItem(MajorType.fromInt(encodedCbor[0].toInt().and(0xff) ushr 5)) {
 
     override fun encode(builder: ByteStringBuilder) {
         builder.append(encodedCbor)
     }
 
-    override fun equals(other: Any?): Boolean = other is RawCbor &&
-            encodedCbor.contentEquals(other.encodedCbor)
+    override fun equals(other: Any?): Boolean = other is RawCbor && encodedCbor == other.encodedCbor
 
-    override fun hashCode(): Int = encodedCbor.contentHashCode()
+    override fun hashCode(): Int = encodedCbor.hashCode()
 
+    @OptIn(ExperimentalStdlibApi::class)
     override fun toString(): String {
-        val sb = StringBuilder("RawCbor(")
-        for (b in encodedCbor) {
-            sb.append(b.toString(16))
+        return buildString {
+            append("RawCbor(")
+            append(encodedCbor.toHexString())
+            append(")")
         }
-        sb.append(")")
-        return sb.toString()
     }
 }

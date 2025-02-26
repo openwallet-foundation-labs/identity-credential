@@ -22,11 +22,15 @@ import android.se.omapi.SEService
 import android.se.omapi.Session
 import androidx.annotation.RequiresApi
 import com.android.identity.util.AndroidContexts
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendUInt16
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.contentEquals
 import java.io.IOException
-import java.util.Arrays
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -42,7 +46,7 @@ object DirectAccessOmapiTransport {
     private const val ESE_READER = "eSE1"
 
     // IS07816.NO_ERROR = 0x9000
-    private val SUCCESS: ByteArray = byteArrayOf(0x90.toByte(), 0x00)
+    private val SUCCESS = buildByteString { appendUInt16(0x9000) }
     private var seService: SEService
     private var eseChannel: Channel? = null
     private var eseReader: Reader? = null
@@ -110,11 +114,11 @@ object DirectAccessOmapiTransport {
         if (!isConnected) {
             val provisionAppletAid =
                 byteArrayOf(0xA0.toByte(), 0x00, 0x00, 0x02, 0x48, 0x00, 0x01, 0x01, 0x01)
-            initialize(provisionAppletAid)
+            initialize(buildByteString { appendArray(provisionAppletAid) })
         }
     }
 
-    private fun isSelectApdu(input: ByteArray): Boolean {
+    private fun isSelectApdu(input: ByteString): Boolean {
         // The minimum size is 6 since a select apdu is expected to have length at input[4]
         // and aid from input[5] onwards.
         if (input.size < 6) {
@@ -123,11 +127,7 @@ object DirectAccessOmapiTransport {
         return (input[1] == 0xA4.toByte()) && (input[2] == 0x04.toByte())
     }
 
-    private fun getAid(input: ByteArray): ByteArray {
-        val length = input[4]
-        val aid = Arrays.copyOfRange(input, 5, 5 + length)
-        return aid
-    }
+    private fun getAid(input: ByteString) = input.substring(5, 5 + input[4])
 
     /**
      * Transmits data over the opened channel.
@@ -136,7 +136,7 @@ object DirectAccessOmapiTransport {
      * @throws IOException
      */
     @Throws(IOException::class)
-    fun sendData(input: ByteArray): ByteArray {
+    fun sendData(input: ByteString): ByteString {
         return runBlocking {
             mutex.withLock {
                 if (isSelectApdu(input)) {
@@ -162,7 +162,7 @@ object DirectAccessOmapiTransport {
                     if (!SUCCESS.contentEquals(responseState)) {
                         throw IOException("Applet selection failed.")
                     }
-                    return@runBlocking it.transmit(input)
+                    return@runBlocking buildByteString { append(it.transmit(input.toByteArray())) }
                 }
             }
         }
@@ -202,7 +202,7 @@ object DirectAccessOmapiTransport {
     }
 
     @Throws(IOException::class)
-    private fun initialize(aid: ByteArray) {
+    private fun initialize(aid: ByteString) {
         // In the rare case where the seService is disconnected,
         // re-initialize and wait CONNECTION_TIMEOUT_MS milliseconds
         // for the connection.
@@ -227,7 +227,7 @@ object DirectAccessOmapiTransport {
 
         eseSession.let {
             if (it == null) throw IOException("Could not open session.")
-            eseChannel = it.openBasicChannel(aid)
+            eseChannel = it.openBasicChannel(aid.toByteArray())
         }
 
         if (eseChannel == null) {

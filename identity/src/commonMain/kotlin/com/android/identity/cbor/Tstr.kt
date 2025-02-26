@@ -1,6 +1,8 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.decodeToString
 
 /**
  * Unicode String (major type 3).
@@ -15,10 +17,10 @@ class Tstr(val value: String) : DataItem(MajorType.UNICODE_STRING) {
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Tstr> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, Tstr> {
             val (payloadBegin, length) = Cbor.decodeLength(encodedCbor, offset)
             val payloadEnd = payloadBegin + length.toInt()
-            val slice = encodedCbor.sliceArray(IntRange(payloadBegin, payloadEnd - 1))
+            val slice = encodedCbor.substring(payloadBegin, payloadEnd)
             return Pair(payloadEnd, Tstr(slice.decodeToString()))
         }
     }

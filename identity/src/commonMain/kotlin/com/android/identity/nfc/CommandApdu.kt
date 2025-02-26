@@ -1,6 +1,7 @@
 package com.android.identity.nfc
 
 import com.android.identity.util.ByteDataReader
+import com.android.identity.util.appendBstring
 import com.android.identity.util.appendUInt16
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt16
@@ -8,6 +9,7 @@ import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * A Command APDU according to ISO/IEC 7816.
@@ -34,48 +36,47 @@ data class CommandApdu(
      */
     fun encode(): ByteArray {
         check(payload.size < 0x10000)
+        return buildByteString {
+            appendUInt8(cla)
+            appendUInt8(ins)
+            appendUInt8(p1)
+            appendUInt8(p2)
+            var lcPresent = false
 
-        val bsb = ByteStringBuilder()
-        bsb.appendUInt8(cla)
-        bsb.appendUInt8(ins)
-        bsb.appendUInt8(p1)
-        bsb.appendUInt8(p2)
-        var lcPresent = false
+            // Lc and Le must use the same encoding, either short or long
+            val useShortEncoding = payload.size < 0x100 && le <= 0x100
 
-        // Lc and Le must use the same encoding, either short or long
-        val useShortEncoding = payload.size < 0x100 && le <= 0x100
-
-        if (payload.size > 0) {
-            lcPresent = true
-            if (useShortEncoding) {
-                bsb.appendUInt8(payload.size)
-            } else {
-                bsb.appendUInt8(0u) // TODO: b/393388370 looks strange if the goal is to just add Int16.
-                bsb.appendUInt16(payload.size)
-            }
-            bsb.append(payload)
-        }
-        if (le > 0) {
-            if (useShortEncoding) {
-                if (le == 0x100) {
-                    bsb.appendUInt8(0u)
+            if (payload.size > 0) {
+                lcPresent = true
+                if (useShortEncoding) {
+                    appendUInt8(payload.size)
                 } else {
-                    bsb.appendUInt8(le)
+                    appendUInt8(0u) // TODO: b/393388370 looks strange if the goal is to just add Int16.
+                    appendUInt16(payload.size)
                 }
-            } else {
-                if (!lcPresent) {
-                    bsb.appendUInt8(0u)
-                }
-                if (le < 0x10000) {
-                    bsb.appendUInt16(le)
-                } else if (le == 0x10000) {
-                    bsb.appendUInt16(0u)
+                appendBstring(payload)
+            }
+            if (le > 0) {
+                if (useShortEncoding) {
+                    if (le == 0x100) {
+                        appendUInt8(0u)
+                    } else {
+                        appendUInt8(le)
+                    }
                 } else {
-                    throw IllegalStateException("invalid LE size $le")
+                    if (!lcPresent) {
+                        appendUInt8(0u)
+                    }
+                    if (le < 0x10000) {
+                        appendUInt16(le)
+                    } else if (le == 0x10000) {
+                        appendUInt16(0u)
+                    } else {
+                        throw IllegalStateException("invalid LE size $le")
+                    }
                 }
             }
-        }
-        return bsb.toByteString().toByteArray()
+        }.toByteArray()
     }
 
     companion object {

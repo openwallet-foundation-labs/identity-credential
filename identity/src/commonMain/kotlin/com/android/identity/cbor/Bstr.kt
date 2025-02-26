@@ -1,40 +1,48 @@
 package com.android.identity.cbor
 
+import com.android.identity.util.appendBstring
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.toHexString
 
 /**
  * Byte String (major type 2).
  *
- * @param value the [ByteArray] for the value of the byte string.
+ * @param value the [ByteString] for the value of the byte string.
  */
-data class Bstr(val value: ByteArray) : DataItem(MajorType.BYTE_STRING) {
+data class Bstr(val value: ByteString) : DataItem(MajorType.BYTE_STRING) {
     override fun encode(builder: ByteStringBuilder) {
         Cbor.encodeLength(builder, majorType, value.size)
-        builder.append(value)
+        builder.appendBstring(value)
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Bstr> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, Bstr> {
             val (payloadBegin, length) = Cbor.decodeLength(encodedCbor, offset)
             val payloadEnd = payloadBegin + length.toInt()
-            val slice = encodedCbor.sliceArray(IntRange(payloadBegin, payloadEnd - 1))
+            val slice = encodedCbor.substring(payloadBegin, payloadEnd)
             return Pair(payloadEnd, Bstr(slice))
         }
-
-        private val HEX_DIGITS = "0123456789abcdef".toCharArray()
     }
 
-    override fun equals(other: Any?): Boolean = other is Bstr && value.contentEquals(other.value)
+    override fun equals(other: Any?): Boolean = other is Bstr && value == other.value
 
-    override fun hashCode(): Int = value.contentHashCode()
+    override fun hashCode(): Int = value.hashCode()
 
-    override fun toString(): String {
-        val sb = StringBuilder("Bstr(")
-        for (b in value) {
-            sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
-            sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
+    @OptIn(ExperimentalStdlibApi::class)
+    override fun toString() =
+        buildString {
+            append("Bstr(")
+            append(value.toHexString(HexFormat {
+                upperCase = true
+                number {
+                    removeLeadingZeros = false
+                }
+                bytes {
+                    bytesPerGroup = 1
+                    groupSeparator = " "
+                }
+            }))
+            append(")")
         }
-        sb.append(")")
-        return sb.toString()
-    }
 }

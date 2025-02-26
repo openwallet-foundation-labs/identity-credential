@@ -2,6 +2,7 @@ package com.android.identity.util
 
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * ByteArray extension functions for consistent reading and writing commonly used types.
@@ -243,12 +244,7 @@ fun ByteArray.getByteString(offset: Int, numBytes: Int): ByteString {
     require(numBytes >= 0) { "Number of bytes must be non-negative" }
     require(offset + numBytes <= size) { "Offset and number of bytes must be within the bounds of the array" }
 
-    if (numBytes == 0) return ByteString()
-
-    return with(ByteStringBuilder()) {
-        append(copyOfRange(offset, offset + numBytes))
-        toByteString()
-    }
+    return if (numBytes > 0) buildByteString { append(copyOfRange(offset, offset + numBytes)) } else ByteString()
 }
 
 fun ByteArray.getString(offset: Int, numBytes: Int): String = decodeToString(offset, offset + numBytes, true)

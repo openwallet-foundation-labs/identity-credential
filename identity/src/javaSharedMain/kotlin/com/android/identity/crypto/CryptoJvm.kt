@@ -46,6 +46,7 @@ import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -300,13 +301,14 @@ actual object Crypto {
         var pos = 0
         var digest = ByteArray(0)
         while (true) {
-            val bsb = ByteStringBuilder()
-            bsb.append(digest, 0, digest.size)
-            if (info != null) {
-                bsb.append(info, 0, info.size)
+            val message = buildByteString {
+                append(digest, 0, digest.size)
+                if (info != null) {
+                    append(info, 0, info.size)
+                }
+                append(ctr.toByte())
             }
-            bsb.append(ctr.toByte())
-            digest = mac(algorithm, prk, bsb.toByteString().toByteArray())
+            digest = mac(algorithm, prk, message.toByteArray())
             if (pos + digest.size < size) {
                 System.arraycopy(digest, 0, result, pos, digest.size)
                 pos += digest.size

@@ -24,6 +24,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.KeyStore
@@ -159,17 +160,17 @@ class AndroidStorageEngine internal constructor(
         ): ByteArray {
             val array = Cbor.decode(encryptedData).asArray
             return try {
-                val builder = ByteStringBuilder()
-                for (item in array) {
-                    val encryptedChunk = item.asBstr
-                    val iv = encryptedChunk.sliceArray(IntRange(0, 11))
-                    val cipherText = encryptedChunk.sliceArray(IntRange(12, encryptedChunk.size - 1))
-                    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                    cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
-                    val decryptedChunk = cipher.doFinal(cipherText)
-                    builder.append(decryptedChunk)
-                }
-                builder.toByteString().toByteArray()
+                buildByteString {
+                    for (item in array) {
+                        val encryptedChunk = item.asBstr
+                        val iv = encryptedChunk.sliceArray(IntRange(0, 11))
+                        val cipherText = encryptedChunk.sliceArray(IntRange(12, encryptedChunk.size - 1))
+                        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+                        val decryptedChunk = cipher.doFinal(cipherText)
+                        append(decryptedChunk)
+                    }
+                }.toByteArray()
             } catch (e: Exception) {
                 throw IllegalStateException("Error decrypting chunk", e)
             }

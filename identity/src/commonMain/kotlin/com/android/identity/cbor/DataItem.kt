@@ -10,6 +10,7 @@ import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.fromDataItem
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -40,7 +41,7 @@ sealed class DataItem(
      *
      * @throws IllegalArgumentException if not the data item isn't of type [Bstr].
      */
-    val asBstr: ByteArray
+    val asBstr: ByteString
         get() {
             require(this is Bstr)
             return value

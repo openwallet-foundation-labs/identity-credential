@@ -20,11 +20,8 @@ import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.os.Build
 import androidx.annotation.RequiresApi
-import com.android.identity.cbor.Cbor
 import com.android.identity.util.Logger
-import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.ByteStringBuilder
-import java.io.ByteArrayOutputStream
+import kotlinx.io.bytestring.buildByteString
 import java.io.IOException
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedTransferQueue
@@ -162,16 +159,16 @@ internal class L2CAPServer(val listener: Listener) {
     }
 
     fun sendMessage(data: ByteArray) {
-        val bsb = ByteStringBuilder()
         val length = data.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(data)
-        writerQueue.add(bsb.toByteString().toByteArray())
+        writerQueue.add(
+            buildByteString {
+                append((length shr 24).and(0xffU).toByte())
+                append((length shr 16).and(0xffU).toByte())
+                append((length shr 8).and(0xffU).toByte())
+                append((length shr 0).and(0xffU).toByte())
+                append(data)
+            }.toByteArray()
+        )
     }
 
     fun reportPeerConnected() {

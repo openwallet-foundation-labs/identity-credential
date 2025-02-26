@@ -9,6 +9,8 @@ import com.android.identity.nfc.NfcCommandFailedException
 import com.android.identity.nfc.NfcIsoTag
 import com.android.identity.nfc.ResponseApdu
 import com.android.identity.util.Logger
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt8
 import com.android.identity.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -23,6 +25,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 import kotlin.math.min
 import kotlin.time.Duration
 
@@ -294,25 +297,23 @@ internal fun extractFromDo53(encapsulatedData: ByteString): ByteString {
 }
 
 internal fun encapsulateInDo53(data: ByteString): ByteString {
-    val bsb = ByteStringBuilder()
-    bsb.append(0x53)
-    if (data.size < 0x80) {
-        bsb.append(data.size.and(0xff).toByte())
-    } else if (data.size < 0x100) {
-        bsb.append(0x81.and(0xff).toByte())
-        bsb.append(data.size.and(0xff).toByte())
-    } else if (data.size < 0x10000) {
-        bsb.append(0x82.and(0xff).toByte())
-        bsb.append((data.size / 0x100).and(0xff).toByte())
-        bsb.append((data.size.and(0xff)).and(0xff).toByte())
-    } else if (data.size < 0x1000000) {
-        bsb.append(0x83.and(0xff).toByte())
-        bsb.append((data.size / 0x10000).and(0xff).toByte())
-        bsb.append((data.size / 0x100).and(0xff).toByte())
-        bsb.append(data.size.and(0xff).toByte())
-    } else {
-        throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+    return buildByteString {
+        append(0x53)
+        if (data.size < 0x80) {
+            appendUInt8(data.size)
+        } else if (data.size < 0x100) {
+            appendUInt8(0x81)
+            appendUInt8(data.size)
+        } else if (data.size < 0x10000) {
+            appendUInt8(0x82)
+            appendUInt16(data.size)
+        } else if (data.size < 0x1000000) {
+            appendUInt8(0x83)
+            appendUInt8((data.size / 0x10000).and(0xff).toUInt())
+            appendUInt16(data.size)
+        } else {
+            throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+        }
+        append(data)
     }
-    bsb.append(data)
-    return bsb.toByteString()
 }

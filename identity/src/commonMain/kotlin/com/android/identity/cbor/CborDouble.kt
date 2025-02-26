@@ -1,5 +1,6 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.experimental.or
 
@@ -28,7 +29,7 @@ class CborDouble(val value: Double) : DataItem(MajorType.SPECIAL) {
 
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborDouble> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, CborDouble> {
             val raw = (encodedCbor[offset + 1].toLong().and(0xffL) shl 56) +
                     (encodedCbor[offset + 2].toLong().and(0xffL) shl 48) +
                     (encodedCbor[offset + 3].toLong().and(0xffL) shl 40) +

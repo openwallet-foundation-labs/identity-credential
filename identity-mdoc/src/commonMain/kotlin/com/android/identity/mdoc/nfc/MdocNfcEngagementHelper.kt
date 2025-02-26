@@ -19,10 +19,14 @@ import com.android.identity.nfc.ServiceParameterRecord
 import com.android.identity.nfc.ServiceSelectRecord
 import com.android.identity.nfc.TnepStatusRecord
 import com.android.identity.util.Logger
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt32
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.encodeToByteString
 
 /**
@@ -140,11 +144,10 @@ class MdocNfcEngagementHelper(
                         )
                     )
                     val initialNdefMessagePayload = initialNdefMessage.encode()
-                    val bsb = ByteStringBuilder()
-                    bsb.append((initialNdefMessagePayload.size/0x100).and(0xff).toByte())
-                    bsb.append(initialNdefMessagePayload.size.and(0xff).toByte())
-                    bsb.append(initialNdefMessagePayload)
-                    selectedFilePayload = bsb.toByteString()
+                    selectedFilePayload = buildByteString {
+                        appendUInt16(initialNdefMessagePayload.size)
+                        appendArray(initialNdefMessagePayload)
+                    }
                     negotiatedHandoverState = NegotiatedHandoverState.EXPECT_SERVICE_SELECT
                 } else {
                     val encodedDeviceEngagement = EngagementGenerator(
@@ -166,18 +169,16 @@ class MdocNfcEngagementHelper(
                         .end()
                         .build()
 
-                    val bsb = ByteStringBuilder()
-                    bsb.append((hsPayload.size/0x100).and(0xff).toByte())
-                    bsb.append(hsPayload.size.and(0xff).toByte())
-                    bsb.append(hsPayload)
-
                     onHandoverComplete(
                         staticHandoverMethods!!,
                         ByteString(encodedDeviceEngagement),
                         handover
                     )
 
-                    selectedFilePayload = bsb.toByteString()
+                    selectedFilePayload = buildByteString {
+                        appendUInt32(hsPayload.size)
+                        append(hsPayload)
+                    }
                 }
             }
             else -> {
@@ -329,11 +330,10 @@ class MdocNfcEngagementHelper(
         try {
             val responseNdefMessage = ndefTransact(message)
             val responseNdefMessagePayload = responseNdefMessage.encode()
-            val bsb = ByteStringBuilder()
-            bsb.append((responseNdefMessagePayload.size/0x100).and(0xff).toByte())
-            bsb.append(responseNdefMessagePayload.size.and(0xff).toByte())
-            bsb.append(responseNdefMessagePayload)
-            selectedFilePayload = bsb.toByteString()
+            selectedFilePayload = buildByteString {
+                appendUInt32(responseNdefMessagePayload.size)
+                appendArray(responseNdefMessagePayload)
+            }
             return ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
         } catch (error: Throwable) {
             raiseError(error.message!!, error)

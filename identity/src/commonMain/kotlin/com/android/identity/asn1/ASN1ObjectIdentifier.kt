@@ -1,31 +1,33 @@
 package com.android.identity.asn1
 
+import com.android.identity.util.appendUInt8
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlin.math.max
 
 class ASN1ObjectIdentifier(val oid: String): ASN1PrimitiveValue(tag = TAG_NUMBER) {
 
     override fun encode(builder: ByteStringBuilder) {
-        val bsb = ByteStringBuilder()
         val components = oid.split(".").map { it.toInt() }
         if (components.size < 2) {
             throw IllegalStateException("OID must have at least two components")
         }
         val firstOctet = components[0]*40 + components[1]
         // Guaranteed to fit in one byte as per spec
-        bsb.append(firstOctet.toByte())
-        for (component in components.subList(2, components.size)) {
-            val bitLength = Int.SIZE_BITS - component.countLeadingZeroBits()
-            val bytesNeeded = max((bitLength + 6) / 7, 1)
-            for (n in IntRange(0, bytesNeeded - 1).reversed()) {
-                var digit = component.shr(n * 7).and(0x7f)
-                if (n > 0) {
-                    digit = digit.or(0x80)
+        val componentsEncoded = buildByteString {
+            append(firstOctet.toByte())
+            for (component in components.subList(2, components.size)) {
+                val bitLength = Int.SIZE_BITS - component.countLeadingZeroBits()
+                val bytesNeeded = max((bitLength + 6) / 7, 1)
+                for (n in IntRange(0, bytesNeeded - 1).reversed()) {
+                    var digit = component.shr(n * 7).and(0x7f)
+                    if (n > 0) {
+                        digit = digit.or(0x80)
+                    }
+                    append(digit.toByte())
                 }
-                bsb.append(digit.toByte())
             }
-        }
-        val componentsEncoded = bsb.toByteString().toByteArray()
+        }.toByteArray()
         ASN1.appendUniversalTagEncodingLength(builder, TAG_NUMBER, enc, componentsEncoded.size)
         builder.append(componentsEncoded)
     }

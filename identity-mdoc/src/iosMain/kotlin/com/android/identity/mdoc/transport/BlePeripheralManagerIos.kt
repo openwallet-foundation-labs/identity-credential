@@ -8,6 +8,8 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendUInt32
 import com.android.identity.util.toByteArray
 import com.android.identity.util.toHex
 import com.android.identity.util.toKotlinError
@@ -27,6 +29,7 @@ import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.readByteArray
 import platform.CoreBluetooth.CBATTErrorSuccess
 import platform.CoreBluetooth.CBATTRequest
@@ -359,14 +362,9 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
                 peripheralManager.publishL2CAPChannelWithEncryption(false)
             }
             Logger.i(TAG, "Listening on PSM $_l2capPsm")
-            val bsb = ByteStringBuilder()
-            bsb.apply {
-                append((_l2capPsm!! shr 24).and(0xff).toByte())
-                append((_l2capPsm!! shr 16).and(0xff).toByte())
-                append((_l2capPsm!! shr 8).and(0xff).toByte())
-                append((_l2capPsm!! shr 0).and(0xff).toByte())
-            }
-            val encodedPsm = bsb.toByteString().toByteArray()
+            val encodedPsm = buildByteString {
+                appendUInt32(_l2capPsm!!)
+            }.toByteArray()
             l2capCharacteristic = CBMutableCharacteristic(
                 type = CBUUID.UUIDWithString(l2capCharacteristicUuid.toString()),
                 properties = CBCharacteristicPropertyRead,
@@ -500,16 +498,10 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
 
     private suspend fun l2capSendMessage(message: ByteArray) {
         Logger.i(TAG, "l2capSendMessage ${message.size} length")
-        val bsb = ByteStringBuilder()
-        val length = message.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(message)
-        val messageWithHeader = bsb.toByteString().toByteArray()
+        val messageWithHeader = buildByteString {
+            appendUInt32(message.size)
+            appendArray(message)
+        }.toByteArray()
 
         // NOTE: for some reason, iOS just fills in zeroes near the end if we send a
         //  really large message. Chunking it up in individual writes fixes this. We use

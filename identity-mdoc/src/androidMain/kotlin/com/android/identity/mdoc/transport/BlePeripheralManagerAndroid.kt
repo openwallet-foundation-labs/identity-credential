@@ -26,6 +26,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.appendUInt32
 import com.android.identity.util.toHex
 import com.android.identity.util.toJavaUuid
 import kotlinx.coroutines.CancellableContinuation
@@ -38,6 +39,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.min
@@ -192,8 +194,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
                 if (l2capServerSocket != null) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val psm = l2capServerSocket!!.psm.toUInt()
-                        val bsb = ByteStringBuilder()
-                        bsb.apply {
+                        buildByteString {
                             append((psm shr 24).and(0xffU).toByte())
                             append((psm shr 16).and(0xffU).toByte())
                             append((psm shr 8).and(0xffU).toByte())
@@ -611,17 +612,12 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
 
     private suspend fun l2capSendMessage(message: ByteArray) {
         Logger.i(TAG, "l2capSendMessage ${message.size} length")
-        val bsb = ByteStringBuilder()
-        val length = message.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(message)
         withContext(Dispatchers.IO) {
-            l2capSocket?.outputStream?.write(bsb.toByteString().toByteArray())
+            l2capSocket?.outputStream?.write(
+                buildByteString {
+                    appendUInt32(message.size)
+                    append(message)
+                }.toByteArray())
             l2capSocket?.outputStream?.flush()
         }
     }

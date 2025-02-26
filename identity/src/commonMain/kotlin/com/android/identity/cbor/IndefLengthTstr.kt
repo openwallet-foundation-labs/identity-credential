@@ -1,5 +1,6 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -22,7 +23,7 @@ data class IndefLengthTstr(val chunks: List<String>) : DataItem(MajorType.UNICOD
     }
 
     companion object {
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, IndefLengthTstr> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, IndefLengthTstr> {
             val majorTypeShifted = (MajorType.UNICODE_STRING.type shl 5)
             val marker = (majorTypeShifted + 31).toByte()
             check(encodedCbor[offset] == marker)

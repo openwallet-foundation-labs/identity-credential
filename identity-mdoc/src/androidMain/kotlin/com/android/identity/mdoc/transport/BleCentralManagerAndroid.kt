@@ -26,6 +26,8 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendUInt32
 import com.android.identity.util.toHex
 import com.android.identity.util.toJavaUuid
 import kotlinx.coroutines.CancellableContinuation
@@ -39,6 +41,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import java.io.InputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -713,17 +716,13 @@ internal class BleCentralManagerAndroid : BleCentralManager {
 
     private suspend fun l2capSendMessage(message: ByteArray) {
         Logger.i(TAG, "l2capSendMessage ${message.size} length")
-        val bsb = ByteStringBuilder()
-        val length = message.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(message)
         withContext(Dispatchers.IO) {
-            l2capSocket?.outputStream?.write(bsb.toByteString().toByteArray())
+            l2capSocket?.outputStream?.write(
+                buildByteString {
+                    appendUInt32(message.size)
+                    appendArray(message)
+                }.toByteArray()
+            )
             l2capSocket?.outputStream?.flush()
         }
     }
@@ -732,17 +731,17 @@ internal class BleCentralManagerAndroid : BleCentralManager {
 // Cannot call it readNBytes() b/c that's taken on API >= 33
 //
 internal fun InputStream.readNOctets(len: UInt): ByteArray {
-    val bsb = ByteStringBuilder()
-    var remaining = len.toInt()
-    while (remaining > 0) {
-        val buf = ByteArray(remaining)
-        val numBytesRead = this.read(buf, 0, remaining)
-        if (numBytesRead == -1) {
-            throw IllegalStateException("Failed reading from input stream")
+    return buildByteString {
+        var remaining = len.toInt()
+        while (remaining > 0) {
+            val buf = ByteArray(remaining)
+            val numBytesRead = this@readNOctets.read(buf, 0, remaining)
+            if (numBytesRead == -1) {
+                throw IllegalStateException("Failed reading from input stream")
+            }
+            append(buf, 0, numBytesRead)
+            remaining -= numBytesRead
         }
-        bsb.append(buf, 0, numBytesRead)
-        remaining -= numBytesRead
-    }
-    return bsb.toByteString().toByteArray()
+    }.toByteArray()
 }
 

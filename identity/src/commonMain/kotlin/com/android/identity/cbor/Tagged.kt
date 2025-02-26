@@ -1,5 +1,6 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -101,7 +102,7 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          */
         const val FULL_DATE_STRING = 1004L
 
-        internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Tagged> {
+        internal fun decode(encodedCbor: ByteString, offset: Int): Pair<Int, Tagged> {
             val (itemOffset, tagNumber) = Cbor.decodeLength(encodedCbor, offset)
             val (newItemOffset, taggedItem) = Cbor.decode(encodedCbor, itemOffset)
             return Pair(newItemOffset, Tagged(tagNumber.toLong(), taggedItem))

@@ -22,7 +22,9 @@ import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.android.identity.util.Logger
-import kotlinx.io.bytestring.ByteStringBuilder
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendUInt32
+import kotlinx.io.bytestring.buildByteString
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.BlockingQueue
@@ -151,16 +153,12 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
     }
 
     fun sendMessage(data: ByteArray) {
-        val bsb = ByteStringBuilder()
-        val length = data.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(data)
-        writerQueue.add(bsb.toByteString().toByteArray())
+        writerQueue.add(
+            buildByteString {
+                appendUInt32(data.size)
+                append(data)
+            }.toByteArray()
+        )
     }
 
     fun reportPeerConnected() {
@@ -202,17 +200,18 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
 // Cannot call it readNBytes() b/c that's taken on API >= 33
 //
 internal fun InputStream.readNOctets(len: UInt): ByteArray {
-    val bsb = ByteStringBuilder()
-    var remaining = len
-    while (remaining > 0U) {
-        val buf = ByteArray(remaining.toInt())
-        val numBytesRead = this.read(buf, 0, remaining.toInt())
-        if (numBytesRead == -1) {
-            throw IllegalStateException("Failed reading from input stream")
+    return buildByteString {
+        var remaining = len
+        while (remaining > 0U) {
+            val buf = ByteArray(remaining.toInt())
+            val numBytesRead = this@readNOctets.read(buf, 0, remaining.toInt())
+            if (numBytesRead == -1) {
+                throw IllegalStateException("Failed reading from input stream")
+            }
+            appendArray(buf)
+            remaining -= numBytesRead.toUInt()
         }
-        bsb.append(buf)
-        remaining -= numBytesRead.toUInt()
     }
-    return bsb.toByteString().toByteArray()
+    .toByteArray()
 }
 

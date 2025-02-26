@@ -8,6 +8,8 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.appendArray
+import com.android.identity.util.appendUInt32
 import com.android.identity.util.toByteArray
 import com.android.identity.util.toKotlinError
 import com.android.identity.util.toHex
@@ -28,6 +30,7 @@ import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.readByteArray
 import platform.CoreBluetooth.CBCentralManager
 import platform.CoreBluetooth.CBCentralManagerDelegateProtocol
@@ -643,16 +646,10 @@ internal class BleCentralManagerIos : BleCentralManager {
 
     private suspend fun l2capSendMessage(message: ByteArray) {
         Logger.i(TAG, "l2capSendMessage ${message.size} length")
-        val bsb = ByteStringBuilder()
-        val length = message.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(message)
-        val messageWithHeader = bsb.toByteString().toByteArray()
+        val messageWithHeader = buildByteString {
+            appendUInt32(message.size)
+            appendArray(message)
+        }.toByteArray()
 
         // NOTE: for some reason, iOS just fills in zeroes near the end if we send a
         //  really large message. Chunking it up in individual writes fixes this. We use
@@ -661,7 +658,7 @@ internal class BleCentralManagerIos : BleCentralManager {
         //l2capSink?.write(payload)
         //l2capSink?.emit()
 
-        for (offset in 0 until messageWithHeader.size step L2CAP_CHUNK_SIZE) {
+        for (offset in messageWithHeader.indices step L2CAP_CHUNK_SIZE) {
             val size = min(L2CAP_CHUNK_SIZE, messageWithHeader.size - offset)
             val chunk = messageWithHeader.slice(IntRange(offset, offset + size - 1)).toByteArray()
             withContext(Dispatchers.IO) {

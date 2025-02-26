@@ -2,6 +2,7 @@ package com.android.identity.util
 
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.append
 
 /** ByteStringBuffer extension functions to append commonly used types. */
 
@@ -192,7 +193,7 @@ fun ByteStringBuilder.appendArray(bArray:ByteArray) {
 }
 
 fun ByteStringBuilder.appendBstring(bString:ByteString) {
-    append(bString.toByteArray())
+    append(bString)
 }
 //endregion
 
