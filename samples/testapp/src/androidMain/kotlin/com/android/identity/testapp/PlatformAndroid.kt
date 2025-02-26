@@ -13,6 +13,7 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.jetbrains.compose.resources.getString
@@ -78,7 +79,9 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
 actual fun platformCreateKeySettings(
     challenge: ByteString,
     keyPurposes: Set<KeyPurpose>,
-    userAuthenticationRequired: Boolean
+    userAuthenticationRequired: Boolean,
+    validFrom: Instant,
+    validUntil: Instant
 ): CreateKeySettings {
     return AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
         .setKeyPurposes(keyPurposes)
@@ -87,6 +90,7 @@ actual fun platformCreateKeySettings(
             timeoutMillis = 0,
             userAuthenticationTypes = setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
         )
+        .setValidityPeriod(validFrom, validUntil)
         .build()
 }
 
