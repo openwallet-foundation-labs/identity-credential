@@ -16,7 +16,7 @@ class KeyBindingBody(val nonce: String,
         put("nonce", JsonPrimitive(nonce))
         put("aud", JsonPrimitive(audience))
         put("iat", JsonPrimitive(creationTime.epochSeconds))
-        put("_sd_hash", JsonPrimitive(sdHash))
+        put("sd_hash", JsonPrimitive(sdHash))
     }
 
     companion object {
@@ -25,7 +25,7 @@ class KeyBindingBody(val nonce: String,
             val nonce = jsonObj.getString("nonce")
             val audience = jsonObj.getString("aud")
             val creationTime = jsonObj.getLong("iat")
-            val sdHash = jsonObj.getString("_sd_hash")
+            val sdHash = jsonObj.getString("sd_hash")
             return KeyBindingBody(nonce, audience, Instant.fromEpochSeconds(creationTime), sdHash)
         }
     }

@@ -29,6 +29,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -130,8 +131,12 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
 actual fun platformCreateKeySettings(
     challenge: ByteString,
     keyPurposes: Set<KeyPurpose>,
-    userAuthenticationRequired: Boolean
+    userAuthenticationRequired: Boolean,
+    validFrom: Instant,
+    validUntil: Instant
 ): CreateKeySettings {
+    // Note: Since iOS Secure Enclave doesn't generate key attestations [validFrom] and [validUntil]
+    // is not used. Neither is [challenge].
     if (platformIsEmulator) {
         return SoftwareCreateKeySettings.Builder()
             .setKeyPurposes(keyPurposes)

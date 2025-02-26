@@ -5,6 +5,7 @@ import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.storage.Storage
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 
 enum class Platform(val displayName: String) {
@@ -32,10 +33,15 @@ expect fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea>
  * returned by [platformSecureAreaProvider].
  *
  * @param challenge the challenge to use in the generated attestation, if the [SecureArea] supports that.
+ * @param keyPurposes the key purposes
  * @param userAuthenticationRequired set to `true` to require user authentication, `false` otherwise.
+ * @param validFrom when the key should be valid from.
+ * @param validUntil when the key should be valid until.
  */
 expect fun platformCreateKeySettings(
     challenge: ByteString,
     keyPurposes: Set<KeyPurpose>,
-    userAuthenticationRequired: Boolean
+    userAuthenticationRequired: Boolean,
+    validFrom: Instant,
+    validUntil: Instant
 ): CreateKeySettings

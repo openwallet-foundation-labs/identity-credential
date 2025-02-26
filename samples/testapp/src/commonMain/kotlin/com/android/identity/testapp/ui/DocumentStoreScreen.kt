@@ -40,6 +40,7 @@ import com.android.identity.testapp.platformSecureAreaProvider
 import com.android.identity.testapp.platformStorage
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 
 private const val TAG = "DocumentStoreScreen"
@@ -83,7 +84,8 @@ fun DocumentStoreScreen(
                         provisionTestDocuments(
                             documentStore = documentStore,
                             secureArea = cloudSecureArea,
-                            secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired ->
+                            secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired,
+                                                                validFrom, validUntil ->
                                 CloudCreateKeySettings.Builder(challenge.toByteArray())
                                     .setKeyPurposes(keyPurposes)
                                     .setPassphraseRequired(true)
@@ -91,6 +93,7 @@ fun DocumentStoreScreen(
                                         userAuthenticationRequired,
                                         setOf(CloudUserAuthType.PASSCODE, CloudUserAuthType.BIOMETRIC)
                                     )
+                                    .setValidityPeriod(validFrom, validUntil)
                                     .build()
                             },
                             dsKey = dsKey,
@@ -145,7 +148,8 @@ fun DocumentStoreScreen(
                     provisionTestDocuments(
                         documentStore = documentStore,
                         secureArea = softwareSecureArea,
-                        secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired ->
+                        secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired,
+                                                            validFrom, validUntil ->
                             SoftwareCreateKeySettings.Builder()
                                 .setKeyPurposes(keyPurposes)
                                 .setPassphraseRequired(true, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
@@ -213,7 +217,9 @@ private suspend fun provisionTestDocuments(
     secureAreaCreateKeySettingsFunc: (
         challenge: ByteString,
         keyPurposes: Set<KeyPurpose>,
-        userAuthenticationRequired: Boolean
+        userAuthenticationRequired: Boolean,
+        validFrom: Instant,
+        validUntil: Instant
     ) -> CreateKeySettings,
     dsKey: EcPrivateKey,
     dsCert: X509Cert,

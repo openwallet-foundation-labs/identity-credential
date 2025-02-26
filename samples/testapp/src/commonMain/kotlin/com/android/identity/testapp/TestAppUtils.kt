@@ -54,6 +54,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 
 object TestAppUtils {
@@ -121,7 +122,9 @@ object TestAppUtils {
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
             keyPurposes: Set<KeyPurpose>,
-            userAuthenticationRequired: Boolean
+            userAuthenticationRequired: Boolean,
+            validFrom: Instant,
+            validUntil: Instant
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert
@@ -183,10 +186,12 @@ object TestAppUtils {
         documentStore: DocumentStore,
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
-                challenge: ByteString,
-                keyPurposes: Set<KeyPurpose>,
-                userAuthenticationRequired: Boolean
-            ) -> CreateKeySettings,
+            challenge: ByteString,
+            keyPurposes: Set<KeyPurpose>,
+            userAuthenticationRequired: Boolean,
+            validFrom: Instant,
+            validUntil: Instant
+        ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
         documentType: DocumentType,
@@ -211,7 +216,7 @@ object TestAppUtils {
         val now = Clock.System.now()
         val signedAt = now - 1.hours
         val validFrom =  now - 1.hours
-        val validUntil = now + 24.hours
+        val validUntil = now + 365.days
 
         if (documentType.mdocDocumentType != null) {
             addMdocCredentials(
@@ -248,7 +253,13 @@ object TestAppUtils {
         document: Document,
         documentType: DocumentType,
         secureArea: SecureArea,
-        secureAreaCreateKeySettingsFunc: (ByteString, Set<KeyPurpose>, Boolean) -> CreateKeySettings,
+        secureAreaCreateKeySettingsFunc: (
+            challenge: ByteString,
+            keyPurposes: Set<KeyPurpose>,
+            userAuthenticationRequired: Boolean,
+            validFrom: Instant,
+            validUntil: Instant
+        ) -> CreateKeySettings,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -289,7 +300,9 @@ object TestAppUtils {
                 createKeySettings = secureAreaCreateKeySettingsFunc(
                     "Challenge".encodeToByteString(),
                     setOf(KeyPurpose.SIGN),
-                    userAuthenticationRequired
+                    userAuthenticationRequired,
+                    validFrom,
+                    validUntil
                 )
             )
 
@@ -353,7 +366,13 @@ object TestAppUtils {
         document: Document,
         documentType: DocumentType,
         secureArea: SecureArea,
-        secureAreaCreateKeySettingsFunc: (ByteString, Set<KeyPurpose>, Boolean) -> CreateKeySettings,
+        secureAreaCreateKeySettingsFunc: (
+            challenge: ByteString,
+            keyPurposes: Set<KeyPurpose>,
+            userAuthenticationRequired: Boolean,
+            validFrom: Instant,
+            validUntil: Instant
+        ) -> CreateKeySettings,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -393,7 +412,9 @@ object TestAppUtils {
                 createKeySettings = secureAreaCreateKeySettingsFunc(
                     "Challenge".encodeToByteString(),
                     setOf(KeyPurpose.SIGN),
-                    userAuthenticationRequired
+                    userAuthenticationRequired,
+                    validFrom,
+                    validUntil
                 )
             )
 
