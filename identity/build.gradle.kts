@@ -1,5 +1,6 @@
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.get
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.konan.target.HostManager
@@ -8,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.compose.compiler)
     id("maven-publish")
 }
 
@@ -44,7 +47,11 @@ kotlin {
                     includeDirs.headerFilterOnly("$rootDir/identity/SwiftBridge/build/Release-$platform/include")
 
                     val interopTask = tasks[interopProcessingTaskName]
-                    interopTask.dependsOn(":identity:SwiftBridge:build${platform.capitalize()}")
+                    val capitalizedPlatform = platform.replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase()
+                        else it.toString()
+                    }
+                    interopTask.dependsOn(":identity:SwiftBridge:build${capitalizedPlatform}")
                 }
 
                 it.binaries.all {
@@ -79,12 +86,17 @@ kotlin {
 
                 // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
                 implementation(libs.nimbus.oauth2.oidc.sdk)
+                // TODO: Strictly speaking this should be moved to androidMain deps but it's here right
+                // now to make the build work.
+                implementation(compose.runtime)
             }
         }
 
         val commonTest by getting {
             kotlin.srcDir("build/generated/ksp/metadata/commonTest/kotlin")
             dependencies {
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
             }
@@ -114,8 +126,13 @@ kotlin {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
+                implementation(libs.volley)
                 implementation(libs.androidx.biometrics)
                 implementation(libs.androidx.lifecycle.viewmodel)
+
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(libs.androidx.material)
             }
         }
 
@@ -167,6 +184,7 @@ kotlin {
 
 dependencies {
     add("kspCommonMainMetadata", project(":processor"))
+    add("kspJvmTest", project(":processor"))
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
@@ -208,7 +226,11 @@ android {
         }
     }
 
+    buildFeatures {
+        compose = true
+    }
     dependencies {
+        debugImplementation(compose.uiTooling)
     }
 }
 

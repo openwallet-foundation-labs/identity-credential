@@ -1,11 +1,15 @@
+import org.gradle.kotlin.dsl.credentials
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
+    alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
-    id("kotlin-android")
 }
 
 val projectVersionCode: Int by rootProject.extra
@@ -19,6 +23,21 @@ buildConfig {
 
 kotlin {
     jvmToolchain(17)
+
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    sourceSets {
+        val androidMain by getting {
+            dependencies {
+                implementation(project(":multipaz"))
+            }
+        }
+    }
 }
 
 android {
@@ -76,6 +95,13 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+    }
+
+    lint {
+        // iaca_private_key.pem and ds_private_key.pem are used for testing.
+        // TODO: We should reenabe this warning in case other private keys are leaked,
+        // but we need a way to indicate that these two are expected.
+        disable += "PackagedPrivateKey"
     }
 }
 
