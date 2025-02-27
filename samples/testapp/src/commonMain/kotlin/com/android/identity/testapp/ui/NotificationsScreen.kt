@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import com.android.identity.datetime.formatLocalized
 import identitycredential.samples.testapp.generated.resources.Res
@@ -23,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
@@ -122,16 +122,18 @@ fun NotificationsScreen(
 
 private var notificationCount = 1
 private var lastNotificationId: NotificationId? = null
-private var lastNotficationIncludedImage = false
+private var lastNotificationIncludedImage = false
 
 @OptIn(ExperimentalResourceApi::class)
 private suspend fun postNotification(includeImage: Boolean) {
     val nowStr = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).formatLocalized()
     val image = if (includeImage) {
         decodeImage(
-            getDrawableResourceBytes(
-                getSystemResourceEnvironment(),
-                Res.drawable.driving_license_card_art
+            ByteString(
+                getDrawableResourceBytes(
+                    getSystemResourceEnvironment(),
+                    Res.drawable.driving_license_card_art
+                )
             )
         )
     } else {
@@ -145,7 +147,7 @@ private suspend fun postNotification(includeImage: Boolean) {
             image = image,
         )
     )
-    lastNotficationIncludedImage = includeImage
+    lastNotificationIncludedImage = includeImage
 }
 
 @OptIn(ExperimentalResourceApi::class)
@@ -158,11 +160,13 @@ private suspend fun updateNotification(
     }
 
     val nowStr = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).formatLocalized()
-    val image = if (lastNotficationIncludedImage) {
+    val image = if (lastNotificationIncludedImage) {
         decodeImage(
-            getDrawableResourceBytes(
-                getSystemResourceEnvironment(),
-                Res.drawable.driving_license_card_art
+            ByteString(
+                getDrawableResourceBytes(
+                    getSystemResourceEnvironment(),
+                    Res.drawable.driving_license_card_art
+                )
             )
         )
     } else {
@@ -179,7 +183,6 @@ private suspend fun updateNotification(
     )
 }
 
-@OptIn(ExperimentalResourceApi::class)
 private suspend fun cancelNotification(
     showToast: (String) -> Unit
 ) {
@@ -191,7 +194,6 @@ private suspend fun cancelNotification(
     lastNotificationId = null
 }
 
-@OptIn(ExperimentalResourceApi::class)
 private suspend fun cancelAllNotifications() {
     NotificationManager.Default.cancelAll()
     lastNotificationId = null

@@ -93,11 +93,11 @@ class WalletServerProvider(
         private val RECONNECT_DELAY_MAX = 30.seconds
 
         private val noopCipher = object : SimpleCipher {
-            override fun encrypt(plaintext: ByteArray): ByteArray {
+            override fun encrypt(plaintext: ByteString): ByteString {
                 return plaintext
             }
 
-            override fun decrypt(ciphertext: ByteArray): ByteArray {
+            override fun decrypt(ciphertext: ByteString): ByteString {
                 return ciphertext
             }
         }
@@ -299,7 +299,7 @@ class WalletServerProvider(
         var connectionData = if (connectionDataBytes == null) {
             null
         } else {
-            WalletServerConnectionData.fromCbor(connectionDataBytes.toByteArray())
+            WalletServerConnectionData.fromCbor(connectionDataBytes)
         }
         val authentication = walletServer.authenticate()
         val challenge = authentication.requestChallenge(connectionData?.clientId ?: "")
@@ -317,12 +317,12 @@ class WalletServerProvider(
             )
             if (connectionDataBytes == null) {
                 hostsTable.insert(
-                    data = ByteString(connectionData.toCbor()),
+                    data = connectionData.toCbor(),
                     key = baseUrl
                 )
             } else {
                 hostsTable.update(
-                    data = ByteString(connectionData.toCbor()),
+                    data = connectionData.toCbor(),
                     key = baseUrl
                 )
             }

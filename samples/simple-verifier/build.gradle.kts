@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.code.scanner)
     implementation(libs.androidx.material)
+    implementation(libs.kotlinx.io.core)
 
     implementation(libs.bouncy.castle.bcprov)
 

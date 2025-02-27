@@ -6,6 +6,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.fromBase64Url
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.certificateviewer.CertificateViewer
 
 /**
@@ -16,7 +17,7 @@ import org.multipaz.compose.certificateviewer.CertificateViewer
  */
 @Composable
 fun CertificateScreen(encodedCertificate: String) {
-    when (val dataItem = Cbor.decode(encodedCertificate.fromBase64Url())) {
+    when (val dataItem = Cbor.decode(ByteString(encodedCertificate.fromBase64Url()))) {
         is CborArray -> CertificateViewer(x509CertChain = X509CertChain.fromDataItem(dataItem))
         else -> CertificateViewer(x509Cert = X509Cert.fromDataItem(dataItem))
     }

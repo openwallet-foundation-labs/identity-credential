@@ -15,10 +15,10 @@
  */
 package com.android.identity.storage
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -32,15 +32,15 @@ class GenericStorageTest {
         storage.deleteAll()
         assertEquals(0, storage.enumerate().size.toLong())
         assertNull(storage["foo"])
-        val data = byteArrayOf(1, 2, 3)
+        val data = ByteString(byteArrayOf(1, 2, 3))
         storage.put("foo", data)
-        assertContentEquals(storage["foo"], data)
+        assertEquals(storage["foo"], data)
         assertEquals(1, storage.enumerate().size.toLong())
         assertEquals("foo", storage.enumerate().iterator().next())
         assertNull(storage["bar"])
-        val data2 = byteArrayOf(4, 5, 6)
+        val data2 = ByteString(byteArrayOf(4, 5, 6))
         storage.put("bar", data2)
-        assertContentEquals(storage["bar"], data2)
+        assertEquals(storage["bar"], data2)
         assertEquals(2, storage.enumerate().size.toLong())
         storage.delete("foo")
         assertNull(storage["foo"])
@@ -55,16 +55,16 @@ class GenericStorageTest {
     fun testPersistence() {
         SystemFileSystem.delete(Path("/tmp-ic-test"), false)
         val storageFile = Path("/tmp/ic-test")
-        var storage: StorageEngine = GenericStorageEngine(storageFile)
+        val storage: StorageEngine = GenericStorageEngine(storageFile)
         storage.deleteAll()
         assertEquals(0, storage.enumerate().size.toLong())
         assertNull(storage["foo"])
-        val data = byteArrayOf(1, 2, 3)
+        val data = ByteString(byteArrayOf(1, 2, 3))
         storage.put("foo", data)
-        assertContentEquals(storage["foo"], data)
+        assertEquals(storage["foo"], data)
 
         // Create a new StorageEngine instance and check that data is still there...
         val storage2 = GenericStorageEngine(storageFile)
-        assertContentEquals(data, storage2["foo"])
+        assertEquals(data, storage2["foo"])
     }
 }

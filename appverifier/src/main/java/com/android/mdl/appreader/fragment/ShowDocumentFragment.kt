@@ -32,6 +32,7 @@ import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
+import kotlinx.io.bytestring.ByteString
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
 
@@ -265,7 +266,7 @@ class ShowDocumentFragment : Fragment() {
                 sb.append("<h5>Namespace: $ns</h5>")
                 sb.append("<p>")
                 for (elem in doc.getIssuerEntryNames(ns)) {
-                    val value: ByteArray = doc.getIssuerEntryData(ns, elem)
+                    val value: ByteString = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
                     val mdocDataElement =
                         VerifierApp.documentTypeRepositoryInstance
@@ -275,12 +276,12 @@ class ShowDocumentFragment : Fragment() {
                     val name = mdocDataElement?.attribute?.displayName ?: elem
                     if (isPortraitElement(mdocDataElement)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
-                        portraitBytes = doc.getIssuerEntryByteString(ns, elem)
+                        portraitBytes = doc.getIssuerEntryByteString(ns, elem).toByteArray()
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "extra") {
                         valueStr = String.format("%d bytes extra data", value.size)
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
-                        signatureBytes = doc.getIssuerEntryByteString(ns, elem)
+                        signatureBytes = doc.getIssuerEntryByteString(ns, elem).toByteArray()
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "driving_privileges") {
                         valueStr = createDrivingPrivilegesHtml(value)
                     } else if (mdocDataElement != null) {
@@ -305,7 +306,7 @@ class ShowDocumentFragment : Fragment() {
         return sb.toString()
     }
 
-    private fun createDrivingPrivilegesHtml(encodedElementValue: ByteArray): String {
+    private fun createDrivingPrivilegesHtml(encodedElementValue: ByteString): String {
         val decodedValue = Cbor.decode(encodedElementValue).asArray
         val htmlDisplayValue = buildString {
             for (categoryMap in decodedValue) {

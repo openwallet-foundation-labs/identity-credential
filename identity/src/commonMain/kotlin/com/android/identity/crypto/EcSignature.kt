@@ -5,7 +5,9 @@ import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.ASN1Sequence
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
-import com.android.identity.util.toHex
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * An Elliptic Curve Cryptography signature.
@@ -14,10 +16,10 @@ import com.android.identity.util.toHex
  * @param s the S value.
  */
 data class EcSignature(
-    val r: ByteArray,
-    val s: ByteArray
+    val r: ByteString,
+    val s: ByteString
 ) {
-    fun toCoseEncoded() = r + s
+    fun toCoseEncoded() = buildByteString { append(r).also { append(s) } }
 
     fun toDataItem(): DataItem {
         return CborMap.builder().apply {
@@ -32,23 +34,23 @@ data class EcSignature(
 
         other as EcSignature
 
-        if (!r.contentEquals(other.r)) return false
-        if (!s.contentEquals(other.s)) return false
+        if (r != other.r) return false
+        if (s != other.s) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = r.contentHashCode()
-        result = 31 * result + s.contentHashCode()
+        var result = r.hashCode()
+        result = 31 * result + s.hashCode()
         return result
     }
 
     fun toDerEncoded(): ByteArray {
         // r and s are both encoded without a sign but ASN1Integer uses a sign. So we need
         // to insert zeroes as needed...
-        val rS = stripLeadingZeroes(r)
-        val sS = stripLeadingZeroes(s)
+        val rS = stripLeadingZeroes(r.toByteArray())
+        val sS = stripLeadingZeroes(s.toByteArray())
         val rP = if (rS[0].toInt().and(0x80) != 0) { byteArrayOf(0x00) + rS } else { rS }
         val sP = if (sS[0].toInt().and(0x80) != 0) { byteArrayOf(0x00) + sS } else { sS }
         val derEncoded = ASN1.encode(ASN1Sequence(listOf(
@@ -59,10 +61,10 @@ data class EcSignature(
     }
 
     companion object {
-        fun fromCoseEncoded(coseSignature: ByteArray): EcSignature {
+        fun fromCoseEncoded(coseSignature: ByteString): EcSignature {
             val len = coseSignature.size
-            val r = coseSignature.sliceArray(IntRange(0, len/2 - 1))
-            val s = coseSignature.sliceArray(IntRange(len/2, len - 1))
+            val r = coseSignature.substring(0, len/2)
+            val s = coseSignature.substring(len/2, len)
             return EcSignature(r, s)
         }
 
@@ -73,9 +75,9 @@ data class EcSignature(
 
         fun fromDerEncoded(
             keySizeBits: Int,
-            derEncodedSignature: ByteArray
+            derEncodedSignature: ByteString
         ): EcSignature {
-            val derSignature = ASN1.decode(derEncodedSignature) as ASN1Sequence
+            val derSignature = ASN1.decode(derEncodedSignature.toByteArray()) as ASN1Sequence
             val r = (derSignature.elements[0] as ASN1Integer).value
             val s = (derSignature.elements[1] as ASN1Integer).value
             // Need to make sure that each component is exactly as big as the key size.
@@ -88,7 +90,7 @@ data class EcSignature(
             sS.copyInto(sPadded, keySize - sS.size)
             check(rPadded.size == keySize)
             check(sPadded.size == keySize)
-            val sig = EcSignature(rPadded, sPadded)
+            val sig = EcSignature(ByteString(rPadded), ByteString(sPadded))
             return sig
         }
     }

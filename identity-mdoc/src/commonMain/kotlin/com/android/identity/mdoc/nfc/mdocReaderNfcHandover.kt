@@ -20,6 +20,7 @@ import com.android.identity.nfc.ServiceSelectRecord
 import com.android.identity.nfc.TnepStatusRecord
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.getUInt16
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
@@ -64,12 +65,12 @@ suspend fun mdocReaderNfcHandover(
             return null
         }
     }
-    tag.selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID)
+    tag.selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID.toUShort())
     // CC file is 15 bytes long
     val ccFile = tag.readBinary(0, 15)
     check(ccFile.size == 15) { "CC file is ${ccFile.size} bytes, expected 15" }
 
-    val ndefFileId = (ccFile[9].toInt() and 0xff) * 256 + (ccFile[10].toInt() and 0xff)
+    val ndefFileId = ccFile.getUInt16(9)
 
     tag.selectFile(ndefFileId)
 
@@ -183,13 +184,12 @@ private fun generateHandoverRequestMessage(
                 tnf = NdefRecord.Tnf.EXTERNAL_TYPE,
                 type = "iso.org:18013:readerengagement".encodeToByteString(),
                 id = "mdocreader".encodeToByteString(),
-                payload = ByteString(encodedReaderEngagement)
+                payload = encodedReaderEngagement
             )
         ) + carrierConfigurationRecords
     )
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 private fun parseHandoverSelectMessage(
     message: NdefMessage,
     uuid: UUID?,

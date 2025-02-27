@@ -1,5 +1,6 @@
 package com.android.identity.device
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -33,7 +34,7 @@ class DeviceAttestationIosTest {
         // Test data obtained by adding temporary server code to capture and save it.
 
         @OptIn(ExperimentalEncodingApi::class)
-        val ATTESTATION = Base64.decode("""
+        val ATTESTATION = ByteString(Base64.decode("""
             omRudWxsY0lvc2RibG9iWRUUo2NmbXRvYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bXSiY3g1Y4JZAzgwggM0
             MIICu6ADAgECAgYBlCntieAwCgYIKoZIzj0EAwIwTzEjMCEGA1UEAwwaQXBwbGUgQXBwIEF0dGVzdGF0
             aW9uIENBIDExEzARBgNVBAoMCkFwcGxlIEluYy4xEzARBgNVBAgMCkNhbGlmb3JuaWEwHhcNMjUwMTAy
@@ -125,15 +126,15 @@ class DeviceAttestationIosTest {
             HkdAAAAAAGFwcGF0dGVzdGRldmVsb3AAIKAC523dWej6wIQ3nAaEy1SXGcCiw4qW9FEPaiFAhnrwpQEC
             AyYgASFYINGI1/1uUPWtlYLSd9O2ieUS98DcVjJOQYMktV4gM8DbIlggEEty8/+z6hjNWj+RKtsA8UYG
             XvoKD3B/zIJ/q3Iwhzs=
-        """.trimIndent().replace("\n", ""))
+        """.trimIndent().replace("\n", "")))
 
         @OptIn(ExperimentalEncodingApi::class)
-        val ASSERTION = Base64.decode("""
+        val ASSERTION = ByteString(Base64.decode("""
             om1hc3NlcnRpb25EYXRhU6JkbnVsbGVOb25jZWVub25jZUBxcGxhdGZvcm1Bc3NlcnRpb25YjKJpc2ln
             bmF0dXJlWEYwRAIgGPzVfFZj1m0TtZ88nc5uruubHAWAZY++pzeMQkjuaCMCIBAp9rur04YQBT15VmkL
             jYgCXPMuY/7UJs5F0d5UQ5LpcWF1dGhlbnRpY2F0b3JEYXRhWCWadeTOzyUZ1iF5Se+ivX7f+QtNeQi/
             WecFafwD9Q8eR0AAAAAB
-        """.trimIndent().replace("\n", ""))
+        """.trimIndent().replace("\n", "")))
     }
 }
 

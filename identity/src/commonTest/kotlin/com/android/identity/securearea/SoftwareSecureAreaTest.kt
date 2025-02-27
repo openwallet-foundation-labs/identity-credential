@@ -23,8 +23,8 @@ import com.android.identity.securearea.software.SoftwareKeyUnlockData
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -51,7 +51,7 @@ class SoftwareSecureAreaTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", byteArrayOf(1, 2), null)
+            ks.sign("testKey", ByteString(byteArrayOf(1, 2)), null)
             fail()
         } catch (e: IllegalArgumentException) {
             // Expected path.
@@ -79,7 +79,7 @@ class SoftwareSecureAreaTest {
         assertNull(keyInfo.passphraseConstraints)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", dataToSign, null)
+            ks.sign("testKey", ByteString(dataToSign), null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -137,7 +137,7 @@ class SoftwareSecureAreaTest {
                 .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
                 .build()
         )
-        val dataToSign = byteArrayOf(4, 5, 6)
+        val dataToSign = ByteString(byteArrayOf(4, 5, 6))
         try {
             ks.sign("testKey", dataToSign, null)
             fail("Signing shouldn't work with a key w/o purpose SIGN")
@@ -167,7 +167,7 @@ class SoftwareSecureAreaTest {
         assertNull(keyInfo.passphraseConstraints)
 
         // First do the ECDH from the perspective of our side...
-        val ourSharedSecret: ByteArray
+        val ourSharedSecret: ByteString
         ourSharedSecret = try {
             ks.keyAgreement(
                 "testKey",
@@ -182,7 +182,7 @@ class SoftwareSecureAreaTest {
         val theirSharedSecret = Crypto.keyAgreement(otherKey, keyInfo.publicKey)
 
         // ... finally, check that both sides compute the same shared secret.
-        assertContentEquals(theirSharedSecret, ourSharedSecret)
+        assertEquals(ByteString(theirSharedSecret), ourSharedSecret)
     }
 
     @Test
@@ -204,7 +204,7 @@ class SoftwareSecureAreaTest {
         assertNull(keyInfo.passphraseConstraints)
 
         // First do the ECDH from the perspective of our side...
-        val ourSharedSecret: ByteArray
+        val ourSharedSecret: ByteString
         ourSharedSecret = try {
             ks.keyAgreement(
                 "testKey",
@@ -219,11 +219,11 @@ class SoftwareSecureAreaTest {
         val theirSharedSecret = Crypto.keyAgreement(otherKey, keyInfo.publicKey)
 
         // ... finally, check that both sides compute the same shared secret.
-        assertContentEquals(theirSharedSecret, ourSharedSecret)
+        assertEquals(ByteString(theirSharedSecret), ourSharedSecret)
 
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", dataToSign, null)
+            ks.sign("testKey", ByteString(dataToSign), null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -280,7 +280,7 @@ class SoftwareSecureAreaTest {
         assertTrue(keyInfo.isPassphraseProtected)
         assertNotNull(keyInfo.passphraseConstraints)
         assertEquals(keyInfo.passphraseConstraints, passphraseConstraints)
-        val dataToSign = byteArrayOf(4, 5, 6)
+        val dataToSign = ByteString(byteArrayOf(4, 5, 6))
         try {
             ks.sign(
                 "testKey",
@@ -319,7 +319,7 @@ class SoftwareSecureAreaTest {
         assertTrue(
             Crypto.checkSignature(
                 keyInfo.publicKey,
-                dataToSign,
+                dataToSign.toByteArray(),
                 Algorithm.ES256,
                 signature
             )
@@ -344,7 +344,7 @@ class SoftwareSecureAreaTest {
         val certChain = keyInfo.attestation
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", dataToSign, null)
+            ks.sign("testKey", ByteString(dataToSign), null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -416,7 +416,7 @@ class SoftwareSecureAreaTest {
                 assertEquals(signatureAlgorithm, keyInfo.signingAlgorithm)
                 val dataToSign = byteArrayOf(4, 5, 6)
                 val derSignature = try {
-                    ks.sign("testKey", dataToSign, null)
+                    ks.sign("testKey", ByteString(dataToSign), null)
                 } catch (e: KeyLockedException) {
                     throw AssertionError(e)
                 }
@@ -448,7 +448,7 @@ class SoftwareSecureAreaTest {
             EcCurve.X448
         ).intersect(Crypto.supportedCurves)
         for (ecCurve in curvesSupportingKeyAgreement) {
-            var otherKey = Crypto.createEcPrivateKey(ecCurve)
+            val otherKey = Crypto.createEcPrivateKey(ecCurve)
 
             ks.createKey(
                 "testKey",
@@ -465,7 +465,7 @@ class SoftwareSecureAreaTest {
             assertNull(keyInfo.passphraseConstraints)
 
             // First do the ECDH from the perspective of our side...
-            var ourSharedSecret: ByteArray
+            var ourSharedSecret: ByteString
             ourSharedSecret = try {
                 ks.keyAgreement(
                     "testKey",
@@ -477,10 +477,10 @@ class SoftwareSecureAreaTest {
             }
 
             // ...now do it from the perspective of the other side...
-            var theirSharedSecret = Crypto.keyAgreement(otherKey, keyInfo.publicKey)
+            val theirSharedSecret = Crypto.keyAgreement(otherKey, keyInfo.publicKey)
 
             // ... finally, check that both sides compute the same shared secret.
-            assertContentEquals(theirSharedSecret, ourSharedSecret)
+            assertEquals(ByteString(theirSharedSecret), ourSharedSecret)
         }
     }
 }

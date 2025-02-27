@@ -54,9 +54,9 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
                         Logger.i(TAG, "OnDeviceConnected via QR: qrEngagement=$qrEngagementHelper")
 
                         state = State.CONNECTED
-                        PresentationActivity.startPresentation(
-                            context, transport,
-                            qrEngagementHelper!!.handover, eDeviceKey!!,
+                        PresentationActivity.startPresentation(context, transport,
+                            qrEngagementHelper!!.handover,
+                            eDeviceKey!!,
                             qrEngagementHelper!!.deviceEngagement
                         )
 

@@ -1,5 +1,7 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * Array builder.
  */
@@ -30,7 +32,7 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      *
      * @param encodedCbor the bytes of the encoded CBOR.
      */
-    fun addTaggedEncodedCbor(encodedCbor: ByteArray) = apply {
+    fun addTaggedEncodedCbor(encodedCbor: ByteString) = apply {
         array.items.add(Tagged(Tagged.ENCODED_CBOR, Bstr(encodedCbor)))
     }
 
@@ -159,6 +161,16 @@ data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) 
      * @return the builder.
      */
     fun add(value: Float) = apply {
+        add(value.toDataItem())
+    }
+
+    /**
+     * Adds a new value.
+     *
+     * @param value the value to add.
+     * @return the builder.
+     */
+    fun add(value: ByteString) = apply {
         add(value.toDataItem())
     }
 

@@ -24,7 +24,7 @@ import com.android.identity.cbor.Simple
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.mdoc.origininfo.OriginInfoDomain
+import kotlinx.io.bytestring.ByteString
 
 object CredmanUtil {
     private const val ANDROID_HANDOVER_V1 = "AndroidHandoverv1"
@@ -46,7 +46,7 @@ object CredmanUtil {
     //
     fun generateCredentialDocument(cipherText: ByteArray,
                                    encapsulatedPublicKey: EcPublicKey
-    ): ByteArray {
+    ): ByteString {
         encapsulatedPublicKey as EcPublicKeyDoubleCoordinate
         return Cbor.encode(
             CborMap.builder()
@@ -60,11 +60,11 @@ object CredmanUtil {
         )
     }
 
-    fun parseCredentialDocument(encodedCredentialDocument: ByteArray
-    ): Pair<ByteArray, EcPublicKey> {
+    fun parseCredentialDocument(encodedCredentialDocument: ByteString
+    ): Pair<ByteString, EcPublicKey> {
         val map = Cbor.decode(encodedCredentialDocument)
         val version = map["version"].asTstr
-        if (!version.equals(ANDROID_CREDENTIAL_DOCUMENT_VERSION)) {
+        if (version != ANDROID_CREDENTIAL_DOCUMENT_VERSION) {
             throw IllegalArgumentException("Unexpected version $version")
         }
         val encryptionParameters = map["encryptionParameters"]
@@ -91,7 +91,7 @@ object CredmanUtil {
         nonce: ByteArray,
         packageName: String,
         requesterIdHash: ByteArray
-    ): ByteArray {
+    ): ByteString {
         return Cbor.encode(
             CborArray.builder()
                 .add(Simple.NULL) // DeviceEngagementBytes
@@ -126,7 +126,7 @@ object CredmanUtil {
         nonce: ByteArray,
         origin: String,
         requesterIdHash: ByteArray
-    ): ByteArray {
+    ): ByteString {
         // TODO: Instead of hand-rolling this, we should use OriginInfoDomain which
         //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
         //   calls for.

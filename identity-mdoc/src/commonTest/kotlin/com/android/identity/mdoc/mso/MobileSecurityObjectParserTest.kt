@@ -20,17 +20,20 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.fromHex
-import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class MobileSecurityObjectParserTest {
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun testMSOParserWithVectors() {
         val deviceResponse =
-            Cbor.decode(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex())
+            Cbor.decode(
+                ByteString(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex()))
         val documentDataItem = deviceResponse["documents"][0]
         val issuerSigned = documentDataItem["issuerSigned"]
         val issuerAuthDataItem = issuerSigned["issuerAuth"]
@@ -56,78 +59,78 @@ class MobileSecurityObjectParserTest {
         )
         assertEquals(
             "75167333b47b6c2bfb86eccc1f438cf57af055371ac55e1e359e20f254adcebf",
-            isoDigestIDs[0L]!!.toHex()
+            isoDigestIDs[0L]!!.toHexString()
         )
         assertEquals(
             "67e539d6139ebd131aef441b445645dd831b2b375b390ca5ef6279b205ed4571",
-            isoDigestIDs[1L]!!.toHex()
+            isoDigestIDs[1L]!!.toHexString()
         )
         assertEquals(
             "3394372ddb78053f36d5d869780e61eda313d44a392092ad8e0527a2fbfe55ae",
-            isoDigestIDs[2L]!!.toHex()
+            isoDigestIDs[2L]!!.toHexString()
         )
         assertEquals(
             "2e35ad3c4e514bb67b1a9db51ce74e4cb9b7146e41ac52dac9ce86b8613db555",
-            isoDigestIDs[3L]!!.toHex()
+            isoDigestIDs[3L]!!.toHexString()
         )
         assertEquals(
             "ea5c3304bb7c4a8dcb51c4c13b65264f845541341342093cca786e058fac2d59",
-            isoDigestIDs[4L]!!.toHex()
+            isoDigestIDs[4L]!!.toHexString()
         )
         assertEquals(
             "fae487f68b7a0e87a749774e56e9e1dc3a8ec7b77e490d21f0e1d3475661aa1d",
-            isoDigestIDs[5L]!!.toHex()
+            isoDigestIDs[5L]!!.toHexString()
         )
         assertEquals(
             "7d83e507ae77db815de4d803b88555d0511d894c897439f5774056416a1c7533",
-            isoDigestIDs[6L]!!.toHex()
+            isoDigestIDs[6L]!!.toHexString()
         )
         assertEquals(
             "f0549a145f1cf75cbeeffa881d4857dd438d627cf32174b1731c4c38e12ca936",
-            isoDigestIDs[7L]!!.toHex()
+            isoDigestIDs[7L]!!.toHexString()
         )
         assertEquals(
             "b68c8afcb2aaf7c581411d2877def155be2eb121a42bc9ba5b7312377e068f66",
-            isoDigestIDs[8L]!!.toHex()
+            isoDigestIDs[8L]!!.toHexString()
         )
         assertEquals(
             "0b3587d1dd0c2a07a35bfb120d99a0abfb5df56865bb7fa15cc8b56a66df6e0c",
-            isoDigestIDs[9L]!!.toHex()
+            isoDigestIDs[9L]!!.toHexString()
         )
         assertEquals(
             "c98a170cf36e11abb724e98a75a5343dfa2b6ed3df2ecfbb8ef2ee55dd41c881",
-            isoDigestIDs[10L]!!.toHex()
+            isoDigestIDs[10L]!!.toHexString()
         )
         assertEquals(
             "b57dd036782f7b14c6a30faaaae6ccd5054ce88bdfa51a016ba75eda1edea948",
-            isoDigestIDs[11L]!!.toHex()
+            isoDigestIDs[11L]!!.toHexString()
         )
         assertEquals(
             "651f8736b18480fe252a03224ea087b5d10ca5485146c67c74ac4ec3112d4c3a",
-            isoDigestIDs[12L]!!.toHex()
+            isoDigestIDs[12L]!!.toHexString()
         )
         val isoUSDigestIDs = mso.getDigestIDs("org.iso.18013.5.1.US")
         assertEquals(setOf(0L, 1L, 2L, 3L), isoUSDigestIDs!!.keys)
         assertEquals(
             "d80b83d25173c484c5640610ff1a31c949c1d934bf4cf7f18d5223b15dd4f21c",
-            isoUSDigestIDs[0L]!!.toHex()
+            isoUSDigestIDs[0L]!!.toHexString()
         )
         assertEquals(
             "4d80e1e2e4fb246d97895427ce7000bb59bb24c8cd003ecf94bf35bbd2917e34",
-            isoUSDigestIDs[1L]!!.toHex()
+            isoUSDigestIDs[1L]!!.toHexString()
         )
         assertEquals(
             "8b331f3b685bca372e85351a25c9484ab7afcdf0d2233105511f778d98c2f544",
-            isoUSDigestIDs[2L]!!.toHex()
+            isoUSDigestIDs[2L]!!.toHexString()
         )
         assertEquals(
             "c343af1bd1690715439161aba73702c474abf992b20c9fb55c36a336ebe01a87",
-            isoUSDigestIDs[3L]!!.toHex()
+            isoUSDigestIDs[3L]!!.toHexString()
         )
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex(),
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex()),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex())
         )
         assertEquals(deviceKeyFromVector, mso.deviceKey)
         assertNull(mso.deviceKeyAuthorizedNameSpaces)

@@ -1,7 +1,6 @@
 package com.android.identity.util
 
 import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
 
 /**
@@ -65,27 +64,27 @@ fun ByteArray.putInt64Le(offset: Int, value: Long, validRange: LongRange = Long.
     this[offset + 7] = ((value shr 56) and 0xFF).toByte()
 }
 
-fun ByteArray.putUInt8(offset: Int, value: UInt,
+fun ByteArray.putUint8(offset: Int, value: UInt,
                        validRange: UIntRange = UByte.MIN_VALUE.toUInt()..UByte.MAX_VALUE.toUInt()) {
     require(value in validRange) { "Value $value is out of UInt8 range" }
     this[offset] = value.toByte()
 }
 
-fun ByteArray.putUInt16(offset: Int, value: UInt,
+fun ByteArray.putUint16(offset: Int, value: UInt,
                         validRange: UIntRange = UShort.MIN_VALUE.toUInt()..UShort.MAX_VALUE.toUInt()) {
     require(value in validRange) { "Value $value is out of UInt16 range" }
     this[offset] = ((value shr 8) and 0xFFu).toByte()
     this[offset + 1] = (value and 0xFFu).toByte()
 }
 
-fun ByteArray.putUInt16Le(offset: Int, value: UInt,
+fun ByteArray.putUint16Le(offset: Int, value: UInt,
                           validRange: UIntRange = UShort.MIN_VALUE.toUInt()..UShort.MAX_VALUE.toUInt()) {
     require(value in validRange) { "Value $value is out of UInt16 range" }
     this[offset] = (value and 0xFFu).toByte()
     this[offset + 1] = ((value shr 8) and 0xFFu).toByte()
 }
 
-fun ByteArray.putUInt32(offset: Int, value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE) {
+fun ByteArray.putUint32(offset: Int, value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE) {
     require(value in validRange) { "Value $value is out of Int32 range" }
     this[offset] = ((value shr 24) and 0xFFu).toByte()
     this[offset + 1] = ((value shr 16) and 0xFFu).toByte()
@@ -93,7 +92,7 @@ fun ByteArray.putUInt32(offset: Int, value: UInt, validRange: UIntRange = UInt.M
     this[offset + 3] = (value and 0xFFu).toByte()
 }
 
-fun ByteArray.putUInt32Le(offset: Int, value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE) {
+fun ByteArray.putUint32Le(offset: Int, value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE) {
     require(value in validRange) { "Value $value is out of UInt32 range" }
     this[offset] = (value and 0xFFu).toByte()
     this[offset + 1] = ((value shr 8) and 0xFFu).toByte()
@@ -101,7 +100,7 @@ fun ByteArray.putUInt32Le(offset: Int, value: UInt, validRange: UIntRange = UInt
     this[offset + 3] = ((value shr 24) and 0xFFu).toByte()
 }
 
-fun ByteArray.putUInt64(offset: Int, value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE) {
+fun ByteArray.putUint64(offset: Int, value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE) {
     require(value in validRange) { "Value $value is out of Int64 range" }
     this[offset] = ((value shr 56) and 0xFFu).toByte()
     this[offset + 1] = ((value shr 48) and 0xFFu).toByte()
@@ -113,7 +112,7 @@ fun ByteArray.putUInt64(offset: Int, value: ULong, validRange: ULongRange = ULon
     this[offset + 7] = (value and 0xFFu).toByte()
 }
 
-fun ByteArray.putUInt64Le(offset: Int, value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE) {
+fun ByteArray.putUint64Le(offset: Int, value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE) {
     require(value in validRange) { "Value $value is out of UInt64 range" }
     this[offset] = (value and 0xFFu).toByte()
     this[offset + 1] = ((value shr 8) and 0xFFu).toByte()

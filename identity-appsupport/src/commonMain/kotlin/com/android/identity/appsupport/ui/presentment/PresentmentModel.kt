@@ -278,6 +278,7 @@ class PresentmentModel {
                         DismissType.CLICK -> {
                             mdocMechanism.transport.sendMessage(
                                 SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                                    .toByteArray()
                             )
                             mdocMechanism.transport.close()
                         }

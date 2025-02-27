@@ -77,7 +77,7 @@ private suspend fun getCloudSecureAreaTrustedRootKeys(
             ?: "cloud_secure_area/certificate.pem"
         val certificate = X509Cert.fromPem(resources.getStringResource(certificateName)!!)
         CloudSecureAreaTrustedRootKeys(
-            trustedKeys = setOf(ByteString(Cbor.encode(certificate.ecPublicKey.toDataItem())))
+            trustedKeys = setOf(Cbor.encode(certificate.ecPublicKey.toDataItem()))
         )
     }
 }

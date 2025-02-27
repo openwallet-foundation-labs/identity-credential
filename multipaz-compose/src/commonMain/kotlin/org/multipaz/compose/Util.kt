@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.io.bytestring.ByteString
 
 @Composable
 expect fun AppTheme(content: @Composable () -> Unit)
@@ -18,4 +19,4 @@ fun AppThemeDefault(content: @Composable () -> Unit) {
     )
 }
 
-expect fun decodeImage(encodedData: ByteArray): ImageBitmap
+expect fun decodeImage(encodedData: ByteString): ImageBitmap

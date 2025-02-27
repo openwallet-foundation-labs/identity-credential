@@ -21,6 +21,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.RawCbor
 import com.android.identity.cbor.Tagged
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for building `DeviceResponse` [CBOR](http://cbor.io/)
@@ -80,12 +81,12 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      */
     fun addDocument(
         docType: String,
-        encodedDeviceNamespaces: ByteArray,
-        encodedDeviceSignature: ByteArray?,
-        encodedDeviceMac: ByteArray?,
-        issuerNameSpaces: Map<String?, List<ByteArray?>>,
+        encodedDeviceNamespaces: ByteString,
+        encodedDeviceSignature: ByteString?,
+        encodedDeviceMac: ByteString?,
+        issuerNameSpaces: Map<String?, List<ByteString?>>,
         errors: Map<String?, Map<String?, Long?>>?,
-        encodedIssuerAuth: ByteArray
+        encodedIssuerAuth: ByteString
     ) = apply {
         val insOuter = CborMap.builder()
         for ((ns, encodedIssuerSignedItemBytesList) in issuerNameSpaces) {
@@ -102,7 +103,7 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
             .end()
             .build()
         val deviceAuthType: String
-        val deviceAuth: ByteArray?
+        val deviceAuth: ByteString?
         require(!(encodedDeviceSignature != null && encodedDeviceMac != null)) {
             "" +
                     "Cannot specify both Signature and MAC"
@@ -149,7 +150,7 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      * 18013-5 section 8.3.2.1.2.2.
      * @return the generator.
      */
-    fun addDocument(encodedDocument: ByteArray) = apply {
+    fun addDocument(encodedDocument: ByteString) = apply {
         mDocumentsBuilder.add(Cbor.decode(encodedDocument))
     }
 
@@ -163,7 +164,7 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      *
      * @return the bytes of `DeviceResponse` CBOR.
      */
-    fun generate(): ByteArray =
+    fun generate(): ByteString =
         CborMap.builder().run {
             put("version", "1.0")
             put("documents", mDocumentsBuilder.end().build())

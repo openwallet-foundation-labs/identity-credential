@@ -18,10 +18,14 @@ import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.util.readInt16
-import com.android.identity.util.readInt32
+import com.android.identity.util.getInt16
+import com.android.identity.util.getInt32
+import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.contentEquals
 import kotlinx.io.bytestring.encodeToByteString
 
 /** On iOS device attestation is the result of Apple's DeviceCheck API. */
@@ -29,7 +33,7 @@ data class DeviceAttestationIos(
     val blob: ByteString
 ): DeviceAttestation() {
     override fun validate(validationData: DeviceAttestationValidationData) {
-        val attestationDict = Cbor.decode(blob.toByteArray())
+        val attestationDict = Cbor.decode(blob)
         val format = attestationDict["fmt"]
         val attStmt = attestationDict["attStmt"]
         val authDataItem = attestationDict["authData"]
@@ -67,10 +71,10 @@ data class DeviceAttestationIos(
         // First, validate authData integrity, calculate the hash
         val clientHash =
             Crypto.digest(Algorithm.SHA256, validationData.attestationChallenge.toByteArray())
-        val composite = ByteStringBuilder().apply {
+        val composite = buildByteString {
             append(authData)
             append(clientHash)
-        }.toByteString()
+        }
         val authDataHash = Crypto.digest(Algorithm.SHA256, composite.toByteArray())
 
         // Extract the expected hash value from the leaf certificate
@@ -98,7 +102,7 @@ data class DeviceAttestationIos(
             // If app identifier is given (it must be given for production environment!),
             // validate it
             val appHash = Crypto.digest(Algorithm.SHA256, appIdentifier.encodeToByteArray())
-            if (auth.appIdHash != ByteString(appHash)) {
+            if (!auth.appIdHash.contentEquals(appHash)) {
                 throw DeviceAttestationException("Application id mismatch")
             }
         } else {
@@ -122,14 +126,14 @@ data class DeviceAttestationIos(
 
         val publicKeyBytes =
             (x5c.first().ecPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
-        val expectedKeyIdentifier = ByteString(Crypto.digest(Algorithm.SHA256, publicKeyBytes))
-        if (auth.keyIdentifier != expectedKeyIdentifier) {
+        val expectedKeyIdentifier = Crypto.digest(Algorithm.SHA256, publicKeyBytes.toByteArray())
+        if (!auth.keyIdentifier.contentEquals(expectedKeyIdentifier)) {
             throw DeviceAttestationException("Key identifier mismatch")
         }
     }
 
     override fun validateAssertion(assertion: DeviceAssertion) {
-        val assertionDict = Cbor.decode(assertion.platformAssertion.toByteArray())
+        val assertionDict = Cbor.decode(assertion.platformAssertion)
         val signatureItem = assertionDict["signature"]
         val authenticatorDataItem = assertionDict["authenticatorData"]
         if (signatureItem !is Bstr || authenticatorDataItem !is Bstr) {
@@ -139,15 +143,15 @@ data class DeviceAttestationIos(
 
         val signature = EcSignature.fromDerEncoded(EcCurve.P256.bitSize, signatureItem.value)
 
-        val attestationDict = Cbor.decode(blob.toByteArray())
+        val attestationDict = Cbor.decode(blob)
         val attestationData = attestationDict["authData"].asBstr
-        val credentialIdLength = attestationData.readInt16(CREDENTIAL_ID_LENGTH_OFFSET)
+        val credentialIdLength = attestationData.getInt16(CREDENTIAL_ID_LENGTH_OFFSET)
         val credentialPublicKeyOffset = CREDENTIAL_ID_OFFSET + credentialIdLength
         val (_, publicKeyItem) = Cbor.decode(attestationData, credentialPublicKeyOffset)
         val publicKey = CoseKey.fromDataItem(publicKeyItem).ecPublicKey
 
         val auth = parseAuthData(attestationData)
-        if (auth.appIdHash != ByteString(authData.sliceArray(0..31))) {
+        if (auth.appIdHash != authData.substring(0, 32)) {
             throw DeviceAssertionException("Application id mismatch")
         }
 
@@ -216,22 +220,20 @@ data class DeviceAttestationIos(
         private const val ATTESTED_CREDENTIAL_DATA_FLAG = 0x40
         private const val EXTENSION_FLAG = 0x80
 
-        private fun parseAuthData(authData: ByteArray): ParsedAuthData {
-            val rpIdHash = ByteString(authData.sliceArray(0..<RP_ID_HASH_SIZE))
-            val flags = authData[FLAGS_OFFSET].toInt() and 0xFF
-            val signCount = authData.readInt32(SIGN_COUNT_OFFSET)
+        private fun parseAuthData(authData: ByteString): ParsedAuthData {
+            val rpIdHash = authData.substring(0, RP_ID_HASH_SIZE)
+            val flags = authData.getUInt8(FLAGS_OFFSET).toInt()
+            val signCount = authData.getInt32(SIGN_COUNT_OFFSET)
             if (signCount != 0) {
                 throw DeviceAttestationException("Not a freshly-created attestation")
             }
             if (flags and ATTESTED_CREDENTIAL_DATA_FLAG == 0) {
                 throw DeviceAttestationException("Required authData part is missing in attestation")
             }
-            val aaguid = ByteString(authData.sliceArray(
-                AAGUID_OFFSET ..< AAGUID_OFFSET + AAGUID_SIZE))
-            val credentialIdLength = authData.readInt16(CREDENTIAL_ID_LENGTH_OFFSET)
+            val aaguid = authData.substring(AAGUID_OFFSET, AAGUID_OFFSET + AAGUID_SIZE)
+            val credentialIdLength = authData.getInt16(CREDENTIAL_ID_LENGTH_OFFSET)
             val credentialPublicKeyOffset = CREDENTIAL_ID_OFFSET + credentialIdLength
-            val credentialId = ByteString(authData.sliceArray(
-                CREDENTIAL_ID_OFFSET..<credentialPublicKeyOffset))
+            val credentialId = authData.substring(CREDENTIAL_ID_OFFSET, credentialPublicKeyOffset)
             val (nextOffset, publicKeyItem) = Cbor.decode(authData, credentialPublicKeyOffset)
             var offset = nextOffset
 

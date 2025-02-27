@@ -1,6 +1,5 @@
 package com.android.identity.storage.ephemeral
 
-import com.android.identity.cbor.Bstr
 import com.android.identity.storage.base.BaseStorage
 import com.android.identity.storage.base.BaseStorageTable
 import com.android.identity.storage.StorageTableSpec
@@ -26,10 +25,9 @@ class EphemeralStorage(clock: Clock = Clock.System) : BaseStorage(clock) {
         fun deserialize(data: ByteString, clock: Clock = Clock.System): EphemeralStorage {
             val storage = EphemeralStorage(clock)
             var offset = 0
-            val bytes = data.toByteArray()
             val tables = mutableListOf<EphemeralStorageTable>()
-            while (offset < bytes.size) {
-                val (newOffset, table) = EphemeralStorageTable.deserialize(storage, clock, bytes, offset)
+            while (offset < data.size) {
+                val (newOffset, table) = EphemeralStorageTable.deserialize(storage, clock, data, offset)
                 offset = newOffset
                 tables.add(table)
             }

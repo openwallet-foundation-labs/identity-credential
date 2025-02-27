@@ -21,6 +21,7 @@ import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import com.google.android.material.R
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
@@ -78,10 +79,11 @@ class CaCertificatesFragment : Fragment() {
             this.requireContext().contentResolver.openInputStream(uri).use { inputStream ->
                 if (inputStream != null) {
                     val certificate = parseCertificate(inputStream.readBytes())
-                    VerifierApp.trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
+                    VerifierApp.trustManagerInstance.addTrustPoint(
+                        TrustPoint(X509Cert(ByteString(certificate.encoded))))
                     VerifierApp.certificateStorageEngineInstance.put(
                         certificate.getSubjectKeyIdentifier(),
-                        certificate.encoded
+                        ByteString(certificate.encoded)
                     )
                 }
             }
@@ -103,10 +105,10 @@ class CaCertificatesFragment : Fragment() {
             }
             val text = clipboard.primaryClip?.getItemAt(0)?.text!!
             val certificate = parseCertificate(text.toString().toByteArray())
-            VerifierApp.trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
+            VerifierApp.trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(ByteString(certificate.encoded))))
             VerifierApp.certificateStorageEngineInstance.put(
                 certificate.getSubjectKeyIdentifier(),
-                certificate.encoded
+                ByteString(certificate.encoded)
             )
         } catch (e: Throwable) {
             showException(e)

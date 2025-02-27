@@ -1,5 +1,6 @@
 package com.android.identity.util
 
+import kotlinx.io.bytestring.ByteString
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.Base64.PaddingOption
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -10,6 +11,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  */
 @OptIn(ExperimentalEncodingApi::class)
 fun ByteArray.toBase64Url(): String = Base64.UrlSafe.encode(this).trimEnd('=')
+
+/**
+ * Extension to encode a [ByteString] to a URL-safe base64 encoding without padding
+ * as defined in Section 5 of RFC 4648.
+ */
+@OptIn(ExperimentalEncodingApi::class)
+fun ByteString.toBase64Url(): String = Base64.UrlSafe.encode(toByteArray()).trimEnd('=')
 
 /**
  * Extension to decode a [ByteArray] from a URL-safe base64 encoded string

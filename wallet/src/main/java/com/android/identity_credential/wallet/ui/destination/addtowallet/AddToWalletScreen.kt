@@ -59,7 +59,7 @@ private suspend fun getIssuerDisplayDatas(
         val options = BitmapFactory.Options()
         options.inMutable = true
         val bitmap = BitmapFactory.decodeByteArray(
-            configuration.issuingAuthorityLogo,
+            configuration.issuingAuthorityLogo.toByteArray(),
             0,
             configuration.issuingAuthorityLogo.size,
             options

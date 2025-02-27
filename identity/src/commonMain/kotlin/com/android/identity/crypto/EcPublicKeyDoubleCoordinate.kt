@@ -6,7 +6,9 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.toCoseLabel
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.buildByteString
 
 /**
@@ -17,8 +19,8 @@ import kotlinx.io.bytestring.buildByteString
  */
 data class EcPublicKeyDoubleCoordinate(
     override val curve: EcCurve,
-    val x: ByteArray,
-    val y: ByteArray
+    val x: ByteString,
+    val y: ByteString
 ) : EcPublicKey(curve) {
 
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey =
@@ -51,12 +53,12 @@ data class EcPublicKeyDoubleCoordinate(
      *
      * This is the reverse operation of [fromUncompressedPointEncoding].
      */
-    val asUncompressedPointEncoding: ByteArray
+    val asUncompressedPointEncoding: ByteString
         get() = buildByteString {
             append(0x04)
             append(x)
             append(y)
-        }.toByteArray()
+        }
 
     companion object {
         /**
@@ -72,14 +74,14 @@ data class EcPublicKeyDoubleCoordinate(
          */
         fun fromUncompressedPointEncoding(
             curve: EcCurve,
-            encoded: ByteArray): EcPublicKeyDoubleCoordinate {
+            encoded: ByteString): EcPublicKeyDoubleCoordinate {
             val coordinateSize = (curve.bitSize + 7)/8
             check(encoded.size == 1 + 2*coordinateSize)
             require(encoded[0].toInt() == 0x04)
             return EcPublicKeyDoubleCoordinate(
                 curve,
-                encoded.sliceArray(IntRange(1, 1 + coordinateSize - 1)),
-                encoded.sliceArray(IntRange(1 + coordinateSize, encoded.size - 1))
+                encoded.substring(1, 1 + coordinateSize),
+                encoded.substring(1 + coordinateSize, encoded.size)
             )
         }
     }
@@ -91,16 +93,16 @@ data class EcPublicKeyDoubleCoordinate(
         other as EcPublicKeyDoubleCoordinate
 
         if (curve != other.curve) return false
-        if (!x.contentEquals(other.x)) return false
-        if (!y.contentEquals(other.y)) return false
+        if (x != other.x) return false
+        if (y != other.y) return false
 
         return true
     }
 
     override fun hashCode(): Int {
         var result = curve.hashCode()
-        result = 31 * result + x.contentHashCode()
-        result = 31 * result + y.contentHashCode()
+        result = 31 * result + x.hashCode()
+        result = 31 * result + y.hashCode()
         return result
     }
 }

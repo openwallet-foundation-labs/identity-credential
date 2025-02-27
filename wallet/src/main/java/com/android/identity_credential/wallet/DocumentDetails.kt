@@ -19,6 +19,8 @@ import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -45,7 +47,7 @@ private fun visitNamespace(
     context: Context,
     mdocDocumentType: MdocDocumentType?,
     namespaceName: String,
-    listOfEncodedIssuerSignedItemBytes: List<ByteArray>,
+    listOfEncodedIssuerSignedItemBytes: List<ByteString>,
 ): VisitNamespaceResult {
     val keysAndValues: MutableMap<String, AttributeDisplayInfo> = LinkedHashMap()
     for (encodedIssuerSignedItemBytes in listOfEncodedIssuerSignedItemBytes) {
@@ -62,7 +64,7 @@ private fun visitNamespace(
 
         if (mdocDataElement != null) {
             attributeDisplayInfo = if (isImageAttribute(namespaceName, mdocDataElement.attribute)) {
-                Jpeg2kConverter.decodeByteArray(context, elementValue.asBstr)?.let {
+                Jpeg2kConverter.decodeByteArray(context, elementValue.asBstr.toByteArray())?.let {
                     AttributeDisplayInfoImage(elementName, it)
                 }
             } else if (namespaceName == DrivingLicense.MDL_NAMESPACE &&
@@ -123,7 +125,7 @@ private fun isImageAttribute(namespaceName: String, attribute: DocumentAttribute
  *
  * @param encodedElementValue The CBOR-encoded value of the driving_privileges element.
  */
-fun createDrivingPrivilegesHtml(encodedElementValue: ByteArray): String {
+fun createDrivingPrivilegesHtml(encodedElementValue: ByteString): String {
     val decodedValue = Cbor.decode(encodedElementValue).asArray
     val htmlDisplayValue = buildString {
         for (categoryMap in decodedValue) {
@@ -210,8 +212,7 @@ private fun Document.renderDocumentDetailsForSdJwt(
 
     val vcType = documentTypeRepository.getDocumentTypeForVc(credential.vct)?.vcDocumentType
 
-    val sdJwt = SdJwtVerifiableCredential.fromString(
-        String(credential.issuerProvidedData, Charsets.US_ASCII))
+    val sdJwt = SdJwtVerifiableCredential.fromString(credential.issuerProvidedData.decodeToString(Charsets.US_ASCII))
 
     for (disclosure in sdJwt.disclosures) {
         val content = if (disclosure.value is JsonPrimitive) {

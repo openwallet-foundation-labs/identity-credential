@@ -7,6 +7,7 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.nfc.NdefRecord
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Connection method for HTTP connections.
@@ -20,7 +21,7 @@ class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
 
     override fun toString(): String = "http:uri=$uri"
 
-    override fun toDeviceEngagement(): ByteArray {
+    override fun toDeviceEngagement(): ByteString {
         val builder = CborMap.builder()
         builder.put(OPTION_KEY_URI, uri)
         return encode(
@@ -47,7 +48,7 @@ class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
         const val METHOD_MAX_VERSION = 1L
         private const val OPTION_KEY_URI = 0L
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodHttp? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteString): ConnectionMethodHttp? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber

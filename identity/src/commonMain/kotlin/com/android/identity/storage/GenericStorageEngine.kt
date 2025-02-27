@@ -19,6 +19,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.util.Logger
 import kotlinx.io.buffered
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
@@ -45,11 +46,11 @@ open class GenericStorageEngine(
      * @param data the data to transform.
      * @param isLoading set to `true` when loading data, `false` when saving data.
      */
-    open fun transform(data: ByteArray, isLoading: Boolean): ByteArray {
+    open fun transform(data: ByteString, isLoading: Boolean): ByteString {
         return data
     }
 
-    private var data: MutableMap<String, ByteArray>? = null
+    private var data: MutableMap<String, ByteString>? = null
 
     private fun ensureData() {
         if (data != null) {
@@ -58,7 +59,7 @@ open class GenericStorageEngine(
         val path = Path(storageFile)
         try {
             val nonTransformedData = SystemFileSystem.source(path).buffered().readByteArray()
-            val encodedData = transform(nonTransformedData, true)
+            val encodedData = transform(ByteString(nonTransformedData), true)
             data = mutableMapOf()
             if (encodedData.size > 0) {
                 try {
@@ -90,18 +91,18 @@ open class GenericStorageEngine(
         val newPath = Path("$storageFile.tmp")
         val path = Path(storageFile)
         val sink = SystemFileSystem.sink(newPath).buffered()
-        sink.write(transformedData)
+        sink.write(transformedData.toByteArray())
         sink.flush()
         sink.close()
         SystemFileSystem.atomicMove(newPath, path)
     }
 
-    override fun get(key: String): ByteArray? {
+    override fun get(key: String): ByteString? {
         ensureData()
         return data!![key]
     }
 
-    override fun put(key: String, data: ByteArray) {
+    override fun put(key: String, data: ByteString) {
         ensureData()
         this.data!![key] = data
         saveData()

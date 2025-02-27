@@ -123,7 +123,7 @@ class RequestOptionsFragment() : Fragment() {
         val nonceEncoded = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
         val publicKeyBytes =
             (readerPublicKey as EcPublicKeyDoubleCoordinate).let {
-                byteArrayOf(0x04) + it.x + it.y
+                byteArrayOf(0x04) + it.x.toByteArray() + it.y.toByteArray()
             }
         val publicKeyBytesEncoded = Base64.encodeToString(
             publicKeyBytes,

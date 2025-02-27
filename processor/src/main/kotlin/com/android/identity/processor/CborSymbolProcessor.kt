@@ -35,6 +35,7 @@ class CborSymbolProcessor(
         const val CBOR_ARRAY_TYPE = "com.android.identity.cbor.CborArray"
         const val DATA_ITEM_CLASS = "com.android.identity.cbor.DataItem"
         const val BYTESTRING_TYPE = "kotlinx.io.bytestring.ByteString"
+        const val BYTESTRING_EMPTY = "kotlinx.io.bytestring.isEmpty"
         const val TO_DATAITEM_DATETIMESTRING_FUN = "com.android.identity.cbor.toDataItemDateTimeString"
         const val TO_DATAITEM_FULLDATE_FUN = "com.android.identity.cbor.toDataItemFullDate"
         const val TO_DATAITEM_FUN = "com.android.identity.cbor.toDataItem"
@@ -79,7 +80,7 @@ class CborSymbolProcessor(
                 "kotlin.ByteArray" -> return "$code.asBstr"
                 BYTESTRING_TYPE -> {
                     codeBuilder.importQualifiedName(BYTESTRING_TYPE)
-                    return "ByteString($code.asBstr)"
+                    return "$code.asBstr"
                 }
                 "kotlin.Long" -> return "$code.asNumber"
                 "kotlin.Int" -> return "$code.asNumber.toInt()"
@@ -212,11 +213,16 @@ class CborSymbolProcessor(
                 }
                 "kotlin.ByteArray" -> {
                     codeBuilder.importQualifiedName(BSTR_TYPE)
+                    codeBuilder.importQualifiedName(BYTESTRING_TYPE)
                     return "Bstr($code)"
                 }
                 BYTESTRING_TYPE -> {
                     codeBuilder.importQualifiedName(BSTR_TYPE)
-                    return "Bstr($code.toByteArray())"
+                    codeBuilder.importQualifiedName(BYTESTRING_TYPE)
+                    codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
+                    codeBuilder.importQualifiedName(BYTESTRING_EMPTY)
+
+                    return "Bstr($code)"
                 }
                 "kotlin.Int" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_FUN)
@@ -245,6 +251,7 @@ class CborSymbolProcessor(
                     codeBuilder.importQualifiedName(TSTR_TYPE)
                     "Tstr($code.name)"
                 } else {
+                    codeBuilder.importQualifiedName(DATA_ITEM_CLASS)
                     codeBuilder.importQualifiedName(qualifiedName)
                     whenSerializationGenerated(declaration) { serializableDeclaration ->
                         codeBuilder.importFunctionName("toDataItem",
@@ -446,6 +453,7 @@ class CborSymbolProcessor(
         val baseName = classDeclaration.simpleName.asString()
         with(CodeBuilder()) {
             importQualifiedName(DATA_ITEM_CLASS)
+            importQualifiedName(BYTESTRING_TYPE)
             importQualifiedName(classDeclaration)
 
             generateSerialization(this, classDeclaration)
@@ -618,15 +626,16 @@ class CborSymbolProcessor(
         codeBuilder: CodeBuilder, classDeclaration: KSClassDeclaration) {
 
         codeBuilder.importQualifiedName("com.android.identity.cbor.Cbor")
+        codeBuilder.importQualifiedName(BYTESTRING_TYPE)
         val baseName = classDeclaration.simpleName.asString()
 
-        codeBuilder.block("fun $baseName.toCbor(): ByteArray") {
+        codeBuilder.block("fun $baseName.toCbor(): ByteString") {
             line("return Cbor.encode(toDataItem())")
         }
         codeBuilder.emptyLine()
 
         if (hasCompanion(classDeclaration)) {
-            codeBuilder.block("fun $baseName.Companion.fromCbor(data: ByteArray): $baseName") {
+            codeBuilder.block("fun $baseName.Companion.fromCbor(data: ByteString): $baseName") {
                 line("return $baseName.fromDataItem(Cbor.decode(data))")
             }
             codeBuilder.emptyLine()

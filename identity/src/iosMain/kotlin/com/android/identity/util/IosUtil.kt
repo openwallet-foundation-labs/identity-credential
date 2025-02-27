@@ -6,6 +6,7 @@ import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.allocArrayOf
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.usePinned
+import kotlinx.io.bytestring.ByteString
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.create
@@ -31,6 +32,9 @@ fun NSData.toByteArray(): ByteArray {
 fun ByteArray.toNSData(): NSData = memScoped {
     NSData.create(bytes = allocArrayOf(this@toNSData), length = this@toNSData.size.toULong())
 }
+
+fun ByteString.toNSData(): NSData = toByteArray().toNSData()
+
 
 fun NSError.toKotlinError(): Error {
     return Error("NSError domain=${this.domain} code=${this.code}: ${this.localizedDescription}")

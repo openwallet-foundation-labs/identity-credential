@@ -38,7 +38,9 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.ui.UiModel
+import com.android.identity.util.appendString
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlin.random.Random
 
 /**
@@ -101,9 +103,9 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
                 val iv = Random.Default.nextBytes(12)
                 val encryptedPrivateKey = Crypto.encrypt(
                     Algorithm.A128GCM,
-                    secretKey,
+                    secretKey.toByteArray(),
                     iv,
-                    cleartextPrivateKey
+                    cleartextPrivateKey.toByteArray()
                 )
                 mapBuilder.apply {
                     put("encodedPublicKey", encodedPublicKey)
@@ -120,7 +122,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
             }
             val newAlias = storageTable.insert(
                 key = alias,
-                data = ByteString(Cbor.encode(mapBuilder.end().build()))
+                data = Cbor.encode(mapBuilder.end().build())
             )
             return getKeyInfo(newAlias)
         } catch (e: Exception) {
@@ -130,17 +132,16 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
     }
 
     private fun derivePrivateKeyEncryptionKey(
-        encodedPublicKey: ByteArray,
+        encodedPublicKey: ByteString,
         passphrase: String
-    ): ByteArray {
-        val info = "ICPrivateKeyEncryption1".encodeToByteArray()
-        return Crypto.hkdf(
-            Algorithm.HMAC_SHA256,
-            passphrase.encodeToByteArray(),
-            encodedPublicKey,
-            info,
-            32
-        )
+    ): ByteString {
+        return ByteString(Crypto.hkdf(
+            algorithm = Algorithm.HMAC_SHA256,
+            ikm = passphrase.encodeToByteArray(),
+            salt = encodedPublicKey.toByteArray(),
+            info = "ICPrivateKeyEncryption1".encodeToByteArray(),
+            size = 32
+        ))
     }
 
     override suspend fun deleteKey(alias: String) {
@@ -164,7 +165,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         }
         val data = storageTable.get(alias)
             ?: throw IllegalArgumentException("No key with given alias")
-        val map = Cbor.decode(data.toByteArray())
+        val map = Cbor.decode(data)
         val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val privateKeyCoseKey = if (passphraseRequired) {
@@ -172,15 +173,15 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
                 throw KeyLockedException("No passphrase provided")
             }
             val encodedPublicKey = map["encodedPublicKey"].asBstr
-            val encryptedPrivateKey = map["encryptedPrivateKey"].asBstr
-            val iv = map["encryptedPrivateKeyIv"].asBstr
+            val encryptedPrivateKey = map["encryptedPrivateKey"].asBstr.toByteArray()
+            val iv = map["encryptedPrivateKeyIv"].asBstr.toByteArray()
             val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, passphrase)
             val encodedPrivateKey = try {
-                Crypto.decrypt(Algorithm.A128GCM, secretKey, iv, encryptedPrivateKey)
+                Crypto.decrypt(Algorithm.A128GCM, secretKey.toByteArray(), iv, encryptedPrivateKey)
             } catch (e: Exception) {
                 throw KeyLockedException("Error decrypting private key - wrong passphrase?", e)
             }
-            Cbor.decode(encodedPrivateKey).asCoseKey
+            Cbor.decode(ByteString(encodedPrivateKey)).asCoseKey
         } else {
             map["privateKey"].asCoseKey
         }
@@ -254,7 +255,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
 
     override suspend fun sign(
         alias: String,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         return interactionHelper(
@@ -266,19 +267,19 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
 
     private suspend fun signNonInteractive(
         alias: String,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         val keyData = loadKey(alias, keyUnlockData)
         require(keyData.keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        return Crypto.sign(keyData.privateKey, keyData.signingAlgorithm, dataToSign)
+        return Crypto.sign(keyData.privateKey, keyData.signingAlgorithm, dataToSign.toByteArray())
     }
 
     override suspend fun keyAgreement(
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
+    ): ByteString {
         return interactionHelper(
             alias,
             keyUnlockData,
@@ -290,16 +291,16 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
+    ): ByteString {
         val keyData = loadKey(alias, keyUnlockData)
         require(keyData.keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
-        return Crypto.keyAgreement(keyData.privateKey, otherKey)
+        return ByteString(Crypto.keyAgreement(keyData.privateKey, otherKey))
     }
 
     override suspend fun getKeyInfo(alias: String): SoftwareKeyInfo {
         val data = storageTable.get(alias)
             ?: throw IllegalArgumentException("No key with the given alias '$alias'")
-        val map = Cbor.decode(data.toByteArray())
+        val map = Cbor.decode(data)
         val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val publicKey = map["publicKey"].asCoseKey.ecPublicKey

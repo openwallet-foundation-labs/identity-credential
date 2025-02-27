@@ -18,6 +18,7 @@ package com.android.identity.storage
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import kotlinx.io.bytestring.ByteString
 
 /**
  * An storage engine implementing by storing data in memory.
@@ -25,11 +26,11 @@ import com.android.identity.cbor.CborMap
  * Data is not persisted anywhere.
  */
 class EphemeralStorageEngine : StorageEngine {
-    private val data = mutableMapOf<String, ByteArray>()
+    private val data = mutableMapOf<String, ByteString>()
 
-    override fun get(key: String): ByteArray? = data[key]
+    override fun get(key: String): ByteString? = data[key]
 
-    override fun put(key: String, data: ByteArray) {
+    override fun put(key: String, data: ByteString) {
         this.data[key] = data
     }
 
@@ -43,7 +44,7 @@ class EphemeralStorageEngine : StorageEngine {
 
     override fun enumerate(): Collection<String> = data.keys
 
-    fun toCbor(): ByteArray {
+    fun toCbor(): ByteString {
         val builder = CborMap.builder()
         data.forEach() { (key, value) ->
             builder.put(key, Bstr(value))
@@ -52,7 +53,7 @@ class EphemeralStorageEngine : StorageEngine {
     }
 
     companion object {
-        fun fromCbor(encodedData: ByteArray): EphemeralStorageEngine {
+        fun fromCbor(encodedData: ByteString): EphemeralStorageEngine {
             val engine = EphemeralStorageEngine()
             val map = Cbor.decode(encodedData)
             map.asMap.forEach() { (keyDataItem, valueDataItem) ->

@@ -24,7 +24,11 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.mdoc.sessionencryption.SessionEncryption.Role
+import com.android.identity.util.appendUInt32
+import com.android.identity.util.emptyByteString
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * Helper class for implementing session encryption according to ISO/IEC 18013-5:2021
@@ -48,7 +52,7 @@ class SessionEncryption(
     val role: Role,
     private val eSelfKey: EcPrivateKey,
     remotePublicKey: EcPublicKey,
-    encodedSessionTranscript: ByteArray
+    encodedSessionTranscript: ByteString
 ) {
     /**
      * Enumeration for the two different sides of an encrypted channel.
@@ -70,7 +74,7 @@ class SessionEncryption(
 
     init {
         val sharedSecret = Crypto.keyAgreement(eSelfKey, remotePublicKey)
-        val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript)))
+        val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript))).toByteArray()
         val salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes)
         var info = "SKDevice".encodeToByteArray()
         val deviceSK = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
@@ -121,28 +125,29 @@ class SessionEncryption(
      * CBOR as described above.
      */
     fun encryptMessage(
-        messagePlaintext: ByteArray?,
+        messagePlaintext: ByteString?,
         statusCode: Long?
-    ): ByteArray {
+    ): ByteString {
         var messageCiphertext: ByteArray? = null
         if (messagePlaintext != null) {
             // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
-            val iv = ByteStringBuilder(12)
-            iv.append(0x00000000U)
-            val ivIdentifier = if (role == Role.MDOC) 0x00000001U else 0x00000000U
-            iv.append(ivIdentifier)
-            iv.append(encryptedCounter.toUInt())
+            val ivIdentifier = if (role == Role.MDOC) 0u else 1u
+            val iv = buildByteString {
+                appendUInt32(0u)
+                appendUInt32(ivIdentifier)
+                appendUInt32(encryptedCounter)
+            }
             messageCiphertext = Crypto.encrypt(
                 Algorithm.A128GCM,
                 skSelf,
-                iv.toByteString().toByteArray(),
-                messagePlaintext
+                iv.toByteArray(),
+                messagePlaintext.toByteArray()
             )
             encryptedCounter += 1
         }
         val mapBuilder = CborMap.builder()
         if (!sessionEstablishmentSent && sendSessionEstablishment && role == Role.MDOC_READER) {
-            var eReaderKey = eSelfKey.publicKey
+            val eReaderKey = eSelfKey.publicKey
             mapBuilder.putTaggedEncodedCbor(
                 "eReaderKey",
                 Cbor.encode(eReaderKey.toCoseKey().toDataItem())
@@ -174,32 +179,23 @@ class SessionEncryption(
      * @exception IllegalStateException if decryption fails.
      */
     fun decryptMessage(
-        messageData: ByteArray
-    ): Pair<ByteArray?, Long?> {
+        messageData: ByteString
+    ): Pair<ByteString?, Long?> {
         val map = Cbor.decode(messageData)
-        val dataDataItem = map.getOrNull("data")
-        var messageCiphertext: ByteArray? = null
-        if (dataDataItem != null) {
-            messageCiphertext = dataDataItem.asBstr
-        }
-        val statusDataItem = map.getOrNull("status")
-        val status = statusDataItem?.asNumber
-        var plainText: ByteArray? = null
-        if (messageCiphertext != null) {
-            val iv = ByteStringBuilder(12)
-            iv.append(0x00000000U)
-            val ivIdentifier = if (role == Role.MDOC) 0x00000000U else 0x00000001U
-            iv.append(ivIdentifier)
-            iv.append(decryptedCounter.toUInt())
-            plainText = Crypto.decrypt(
+        val plainText = ByteString( map.getOrNull("data")?.asBstr?.let { messageCiphertext ->
+            val ivIdentifier = if (role == Role.MDOC) 0 else 1
+            Crypto.decrypt(
                 Algorithm.A128GCM,
                 skRemote,
-                iv.toByteString().toByteArray(),
-                messageCiphertext
-            )
-            decryptedCounter += 1
-        }
-        return Pair(plainText, status)
+                buildByteString {
+                    appendUInt32(0u)
+                    appendUInt32(ivIdentifier)
+                    appendUInt32(decryptedCounter)
+                }.toByteArray(),
+                messageCiphertext.toByteArray()
+            ).also { decryptedCounter ++ }
+        } ?: byteArrayOf())
+        return Pair(plainText, map.getOrNull("status")?.asNumber)
     }
 
     /**
@@ -222,7 +218,7 @@ class SessionEncryption(
          * @param statusCode the intended status code, with value as defined in ISO/IEC 18013-5 Table 20.
          * @return a byte array with the encoded CBOR message
          */
-        fun encodeStatus(statusCode: Long): ByteArray =
+        fun encodeStatus(statusCode: Long): ByteString =
             CborMap.builder().run {
                 put("status", statusCode)
                 end()
@@ -232,21 +228,14 @@ class SessionEncryption(
         /**
          * Gets the ephemeral reader key in a `SessionEstablishment` message.
          *
-         * @param the bytes of a `SessionEstablishment` message.
+         * @param sessionEstablishmentMessage the bytes of a `SessionEstablishment` message.
          * @return the reader key, as a [EcPublicKey].
          */
-        fun getEReaderKey(sessionEstablishmentMessage: ByteArray): EcPublicKey {
+        fun getEReaderKey(sessionEstablishmentMessage: ByteString): EcPublicKey {
             val map = Cbor.decode(sessionEstablishmentMessage)
             val encodedEReaderKey = map["eReaderKey"].asTagged.asBstr
             return Cbor.decode(encodedEReaderKey).asCoseKey.ecPublicKey
         }
     }
-}
-
-private fun ByteStringBuilder.append(value: UInt) = apply {
-    append((value shr 24).and(0xffU).toByte())
-    append((value shr 16).and(0xffU).toByte())
-    append((value shr 8).and(0xffU).toByte())
-    append((value shr 0).and(0xffU).toByte())
 }
 

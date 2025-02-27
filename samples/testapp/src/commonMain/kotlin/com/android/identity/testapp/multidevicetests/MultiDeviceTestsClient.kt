@@ -10,6 +10,7 @@ import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import com.android.identity.util.appendUInt16
 import com.android.identity.util.fromBase64Url
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.openReadChannel
@@ -19,6 +20,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -51,11 +54,11 @@ class MultiDeviceTestsClient(
                 val usePrewarming = if (parts[4] == "true") true else false
                 val bleUseL2CAP = if (parts[5] == "true") true else false
                 val getPsmFromReader = if (parts[6] == "true") true else false
-                val encodedDeviceEngagement = parts[7].fromBase64Url()
+                val encodedDeviceEngagement = ByteString(parts[7].fromBase64Url())
                 val test = Test.valueOf(testName)
                 val options = MdocTransportOptions(bleUseL2CAP = bleUseL2CAP)
 
-                Logger.i(TAG, "====== STARTING ITERATION ${iterationNumber} OF ${numIterationsTotal} ======")
+                Logger.i(TAG, "====== STARTING ITERATION $iterationNumber OF $numIterationsTotal ======")
                 Logger.i(TAG, "Test: $test")
                 Logger.iHex(TAG, "DeviceEngagement from server", encodedDeviceEngagement)
                 val deviceEngagement =
@@ -86,21 +89,21 @@ class MultiDeviceTestsClient(
                         transport.open(eDeviceKey)
 
                         val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
-                        val encodedSessionTranscript = byteArrayOf(0x01, 0x02)
+                        val encodedSessionTranscript = buildByteString { appendUInt16(0x0102) }
                         val sessionEncryption = SessionEncryption(
                             role = SessionEncryption.Role.MDOC_READER,
                             eSelfKey = eReaderKey,
                             remotePublicKey = eDeviceKey,
                             encodedSessionTranscript = encodedSessionTranscript
                         )
-                        val deviceRequest = ByteArray(2 * 1024)
+                        val deviceRequest = ByteString(ByteArray(2 * 1024))
                         transport.sendMessage(
                             sessionEncryption.encryptMessage(
                                 messagePlaintext = deviceRequest,
                                 statusCode = null
-                            )
+                            ).toByteArray()
                         )
-                        val response = transport.waitForMessage()
+                        val response = ByteString(transport.waitForMessage())
                         val (deviceResponse, statusCode) = sessionEncryption.decryptMessage(response)
                         when (test) {
                             Test.MDOC_CENTRAL_CLIENT_MODE,
@@ -122,7 +125,7 @@ class MultiDeviceTestsClient(
                                     throw Error("Expected status to be unset got $statusCode")
                                 }
                                 val (deviceResponse, statusCode) = sessionEncryption.decryptMessage(
-                                    transport.waitForMessage()
+                                    ByteString(transport.waitForMessage())
                                 )
                                 if (deviceResponse != null ||
                                     statusCode != Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
@@ -150,6 +153,7 @@ class MultiDeviceTestsClient(
                                 // Expects reader to terminate via message
                                 transport.sendMessage(
                                     SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                                        .toByteArray()
                                 )
                             }
                             Test.MDOC_CENTRAL_CLIENT_MODE_READER_TERMINATION_BLE,

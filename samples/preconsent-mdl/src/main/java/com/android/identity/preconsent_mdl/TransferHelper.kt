@@ -39,6 +39,7 @@ import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 import java.io.File
 
 // TODO: b/393388152 - PreferenceManager is deprecated. Consider refactoring to AndroidX.
@@ -80,7 +81,7 @@ class TransferHelper private constructor(private val context: Context) {
     private var storage: Storage
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
     private var connectionMethod: ConnectionMethod? = null
-    private var deviceRequest: ByteArray? = null
+    private var deviceRequest: ByteString? = null
 
     private var timestampTap: Long = 0
     private var timestampEngagementSent: Long = 0
@@ -246,8 +247,8 @@ class TransferHelper private constructor(private val context: Context) {
     fun setConnected(
         eDeviceKey: EcPrivateKey,
         transport: DataTransport,
-        deviceEngagement: ByteArray,
-        handover: ByteArray
+        deviceEngagement: ByteString,
+        handover: ByteString
     ) {
         scanningDurationMillis = 0
         deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
@@ -257,7 +258,7 @@ class TransferHelper private constructor(private val context: Context) {
                     Logger.i(TAG, "onEReaderKeyReceived")
                 }
 
-                override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+                override fun onDeviceRequest(deviceRequestBytes: ByteString) {
                     Logger.i(TAG, "onDeviceRequest")
                     deviceRequest = deviceRequestBytes
                     timestampRequestAvailable = Clock.System.now().toEpochMilliseconds()
@@ -288,17 +289,17 @@ class TransferHelper private constructor(private val context: Context) {
         state.value = State.CONNECTED
     }
 
-    fun getDeviceRequest(): ByteArray {
+    fun getDeviceRequest(): ByteString {
         check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
         check(deviceRequest != null) { "No request available "}
-        return deviceRequest as ByteArray
+        return deviceRequest as ByteString
     }
 
-    fun getSessionTranscript(): ByteArray {
+    fun getSessionTranscript(): ByteString {
         return deviceRetrievalHelper!!.sessionTranscript
     }
 
-    fun sendResponse(deviceResponseBytes: ByteArray) {
+    fun sendResponse(deviceResponseBytes: ByteString) {
         check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
         deviceRetrievalHelper!!.sendDeviceResponse(
             deviceResponseBytes,

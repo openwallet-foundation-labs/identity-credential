@@ -306,39 +306,39 @@ class App private constructor() {
     }
 
     private suspend fun iacaInit() {
-        iacaKey = keyStorage.get("iacaKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
+        iacaKey = keyStorage.get("iacaKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it)) }
             ?: run {
-                keyStorage.insert("iacaKey", ByteString(Cbor.encode(bundledIacaKey.toDataItem())))
+                keyStorage.insert("iacaKey", Cbor.encode(bundledIacaKey.toDataItem()))
                 bundledIacaKey
             }
-        iacaCert = keyStorage.get("iacaCert")?.let { X509Cert.fromDataItem(Cbor.decode(it.toByteArray())) }
+        iacaCert = keyStorage.get("iacaCert")?.let { X509Cert.fromDataItem(Cbor.decode(it)) }
             ?: run {
-                keyStorage.insert("iacaCert", ByteString(Cbor.encode(bundledIacaCert.toDataItem())))
+                keyStorage.insert("iacaCert", Cbor.encode(bundledIacaCert.toDataItem()))
                 bundledIacaCert
             }
     }
 
     private suspend fun readerRootInit() {
-        readerRootKey = keyStorage.get("readerRootKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
+        readerRootKey = keyStorage.get("readerRootKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it)) }
             ?: run {
-                keyStorage.insert("readerRootKey", ByteString(Cbor.encode(bundledReaderRootKey.toDataItem())))
+                keyStorage.insert("readerRootKey", Cbor.encode(bundledReaderRootKey.toDataItem()))
                 bundledReaderRootKey
             }
-        readerRootCert = keyStorage.get("readerRootCert")?.let { X509Cert.fromDataItem(Cbor.decode(it.toByteArray())) }
+        readerRootCert = keyStorage.get("readerRootCert")?.let { X509Cert.fromDataItem(Cbor.decode(it)) }
             ?: run {
-                keyStorage.insert("readerRootCert", ByteString(Cbor.encode(bundledReaderRootCert.toDataItem())))
+                keyStorage.insert("readerRootCert", Cbor.encode(bundledReaderRootCert.toDataItem()))
                 bundledReaderRootCert
             }
     }
 
     private suspend fun readerInit() {
-        readerKey = keyStorage.get("readerKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
+        readerKey = keyStorage.get("readerKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it)) }
             ?: run {
                 val key = Crypto.createEcPrivateKey(EcCurve.P256)
-                keyStorage.insert("readerKey", ByteString(Cbor.encode(key.toDataItem())))
+                keyStorage.insert("readerKey", Cbor.encode(key.toDataItem()))
                 key
             }
-        readerCert = keyStorage.get("readerCert")?.let { X509Cert.fromDataItem(Cbor.decode(it.toByteArray())) }
+        readerCert = keyStorage.get("readerCert")?.let { X509Cert.fromDataItem(Cbor.decode(it)) }
             ?: run {
                 val cert = MdocUtil.generateReaderCertificate(
                     readerRootCert = readerRootCert,
@@ -349,7 +349,7 @@ class App private constructor() {
                     validFrom = certsValidFrom,
                     validUntil = certsValidUntil,
                 )
-                keyStorage.insert("readerCert", ByteString(Cbor.encode(cert.toDataItem())))
+                keyStorage.insert("readerCert", Cbor.encode(cert.toDataItem()))
                 cert
             }
     }

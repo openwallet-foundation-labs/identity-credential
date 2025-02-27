@@ -251,7 +251,7 @@ private fun DocumentSection(document: ConsentDocument) {
                 modifier = Modifier.padding(16.dp)
             ) {
                 val cartArtBitmap = remember {
-                    document.cardArt.decodeToImageBitmap()
+                    document.cardArt.toByteArray().decodeToImageBitmap()
                 }
                 Icon(
                     modifier = Modifier.size(50.dp),

@@ -1,6 +1,7 @@
 package com.android.identity.util
 
 import com.android.identity.crypto.Crypto
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -31,6 +32,14 @@ data class UUID(
             return UUID(
                 encodedUuid.sliceArray(IntRange(0, 7)).parseULong(), 
                 encodedUuid.sliceArray(IntRange(8, 15)).parseULong()
+            )
+        }
+
+        fun fromByteString(encodedUuid: ByteString): UUID {
+            check(encodedUuid.size == 16)
+            return UUID(
+                encodedUuid.getUInt64(0),
+                encodedUuid.getUInt64(8)
             )
         }
 

@@ -70,7 +70,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
 
         companion object {
             fun fromCbor(encodedCbor: ByteArray): KeyMaterial {
-                val array = Cbor.decode(encodedCbor).asArray
+                val array = Cbor.decode(ByteString(encodedCbor)).asArray
                 return KeyMaterial(
                     array[0].asBstr,
                     array[1].asCoseKey.ecPrivateKey,

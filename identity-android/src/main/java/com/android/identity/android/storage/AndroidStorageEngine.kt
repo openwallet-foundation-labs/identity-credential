@@ -22,9 +22,13 @@ import android.security.keystore.KeyProperties
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.storage.GenericStorageEngine
+import com.android.identity.util.appendString
+import com.android.identity.util.concat
 import com.android.identity.util.toHex
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.toHexString
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.KeyStore
@@ -51,23 +55,24 @@ class AndroidStorageEngine internal constructor(
 
     private val secretKey by lazy { ensureSecretKey() }
 
-    override fun transform(data: ByteArray, isLoading: Boolean): ByteArray {
+    @OptIn(ExperimentalStdlibApi::class)
+    override fun transform(data: ByteString, isLoading: Boolean): ByteString {
         if (isLoading) {
             check(data.size >= MAGIC_SIZE) { "File too short for magic" }
-            val magic = data.sliceArray(IntRange(0, MAGIC_SIZE - 1))
-            val dataAfterMagic = data.sliceArray(IntRange(MAGIC_SIZE, data.size - 1))
-            if (magic contentEquals MAGIC_ENCRYPTED) {
+            val magic = data.substring(0, MAGIC_SIZE)
+            val dataAfterMagic = data.substring(MAGIC_SIZE, data.size)
+            if (magic == MAGIC_ENCRYPTED) {
                 return decrypt(secretKey, dataAfterMagic)
-            } else if (magic contentEquals MAGIC_NOT_ENCRYPTED) {
+            } else if (magic == MAGIC_NOT_ENCRYPTED) {
                 return dataAfterMagic
             } else {
-                throw IllegalStateException("Unexpected magic ${magic.toHex()}")
+                throw IllegalStateException("Unexpected magic ${magic.toHexString()}")
             }
         } else {
             if (useEncryption) {
-                return MAGIC_ENCRYPTED + encrypt(secretKey, data)
+                return MAGIC_ENCRYPTED.concat(encrypt(secretKey, data))
             } else {
-                return MAGIC_NOT_ENCRYPTED + data
+                return MAGIC_NOT_ENCRYPTED.concat(data)
             }
         }
     }
@@ -142,8 +147,8 @@ class AndroidStorageEngine internal constructor(
         // decrypted or not.
         //
         private const val MAGIC_SIZE = 4
-        private val MAGIC_ENCRYPTED = "Ienc".encodeToByteArray()
-        private val MAGIC_NOT_ENCRYPTED = "Iraw".encodeToByteArray()
+        private val MAGIC_ENCRYPTED = buildByteString { appendString("Ienc") }
+        private val MAGIC_NOT_ENCRYPTED = buildByteString { appendString("Iraw") }
 
         private const val PREFIX = "IC_AndroidStorageEngine_"
 
@@ -153,24 +158,24 @@ class AndroidStorageEngine internal constructor(
         //
         //  StoredData = [+ bstr]
         //
-        const val CHUNKED_ENCRYPTED_MAX_CHUNK_SIZE = 16384
+        private const val CHUNKED_ENCRYPTED_MAX_CHUNK_SIZE = 16384
         private fun decrypt(
             secretKey: SecretKey,
-            encryptedData: ByteArray
-        ): ByteArray {
+            encryptedData: ByteString
+        ): ByteString {
             val array = Cbor.decode(encryptedData).asArray
             return try {
                 buildByteString {
                     for (item in array) {
                         val encryptedChunk = item.asBstr
-                        val iv = encryptedChunk.sliceArray(IntRange(0, 11))
-                        val cipherText = encryptedChunk.sliceArray(IntRange(12, encryptedChunk.size - 1))
+                        val iv = encryptedChunk.substring(0, 12)
+                        val cipherText = encryptedChunk.substring(12, encryptedChunk.size)
                         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
-                        val decryptedChunk = cipher.doFinal(cipherText)
+                        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv.toByteArray()))
+                        val decryptedChunk = cipher.doFinal(cipherText.toByteArray())
                         append(decryptedChunk)
                     }
-                }.toByteArray()
+                }
             } catch (e: Exception) {
                 throw IllegalStateException("Error decrypting chunk", e)
             }
@@ -178,8 +183,8 @@ class AndroidStorageEngine internal constructor(
 
         private fun encrypt(
             secretKey: SecretKey,
-            data: ByteArray
-        ): ByteArray {
+            data: ByteString
+        ): ByteString {
             val builder = CborArray.builder()
             return try {
                 var offset = 0
@@ -195,7 +200,7 @@ class AndroidStorageEngine internal constructor(
                     cipher.init(Cipher.ENCRYPT_MODE, secretKey)
                     // Produced cipherText includes auth tag
                     val cipherTextForChunk = cipher.doFinal(
-                        data,
+                        data.toByteArray(),
                         offset,
                         chunkSize
                     )

@@ -20,6 +20,7 @@ import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import com.android.identity.android.mdoc.transport.DataTransportNfc
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
 
 class NfcDataTransferHandler : HostApduService() {
 
@@ -34,7 +35,7 @@ class NfcDataTransferHandler : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         Logger.i(TAG, "processCommandApdu")
-        return DataTransportNfc.processCommandApdu(this, commandApdu)
+        return DataTransportNfc.processCommandApdu(this, ByteString(commandApdu))?.toByteArray()
     }
 
     override fun onDeactivated(reason: Int) {

@@ -1,7 +1,6 @@
 package com.android.identity.asn1
 
-import com.android.identity.util.appendUInt64
-import com.android.identity.util.appendUInt64Le
+import com.android.identity.util.appendInt64
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
@@ -50,7 +49,7 @@ class ASN1Integer(
 
 internal fun Long.derEncodeToByteArray(): ByteArray {
     val value = buildByteString {
-        appendUInt64(this@derEncodeToByteArray)
+        appendInt64(this@derEncodeToByteArray)
     }.toByteArray()
     if (this >= 0) {
         // Remove leading 0x00

@@ -15,8 +15,8 @@ class FlowPollHttp(private val transport: HttpTransport): FlowPoll {
             builder.add(flowRef.opaqueState)
         }
         val result = try {
-            val response = transport.post("_/poll", ByteString(Cbor.encode(builder.end().build())))
-            Cbor.decode(response.toByteArray()).asArray
+            val response = transport.post("_/poll", Cbor.encode(builder.end().build()))
+            Cbor.decode(response).asArray
         } catch(err: HttpTransport.TimeoutException) {
             throw FlowPoll.TimeoutException()
         }

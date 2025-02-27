@@ -33,6 +33,7 @@ import com.android.identity.mdoc.issuersigned.IssuerNamespaces
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for building `Document` [CBOR](http://cbor.io/)
@@ -46,11 +47,11 @@ import com.android.identity.securearea.SecureArea
 class DocumentGenerator
     (
     private val docType: String,
-    private val encodedIssuerAuth: ByteArray,
-    private val encodedSessionTranscript: ByteArray
+    private val encodedIssuerAuth: ByteString,
+    private val encodedSessionTranscript: ByteString
 ) {
     private var errors: Map<String, Map<String, Long>>? = null
-    private var issuerNamespaces: Map<String, List<ByteArray>>? = null
+    private var issuerNamespaces: Map<String, List<ByteString>>? = null
     private var deviceSigned: DataItem? = null
     private var issuerNamespacesNew: IssuerNamespaces? = null
 
@@ -76,7 +77,7 @@ class DocumentGenerator
      * @param issuerNameSpaces a map from name spaces into a list of `IssuerSignedItemBytes`.
      * @return the generator.
      */
-    fun setIssuerNamespaces(issuerNameSpaces: Map<String, List<ByteArray>>?) = apply {
+    fun setIssuerNamespaces(issuerNameSpaces: Map<String, List<ByteString>>?) = apply {
         issuerNamespaces = issuerNameSpaces
     }
 
@@ -114,8 +115,8 @@ class DocumentGenerator
                 .build()
         )
         val deviceAuthenticationBytes = Cbor.encode(Tagged(24, Bstr(deviceAuthentication)))
-        var encodedDeviceSignature: ByteArray? = null
-        var encodedDeviceMac: ByteArray? = null
+        var encodedDeviceSignature: ByteString? = null
+        var encodedDeviceMac: ByteString? = null
         if (!useMac) {
             encodedDeviceSignature = Cbor.encode(
                 Cose.coseSign1Sign(
@@ -133,15 +134,15 @@ class DocumentGenerator
                 keyAlias,
                 eReaderKey!!,
                 keyUnlockData
-            )
-            val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript)))
+            ).toByteArray()
+            val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript))).toByteArray()
             val salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes)
             val info = "EMacKey".encodeToByteArray()
             val eMacKey = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
             encodedDeviceMac = Cbor.encode(
                 Cose.coseMac0(
                     Algorithm.HMAC_SHA256,
-                    eMacKey,
+                    ByteString(eMacKey),
                     deviceAuthenticationBytes,
                     false,
                     mapOf(
@@ -243,7 +244,7 @@ class DocumentGenerator
      * @throws IllegalStateException if one of [.setDeviceNamespacesSignature]
      * or [.setDeviceNamespacesMac] hasn't been called on the generator.
      */
-    fun generate(): ByteArray {
+    fun generate(): ByteString {
         checkNotNull(deviceSigned) { "DeviceSigned isn't set" }
         val issuerSignedMapBuilder = CborMap.builder()
         if (issuerNamespacesNew != null) {

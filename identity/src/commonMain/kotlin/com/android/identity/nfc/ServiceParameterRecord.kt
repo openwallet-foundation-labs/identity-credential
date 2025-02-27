@@ -1,11 +1,10 @@
 package com.android.identity.nfc
 
 import com.android.identity.util.ByteDataReader
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt16
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt8
-import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
 import kotlin.math.pow
 import kotlin.time.Duration
@@ -43,7 +42,7 @@ data class ServiceParameterRecord(
             payload = buildByteString {
                 appendUInt8(tnepVersion)
                 appendUInt8(serviceNameUri.length)
-                appendArray(serviceNameUri.encodeToByteArray())
+                appendBarray(serviceNameUri.encodeToByteArray())
                 appendUInt8(tnepCommunicationMode)
                 appendUInt8(wtInt)
                 appendUInt8(nWait)

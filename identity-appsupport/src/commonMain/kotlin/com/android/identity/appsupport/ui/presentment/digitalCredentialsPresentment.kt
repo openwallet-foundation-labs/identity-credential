@@ -44,6 +44,8 @@ import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
@@ -132,7 +134,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
     val nonce = nonceBase64.fromBase64Url()
     val readerPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
         EcCurve.P256,
-        readerPublicKeyBase64.fromBase64Url()
+        ByteString(readerPublicKeyBase64.fromBase64Url())
     )
 
     val requestedData = mutableMapOf<String, MutableList<Pair<String, Boolean>>>()
@@ -177,7 +179,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
                 .add("AndroidHandoverv1")
                 .add(nonce)
                 .add(presentationMechanism.appId.encodeToByteArray())
-                .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding))
+                .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding.toByteArray()))
                 .end()
                 .end()
                 .build()
@@ -201,7 +203,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
                 .add("BrowserHandoverv1")
                 .add(nonce)
                 .add(originInfoBytes)
-                .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding))
+                .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding.toByteArray()))
                 .end()
                 .end()
                 .build()
@@ -239,8 +241,8 @@ private suspend fun digitalCredentialsPreviewProtocol(
     val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
         Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
         readerPublicKey,
-        deviceResponse,
-        encodedSessionTranscript
+        deviceResponse.toByteArray(),
+        encodedSessionTranscript.toByteArray()
     )
 
     val encodedCredentialDocument = Cbor.encode(
@@ -356,8 +358,8 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
             val jwks = clientMetadata["jwks"]!!.jsonObject
             val keys = jwks["keys"]!!.jsonArray
             val encKey = keys[0]
-            val x = encKey.jsonObject["x"]!!.jsonPrimitive.content.fromBase64Url()
-            val y = encKey.jsonObject["y"]!!.jsonPrimitive.content.fromBase64Url()
+            val x = ByteString(encKey.jsonObject["x"]!!.jsonPrimitive.content.fromBase64Url())
+            val y = ByteString(encKey.jsonObject["y"]!!.jsonPrimitive.content.fromBase64Url())
             EcPublicKeyDoubleCoordinate(EcCurve.P256, x, y)
         }
 
@@ -501,7 +503,7 @@ private suspend fun openID4VPMsoMdoc(
             .add(Simple.NULL) // EReaderKeyBytes
             .addArray()
             .add("OpenID4VPDCAPIHandover")
-            .add(Crypto.digest(Algorithm.SHA256, handoverInfo))
+            .add(Crypto.digest(Algorithm.SHA256, handoverInfo.toByteArray()))
             .end()
             .end()
             .build()
@@ -658,7 +660,7 @@ private suspend fun digitalCredentialsArfProtocol(
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
-    val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
+    val encryptionInfo = Cbor.decode(ByteString(encryptionInfoBase64.fromBase64Url()))
     if (encryptionInfo.asArray.get(0).asTstr != "ARFEncryptionv2") {
         throw IllegalArgumentException("Malformed EncryptionInfo")
     }
@@ -683,7 +685,7 @@ private suspend fun digitalCredentialsArfProtocol(
     //  is not clear if it's permissible to have multiple document requests.
     //
     val docRequest = DeviceRequestParser(
-        deviceRequestBase64.fromBase64Url(),
+        ByteString(deviceRequestBase64.fromBase64Url()),
         encodedSessionTranscript,
     ).parse().docRequests.first()
 
@@ -733,8 +735,8 @@ private suspend fun digitalCredentialsArfProtocol(
     val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
         Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
         readerPublicKey,
-        deviceResponse,
-        encodedSessionTranscript
+        deviceResponse.toByteArray(),
+        encodedSessionTranscript.toByteArray()
     )
     val encryptedResponse =
         Cbor.encode(
@@ -772,7 +774,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
-    val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
+    val encryptionInfo = Cbor.decode(ByteString(encryptionInfoBase64.fromBase64Url()))
     if (encryptionInfo.asArray.get(0).asTstr != "dcapi") {
         throw IllegalArgumentException("Malformed EncryptionInfo")
     }
@@ -791,7 +793,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
             .add(Simple.NULL) // EReaderKeyBytes
             .addArray() // BrowserHandover
             .add("dcapi")
-            .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
+            .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo).toByteArray()))
             .end()
             .end()
             .build()
@@ -801,7 +803,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     //  is not clear if it's permissible to have multiple document requests.
     //
     val docRequest = DeviceRequestParser(
-        deviceRequestBase64.fromBase64Url(),
+        ByteString(deviceRequestBase64.fromBase64Url()),
         encodedSessionTranscript,
     ).parse().docRequests.first()
 
@@ -851,8 +853,8 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
         Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
         recipientPublicKey,
-        deviceResponse,
-        encodedSessionTranscript
+        deviceResponse.toByteArray(),
+        encodedSessionTranscript.toByteArray()
     )
     val enc = (encapsulatedPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
     val encryptedResponse =
@@ -878,8 +880,8 @@ private suspend fun digitalCredentialsMdocApiProtocol(
 private suspend fun calcDocument(
     credential: MdocCredential,
     requestedClaims: List<MdocRequestedClaim>,
-    encodedSessionTranscript: ByteArray
-): ByteArray {
+    encodedSessionTranscript: ByteString
+): ByteString {
     val issuerSigned = Cbor.decode(credential.issuerProvidedData)
     val issuerNamespaces = IssuerNamespaces.fromDataItem(issuerSigned["nameSpaces"])
     val issuerAuthCoseSign1 = issuerSigned["issuerAuth"].asCoseSign1

@@ -118,7 +118,7 @@ private suspend fun updateCredman() {
     val client = IdentityCredentialManager.getClient(context)
     client.registerCredentials(
         RegistrationRequest(
-            credentials = credentialsCbor,
+            credentials = credentialsCbor.toByteArray(),
             matcher = loadMatcher(context),
             type = "com.credman.IdentityCredential",
             requestType = "",

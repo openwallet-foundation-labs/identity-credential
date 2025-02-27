@@ -19,6 +19,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -163,14 +164,14 @@ class ConnectionMethodTest {
             "foobar",
             42,
             43,
-            byteArrayOf(1, 2)
+            ByteString(byteArrayOf(1, 2))
         )
         val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodWifiAware?
         assertNotNull(decoded)
         assertEquals("foobar", decoded!!.passphraseInfoPassphrase)
         assertEquals(42, decoded.channelInfoChannelNumber)
         assertEquals(43, decoded.channelInfoOperatingClass)
-        assertContentEquals(byteArrayOf(1, 2), decoded.bandInfoSupportedBands)
+        assertEquals(ByteString(byteArrayOf(1, 2)), decoded.bandInfoSupportedBands)
         assertEquals(
             """[
   3,

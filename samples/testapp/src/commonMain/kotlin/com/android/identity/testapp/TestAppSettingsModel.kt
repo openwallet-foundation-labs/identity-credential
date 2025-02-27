@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.io.bytestring.ByteString
 import kotlin.Boolean
 
 /**
@@ -68,7 +67,7 @@ class TestAppSettingsModel private constructor(
         defaultValue: T
     ) {
         val value = settingsTable.get(key)?.let {
-            val dataItem = Cbor.decode(it.toByteArray())
+            val dataItem = Cbor.decode(it)
             when (T::class) {
                 Boolean::class -> { dataItem.asBoolean as T }
                 String::class -> { dataItem.asTstr as T }
@@ -106,9 +105,9 @@ class TestAppSettingsModel private constructor(
                         }
                     }
                     if (settingsTable.get(key) == null) {
-                        settingsTable.insert(key, ByteString(Cbor.encode(dataItem)))
+                        settingsTable.insert(key, Cbor.encode(dataItem))
                     } else {
-                        settingsTable.update(key, ByteString(Cbor.encode(dataItem)))
+                        settingsTable.update(key, Cbor.encode(dataItem))
                     }
                 }
             }

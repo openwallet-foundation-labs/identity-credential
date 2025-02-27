@@ -49,6 +49,7 @@ import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Requester
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 
 /**
@@ -102,14 +103,14 @@ object MdocUtil {
         data: NameSpacedData,
         randomProvider: Random,
         dataElementRandomSize: Int,
-        overrides: Map<String, Map<String, ByteArray>>?
-    ): Map<String, List<ByteArray>> {
+        overrides: Map<String, Map<String, ByteString>>?
+    ): Map<String, List<ByteString>> {
         // ISO 18013-5 section 9.1.2.5 Message digest function says that random must
         // be at least 16 bytes long.
         require(dataElementRandomSize >= 16) {
             "Random size must be at least 16 bytes"
         }
-        val ret = mutableMapOf<String, List<ByteArray>>()
+        val ret = mutableMapOf<String, List<ByteString>>()
 
         // Count number of data elements first.
         var numDataElements = 0
@@ -123,13 +124,13 @@ object MdocUtil {
         digestIds.shuffle(randomProvider)
         val digestIt: Iterator<Long> = digestIds.iterator()
         for (nsName in data.nameSpaceNames) {
-            var overridesByNameSpace: Map<String, ByteArray>? = null
+            var overridesByNameSpace: Map<String, ByteString>? = null
             if (overrides != null) {
                 overridesByNameSpace = overrides[nsName]
             }
-            val list: MutableList<ByteArray> = ArrayList()
+            val list: MutableList<ByteString> = ArrayList()
             for (elemName in data.getDataElementNames(nsName)) {
-                var encodedValue: ByteArray? = data.getDataElement(nsName, elemName)
+                var encodedValue: ByteString? = data.getDataElement(nsName, elemName)
                 val digestId = digestIt.next()
                 val random = ByteArray(dataElementRandomSize)
                 randomProvider.nextBytes(random)
@@ -169,12 +170,12 @@ object MdocUtil {
      * for every data element.
      */
     fun stripIssuerNameSpaces(
-        issuerNameSpaces: Map<String, List<ByteArray>>,
+        issuerNameSpaces: Map<String, List<ByteString>>,
         exceptions: Map<String, List<String>>?
-    ): Map<String, List<ByteArray>> {
-        val ret = mutableMapOf<String, List<ByteArray>>()
+    ): Map<String, List<ByteString>> {
+        val ret = mutableMapOf<String, List<ByteString>>()
         for (nameSpaceName in issuerNameSpaces.keys) {
-            val list: MutableList<ByteArray> = ArrayList()
+            val list: MutableList<ByteString> = ArrayList()
             var exceptionsForNamespace: List<String>? = null
             if (exceptions != null) {
                 exceptionsForNamespace = exceptions[nameSpaceName]
@@ -212,27 +213,27 @@ object MdocUtil {
      */
     fun calculateDigestsForNameSpace(
         nameSpaceName: String,
-        issuerNameSpaces: Map<String, List<ByteArray>>,
+        issuerNameSpaces: Map<String, List<ByteString>>,
         digestAlgorithm: Algorithm
-    ): Map<Long, ByteArray> {
+    ): Map<Long, ByteString> {
         val list = issuerNameSpaces[nameSpaceName]
             ?: throw IllegalArgumentException("No namespace $nameSpaceName in IssuerNameSpaces")
-        val ret: MutableMap<Long, ByteArray> = LinkedHashMap()
+        val ret: MutableMap<Long, ByteString> = LinkedHashMap()
         for (encodedIssuerSignedItemBytes in list) {
             val issuerSignedItem = Cbor.decode(encodedIssuerSignedItemBytes).asTaggedEncodedCbor
             val digestId = issuerSignedItem["digestID"].asNumber
-            ret[digestId] = Crypto.digest(digestAlgorithm, encodedIssuerSignedItemBytes)
+            ret[digestId] = ByteString(Crypto.digest(digestAlgorithm, encodedIssuerSignedItemBytes.toByteArray()))
         }
         return ret
     }
 
     // Note: this also unwraps the bstr tagging of the IssuerSignedItem!
     private fun calcIssuerSignedItemMap(
-        issuerNameSpaces: Map<String, List<ByteArray>>
-    ): Map<String, Map<String, ByteArray>> {
-        val ret: MutableMap<String, Map<String, ByteArray>> = LinkedHashMap()
+        issuerNameSpaces: Map<String, List<ByteString>>
+    ): Map<String, Map<String, ByteString>> {
+        val ret: MutableMap<String, Map<String, ByteString>> = LinkedHashMap()
         for (nameSpaceName in issuerNameSpaces.keys) {
-            val innerMap: MutableMap<String, ByteArray> = LinkedHashMap()
+            val innerMap: MutableMap<String, ByteString> = LinkedHashMap()
             for (encodedIssuerSignedItemBytes in issuerNameSpaces[nameSpaceName]!!) {
                 val issuerSignedItem = Cbor.decode(encodedIssuerSignedItemBytes).asTaggedEncodedCbor
                 val elementIdentifier = issuerSignedItem["elementIdentifier"].asTstr
@@ -244,10 +245,10 @@ object MdocUtil {
     }
 
     private fun lookupIssuerSignedMap(
-        issuerSignedMap: Map<String, Map<String, ByteArray>>,
+        issuerSignedMap: Map<String, Map<String, ByteString>>,
         nameSpaceName: String,
         dataElementName: String
-    ): ByteArray? {
+    ): ByteString? {
         val innerMap = issuerSignedMap[nameSpaceName] ?: return null
         return innerMap[dataElementName]
     }
@@ -275,9 +276,9 @@ object MdocUtil {
         request: DocumentRequest,
         documentData: NameSpacedData,
         staticAuthData: StaticAuthData
-    ): Map<String, MutableList<ByteArray>> {
+    ): Map<String, MutableList<ByteString>> {
         val issuerSignedItemMap = calcIssuerSignedItemMap(staticAuthData.digestIdMapping)
-        val issuerSignedData: MutableMap<String, MutableList<ByteArray>> = LinkedHashMap()
+        val issuerSignedData: MutableMap<String, MutableList<ByteString>> = LinkedHashMap()
         for ((nameSpaceName, dataElementName, _, doNotSend) in request.requestedDataElements) {
             if (doNotSend) {
                 continue
@@ -296,7 +297,7 @@ object MdocUtil {
                 Logger.w(TAG, "No IssuerSignedItem for $nameSpaceName $dataElementName")
                 continue
             }
-            var encodedIssuerSignedItem: ByteArray?
+            var encodedIssuerSignedItem: ByteString?
             encodedIssuerSignedItem =
                 if (hasElementValue(encodedIssuerSignedItemMaybeWithoutValue)) {
                     encodedIssuerSignedItemMaybeWithoutValue
@@ -334,9 +335,9 @@ object MdocUtil {
         dataElements: Map<String, List<String>>,
         documentData: NameSpacedData,
         staticAuthData: StaticAuthData
-    ): Map<String, MutableList<ByteArray>> {
+    ): Map<String, MutableList<ByteString>> {
         val issuerSignedItemMap = calcIssuerSignedItemMap(staticAuthData.digestIdMapping)
-        val issuerSignedData: MutableMap<String, MutableList<ByteArray>> = LinkedHashMap()
+        val issuerSignedData: MutableMap<String, MutableList<ByteString>> = LinkedHashMap()
         for ((nameSpaceName, dataElementsInNamespace) in dataElements) {
             for (dataElementName in dataElementsInNamespace) {
                 if (!documentData.hasDataElement(nameSpaceName, dataElementName)) {
@@ -353,8 +354,7 @@ object MdocUtil {
                     Logger.w(TAG, "No IssuerSignedItem for $nameSpaceName $dataElementName")
                     continue
                 }
-                var encodedIssuerSignedItem: ByteArray?
-                encodedIssuerSignedItem =
+                val encodedIssuerSignedItem: ByteString =
                     if (hasElementValue(encodedIssuerSignedItemMaybeWithoutValue)) {
                         encodedIssuerSignedItemMaybeWithoutValue
                     } else {
@@ -371,7 +371,7 @@ object MdocUtil {
         return issuerSignedData
     }
 
-    private fun hasElementValue(encodedIssuerSignedItem: ByteArray): Boolean =
+    private fun hasElementValue(encodedIssuerSignedItem: ByteString): Boolean =
         Cbor.decode(encodedIssuerSignedItem)["elementValue"] != Simple.NULL
 
     /**
@@ -394,15 +394,15 @@ object MdocUtil {
         return DocumentRequest(elements)
     }
 
-    private fun issuerSignedItemClearValue(encodedIssuerSignedItem: ByteArray): ByteArray {
+    private fun issuerSignedItemClearValue(encodedIssuerSignedItem: ByteString): ByteString {
         val encodedNullValue = Cbor.encode(Simple.NULL)
         return issuerSignedItemSetValue(encodedIssuerSignedItem, encodedNullValue)
     }
 
     private fun issuerSignedItemSetValue(
-        encodedIssuerSignedItem: ByteArray,
-        encodedElementValue: ByteArray
-    ): ByteArray {
+        encodedIssuerSignedItem: ByteString,
+        encodedElementValue: ByteString
+    ): ByteString {
         val map = Cbor.decode(encodedIssuerSignedItem)
         val builder = CborMap.builder()
         for (key in map.asMap.keys) {
@@ -707,7 +707,7 @@ fun DeviceRequestParser.DocRequest.toMdocRequest(
 }
 
 private fun calcAvailableDataElements(
-    issuerNameSpaces: Map<String, List<ByteArray>>
+    issuerNameSpaces: Map<String, List<ByteString>>
 ): Map<String, Set<String>> {
     val ret = mutableMapOf<String, Set<String>>()
     for (nameSpaceName in issuerNameSpaces.keys) {

@@ -107,6 +107,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -567,7 +569,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             sessionTranscript
         )
         val vpToken = if (credentialToUse is MdocCredential) {
-            Base64.UrlSafe.encode(vpTokenByteArray).replace("=", "")
+            Base64.UrlSafe.encode(vpTokenByteArray.toByteArray()).replace("=", "")
         } else {
             vpTokenByteArray.decodeToString()
         }
@@ -667,8 +669,8 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         credential: Credential,
         trustPoint: TrustPoint?,
         authorizationRequest: AuthorizationRequest,
-        sessionTranscript: ByteArray // TODO: Only needed for mdoc. Generate internally.
-    ): ByteArray {
+        sessionTranscript: ByteString // TODO: Only needed for mdoc. Generate internally.
+    ): ByteString {
         // TODO: Need to catch UserCanceledPromptException and tell the verifier that
         //  the user declined to share data.
         //
@@ -756,20 +758,20 @@ private fun createSessionTranscript(
     responseUri: String,
     authorizationRequestNonce: String,
     mdocGeneratedNonce: String
-): ByteArray {
+): ByteString {
     val clientIdToHash = Cbor.encode(CborArray.builder()
         .add(clientId)
         .add(mdocGeneratedNonce)
         .end()
         .build())
-    val clientIdHash = Crypto.digest(Algorithm.SHA256, clientIdToHash)
+    val clientIdHash = Crypto.digest(Algorithm.SHA256, clientIdToHash.toByteArray())
 
     val responseUriToHash = Cbor.encode(CborArray.builder()
         .add(responseUri)
         .add(mdocGeneratedNonce)
         .end()
         .build())
-    val responseUriHash = Crypto.digest(Algorithm.SHA256, responseUriToHash)
+    val responseUriHash = Crypto.digest(Algorithm.SHA256, responseUriToHash.toByteArray())
 
     val oid4vpHandover = CborArray.builder()
         .add(clientIdHash)
@@ -837,7 +839,7 @@ internal fun getAuthRequestFromJwt(signedJWT: SignedJWT, clientId: String?): Aut
     }
     Logger.i(TAG, "signedJWT client_id: ${signedJWT.jwtClaimsSet.getStringClaim("client_id")}")
     val x5c = signedJWT.header?.x509CertChain ?: throw IllegalArgumentException("Error retrieving cert chain")
-    val pubCertChain = x5c.mapNotNull { runCatching { X509Cert(it.decode()) }.getOrNull() }
+    val pubCertChain = x5c.mapNotNull { runCatching { X509Cert(ByteString(it.decode())) }.getOrNull() }
     if (pubCertChain.isEmpty()) {
         throw IllegalArgumentException("Invalid x5c")
     }
@@ -1094,7 +1096,7 @@ private fun filterConsentFields(
         return list
     }
     val sdJwt = SdJwtVerifiableCredential.fromString(
-        String(credential.issuerProvidedData, Charsets.US_ASCII))
+        credential.issuerProvidedData.decodeToString(Charsets.US_ASCII))
 
     val availableClaims = mutableSetOf<String>()
     for (disclosure in sdJwt.disclosures) {

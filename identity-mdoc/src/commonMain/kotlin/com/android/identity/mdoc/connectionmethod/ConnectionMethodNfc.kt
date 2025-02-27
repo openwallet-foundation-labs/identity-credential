@@ -34,7 +34,7 @@ class ConnectionMethodNfc(
     override fun toString(): String =
         "nfc:cmd_max_length=$commandDataFieldMaxLength:resp_max_length=$responseDataFieldMaxLength"
 
-    override fun toDeviceEngagement(): ByteArray {
+    override fun toDeviceEngagement(): ByteString {
         val builder = CborMap.builder()
         builder.put(OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH, commandDataFieldMaxLength)
         builder.put(OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH, responseDataFieldMaxLength)
@@ -126,7 +126,7 @@ class ConnectionMethodNfc(
         private const val OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH = 0L
         private const val OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH = 1L
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodNfc? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteString): ConnectionMethodNfc? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber

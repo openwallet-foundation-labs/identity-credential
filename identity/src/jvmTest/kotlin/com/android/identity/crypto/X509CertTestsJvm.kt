@@ -5,32 +5,20 @@ import com.android.identity.asn1.ASN1Boolean
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.ASN1OctetString
 import com.android.identity.asn1.ASN1Sequence
-import com.android.identity.asn1.ASN1Time
 import com.android.identity.util.toHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
-import org.bouncycastle.asn1.x500.X500Name as bcX500Name
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.jcajce.spec.XDHParameterSpec
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import java.io.File
-import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.security.Security
-import java.security.spec.ECGenParameterSpec
-import java.util.Date
-import java.util.concurrent.TimeUnit
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
@@ -81,8 +69,8 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
         assertEquals(cert.validityNotBefore, javaCert.notBefore.toInstant().toKotlinInstant())
         assertEquals(cert.validityNotAfter, javaCert.notAfter.toInstant().toKotlinInstant())
 
-        assertContentEquals(cert.tbsCertificate, javaCert.tbsCertificate)
-        assertContentEquals(cert.signature, javaCert.signature)
+        assertEquals(cert.tbsCertificate, ByteString(javaCert.tbsCertificate))
+        assertEquals(cert.signature, ByteString(javaCert.signature))
         assertEquals(cert.signatureAlgorithm, Algorithm.ES256)
 
         assertEquals(cert.criticalExtensionOIDs, javaCert.criticalExtensionOIDs)

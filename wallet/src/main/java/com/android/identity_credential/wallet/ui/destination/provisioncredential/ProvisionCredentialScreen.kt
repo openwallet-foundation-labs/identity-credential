@@ -81,6 +81,7 @@ import com.nimbusds.jwt.JWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import kotlinx.coroutines.launch
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.json.JSONObject
@@ -479,8 +480,8 @@ private suspend fun showPresentmentFlowAndGetDeviceResponse(
     requestedClaims: List<RequestedClaim>,
     trustPoint: TrustPoint?,
     websiteOrigin: String?,
-    encodedSessionTranscript: ByteArray,
-): ByteArray {
+    encodedSessionTranscript: ByteString,
+): ByteString {
     // TODO: Need to verify the "as cast" is indeed safe here (e.g. it will crash if VcClaim:Claim is on that list too).
     @Suppress("UNCHECKED_CAST")
     val request = MdocRequest(

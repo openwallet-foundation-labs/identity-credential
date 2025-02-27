@@ -19,9 +19,15 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.util.Logger
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt32
+import com.android.identity.util.appendUInt8
 import com.android.identity.util.fromHex
+import com.android.identity.util.getUInt8
 import com.android.identity.util.toHex
-import java.io.ByteArrayOutputStream
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 import java.io.IOException
 import java.util.Arrays
 
@@ -30,10 +36,10 @@ object NfcUtil {
 
     // Defined by NFC Forum
     @JvmField
-    val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = "D2760000850101".fromHex()
+    val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = ByteString("D2760000850101".fromHex())
 
     // Defined by 18013-5 Section 8.3.3.1.2 Data retrieval using near field communication (NFC)
-    val AID_FOR_MDL_DATA_TRANSFER = "A0000002480400".fromHex()
+    val AID_FOR_MDL_DATA_TRANSFER = ByteString("A0000002480400".fromHex())
 
     const val COMMAND_TYPE_OTHER = 0
     const val COMMAND_TYPE_SELECT_BY_AID = 1
@@ -46,109 +52,93 @@ object NfcUtil {
     const val NDEF_FILE_ID = 0xe104
 
     @JvmField
-    val STATUS_WORD_INSTRUCTION_NOT_SUPPORTED = byteArrayOf(0x6d.toByte(), 0x00.toByte())
+    val STATUS_WORD_INSTRUCTION_NOT_SUPPORTED = buildByteString { appendUInt16(0x6d00) }
     @JvmField
-    val STATUS_WORD_OK = byteArrayOf(0x90.toByte(), 0x00.toByte())
+    val STATUS_WORD_OK = buildByteString { appendUInt16(0x9000) }
     @JvmField
-    val STATUS_WORD_FILE_NOT_FOUND = byteArrayOf(0x6a.toByte(), 0x82.toByte())
+    val STATUS_WORD_FILE_NOT_FOUND = buildByteString { appendUInt16(0x6a82) }
     @JvmField
-    val STATUS_WORD_END_OF_FILE_REACHED = byteArrayOf(0x62.toByte(), 0x82.toByte())
+    val STATUS_WORD_END_OF_FILE_REACHED = buildByteString { appendUInt16(0x6282) }
     @JvmField
-    val STATUS_WORD_WRONG_PARAMETERS = byteArrayOf(0x6b.toByte(), 0x00.toByte())
+    val STATUS_WORD_WRONG_PARAMETERS = buildByteString { appendUInt16(0x6b00) }
     @JvmField
-    val STATUS_WORD_WRONG_LENGTH = byteArrayOf(0x67.toByte(), 0x00.toByte())
+    val STATUS_WORD_WRONG_LENGTH = buildByteString { appendUInt16(0x6700) }
 
     @JvmStatic
-    fun nfcGetCommandType(apdu: ByteArray): Int {
+    fun nfcGetCommandType(apdu: ByteString): Int {
         if (apdu.size < 3) {
             return COMMAND_TYPE_OTHER
         }
-        val ins = apdu[1].toInt() and 0xff
-        val p1 = apdu[2].toInt() and 0xff
-        if (ins == 0xA4) {
-            if (p1 == 0x04) {
-                return COMMAND_TYPE_SELECT_BY_AID
-            } else if (p1 == 0x00) {
-                return COMMAND_TYPE_SELECT_FILE
+        val ins = apdu.getUInt8(1).toInt()
+        val p1 = apdu.getUInt8(2).toInt()
+        return when (ins) {
+            0xA4 ->
+                when(p1) {
+                    0x04 -> COMMAND_TYPE_SELECT_BY_AID
+                    0x00 -> COMMAND_TYPE_SELECT_FILE
+                    else -> COMMAND_TYPE_OTHER
+                }
+            0xb0 -> COMMAND_TYPE_READ_BINARY
+            0xd6 -> COMMAND_TYPE_UPDATE_BINARY
+            0xc0 -> COMMAND_TYPE_RESPONSE
+            0xc3 -> COMMAND_TYPE_ENVELOPE
+            else -> COMMAND_TYPE_OTHER
+        }
+    }
+
+    @JvmStatic
+    fun createApduApplicationSelect(aid: ByteString): ByteString {
+        return buildByteString {
+            appendUInt32(0x00a40400)
+            appendUInt8(aid.size)
+            try {
+                append(aid)
+            } catch (e: IOException) {
+                throw IllegalStateException(e)
             }
-        } else if (ins == 0xb0) {
-            return COMMAND_TYPE_READ_BINARY
-        } else if (ins == 0xd6) {
-            return COMMAND_TYPE_UPDATE_BINARY
-        } else if (ins == 0xc0) {
-            return COMMAND_TYPE_RESPONSE
-        } else if (ins == 0xc3) {
-            return COMMAND_TYPE_ENVELOPE
         }
-        return COMMAND_TYPE_OTHER
     }
 
     @JvmStatic
-    fun createApduApplicationSelect(aid: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xa4)
-        baos.write(0x04)
-        baos.write(0x00)
-        baos.write(aid.size)
-        try {
-            baos.write(aid)
-        } catch (e: IOException) {
-            throw IllegalStateException(e)
+    fun createApduSelectFile(fileId: Int): ByteString {
+        return buildByteString {
+            appendUInt32(0x00a4000c02u)
+            appendUInt16(fileId)
         }
-        return baos.toByteArray()
     }
 
     @JvmStatic
-    fun createApduSelectFile(fileId: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xa4)
-        baos.write(0x00)
-        baos.write(0x0c)
-        baos.write(0x02)
-        baos.write(fileId / 0x100)
-        baos.write(fileId and 0xff)
-        return baos.toByteArray()
-    }
-
-    @JvmStatic
-    fun createApduReadBinary(offset: Int, length: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xb0)
-        baos.write(offset / 0x100)
-        baos.write(offset and 0xff)
+    fun createApduReadBinary(offset: Int, length: Int): ByteString {
         require(length != 0) { "Length cannot be zero" }
-        if (length < 0x100) {
-            baos.write(length and 0xff)
-        } else {
-            baos.write(0x00)
-            baos.write(length / 0x100)
-            baos.write(length and 0xff)
+        return buildByteString {
+            appendUInt16(0x00b0)
+            appendUInt16(offset)
+            if (length < 0x100) {
+                appendUInt8(length)
+            } else {
+                appendUInt8(0u)
+                appendUInt16(length)
+            }
         }
-        return baos.toByteArray()
     }
 
     @JvmStatic
-    fun createApduUpdateBinary(offset: Int, data: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xd6)
-        baos.write(offset / 0x100)
-        baos.write(offset and 0xff)
+    fun createApduUpdateBinary(offset: Int, data: ByteString): ByteString {
         require(data.size < 0x100) { "Data must be shorter than 0x100 bytes" }
-        baos.write(data.size and 0xff)
-        try {
-            baos.write(data)
-        } catch (e: IOException) {
-            throw IllegalArgumentException(e)
+        return buildByteString {
+            appendUInt16(0x00d6)
+            appendUInt16(offset)
+            appendUInt8(data.size)
+            try {
+                append(data)
+            } catch (e: IOException) {
+                throw IllegalArgumentException(e)
+            }
         }
-        return baos.toByteArray()
     }
 
     @JvmStatic
-    fun createNdefMessageServiceSelect(serviceName: String): ByteArray {
+    fun createNdefMessageServiceSelect(serviceName: String): ByteString {
         // [TNEP] section 4.2.2 Service Select Record
         val payload = " $serviceName".toByteArray()
         payload[0] = (payload.size - 1).toByte()
@@ -158,10 +148,10 @@ object NfcUtil {
             null,
             payload
         )
-        return NdefMessage(arrayOf(record)).toByteArray()
+        return ByteString(NdefMessage(arrayOf(record)).toByteArray())
     }
 
-    private fun calculateHandoverSelectPayload(alternativeCarrierRecords: List<ByteArray>): ByteArray {
+    private fun calculateHandoverSelectPayload(alternativeCarrierRecords: List<ByteString>): ByteString {
         // 6.2 Handover Select Record
         //
         // The NDEF payload of the Handover Select Record SHALL consist of a single octet that
@@ -173,8 +163,7 @@ object NfcUtil {
         // - One or more ALTERNATIVE_CARRIER_RECORDs followed by an ERROR_RECORD
         // - An ERROR_RECORD.
         //
-        val baos = ByteArrayOutputStream()
-        baos.write(0x15) // version 1.5
+
         val acRecords = arrayOfNulls<NdefRecord>(alternativeCarrierRecords.size)
         for (n in alternativeCarrierRecords.indices) {
             val acRecordPayload = alternativeCarrierRecords[n]
@@ -182,20 +171,22 @@ object NfcUtil {
                 0x01.toShort(),
                 "ac".toByteArray(),
                 null,
-                acRecordPayload
+                acRecordPayload.toByteArray()
             )
         }
         val hsMessage = NdefMessage(acRecords)
-        baos.write(hsMessage.toByteArray(), 0, hsMessage.byteArrayLength)
-        return baos.toByteArray()
+        return buildByteString {
+            appendUInt8(0x15u)
+            append(hsMessage.toByteArray())
+        }
     }
 
     private fun createNdefMessageHandoverSelectOrRequest(
         methods: List<ConnectionMethod>,
-        encodedDeviceEngagement: ByteArray?,
-        encodedReaderEngagement: ByteArray?,
+        encodedDeviceEngagement: ByteString?,
+        encodedReaderEngagement: ByteString?,
         options: DataTransportOptions?
-    ): ByteArray {
+    ): ByteString {
         var isHandoverSelect = false
         if (encodedDeviceEngagement != null) {
             isHandoverSelect = true
@@ -206,7 +197,7 @@ object NfcUtil {
             auxiliaryReferences.add("mdoc")
         }
         val carrierConfigurationRecords = mutableListOf<NdefRecord>()
-        val alternativeCarrierRecords = mutableListOf<ByteArray>()
+        val alternativeCarrierRecords = mutableListOf<ByteString>()
 
         // TODO: we actually need to do the reverse disambiguation to e.g. merge two
         //  disambiguated BLE ConnectionMethods...
@@ -217,10 +208,10 @@ object NfcUtil {
                     Logger.d(
                         TAG, "ConnectionMethod $cm: alternativeCarrierRecord: "
                                 + "${records.second.toHex()} carrierConfigurationRecord: "
-                                + "${records.first.payload.toHex()}"
+                                + records.first.payload.toHex()
                     )
                 }
-                alternativeCarrierRecords.add(records.second)
+                alternativeCarrierRecords.add(ByteString(records.second))
                 carrierConfigurationRecords.add(records.first)
             } else {
                 Logger.w(TAG, "Ignoring address $cm which yielded no NDEF records")
@@ -233,7 +224,7 @@ object NfcUtil {
                 NdefRecord.TNF_WELL_KNOWN,
                 (if (isHandoverSelect) "Hs" else "Hr").toByteArray(),
                 null,
-                hsPayload
+                hsPayload.toByteArray()
             )
         )
         if (encodedDeviceEngagement != null) {
@@ -242,7 +233,7 @@ object NfcUtil {
                     NdefRecord.TNF_EXTERNAL_TYPE,
                     "iso.org:18013:deviceengagement".toByteArray(),
                     "mdoc".toByteArray(),
-                    encodedDeviceEngagement
+                    encodedDeviceEngagement.toByteArray()
                 )
             )
         }
@@ -252,7 +243,7 @@ object NfcUtil {
                     NdefRecord.TNF_EXTERNAL_TYPE,
                     "iso.org:18013:readerengagement".toByteArray(),
                     "mdocreader".toByteArray(),
-                    encodedReaderEngagement
+                    encodedReaderEngagement.toByteArray()
                 )
             )
         }
@@ -260,15 +251,15 @@ object NfcUtil {
             records.add(record)
         }
         val message = NdefMessage(records.toTypedArray<NdefRecord>())
-        return message.toByteArray()
+        return ByteString(message.toByteArray())
     }
 
     @JvmStatic
     fun createNdefMessageHandoverSelect(
         methods: List<ConnectionMethod>,
-        encodedDeviceEngagement: ByteArray,
+        encodedDeviceEngagement: ByteString,
         options: DataTransportOptions?
-    ): ByteArray {
+    ): ByteString {
         return createNdefMessageHandoverSelectOrRequest(
             methods,
             encodedDeviceEngagement,
@@ -280,9 +271,9 @@ object NfcUtil {
     @JvmStatic
     fun createNdefMessageHandoverRequest(
         methods: List<ConnectionMethod>,
-        encodedReaderEngagement: ByteArray?,
+        encodedReaderEngagement: ByteString?,
         options: DataTransportOptions?
-    ): ByteArray {
+    ): ByteString {
         return createNdefMessageHandoverSelectOrRequest(
             methods,
             null,
@@ -293,26 +284,26 @@ object NfcUtil {
 
     // Returns null if parsing fails, otherwise returns a ParsedHandoverSelectMessage instance
     @JvmStatic
-    fun parseHandoverSelectMessage(ndefMessage: ByteArray): ParsedHandoverSelectMessage? {
-        var m = try {
-            NdefMessage(ndefMessage)
+    fun parseHandoverSelectMessage(ndefMessage: ByteString): ParsedHandoverSelectMessage? {
+        val m = try {
+            NdefMessage(ndefMessage.toByteArray())
         } catch (e: FormatException) {
             Logger.w(TAG, "Error parsing NDEF message", e)
             return null
         }
         var validHandoverSelectMessage = false
 
-        var phsmEncodedDeviceEngagement: ByteArray? = null
-        var phsmConnectionMethods = mutableListOf<ConnectionMethod>()
-        for (r in m!!.getRecords()) {
+        var phsmEncodedDeviceEngagement: ByteString? = null
+        val phsmConnectionMethods = mutableListOf<ConnectionMethod>()
+        for (r in m.records) {
             // Handle Handover Select record for NFC Forum Connection Handover specification
             // version 1.5 (encoded as 0x15 below).
             //
             if (r.tnf == NdefRecord.TNF_WELL_KNOWN
-                && Arrays.equals(r.type, "Hs".toByteArray())
+                && r.type.contentEquals("Hs".toByteArray())
             ) {
                 val payload = r.payload
-                if (payload.size >= 1 && payload[0].toInt() == 0x15) {
+                if (payload.isNotEmpty() && payload[0].toInt() == 0x15) {
                     // The NDEF payload of the Handover Select Record SHALL consist of a single
                     // octet that contains the MAJOR_VERSION and MINOR_VERSION numbers,
                     // optionally followed by an embedded NDEF message.
@@ -337,7 +328,7 @@ object NfcUtil {
                 )
                 && Arrays.equals(r.id, "mdoc".toByteArray())
             ) {
-                phsmEncodedDeviceEngagement = r.payload
+                phsmEncodedDeviceEngagement = ByteString(r.payload)
             }
 
             // This parses the various carrier specific NDEF records, see
@@ -363,25 +354,24 @@ object NfcUtil {
 
     @JvmStatic
     fun findServiceParameterRecordWithName(
-        ndefMessage: ByteArray,
+        ndefMessage: ByteString,
         serviceName: String
     ): NdefRecord? {
         val m = try {
-            NdefMessage(ndefMessage)
+            NdefMessage(ndefMessage.toByteArray())
         } catch (e: FormatException) {
             throw IllegalArgumentException("Error parsing NDEF message", e)
         }
         val snUtf8 = serviceName.toByteArray()
-        for (r in m.getRecords()) {
+        for (r in m.records) {
             val p = r.payload
-            if (r.tnf == NdefRecord.TNF_WELL_KNOWN && Arrays.equals(
-                    "Tp".toByteArray(
-                        
-                    ), r.type
-                ) && p != null && p.size > snUtf8.size + 2 && p[0].toInt() == 0x10 && p[1].toInt() == snUtf8.size && Arrays.equals(
-                    snUtf8,
-                    Arrays.copyOfRange(p, 2, 2 + snUtf8.size)
-                )
+            if (r.tnf == NdefRecord.TNF_WELL_KNOWN &&
+                "Tp".toByteArray().contentEquals(r.type) &&
+                p != null &&
+                p.size > snUtf8.size + 2 &&
+                p[0].toInt() == 0x10 &&
+                p[1].toInt() == snUtf8.size &&
+                snUtf8.contentEquals(Arrays.copyOfRange(p, 2, 2 + snUtf8.size))
             ) {
                 return r
             }
@@ -431,13 +421,13 @@ object NfcUtil {
     }
 
     @JvmStatic
-    fun findTnepStatusRecord(ndefMessage: ByteArray): NdefRecord? {
-        var m = try {
-            NdefMessage(ndefMessage)
+    fun findTnepStatusRecord(ndefMessage: ByteString): NdefRecord? {
+        val m = try {
+            NdefMessage(ndefMessage.toByteArray())
         } catch (e: FormatException) {
             throw IllegalArgumentException("Error parsing NDEF message", e)
         }
-        for (r in m.getRecords()) {
+        for (r in m.records) {
             if (r.tnf == NdefRecord.TNF_WELL_KNOWN
                 && Arrays.equals("Te".toByteArray(), r.type)
             ) {
@@ -447,7 +437,7 @@ object NfcUtil {
         return null
     }
 
-    private fun getConnectionMethodFromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethod? {
+    private fun getConnectionMethodFromDeviceEngagement(encodedDeviceRetrievalMethod: ByteString): ConnectionMethod? {
         val items = Cbor.decode(encodedDeviceRetrievalMethod)
         val type = items[0].asNumber
         when (type) {
@@ -514,7 +504,7 @@ object NfcUtil {
                 "application/vnd.android.ic.dmr".toByteArray()
             )
         ) {
-            val deviceRetrievalMethod = record.payload
+            val deviceRetrievalMethod = ByteString(record.payload)
             return getConnectionMethodFromDeviceEngagement(deviceRetrievalMethod)
         }
         Logger.d(TAG, "Unknown NDEF record $record")
@@ -579,7 +569,7 @@ object NfcUtil {
 
     data class ParsedHandoverSelectMessage(
         @JvmField
-        val encodedDeviceEngagement: ByteArray,
+        val encodedDeviceEngagement: ByteString,
         @JvmField
         val connectionMethods: List<ConnectionMethod>
     )

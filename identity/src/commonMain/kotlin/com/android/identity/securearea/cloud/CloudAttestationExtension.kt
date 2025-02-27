@@ -64,15 +64,13 @@ data class CloudAttestationExtension(
      *
      * @return the bytes of the CBOR for the extension.
      */
-    fun encode() = ByteString(
-        Cbor.encode(
-            CborMap.builder()
-                .put("challenge", challenge.toByteArray())
-                .put("passphrase", passphrase)
-                .put("userAuthentication", CloudUserAuthType.encodeSet(userAuthentication))
-                .end()
-                .build()
-        )
+    fun encode() = Cbor.encode(
+        CborMap.builder()
+            .put("challenge", challenge.toByteArray())
+            .put("passphrase", passphrase)
+            .put("userAuthentication", CloudUserAuthType.encodeSet(userAuthentication))
+            .end()
+            .build()
     )
 
     private fun renderByteArray(data: ByteArray): String {
@@ -111,9 +109,9 @@ data class CloudAttestationExtension(
          * @return a [CloudAttestationExtension].
          */
         fun decode(attestationExtensionPayload: ByteString): CloudAttestationExtension {
-            val map = Cbor.decode(attestationExtensionPayload.toByteArray())
+            val map = Cbor.decode(attestationExtensionPayload)
             return CloudAttestationExtension(
-                challenge = ByteString(map["challenge"].asBstr),
+                challenge = map["challenge"].asBstr,
                 passphrase = map["passphrase"].asBoolean,
                 userAuthentication = CloudUserAuthType.decodeSet(map["userAuthentication"].asNumber)
             )

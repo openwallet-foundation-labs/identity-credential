@@ -15,6 +15,7 @@
  */
 package com.android.identity.storage
 
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -28,16 +29,16 @@ class EphemeralStorageEngineTest {
         assertEquals(0, storage.enumerate().size.toLong())
         assertNull(storage["foo"])
 
-        val data = byteArrayOf(1, 2, 3)
+        val data = ByteString(byteArrayOf(1, 2, 3))
         storage.put("foo", data)
-        assertContentEquals(storage["foo"], data)
+        assertEquals(storage["foo"], data)
         assertEquals(1, storage.enumerate().size.toLong())
         assertEquals("foo", storage.enumerate().iterator().next())
         assertNull(storage["bar"])
 
-        val data2 = byteArrayOf(4, 5, 6)
+        val data2 = ByteString(byteArrayOf(4, 5, 6))
         storage.put("bar", data2)
-        assertContentEquals(storage["bar"], data2)
+        assertEquals(storage["bar"], data2)
         assertEquals(2, storage.enumerate().size.toLong())
         storage.delete("foo")
         assertNull(storage["foo"])
@@ -53,9 +54,9 @@ class EphemeralStorageEngineTest {
         var storage: StorageEngine = EphemeralStorageEngine()
         assertEquals(0, storage.enumerate().size.toLong())
         assertNull(storage["foo"])
-        val data = byteArrayOf(1, 2, 3)
+        val data = ByteString(byteArrayOf(1, 2, 3))
         storage.put("foo", data)
-        assertContentEquals(storage["foo"], data)
+        assertEquals(storage["foo"], data)
 
         // Create a new StorageEngine instance and check that data is no longer there...
         storage = EphemeralStorageEngine()

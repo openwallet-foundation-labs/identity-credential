@@ -38,10 +38,11 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.ByteString
 
 class NfcEngagementHandler : HostApduService() {
     companion object {
-        private val TAG = "NfcEngagementHandler"
+        private const val TAG = "NfcEngagementHandler"
     }
 
     private var engagementHelper: NfcEngagementHelper? = null
@@ -116,17 +117,19 @@ class NfcEngagementHandler : HostApduService() {
         val bleUuid = UUID.randomUUID()
         if (transferHelper.getBleCentralClientDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodBle(
-                false,
-                true,
-                null,
-                bleUuid))
+                supportsPeripheralServerMode = false,
+                supportsCentralClientMode = true,
+                peripheralServerModeUuid = null,
+                centralClientModeUuid = bleUuid
+            ))
         }
         if (transferHelper.getBlePeripheralServerDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodBle(
-                true,
-                false,
-                bleUuid,
-                null))
+                supportsPeripheralServerMode = true,
+                supportsCentralClientMode = false,
+                peripheralServerModeUuid = bleUuid,
+                centralClientModeUuid = null
+            ))
         }
         if (transferHelper.getWifiAwareDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodWifiAware(null, null, null, null))
@@ -157,7 +160,7 @@ class NfcEngagementHandler : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         Logger.dHex(TAG, "processCommandApdu", commandApdu)
-        return engagementHelper?.nfcProcessCommandApdu(commandApdu)
+        return engagementHelper?.nfcProcessCommandApdu(ByteString(commandApdu))?.toByteArray()
     }
 
     override fun onDeactivated(reason: Int) {

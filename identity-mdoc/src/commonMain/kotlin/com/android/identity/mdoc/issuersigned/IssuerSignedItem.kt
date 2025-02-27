@@ -27,7 +27,7 @@ data class IssuerSignedItem(
     fun calculateDigest(algorithm: Algorithm): ByteString {
         val encodeIssuerSignedItemBytes =
             Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(toDataItem()))))
-        return ByteString(Crypto.digest(algorithm, encodeIssuerSignedItemBytes))
+        return ByteString(Crypto.digest(algorithm, encodeIssuerSignedItemBytes.toByteArray()))
     }
 
     /**
@@ -55,7 +55,7 @@ data class IssuerSignedItem(
         fun fromDataItem(issuerSignedItem: DataItem): IssuerSignedItem {
             return IssuerSignedItem(
                 digestId = issuerSignedItem["digestID"].asNumber,
-                random = ByteString(issuerSignedItem["random"].asBstr),
+                random = issuerSignedItem["random"].asBstr,
                 dataElementIdentifier = issuerSignedItem["elementIdentifier"].asTstr,
                 dataElementValue = issuerSignedItem["elementValue"]
             )

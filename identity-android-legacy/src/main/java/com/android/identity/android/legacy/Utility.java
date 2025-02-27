@@ -116,6 +116,8 @@ public class Utility {
      *                            <code>MobileSecurityObjectBytes</code>.
      * @return                    the generator.
      */
+    // TODO: b/393388370 - removed to pass tests (not used anyway, and  this is legacy code)
+    /*
     public static @NonNull DeviceResponseGenerator addDocument(
             @NonNull DeviceResponseGenerator deviceResponseGenerator,
             @NonNull String docType,
@@ -134,7 +136,7 @@ public class Utility {
                 errors,
                 encodedIssuerAuth);
     }
-
+    */
 
     public static IdentityCredentialStore getIdentityCredentialStore(@NonNull Context context) {
         // We generally want to run all tests against the software implementation since

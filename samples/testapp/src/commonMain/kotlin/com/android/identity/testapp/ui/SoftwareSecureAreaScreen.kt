@@ -20,12 +20,13 @@ import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.ephemeral.EphemeralStorage
 import com.android.identity.util.Logger
-import com.android.identity.util.toHex
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.encodeToByteString
+import kotlinx.io.bytestring.toHexString
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-private val TAG = "SoftwareSecureAreaScreen"
+private const val TAG = "SoftwareSecureAreaScreen"
 
 private val softwareSecureAreaProvider = SecureAreaProvider {
     SoftwareSecureArea.create(EphemeralStorage())
@@ -69,7 +70,7 @@ fun SoftwareSecureAreaScreen(
                     // For brevity, only do passphrase for P-256 Signature and P-256 Key Agreement)
                     if (curve != EcCurve.P256) {
                         if (passphraseRequired) {
-                            continue;
+                            continue
                         }
                     }
 
@@ -120,11 +121,12 @@ private suspend fun swTest(
     try {
         swTestUnguarded(keyPurpose, curve, passphrase, passphraseConstraints, showToast)
     } catch (e: Throwable) {
-        e.printStackTrace();
+        e.printStackTrace()
         showToast("${e.message}")
     }
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 private suspend fun swTestUnguarded(
     keyPurpose: KeyPurpose,
     curve: EcCurve,
@@ -155,25 +157,25 @@ private suspend fun swTestUnguarded(
             val t0 = Clock.System.now()
             val signature = softwareSecureArea.sign(
                 "testKey",
-                "data".encodeToByteArray(),
+                "data".encodeToByteString(),
                 interactiveUnlock,
             )
             val t1 = Clock.System.now()
             Logger.d(
                 TAG,
                 "Made signature in " +
-                        "r=${signature.r.toHex()} s=${signature.s.toHex()}"
+                        "r=${signature.r.toHexString()} s=${signature.s.toHexString()}"
             )
             showToast("Signed in (${t1 - t0})")
         } catch (e: KeyLockedException) {
-            e.printStackTrace();
+            e.printStackTrace()
             showToast("${e.message}")
         }
     } else {
         val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
         try {
             val t0 = Clock.System.now()
-            val Zab = softwareSecureArea.keyAgreement(
+            val zab = softwareSecureArea.keyAgreement(
                 "testKey",
                 otherKeyPairForEcdh.publicKey,
                 interactiveUnlock,
@@ -182,10 +184,10 @@ private suspend fun swTestUnguarded(
             Logger.dHex(
                 TAG,
                 "Calculated ECDH",
-                Zab)
+                zab)
             showToast("ECDH in (${t1 - t0})")
         } catch (e: KeyLockedException) {
-            e.printStackTrace();
+            e.printStackTrace()
             showToast("${e.message}")
         }
     }

@@ -146,7 +146,7 @@ class DirectAccessCredential: Credential {
     override suspend fun deserialize(dataItem: DataItem) {
         super.deserialize(dataItem)
         docType = dataItem["docType"].asTstr
-        encryptedPresentationData = ByteString(dataItem["encryptedPresentationData"].asBstr) //TODO: b/393388370 - Cbor+
+        encryptedPresentationData = dataItem["encryptedPresentationData"].asBstr
         signingCert = X509CertChain.fromDataItem(dataItem["signingCert"])
     }
 
@@ -180,7 +180,7 @@ class DirectAccessCredential: Credential {
     }
 
     override suspend fun certify(
-        issuerProvidedAuthenticationData: ByteArray,
+        issuerProvidedAuthenticationData: ByteString,
         validFrom: Instant,
         validUntil: Instant
     ) {

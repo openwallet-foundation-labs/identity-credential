@@ -63,6 +63,7 @@ import com.android.identity_credential.wallet.dynamicregistration.PowerOffReceiv
 import com.android.identity_credential.wallet.logging.EventLogger
 import com.android.identity_credential.wallet.util.toByteArray
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.net.URLDecoder
@@ -252,7 +253,7 @@ class WalletApplication : Application() {
             val pemEncodedCert = resources.openRawResource(certResourceId).readBytes().decodeToString()
             Logger.i(TAG, "PEMEncoded\n$pemEncodedCert")
             val cert = X509Cert.fromPem(pemEncodedCert)
-            Logger.iHex(TAG, "x509cert", cert.encodedCertificate)
+            Logger.iHex(TAG, "x509cert", cert.encodedCertificate.toByteArray())
             readerTrustManager.addTrustPoint(
                 TrustPoint(
                     cert,
@@ -265,7 +266,7 @@ class WalletApplication : Application() {
         // init TrustManager for issuers (used in reader)
         //
         val signedVical = SignedVical.parse(
-            resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
+            ByteString(resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes())
         )
         for (certInfo in signedVical.vical.certificateInfos) {
             issuerTrustManager.addTrustPoint(
@@ -424,7 +425,7 @@ class WalletApplication : Application() {
 
         val metadata = document.metadata as WalletDocumentMetadata
         val cardArt = metadata.documentConfiguration.cardArt
-        val bitmap = BitmapFactory.decodeByteArray(cardArt, 0, cardArt.size)
+        val bitmap = BitmapFactory.decodeByteArray(cardArt.toByteArray(), 0, cardArt.size)
 
         val title = metadata.documentConfiguration.displayName
         val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)

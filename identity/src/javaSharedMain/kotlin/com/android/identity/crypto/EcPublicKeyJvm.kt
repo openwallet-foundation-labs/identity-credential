@@ -1,5 +1,6 @@
 package com.android.identity.crypto
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey
@@ -23,7 +24,7 @@ fun PublicKey.toEcPublicKey(curve: EcCurve): EcPublicKey =
         EcCurve.X448 -> {
             EcPublicKeyOkp(
                 curve,
-                (this as BCXDHPublicKey).uEncoding
+                ByteString((this as BCXDHPublicKey).uEncoding)
             )
         }
 
@@ -31,7 +32,7 @@ fun PublicKey.toEcPublicKey(curve: EcCurve): EcPublicKey =
         EcCurve.ED448 -> {
             EcPublicKeyOkp(
                 curve,
-                (this as BCEdDSAPublicKey).pointEncoding
+                ByteString((this as BCEdDSAPublicKey).pointEncoding)
             )
         }
 
@@ -40,8 +41,8 @@ fun PublicKey.toEcPublicKey(curve: EcCurve): EcPublicKey =
             val keySizeOctets = (curve.bitSize + 7) / 8
             EcPublicKeyDoubleCoordinate(
                 curve,
-                BigIntegers.asUnsignedByteArray(keySizeOctets, this.w.affineX),
-                BigIntegers.asUnsignedByteArray(keySizeOctets, this.w.affineY)
+                ByteString(BigIntegers.asUnsignedByteArray(keySizeOctets, this.w.affineX)),
+                ByteString(BigIntegers.asUnsignedByteArray(keySizeOctets, this.w.affineY))
             )
         }
     }
@@ -75,8 +76,8 @@ val EcPublicKey.javaPublicKey: PublicKey
             val keySizeOctets = (curve.bitSize + 7)/8
             check(x.size == keySizeOctets)
             check(y.size == keySizeOctets)
-            val bx = BigInteger(1, x)
-            val by = BigInteger(1, y)
+            val bx = BigInteger(1, x.toByteArray())
+            val by = BigInteger(1, y.toByteArray())
             try {
                 val params = AlgorithmParameters.getInstance(
                     "EC",
@@ -129,7 +130,7 @@ val EcPublicKey.javaPublicKey: PublicKey
                 kf.generatePublic(X509EncodedKeySpec(
                     buildByteString {
                         append(prefix)
-                        append(x)
+                        append(x.toByteArray())
                     }.toByteArray()
                 ))
             } catch (e: Exception) {

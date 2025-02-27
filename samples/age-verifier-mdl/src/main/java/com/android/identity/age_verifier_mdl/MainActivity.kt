@@ -55,14 +55,15 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
 import java.lang.IllegalStateException
 
 class MainActivity : ComponentActivity() {
     companion object {
-        private val TAG = "MainActivity"
+        private const val TAG = "MainActivity"
 
-        val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        val MDL_NAMESPACE = "org.iso.18013.5.1"
+        const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+        const val MDL_NAMESPACE = "org.iso.18013.5.1"
     }
 
     private lateinit var transferHelper: TransferHelper
@@ -134,7 +135,7 @@ class MainActivity : ComponentActivity() {
         connectionMethod = transferHelper.getConnectionMethod()
     }
 
-    private fun parseResponse(deviceResponseBytes: ByteArray?) {
+    private fun parseResponse(deviceResponseBytes: ByteString?) {
         resultSize = deviceResponseBytes!!.size
         val parsedResponse = DeviceResponseParser(
             deviceResponseBytes,
@@ -146,7 +147,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         val doc = parsedResponse.documents.first()
-        if (!doc.docType.equals(MDL_DOCTYPE)) {
+        if (doc.docType != MDL_DOCTYPE) {
             Toast.makeText(applicationContext, "Expected mDL, got ${doc.docType}", Toast.LENGTH_SHORT).show()
             transferHelper.close()
             return
@@ -156,7 +157,8 @@ class MainActivity : ComponentActivity() {
                 val portraitData = doc.getIssuerEntryByteString(MDL_NAMESPACE, "portrait")
                 val options = BitmapFactory.Options()
                 options.inMutable = true
-                resultPortrait = BitmapFactory.decodeByteArray(portraitData, 0, portraitData.size, options)
+                resultPortrait = BitmapFactory
+                    .decodeByteArray(portraitData.toByteArray(), 0, portraitData.size, options)
             } catch (e: IllegalArgumentException) {
                 resultPortrait = null
             }
@@ -368,7 +370,7 @@ class MainActivity : ComponentActivity() {
                             color = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                    if (!stateDisplay.value.equals("Idle")) {
+                    if (stateDisplay.value != "Idle") {
                         Column {
                             Button(
                                 onClick = {

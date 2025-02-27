@@ -6,6 +6,7 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.toCoseLabel
+import kotlinx.io.bytestring.ByteString
 
 /**
  * EC Private Key with two coordinates.
@@ -15,9 +16,9 @@ import com.android.identity.cose.toCoseLabel
  */
 data class EcPrivateKeyDoubleCoordinate(
     override val curve: EcCurve,
-    override val d: ByteArray,
-    val x: ByteArray,
-    val y: ByteArray
+    override val d: ByteString,
+    val x: ByteString,
+    val y: ByteString
 ) : EcPrivateKey(curve, d) {
 
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
@@ -42,18 +43,18 @@ data class EcPrivateKeyDoubleCoordinate(
         other as EcPrivateKeyDoubleCoordinate
 
         if (curve != other.curve) return false
-        if (!d.contentEquals(other.d)) return false
-        if (!x.contentEquals(other.x)) return false
-        if (!y.contentEquals(other.y)) return false
+        if (d != other.d) return false
+        if (x != other.x) return false
+        if (y != other.y) return false
 
         return true
     }
 
     override fun hashCode(): Int {
         var result = curve.hashCode()
-        result = 31 * result + d.contentHashCode()
-        result = 31 * result + x.contentHashCode()
-        result = 31 * result + y.contentHashCode()
+        result = 31 * result + d.hashCode()
+        result = 31 * result + x.hashCode()
+        result = 31 * result + y.hashCode()
         return result
     }
 }

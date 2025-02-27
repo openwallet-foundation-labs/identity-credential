@@ -29,9 +29,9 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant;
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class DocumentUtilTest {
@@ -99,7 +99,7 @@ class DocumentUtilTest {
         var count = 0
         for (pak in document.getPendingCredentials()) {
             pak.certify(
-                byteArrayOf(0, count++.toByte()),
+                ByteString(byteArrayOf(0, count++.toByte())),
                 Instant.fromEpochMilliseconds(100),
                 Instant.fromEpochMilliseconds(200)
             )
@@ -190,7 +190,7 @@ class DocumentUtilTest {
         for (pak in document.getPendingCredentials()) {
             assertEquals(managedCredDomain, pak.domain)
             pak.certify(
-                byteArrayOf(1, count++.toByte()),
+                ByteString(byteArrayOf(1, count++.toByte())),
                 Instant.fromEpochMilliseconds(100),
                 Instant.fromEpochMilliseconds(210)
             )
@@ -202,20 +202,20 @@ class DocumentUtilTest {
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0
+        val expectedData1 = arrayOf(
+            ByteString(byteArrayOf(0, 5)),
+            ByteString(byteArrayOf(0, 6)),
+            ByteString(byteArrayOf(0, 7)),
+            ByteString(byteArrayOf(0, 8)),
+            ByteString(byteArrayOf(0, 9)),
+            ByteString(byteArrayOf(1, 0)),
+            ByteString(byteArrayOf(1, 1)),
+            ByteString(byteArrayOf(1, 2)),
+            ByteString(byteArrayOf(1, 3)),
+            ByteString(byteArrayOf(1, 4))
+        )
         for (cred in document.getCertifiedCredentials()) {
-            val expectedData = arrayOf(
-                byteArrayOf(0, 5),
-                byteArrayOf(0, 6),
-                byteArrayOf(0, 7),
-                byteArrayOf(0, 8),
-                byteArrayOf(0, 9),
-                byteArrayOf(1, 0),
-                byteArrayOf(1, 1),
-                byteArrayOf(1, 2),
-                byteArrayOf(1, 3),
-                byteArrayOf(1, 4)
-            )
-            assertContentEquals(expectedData[count++], cred.issuerProvidedData)
+            assertEquals(expectedData1[count++], cred.issuerProvidedData)
         }
 
         // Now move close to the expiration date of the original five credentials.
@@ -245,7 +245,7 @@ class DocumentUtilTest {
         for (pak in document.getPendingCredentials()) {
             assertEquals(managedCredDomain, pak.domain)
             pak.certify(
-                byteArrayOf(2, count++.toByte()),
+                ByteString(byteArrayOf(2, count++.toByte())),
                 Instant.fromEpochMilliseconds(100),
                 Instant.fromEpochMilliseconds(210)
             )
@@ -256,21 +256,21 @@ class DocumentUtilTest {
         // Check that the _right_ ones were removed by inspecting issuer-provided data.
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
+        val expectedData2 = arrayOf(
+            ByteString(byteArrayOf(1, 0)),
+            ByteString(byteArrayOf(1, 1)),
+            ByteString(byteArrayOf(1, 2)),
+            ByteString(byteArrayOf(1, 3)),
+            ByteString(byteArrayOf(1, 4)),
+            ByteString(byteArrayOf(2, 0)),
+            ByteString(byteArrayOf(2, 1)),
+            ByteString(byteArrayOf(2, 2)),
+            ByteString(byteArrayOf(2, 3)),
+            ByteString(byteArrayOf(2, 4))
+        )
         count = 0
         for (credential in document.getCertifiedCredentials()) {
-            val expectedData = arrayOf(
-                byteArrayOf(1, 0),
-                byteArrayOf(1, 1),
-                byteArrayOf(1, 2),
-                byteArrayOf(1, 3),
-                byteArrayOf(1, 4),
-                byteArrayOf(2, 0),
-                byteArrayOf(2, 1),
-                byteArrayOf(2, 2),
-                byteArrayOf(2, 3),
-                byteArrayOf(2, 4)
-            )
-            assertContentEquals(expectedData[count++], credential.issuerProvidedData)
+            assertEquals(expectedData2[count++], credential.issuerProvidedData)
         }
     }
 

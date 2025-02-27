@@ -6,6 +6,9 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Simple
+import com.android.identity.util.emptyByteString
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.isEmpty
 
 /**
  * COSE MACed Message.
@@ -18,8 +21,8 @@ import com.android.identity.cbor.Simple
 data class CoseMac0(
     val protectedHeaders: Map<CoseLabel, DataItem>,
     val unprotectedHeaders: Map<CoseLabel, DataItem>,
-    val tag: ByteArray,
-    val payload: ByteArray?
+    val tag: ByteString,
+    val payload: ByteString?
 ) {
     /**
      * Encodes the COSE_Mac0 as a CBOR data item.
@@ -34,7 +37,7 @@ data class CoseMac0(
                 protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
                 Cbor.encode(phb.end().build())
             } else {
-                byteArrayOf()
+                emptyByteString()
             }
         val payloadOrNil =
             if (payload != null) {
@@ -72,7 +75,7 @@ data class CoseMac0(
                 ph.items.forEach { (key, value) -> protectedHeaders.put(key.asCoseLabel, value) }
             }
 
-            var payloadOrNil: ByteArray? = null
+            var payloadOrNil: ByteString? = null
             if (dataItem.items[2] is Bstr) {
                 payloadOrNil = dataItem.items[2].asBstr
             }

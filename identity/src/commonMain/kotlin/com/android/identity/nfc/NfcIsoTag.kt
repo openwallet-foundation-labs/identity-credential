@@ -1,9 +1,12 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.getInt16
 import com.android.identity.util.getUInt16
-import com.android.identity.util.putUInt16
+import com.android.identity.util.putUint16
 import kotlinx.coroutines.delay
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlin.time.Duration
 
 /**
@@ -58,7 +61,7 @@ abstract class NfcIsoTag {
      * @param fileId the identifier for the file to select, e.g. [Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID].
      * @throws NfcCommandFailedException if the command fails.
      */
-    suspend fun selectFile(fileId: Int) {
+    suspend fun selectFile(fileId: UShort) {
         //
         val response = transceive(
             CommandApdu(
@@ -66,7 +69,7 @@ abstract class NfcIsoTag {
                 ins = Nfc.INS_SELECT,
                 p1 = Nfc.INS_SELECT_P1_FILE,
                 p2 = Nfc.INS_SELECT_P2_FILE,
-                payload = ByteString(fileId.encodeShort()),
+                payload = buildByteString { appendUInt16(fileId.toUInt()) },
                 le = 0
             )
         )
@@ -227,5 +230,5 @@ abstract class NfcIsoTag {
 }
 
 // TODO: b/393388370 perhaps add a bunch of these to the ByteArray Util?
-private fun Int.encodeShort(): ByteArray = ByteArray(2).apply { putUInt16(0, toUInt() ) }
+private fun Int.encodeShort(): ByteArray = ByteArray(2).apply { putUint16(0, toUInt() ) }
 

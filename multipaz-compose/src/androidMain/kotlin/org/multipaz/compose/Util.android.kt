@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.io.bytestring.ByteString
 
 @Composable
 actual fun AppTheme(content: @Composable () -> Unit) {
@@ -36,6 +37,6 @@ actual fun AppTheme(content: @Composable () -> Unit) {
     )
 }
 
-actual fun decodeImage(encodedData: ByteArray): ImageBitmap {
-    return BitmapFactory.decodeByteArray(encodedData, 0, encodedData.size).asImageBitmap()
+actual fun decodeImage(encodedData: ByteString): ImageBitmap {
+    return BitmapFactory.decodeByteArray(encodedData.toByteArray(), 0, encodedData.size).asImageBitmap()
 }

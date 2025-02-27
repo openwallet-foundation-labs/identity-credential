@@ -24,6 +24,7 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509CertChain
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for parsing the bytes of `DeviceRequest`
@@ -34,8 +35,8 @@ import com.android.identity.crypto.X509CertChain
  * @param encodedSessionTranscript the bytes of `SessionTranscript`.
  */
 class DeviceRequestParser(
-    private val encodedDeviceRequest: ByteArray,
-    private val encodedSessionTranscript: ByteArray
+    private val encodedDeviceRequest: ByteString,
+    private val encodedSessionTranscript: ByteString
 ) {
     private var skipReaderAuthParseAndCheck = false
 
@@ -105,7 +106,7 @@ class DeviceRequestParser(
         lateinit var version: String
 
         internal fun parse(
-            encodedDeviceRequest: ByteArray,
+            encodedDeviceRequest: ByteString,
             sessionTranscript: DataItem,
             skipReaderAuthParseAndCheck: Boolean
         ) {
@@ -119,7 +120,7 @@ class DeviceRequestParser(
                     val itemsRequestBytesDataItem = docRequestDataItem["itemsRequest"]
                     val itemsRequest = itemsRequestBytesDataItem.asTaggedEncodedCbor
                     val readerAuth = docRequestDataItem.getOrNull("readerAuth")
-                    var encodedReaderAuth: ByteArray? = null
+                    var encodedReaderAuth: ByteString? = null
                     var readerAuthenticated = false
                     if (!skipReaderAuthParseAndCheck && readerAuth != null) {
                         encodedReaderAuth = Cbor.encode(readerAuth)
@@ -150,7 +151,7 @@ class DeviceRequestParser(
                             signatureAlgorithm
                         )
                     }
-                    val requestInfo: MutableMap<String, ByteArray> = HashMap()
+                    val requestInfo: MutableMap<String, ByteString> = HashMap()
                     itemsRequest.getOrNull("requestInfo")?.let { requestInfoDataItem ->
                         for (keyDataItem in requestInfoDataItem.asMap.keys) {
                             val key = keyDataItem.asTstr
@@ -206,7 +207,7 @@ class DeviceRequestParser(
         /**
          * The bytes of the `ItemsRequest` CBOR.
          */
-        val itemsRequest: ByteArray,
+        val itemsRequest: ByteString,
 
         /**
          * The requestInfo associated with the document request, if set.
@@ -215,7 +216,7 @@ class DeviceRequestParser(
          *
          * @return the request info map or the empty collection if not present in the request.
          */
-        val requestInfo: Map<String, ByteArray>,
+        val requestInfo: Map<String, ByteString>,
 
         /**
          * The bytes of the `ReaderAuth` CBOR.
@@ -223,7 +224,7 @@ class DeviceRequestParser(
          * @return the bytes of `ReaderAuth` or `null` if the reader didn't
          * sign the document request.
          */
-        val readerAuth: ByteArray?,
+        val readerAuth: ByteString?,
 
         /**
          * The certificate chain for the reader which signed the request or null if reader
@@ -287,9 +288,9 @@ class DeviceRequestParser(
         }
 
         internal class Builder(
-            docType: String, encodedItemsRequest: ByteArray,
-            requestInfo: Map<String, ByteArray>,
-            encodedReaderAuth: ByteArray?,
+            docType: String, encodedItemsRequest: ByteString,
+            requestInfo: Map<String, ByteString>,
+            encodedReaderAuth: ByteString?,
             readerCertChain: X509CertChain?,
             readerAuthenticated: Boolean
         ) {

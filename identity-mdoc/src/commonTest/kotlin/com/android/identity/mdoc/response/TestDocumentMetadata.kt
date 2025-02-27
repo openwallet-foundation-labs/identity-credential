@@ -30,13 +30,13 @@ class TestDocumentMetadata private constructor(
         nameSpacedData = if (data == null || data.isEmpty()) {
             NameSpacedData.Builder().build()
         } else {
-            NameSpacedData.fromEncodedCbor(data.toByteArray())
+            NameSpacedData.fromEncodedCbor(data)
         }
     }
 
     suspend fun setNameSpacedData(nameSpacedData: NameSpacedData) {
         this.nameSpacedData = nameSpacedData
-        saveFn(ByteString(nameSpacedData.encodeAsCbor()))
+        saveFn(nameSpacedData.encodeAsCbor())
     }
 
     override suspend fun documentDeleted() {

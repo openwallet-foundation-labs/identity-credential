@@ -56,7 +56,7 @@ class RequestCredentialsUsingProofOfPossession(
             throw IllegalStateException("Credentials were already sent")
         }
         val storage = env.getTable(AuthenticationState.clientTableSpec)
-        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!.toByteArray())
+        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!)
         validateDeviceAssertionBindingKeys(
             env = env,
             deviceAttestation = clientRecord.deviceAttestation,

@@ -16,7 +16,7 @@ class PreconsentDocumentMetadata(
 
     init {
         if (serializedData != null && serializedData.isNotEmpty()) {
-            data = Data.fromCbor(serializedData.toByteArray())
+            data = Data.fromCbor(serializedData)
         }
     }
 
@@ -43,7 +43,7 @@ class PreconsentDocumentMetadata(
 
     suspend fun init(data: Data) {
         this.data = data
-        saveFn(ByteString(data.toCbor()))
+        saveFn(data.toCbor())
     }
 
     @CborSerializable

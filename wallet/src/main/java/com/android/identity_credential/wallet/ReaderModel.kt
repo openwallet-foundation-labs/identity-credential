@@ -22,6 +22,7 @@ import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 
 class ReaderModel(
     val context: Context,
@@ -136,7 +137,7 @@ class ReaderModel(
             settingsModel.createConnectionMethodsAndOptions()
 
         val listener = object : VerificationHelper.Listener {
-            override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+            override fun onReaderEngagementReady(readerEngagement: ByteString) {
             }
 
             override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
@@ -164,7 +165,7 @@ class ReaderModel(
                 Logger.i(TAG, "onDeviceDisconnected transportSpecificTermination=$transportSpecificTermination")
             }
 
-            override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+            override fun onResponseReceived(deviceResponseBytes: ByteString) {
                 Logger.i(TAG, "onResponseReceived")
                 try {
                     reportResponse(
@@ -231,7 +232,7 @@ class ReaderModel(
     }
 
     private fun processResponse(
-        deviceResponseBytes: ByteArray,
+        deviceResponseBytes: ByteString,
         trustManager: TrustManager,
         res: Resources
     ): ReaderResponse {
@@ -298,7 +299,7 @@ class ReaderModel(
                         val options = BitmapFactory.Options()
                         options.inMutable = true
                         BitmapFactory.decodeByteArray(
-                            bitmapData,
+                            bitmapData.toByteArray(),
                             0,
                             bitmapData.size,
                             options

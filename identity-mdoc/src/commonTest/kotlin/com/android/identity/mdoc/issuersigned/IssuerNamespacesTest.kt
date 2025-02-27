@@ -9,6 +9,7 @@ import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
 import kotlinx.datetime.LocalDate
+import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,7 +18,7 @@ class IssuerNamespacesTest {
 
     @Test
     fun testParsingAndEncoding() {
-        val encodedDeviceResponse = TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex()
+        val encodedDeviceResponse = ByteString(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex())
         val deviceResponse = Cbor.decode(encodedDeviceResponse)
         val documents = deviceResponse["documents"][0]
         val issuerSigned = documents["issuerSigned"]
@@ -52,10 +53,7 @@ class IssuerNamespacesTest {
                     value: [{"vehicle_category_code": "A", "issue_date": 1004("2018-08-09"), "expiry_date": 1004("2024-10-20")}, {"vehicle_category_code": "B", "issue_date": 1004("2017-02-23"), "expiry_date": 1004("2024-10-20")}]
             """.trimIndent().trim(),
             parsed.prettyPrint().trim())
-        assertEquals(
-            Cbor.encode(parsed.toDataItem()).toHex(),
-            Cbor.encode(namespaces).toHex()
-        )
+        assertEquals(Cbor.encode(parsed.toDataItem()), Cbor.encode(namespaces))
     }
 
     @Test

@@ -46,6 +46,8 @@ class FlowSymbolProcessor(
         const val SHARED_FLOW_CLASS = "kotlinx.coroutines.flow.SharedFlow"
         const val AS_SHARED_FLOW = "kotlinx.coroutines.flow.asSharedFlow"
         const val FLOW_MAP = "kotlinx.coroutines.flow.map"
+        const val BYTE_UTILS = "com.android.identity.util.*"
+        const val BYTESTRING_EMPTY = "kotlinx.io.bytestring.isEmpty"
 
         val stateSuffix = Regex("State$")
     }
@@ -395,6 +397,7 @@ class FlowSymbolProcessor(
             importQualifiedName(FLOW_RETURN_CODE)
             importQualifiedName(CborSymbolProcessor.BSTR_TYPE)
             importQualifiedName(interfaceFullName)
+            importQualifiedName(BYTE_UTILS)
 
             emptyLine()
             line("class $baseName(")
@@ -416,6 +419,7 @@ class FlowSymbolProcessor(
                     importQualifiedName(SHARED_FLOW_CLASS)
                     importQualifiedName(AS_SHARED_FLOW)
                     importQualifiedName(FLOW_MAP)
+                    importQualifiedName(BYTE_UTILS)
                     line("private val notificationFlow = MutableSharedFlow<$simpleName>()")
                     line("override val notifications: SharedFlow<$simpleName>")
                     withIndent {
@@ -445,7 +449,7 @@ class FlowSymbolProcessor(
                         line("stopNotifications()")
                     }
                     line("onComplete(flowState)")
-                    line("flowState = Bstr(byteArrayOf())")
+                    line("flowState = Bstr(emptyByteString())")
                     line("flowComplete = true")
                 }
                 emptyLine()
@@ -673,9 +677,11 @@ class FlowSymbolProcessor(
             importQualifiedName(flowInfo.stateClass)
             importQualifiedName(FLOW_DISPATCHER_LOCAL)
             importQualifiedName(CborSymbolProcessor.BSTR_TYPE)
+            importQualifiedName(BYTE_UTILS)
+            importQualifiedName(BYTESTRING_EMPTY)
 
             block("private fun serialize(state: $baseName?): DataItem") {
-                line("return state?.toDataItem() ?: Bstr(byteArrayOf())")
+                line("return state?.toDataItem() ?: Bstr(emptyByteString())")
             }
 
             emptyLine()
@@ -758,7 +764,7 @@ class FlowSymbolProcessor(
                             }
                             line(")")
                             if (op.type == null) {
-                                line("Bstr(byteArrayOf())")
+                                line("Bstr(emptyByteString())")
                             } else if (op.flowTypeInfo != null) {
                                 val joinPath = op.flowTypeInfo.joinPath ?: ""
                                 line("dispatcher.encodeStateResult(result, \"$joinPath\")")

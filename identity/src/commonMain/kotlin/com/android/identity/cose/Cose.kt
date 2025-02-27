@@ -12,6 +12,8 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
+import com.android.identity.util.emptyByteString
+import kotlinx.io.bytestring.ByteString
 
 /**
  * COSE support routines.
@@ -94,16 +96,16 @@ object Cose {
     const val COSE_LABEL_X5CHAIN = 33L
     
     private fun coseBuildToBeSigned(
-        encodedProtectedHeaders: ByteArray,
-        dataToBeSigned: ByteArray,
-    ): ByteArray {
+        encodedProtectedHeaders: ByteString,
+        dataToBeSigned: ByteString,
+    ): ByteString {
         val arrayBuilder = CborArray.builder().apply {
             add("Signature1")
             add(encodedProtectedHeaders)
 
             // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
             // so external_aad is the empty bstr
-            val emptyExternalAad = ByteArray(0)
+            val emptyExternalAad = emptyByteString()
             add(emptyExternalAad)
 
             // Next field is the payload, independently of how it's transported (RFC
@@ -129,7 +131,7 @@ object Cose {
      */
     fun coseSign1Check(
         publicKey: EcPublicKey,
-        detachedData: ByteArray?,
+        detachedData: ByteString?,
         signature: CoseSign1,
         signatureAlgorithm: Algorithm
     ): Boolean {
@@ -143,7 +145,7 @@ object Cose {
                 signature.protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
                 Cbor.encode(phb.end().build())
             } else {
-                byteArrayOf()
+                emptyByteString()
             }
         val toBeSigned = coseBuildToBeSigned(
             encodedProtectedHeaders = encodedProtectedHeaders,
@@ -152,7 +154,7 @@ object Cose {
 
         return Crypto.checkSignature(
             publicKey,
-            toBeSigned,
+            toBeSigned.toByteArray(),
             signatureAlgorithm,
             EcSignature.fromCoseEncoded(signature.signature))
     }
@@ -179,7 +181,7 @@ object Cose {
     suspend fun coseSign1Sign(
         secureArea: SecureArea,
         alias: String,
-        message: ByteArray,
+        message: ByteString,
         includeMessageInPayload: Boolean,
         protectedHeaders: Map<CoseLabel, DataItem>,
         unprotectedHeaders: Map<CoseLabel, DataItem>,
@@ -225,21 +227,21 @@ object Cose {
      */
     fun coseSign1Sign(
         key: EcPrivateKey,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         includeDataInPayload: Boolean,
         signatureAlgorithm: Algorithm,
         protectedHeaders: Map<CoseLabel, DataItem>,
         unprotectedHeaders: Map<CoseLabel, DataItem>
     ): CoseSign1 {
-        val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
+        val encodedProtectedHeaders = if (protectedHeaders.isNotEmpty()) {
             val phb = CborMap.builder()
             protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
             Cbor.encode(phb.end().build())
         } else {
-            byteArrayOf()
+            emptyByteString()
         }
         val toBeSigned = coseBuildToBeSigned(encodedProtectedHeaders, dataToSign)
-        val signature = Crypto.sign(key, signatureAlgorithm, toBeSigned)
+        val signature = Crypto.sign(key, signatureAlgorithm, toBeSigned.toByteArray())
 
         return CoseSign1(
             protectedHeaders = protectedHeaders,
@@ -264,33 +266,33 @@ object Cose {
      */
     fun coseMac0(
         algorithm: Algorithm,
-        key: ByteArray,
-        message: ByteArray,
+        key: ByteString,
+        message: ByteString,
         includeMessageInPayload: Boolean,
         protectedHeaders: Map<CoseLabel, DataItem>,
         unprotectedHeaders: Map<CoseLabel, DataItem>,
     ): CoseMac0 {
-        val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
+        val encodedProtectedHeaders = if (protectedHeaders.isNotEmpty()) {
             val phb = CborMap.builder()
             protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
             Cbor.encode(phb.end().build())
         } else {
-            byteArrayOf()
+            emptyByteString()
         }
         val toBeMACed = coseBuildToBeMACed(encodedProtectedHeaders, message)
-        val mac = Crypto.mac(algorithm, key, toBeMACed)
+        val mac = Crypto.mac(algorithm, key.toByteArray(), toBeMACed.toByteArray())
         return CoseMac0(
             protectedHeaders = protectedHeaders,
             unprotectedHeaders = unprotectedHeaders,
-            tag = mac,
+            tag = ByteString(mac),
             payload = if (includeMessageInPayload) message else null
         )
     }
 
     private fun coseBuildToBeMACed(
-        encodedProtectedHeaders: ByteArray,
-        data: ByteArray,
-    ): ByteArray {
+        encodedProtectedHeaders: ByteString,
+        data: ByteString,
+    ): ByteString {
         val arrayBuilder = CborArray.builder().apply {
             add("MAC0")
             add(encodedProtectedHeaders)

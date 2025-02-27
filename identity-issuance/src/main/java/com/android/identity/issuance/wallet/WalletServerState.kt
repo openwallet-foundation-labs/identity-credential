@@ -55,12 +55,12 @@ class WalletServerState(
             return IssuingAuthorityConfiguration(
                 identifier = "utopia_dev",
                 issuingAuthorityName = "Utopia DMV (not configured)",
-                issuingAuthorityLogo = logo.toByteArray(),
+                issuingAuthorityLogo = logo,
                 issuingAuthorityDescription = "Utopia Driver's License",
                 pendingDocumentInformation = DocumentConfiguration(
                     displayName = "Pending",
                     typeDisplayName = "Driving License",
-                    cardArt = art.toByteArray(),
+                    cardArt = art,
                     requireUserAuthenticationToViewDocument = true,
                     mdocConfiguration = null,
                     directAccessConfiguration = null,

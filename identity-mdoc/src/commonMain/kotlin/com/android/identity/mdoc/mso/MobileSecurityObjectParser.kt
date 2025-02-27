@@ -20,6 +20,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcPublicKey
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for parsing the bytes of `MobileSecurityObject`
@@ -29,7 +30,7 @@ import kotlinx.datetime.Instant
  * @param encodedMobileSecurityObject The bytes of `MobileSecurityObject`.
  */
 class MobileSecurityObjectParser(
-    private var encodedMobileSecurityObject: ByteArray
+    private var encodedMobileSecurityObject: ByteString
 ) {
     /**
      * Parses the mobile security object.
@@ -50,10 +51,10 @@ class MobileSecurityObjectParser(
      * as specified in *ISO/IEC 18013-5* section 9.1.2 *Issuer data authentication*
      */
     class MobileSecurityObject internal constructor() {
-        private lateinit var valueDigests: MutableMap<String, Map<Long, ByteArray>>
+        private lateinit var valueDigests: MutableMap<String, Map<Long, ByteString>>
         private var _authorizedNameSpaces: MutableList<String>? = null
         private var _authorizedDataElements: MutableMap<String, List<String>>? = null
-        private var _deviceKeyInfo: MutableMap<Long, ByteArray>? = null
+        private var _deviceKeyInfo: MutableMap<Long, ByteString>? = null
 
         /**
          * The version string set in the `MobileSecurityObject` CBOR.
@@ -115,7 +116,7 @@ class MobileSecurityObjectParser(
          * @return The mapping present for that namespace if it exists within the ValueDigests,
          * else null.
          */
-        fun getDigestIDs(namespace: String): Map<Long, ByteArray>? = valueDigests[namespace]
+        fun getDigestIDs(namespace: String): Map<Long, ByteString>? = valueDigests[namespace]
 
 
         /**
@@ -136,7 +137,7 @@ class MobileSecurityObjectParser(
          * Gets extra info for the mdoc authentication public key as part of the
          * `KeyInfo` portion of the `DeviceKeyInfo`. Is null if it does not exist in the MSO.
          */
-        val deviceKeyInfo: Map<Long, ByteArray>?
+        val deviceKeyInfo: Map<Long, ByteString>?
             get() = _deviceKeyInfo
 
         private fun parseValueDigests(valueDigests: DataItem) {
@@ -144,7 +145,7 @@ class MobileSecurityObjectParser(
             for (namespaceDataItem in valueDigests.asMap.keys) {
                 val namespace = namespaceDataItem.asTstr
                 val digestIDsDataItem = valueDigests.asMap[namespaceDataItem]
-                val digestIDs: MutableMap<Long, ByteArray> = HashMap()
+                val digestIDs: MutableMap<Long, ByteString> = HashMap()
                 for (digestIDDataItem in digestIDsDataItem!!.asMap.keys) {
                     val digestID = digestIDDataItem.asNumber
                     digestIDs[digestID] = digestIDsDataItem[digestID].asBstr
@@ -216,7 +217,7 @@ class MobileSecurityObjectParser(
             }
         }
 
-        fun parse(encodedMobileSecurityObject: ByteArray) {
+        fun parse(encodedMobileSecurityObject: ByteString) {
             val mso = Cbor.decode(encodedMobileSecurityObject)
             version = mso["version"].asTstr
             require(version.compareTo("1.0") >= 0) {

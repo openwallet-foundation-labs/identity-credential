@@ -2,7 +2,6 @@ package com.android.identity.nfc
 
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt8
-import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
 
 /**

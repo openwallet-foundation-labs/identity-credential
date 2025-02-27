@@ -42,6 +42,9 @@ import com.android.identity.testapp.platformCreateKeySettings
 import com.android.identity.testapp.platformSecureAreaProvider
 import com.android.identity.testapp.platformStorage
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate

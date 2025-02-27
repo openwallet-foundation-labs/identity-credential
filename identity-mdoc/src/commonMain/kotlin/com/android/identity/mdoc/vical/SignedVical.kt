@@ -15,6 +15,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
+import kotlinx.io.bytestring.ByteString
 
 /**
  * A signed VICAL according to ISO/IEC 18013-5:2021.
@@ -37,7 +38,7 @@ data class SignedVical(
     fun generate(
         signingKey: EcPrivateKey,
         signingAlgorithm: Algorithm
-    ): ByteArray {
+    ): ByteString {
         val certInfosBuilder = CborArray.builder()
         for (certInfo in vical.certificateInfos) {
             val docTypesBuilder = CborArray.builder()
@@ -95,7 +96,7 @@ data class SignedVical(
          * @throws IllegalArgumentException if the passed in signed VICAL is malformed or signature
          * verification failed.
          */
-        fun parse(encodedSignedVical: ByteArray): SignedVical {
+        fun parse(encodedSignedVical: ByteString): SignedVical {
             val signature = CoseSign1.fromDataItem(Cbor.decode(encodedSignedVical))
 
             val vicalPayload = signature?.payload

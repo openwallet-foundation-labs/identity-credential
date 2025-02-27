@@ -20,6 +20,16 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.com
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
 import com.android.identity.mdoc.engagement.EngagementGenerator
 import com.android.identity.util.Logger
+import com.android.identity.util.appendBstring
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt8
+import com.android.identity.util.emptyByteString
+import com.android.identity.util.getInt16
+import com.android.identity.util.getUInt16
+import com.android.identity.util.getUInt8
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Arrays
@@ -70,7 +80,8 @@ class NfcEngagementHelper private constructor(
      * This returns the bytes of the `DeviceEngagement` CBOR according to
      * ISO/IEC 18013-5:2021 section 8.2.2.1.
      */
-    val deviceEngagement: ByteArray
+    var deviceEngagement: ByteString = EngagementGenerator(eDeviceKey, EngagementGenerator.ENGAGEMENT_VERSION_1_0)
+        .generate()
 
     /**
      * Gets the bytes of the `Handover` CBOR.
@@ -78,16 +89,16 @@ class NfcEngagementHelper private constructor(
      * This returns the bytes of the `Handover` CBOR according to
      * ISO/IEC 18013-5:2021 section 9.1.5.1.
      */
-    lateinit var handover: ByteArray
+    lateinit var handover: ByteString
     
     private var reportedDeviceConnecting = false
-    private var handoverSelectMessage: ByteArray? = null
-    private var handoverRequestMessage: ByteArray? = null
+    private var handoverSelectMessage: ByteString? = null
+    private var handoverRequestMessage: ByteString? = null
     
     private var mUsingNegotiatedHandover = false
 
     private var negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
-    private var selectedNfcFile: ByteArray? = null
+    private var selectedNfcFile: ByteString? = null
     private var testingDoNotStartTransports = false
 
     /**
@@ -135,7 +146,7 @@ class NfcEngagementHelper private constructor(
             val transport = fromConnectionMethod(
                 context, cm, DataTransport.Role.MDOC, options
             )
-            transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
+            transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes.toByteArray())
             transports.add(transport)
             Logger.d(TAG, "Added transport for $cm")
         }
@@ -207,12 +218,10 @@ class NfcEngagementHelper private constructor(
      * @param apdu The APDU that was received from the remote device.
      * @return a byte-array containing the response APDU.
      */
-    fun nfcProcessCommandApdu(apdu: ByteArray): ByteArray {
-        if (Logger.isDebugEnabled) {
-            Logger.dHex(TAG, "nfcProcessCommandApdu: apdu", apdu)
-        }
-        val commandType = NfcUtil.nfcGetCommandType(apdu)
-        return when (commandType) {
+    fun nfcProcessCommandApdu(apdu: ByteString): ByteString {
+        Logger.dHex(TAG, "nfcProcessCommandApdu: apdu", apdu.toByteArray())
+
+        return when (val commandType = NfcUtil.nfcGetCommandType(apdu)) {
             NfcUtil.COMMAND_TYPE_SELECT_BY_AID -> handleSelectByAid(apdu)
             NfcUtil.COMMAND_TYPE_SELECT_FILE -> handleSelectFile(apdu)
             NfcUtil.COMMAND_TYPE_READ_BINARY -> handleReadBinary(apdu)
@@ -224,21 +233,17 @@ class NfcEngagementHelper private constructor(
         }
     }
 
-    private fun handleSelectByAid(apdu: ByteArray): ByteArray {
+    private fun handleSelectByAid(apdu: ByteString): ByteString {
         if (apdu.size < 12) {
             Logger.w(TAG, "handleSelectByAid: unexpected APDU length ${apdu.size}")
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
         }
-        if (Arrays.equals(
-                Arrays.copyOfRange(apdu, 5, 12),
-                NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION
-            )
-        ) {
+        if (apdu.substring(5, 12) == NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION) {
             Logger.d(TAG, "handleSelectByAid: NDEF application selected")
             updateBinaryData = null
             return NfcUtil.STATUS_WORD_OK
         }
-        Logger.dHex(TAG, "handleSelectByAid: Unexpected AID selected in APDU", apdu)
+        Logger.dHex(TAG, "handleSelectByAid: Unexpected AID selected in APDU", apdu.toByteArray())
         return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
     }
 
@@ -284,7 +289,7 @@ class NfcEngagementHelper private constructor(
         return message.toByteArray()
     }
 
-    private fun handleSelectFile(apdu: ByteArray): ByteArray {
+    private fun handleSelectFile(apdu: ByteString): ByteString {
         if (apdu.size < 7) {
             Logger.w(TAG, "handleSelectFile: unexpected APDU length " + apdu.size)
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
@@ -295,35 +300,31 @@ class NfcEngagementHelper private constructor(
         if (fileId == NfcUtil.CAPABILITY_CONTAINER_FILE_ID) {
             // This is defined in NFC Forum Type 4 Tag Technical Specification v1.2 table 6
             // and section 4.7.3 NDEF-File_Ctrl_TLV
-            val fileWriteAccessCondition = if (mUsingNegotiatedHandover) 0x00 else 0xff.toByte()
-            selectedNfcFile = byteArrayOf(
-                0x00.toByte(),
-                0x0f.toByte(),
-                0x20.toByte(),
-                0x7f.toByte(),
-                0xff.toByte(),
-                0x7f.toByte(),
-                0xff.toByte(),
-                0x04.toByte(),
-                0x06.toByte(),
-                0xe1.toByte(),
-                0x04.toByte(),
-                0x7f.toByte(),
-                0xff.toByte(),
-                0x00.toByte(),  // file read access condition (allow read)
-                fileWriteAccessCondition // file write access condition (allow/disallow write)
-            )
+            val fileWriteAccessCondition: UInt = if (mUsingNegotiatedHandover) 0x00u else 0xff.toByte().toUInt()
+            selectedNfcFile = buildByteString {
+                appendUInt8(0x00)
+                appendUInt8(0x0f)
+                appendUInt8(0x20)
+                appendUInt8(0x7f)
+                appendUInt8(0xff)
+                appendUInt8(0x7f)
+                appendUInt8(0xff)
+                appendUInt8(0x04)
+                appendUInt8(0x06)
+                appendUInt8(0xe1)
+                appendUInt8(0x04)
+                appendUInt8(0x7f)
+                appendUInt8(0xff)
+                appendUInt8(0x00)  // file read access condition (allow read)
+                appendUInt8(fileWriteAccessCondition) // file write access condition (allow/disallow write)
+            }
             Logger.d(TAG, "handleSelectFile: CAPABILITY file selected")
         } else if (fileId == NfcUtil.NDEF_FILE_ID) {
             if (mUsingNegotiatedHandover) {
                 Logger.d(TAG, "handleSelectFile: NDEF file selected and using negotiated handover")
                 val message = calculateNegotiatedHandoverInitialNdefMessage()
                 Logger.dHex(TAG, "handleSelectFile: Initial NDEF message", message)
-                val fileContents = ByteArray(message.size + 2)
-                fileContents[0] = (message.size / 256).toByte()
-                fileContents[1] = (message.size and 0xff).toByte()
-                System.arraycopy(message, 0, fileContents, 2, message.size)
-                selectedNfcFile = fileContents
+                selectedNfcFile = buildByteString { appendUInt16(message.size).append(message) }
                 negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT
             } else {
                 val cmsFromTransports = setupTransports(
@@ -331,17 +332,10 @@ class NfcEngagementHelper private constructor(
                 )
                 Logger.d(TAG, "handleSelectFile: NDEF file selected and using static "
                     + "handover - calculating handover message")
-                val hsMessage = NfcUtil.createNdefMessageHandoverSelect(
-                    cmsFromTransports,
-                    deviceEngagement,
-                    options
-                )
-                Logger.dHex(TAG, "handleSelectFile: Handover Select", hsMessage)
-                val fileContents = ByteArray(hsMessage.size + 2)
-                fileContents[0] = (hsMessage.size / 256).toByte()
-                fileContents[1] = (hsMessage.size and 0xff).toByte()
-                System.arraycopy(hsMessage, 0, fileContents, 2, hsMessage.size)
-                selectedNfcFile = fileContents
+                val hsMessage = NfcUtil.createNdefMessageHandoverSelect(cmsFromTransports, deviceEngagement, options)
+                Logger.dHex(TAG, "handleSelectFile: Handover Select", hsMessage.toByteArray())
+
+                selectedNfcFile = buildByteString { appendUInt16(hsMessage.size).append(hsMessage) }
                 handoverSelectMessage = hsMessage
                 handoverRequestMessage = null
                 handover = Cbor.encode(
@@ -366,7 +360,7 @@ class NfcEngagementHelper private constructor(
         return NfcUtil.STATUS_WORD_OK
     }
 
-    private fun handleReadBinary(apdu: ByteArray): ByteArray {
+    private fun handleReadBinary(apdu: ByteString): ByteString {
         if (apdu.size < 5) {
             Logger.w(TAG, "handleReadBinary: unexpected APDU length ${apdu.size}")
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
@@ -375,7 +369,7 @@ class NfcEngagementHelper private constructor(
             Logger.w(TAG, "handleReadBinary: no file selected -> STATUS_WORD_FILE_NOT_FOUND")
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
         }
-        val contents: ByteArray = selectedNfcFile!!
+        val contents: ByteString = selectedNfcFile!!
         val offset = (apdu[2].toInt() and 0xff) * 256 + (apdu[3].toInt() and 0xff)
         var size = apdu[4].toInt() and 0xff
         if (size == 0) {
@@ -396,69 +390,54 @@ class NfcEngagementHelper private constructor(
                     "end ${contents.size} -> STATUS_WORD_END_OF_FILE_REACHED")
             return NfcUtil.STATUS_WORD_END_OF_FILE_REACHED
         }
-        val response = ByteArray(size + NfcUtil.STATUS_WORD_OK.size)
-        System.arraycopy(contents, offset, response, 0, size)
-        System.arraycopy(NfcUtil.STATUS_WORD_OK, 0, response, size, NfcUtil.STATUS_WORD_OK.size)
-        Logger.d(TAG, "handleReadBinary: returning $size bytes from offset $offset " +
-                "(file size ${contents.size})")
-        return response
+        Logger.d(TAG, "handleReadBinary: returning $size bytes from offset $offset (file size ${contents.size})")
+
+        return buildByteString { appendBstring(contents.substring(offset, size)).append(NfcUtil.STATUS_WORD_OK) }
     }
 
-    private var updateBinaryData: ByteArray? = null
+    private var updateBinaryData: ByteString? = null
 
     init {
-        deviceEngagement = EngagementGenerator(
-            eDeviceKey,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_0
-        ).generate()
         Logger.dCbor(TAG, "NFC DeviceEngagement", deviceEngagement)
         Logger.d(TAG, "Starting")
     }
 
-    private fun handleUpdateBinary(apdu: ByteArray): ByteArray {
+    private fun handleUpdateBinary(apdu: ByteString): ByteString {
         if (apdu.size < 5) {
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
         }
-        val offset = (apdu[2].toInt() and 0xff) * 256 + (apdu[3].toInt() and 0xff)
-        val size = apdu[4].toInt() and 0xff
+        val offset = apdu.getUInt16(2).toInt()
+        val size = apdu.getUInt8(4).toInt()
         val dataSize = apdu.size - 5
         if (dataSize != size) {
             Logger.e(TAG, "Expected length embedded in APDU to be $dataSize but found $size")
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
         }
-
         // This code implements the procedure specified by
         //
         //  Type 4 Tag Technical Specification Version 1.2 section 7.5.5 NDEF Write Procedure
-        val payload = ByteArray(dataSize)
-        System.arraycopy(apdu, 5, payload, 0, dataSize)
-        Logger.dHex(TAG, "handleUpdateBinary: payload", payload)
+        val payload = apdu.substring(5, dataSize)
+        Logger.dHex(TAG, "handleUpdateBinary: payload", payload.toByteArray())
+
         return if (offset == 0) {
             if (payload.size == 2) {
-                if (payload[0].toInt() == 0x00 && payload[1].toInt() == 0x00) {
-                    Logger.d(
-                        TAG,
-                        "handleUpdateBinary: Reset length message"
-                    )
+                if (payload.getUInt16(0).toInt() == 0) {
+                    Logger.d(TAG, "handleUpdateBinary: Reset length message")
                     if (updateBinaryData != null) {
-                        Logger.w(
-                            TAG,
-                            "Got reset but we are already active"
-                        )
+                        Logger.w(TAG, "Got reset but we are already active")
                         return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
                     }
-                    updateBinaryData = ByteArray(0)
+                    updateBinaryData = emptyByteString()
                     NfcUtil.STATUS_WORD_OK
                 } else {
-                    val length = (apdu[5].toInt() and 0xff) * 256 + (apdu[6].toInt() and 0xff)
+                    val length = apdu.getInt16(5).toInt()
                     Logger.d(TAG, "handleUpdateBinary: Update length message with length $length")
                     if (updateBinaryData == null) {
                         Logger.w(TAG, "Got length but we are not active")
                         return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
                     }
                     if (length != updateBinaryData!!.size) {
-                        Logger.w(TAG, "Length $length doesn't match received data of " +
-                                "${updateBinaryData!!.size} bytes")
+                        Logger.w(TAG, "Length $length doesn't match received data of ${updateBinaryData!!.size} bytes")
                         return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
                     }
 
@@ -472,9 +451,9 @@ class NfcEngagementHelper private constructor(
                     Logger.w(TAG,"Got data in single UPDATE_BINARY but we are already active")
                     return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
                 }
-                Logger.dHex(TAG, "handleUpdateBinary: single UPDATE_BINARY message " +
-                        "with payload: ", payload)
-                val ndefMessage = payload.copyOfRange(2, payload.size)
+                Logger.dHex(TAG, "handleUpdateBinary: single UPDATE_BINARY message with payload: ",
+                    payload.toByteArray())
+                val ndefMessage = payload.substring(2)
                 handleUpdateBinaryNdefMessage(ndefMessage)
             }
         } else if (offset == 1) {
@@ -486,37 +465,32 @@ class NfcEngagementHelper private constructor(
                 Logger.w(TAG, "Got data but we are not active")
                 return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
             }
-            Logger.dHex(
-                TAG,
-                "handleUpdateBinary: Data message offset $offset with payload: ",
-                payload
-            )
+            Logger.dHex(TAG, "handleUpdateBinary: Data message offset $offset with payload: ", payload.toByteArray())
+
             val newLength = offset - 2 + payload.size
-            if (updateBinaryData!!.size < newLength) {
-                updateBinaryData = Arrays.copyOf(updateBinaryData!!, newLength)
+            updateBinaryData = buildByteString {
+                    appendUInt16(if (updateBinaryData!!.size < newLength) newLength else payload.size )
+                    append(payload)
             }
-            System.arraycopy(payload, 0, updateBinaryData!!, offset - 2, payload.size)
             NfcUtil.STATUS_WORD_OK
         }
     }
 
-    private fun handleUpdateBinaryNdefMessage(ndefMessage: ByteArray): ByteArray {
+    private fun handleUpdateBinaryNdefMessage(ndefMessage: ByteString): ByteString {
         // Falls through here only if we have a full NDEF message.
-        return if (negotiatedHandoverState == NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT) {
-            handleServiceSelect(ndefMessage)
-        } else if (negotiatedHandoverState == NEGOTIATED_HANDOVER_STATE_EXPECT_HANDOVER_REQUEST) {
-            handleHandoverRequest(ndefMessage)
-        } else {
-            Logger.w(TAG, "Unexpected state $negotiatedHandoverState")
-            NfcUtil.STATUS_WORD_FILE_NOT_FOUND
+        return when (negotiatedHandoverState) {
+            NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT -> handleServiceSelect(ndefMessage)
+            NEGOTIATED_HANDOVER_STATE_EXPECT_HANDOVER_REQUEST -> handleHandoverRequest(ndefMessage)
+            else -> NfcUtil.STATUS_WORD_FILE_NOT_FOUND
+                .also { Logger.w(TAG, "Unexpected state $negotiatedHandoverState") }
         }
     }
 
-    private fun handleServiceSelect(ndefMessagePayload: ByteArray): ByteArray {
-        Logger.dHex(TAG, "handleServiceSelect: payload", ndefMessagePayload)
+    private fun handleServiceSelect(ndefMessagePayload: ByteString): ByteString {
+        Logger.dHex(TAG, "handleServiceSelect: payload", ndefMessagePayload.toByteArray())
         // NDEF message specified in NDEF Exchange Protocol 1.0: 4.2.2 Service Select Record
         val message = try {
-            NdefMessage(ndefMessagePayload)
+            NdefMessage(ndefMessagePayload.toByteArray())
         } catch (e: FormatException) {
             Logger.e(TAG, "handleServiceSelect: Error parsing NdefMessage", e)
             negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
@@ -532,9 +506,9 @@ class NfcEngagementHelper private constructor(
         val expectedPayload = " urn:nfc:sn:handover".toByteArray()
         expectedPayload[0] = (expectedPayload.size - 1).toByte()
         if (record.tnf != NdefRecord.TNF_WELL_KNOWN ||
-            !Arrays.equals(record.type, "Ts".toByteArray()) ||
+            !record.type.contentEquals("Ts".toByteArray()) ||
             record.payload == null ||
-            !Arrays.equals(record.payload, expectedPayload)
+            !record.payload.contentEquals(expectedPayload)
         ) {
             Logger.e(TAG, "handleServiceSelect: NdefRecord is malformed")
             negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
@@ -549,19 +523,15 @@ class NfcEngagementHelper private constructor(
         // Service selection.
         val statusMessage = calculateStatusMessage(0x00)
         Logger.dHex(TAG, "handleServiceSelect: Status message", statusMessage)
-        val fileContents = ByteArray(statusMessage.size + 2)
-        fileContents[0] = (statusMessage.size / 256).toByte()
-        fileContents[1] = (statusMessage.size and 0xff).toByte()
-        System.arraycopy(statusMessage, 0, fileContents, 2, statusMessage.size)
-        selectedNfcFile = fileContents
+        selectedNfcFile = buildByteString { appendUInt16(statusMessage.size).append(statusMessage) }
         negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_EXPECT_HANDOVER_REQUEST
         return NfcUtil.STATUS_WORD_OK
     }
 
-    private fun handleHandoverRequest(ndefMessagePayload: ByteArray): ByteArray {
-        Logger.dHex(TAG, "handleHandoverRequest: payload", ndefMessagePayload)
+    private fun handleHandoverRequest(ndefMessagePayload: ByteString): ByteString {
+        Logger.dHex(TAG, "handleHandoverRequest: payload", ndefMessagePayload.toByteArray())
         val  message = try {
-            NdefMessage(ndefMessagePayload)
+            NdefMessage(ndefMessagePayload.toByteArray())
         } catch (e: FormatException) {
             Logger.e(TAG, "handleHandoverRequest: Error parsing NdefMessage", e)
             negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
@@ -627,11 +597,7 @@ class NfcEngagementHelper private constructor(
             deviceEngagement,
             options
         )
-        val fileContents = ByteArray(hsMessage.size + 2)
-        fileContents[0] = (hsMessage.size / 256).toByte()
-        fileContents[1] = (hsMessage.size and 0xff).toByte()
-        System.arraycopy(hsMessage, 0, fileContents, 2, hsMessage.size)
-        selectedNfcFile = fileContents
+        selectedNfcFile = buildByteString { appendUInt16(hsMessage.size).append(hsMessage) }
         negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_EXPECT_HANDOVER_SELECT
         handoverSelectMessage = hsMessage
         handoverRequestMessage = ndefMessagePayload

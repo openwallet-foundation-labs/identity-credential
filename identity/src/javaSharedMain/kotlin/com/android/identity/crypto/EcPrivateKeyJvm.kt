@@ -1,5 +1,6 @@
 package com.android.identity.crypto
 
+import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.asn1.DEROctetString
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -24,7 +25,7 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
         EcCurve.BRAINPOOLP512R1 -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyDoubleCoordinate
             val priv = this as ECPrivateKey
-            EcPrivateKeyDoubleCoordinate(curve, priv.d.toByteArray(), pub.x, pub.y)
+            EcPrivateKeyDoubleCoordinate(curve, ByteString(priv.d.toByteArray()), pub.x, pub.y)
         }
 
         EcCurve.ED25519,
@@ -34,7 +35,7 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyOkp
             val privateKeyInfo = PrivateKeyInfo.getInstance(this.getEncoded())
             val encoded = privateKeyInfo.parsePrivateKey().toASN1Primitive().encoded
-            EcPrivateKeyOkp(curve, encoded.sliceArray(IntRange(2, encoded.size - 1)), pub.x)
+            EcPrivateKeyOkp(curve, ByteString(encoded.sliceArray(IntRange(2, encoded.size - 1))), pub.x)
         }
     }
 
@@ -50,7 +51,7 @@ val EcPrivateKey.javaPrivateKey: PrivateKey
             val keyFactory = KeyFactory.getInstance("EC")
             keyFactory.generatePrivate(
                 ECPrivateKeySpec(
-                    BigIntegers.fromUnsignedByteArray(this.d),
+                    BigIntegers.fromUnsignedByteArray(this.d.toByteArray()),
                     ECNamedCurveTable.getParameterSpec(this.curve.SECGName)
                 )
             )
@@ -72,7 +73,7 @@ val EcPrivateKey.javaPrivateKey: PrivateKey
                 PKCS8EncodedKeySpec(
                     PrivateKeyInfo(
                         AlgorithmIdentifier(ids.second),
-                        DEROctetString(this.d)
+                        DEROctetString(this.d.toByteArray())
                     ).encoded
                 )
             )

@@ -14,12 +14,9 @@ import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import com.nimbusds.jwt.proc.BadJWTException
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import com.nimbusds.jwt.proc.JWTClaimsSetVerifier
-import junit.framework.TestCase.assertTrue
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -72,7 +69,7 @@ class JsonWebSignatureTests {
         val sjwt = SignedJWT.parse(signedJwt.jsonPrimitive.content)
         val jwtProcessor = DefaultJWTProcessor<SecurityContext>()
         val x5c = sjwt.header?.x509CertChain ?: throw IllegalArgumentException("Error retrieving x5c")
-        val pubCertChain = x5c.mapNotNull { runCatching { X509Cert(it.decode()) }.getOrNull() }
+        val pubCertChain = x5c.mapNotNull { runCatching { X509Cert(ByteString(it.decode())) }.getOrNull() }
         assertEquals(1, pubCertChain.size)
         assertEquals(signingKeyCert, pubCertChain[0])
 

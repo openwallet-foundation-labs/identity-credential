@@ -100,7 +100,7 @@ object CredmanRegistry {
             val options = BitmapFactory.Options()
             options.inMutable = true
             val credBitmap = BitmapFactory.decodeByteArray(
-                docConf.cardArt,
+                docConf.cardArt.toByteArray(),
                 0,
                 docConf.cardArt.size,
                 options

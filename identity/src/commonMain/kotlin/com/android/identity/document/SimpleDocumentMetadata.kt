@@ -18,7 +18,7 @@ class SimpleDocumentMetadata private constructor(
     private var data: Data = if (data == null || data.isEmpty()) {
         Data()  // new document or SimpleDocumentMetadata never saved
     } else {
-        Data.fromCbor(data.toByteArray())
+        Data.fromCbor(data)
     }
 
     override val provisioned get() = data.provisioned
@@ -39,7 +39,7 @@ class SimpleDocumentMetadata private constructor(
             issuerLogo = lastData.issuerLogo,
         )
         data = newData
-        saveFn(ByteString(data.toCbor()))
+        saveFn(data.toCbor())
     }
 
     suspend fun setBasicProperties(
@@ -57,7 +57,7 @@ class SimpleDocumentMetadata private constructor(
             issuerLogo = issuerLogo,
         )
         data = newData
-        saveFn(ByteString(data.toCbor()))
+        saveFn(data.toCbor())
     }
 
     @CborSerializable

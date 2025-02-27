@@ -118,6 +118,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.PassphraseEntryField
 import org.multipaz.compose.getDefaultImageVector
 import kotlin.time.Duration.Companion.seconds
@@ -1242,7 +1243,7 @@ fun EvidenceRequestSelfieVideoView(
                     return@SelfieRecorder
                 } else {
                     provisioningViewModel.provideEvidence(
-                        evidence = EvidenceResponseSelfieVideo(selfieResult)
+                        evidence = EvidenceResponseSelfieVideo(ByteString(selfieResult))
                     )
                 }
             },

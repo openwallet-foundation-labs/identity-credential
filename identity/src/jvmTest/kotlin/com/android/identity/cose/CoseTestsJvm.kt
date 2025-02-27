@@ -6,8 +6,8 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.crypto.toEcPublicKey
 import com.android.identity.util.fromHex
+import kotlinx.io.bytestring.ByteString
 
 import org.bouncycastle.util.BigIntegers
 import java.math.BigInteger
@@ -33,8 +33,8 @@ class CoseTestsJvm {
             Cbor.toDiagnostics(
                 EcPublicKeyDoubleCoordinate(
                     EcCurve.P256,
-                    BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32),
-                    BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)
+                    ByteString(BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)),
+                    ByteString(BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32))
                 ).toCoseKey().toDataItem(),
                 setOf(DiagnosticOption.PRETTY_PRINT)
             )
@@ -46,8 +46,8 @@ class CoseTestsJvm {
         // Check we can add additional labels to a CoseKey
         val key = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32),
-            BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)
+            ByteString(BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)),
+            ByteString(BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32))
         )
         val coseKey = key.toCoseKey(
             mapOf(Pair(Cose.COSE_KEY_KID.toCoseLabel, "name@example.com".toByteArray().toDataItem()))
@@ -110,7 +110,7 @@ class CoseTestsJvm {
             "23032312d31302d30315431333a33303a30325a584059e64205df1e2f708dd6db0847aed7" +
             "9fc7c0201d80fa55badcaf2e1bcf5902e1e5a62e4832044b890ad85aa53f129134775d733" +
             "754d7cb7a413766aeff13cb2e"
-        val coseSign1 = Cbor.decode(issuerAuth.fromHex()).asCoseSign1
+        val coseSign1 = Cbor.decode(ByteString(issuerAuth.fromHex())).asCoseSign1
 
         val signatureAlgorithm = coseSign1.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber
         assertEquals(signatureAlgorithm, Algorithm.ES256.coseAlgorithmIdentifier.toLong())

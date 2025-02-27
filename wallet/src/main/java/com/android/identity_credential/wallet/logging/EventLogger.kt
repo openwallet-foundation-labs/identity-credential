@@ -74,9 +74,9 @@ class EventLogger(private val storage: Storage) {
 
     suspend fun addMDocPresentationEntry(
         documentId: String,
-        sessionTranscript: ByteArray,
-        deviceRequestCbor: ByteArray,
-        deviceResponseCbor: ByteArray,
+        sessionTranscript: ByteString,
+        deviceRequestCbor: ByteString,
+        deviceResponseCbor: ByteString,
         requesterType: Requester,
         shareType: ShareType
     ) {
@@ -90,7 +90,7 @@ class EventLogger(private val storage: Storage) {
             requester = requesterType,
             shareType = shareType
         )
-        val serializedEntry: ByteArray
+        val serializedEntry: ByteString
 
         val event = MdocPresentationEvent(
             timestamp = timestamp,
@@ -102,7 +102,7 @@ class EventLogger(private val storage: Storage) {
         )
         serializedEntry = event.toCbor()
 
-        storage.getTable(eventTableSpec).insert(key = null, ByteString(serializedEntry))
+        storage.getTable(eventTableSpec).insert(key = null, serializedEntry)
     }
 
     suspend fun getEntries(documentId: String): List<Event> {
@@ -112,7 +112,7 @@ class EventLogger(private val storage: Storage) {
             val value = table.get(key)
             if (value != null) {
                 try {
-                    val event = Event.fromCbor(value.toByteArray())
+                    val event = Event.fromCbor(value)
                     event.id = key
                     when {
                         event is MdocPresentationEvent && event.documentId == documentId -> entries.add(event)

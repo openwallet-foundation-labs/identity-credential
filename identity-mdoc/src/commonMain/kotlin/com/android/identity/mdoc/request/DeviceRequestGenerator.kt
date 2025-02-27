@@ -31,6 +31,7 @@ import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.EcPrivateKey
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for building `DeviceRequest` [CBOR](http://cbor.io/)
@@ -41,7 +42,7 @@ import com.android.identity.crypto.EcPrivateKey
  * @param encodedSessionTranscript the bytes of `SessionTranscript`.
  */
 class DeviceRequestGenerator(
-    val encodedSessionTranscript: ByteArray
+    val encodedSessionTranscript: ByteString
 ) {
     private val docRequestsBuilder = CborArray.builder()
 
@@ -62,7 +63,7 @@ class DeviceRequestGenerator(
     fun addDocumentRequest(
         docType: String,
         itemsToRequest: Map<String, Map<String, Boolean>>,
-        requestInfo: Map<String, ByteArray>?,
+        requestInfo: Map<String, ByteString>?,
         readerKey: EcPrivateKey?,
         signatureAlgorithm: Algorithm,
         readerKeyCertificateChain: X509CertChain?
@@ -149,7 +150,7 @@ class DeviceRequestGenerator(
      *
      * @return the bytes of `DeviceRequest` CBOR.
      */
-    fun generate(): ByteArray = encode(
+    fun generate(): ByteString = encode(
         CborMap.builder()
             .put("version", "1.0")
             .put("docRequests", docRequestsBuilder.end().build())

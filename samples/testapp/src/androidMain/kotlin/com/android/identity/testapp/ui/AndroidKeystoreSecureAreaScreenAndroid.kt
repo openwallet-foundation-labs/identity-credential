@@ -65,6 +65,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encodeToByteString
+import kotlinx.io.bytestring.toHexString
 import kotlin.time.Duration.Companion.days
 
 private const val TAG = "AndroidKeystoreSecureAreaScreen"
@@ -519,6 +522,7 @@ private suspend fun aksTest(
     }
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 private suspend fun aksTestUnguarded(
     keyPurpose: KeyPurpose,
     curve: EcCurve,
@@ -541,7 +545,7 @@ private suspend fun aksTestUnguarded(
     )
 
     if (keyPurpose == KeyPurpose.SIGN) {
-        val dataToSign = "data".toByteArray()
+        val dataToSign = "data".encodeToByteString()
         val t0 = System.currentTimeMillis()
         val signature = androidKeystoreSecureArea.sign(
             "testKey",
@@ -550,8 +554,7 @@ private suspend fun aksTestUnguarded(
         val t1 = System.currentTimeMillis()
         Logger.d(
             TAG,
-            "Made signature with key " +
-                    "r=${signature.r.toHex()} s=${signature.s.toHex()}",
+            "Made signature with key r=${signature.r.toHexString()} s=${signature.s.toHexString()}",
         )
         showToast("EC signature in (${t1 - t0} msec)")
     } else {

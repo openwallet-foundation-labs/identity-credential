@@ -36,8 +36,8 @@ actual object DeviceCheck {
             keyUnlockData = null
         )
         return DeviceAssertion(
-            assertionData = ByteString(assertionData),
-            platformAssertion = ByteString(signature.toCoseEncoded())
+            assertionData = assertionData,
+            platformAssertion = signature.toCoseEncoded()
         )
     }
 }

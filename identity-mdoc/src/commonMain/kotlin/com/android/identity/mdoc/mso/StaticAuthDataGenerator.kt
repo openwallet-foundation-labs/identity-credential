@@ -18,6 +18,7 @@ package com.android.identity.mdoc.mso
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.RawCbor
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for building `StaticAuthData` [CBOR](http://cbor.io/) with
@@ -65,8 +66,8 @@ import com.android.identity.cbor.RawCbor
  * @throws IllegalArgumentException if the `digestIDMapping` is empty.
  */
 class StaticAuthDataGenerator(
-    private var digestIdMapping: Map<String, List<ByteArray>>,
-    private val encodedIssuerAuth: ByteArray
+    private var digestIdMapping: Map<String, List<ByteString>>,
+    private val encodedIssuerAuth: ByteString
 ) {
     init {
         require(!digestIdMapping.isEmpty()) { "digestIDs must not be empty" }
@@ -77,7 +78,7 @@ class StaticAuthDataGenerator(
      *
      * @return the bytes of `StaticAuthData` CBOR.
      */
-    fun generate(): ByteArray =
+    fun generate(): ByteString =
         CborMap.builder().apply {
             for ((namespace, bytesList) in digestIdMapping) {
                 putArray(namespace).let { innerBuilder ->

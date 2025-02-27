@@ -1,5 +1,9 @@
 package com.android.identity.cbor
 
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt32
+import com.android.identity.util.appendUInt64
+import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt16
 import com.android.identity.util.getUInt32
 import com.android.identity.util.getUInt64
@@ -7,8 +11,6 @@ import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteString
 import kotlin.math.pow
 import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.bytestring.toHexString
-import kotlin.experimental.or
 
 /**
  * CBOR support routines.
@@ -30,33 +32,15 @@ object Cbor {
         majorType: MajorType,
         length: ULong
     ) {
-        val majorTypeShifted = (majorType.type shl 5).toByte()
+        val majorTypeShifted = (majorType.type shl 5).toUByte()
         builder.apply {
-            if (length < 24U) {
-                append(majorTypeShifted.or(length.toByte()))
-            } else if (length < (1UL shl 8)) {
-                append(majorTypeShifted.or(24))
-                append(length.toByte())
-            } else if (length < (1UL shl 16)) {
-                append(majorTypeShifted.or(25))
-                append((length shr 8).and(0xffU).toByte())
-                append((length shr 0).and(0xffU).toByte())
-            } else if (length < (1UL shl 32)) {
-                append(majorTypeShifted.or(26))
-                append((length shr 24).and(0xffU).toByte())
-                append((length shr 16).and(0xffU).toByte())
-                append((length shr 8).and(0xffU).toByte())
-                append((length shr 0).and(0xffU).toByte())
-            } else {
-                append(majorTypeShifted.or(27))
-                append((length shr 56).and(0xffU).toByte())
-                append((length shr 48).and(0xffU).toByte())
-                append((length shr 40).and(0xffU).toByte())
-                append((length shr 32).and(0xffU).toByte())
-                append((length shr 24).and(0xffU).toByte())
-                append((length shr 16).and(0xffU).toByte())
-                append((length shr 8).and(0xffU).toByte())
-                append((length shr 0).and(0xffU).toByte())
+            when {
+                length < 24U -> appendUInt8(majorTypeShifted.or(length.toUByte()))
+                // TODO: b/393388370 -
+                length < (1UL shl 8) -> appendUInt8(majorTypeShifted.or(24u)).appendUInt8(length.toUByte())
+                length < (1UL shl 16) -> appendUInt8(majorTypeShifted.or(25u)).appendUInt16(length.toUInt())
+                length < (1UL shl 32) -> appendUInt8(majorTypeShifted.or(26u)).appendUInt32(length.toUInt())
+                else -> appendUInt8(majorTypeShifted.or(27u)).appendUInt64(length)
             }
         }
     }
@@ -67,10 +51,10 @@ object Cbor {
      * @param item the [DataItem] to encode.
      * @returns the bytes of the item.
      */
-    fun encode(item: DataItem): ByteArray {
+    fun encode(item: DataItem): ByteString {
         val builder = ByteStringBuilder()
         item.encode(builder)
-        return builder.toByteString().toByteArray()
+        return builder.toByteString()
     }
 
     // returns the new offset, then the length/value encoded in the decoded content
@@ -267,7 +251,7 @@ object Cbor {
         }
 
         if (item is RawCbor) {
-            toDiagnostics(sb, indent, decode(ByteString(item.encodedCbor)), tagNumberOfParent, options)
+            toDiagnostics(sb, indent, decode(item.encodedCbor), tagNumberOfParent, options)
             return
         }
 
@@ -286,19 +270,17 @@ object Cbor {
                             sb.append("indefinite-size byte-string")
                         } else {
                             sb.append("(_")
-                            item.chunks.forEach {
-                                sb.append(it.toHexString(HexFormat {
-                                    upperCase = true
-                                    number {
-                                        removeLeadingZeros = false
-                                        prefix = "h'"
-                                        suffix = "\'"
-                                    }
-                                    bytes {
-                                        bytesPerGroup = 1
-                                        groupSeparator = ", "
-                                    }
-                                }))
+                            var count = 0
+                            for (chunk in item.chunks) {
+                                if (count++ == 0) {
+                                    sb.append(" h'")
+                                } else {
+                                    sb.append(", h'")
+                                }
+                                for (b in chunk.toByteArray()) {
+                                    sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
+                                    sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
+                                }
                                 sb.append('\'')
                             }
                             sb.append(')')
@@ -324,9 +306,10 @@ object Cbor {
                                 }
                             } else {
                                 sb.append("h'")
-                                val b = item.value
-                                sb.append(HEX_DIGITS[b[0].toInt().and(0xff) shr 4])
-                                sb.append(HEX_DIGITS[b[1].toInt().and(0x0f)])
+                                for (b in item.value.toByteArray()) {
+                                    sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
+                                    sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
+                                }
                                 sb.append("'")
                             }
                         }
@@ -484,7 +467,7 @@ object Cbor {
      * @param options zero or more [DiagnosticOption].
      */
     fun toDiagnostics(
-        encodedItem: ByteArray,
+        encodedItem: ByteString,
         options: Set<DiagnosticOption> = emptySet()
     ): String {
         val sb = StringBuilder()

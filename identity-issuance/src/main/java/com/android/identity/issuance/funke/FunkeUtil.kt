@@ -9,6 +9,7 @@ import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.util.Logger
+import com.android.identity.util.appendString
 import com.android.identity.util.toBase64Url
 import io.ktor.client.HttpClient
 import io.ktor.client.request.headers
@@ -19,6 +20,8 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.random.Random
@@ -45,10 +48,10 @@ internal object FunkeUtil {
         }
     }
 
-    suspend fun communicationSign(env: FlowEnvironment, clientId: String, message: ByteArray): ByteArray {
+    suspend fun communicationSign(env: FlowEnvironment, clientId: String, message: ByteArray): ByteString {
         val secureArea = env.getInterface(SecureAreaProvider::class)!!.get()
-        val alias = "FunkeComm_" + clientId
-        val sig = secureArea.sign(alias, message, null)
+        val alias = "FunkeComm_$clientId"
+        val sig = secureArea.sign(alias, ByteString(message), null)
         return sig.toCoseEncoded()
     }
 

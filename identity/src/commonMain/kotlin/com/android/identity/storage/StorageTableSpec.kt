@@ -59,12 +59,12 @@ open class StorageTableSpec(
         map["supportPartitions".toDataItem()] = supportPartitions.toDataItem()
         map["supportExpiration".toDataItem()] = supportExpiration.toDataItem()
         map["schemaVersion".toDataItem()] = schemaVersion.toDataItem()
-        return ByteString(Cbor.encode(CborMap(map)))
+        return Cbor.encode(CborMap(map))
     }
 
     companion object {
         internal fun decodeByteString(data: ByteString): StorageTableSpec {
-            val map = Cbor.decode(data.toByteArray())
+            val map = Cbor.decode(data)
             return StorageTableSpec(
                 name = map["name"].asTstr,
                 supportPartitions = map["supportPartitions"].asBoolean,

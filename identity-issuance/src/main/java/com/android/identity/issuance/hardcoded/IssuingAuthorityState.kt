@@ -72,6 +72,7 @@ import com.android.identity.sdjwt.SdJwtVcGenerator
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.Logger
+import com.android.identity.util.appendString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
@@ -82,6 +83,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearsUntil
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -138,7 +140,7 @@ class IssuingAuthorityState(
                 IssuingAuthorityConfiguration(
                     identifier = id,
                     issuingAuthorityName = settings.getString("${prefix}.name") ?: "Untitled",
-                    issuingAuthorityLogo = logo.toByteArray(),
+                    issuingAuthorityLogo = logo,
                     issuingAuthorityDescription = settings.getString("${prefix}.description")
                         ?: "Unknown",
                     pendingDocumentInformation = DocumentConfiguration(
@@ -149,7 +151,7 @@ class IssuingAuthorityState(
                             TYPE_PHOTO_ID -> "Photo ID"
                             else -> throw IllegalArgumentException("Unknown type $type")
                         },
-                        cardArt = art.toByteArray(),
+                        cardArt = art,
                         requireUserAuthenticationToViewDocument = requireUserAuthenticationToViewDocument,
                         mdocConfiguration = null,
                         directAccessConfiguration = null,
@@ -287,7 +289,7 @@ class IssuingAuthorityState(
 
         val storage = env.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
         val walletApplicationCapabilities = storage.get(clientId)?.let {
-                WalletApplicationCapabilities.fromCbor(it.toByteArray())
+                WalletApplicationCapabilities.fromCbor(it)
             } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
 
         val credentialConfiguration = defaultCredentialConfiguration(
@@ -453,7 +455,7 @@ class IssuingAuthorityState(
         format: CredentialFormat,
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
-    ): ByteArray = when (format) {
+    ): ByteString = when (format) {
         CredentialFormat.MDOC_MSO -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, false)
         CredentialFormat.SD_JWT_VC -> createPresentationDataSdJwt(env, documentConfiguration, authenticationKey)
         CredentialFormat.DirectAccess -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, true)
@@ -464,7 +466,7 @@ class IssuingAuthorityState(
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey,
         isDirectAccess: Boolean
-    ): ByteArray {
+    ): ByteString {
         val now = Clock.System.now()
 
         val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
@@ -584,7 +586,7 @@ class IssuingAuthorityState(
         env: FlowEnvironment,
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
-    ): ByteArray {
+    ): ByteString {
         // For now, just use the mdoc data element names and pretty print its value
         //
         val identityAttributes = buildJsonObject {
@@ -653,7 +655,7 @@ class IssuingAuthorityState(
         )
         val sdJwt = sdJwtVcGenerator.generateSdJwt(documentSigningKey)
 
-        return sdJwt.toString().toByteArray()
+        return buildByteString { appendString(sdJwt.toString()) }
     }
 
     private suspend fun generateDocumentConfiguration(
@@ -798,7 +800,7 @@ class IssuingAuthorityState(
         return DocumentConfiguration(
             displayName = "$firstName's Personal ID",
             typeDisplayName = "EU Personal ID",
-            cardArt = art.toByteArray(),
+            cardArt = art,
             requireUserAuthenticationToViewDocument =
                 settings.getBool("${prefix}.requireUserAuthenticationToViewDocument"),
             mdocConfiguration = MdocDocumentConfiguration(
@@ -980,7 +982,7 @@ class IssuingAuthorityState(
         return DocumentConfiguration(
             displayName = "$firstName's Driving License",
             typeDisplayName = "Driving License",
-            cardArt = art.toByteArray(),
+            cardArt = art,
             requireUserAuthenticationToViewDocument =
                 settings.getBool("${prefix}.requireUserAuthenticationToViewDocument"),
             mdocConfiguration = MdocDocumentConfiguration(
@@ -1132,7 +1134,7 @@ class IssuingAuthorityState(
         return DocumentConfiguration(
             displayName = "$firstName's Photo ID",
             typeDisplayName = "Photo ID",
-            cardArt = art.toByteArray(),
+            cardArt = art,
             requireUserAuthenticationToViewDocument =
             settings.getBool("${prefix}.requireUserAuthenticationToViewDocument"),
             mdocConfiguration = MdocDocumentConfiguration(
@@ -1236,11 +1238,9 @@ class IssuingAuthorityState(
         }
         val storage = env.getTable(documentTableSpec)
         val encodedCbor = storage.get(partitionId = clientId, key = documentId)
-        if (encodedCbor == null) {
-            // TODO: replace with (new) UnknownDocumentException
-            throw Error("No such document")
-        }
-        return IssuerDocument.fromDataItem(Cbor.decode(encodedCbor.toByteArray()))
+            ?: throw Error("No such document") // TODO: replace with (new) UnknownDocumentException
+
+        return IssuerDocument.fromDataItem(Cbor.decode(encodedCbor))
     }
 
     private suspend fun createIssuerDocument(env: FlowEnvironment, document: IssuerDocument): String {
@@ -1249,7 +1249,7 @@ class IssuingAuthorityState(
         }
         val storage = env.getTable(documentTableSpec)
         val bytes = Cbor.encode(document.toDataItem())
-        return storage.insert(partitionId = clientId, key = null, data = ByteString(bytes))
+        return storage.insert(partitionId = clientId, key = null, data = bytes)
     }
 
     private suspend fun deleteIssuerDocument(env: FlowEnvironment,
@@ -1276,7 +1276,7 @@ class IssuingAuthorityState(
         }
         val storage = env.getTable(documentTableSpec)
         val bytes = Cbor.encode(document.toDataItem())
-        storage.update(partitionId = clientId, key = documentId, data = ByteString(bytes))
+        storage.update(partitionId = clientId, key = documentId, data = bytes)
         if (emitNotification) {
             emit(env, IssuingAuthorityNotification(documentId))
         }

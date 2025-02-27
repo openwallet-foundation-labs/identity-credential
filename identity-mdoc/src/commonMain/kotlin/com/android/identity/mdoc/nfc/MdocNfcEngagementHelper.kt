@@ -19,7 +19,7 @@ import com.android.identity.nfc.ServiceParameterRecord
 import com.android.identity.nfc.ServiceSelectRecord
 import com.android.identity.nfc.TnepStatusRecord
 import com.android.identity.util.Logger
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt16
 import com.android.identity.util.appendUInt32
 import com.android.identity.util.toHex
@@ -146,7 +146,7 @@ class MdocNfcEngagementHelper(
                     val initialNdefMessagePayload = initialNdefMessage.encode()
                     selectedFilePayload = buildByteString {
                         appendUInt16(initialNdefMessagePayload.size)
-                        appendArray(initialNdefMessagePayload)
+                        appendBarray(initialNdefMessagePayload)
                     }
                     negotiatedHandoverState = NegotiatedHandoverState.EXPECT_SERVICE_SELECT
                 } else {
@@ -171,7 +171,7 @@ class MdocNfcEngagementHelper(
 
                     onHandoverComplete(
                         staticHandoverMethods!!,
-                        ByteString(encodedDeviceEngagement),
+                        encodedDeviceEngagement,
                         handover
                     )
 
@@ -275,7 +275,7 @@ class MdocNfcEngagementHelper(
 
         onHandoverComplete(
             listOf(selectedMethod),
-            ByteString(encodedDeviceEngagement),
+            encodedDeviceEngagement,
             handover
         )
 
@@ -284,7 +284,7 @@ class MdocNfcEngagementHelper(
 
     private fun generateHandoverSelectMessage(
         methods: List<ConnectionMethod>,
-        encodedDeviceEngagement: ByteArray,
+        encodedDeviceEngagement: ByteString,
         skipUuids: Boolean,
     ): NdefMessage {
         val auxiliaryReferences = mutableListOf<String>("mdoc")
@@ -310,7 +310,7 @@ class MdocNfcEngagementHelper(
                     tnf = NdefRecord.Tnf.EXTERNAL_TYPE,
                     type = "iso.org:18013:deviceengagement".encodeToByteString(),
                     id = "mdoc".encodeToByteString(),
-                    payload = ByteString(encodedDeviceEngagement)
+                    payload = encodedDeviceEngagement
                 )
             ) + carrierConfigurationRecords
         )
@@ -332,7 +332,7 @@ class MdocNfcEngagementHelper(
             val responseNdefMessagePayload = responseNdefMessage.encode()
             selectedFilePayload = buildByteString {
                 appendUInt32(responseNdefMessagePayload.size)
-                appendArray(responseNdefMessagePayload)
+                appendBarray(responseNdefMessagePayload)
             }
             return ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
         } catch (error: Throwable) {

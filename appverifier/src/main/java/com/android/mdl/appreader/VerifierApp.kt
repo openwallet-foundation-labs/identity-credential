@@ -19,6 +19,7 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.mdl.appreader.settings.UserPreferences
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.color.DynamicColors
+import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
 import java.security.Security
@@ -58,14 +59,14 @@ class VerifierApp : Application() {
         trustManagerInstance = trustManager
         certificateStorageEngineInstance = certificateStorageEngine
         certificateStorageEngineInstance.enumerate().forEach {
-            val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!)
-            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(certificate.encoded)))
+            val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!.toByteArray())
+            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(ByteString(certificate.encoded))))
         }
         KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
-            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(it.encoded)))
+            trustManagerInstance.addTrustPoint(TrustPoint(X509Cert(ByteString(it.encoded))))
         }
         val signedVical = SignedVical.parse(
-            resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes()
+            ByteString(resources.openRawResource(R.raw.austroad_test_event_vical_20241002).readBytes())
         )
         for (certInfo in signedVical.vical.certificateInfos) {
             trustManagerInstance.addTrustPoint(

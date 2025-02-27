@@ -23,6 +23,7 @@ import com.android.identity.request.Requester
 import com.android.identity.trustmanagement.TrustPoint
 import identitycredential.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
+import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.multipaz.compose.consent.ConsentModalBottomSheet
 
@@ -63,13 +64,13 @@ fun ConsentModalBottomSheetScreen(
     )
 
     var cardArt by remember {
-        mutableStateOf(ByteArray(0))
+        mutableStateOf(ByteString(0))
     }
     var relyingPartyDisplayIcon by remember {
         mutableStateOf(ByteArray(0))
     }
     LaunchedEffect(Unit) {
-        cardArt = Res.readBytes("files/utopia_driving_license_card_art.png")
+        cardArt = ByteString(Res.readBytes("files/utopia_driving_license_card_art.png"))
         relyingPartyDisplayIcon = Res.readBytes("files/utopia-brewery.png")
         sheetState.show()
     }

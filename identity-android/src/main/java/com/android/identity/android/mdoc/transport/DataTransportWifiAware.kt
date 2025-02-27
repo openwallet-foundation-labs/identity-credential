@@ -48,7 +48,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.util.HexUtil
 import com.android.identity.util.Logger
-import com.android.identity.util.toHex
+import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.IOException
@@ -625,7 +625,7 @@ Content-Type: application/CBOR
                 passphraseInfoPassphrase,
                 channelInfoChannelNumber,
                 channelInfoOperatingClass,
-                bandInfoSupportedBands
+                ByteString(bandInfoSupportedBands ?: byteArrayOf())
             )
         }
 
@@ -700,7 +700,7 @@ Content-Type: application/CBOR
                 if (cm.bandInfoSupportedBands != null) {
                     baos.write(1 + cm.bandInfoSupportedBands!!.size)
                     baos.write(0x04) // Data Type 0x04 - Band Info
-                    baos.write(cm.bandInfoSupportedBands)
+                    baos.write(cm.bandInfoSupportedBands!!.toByteArray())
                 }
 
                 // Spec says: "The Channel Info field serves as a placeholder for future

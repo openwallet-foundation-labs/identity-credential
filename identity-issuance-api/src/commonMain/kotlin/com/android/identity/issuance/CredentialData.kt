@@ -3,6 +3,7 @@ package com.android.identity.issuance
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.crypto.EcPublicKey
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * This data structure contains a data for a credential, minted by the issuer.
@@ -32,5 +33,5 @@ data class CredentialData(
     /**
      * The data encoded in the format specified by [format].
      */
-    val data: ByteArray,
+    val data: ByteString,
 )

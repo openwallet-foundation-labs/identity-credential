@@ -1,5 +1,6 @@
 package com.android.identity.nfc
 
+import com.android.identity.util.emptyByteString
 import com.android.identity.util.fromHex
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.toHexString
@@ -11,7 +12,7 @@ class ResponseApduTest {
     @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun encodeDecode() {
-        val noPayload = ByteString(byteArrayOf())
+        val noPayload = emptyByteString()
         val payload = ByteString(ByteArray(0x123) { 65 })
         val payloadAsString = payload.toHexString()
 

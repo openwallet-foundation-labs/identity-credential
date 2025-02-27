@@ -28,7 +28,7 @@ data class DeviceAssertion(
     val platformAssertion: ByteString,
 ) {
     val assertion: Assertion
-        get() = Assertion.fromCbor(assertionData.toByteArray())
+        get() = Assertion.fromCbor(assertionData)
 
     companion object
 }

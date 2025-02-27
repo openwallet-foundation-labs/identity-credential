@@ -40,6 +40,7 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
+import kotlinx.io.bytestring.ByteString
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.Signature
@@ -211,8 +212,8 @@ class TransferManager private constructor(private val context: Context) {
     var mediaPlayer: MediaPlayer? = MediaPlayer.create(context, R.raw.nfc_connected)
 
     private val responseListener = object : VerificationHelper.Listener {
-        override fun onReaderEngagementReady(readerEngagement: ByteArray) {
-            this@TransferManager.readerEngagement = readerEngagement
+        override fun onReaderEngagementReady(readerEngagement: ByteString) {
+            this@TransferManager.readerEngagement = readerEngagement.toByteArray()
             transferStatusLd.value = TransferStatus.READER_ENGAGEMENT_READY
         }
 
@@ -233,8 +234,8 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.CONNECTED
         }
 
-        override fun onResponseReceived(deviceResponseBytes: ByteArray) {
-            responseBytes = deviceResponseBytes
+        override fun onResponseReceived(deviceResponseBytes: ByteString) {
+            responseBytes = deviceResponseBytes.toByteArray()
             transferStatusLd.value = TransferStatus.RESPONSE
         }
 
@@ -307,7 +308,7 @@ class TransferManager private constructor(private val context: Context) {
                         readerCaPrivateKey
                     )
                 readerCertificateChain = X509CertChain(
-                    listOf(X509Cert(readerCertificate.encoded), readerCaCert)
+                    listOf(X509Cert(ByteString(readerCertificate.encoded)), readerCaCert)
                 )
 
             }
@@ -351,7 +352,7 @@ class TransferManager private constructor(private val context: Context) {
     fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
         responseBytes?.let { rb ->
             verification?.let { v ->
-                val parser = DeviceResponseParser(rb, v.sessionTranscript)
+                val parser = DeviceResponseParser(ByteString(rb), v.sessionTranscript)
                 parser.setEphemeralReaderKey(v.eReaderKey)
                 return parser.parse()
             } ?: throw IllegalStateException("Verification is null")

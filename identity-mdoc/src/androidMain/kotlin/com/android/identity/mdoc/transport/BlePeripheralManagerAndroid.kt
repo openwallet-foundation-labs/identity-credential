@@ -194,13 +194,13 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
                 if (l2capServerSocket != null) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val psm = l2capServerSocket!!.psm.toUInt()
-                        buildByteString {
+
+                        encodedPsm = buildByteString {
                             append((psm shr 24).and(0xffU).toByte())
                             append((psm shr 16).and(0xffU).toByte())
                             append((psm shr 8).and(0xffU).toByte())
                             append((psm shr 0).and(0xffU).toByte())
-                        }
-                        encodedPsm = bsb.toByteString().toByteArray()
+                        }.toByteArray()
                     }
                 } else {
                     Logger.w(TAG, "Got a request for L2CAP characteristic but not listening")
@@ -466,7 +466,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
     }
 
     override suspend fun setESenderKey(eSenderKey: EcPublicKey) {
-        val ikm = Cbor.encode(Tagged(24, Bstr(Cbor.encode(eSenderKey.toCoseKey().toDataItem()))))
+        val ikm = Cbor.encode(Tagged(24, Bstr(Cbor.encode(eSenderKey.toCoseKey().toDataItem())))).toByteArray()
         val info = "BLEIdent".encodeToByteArray()
         val salt = byteArrayOf()
         identValue = Crypto.hkdf(Algorithm.HMAC_SHA256, ikm, salt, info, 16)

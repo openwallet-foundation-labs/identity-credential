@@ -9,6 +9,7 @@ import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 private const val TAG = "SdJwtVerifiablePresentation"
 
@@ -44,7 +45,7 @@ class SdJwtVerifiablePresentation(
         }
 
         val toBeVerified = "$keyBindingHeader.$keyBindingBody".encodeToByteArray()
-        val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64Url())
+        val signature = EcSignature.fromCoseEncoded(ByteString(keyBindingSignature.fromBase64Url()))
 
         if (!Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signature)) {
             throw IllegalStateException("Signature verification failed")

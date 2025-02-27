@@ -23,13 +23,14 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.fromDeviceEngagement
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper for parsing `DeviceEngagement` or `ReaderEngagement` CBOR.
  *
  * @param encodedEngagement the bytes of the `Engagement` structure.
  */
-class EngagementParser(private val encodedEngagement: ByteArray) {
+class EngagementParser(private val encodedEngagement: ByteString) {
     /**
      * Parses the given `Engagement` structure.
      *
@@ -65,7 +66,7 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
          * as `#6.24(bstr .cbor ESenderKey)` where `ESenderKey` is a
          * `COSE_Key`.
          */
-        lateinit var eSenderKeyBytes: ByteArray
+        lateinit var eSenderKeyBytes: ByteString
 
         /**
          * The connection methods in the engagement.
@@ -77,7 +78,7 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
          */
         lateinit var originInfos: List<OriginInfo>
 
-        fun parse(encodedEngagement: ByteArray) {
+        fun parse(encodedEngagement: ByteString) {
             val map = Cbor.decode(encodedEngagement)
             version = map[0].asTstr
             val security = map[1]

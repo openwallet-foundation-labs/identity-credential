@@ -1,6 +1,7 @@
 package com.android.identity.issuance
 
 import com.android.identity.cbor.annotation.CborSerializable
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Configuration data for the issuing authority.
@@ -25,7 +26,7 @@ data class IssuingAuthorityConfiguration(
      *
      * This should be square, e.g. the width and height must be equal.
      */
-    val issuingAuthorityLogo: ByteArray,
+    val issuingAuthorityLogo: ByteString,
 
     /**
      * Description of the document offered by the issuer, e.g. "Utopia Driving License" or

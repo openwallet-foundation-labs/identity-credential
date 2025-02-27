@@ -7,6 +7,7 @@ import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureEnclaveKeyUnlockData
 import com.android.identity.util.UUID
+import com.android.identity.util.concat
 import com.android.identity.util.toByteArray
 import com.android.identity.util.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -111,14 +112,14 @@ actual object Crypto {
         signature: EcSignature
     ): Boolean {
         val raw = when (publicKey) {
-            is EcPublicKeyDoubleCoordinate -> publicKey.x + publicKey.y
+            is EcPublicKeyDoubleCoordinate -> publicKey.x.concat(publicKey.y)
             is EcPublicKeyOkp -> publicKey.x
         }
         return SwiftBridge.ecVerifySignature(
             publicKey.curve.coseCurveIdentifier.toLong(),
             raw.toNSData(),
             message.toNSData(),
-            (signature.r + signature.s).toNSData()
+            (signature.r.concat(signature.s)).toNSData()
         )
     }
 
@@ -131,7 +132,7 @@ actual object Crypto {
         val pubKeyBytes = (ret[1] as NSData).toByteArray()
         val x = pubKeyBytes.sliceArray(IntRange(0, pubKeyBytes.size/2 - 1))
         val y = pubKeyBytes.sliceArray(IntRange(pubKeyBytes.size/2, pubKeyBytes.size - 1))
-        return EcPrivateKeyDoubleCoordinate(curve, privKeyBytes, x, y)
+        return EcPrivateKeyDoubleCoordinate(curve, ByteString(privKeyBytes), ByteString(x), ByteString(y))
     }
 
     actual fun sign(
@@ -147,7 +148,7 @@ actual object Crypto {
 
         val r = rawSignature.sliceArray(IntRange(0, rawSignature.size/2 - 1))
         val s = rawSignature.sliceArray(IntRange(rawSignature.size/2, rawSignature.size - 1))
-        return EcSignature(r, s)
+        return EcSignature(ByteString(r), ByteString(s))
     }
 
     actual fun keyAgreement(
@@ -156,7 +157,7 @@ actual object Crypto {
     ): ByteArray {
         require(otherKey.curve == key.curve) { "Other key for ECDH is not ${key.curve.name}" }
         val otherKeyRaw = when (otherKey) {
-            is EcPublicKeyDoubleCoordinate -> otherKey.x + otherKey.y
+            is EcPublicKeyDoubleCoordinate -> otherKey.x.concat(otherKey.y)
             is EcPublicKeyOkp -> otherKey.x
         }
         return SwiftBridge.ecKeyAgreement(
@@ -174,7 +175,7 @@ actual object Crypto {
     ): Pair<ByteArray, EcPublicKey> {
         require(cipherSuite == Algorithm.HPKE_BASE_P256_SHA256_AES128GCM)
         val receiverPublicKeyRaw = when (receiverPublicKey) {
-            is EcPublicKeyDoubleCoordinate -> receiverPublicKey.x + receiverPublicKey.y
+            is EcPublicKeyDoubleCoordinate -> receiverPublicKey.x.concat(receiverPublicKey.y)
             is EcPublicKeyOkp -> receiverPublicKey.x
         }
         val ret = SwiftBridge.hpkeEncrypt(
@@ -185,7 +186,7 @@ actual object Crypto {
         if (ret.isEmpty()) {
             throw IllegalStateException("HPKE not supported on this iOS version")
         }
-        val encapsulatedPublicKeyRaw = (ret[0] as NSData).toByteArray()
+        val encapsulatedPublicKeyRaw = ByteString((ret[0] as NSData).toByteArray())
         val encapsulatedPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
             EcCurve.P256,
             encapsulatedPublicKeyRaw
@@ -217,7 +218,7 @@ actual object Crypto {
 
     internal actual fun ecPublicKeyToPem(publicKey: EcPublicKey): String {
         val raw = when (publicKey) {
-            is EcPublicKeyDoubleCoordinate -> publicKey.x + publicKey.y
+            is EcPublicKeyDoubleCoordinate -> publicKey.x.concat(publicKey.y)
             is EcPublicKeyOkp -> publicKey.x
         }
         val pemEncoding = SwiftBridge.ecPublicKeyToPem(
@@ -240,7 +241,7 @@ actual object Crypto {
         )?.toByteArray() ?: throw IllegalStateException("Not available")
         val x = rawEncoding.sliceArray(IntRange(0, rawEncoding.size/2 - 1))
         val y = rawEncoding.sliceArray(IntRange(rawEncoding.size/2, rawEncoding.size - 1))
-        return EcPublicKeyDoubleCoordinate(curve, x, y)
+        return EcPublicKeyDoubleCoordinate(curve, ByteString(x), ByteString(y))
     }
 
     internal actual fun ecPrivateKeyToPem(privateKey: EcPrivateKey): String {
@@ -263,7 +264,7 @@ actual object Crypto {
             pemEncoding
         )?.toByteArray() ?: throw IllegalStateException("Not available")
         publicKey as EcPublicKeyDoubleCoordinate
-        return EcPrivateKeyDoubleCoordinate(publicKey.curve, rawEncoding, publicKey.x, publicKey.y)
+        return EcPrivateKeyDoubleCoordinate(publicKey.curve, ByteString(rawEncoding), publicKey.x, publicKey.y)
     }
 
     internal actual fun uuidGetRandom(): UUID {
@@ -274,7 +275,7 @@ actual object Crypto {
     internal fun secureEnclaveCreateEcPrivateKey(
         keyPurposes: Set<KeyPurpose>,
         accessControlCreateFlags: Long
-    ): Pair<ByteArray, EcPublicKey> {
+    ): Pair<ByteString, EcPublicKey> {
         val purposes = KeyPurpose.encodeSet(keyPurposes)
         val ret = SwiftBridge.secureEnclaveCreateEcPrivateKey(
             purposes,
@@ -284,10 +285,10 @@ actual object Crypto {
             // iOS simulator doesn't support authentication
             throw IllegalStateException("Error creating EC key - on iOS simulator?")
         }
-        val keyBlob = (ret[0] as NSData).toByteArray()
-        val pubKeyBytes = (ret[1] as NSData).toByteArray()
-        val x = pubKeyBytes.sliceArray(IntRange(0, pubKeyBytes.size/2 - 1))
-        val y = pubKeyBytes.sliceArray(IntRange(pubKeyBytes.size/2, pubKeyBytes.size - 1))
+        val keyBlob = ByteString((ret[0] as NSData).toByteArray())
+        val pubKeyBytes = ByteString((ret[1] as NSData).toByteArray())
+        val x = pubKeyBytes.substring(0, pubKeyBytes.size/2)
+        val y = pubKeyBytes.substring(pubKeyBytes.size/2, pubKeyBytes.size)
         val pubKey = EcPublicKeyDoubleCoordinate(EcCurve.P256, x, y)
         return Pair(keyBlob, pubKey)
     }
@@ -297,13 +298,13 @@ actual object Crypto {
         message: ByteArray,
         keyUnlockData: SecureEnclaveKeyUnlockData?
     ): EcSignature {
-        val rawSignature = SwiftBridge.secureEnclaveEcSign(
+        val rawSignature = ByteString(SwiftBridge.secureEnclaveEcSign(
             keyBlob.toNSData(),
             message.toNSData(),
             keyUnlockData?.authenticationContext as objcnames.classes.LAContext?
-        )?.toByteArray() ?: throw KeyLockedException("Unable to unlock key")
-        val r = rawSignature.sliceArray(IntRange(0, rawSignature.size/2 - 1))
-        val s = rawSignature.sliceArray(IntRange(rawSignature.size/2, rawSignature.size - 1))
+        )?.toByteArray() ?: throw KeyLockedException("Unable to unlock key"))
+        val r = rawSignature.substring(0, rawSignature.size/2)
+        val s = rawSignature.substring(rawSignature.size/2, rawSignature.size)
         return EcSignature(r, s)
     }
 
@@ -313,7 +314,7 @@ actual object Crypto {
         keyUnlockData: SecureEnclaveKeyUnlockData?
     ): ByteArray {
         val otherKeyRaw = when (otherKey) {
-            is EcPublicKeyDoubleCoordinate -> otherKey.x + otherKey.y
+            is EcPublicKeyDoubleCoordinate -> otherKey.x.concat(otherKey.y)
             is EcPublicKeyOkp -> otherKey.x
         }
         return SwiftBridge.secureEnclaveEcKeyAgreement(

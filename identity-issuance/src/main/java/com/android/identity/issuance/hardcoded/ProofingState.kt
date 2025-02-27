@@ -129,7 +129,7 @@ class ProofingState(
     private suspend fun getGraph(env: FlowEnvironment): ProofingGraph {
         val storage = env.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
         val walletApplicationCapabilities = storage.get(clientId)?.let {
-            WalletApplicationCapabilities.fromCbor(it.toByteArray())
+            WalletApplicationCapabilities.fromCbor(it)
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
 
         val key = GraphKey(issuingAuthorityId, documentId, developerModeEnabled)

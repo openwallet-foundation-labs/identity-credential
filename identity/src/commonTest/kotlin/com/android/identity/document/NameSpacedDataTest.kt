@@ -17,8 +17,8 @@ package com.android.identity.document
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -118,8 +118,8 @@ class NameSpacedDataTest {
         assertEquals("foo1", nameSpacedData.getDataElementString("ns2", "bar1"))
         assertEquals("foo2", nameSpacedData.getDataElementString("ns2", "bar2"))
         assertEquals("a string", nameSpacedData.getDataElementString("test", "tstr"))
-        assertContentEquals(
-            byteArrayOf(1, 2),
+        assertEquals(
+            ByteString(byteArrayOf(1, 2)),
             nameSpacedData.getDataElementByteString("test", "bstr")
         )
         assertEquals(42, nameSpacedData.getDataElementNumber("test", "pos"))

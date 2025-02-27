@@ -22,6 +22,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -154,7 +155,7 @@ abstract class DataTransportBle(
                 if (centralClient) uuid else null
             )
             cm.peripheralServerModePsm = psm
-            cm.peripheralServerModeMacAddress = macAddress
+            cm.peripheralServerModeMacAddress = macAddress?.let { ByteString(it) }
             return cm
         }
 
@@ -259,7 +260,7 @@ abstract class DataTransportBle(
                 baos.write(0x07)
                 baos.write(0x1b) // MAC address
                 try {
-                    baos.write(macAddress)
+                    baos.write(macAddress.toByteArray())
                 } catch (e: IOException) {
                     throw IllegalStateException(e)
                 }

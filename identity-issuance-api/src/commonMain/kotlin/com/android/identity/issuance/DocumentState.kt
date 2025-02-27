@@ -4,6 +4,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * The state of a document, as seen from the issuer's point of view.
@@ -36,7 +37,7 @@ data class DocumentState(
     val numAvailableCredentials: Int,
     ) {
     companion object {
-        fun fromCbor(encodedData: ByteArray): DocumentState {
+        fun fromCbor(encodedData: ByteString): DocumentState {
             return fromDataItem(Cbor.decode(encodedData))
         }
 
@@ -50,7 +51,7 @@ data class DocumentState(
         }
     }
 
-    fun toCbor(): ByteArray {
+    fun toCbor(): ByteString {
         return Cbor.encode(toDataItem())
     }
 

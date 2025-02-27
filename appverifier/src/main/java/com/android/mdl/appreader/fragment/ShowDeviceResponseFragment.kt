@@ -36,6 +36,7 @@ import com.android.mdl.appreader.trustmanagement.CustomValidators
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.logDebug
+import kotlinx.io.bytestring.ByteString
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.interfaces.ECPublicKey
@@ -88,7 +89,9 @@ class ShowDeviceResponseFragment : Fragment() {
         )
 
         val encryptedCredentialDocumentBase64 = responseJson.getString("token")!!
-        val encryptedCredentialDocument = Base64.decode(encryptedCredentialDocumentBase64, Base64.URL_SAFE or Base64.NO_WRAP )
+        val encryptedCredentialDocument = ByteString(
+            Base64.decode(encryptedCredentialDocumentBase64, Base64.URL_SAFE or Base64.NO_WRAP )
+        )
 
         val (cipherText, encapsulatedPublicKey) = CredmanUtil.parseCredentialDocument(encryptedCredentialDocument)
 
@@ -96,15 +99,18 @@ class ShowDeviceResponseFragment : Fragment() {
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
             requireContext().packageName,
-            Crypto.digest(Algorithm.SHA256, uncompressed)
+            Crypto.digest(Algorithm.SHA256, uncompressed.toByteArray())
         )
 
-        val encodedDeviceResponse = Crypto.hpkeDecrypt(
-            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-            requestIdentityKey,
-            cipherText,
-            encodedSessionTranscript,
-            encapsulatedPublicKey)
+        val encodedDeviceResponse = ByteString(
+            Crypto.hpkeDecrypt(
+                Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                requestIdentityKey,
+                cipherText.toByteArray(),
+                encodedSessionTranscript.toByteArray(),
+                encapsulatedPublicKey
+            )
+        )
 
         val parser = DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript)
         val deviceResponse = parser.parse()
@@ -218,7 +224,7 @@ class ShowDeviceResponseFragment : Fragment() {
                 sb.append("<h5>Namespace: $ns</h5>")
                 sb.append("<p>")
                 for (elem in doc.getIssuerEntryNames(ns)) {
-                    val value: ByteArray = doc.getIssuerEntryData(ns, elem)
+                    val value: ByteString = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
                     val mdocDataElement =
                         VerifierApp.documentTypeRepositoryInstance
@@ -228,15 +234,15 @@ class ShowDeviceResponseFragment : Fragment() {
                     println("mdocDataElement: $mdocDataElement")
                     if (isPortraitElement(doc.docType, ns, elem)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
-                        portraitBytes = doc.getIssuerEntryByteString(ns, elem)
+                        portraitBytes = doc.getIssuerEntryByteString(ns, elem).toByteArray()
                     } else if (doc.docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && elem == "fac") {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
-                        portraitBytes = doc.getIssuerEntryByteString(ns, elem)
+                        portraitBytes = doc.getIssuerEntryByteString(ns, elem).toByteArray()
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "extra") {
                         valueStr = String.format("%d bytes extra data", value.size)
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
-                        signatureBytes = doc.getIssuerEntryByteString(ns, elem)
+                        signatureBytes = doc.getIssuerEntryByteString(ns, elem).toByteArray()
                     } else if (mdocDataElement != null) {
                         valueStr = mdocDataElement.renderValue(Cbor.decode(value))
                     } else {

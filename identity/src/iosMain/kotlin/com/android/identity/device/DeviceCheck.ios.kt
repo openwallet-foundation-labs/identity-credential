@@ -48,7 +48,7 @@ actual object DeviceCheck {
     ): DeviceAssertion {
         return suspendCoroutine { continuation ->
             val assertionData = assertion.toCbor()
-            val digest = Crypto.digest(Algorithm.SHA256, assertionData)
+            val digest = Crypto.digest(Algorithm.SHA256, assertionData.toByteArray())
             SwiftBridge.generateDeviceAssertion(
                 deviceAttestationId,
                 digest.toNSData()
@@ -59,7 +59,7 @@ actual object DeviceCheck {
                     continuation.resume(
                         DeviceAssertion(
                             platformAssertion = blob!!.toByteString(),
-                            assertionData = ByteString(assertionData)
+                            assertionData = assertionData
                         )
                     )
                 }

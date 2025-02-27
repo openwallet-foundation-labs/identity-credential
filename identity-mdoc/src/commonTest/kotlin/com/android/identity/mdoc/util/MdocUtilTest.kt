@@ -35,16 +35,18 @@ import com.android.identity.mdoc.util.MdocUtil.generateDocumentRequest
 import com.android.identity.mdoc.util.MdocUtil.generateIssuerNameSpaces
 import com.android.identity.mdoc.util.MdocUtil.stripIssuerNameSpaces
 import com.android.identity.util.fromHex
-import com.android.identity.util.toHex
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class MdocUtilTest {
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun testGenerateIssuerNameSpaces() {
         val nameSpacedData = NameSpacedData.Builder()
@@ -54,8 +56,8 @@ class MdocUtilTest {
             .putEntryString("ns2", "bar1", "foo1")
             .putEntryString("ns2", "bar2", "foo2")
             .build()
-        val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
-        val overridesForNs1: MutableMap<String, ByteArray> = HashMap()
+        val overrides: MutableMap<String, Map<String, ByteString>> = HashMap()
+        val overridesForNs1: MutableMap<String, ByteString> = HashMap()
         overridesForNs1["foo3"] = Cbor.encode(Tstr("bar3_override"))
         overrides["ns1"] = overridesForNs1
         val exceptions: MutableMap<String, List<String>> = HashMap()
@@ -139,25 +141,25 @@ class MdocUtilTest {
         assertEquals(3, digests.size.toLong())
         assertEquals(
             "9f10afbca223fcfe0ee9f239e995cfe79e7f845b68981a4a0943706717c64efa",
-            digests[0L]!!.toHex()
+            digests[0L]!!.toHexString()
         )
         assertEquals(
             "a5e74b031ea380267d39905981ea80c68178229219556ffd72d312a0366a7d63",
-            digests[4L]!!.toHex()
+            digests[4L]!!.toHexString()
         )
         assertEquals(
             "03f0ac0623c2eaefd76bcbca00df782d84f544cf7ac1b1f9ed46144275e1d47c",
-            digests[2L]!!.toHex()
+            digests[2L]!!.toHexString()
         )
         digests = calculateDigestsForNameSpace("ns2", issuerNameSpaces, Algorithm.SHA256)
         assertEquals(2, digests.size.toLong())
         assertEquals(
             "fd69be5fcc0df04ae78e147bb3ad95ce4ecff51028322cccf02195f36612a212",
-            digests[1L]!!.toHex()
+            digests[1L]!!.toHexString()
         )
         assertEquals(
             "47083a3473ddfcf3c8cc00f2035ac41d0b791fc50106be416c068536c249c0dd",
-            digests[3L]!!.toHex()
+            digests[3L]!!.toHexString()
         )
 
         // Check stripping
@@ -231,7 +233,7 @@ class MdocUtilTest {
     @Test
     fun testGetDigestsForNameSpaceInTestVectors() {
         val deviceResponse = Cbor.decode(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex())
         )
         val documentDataItem = deviceResponse["documents"][0]
         val issuerSigned = documentDataItem["issuerSigned"]
@@ -243,11 +245,11 @@ class MdocUtilTest {
         val mso = MobileSecurityObjectParser(encodedMobileSecurityObject).parse()
         val nameSpaces = issuerSigned["nameSpaces"]
         val arrayOfIssuerSignedItemBytes = nameSpaces["org.iso.18013.5.1"].asArray
-        val issuerNamespacesForMdlNamespace: MutableList<ByteArray> = ArrayList()
+        val issuerNamespacesForMdlNamespace: MutableList<ByteString> = ArrayList()
         for (di in arrayOfIssuerSignedItemBytes) {
             issuerNamespacesForMdlNamespace.add(Cbor.encode(di))
         }
-        val issuerNameSpacesFromTestVector: MutableMap<String, List<ByteArray>> = LinkedHashMap()
+        val issuerNameSpacesFromTestVector: MutableMap<String, List<ByteString>> = LinkedHashMap()
         issuerNameSpacesFromTestVector["org.iso.18013.5.1"] = issuerNamespacesForMdlNamespace
         val digestsCalculatedFromResponseInTestVector = calculateDigestsForNameSpace(
             "org.iso.18013.5.1",
@@ -263,19 +265,19 @@ class MdocUtilTest {
         for (digestId in digestsCalculatedFromResponseInTestVector.keys) {
             val calculatedDigest = digestsCalculatedFromResponseInTestVector[digestId]
             val digestInMso = digestsListedInMsoInTestVector!![digestId]
-            assertContentEquals(calculatedDigest, digestInMso)
+            assertEquals(calculatedDigest, digestInMso)
         }
     }
 
     @Test
     fun testGenerateDocumentRequest() {
         val encodedSessionTranscriptBytes =
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex())
         val encodedSessionTranscript = Cbor.encode(
             Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
         )
         val parser = DeviceRequestParser(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex(),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex()),
             encodedSessionTranscript
         )
         val request = parser.parse()

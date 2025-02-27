@@ -23,6 +23,7 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.ByteString
 import java.io.File
 
 // TODO: b/393388152 - PreferenceManager is deprecated. Consider refactoring to AndroidX
@@ -62,7 +63,7 @@ class TransferHelper private constructor(
     var androidKeystoreSecureAreaProvider: SecureAreaProvider<AndroidKeystoreSecureArea>
 
     private var verificationHelper: VerificationHelper? = null
-    var deviceResponseBytes: ByteArray? = null
+    var deviceResponseBytes: ByteString? = null
     var error: Throwable? = null
     private var connectionMethodUsed: ConnectionMethod? = null
 
@@ -78,7 +79,7 @@ class TransferHelper private constructor(
     }
 
     private val listener = object : VerificationHelper.Listener {
-        override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+        override fun onReaderEngagementReady(readerEngagement: ByteString) {
             Logger.d(TAG, "onReaderEngagementReady")
         }
 
@@ -103,7 +104,7 @@ class TransferHelper private constructor(
             close()
         }
 
-        override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+        override fun onResponseReceived(deviceResponseBytes: ByteString) {
             Logger.d(TAG, "onResponseReceived")
             this@TransferHelper.deviceResponseBytes = deviceResponseBytes
             state.value = State.TRANSACTION_COMPLETE
@@ -168,11 +169,11 @@ class TransferHelper private constructor(
         Logger.d(TAG, "Initialized VerificationHelper")
     }
 
-    fun getSessionTranscript(): ByteArray {
+    fun getSessionTranscript(): ByteString {
         return verificationHelper!!.sessionTranscript
     }
 
-    fun sendRequest(deviceRequestBytes: ByteArray) {
+    fun sendRequest(deviceRequestBytes: ByteString) {
         check(state.value == State.CONNECTED)
         verificationHelper!!.sendRequest(deviceRequestBytes)
         state.value = State.REQUEST_SENT

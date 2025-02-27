@@ -1,5 +1,7 @@
 package com.android.identity.flow.handler
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * Interface that is used by the server to (1) protect its data from the client and
  * (2) serve as authentication mechanism (as the client should not be able to generate
@@ -7,8 +9,8 @@ package com.android.identity.flow.handler
  * data authenticity and confidentiality.
  */
 interface SimpleCipher {
-    fun encrypt(plaintext: ByteArray): ByteArray
-    fun decrypt(ciphertext: ByteArray): ByteArray
+    fun encrypt(plaintext: ByteString): ByteString
+    fun decrypt(ciphertext: ByteString): ByteString
 
     class DataTamperedException : IllegalArgumentException()
 }

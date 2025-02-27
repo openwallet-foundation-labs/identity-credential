@@ -1,6 +1,7 @@
 package com.android.identity.device
 
 import com.android.identity.util.fromBase64Url
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlin.io.encoding.Base64
@@ -37,7 +38,7 @@ class DeviceAttestationAndroidTest {
         val deviceAttestation = DeviceAttestation.fromCbor(ATTESTATION_EMULATOR_PIXEL3A)
         deviceAttestation.validate(
             DeviceAttestationValidationData(
-                attestationChallenge = ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A.encodeToByteString(),
+                attestationChallenge = ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A,
                 iosReleaseBuild = false,
                 iosAppIdentifier = "",
                 androidGmsAttestation = false,
@@ -62,7 +63,7 @@ class DeviceAttestationAndroidTest {
         private const val ATTESTATION_CHALLENGE_PIXEL7A = "ax8S6Z5dKhX7ywLxLx3ZzrVo"
 
         @OptIn(ExperimentalEncodingApi::class)
-        val ATTESTATION_PIXEL7A = Base64.decode("""
+        val ATTESTATION_PIXEL7A = ByteString(Base64.decode("""
             omRudWxsZ0FuZHJvaWRwY2VydGlmaWNhdGVDaGFpboVZArEwggKtMIICU6ADAgECAgEBMAoGCCqGSM49
             BAMCMDkxKTAnBgNVBAMTIGE5ZjZmMWIxMTQzZGU2NmQ4OWU2Y2RhMmFkNzUwMDM4MQwwCgYDVQQKEwNU
             RUUwHhcNNzAwMTAxMDAwMDAwWhcNNDgwMTAxMDAwMDAwWjAfMR0wGwYDVQQDExRBbmRyb2lkIEtleXN0
@@ -129,18 +130,18 @@ class DeviceAttestationAndroidTest {
             qcABPdgL+H7qJguBw09ojm6xNIrw2OocrDKsudk/okr/AwqEyPKw9WnMlQgLIKw1rODG2NvU9oR3GVGd
             MkUBZutL8VuFkERQGt6vQ2OCw0sV47VMkuYbacK/xyZFiRcrPJPb41zgbQj9XAEyLKCHex0SdDrx+tWU
             DqG8At2JHA==
-        """.trimIndent().replace("\n", ""))
+        """.trimIndent().replace("\n", "")))
 
         @OptIn(ExperimentalEncodingApi::class)
-        val ASSERTION_PIXEL7A = Base64.decode("""
+        val ASSERTION_PIXEL7A = ByteString(Base64.decode("""
             om1hc3NlcnRpb25EYXRhU6JkbnVsbGVOb25jZWVub25jZUBxcGxhdGZvcm1Bc3NlcnRpb25YQGKxzSMj
             nXr2kvwW8/b88CmEDGiYrTGMWzCflf7ok794bhED/HU4n/TBxABCvWsOLH3J67oeqOkUpksdePyjs9I=
-        """.trimIndent().replace("\n", ""))
+        """.trimIndent().replace("\n", "")))
 
-        private const val ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A = "0F3iune5s98CkH3fGpwMDwL6"
+        private val ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A = ByteString("0F3iune5s98CkH3fGpwMDwL6".toByteArray())
 
         @OptIn(ExperimentalEncodingApi::class)
-        val ATTESTATION_EMULATOR_PIXEL3A = Base64.decode("""
+        val ATTESTATION_EMULATOR_PIXEL3A = ByteString(Base64.decode("""
             omRudWxsZ0FuZHJvaWRwY2VydGlmaWNhdGVDaGFpboNZAv4wggL6MIICoaADAgECAgEBMAoGCCqGSM49
             BAMCMIGIMQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEVMBMGA1UECgwMR29vZ2xlLCBJ
             bmMuMRAwDgYDVQQLDAdBbmRyb2lkMTswOQYDVQQDDDJBbmRyb2lkIEtleXN0b3JlIFNvZnR3YXJlIEF0
@@ -176,12 +177,12 @@ class DeviceAttestationAndroidTest {
             VR0OBBYEFMit6XdMRcOjzw0WEOR5QzohWjDPMB8GA1UdIwQYMBaAFMit6XdMRcOjzw0WEOR5QzohWjDP
             MA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgKEMAoGCCqGSM49BAMCA0cAMEQCIDUho++LNEYe
             nNVg8x1YiSBq3KNlQfYNns6KGYxmSGB7AiBNC/NR2TB8fVvaNTQdqEcbY6WFZTytTySn502vQX3xvw==
-        """.trimIndent().replace("\n", ""))
+        """.trimIndent().replace("\n", "")))
 
         @OptIn(ExperimentalEncodingApi::class)
-        val ASSERTION_EMULATOR_PIXEL3A = Base64.decode("""
+        val ASSERTION_EMULATOR_PIXEL3A = ByteString(Base64.decode("""
             om1hc3NlcnRpb25EYXRhU6JkbnVsbGVOb25jZWVub25jZUBxcGxhdGZvcm1Bc3NlcnRpb25YQLtkyOMD
             +C6VCcVpgZ6/JgWLmCgWEqiOugnKJV64isPtfvxKuEmelOYGCDxzdME7C74qORd1LuNSi88BlQ66lqo=
-        """.trimIndent().replace("\n", ""))
+        """.trimIndent().replace("\n", "")))
     }
 }

@@ -35,6 +35,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Transfer Helper provides helper functions for starting to process a presentation request, as well
@@ -86,7 +87,7 @@ class TransferHelper(
      * @return a PresentationRequestData object containing data used to finish processing the request
      * and generate response bytes, or null if no credential id could be found.
      */
-    suspend fun startProcessingRequest(deviceRequest: ByteArray): PresentationRequestData? {
+    suspend fun startProcessingRequest(deviceRequest: ByteString): PresentationRequestData? {
 
         // TODO: we currently only look at the first docRequest ... in the future need to process
         //  all of them sequentially.
@@ -153,7 +154,7 @@ class TransferHelper(
         requestedDocType: String,
         credentialId: String,
         documentRequest: DocumentRequest,
-        onFinishedProcessing: (ByteArray) -> Unit,
+        onFinishedProcessing: (ByteString) -> Unit,
         onAuthenticationKeyLocked: (mdocCredential: MdocCredential) -> Unit,
         keyUnlockData: KeyUnlockData? = null,
         credential: MdocCredential? = null
@@ -208,8 +209,8 @@ class TransferHelper(
     private suspend fun addDocumentToResponse(
         deviceResponseGenerator: DeviceResponseGenerator,
         docType: String,
-        issuerAuth: ByteArray,
-        mergedIssuerNamespaces: Map<String, MutableList<ByteArray>>,
+        issuerAuth: ByteString,
+        mergedIssuerNamespaces: Map<String, MutableList<ByteString>>,
         credential: MdocCredential,
         keyUnlockData: KeyUnlockData?
     ): MdocCredential? {
@@ -252,7 +253,7 @@ class TransferHelper(
      * Send response bytes of credential data to requesting party
      * @param deviceResponseBytes response bytes to send to requesting party
      */
-    fun sendResponse(deviceResponseBytes: ByteArray) {
+    fun sendResponse(deviceResponseBytes: ByteString) {
         deviceRetrievalHelper.sendDeviceResponse(
             deviceResponseBytes,
             Constants.SESSION_DATA_STATUS_SESSION_TERMINATION

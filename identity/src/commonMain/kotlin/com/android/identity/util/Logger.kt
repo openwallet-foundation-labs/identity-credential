@@ -24,6 +24,8 @@ import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.Sink
 import kotlinx.io.buffered
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 
@@ -192,8 +194,27 @@ object Logger {
         hex(LEVEL_E, tag, message, data)
     }
 
-    private fun cbor(level: Int, tag: String, message: String, encodedCbor: ByteArray) {
-        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex() +
+    fun dHex(tag: String, message: String, data: ByteString) {
+        if (isDebugEnabled) {
+            hex(LEVEL_D, tag, message, data.toByteArray())
+        }
+    }
+
+    fun iHex(tag: String, message: String, data: ByteString) {
+        hex(LEVEL_I, tag, message, data.toByteArray())
+    }
+
+    fun wHex(tag: String, message: String, data: ByteString) {
+        hex(LEVEL_W, tag, message, data.toByteArray())
+    }
+
+    fun eHex(tag: String, message: String, data: ByteString) {
+        hex(LEVEL_E, tag, message, data.toByteArray())
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun cbor(level: Int, tag: String, message: String, encodedCbor: ByteString) {
+        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHexString() +
                 "\n" +
                 "In diagnostic notation:\n" +
                 Cbor.toDiagnostics(
@@ -203,21 +224,21 @@ object Logger {
         println(level, tag, sb, null)
     }
 
-    fun dCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun dCbor(tag: String, message: String, encodedCbor: ByteString) {
         if (isDebugEnabled) {
             cbor(LEVEL_D, tag, message, encodedCbor)
         }
     }
 
-    fun iCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun iCbor(tag: String, message: String, encodedCbor: ByteString) {
         cbor(LEVEL_I, tag, message, encodedCbor)
     }
 
-    fun wCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun wCbor(tag: String, message: String, encodedCbor: ByteString) {
         cbor(LEVEL_W, tag, message, encodedCbor)
     }
 
-    fun eCbor(tag: String, message: String, encodedCbor: ByteArray) {
+    fun eCbor(tag: String, message: String, encodedCbor: ByteString) {
         cbor(LEVEL_E, tag, message, encodedCbor)
     }
 

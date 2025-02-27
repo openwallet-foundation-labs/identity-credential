@@ -291,7 +291,7 @@ class AndroidKeystoreSecureArea private constructor(
                 ks.load(null)
             }
             ks.getCertificateChain(newKeyAlias).forEach { certificate ->
-                attestationCerts.add(X509Cert(certificate.encoded))
+                attestationCerts.add(X509Cert(ByteString(certificate.encoded)))
             }
         } catch (e: Exception) {
             throw IllegalStateException(e)
@@ -360,7 +360,7 @@ class AndroidKeystoreSecureArea private constructor(
                 keyStore.load(null)
             }
             keyStore.getCertificateChain(existingAlias).forEach { certificate ->
-                attestationCerts.add(X509Cert(certificate.encoded))
+                attestationCerts.add(X509Cert(ByteString(certificate.encoded)))
             }
         } catch (e: Exception) {
             throw IllegalStateException(e)
@@ -436,7 +436,7 @@ class AndroidKeystoreSecureArea private constructor(
 
     override suspend fun sign(
         alias: String,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         if (keyUnlockData !is KeyUnlockInteractive) {
@@ -466,7 +466,7 @@ class AndroidKeystoreSecureArea private constructor(
 
     private suspend fun signNonInteractive(
         alias: String,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         keyUnlockData: KeyUnlockData?,
     ): EcSignature {
         val (entry, data) = loadKey(alias)
@@ -484,7 +484,7 @@ class AndroidKeystoreSecureArea private constructor(
             }
             if (unlockData.signature != null) {
                 return try {
-                    unlockData.signature!!.update(dataToSign)
+                    unlockData.signature!!.update(dataToSign.toByteArray())
                     val derEncodedSignature = unlockData.signature!!.sign()
                     signatureFromDer(curve, derEncodedSignature)
                 } catch (e: SignatureException) {
@@ -497,7 +497,7 @@ class AndroidKeystoreSecureArea private constructor(
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val s = Signature.getInstance(getSignatureAlgorithmName(signingAlgorithm))
             s.initSign(privateKey)
-            s.update(dataToSign)
+            s.update(dataToSign.toByteArray())
             val derEncodedSignature = s.sign()
             signatureFromDer(curve, derEncodedSignature)
         } catch (e: UserNotAuthenticatedException) {
@@ -520,7 +520,7 @@ class AndroidKeystoreSecureArea private constructor(
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
+    ): ByteString {
         if (keyUnlockData !is KeyUnlockInteractive) {
             return keyAgreementNonInteractive(alias, otherKey)
         }
@@ -549,14 +549,14 @@ class AndroidKeystoreSecureArea private constructor(
     private suspend fun keyAgreementNonInteractive(
         alias: String,
         otherKey: EcPublicKey,
-    ): ByteArray {
+    ): ByteString {
         val (entry, _) = loadKey(alias)
         return try {
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val ka = KeyAgreement.getInstance("ECDH", "AndroidKeyStore")
             ka.init(privateKey)
             ka.doPhase(otherKey.javaPublicKey, true)
-            ka.generateSecret()
+            ByteString(ka.generateSecret())
         } catch (e: UserNotAuthenticatedException) {
             throw KeyLockedException("User not authenticated", e)
         } catch (e: ProviderException) {
@@ -576,7 +576,7 @@ class AndroidKeystoreSecureArea private constructor(
 
     // @throws IllegalArgumentException if the key doesn't exist.
     // @throws KeyInvalidatedException if LSKF was removed and the key is no longer available.
-    private suspend fun loadKey(alias: String): Pair<KeyStore.Entry, ByteArray> {
+    private suspend fun loadKey(alias: String): Pair<KeyStore.Entry, ByteString> {
         val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
@@ -590,12 +590,12 @@ class AndroidKeystoreSecureArea private constructor(
         val entry = ks.getEntry(alias, null)
             ?: throw KeyInvalidatedException("This key is no longer available")
 
-        return Pair(entry, data.toByteArray())
+        return Pair(entry, data)
     }
 
     // @throws IllegalArgumentException if the key doesn't exist.
     // @throws KeyInvalidatedException if LSKF was removed and the key is no longer available.
-    private suspend fun loadKeyIgnoreKeyInvalidated(alias: String): Pair<KeyStore.Entry?, ByteArray> {
+    private suspend fun loadKeyIgnoreKeyInvalidated(alias: String): Pair<KeyStore.Entry?, ByteString> {
         val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
@@ -604,7 +604,7 @@ class AndroidKeystoreSecureArea private constructor(
             ks.load(null)
         }
         val entry = ks.getEntry(alias, null)
-        return Pair(entry, data.toByteArray())
+        return Pair(entry, data)
     }
 
     override suspend fun getKeyInvalidated(alias: String): Boolean {
@@ -702,7 +702,7 @@ class AndroidKeystoreSecureArea private constructor(
         map.put("useStrongBox", settings.useStrongBox)
         map.put("attestation", attestation.toDataItem())
         map.put("curve", settings.ecCurve.coseCurveIdentifier)
-        storageTable.update(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
+        storageTable.update(alias, Cbor.encode(map.end().build()), partitionId)
     }
 
     /**
@@ -857,17 +857,17 @@ class AndroidKeystoreSecureArea private constructor(
             }
             val asn1Encodables = (asn1 as ASN1Sequence).toArray()
             require(asn1Encodables.size == 2) { "Expected two items in sequence" }
-            val r = stripLeadingZeroes(((asn1Encodables[0].toASN1Primitive() as ASN1Integer).value).toByteArray())
-            val s = stripLeadingZeroes(((asn1Encodables[1].toASN1Primitive() as ASN1Integer).value).toByteArray())
+            val r = ByteString(
+                stripLeadingZeroes(((asn1Encodables[0].toASN1Primitive() as ASN1Integer).value).toByteArray()))
+            val s = ByteString(
+                stripLeadingZeroes(((asn1Encodables[1].toASN1Primitive() as ASN1Integer).value).toByteArray()))
 
             val keySize = (curve.bitSize + 7)/8
             check(r.size <= keySize)
             check(s.size <= keySize)
 
-            val rPadded = ByteArray(keySize)
-            val sPadded = ByteArray(keySize)
-            r.copyInto(rPadded, keySize - r.size)
-            s.copyInto(sPadded, keySize - s.size)
+            val rPadded = r.substring(keySize - r.size)
+            val sPadded = s.substring(keySize - s.size)
 
             check(rPadded.size == keySize)
             check(sPadded.size == keySize)

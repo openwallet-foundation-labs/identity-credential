@@ -12,6 +12,7 @@ import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.appendUInt16
 import com.android.identity.util.toBase64Url
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.openReadChannel
@@ -21,6 +22,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
@@ -176,17 +179,17 @@ class MultiDeviceTestsServer(
             withTimeout(15.seconds) {
                 sendChannel.writeStringUtf8("TestPresentationStart\n")
                 transport.open(eDeviceKey.publicKey)
-                val sessionEstablishmentMessage = transport.waitForMessage()
+                val sessionEstablishmentMessage = ByteString(transport.waitForMessage())
                 val eReaderKey = SessionEncryption.getEReaderKey(sessionEstablishmentMessage)
-                val encodedSessionTranscript = byteArrayOf(0x01, 0x02)
+                val encodedSessionTranscript = buildByteString { appendUInt16(0x0102) }
                 val sessionEncryption = SessionEncryption(
                     role = SessionEncryption.Role.MDOC,
                     eSelfKey = eDeviceKey,
                     remotePublicKey = eReaderKey,
                     encodedSessionTranscript = encodedSessionTranscript
                 )
-                val (deviceRequest, statusCode) = sessionEncryption.decryptMessage(sessionEstablishmentMessage)
-                val deviceResponse = ByteArray(20 * 1024)
+                sessionEncryption.decryptMessage(sessionEstablishmentMessage)
+                val deviceResponse = ByteString(ByteArray(20 * 1024))
 
                 when (test) {
                     Test.MDOC_CENTRAL_CLIENT_MODE,
@@ -200,7 +203,7 @@ class MultiDeviceTestsServer(
                             sessionEncryption.encryptMessage(
                                 messagePlaintext = deviceResponse,
                                 statusCode = Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
-                            )
+                            ).toByteArray()
                         )
                     }
                     Test.MDOC_CENTRAL_CLIENT_MODE_HOLDER_TERMINATION_MSG,
@@ -212,10 +215,11 @@ class MultiDeviceTestsServer(
                             sessionEncryption.encryptMessage(
                                 messagePlaintext = deviceResponse,
                                 statusCode = null
-                            )
+                            ).toByteArray()
                         )
                         transport.sendMessage(
                             SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                                .toByteArray()
                         )
                     }
                     Test.MDOC_CENTRAL_CLIENT_MODE_HOLDER_TERMINATION_BLE,
@@ -225,7 +229,7 @@ class MultiDeviceTestsServer(
                             sessionEncryption.encryptMessage(
                                 messagePlaintext = deviceResponse,
                                 statusCode = null
-                            )
+                            ).toByteArray()
                         )
                         transport.sendMessage(byteArrayOf())
                     }
@@ -238,9 +242,10 @@ class MultiDeviceTestsServer(
                             sessionEncryption.encryptMessage(
                                 messagePlaintext = deviceResponse,
                                 statusCode = null
-                            )
+                            ).toByteArray()
                         )
-                        val (deviceRequest, statusCode) = sessionEncryption.decryptMessage(transport.waitForMessage())
+                        val (deviceRequest, statusCode) = sessionEncryption
+                            .decryptMessage(ByteString(transport.waitForMessage()))
                         if (deviceRequest != null || statusCode != Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
                             throw Error("Expected empty message and status 20")
                         }
@@ -252,7 +257,7 @@ class MultiDeviceTestsServer(
                             sessionEncryption.encryptMessage(
                                 messagePlaintext = deviceResponse,
                                 statusCode = null
-                            )
+                            ).toByteArray()
                         )
                         val sessionData = transport.waitForMessage()
                         if (sessionData.isNotEmpty()) {

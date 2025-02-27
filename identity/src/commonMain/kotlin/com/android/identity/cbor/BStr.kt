@@ -11,6 +11,8 @@ import kotlinx.io.bytestring.toHexString
  * @param value the [ByteString] for the value of the byte string.
  */
 data class Bstr(val value: ByteString) : DataItem(MajorType.BYTE_STRING) {
+    constructor(barr: ByteArray): this(ByteString(barr))
+
     override fun encode(builder: ByteStringBuilder) {
         Cbor.encodeLength(builder, majorType, value.size)
         builder.appendBstring(value)
@@ -25,7 +27,7 @@ data class Bstr(val value: ByteString) : DataItem(MajorType.BYTE_STRING) {
         }
     }
 
-    override fun equals(other: Any?): Boolean = other is Bstr && value == other.value
+    override fun equals(other: Any?): Boolean = (other is Bstr && value == other.value)
 
     override fun hashCode(): Int = value.hashCode()
 
@@ -34,13 +36,13 @@ data class Bstr(val value: ByteString) : DataItem(MajorType.BYTE_STRING) {
         buildString {
             append("Bstr(")
             append(value.toHexString(HexFormat {
-                upperCase = true
+                upperCase = false
                 number {
                     removeLeadingZeros = false
                 }
                 bytes {
                     bytesPerGroup = 1
-                    groupSeparator = " "
+                    groupSeparator = ""
                 }
             }))
             append(")")

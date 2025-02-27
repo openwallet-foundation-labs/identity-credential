@@ -24,6 +24,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.mdoc.issuersigned.IssuerNamespaces
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for building `MobileSecurityObject` [CBOR](http://cbor.io/)
@@ -52,7 +53,7 @@ class MobileSecurityObjectGenerator(
     private var digestEmpty = true
     private val mAuthorizedNameSpaces: MutableList<String> = ArrayList()
     private val mAuthorizedDataElements: MutableMap<String, List<String>> = HashMap()
-    private val mKeyInfo: MutableMap<Long, ByteArray> = HashMap()
+    private val mKeyInfo: MutableMap<Long, ByteString> = HashMap()
     private var mSigned: Instant? = null
     private var mValidFrom: Instant? = null
     private var mValidUntil: Instant? = null
@@ -85,9 +86,9 @@ class MobileSecurityObjectGenerator(
      */
     fun addDigestIdsForNamespace(
         nameSpace: String,
-        digestIDs: Map<Long, ByteArray>
+        digestIDs: Map<Long, ByteString>
     ) = apply {
-        require(!digestIDs.isEmpty()) { "digestIDs must not be empty" }
+        require(digestIDs.isNotEmpty()) { "digestIDs must not be empty" }
         digestEmpty = false
         val valueDigestsInner = mValueDigestsOuter.putMap(nameSpace)
         for ((digestID,digest) in digestIDs) {
@@ -190,7 +191,7 @@ class MobileSecurityObjectGenerator(
      * @param keyInfo A mapping to represent additional key information.
      * @return The `MobileSecurityObjectGenerator`.
      */
-    fun setDeviceKeyInfo(keyInfo: Map<Long, ByteArray>) = apply {
+    fun setDeviceKeyInfo(keyInfo: Map<Long, ByteString>) = apply {
         mKeyInfo.clear()
         mKeyInfo.putAll(keyInfo)
     }
@@ -302,7 +303,7 @@ class MobileSecurityObjectGenerator(
      * @throws IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun generate(): ByteArray =
+    fun generate(): ByteString =
         CborMap.builder().run {
             check(!digestEmpty) { "Must call addDigestIdsForNamespace before generating" }
             checkNotNull(mSigned) { "Must call setValidityInfo before generating" }

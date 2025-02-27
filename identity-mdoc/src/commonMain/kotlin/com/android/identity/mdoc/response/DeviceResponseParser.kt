@@ -35,6 +35,7 @@ import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 
 /**
  * Helper class for parsing the bytes of `DeviceResponse`
@@ -45,8 +46,8 @@ import kotlinx.io.bytestring.ByteString
  * @param encodedSessionTranscript the bytes of the SessionTrancript CBOR.
  */
 class DeviceResponseParser(
-    val encodedDeviceResponse: ByteArray,
-    val encodedSessionTranscript: ByteArray
+    val encodedDeviceResponse: ByteString,
+    val encodedSessionTranscript: ByteString
 ) {
     private var eReaderKey: EcPrivateKey? = null
 
@@ -168,7 +169,7 @@ class DeviceResponseParser(
                 ("docType in MSO '$msoDocType' does not match docType from Document")
             }
             val nameSpaceNames = parsedMso.valueDigestNamespaces
-            val digestMapping: MutableMap<String, Map<Long, ByteArray>?> = HashMap()
+            val digestMapping: MutableMap<String, Map<Long, ByteString>?> = HashMap()
             for (nameSpaceName in nameSpaceNames) {
                 digestMapping[nameSpaceName] = parsedMso.getDigestIDs(nameSpaceName)
             }
@@ -191,7 +192,7 @@ class DeviceResponseParser(
                         ) { "issuerSignedItemBytes is not a tagged ByteString" }
 
                         // We need the encoded representation with the tag.
-                        val encodedIssuerSignedItemBytes = Cbor.encode(elem)
+                        val encodedIssuerSignedItemBytes = Cbor.encode(elem).toByteArray()
                         val expectedDigest =
                             Crypto.digest(digestAlgorithm, encodedIssuerSignedItemBytes)
                         val issuerSignedItem = Cbor.decode(elem.asTagged.asBstr)
@@ -202,7 +203,7 @@ class DeviceResponseParser(
                             ?: throw IllegalArgumentException(
                                 "No digestID MSO entry for ID $digestId in namespace $nameSpace"
                             )
-                        val digestMatch = expectedDigest contentEquals digest
+                        val digestMatch = expectedDigest contentEquals digest.toByteArray()
                         if (!digestMatch) {
                             Logger.w(TAG, "hash mismatch for data element $nameSpace $elementName")
                         }
@@ -217,6 +218,7 @@ class DeviceResponseParser(
             return deviceKey
         }
 
+        @OptIn(ExperimentalStdlibApi::class)
         private fun parseDeviceSigned(
             deviceSigned: DataItem,
             docType: String,
@@ -265,13 +267,13 @@ class DeviceResponseParser(
                     )
                 val tagInResponse = deviceMacDataItem.asCoseMac0.tag
                 val sharedSecret = Crypto.keyAgreement(eReaderKey!!, deviceKey)
-                val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript)))
+                val sessionTranscriptBytes = Cbor.encode(Tagged(24, Bstr(encodedSessionTranscript))).toByteArray()
                 val salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes)
                 val info = "EMacKey".encodeToByteArray()
                 val eMacKey = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
                 val expectedTag = Cose.coseMac0(
                     Algorithm.HMAC_SHA256,
-                    eMacKey,
+                    ByteString(eMacKey),
                     deviceAuthenticationBytes,
                     false,
                     mapOf(
@@ -282,13 +284,13 @@ class DeviceResponseParser(
                     ),
                     mapOf()
                 ).tag
-                deviceSignedAuthenticated = expectedTag contentEquals tagInResponse
+                deviceSignedAuthenticated = expectedTag == tagInResponse
                 if (deviceSignedAuthenticated) {
                     Logger.d(TAG, "Verified DeviceSigned using MAC")
                 } else {
                     Logger.d(
-                        TAG, "Device MAC mismatch, got ${tagInResponse.toHex()}"
-                                + " expected ${expectedTag.toHex()}"
+                        TAG, "Device MAC mismatch, got ${tagInResponse.toHexString()}"
+                                + " expected ${expectedTag.toHexString()}"
                     )
                 }
             }
@@ -606,7 +608,7 @@ class DeviceResponseParser(
         fun getDeviceEntryData(
             namespaceName: String,
             name: String
-        ): ByteArray {
+        ): ByteString {
             val innerMap = deviceData[namespaceName]
                 ?: throw IllegalArgumentException("Namespace not in data")
             return innerMap[name]?.value
@@ -639,7 +641,7 @@ class DeviceResponseParser(
         fun getDeviceEntryByteString(
             namespaceName: String,
             name: String
-        ): ByteArray = getDeviceEntryData(namespaceName, name).let { value ->
+        ): ByteString = getDeviceEntryData(namespaceName, name).let { value ->
             Cbor.decode(value).asBstr
         }
 
@@ -693,7 +695,7 @@ class DeviceResponseParser(
             }
 
             fun addIssuerEntry(
-                namespaceName: String, name: String, value: ByteArray,
+                namespaceName: String, name: String, value: ByteString,
                 digestMatch: Boolean
             ) = apply {
                 var innerMap = result.issuerData[namespaceName]
@@ -714,7 +716,7 @@ class DeviceResponseParser(
                 result.issuerCertificateChain = certificateChain
             }
 
-            fun addDeviceEntry(namespaceName: String, name: String, value: ByteArray) = apply {
+            fun addDeviceEntry(namespaceName: String, name: String, value: ByteString) = apply {
                 var innerMap = result.deviceData[namespaceName]
                 if (innerMap == null) {
                     innerMap = LinkedHashMap()

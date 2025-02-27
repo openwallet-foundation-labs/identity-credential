@@ -3,6 +3,7 @@ package com.android.identity_credential.wallet
 import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.text.intl.Locale
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.direct_access.DirectAccess
 import com.android.identity.android.direct_access.DirectAccessCredential
@@ -88,6 +89,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.time.Duration
@@ -242,7 +244,7 @@ class DocumentModel(
         val options = BitmapFactory.Options()
         options.inMutable = true
         val documentBitmap = BitmapFactory.decodeByteArray(
-            documentConfiguration.cardArt,
+            documentConfiguration.cardArt.toByteArray(),
             0,
             documentConfiguration.cardArt.size,
             options
@@ -250,7 +252,7 @@ class DocumentModel(
 
         val issuerConfiguration = document.issuingAuthorityConfiguration
         val issuerLogo = BitmapFactory.decodeByteArray(
-            issuerConfiguration.issuingAuthorityLogo,
+            issuerConfiguration.issuingAuthorityLogo.toByteArray(),
             0,
             issuerConfiguration.issuingAuthorityLogo.size,
             options
@@ -345,7 +347,7 @@ class DocumentModel(
                             if (deviceKeyInfo.userAuthenticationTimeoutMillis > 0) {
                                 String.format(
                                     "Timeout %.1f Seconds",
-                                    deviceKeyInfo.userAuthenticationTimeoutMillis / 1000
+                                    deviceKeyInfo.userAuthenticationTimeoutMillis / 1000,
                                 )
                             } else {
                                 "Every use"
@@ -459,7 +461,7 @@ class DocumentModel(
         val kvPairs = mutableMapOf<String, String>()
 
         val sdJwt = SdJwtVerifiableCredential.fromString(
-            String(sdJwtVcCredential.issuerProvidedData, Charsets.US_ASCII)
+            sdJwtVcCredential.issuerProvidedData.decodeToString(Charsets.US_ASCII)
         )
         val body = JwtBody.fromString(sdJwt.body)
 
@@ -921,7 +923,7 @@ class DocumentModel(
                 )
                 is SecureAreaConfigurationCloud -> Pair(
                     secureAreaRepository.getImplementation(secureAreaConfiguration.cloudSecureAreaId),
-                    CloudCreateKeySettings.Builder(credConfig.challenge.toByteArray())
+                    CloudCreateKeySettings.Builder(credConfig.challenge)
                         .applyConfiguration(secureAreaConfiguration)
                         .build()
                 )
@@ -1042,11 +1044,11 @@ suspend fun signWithUnlock(
         try {
             val signature = secureArea.sign(
                 alias,
-                messageToSign.toByteArray(),
+                messageToSign,
                 keyUnlockData = keyUnlockData
             )
 
-            return ByteString(signature.toCoseEncoded())
+            return signature.toCoseEncoded()
         } catch (e: KeyLockedException) {
             when (secureArea) {
                 // show Biometric prompt
@@ -1103,7 +1105,7 @@ suspend fun signWithUnlock(
                             remainingPassphraseAttempts--
 
                             val constraints = secureArea.getPassphraseConstraints()
-                            val title =
+                            val promptTitle =
                                 if (constraints.requireNumerical)
                                     activity.resources.getString(R.string.passphrase_prompt_csa_pin_title)
                                 else
@@ -1119,7 +1121,7 @@ suspend fun signWithUnlock(
                             val passphrase = showPassphrasePrompt(
                                 activity = activity,
                                 constraints = constraints,
-                                title = title,
+                                title = promptTitle,
                                 content = content,
                             )
 

@@ -15,12 +15,12 @@ fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): Certific
     val issuer = this.certificate.javaX509Certificate.issuerX500Principal
     val sha255Fingerprint = hexWithSpaces(
         MessageDigest.getInstance("SHA-256").digest(
-            this.certificate.encodedCertificate
+            this.certificate.encodedCertificate.toByteArray()
         )
     )
     val sha1Fingerprint = hexWithSpaces(
         MessageDigest.getInstance("SHA-1").digest(
-            this.certificate.encodedCertificate
+            this.certificate.encodedCertificate.toByteArray()
         )
     )
     val defaultValue = "<Not part of certificate>"

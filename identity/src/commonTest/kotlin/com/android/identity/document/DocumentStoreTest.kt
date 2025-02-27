@@ -28,6 +28,7 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.Storage
 import com.android.identity.storage.ephemeral.EphemeralStorage
+import com.android.identity.util.emptyByteString
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -39,7 +40,6 @@ import kotlinx.datetime.Instant;
 import kotlinx.io.bytestring.ByteString
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -202,7 +202,7 @@ class DocumentStoreTest {
         // ... and certify all of them
         var n = 0
         for (pendingCredential in document.getPendingCredentials()) {
-            val issuerProvidedAuthenticationData = byteArrayOf(1, 2, n.toByte())
+            val issuerProvidedAuthenticationData = ByteString(byteArrayOf(1, 2, n.toByte()))
             pendingCredential.certify(
                 issuerProvidedAuthenticationData,
                 timeValidityBegin,
@@ -284,7 +284,7 @@ class DocumentStoreTest {
         n = 10
         for (pendingCredential in document.getPendingCredentials()) {
             pendingCredential.certify(
-                ByteArray(0),
+                emptyByteString(),
                 timeValidityBegin,
                 timeValidityEnd
             )
@@ -362,7 +362,7 @@ class DocumentStoreTest {
             // Because we check that we serialize things correctly below, make sure
             // the data and validity times vary for each credential...
             credential.certify(
-                byteArrayOf(1, 2, n.toByte()),
+                ByteString(byteArrayOf(1, 2, n.toByte())),
                 Instant.fromEpochMilliseconds(timeValidityBegin.toEpochMilliseconds() + n),
                 Instant.fromEpochMilliseconds(timeValidityEnd.toEpochMilliseconds() + 2 * n)
             )
@@ -419,7 +419,7 @@ class DocumentStoreTest {
             assertEquals(doc1.validFrom, doc2.validFrom)
             assertEquals(doc1.validUntil, doc2.validUntil)
             assertEquals(doc1.usageCount.toLong(), doc2.usageCount.toLong())
-            assertContentEquals(doc1.issuerProvidedData, doc2.issuerProvidedData)
+            assertEquals(doc1.issuerProvidedData, doc2.issuerProvidedData)
             assertEquals(doc1.getAttestation(), doc2.getAttestation())
             n++
         }
@@ -510,9 +510,9 @@ class DocumentStoreTest {
         n = 0
         for (pendingCredential in pendingCredentials) {
             if (n < 5) {
-                pendingCredential.certify(byteArrayOf(17), timeValidityBegin, timeOfBirthday)
+                pendingCredential.certify(ByteString(byteArrayOf(17)), timeValidityBegin, timeOfBirthday)
             } else {
-                pendingCredential.certify(byteArrayOf(18), timeOfBirthday, timeValidityEnd)
+                pendingCredential.certify(ByteString(byteArrayOf(18)), timeOfBirthday, timeValidityEnd)
             }
             n++
         }
@@ -572,7 +572,7 @@ class DocumentStoreTest {
                 CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
             )
             pendingCredential.certify(
-                byteArrayOf(0, n.toByte()),
+                ByteString(byteArrayOf(0, n.toByte())),
                 Instant.fromEpochMilliseconds(100),
                 Instant.fromEpochMilliseconds(200)
             )
@@ -582,7 +582,7 @@ class DocumentStoreTest {
 
         // Now replace the fifth credential
         val credToReplace = document.getCertifiedCredentials()[5] as SecureAreaBoundCredential
-        assertContentEquals(byteArrayOf(0, 5), credToReplace.issuerProvidedData)
+        assertEquals(ByteString(byteArrayOf(0, 5)), credToReplace.issuerProvidedData)
         val pendingCredential = TestSecureAreaBoundCredential.create(
             document,
             credToReplace.identifier,
@@ -594,7 +594,7 @@ class DocumentStoreTest {
         assertEquals(1, document.getPendingCredentials().size.toLong())
         assertEquals(10, document.getCertifiedCredentials().size.toLong())
         pendingCredential.certify(
-            byteArrayOf(1, 0),
+            ByteString(byteArrayOf(1, 0)),
             Instant.fromEpochMilliseconds(100),
             Instant.fromEpochMilliseconds(200)
         )
@@ -619,7 +619,7 @@ class DocumentStoreTest {
                 byteArrayOf(0, 9),
                 byteArrayOf(1, 0)
             )
-            assertContentEquals(expectedData[count++], credential.issuerProvidedData)
+            assertEquals(ByteString(expectedData[count++]), credential.issuerProvidedData)
         }
 
         // Test the case where the replacement credential is prematurely deleted. The credential

@@ -30,7 +30,7 @@ class TestAppDocumentMetadata private constructor(
         data = if (serializedData == null || serializedData.isEmpty()) {
             TestData()
         } else {
-            TestData.fromCbor(serializedData.toByteArray())
+            TestData.fromCbor(serializedData)
         }
     }
 
@@ -41,7 +41,7 @@ class TestAppDocumentMetadata private constructor(
     ) {
         val data = TestData(displayName, typeDisplayName, cardArt)
         this.data = data
-        saveFn(ByteString(data.toCbor()))
+        saveFn(data.toCbor())
     }
 
     override suspend fun documentDeleted() {

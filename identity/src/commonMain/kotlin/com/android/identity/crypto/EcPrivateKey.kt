@@ -6,6 +6,7 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.toCoseLabel
+import kotlinx.io.bytestring.ByteString
 
 
 /**
@@ -16,7 +17,7 @@ import com.android.identity.cose.toCoseLabel
  */
 sealed class EcPrivateKey(
     open val curve: EcCurve,
-    open val d: ByteArray,
+    open val d: ByteString,
 ) {
 
     /**

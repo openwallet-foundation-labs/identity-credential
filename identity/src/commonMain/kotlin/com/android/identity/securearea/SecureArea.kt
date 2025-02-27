@@ -17,6 +17,7 @@ package com.android.identity.securearea
 
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
+import kotlinx.io.bytestring.ByteString
 
 /**
  * An interface to a Secure Area.
@@ -104,7 +105,7 @@ interface SecureArea {
      */
     suspend fun sign(
         alias: String,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         keyUnlockData: KeyUnlockData? = KeyUnlockInteractive()
     ): EcSignature
 
@@ -130,7 +131,7 @@ interface SecureArea {
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData? = KeyUnlockInteractive()
-    ): ByteArray
+    ): ByteString
 
     /**
      * Gets information about a key.

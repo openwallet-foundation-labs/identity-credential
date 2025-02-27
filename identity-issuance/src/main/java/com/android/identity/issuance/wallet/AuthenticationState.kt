@@ -52,7 +52,7 @@ class AuthenticationState(
         val clientData = clientTable.get(clientId)
         if (clientData != null) {
             this.deviceAttestation =
-                ClientRecord.fromCbor(clientData.toByteArray()).deviceAttestation
+                ClientRecord.fromCbor(clientData).deviceAttestation
             this.clientId = clientId
             println("Existing client id: ${this.clientId}")
         }
@@ -83,7 +83,7 @@ class AuthenticationState(
                 androidVerifiedBootGreen = settings.androidRequireVerifiedBootGreen,
                 androidAppSignatureCertificateDigests = listOf()
             ))
-            val clientData = ByteString(ClientRecord(attestation).toCbor())
+            val clientData = ClientRecord(attestation).toCbor()
             this.deviceAttestation = attestation
             clientTable.insert(data = clientData, key = clientId)
         }
@@ -98,12 +98,12 @@ class AuthenticationState(
         if (walletAppCapabilitiesTable.get(clientId) == null) {
             walletAppCapabilitiesTable.insert(
                 key = clientId,
-                data = ByteString(auth.walletApplicationCapabilities.toCbor()),
+                data = auth.walletApplicationCapabilities.toCbor(),
             )
         } else {
             walletAppCapabilitiesTable.update(
                 key = clientId,
-                data = ByteString(auth.walletApplicationCapabilities.toCbor())
+                data = auth.walletApplicationCapabilities.toCbor()
             )
         }
         return WalletServerCapabilities(

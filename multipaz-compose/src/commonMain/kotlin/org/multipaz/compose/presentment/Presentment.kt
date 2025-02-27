@@ -258,7 +258,7 @@ private fun ConsentPrompt(
         ConsentDocument(
             name = documentMetadata.displayName!!,
             description = documentMetadata.typeDisplayName!!,
-            cardArt = documentMetadata.cardArt!!.toByteArray()
+            cardArt = documentMetadata.cardArt!!
         )
     }
     // TODO: use sheetGesturesEnabled=false when available - see

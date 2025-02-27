@@ -1,5 +1,7 @@
 package com.android.identity.cbor
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * Map builder.
  */
@@ -71,7 +73,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param key the key.
      * @param encodedCbor the bytes of the encoded CBOR.
      */
-    fun putTaggedEncodedCbor(key: DataItem, encodedCbor: ByteArray) = apply {
+    fun putTaggedEncodedCbor(key: DataItem, encodedCbor: ByteString) = apply {
         putTagged(key, Tagged.ENCODED_CBOR, Bstr(encodedCbor))
     }
 
@@ -108,6 +110,17 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: String, value: ByteArray) = apply {
+        put(key.toDataItem(), value.toDataItem())
+    }
+
+    /**
+     * Puts a new value in the map
+     *
+     * @param key the key.
+     * @param value the value.
+     * @return the builder.
+     */
+    fun put(key: String, value: ByteString) = apply {
         put(key.toDataItem(), value.toDataItem())
     }
 
@@ -230,7 +243,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param key the key.
      * @param encodedCbor the bytes of the encoded CBOR.
      */
-    fun putTaggedEncodedCbor(key: String, encodedCbor: ByteArray) = apply {
+    fun putTaggedEncodedCbor(key: String, encodedCbor: ByteString) = apply {
         putTaggedEncodedCbor(key.toDataItem(), encodedCbor)
     }
 
@@ -266,6 +279,17 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @return the builder.
      */
     fun put(key: Long, value: ByteArray) = apply {
+        put(key.toDataItem(), value.toDataItem())
+    }
+
+    /**
+     * Puts a new value in the map
+     *
+     * @param key the key.
+     * @param value the value.
+     * @return the builder.
+     */
+    fun put(key: Long, value: ByteString) = apply {
         put(key.toDataItem(), value.toDataItem())
     }
 
@@ -386,7 +410,7 @@ class MapBuilder<T>(private val parent: T, private val map: CborMap) {
      * @param key the key.
      * @param encodedCbor the bytes of the encoded CBOR.
      */
-    fun putTaggedEncodedCbor(key: Long, encodedCbor: ByteArray) = apply {
+    fun putTaggedEncodedCbor(key: Long, encodedCbor: ByteString) = apply {
         putTaggedEncodedCbor(key.toDataItem(), encodedCbor)
     }
 }

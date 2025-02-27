@@ -52,6 +52,7 @@ import com.android.identity.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -107,8 +108,8 @@ class DeviceResponseGeneratorTest {
             .putEntryString("ns2", "bar2", "foo2")
             .build()
         document.testMetadata.setNameSpacedData(nameSpacedData)
-        val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
-        val overridesForNs1: MutableMap<String, ByteArray> = HashMap()
+        val overrides: MutableMap<String, Map<String, ByteString>> = HashMap()
+        val overridesForNs1: MutableMap<String, ByteString> = HashMap()
         overridesForNs1["foo3"] = Cbor.encode(Tstr("bar3_override"))
         overrides["ns1"] = overridesForNs1
         val exceptions: MutableMap<String, List<String>> = HashMap()
@@ -230,7 +231,7 @@ class DeviceResponseGeneratorTest {
 
         val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
             .parse()
-        val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
+        val mergedIssuerNamespaces: Map<String, List<ByteString>> =
             MdocUtil.mergeIssuerNamesSpaces(
                 request,
                 document.testMetadata.nameSpacedData,
@@ -313,7 +314,7 @@ class DeviceResponseGeneratorTest {
         val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
             .parse()
         val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
+        val mergedIssuerNamespaces: Map<String, List<ByteString>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
             document.testMetadata.nameSpacedData,
             staticAuthData
@@ -362,7 +363,7 @@ class DeviceResponseGeneratorTest {
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
         val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
             .parse()
-        val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
+        val mergedIssuerNamespaces: Map<String, List<ByteString>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
             document.testMetadata.nameSpacedData,
             staticAuthData
@@ -496,7 +497,7 @@ class DeviceResponseGeneratorTest {
 
         val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
             .parse()
-        val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
+        val mergedIssuerNamespaces: Map<String, List<ByteString>> =
             MdocUtil.mergeIssuerNamesSpaces(
                 request,
                 document.testMetadata.nameSpacedData,

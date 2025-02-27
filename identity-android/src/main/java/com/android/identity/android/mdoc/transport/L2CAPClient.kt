@@ -22,7 +22,7 @@ import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.android.identity.util.Logger
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt32
 import kotlinx.io.bytestring.buildByteString
 import java.io.IOException
@@ -208,7 +208,7 @@ internal fun InputStream.readNOctets(len: UInt): ByteArray {
             if (numBytesRead == -1) {
                 throw IllegalStateException("Failed reading from input stream")
             }
-            appendArray(buf)
+            appendBarray(buf)
             remaining -= numBytesRead.toUInt()
         }
     }

@@ -3,7 +3,6 @@
 package com.android.identity.crypto
 
 import com.android.identity.util.UUID
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 

@@ -48,6 +48,7 @@ import com.android.identity.sdjwt.vc.JwtBody
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.Logger
+import com.android.identity.util.appendString
 import com.android.identity.util.fromBase64Url
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -60,6 +61,7 @@ import io.ktor.http.contentType
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -112,19 +114,19 @@ class FunkeIssuingAuthorityState(
                 val httpClient = env.getInterface(HttpClient::class)!!
                 val display = if (metadata.display.isEmpty()) null else metadata.display[0]
                 val configDisplay = if (config.display.isEmpty()) null else config.display[0]
-                var logo: ByteArray? = null
+                var logo: ByteString? = null
                 if (display?.logoUrl != null) {
                     val logoRequest = httpClient.get(display.logoUrl) {}
                     if (logoRequest.status == HttpStatusCode.OK &&
                         logoRequest.contentType()?.contentType == "image") {
-                        logo = logoRequest.readBytes()
+                        logo = ByteString(logoRequest.readBytes())
                     } else {
                         Logger.e(TAG, "Could not fetch logo from '${display.logoUrl}")
                     }
                 }
                 if (logo == null) {
                     val logoPath = "funke/logo.png"
-                    logo = resources.getRawResource(logoPath)!!.toByteArray()
+                    logo = resources.getRawResource(logoPath)!!
                 }
 
                 val docType = documentTypeRepository.documentTypes.firstOrNull { documentType ->
@@ -141,12 +143,12 @@ class FunkeIssuingAuthorityState(
                 val documentDescription = configDisplay?.text ?: documentType
                 val issuingAuthorityDescription = "$documentDescription (${config.format?.id})"
 
-                var cardArt: ByteArray? = null
+                var cardArt: ByteString? = null
                 if (configDisplay?.logoUrl != null) {
                     val artRequest = httpClient.get(configDisplay.logoUrl) {}
                     if (artRequest.status == HttpStatusCode.OK &&
                         artRequest.contentType()?.contentType == "image") {
-                        cardArt = artRequest.readBytes()
+                        cardArt = ByteString(artRequest.readBytes())
                     } else {
                         Logger.e(TAG,
                             "Could not fetch credential image from '${configDisplay.logoUrl}")
@@ -154,7 +156,7 @@ class FunkeIssuingAuthorityState(
                 }
                 if (cardArt == null) {
                     val artPath = "generic/card_art.png"
-                    cardArt = resources.getRawResource(artPath)!!.toByteArray()
+                    cardArt = resources.getRawResource(artPath)!!
                 }
                 val requireUserAuthenticationToViewDocument = false
                 val keyAttestation = config.proofType is Openid4VciProofTypeKeyAttestation
@@ -259,7 +261,7 @@ class FunkeIssuingAuthorityState(
     suspend fun proof(env: FlowEnvironment, documentId: String): FunkeProofingState {
         val storage = env.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
         val applicationCapabilities = storage.get(clientId)?.let {
-            WalletApplicationCapabilities.fromCbor(it.toByteArray())
+            WalletApplicationCapabilities.fromCbor(it)
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
         return FunkeProofingState(
             clientId = clientId,
@@ -404,12 +406,12 @@ class FunkeIssuingAuthorityState(
                             jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
                             jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
                             CredentialFormat.SD_JWT_VC,
-                            credential.toByteArray()
+                            buildByteString { appendString(credential) }
                         )
                     }
 
                     is Openid4VciFormatMdoc -> {
-                        val credentialBytes = credential.fromBase64Url()
+                        val credentialBytes = ByteString(credential.fromBase64Url())
                         val credentialData = StaticAuthDataParser(credentialBytes).parse()
                         val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
                         val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
@@ -459,7 +461,7 @@ class FunkeIssuingAuthorityState(
                 jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
                 jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
                 CredentialFormat.SD_JWT_VC,
-                credential.toByteArray()
+                buildByteString { appendString(credential) }
             )
         )
     }
@@ -613,7 +615,7 @@ class FunkeIssuingAuthorityState(
         val storage = env.getTable(documentTableSpec)
         val encodedCbor = storage.get(partitionId = clientId, key = documentId)
             ?: throw Error("No such document")
-        return FunkeIssuerDocument.fromCbor(encodedCbor.toByteArray())
+        return FunkeIssuerDocument.fromCbor(encodedCbor)
     }
 
     private suspend fun createIssuerDocument(env: FlowEnvironment, document: FunkeIssuerDocument): String {
@@ -622,7 +624,7 @@ class FunkeIssuingAuthorityState(
         }
         val storage = env.getTable(documentTableSpec)
         val bytes = document.toCbor()
-        return storage.insert(key = null, partitionId = clientId, data = ByteString(bytes))
+        return storage.insert(key = null, partitionId = clientId, data = bytes)
     }
 
     private suspend fun deleteIssuerDocument(env: FlowEnvironment,
@@ -649,7 +651,7 @@ class FunkeIssuingAuthorityState(
         }
         val storage = env.getTable(documentTableSpec)
         val bytes = document.toCbor()
-        storage.update(partitionId = clientId, key = documentId, data = ByteString(bytes))
+        storage.update(partitionId = clientId, key = documentId, data = bytes)
         if (emitNotification) {
             Logger.i(TAG, "Emitting notification for $documentId")
             emit(env, IssuingAuthorityNotification(documentId))
@@ -674,7 +676,7 @@ class FunkeIssuingAuthorityState(
                 DocumentConfiguration(
                     "Funke",
                     "Personal ID (SD-JWT)",
-                    art.toByteArray(),
+                    art,
                     false,
                     null,
                     SdJwtVcDocumentConfiguration(
@@ -694,7 +696,7 @@ class FunkeIssuingAuthorityState(
                 DocumentConfiguration(
                     "Funke",
                     "Personal ID (MDOC)",
-                    art.toByteArray(),
+                    art,
                     false,
                     MdocDocumentConfiguration(
                         config.format.docType,

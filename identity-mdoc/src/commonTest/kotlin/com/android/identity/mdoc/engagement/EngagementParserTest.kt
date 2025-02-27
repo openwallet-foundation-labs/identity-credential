@@ -19,6 +19,8 @@ import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -26,9 +28,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EngagementParserTest {
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun testDeviceRequestEngagementWithVectors() {
-        val deviceEngagement = TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT.fromHex()
+        val deviceEngagement = ByteString(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT.fromHex())
         val parser = EngagementParser(deviceEngagement)
         val engagement = parser.parse()
         assertEquals("1.0", engagement.version)
@@ -46,7 +49,7 @@ class EngagementParserTest {
         val eDeviceKeyBytes = engagement.eSenderKeyBytes
         assertEquals(
             TestVectors.ISO_18013_5_ANNEX_D_E_DEVICE_KEY_BYTES,
-            eDeviceKeyBytes.toHex()
+            eDeviceKeyBytes.toHexString()
         )
     }
 }

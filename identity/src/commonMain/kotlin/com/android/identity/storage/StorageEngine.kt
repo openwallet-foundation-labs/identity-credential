@@ -16,6 +16,8 @@
 
 package com.android.identity.storage
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * A simple interface for storing key/value-pairs.
  */
@@ -28,7 +30,7 @@ interface StorageEngine {
      * @param key the key used to identify the data.
      * @return The stored data or `null` if there is no data for the given key.
      */
-    operator fun get(key: String): ByteArray?
+    operator fun get(key: String): ByteString?
 
     /**
      * Stores data.
@@ -39,7 +41,7 @@ interface StorageEngine {
      * @param key the key used to identify the data.
      * @param data the data to store.
      */
-    fun put(key: String, data: ByteArray)
+    fun put(key: String, data: ByteString)
 
     /**
      * Deletes data.

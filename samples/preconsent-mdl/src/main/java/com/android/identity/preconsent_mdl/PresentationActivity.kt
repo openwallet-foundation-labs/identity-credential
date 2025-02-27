@@ -51,7 +51,6 @@ import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
-import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -60,7 +59,7 @@ import kotlinx.datetime.Clock
 
 class PresentationActivity : ComponentActivity() {
     companion object {
-        private val TAG = "PresentationActivity"
+        private const val TAG = "PresentationActivity"
     }
 
     private lateinit var transferHelper: TransferHelper

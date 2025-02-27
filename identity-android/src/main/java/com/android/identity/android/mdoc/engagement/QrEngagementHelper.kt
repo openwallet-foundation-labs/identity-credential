@@ -16,6 +16,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
 import com.android.identity.mdoc.engagement.EngagementGenerator
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
 import java.util.concurrent.Executor
 
 /**
@@ -51,7 +52,7 @@ class QrEngagementHelper internal constructor(
      * ISO/IEC 18013-5:2021 section 8.2.1.1 with the device retrieval methods
      * specified using [QrEngagementHelper.Builder].
      */
-    val deviceEngagement: ByteArray
+    val deviceEngagement: ByteString
 
     /**
      * The bytes of the `Handover` CBOR.
@@ -60,13 +61,13 @@ class QrEngagementHelper internal constructor(
      * ISO/IEC 18013-5:2021 section 9.1.5.1. For QR Code the Handover is
      * always defined as CBOR with the `null` value.
      */
-    val handover: ByteArray
+    val handover: ByteString
 
     private var reportedDeviceConnecting = false
 
     init {
         val encodedEDeviceKeyBytes =
-            Cbor.encode(Tagged(24, Bstr(Cbor.encode(eDeviceKey.toCoseKey().toDataItem()))))
+            Cbor.encode(Tagged(24, Bstr(Cbor.encode(eDeviceKey.toCoseKey().toDataItem())))).toByteArray()
 
         // Set EDeviceKey for transports we were given.
         if (transports != null) {
@@ -172,7 +173,7 @@ class QrEngagementHelper internal constructor(
     val deviceEngagementUriEncoded: String
         get() {
             val base64EncodedDeviceEngagement = Base64.encodeToString(
-                deviceEngagement,
+                deviceEngagement.toByteArray(),
                 Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
             )
             return Uri

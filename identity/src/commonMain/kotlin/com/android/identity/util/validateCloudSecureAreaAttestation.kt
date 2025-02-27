@@ -34,7 +34,7 @@ fun validateCloudKeyAttestation(
 
     val rootPublicKey = certificates.last().ecPublicKey.toDataItem()
     val trusted = trustedRootKeys.firstOrNull { trustedKey ->
-        Cbor.decode(trustedKey.toByteArray()) == rootPublicKey
+        Cbor.decode(trustedKey) == rootPublicKey
     }
 
     if (trusted == null) {

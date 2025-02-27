@@ -7,10 +7,11 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.nfc.NdefRecord
 import com.android.identity.util.Logger
+import kotlinx.io.bytestring.ByteString
 
 class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() {
 
-    override fun toDeviceEngagement(): ByteArray {
+    override fun toDeviceEngagement(): ByteString {
         val mapBuilder = CborMap.builder()
         mapBuilder.put(OPTION_KEY_HOST, host)
         mapBuilder.put(OPTION_KEY_PORT, port.toLong())
@@ -41,6 +42,12 @@ class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() 
         return "udp:host=$host:port=$port"
     }
 
+    override fun hashCode(): Int {
+        var result = host.hashCode()
+        result = 31 * result + port
+        return result
+    }
+
     companion object {
         private const val TAG = "ConnectionMethodUdp"
 
@@ -52,7 +59,7 @@ class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() 
         private const val OPTION_KEY_HOST = 0L
         private const val OPTION_KEY_PORT = 1L
         @JvmStatic
-        fun fromDeviceEngagementUdp(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodUdp? {
+        fun fromDeviceEngagementUdp(encodedDeviceRetrievalMethod: ByteString): ConnectionMethodUdp? {
             val array = Cbor.decode(encodedDeviceRetrievalMethod).asArray
             val type = array[0].asNumber
             val version = array[1].asNumber

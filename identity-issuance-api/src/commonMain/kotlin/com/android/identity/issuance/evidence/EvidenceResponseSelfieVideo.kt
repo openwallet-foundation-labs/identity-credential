@@ -1,15 +1,17 @@
 package com.android.identity.issuance.evidence
 
-data class EvidenceResponseSelfieVideo(val selfieImage: ByteArray)
+import kotlinx.io.bytestring.ByteString
+
+data class EvidenceResponseSelfieVideo(val selfieImage: ByteString)
     : EvidenceResponse() {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is EvidenceResponseSelfieVideo) return false
 
-        return selfieImage.contentEquals(other.selfieImage)
+        return selfieImage == other.selfieImage
     }
 
     override fun hashCode(): Int {
-        return selfieImage.contentHashCode()
+        return selfieImage.hashCode()
     }
 }

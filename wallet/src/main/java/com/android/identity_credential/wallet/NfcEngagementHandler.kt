@@ -32,10 +32,11 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.ByteString
 
 class NfcEngagementHandler : HostApduService() {
     companion object {
-        private val TAG = "NfcEngagementHandler"
+        private const val TAG = "NfcEngagementHandler"
     }
 
     private var engagementHelper: NfcEngagementHelper? = null
@@ -68,7 +69,8 @@ class NfcEngagementHandler : HostApduService() {
             Logger.i(TAG, "onDeviceConnected")
 
             PresentationActivity.startPresentation(applicationContext, transport,
-                engagementHelper!!.handover, eDeviceKey,
+                engagementHelper!!.handover,
+                eDeviceKey,
                 engagementHelper!!.deviceEngagement)
 
             engagementHelper?.close()
@@ -116,7 +118,7 @@ class NfcEngagementHandler : HostApduService() {
                 walletApplication.postNotificationForMissingMdocProximityPermissions()
 
                 // Inform the reader that we can't continue.
-                return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
+                return NfcUtil.STATUS_WORD_FILE_NOT_FOUND.toByteArray()
             }
         }
 
@@ -149,7 +151,7 @@ class NfcEngagementHandler : HostApduService() {
             }
         }
 
-        return engagementHelper?.nfcProcessCommandApdu(commandApdu)
+        return engagementHelper?.nfcProcessCommandApdu(ByteString(commandApdu))?.toByteArray()
     }
 
     override fun onDeactivated(reason: Int) {

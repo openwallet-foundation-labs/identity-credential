@@ -6,6 +6,7 @@ import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.crypto.EcPublicKeyOkp
 import com.android.identity.util.fromBase64Url
 import com.android.identity.util.toBase64Url
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
@@ -78,14 +79,14 @@ class JsonWebKey {
                 "OKP" -> {
                     EcPublicKeyOkp(
                         EcCurve.fromJwkName(key.getString("crv")),
-                        key.getString("x").fromBase64Url()
+                        ByteString(key.getString("x").fromBase64Url())
                     )
                 }
                 "EC" -> {
                     EcPublicKeyDoubleCoordinate(
                         EcCurve.fromJwkName(key.getString("crv")),
-                        key.getString("x").fromBase64Url(),
-                        key.getString("y").fromBase64Url()
+                        ByteString(key.getString("x").fromBase64Url()),
+                        ByteString(key.getString("y").fromBase64Url())
                     )
                 }
                 else -> throw IllegalArgumentException("Not supporting key type $kty")

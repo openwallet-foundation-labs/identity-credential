@@ -17,7 +17,7 @@ class HttpHandler(
 ): HttpTransport {
     override suspend fun post(url: String, data: ByteString): ByteString {
         val (target, method) = url.split("/")
-        val args = Cbor.decode(data.toByteArray()).asArray
+        val args = Cbor.decode(data).asArray
         val result = if (target == "_") {
             handlePoll(args)
         } else {
@@ -25,7 +25,7 @@ class HttpHandler(
         }
         val builder = CborArray.builder()
         result.forEach { builder.add(it) }
-        return ByteString(Cbor.encode(builder.end().build()))
+        return Cbor.encode(builder.end().build())
     }
 
     private suspend fun handlePoll(args: List<DataItem>): List<DataItem> {

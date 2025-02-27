@@ -1,6 +1,5 @@
 package com.android.identity.mdoc.connectionmethod
 
-import com.android.identity.asn1.ASN1String
 import com.android.identity.cbor.Cbor.decode
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
@@ -45,7 +44,7 @@ class ConnectionMethodBle(
     /**
      * The peripheral MAC address, if set.
      */
-    var peripheralServerModeMacAddress: ByteArray? = null
+    var peripheralServerModeMacAddress: ByteString? = null
         set(macAddress) {
             require(macAddress == null || macAddress.size == 6) {                 
                 "MAC address should be 6 bytes, got ${macAddress!!.size}"
@@ -88,7 +87,7 @@ class ConnectionMethodBle(
         return sb.toString()
     }
 
-    override fun toDeviceEngagement(): ByteArray {
+    override fun toDeviceEngagement(): ByteString {
         val builder = CborMap.builder()
         builder.put(OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, supportsPeripheralServerMode)
         builder.put(OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, supportsCentralClientMode)
@@ -137,7 +136,7 @@ class ConnectionMethodBle(
         private const val OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS = 20L
         private const val OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM = 21L // NOTE: as per drafts of 18013-5 Second Edition
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodBle? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteString): ConnectionMethodBle? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
@@ -152,11 +151,11 @@ class ConnectionMethodBle(
             val centralClientModeUuidDi = map.getOrNull(OPTION_KEY_CENTRAL_CLIENT_MODE_UUID)
             var peripheralServerModeUuid: UUID? = null
             if (peripheralServerModeUuidDi != null) {
-                peripheralServerModeUuid = UUID.fromByteArray(peripheralServerModeUuidDi.asBstr)
+                peripheralServerModeUuid = UUID.fromByteString(peripheralServerModeUuidDi.asBstr)
             }
             var centralClientModeUuid: UUID? = null
             if (centralClientModeUuidDi != null) {
-                centralClientModeUuid = UUID.fromByteArray(centralClientModeUuidDi.asBstr)
+                centralClientModeUuid = UUID.fromByteString(centralClientModeUuidDi.asBstr)
             }
             val cm = ConnectionMethodBle(
                 supportsPeripheralServerMode,
@@ -203,7 +202,7 @@ class ConnectionMethodBle(
             var uuid: UUID? = uuidToReplace
             var gotLeRole = false
             var psm : Int? = null
-            var macAddress: ByteArray? = null
+            var macAddress: ByteString? = null
 
             // See createNdefRecords() method for how this data is encoded.
             //
@@ -214,8 +213,7 @@ class ConnectionMethodBle(
                 val type = payload.readByte().toInt()
                 if (type == BLE_LE_ROLE && len == 2) {
                     gotLeRole = true
-                    val value = payload.readByte().toInt()
-                    when (value) {
+                    when (val value = payload.readByte().toInt()) {
                         BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY -> {
                             if (role == MdocTransport.Role.MDOC) {
                                 peripheral = true
@@ -255,7 +253,7 @@ class ConnectionMethodBle(
                     uuid = UUID(msb, lsb)
                 } else if (type == BLE_LE_BLUETOOTH_MAC_ADDRESS && len == 0x07) {
                     // MAC address
-                    macAddress = payload.readByteArray(6)
+                    macAddress = ByteString(payload.readByteArray(6))
                 } else if (type == BLE_PSM_NOT_YET_ALLOCATED && len == 0x05) {
                     // PSM
                     psm = payload.readInt()
@@ -385,5 +383,15 @@ class ConnectionMethodBle(
             payload = ByteString(acRecordPayload)
         )
         return Pair(record, acRecord)
+    }
+
+    override fun hashCode(): Int {
+        var result = supportsPeripheralServerMode.hashCode()
+        result = 31 * result + supportsCentralClientMode.hashCode()
+        result = 31 * result + (peripheralServerModeUuid?.hashCode() ?: 0)
+        result = 31 * result + (centralClientModeUuid?.hashCode() ?: 0)
+        result = 31 * result + (peripheralServerModePsm ?: 0)
+        result = 31 * result + (peripheralServerModeMacAddress?.hashCode() ?: 0)
+        return result
     }
 }

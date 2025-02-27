@@ -30,7 +30,7 @@ data class DeviceAttestationAndroid(
 
     override fun validateAssertion(assertion: DeviceAssertion) {
         val signature =
-            EcSignature.fromCoseEncoded(assertion.platformAssertion.toByteArray())
+            EcSignature.fromCoseEncoded(assertion.platformAssertion)
         if (!Crypto.checkSignature(
                 publicKey = certificateChain.certificates.first().ecPublicKey,
                 message = assertion.assertionData.toByteArray(),

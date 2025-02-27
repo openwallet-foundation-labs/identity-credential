@@ -55,6 +55,7 @@ import com.google.android.gms.identitycredentials.IntentHelper
 import kotlinx.coroutines.launch
 import java.util.StringTokenizer
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 
 
 /**
@@ -112,7 +113,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                 val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
                 val readerPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
                     EcCurve.P256,
-                    Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE)
+                    ByteString(Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE))
                 )
 
                 // Match all the requested fields
@@ -141,13 +142,13 @@ class CredmanPresentationActivity : FragmentActivity() {
                         CredmanUtil.generateAndroidSessionTranscript(
                             nonce,
                             callingPackageName,
-                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
+                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding.toByteArray())
                         )
                     } else {
                         CredmanUtil.generateBrowserSessionTranscript(
                             nonce,
                             callingOrigin,
-                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
+                            Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding.toByteArray())
                         )
                     }
                     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
@@ -161,8 +162,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
                         Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
                         readerPublicKey,
-                        deviceResponse,
-                        encodedSessionTranscript
+                        deviceResponse.toByteArray(),
+                        encodedSessionTranscript.toByteArray()
                     )
                     val encodedCredentialDocument =
                         CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
@@ -172,7 +173,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     responseJson.put(
                         "token",
                         Base64.encodeToString(
-                            encodedCredentialDocument,
+                            encodedCredentialDocument.toByteArray(),
                             Base64.NO_WRAP or Base64.URL_SAFE
                         )
                     )
@@ -193,8 +194,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                 val deviceRequestBase64 = arfRequest.getString("deviceRequest")
                 val encryptionInfoBase64 = arfRequest.getString("encryptionInfo")
                 Logger.i(TAG, "origin: ${callingOrigin!!}")
-                Logger.iCbor(TAG, "deviceRequest", deviceRequestBase64.fromBase64Url())
-                Logger.iCbor(TAG, "encryptionInfo", encryptionInfoBase64.fromBase64Url())
+                Logger.iCbor(TAG, "deviceRequest", ByteString(deviceRequestBase64.fromBase64Url()))
+                Logger.iCbor(TAG, "encryptionInfo", ByteString(encryptionInfoBase64.fromBase64Url()))
 
                 val encodedSessionTranscript =
                     Cbor.encode(
@@ -212,7 +213,7 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                 // For now we only consider the first document request
                 val docRequest = DeviceRequestParser(
-                    deviceRequestBase64.fromBase64Url(),
+                    ByteString(deviceRequestBase64.fromBase64Url()),
                     encodedSessionTranscript
                 ).parse().docRequests[0]
 
@@ -223,7 +224,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                         mdocCredential = mdocCredential
                     ).requestedClaims
 
-                    val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
+                    val encryptionInfo = Cbor.decode(ByteString(encryptionInfoBase64.fromBase64Url()))
                     if (encryptionInfo.asArray.get(0).asTstr != "ARFEncryptionv2") {
                         throw IllegalArgumentException("Malformed EncryptionInfo")
                     }
@@ -260,8 +261,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                     val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
                         Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
                         readerPublicKey,
-                        deviceResponse,
-                        encodedSessionTranscript
+                        deviceResponse.toByteArray(),
+                        encodedSessionTranscript.toByteArray()
                     )
                     val encryptedResponse =
                         Cbor.encode(
@@ -280,7 +281,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     responseJson.put(
                         "encryptedResponse",
                         Base64.encodeToString(
-                            encryptedResponse,
+                            encryptedResponse.toByteArray(),
                             Base64.NO_WRAP or Base64.URL_SAFE
                         )
                     )
@@ -364,7 +365,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     responseJson.put(
                         "vp_token",
                         Base64.encodeToString(
-                            deviceResponse,
+                            deviceResponse.toByteArray(),
                             Base64.NO_WRAP or Base64.URL_SAFE
                         )
                     )
@@ -409,8 +410,8 @@ class CredmanPresentationActivity : FragmentActivity() {
         requestedClaims: List<MdocRequestedClaim>,
         trustPoint: TrustPoint?,
         websiteOrigin: String?,
-        encodedSessionTranscript: ByteArray,
-    ): ByteArray {
+        encodedSessionTranscript: ByteString,
+    ): ByteString {
         val documentConfiguration = (mdocCredential.document.metadata as WalletDocumentMetadata).documentConfiguration
         val documentCborBytes = showMdocPresentmentFlow(
             activity = this@CredmanPresentationActivity,

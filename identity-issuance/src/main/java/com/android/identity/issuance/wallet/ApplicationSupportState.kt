@@ -25,7 +25,6 @@ import com.android.identity.util.Logger
 import com.android.identity.util.toBase64Url
 import com.android.identity.util.validateAndroidKeyAttestation
 import kotlinx.datetime.Clock
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -64,7 +63,7 @@ class ApplicationSupportState(
         val storage = env.getTable(landingTableSpec)
         val id = storage.insert(
             key = null,
-            data = ByteString(LandingRecord(clientId).toCbor()),
+            data = LandingRecord(clientId).toCbor(),
             expiration = Clock.System.now() + EXPIRATION
         )
         Logger.i(TAG, "Created landing URL '$id'")
@@ -87,7 +86,7 @@ class ApplicationSupportState(
         Logger.i(TAG, "Querying landing URL '$id'")
         val recordData = storage.get(id)
             ?: throw LandingUrlUnknownException("No landing url '$id'")
-        val record = LandingRecord.fromCbor(recordData.toByteArray())
+        val record = LandingRecord.fromCbor(recordData)
         if (record.resolved != null) {
             Logger.i(TAG, "Removed landing URL '$id'")
             storage.delete(id)
@@ -102,7 +101,7 @@ class ApplicationSupportState(
         keyAssertion: DeviceAssertion
     ): String {
         val storage = env.getTable(AuthenticationState.clientTableSpec)
-        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!.toByteArray())
+        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!)
 
         clientRecord.deviceAttestation.validateAssertion(keyAssertion)
 
@@ -137,7 +136,7 @@ class ApplicationSupportState(
         keysAssertion: DeviceAssertion // holds AssertionBindingKeys
     ): String {
         val storage = env.getTable(AuthenticationState.clientTableSpec)
-        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!.toByteArray())
+        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!)
         val assertion = validateDeviceAssertionBindingKeys(
             env = env,
             deviceAttestation = clientRecord.deviceAttestation,

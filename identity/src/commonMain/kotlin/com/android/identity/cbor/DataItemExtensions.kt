@@ -2,7 +2,7 @@ package com.android.identity.cbor
 
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toInstant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Extension to get a [Tstr] data item for the value.
@@ -12,7 +12,12 @@ fun String.toDataItem(): Tstr = Tstr(this)
 /**
  * Extension to get a [Bstr] data item for the value.
  */
-fun ByteArray.toDataItem(): Bstr = Bstr(this)
+fun ByteArray.toDataItem(): Bstr = Bstr(ByteString(this))
+
+/**
+ * Extension to get a [Bstr] data item for the value.
+ */
+fun ByteString.toDataItem(): Bstr = Bstr(this)
 
 /**
  * Extension to get a [CborInt] data item for the value.

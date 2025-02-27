@@ -301,7 +301,7 @@ class DataTransportTcp(
                 0x02.toShort(),  // type = RFC 2046 (MIME)
                 "application/vnd.android.ic.dmr".toByteArray(),
                 reference,
-                cm.toDeviceEngagement()
+                cm.toDeviceEngagement().toByteArray()
             )
 
             // From 7.1 Alternative Carrier Record

@@ -29,12 +29,12 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * @param encodedCertificate the bytes of the X.509 certificate.
  */
 class X509Cert(
-    val encodedCertificate: ByteArray
+    val encodedCertificate: ByteString
 ) {
-    override fun equals(other: Any?): Boolean = other is X509Cert &&
-            encodedCertificate contentEquals other.encodedCertificate
+    override fun equals(other: Any?): Boolean = (other is X509Cert) &&
+            (encodedCertificate == other.encodedCertificate)
 
-    override fun hashCode(): Int = encodedCertificate.contentHashCode()
+    override fun hashCode(): Int = encodedCertificate.hashCode()
 
     /**
      * Gets an [DataItem] with the encoded X.509 certificate.
@@ -50,7 +50,7 @@ class X509Cert(
     fun toPem(): String {
         val sb = StringBuilder()
         sb.append("-----BEGIN CERTIFICATE-----\n")
-        sb.append(Base64.Mime.encode(encodedCertificate))
+        sb.append(Base64.Mime.encode(encodedCertificate.toByteArray()))
         sb.append("\n-----END CERTIFICATE-----\n")
         return sb.toString()
     }
@@ -70,22 +70,22 @@ class X509Cert(
             }
             Algorithm.EDDSA -> {
                 val len = signature.size
-                val r = signature.sliceArray(IntRange(0, len/2 - 1))
-                val s = signature.sliceArray(IntRange(len/2, len - 1))
+                val r = signature.substring(0, len/2)
+                val s = signature.substring(len/2, len)
                 EcSignature(r, s)
             }
             else -> throw IllegalArgumentException("Unsupported algorithm $signatureAlgorithm")
         }
         return Crypto.checkSignature(
             publicKey,
-            tbsCertificate,
+            tbsCertificate.toByteArray(),
             signatureAlgorithm,
             ecSignature
         )
     }
 
     private val parsedCert: ASN1Sequence by lazy {
-        ASN1.decode(encodedCertificate)!! as ASN1Sequence
+        ASN1.decode(encodedCertificate.toByteArray())!! as ASN1Sequence
     }
 
     private val tbsCert: ASN1Sequence by lazy {
@@ -137,14 +137,14 @@ class X509Cert(
     /**
      * The bytes of TBSCertificate.
      */
-    val tbsCertificate: ByteArray
-        get() = ASN1.encode(tbsCert)
+    val tbsCertificate: ByteString
+        get() = ByteString(ASN1.encode(tbsCert))
 
     /**
      * The certificate signature.
      */
-    val signature: ByteArray
-        get() = (parsedCert.elements[2] as ASN1BitString).value
+    val signature: ByteString
+        get() = ByteString((parsedCert.elements[2] as ASN1BitString).value)
 
     /**
      * The signature algorithm for the certificate as OID string.
@@ -211,7 +211,7 @@ class X509Cert(
                 "1.3.101.113" -> EcCurve.ED448
                 else -> throw IllegalStateException("Unexpected OID $algorithmOid")
             }
-            val keyMaterial = (subjectPublicKeyInfo.elements[1] as ASN1BitString).value
+            val keyMaterial = ByteString((subjectPublicKeyInfo.elements[1] as ASN1BitString).value)
             return when (curve) {
                 EcCurve.P256,
                 EcCurve.P384,
@@ -365,7 +365,7 @@ class X509Cert(
                 .replace("-----BEGIN CERTIFICATE-----", "")
                 .replace("-----END CERTIFICATE-----", "")
                 .trim())
-            return X509Cert(encoded)
+            return X509Cert(ByteString(encoded))
         }
 
         /**
@@ -497,7 +497,7 @@ class X509Cert(
             }
             val subjectPublicKeyInfoSeq = ASN1Sequence(listOf(
                 publicKey.curve.getCurveAlgorithmSeq(),
-                ASN1BitString(0, subjectPublicKey)
+                ASN1BitString(0, subjectPublicKey.toByteArray())
             ))
 
             if (validFrom.nanosecondsOfSecond != 0) {
@@ -531,7 +531,7 @@ class X509Cert(
                 addExtension(
                     OID.X509_EXTENSION_SUBJECT_KEY_IDENTIFIER.oid,
                     false,
-                    ASN1.encode(ASN1OctetString(Crypto.digest(Algorithm.INSECURE_SHA1, subjectPublicKey)))
+                    ASN1.encode(ASN1OctetString(Crypto.digest(Algorithm.INSECURE_SHA1, subjectPublicKey.toByteArray())))
                 )
             }
 
@@ -546,7 +546,7 @@ class X509Cert(
                                 ASN1TagClass.CONTEXT_SPECIFIC,
                                 ASN1Encoding.PRIMITIVE,
                                 0,
-                                Crypto.digest(Algorithm.INSECURE_SHA1, subjectPublicKey)
+                                Crypto.digest(Algorithm.INSECURE_SHA1, subjectPublicKey.toByteArray())
                             )
                         ))
                     )
@@ -585,17 +585,17 @@ class X509Cert(
 
             val tbsCert = ASN1Sequence(tbsCertObjs)
 
-            val encodedTbsCert = ASN1.encode(tbsCert)
+            val encodedTbsCert = ByteString(ASN1.encode(tbsCert))
             val signature = Crypto.sign(
                 signingKey,
                 signatureAlgorithm,
-                encodedTbsCert
+                encodedTbsCert.toByteArray()
             )
             val encodedSignature = when (signatureAlgorithm) {
                 Algorithm.ES256,
                 Algorithm.ES384,
                 Algorithm.ES512 -> signature.toDerEncoded()
-                Algorithm.EDDSA -> signature.r + signature.s
+                Algorithm.EDDSA -> signature.r.toByteArray() + signature.s.toByteArray()
                 else -> throw IllegalArgumentException("Unsupported signature algorithm $signatureAlgorithm")
             }
             val cert = ASN1Sequence(listOf(
@@ -603,7 +603,7 @@ class X509Cert(
                 signatureAlgorithmSeq,
                 ASN1BitString(0, encodedSignature),
             ))
-            return X509Cert(ASN1.encode(cert))
+            return X509Cert(ByteString(ASN1.encode(cert)))
         }
     }
 }

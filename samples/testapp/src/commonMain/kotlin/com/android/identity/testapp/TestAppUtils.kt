@@ -73,17 +73,16 @@ object TestAppUtils {
 
     fun generateEncodedDeviceRequest(
         request: DocumentCannedRequest,
-        encodedSessionTranscript: ByteArray,
+        encodedSessionTranscript: ByteString,
         readerKey: EcPrivateKey,
         readerCert: X509Cert,
         readerRootCert: X509Cert,
-    ): ByteArray {
+    ): ByteString {
         val mdocRequest = request.mdocRequest!!
         val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
         for (ns in mdocRequest.namespacesToRequest) {
             for ((de, intentToRetain) in ns.dataElementsToRequest) {
-                itemsToRequest.getOrPut(ns.namespace) { mutableMapOf() }
-                    .put(de.attribute.identifier, intentToRetain)
+                itemsToRequest.getOrPut(ns.namespace) { mutableMapOf() }[de.attribute.identifier] = intentToRetain
             }
         }
 
@@ -103,7 +102,7 @@ object TestAppUtils {
         encodedDeviceEngagement: ByteArray,
         handover: DataItem,
         eReaderKey: EcPublicKey
-    ): ByteArray {
+    ): ByteString {
         val encodedEReaderKey = Cbor.encode(eReaderKey.toCoseKey().toDataItem())
         return Cbor.encode(
             CborArray.builder()

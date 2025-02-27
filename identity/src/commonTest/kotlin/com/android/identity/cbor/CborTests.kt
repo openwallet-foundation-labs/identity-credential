@@ -3,6 +3,7 @@ package com.android.identity.cbor
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -368,7 +369,7 @@ class CborTests {
     fun indefiniteLengthBstr() {
         assertEquals(
             "(_ h'010203', h'040506')",
-            cborToString(IndefLengthBstr(listOf(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6))))
+            cborToString(IndefLengthBstr(listOf(ByteString(byteArrayOf(1, 2, 3)), ByteString(byteArrayOf(4, 5, 6)))))
         )
     }
 
@@ -530,12 +531,12 @@ class CborTests {
         assertEquals(expectedItem, decodedItem)
     }
 
-    private fun encHalfFloat(first: Int, second: Int): ByteArray {
-        return byteArrayOf(
+    private fun encHalfFloat(first: Int, second: Int): ByteString {
+        return ByteString(byteArrayOf(
             ((MajorType.SPECIAL.type shl 5) + 25).toByte(),
             first.toByte(),
             second.toByte()
-        )
+        ))
     }
 
     // https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Half_precision_examples
@@ -741,7 +742,7 @@ class CborTests {
     fun diagnosticsVectors() {
         for (testVector in diagnosticsTestVectors) {
             val encodedCbor = testVector.hexEncoding.fromHex()
-            assertEquals(testVector.expectedDiagnostics, Cbor.toDiagnostics(encodedCbor))
+            assertEquals(testVector.expectedDiagnostics, Cbor.toDiagnostics(ByteString(encodedCbor)))
         }
     }
 
@@ -804,7 +805,7 @@ class CborTests {
     @Test
     fun nonWellformedThrowsWhenDecoding() {
         for (hexEncodedData in nonWellformedExamples) {
-            val data = hexEncodedData.replace(" ", "").fromHex()
+            val data = ByteString(hexEncodedData.replace(" ", "").fromHex())
             assertFailsWith(IllegalArgumentException::class) {
                 Cbor.decode(data)
             }
@@ -815,7 +816,7 @@ class CborTests {
 
     @Test
     fun parseHelperBasic() {
-        assertContentEquals(byteArrayOf(1, 42), byteArrayOf(1, 42).toDataItem().asBstr)
+        assertEquals(ByteString(byteArrayOf(1, 42)), byteArrayOf(1, 42).toDataItem().asBstr)
         assertEquals("Tstr", "Tstr".toDataItem().asTstr)
         assertEquals(42, 42.toDataItem().asNumber)
         assertEquals(-35, (-35).toDataItem().asNumber)
@@ -845,7 +846,7 @@ class CborTests {
             .put("foo7", false)
             .end().build()
         assertEquals("Tstr", map["foo0"].asTstr)
-        assertContentEquals(byteArrayOf(1, 2, 3), map["foo1"].asBstr)
+        assertEquals(ByteString(byteArrayOf(1, 2, 3)), map["foo1"].asBstr)
         assertEquals(42, map["foo2"].asNumber)
         assertEquals(-35, map["foo3"].asNumber)
         assertEquals(42.0, map["foo4"].asDouble, 0.01)
@@ -914,7 +915,7 @@ class CborTests {
             .end().build()
 
         assertEquals("Tstr", array[0].asTstr)
-        assertContentEquals(byteArrayOf(1, 2, 3), array[1].asBstr)
+        assertEquals(ByteString(byteArrayOf(1, 2, 3)), array[1].asBstr)
         assertEquals(42, array[2].asNumber)
         assertEquals(-35, array[3].asNumber)
         assertEquals(42.0, array[4].asDouble, 0.01)

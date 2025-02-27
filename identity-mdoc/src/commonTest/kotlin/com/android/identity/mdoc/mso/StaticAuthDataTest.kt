@@ -23,13 +23,14 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class StaticAuthDataTest {
-    private fun createValidDigestIdMapping(): Map<String, List<ByteArray>> {
+    private fun createValidDigestIdMapping(): Map<String, List<ByteString>> {
         val issuerSignedItemMetadata = CborMap.builder()
             .put("random", byteArrayOf(0x50, 0x51, 0x52))
             .put("digestID", 42)
@@ -57,7 +58,7 @@ class StaticAuthDataTest {
             .build()
         val isiMetadata3Bytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata3)))
         val encodedIsiMetadata3Bytes = Cbor.encode(isiMetadata3Bytes)
-        val issuerSignedMapping = mutableMapOf<String, List<ByteArray>>()
+        val issuerSignedMapping = mutableMapOf<String, List<ByteString>>()
         issuerSignedMapping["org.namespace"] = listOf(
             encodedIsiMetadataBytes,
             encodedIsiMetadata2Bytes,
@@ -66,7 +67,7 @@ class StaticAuthDataTest {
         return issuerSignedMapping
     }
 
-    private fun createValidIssuerAuth(): ByteArray {
+    private fun createValidIssuerAuth(): ByteString {
         return Cbor.encode(
             CborArray.builder()
                 .addArray()
@@ -155,7 +156,7 @@ class StaticAuthDataTest {
             )
         )
         val issuerAuth = decodedStaticAuthData.issuerAuth
-        assertContentEquals(encodedIssuerAuth, issuerAuth)
+        assertEquals(encodedIssuerAuth, issuerAuth)
     }
 
     @Test

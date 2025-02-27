@@ -22,6 +22,7 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Key/value pairs, organized by name space.
@@ -39,7 +40,7 @@ import com.android.identity.cbor.toDataItem
  * This type is immutable.
  */
 class NameSpacedData private constructor(
-    private val map: MutableMap<String, MutableMap<String, ByteArray>>
+    private val map: MutableMap<String, MutableMap<String, ByteString>>
 ) {
     /**
      * Names of all the namespaces.
@@ -82,7 +83,7 @@ class NameSpacedData private constructor(
     fun getDataElement(
         nameSpaceName: String,
         dataElementName: String
-    ): ByteArray {
+    ): ByteString {
         val innerMap = map[nameSpaceName]
             ?: throw IllegalArgumentException("No such namespace '$nameSpaceName'")
         return innerMap[dataElementName]
@@ -234,12 +235,20 @@ class NameSpacedData private constructor(
         fun putEntry(
             nameSpaceName: String,
             dataElementName: String,
-            value: ByteArray
+            value: ByteString
         ): Builder = apply {
             map.getOrPut(nameSpaceName) { mutableMapOf() }
             map[nameSpaceName]?.run {
                 this[dataElementName] = value
             }
+        }
+
+        fun putEntry(
+            nameSpaceName: String,
+            dataElementName: String,
+            value: ByteArray
+        ): Builder = apply {
+            putEntry(nameSpaceName, dataElementName, ByteString(value))
         }
 
         /**
@@ -316,15 +325,15 @@ class NameSpacedData private constructor(
          * @throws IllegalArgumentException if the given data does not confirm to the CDDL in
          * [.encodeAsCbor].
          */
-        fun fromEncodedCbor(encodedCbor: ByteArray) = fromDataItem(Cbor.decode(encodedCbor))
+        fun fromEncodedCbor(encodedCbor: ByteString) = fromDataItem(Cbor.decode(encodedCbor))
 
         fun fromDataItem(mapDataItem: DataItem): NameSpacedData {
-            val ret = mutableMapOf<String, MutableMap<String, ByteArray>>()
+            val ret = mutableMapOf<String, MutableMap<String, ByteString>>()
             require(mapDataItem is CborMap)
             for (nameSpaceNameItem in mapDataItem.items.keys) {
                 require(nameSpaceNameItem is Tstr)
                 val namespaceName = nameSpaceNameItem.asTstr
-                val dataElementToValueMap = mutableMapOf<String, ByteArray>()
+                val dataElementToValueMap = mutableMapOf<String, ByteString>()
                 val dataElementItems = mapDataItem[namespaceName]
                 require(dataElementItems is CborMap)
                 for (dataElementNameItem in dataElementItems.items.keys) {

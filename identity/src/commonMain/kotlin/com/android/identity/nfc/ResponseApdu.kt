@@ -1,8 +1,7 @@
 package com.android.identity.nfc
 
 import com.android.identity.util.ByteDataReader
-import com.android.identity.util.getUInt16
-import com.android.identity.util.putUInt8
+import com.android.identity.util.putUint8
 import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteString
 
@@ -42,8 +41,8 @@ data class ResponseApdu(
     fun encode(): ByteArray {
         return ByteArray(payload.size + 2). apply {
             payload.copyInto(this)
-            putUInt8(payload.size, sw1.toUInt())
-            putUInt8(payload.size + 1, sw2.toUInt())
+            putUint8(payload.size, sw1.toUInt())
+            putUint8(payload.size + 1, sw2.toUInt())
         }
     }
 

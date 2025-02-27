@@ -7,6 +7,9 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tstr
 import com.android.identity.cbor.toDataItem
 import com.android.identity.flow.server.FlowEnvironment
+import com.android.identity.util.emptyByteString
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.isEmpty
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
@@ -110,11 +113,7 @@ class FlowDispatcherLocal private constructor(
                 ?: throw UnsupportedOperationException("operation $method not found")
             val stateBlob = args[0].asBstr
             val cipher = owner.cipher
-            val decryptedState = if (stateBlob.isEmpty()) {
-                byteArrayOf()
-            } else {
-                cipher.decrypt(stateBlob)
-            }
+            val decryptedState = if (stateBlob.isEmpty()) emptyByteString() else cipher.decrypt(stateBlob)
             val state = stateDeserializer(
                 if (stateBlob.isEmpty()) {
                     if (creatable) {
@@ -138,12 +137,12 @@ class FlowDispatcherLocal private constructor(
         private fun stateDataItem(
             cipher: SimpleCipher,
             previous: DataItem,
-            previousDecryptedState: ByteArray,
+            previousDecryptedState: ByteString,
             newState: StateT
         ): DataItem {
             val newDecryptedState = Cbor.encode(stateSerializer(newState))
             // Don't re-encrypt if the state did not change
-            return if (newDecryptedState contentEquals previousDecryptedState) {
+            return if (newDecryptedState == previousDecryptedState) {
                 previous
             } else {
                 Bstr(cipher.encrypt(newDecryptedState))

@@ -38,6 +38,8 @@ import com.android.identity.request.VcRequest
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.ui.prompt.consent.showConsentPrompt
 import com.android.identity_credential.wallet.ui.prompt.passphrase.showPassphrasePrompt
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 
 const val TAG = "PresentmentFlow"
 const val MAX_PASSPHRASE_ATTEMPTS = 3
@@ -48,8 +50,8 @@ private suspend fun showPresentmentFlowImpl(
     trustPoint: TrustPoint?,
     document: ConsentDocument,
     credential: Credential,
-    signAndGenerate: suspend (KeyUnlockData?) -> ByteArray
-): ByteArray {
+    signAndGenerate: suspend (KeyUnlockData?) -> ByteString
+): ByteString {
     // always show the Consent Prompt first
     showConsentPrompt(
         activity = activity,
@@ -206,8 +208,8 @@ suspend fun showMdocPresentmentFlow(
     trustPoint: TrustPoint?,
     document: ConsentDocument,
     credential: MdocCredential,
-    encodedSessionTranscript: ByteArray,
-): ByteArray {
+    encodedSessionTranscript: ByteString,
+): ByteString {
     return showPresentmentFlowImpl(
         activity,
         request,
@@ -227,7 +229,7 @@ suspend fun showSdJwtPresentmentFlow(
     credential: Credential,
     nonce: String,
     clientId: String,
-): ByteArray {
+): ByteString {
     return showPresentmentFlowImpl(
         activity,
         request,
@@ -236,7 +238,7 @@ suspend fun showSdJwtPresentmentFlow(
         credential
     ) { keyUnlockData: KeyUnlockData? ->
         val sdJwt = SdJwtVerifiableCredential.fromString(
-            String(credential.issuerProvidedData, Charsets.US_ASCII))
+            credential.issuerProvidedData.decodeToString(Charsets.US_ASCII))
 
         val requestedAttributes = request.requestedClaims.map { it.claimName }.toSet()
         Logger.i(
@@ -253,22 +255,25 @@ suspend fun showSdJwtPresentmentFlow(
         }
 
         val secureAreaBoundCredential = credential as? SecureAreaBoundCredential
-        filteredSdJwt.createPresentation(
-            secureAreaBoundCredential?.secureArea,
-            secureAreaBoundCredential?.alias,
-            keyUnlockData,
-            nonce,
-            clientId
-        ).toString().toByteArray(Charsets.US_ASCII)
+
+        ByteString(
+            filteredSdJwt.createPresentation(
+                secureAreaBoundCredential?.secureArea,
+                secureAreaBoundCredential?.alias,
+                keyUnlockData,
+                nonce,
+                clientId
+            ).toString().toByteArray(Charsets.US_ASCII)
+        )
     }
 }
 
 private suspend fun mdocSignAndGenerate(
     requestedClaims: List<RequestedClaim>,
     credential: SecureAreaBoundCredential,
-    encodedSessionTranscript: ByteArray,
+    encodedSessionTranscript: ByteString,
     keyUnlockData: KeyUnlockData?
-): ByteArray {
+): ByteString {
     // create the document generator for the suitable Document (of DocumentRequest)
     val documentGenerator =
         createDocumentGenerator(
@@ -294,7 +299,7 @@ private fun createDocumentGenerator(
     requestedClaims: List<RequestedClaim>,
     document: Document,
     credential: Credential,
-    sessionTranscript: ByteArray,
+    sessionTranscript: ByteString,
 ): DocumentGenerator {
     val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
     val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(

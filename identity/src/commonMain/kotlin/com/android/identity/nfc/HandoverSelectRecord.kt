@@ -1,9 +1,8 @@
 package com.android.identity.nfc
 
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt8
 import com.android.identity.util.getUInt8
-import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.buildByteString
 
 /**
@@ -25,7 +24,7 @@ data class HandoverSelectRecord(
             type = Nfc.RTD_HANDOVER_SELECT,
             payload = buildByteString {
                 appendUInt8(version)
-                appendArray(embeddedMessage.encode())
+                appendBarray(embeddedMessage.encode())
             }
         )
     }

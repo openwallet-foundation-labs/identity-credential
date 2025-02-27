@@ -73,8 +73,8 @@ class MdocNfcEngagementHelperTest {
         // Use static key to ensure we get the same transcripts every time.
         return EcPublicKeyDoubleCoordinate(
             curve = EcCurve.P256,
-            x = "7104f7e2c2e95ca76482c0c963d454b7e5d053c5b59ce89d00ff7c7d7ab6ff7d".fromHex(),
-            y = "f442821292c2453ec67c75233ea56e1734c211ae26b259fdf232b5b3d82b1ba2".fromHex()
+            x = ByteString("7104f7e2c2e95ca76482c0c963d454b7e5d053c5b59ce89d00ff7c7d7ab6ff7d".fromHex()),
+            y = ByteString("f442821292c2453ec67c75233ea56e1734c211ae26b259fdf232b5b3d82b1ba2".fromHex())
         )
     }
 
@@ -222,7 +222,7 @@ class MdocNfcEngagementHelperTest {
         assertEquals("Error selecting file, status 6f00", e.message)
 
         assertNotNull(errorFromEngagementHelper)
-        assertEquals("Error processing APDU: UUIDs for both BLE modes are not the same", errorFromEngagementHelper.message)
+        assertEquals("Error processing APDU: UUIDs for both BLE modes are not the same", errorFromEngagementHelper!!.message)
     }
 
     @Test
@@ -300,10 +300,10 @@ class MdocNfcEngagementHelperTest {
 
     @Test
     fun testFiledIdBeforeApplicationSelectSelected() {
-        var (handoverSuccess, handoverError) = testNfcEngagementHelper { tag ->
+        val (handoverSuccess, handoverError) = testNfcEngagementHelper { tag ->
             // Fails because application is not yet selected
             assertFailsWith(NfcCommandFailedException::class) {
-                tag.selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID)
+                tag.selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID.toUShort())
             }
         }
         assertFalse(handoverSuccess)
@@ -316,11 +316,11 @@ class MdocNfcEngagementHelperTest {
 
     @Test
     fun testUnexpectedFileIdSelected() {
-        var (handoverSuccess, handoverError) = testNfcEngagementHelper { tag ->
+        val (handoverSuccess, handoverError) = testNfcEngagementHelper { tag ->
             tag.selectApplication(Nfc.NDEF_APPLICATION_ID)
             // Fails because the FileID is unknown
             assertFailsWith(NfcCommandFailedException::class) {
-                tag.selectFile(42)
+                tag.selectFile(42u)
             }
         }
         assertFalse(handoverSuccess)

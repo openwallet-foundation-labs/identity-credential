@@ -7,6 +7,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.toHexString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -553,17 +554,18 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
 -----END CERTIFICATE-----
         """.trimIndent())
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun testCertificate() {
         // Check that we encode to exactly the same bits as we decoded...
-        val certificate = ASN1.decode(exampleX509Cert.encodedCertificate)
+        val certificate = ASN1.decode(exampleX509Cert.encodedCertificate.toByteArray())
         val reencoded = ASN1.encode(certificate!!)
-        assertEquals(exampleX509Cert.encodedCertificate.toHex(), reencoded.toHex())
+        assertEquals(exampleX509Cert.encodedCertificate.toHexString(), reencoded.toHex())
     }
 
     @Test
     fun testPrettyPrint() {
-        val certificate = ASN1.decode(exampleX509Cert.encodedCertificate)
+        val certificate = ASN1.decode(exampleX509Cert.encodedCertificate.toByteArray())
         assertEquals(
             """
                 SEQUENCE (3 elem)

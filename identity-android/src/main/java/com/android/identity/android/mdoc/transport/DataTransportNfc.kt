@@ -24,11 +24,17 @@ import com.android.identity.android.util.NfcUtil
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.util.Logger
+import com.android.identity.util.appendBstring
+import com.android.identity.util.appendUInt16
+import com.android.identity.util.appendUInt8
+import com.android.identity.util.getUInt16
+import com.android.identity.util.getUInt8
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.Arrays
 import java.util.Locale
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedTransferQueue
@@ -79,8 +85,7 @@ class DataTransportNfc(
         val transceiverThread: Thread = object : Thread() {
             override fun run() {
                 while (listenerStillActive) {
-                    var messageToSend: ByteArray?
-                    messageToSend = try {
+                    val messageToSend: ByteArray? = try {
                         writerQueue.poll(1000, TimeUnit.MILLISECONDS)
                     } catch (e: InterruptedException) {
                         continue
@@ -99,7 +104,7 @@ class DataTransportNfc(
                     // the GET RESPONSE commands. So we chop up this data in chunks
                     // so it's easy to hand off responses...
                     val chunks = ArrayList<ByteArray>()
-                    val data = encapsulateInDo53(messageToSend)
+                    val data = encapsulateInDo53(ByteString(messageToSend))
                     var offset = 0
                     val maxChunkSize = listenerLeReceived
                     do {
@@ -150,9 +155,9 @@ class DataTransportNfc(
 
     private fun nfcDataTransferProcessCommandApdu(
         hostApduService: HostApduService,
-        apdu: ByteArray
-    ): ByteArray? {
-        var ret: ByteArray? = null
+        apdu: ByteString
+    ): ByteString? {
+        var ret: ByteString? = null
         this.hostApduService = hostApduService
         Logger.dHex(TAG, "nfcDataTransferProcessCommandApdu apdu", apdu)
         val commandType = NfcUtil.nfcGetCommandType(apdu)
@@ -184,12 +189,12 @@ class DataTransportNfc(
         }
     }
 
-    private fun handleSelectByAid(apdu: ByteArray): ByteArray {
+    private fun handleSelectByAid(apdu: ByteString): ByteString {
         if (apdu.size < 12) {
             Logger.w(TAG, "handleSelectByAid: unexpected APDU length ${apdu.size}")
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
         }
-        if (Arrays.equals(apdu.copyOfRange(5, 12), NfcUtil.AID_FOR_MDL_DATA_TRANSFER)) {
+        if (apdu.substring(5, 12) == NfcUtil.AID_FOR_MDL_DATA_TRANSFER) {
             Logger.d(TAG, "handleSelectByAid: NFC data transfer AID selected")
             dataTransferAidSelected = true
             reportConnected()
@@ -233,7 +238,7 @@ class DataTransportNfc(
         }
     }
 
-    private fun handleEnvelope(apdu: ByteArray): ByteArray? {
+    private fun handleEnvelope(apdu: ByteString): ByteString? {
         Logger.d(TAG, "in handleEnvelope")
         if (apdu.size < 7) {
             return NfcUtil.STATUS_WORD_WRONG_LENGTH
@@ -257,7 +262,7 @@ class DataTransportNfc(
         }
         val le = apduGetLe(apdu)
         numChunksReceived += try {
-            incomingMessage.write(data)
+            incomingMessage.write(data.toByteArray())
             1
         } catch (e: IOException) {
             reportError(e)
@@ -301,7 +306,7 @@ class DataTransportNfc(
         return null
     }
 
-    private fun handleResponse(): ByteArray? {
+    private fun handleResponse(): ByteString? {
         Logger.d(TAG, "in handleResponse")
         if (listenerRemainingChunks == null || listenerRemainingChunks!!.size == 0) {
             reportError(Error("GET RESPONSE but we have no outstanding chunks"))
@@ -311,7 +316,7 @@ class DataTransportNfc(
         return null
     }
 
-    private fun apduGetLe(apdu: ByteArray): Int {
+    private fun apduGetLe(apdu: ByteString): Int {
         val dataLength = apduGetDataLength(apdu)
         val haveExtendedLc = apdu[4].toInt() == 0x00
         val dataOffset = if (haveExtendedLc) 7 else 5
@@ -355,24 +360,17 @@ class DataTransportNfc(
         return 0
     }
 
-    private fun apduGetDataLength(apdu: ByteArray): Int {
-        var length = apdu[4].toInt() and 0xff
-        if (length == 0x00) {
-            length = (apdu[5].toInt() and 0xff) * 256
-            length += apdu[6].toInt() and 0xff
-        }
-        return length
-    }
+    private fun apduGetDataLength(apdu: ByteString): Int =
+        apdu.getUInt8(4).toInt().takeIf { it != 0 } ?: apdu.getUInt16(5).toInt()
 
-    private fun apduGetData(apdu: ByteArray): ByteArray? {
+
+    private fun apduGetData(apdu: ByteString): ByteString? {
         val length = apduGetDataLength(apdu)
         val offset = if (apdu[4].toInt() == 0x00) 7 else 5
         if (apdu.size < offset + length) {
             return null
         }
-        val data = ByteArray(length)
-        System.arraycopy(apdu, offset, data, 0, length)
-        return data
+        return apdu.substring(offset, length)
     }
 
     private fun buildApdu(
@@ -380,78 +378,75 @@ class DataTransportNfc(
         ins: Int,
         p1: Int,
         p2: Int,
-        data: ByteArray?,
-        le: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(cla)
-        baos.write(ins)
-        baos.write(p1)
-        baos.write(p2)
-        var hasExtendedLc = false
-        if (data == null) {
-            baos.write(0)
-        } else if (data.size < 256) {
-            baos.write(data.size)
-        } else {
-            hasExtendedLc = true
-            baos.write(0x00)
-            baos.write(data.size / 0x100)
-            baos.write(data.size and 0xff)
+        data: ByteString?,
+        le: Int): ByteString {
+
+        return buildByteString {
+            appendUInt8(cla)
+            appendUInt8(ins)
+            appendUInt8(p1)
+            appendUInt8(p2)
+            var hasExtendedLc = false
+            if (data == null) {
+                appendUInt8(0)
+            } else if (data.size < 256) {
+                appendUInt8(data.size)
+            } else {
+                hasExtendedLc = true
+                appendUInt8(0x00)
+                appendUInt16(data.size)
+            }
+            if (data != null && data.size > 0) {
+                try {
+                    appendBstring(data)
+                } catch (e: IOException) {
+                    throw IllegalStateException(e)
+                }
+            }
+            if (le > 0) {
+                if (le == 256) {
+                    appendUInt8(0x00)
+                } else if (le < 256) {
+                    appendUInt8(le)
+                } else {
+                    if (!hasExtendedLc) {
+                        appendUInt8(0x00)
+                    }
+                    if (le == 65536) {
+                        appendUInt16(0x0000)
+                    } else {
+                        appendUInt16(le)
+                    }
+                }
+            }
         }
-        if (data != null && data.size > 0) {
+    }
+
+    private fun encapsulateInDo53(data: ByteString): ByteString {
+        return buildByteString {
+            appendUInt8(0x53)
+            if (data.size < 0x80) {
+                appendUInt8(data.size)
+            } else if (data.size < 0x100) {
+                appendUInt8(0x81)
+                appendUInt8(data.size)
+            } else if (data.size < 0x10000) {
+                appendUInt8(0x82)
+                appendUInt16(data.size)
+            } else if (data.size < 0x1000000) {
+                appendUInt8(0x83)
+                appendUInt8((data.size / 0x10000).and(0xff).toUInt())
+                appendUInt8(data.size / 0x100 and 0xff)
+                appendUInt8(data.size and 0xff)
+            } else {
+                throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+            }
             try {
-                baos.write(data)
+                appendBstring(data)
             } catch (e: IOException) {
                 throw IllegalStateException(e)
             }
         }
-        if (le > 0) {
-            if (le == 256) {
-                baos.write(0x00)
-            } else if (le < 256) {
-                baos.write(le)
-            } else {
-                if (!hasExtendedLc) {
-                    baos.write(0x00)
-                }
-                if (le == 65536) {
-                    baos.write(0x00)
-                    baos.write(0x00)
-                } else {
-                    baos.write(le / 0x100)
-                    baos.write(le and 0xff)
-                }
-            }
-        }
-        return baos.toByteArray()
-    }
-
-    private fun encapsulateInDo53(data: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x53)
-        if (data.size < 0x80) {
-            baos.write(data.size)
-        } else if (data.size < 0x100) {
-            baos.write(0x81)
-            baos.write(data.size)
-        } else if (data.size < 0x10000) {
-            baos.write(0x82)
-            baos.write(data.size / 0x100)
-            baos.write(data.size and 0xff)
-        } else if (data.size < 0x1000000) {
-            baos.write(0x83)
-            baos.write(data.size / 0x10000)
-            baos.write(data.size / 0x100 and 0xff)
-            baos.write(data.size and 0xff)
-        } else {
-            throw IllegalStateException("Data length cannot be bigger than 0x1000000")
-        }
-        try {
-            baos.write(data)
-        } catch (e: IOException) {
-            throw IllegalStateException(e)
-        }
-        return baos.toByteArray()
     }
 
     private fun extractFromDo53(encapsulatedData: ByteArray): ByteArray? {
@@ -522,9 +517,9 @@ class DataTransportNfc(
                         NfcUtil.AID_FOR_MDL_DATA_TRANSFER, 0
                     )
                     Logger.dHex(TAG, "selectCommand", selectCommand)
-                    val selectResponse = _isoDep!!.transceive(selectCommand)
+                    val selectResponse = ByteString(_isoDep!!.transceive(selectCommand.toByteArray()))
                     Logger.dHex(TAG, "selectResponse", selectResponse)
-                    if (!Arrays.equals(selectResponse, NfcUtil.STATUS_WORD_OK)) {
+                    if (selectResponse != NfcUtil.STATUS_WORD_OK) {
                         reportError(Error("Unexpected response to AID SELECT"))
                         return
                     }
@@ -538,12 +533,12 @@ class DataTransportNfc(
                         } catch (e: InterruptedException) {
                             continue
                         }
-                        if (messageToSend.size == 0) {
+                        if (messageToSend.isEmpty()) {
                             // This is an indication that we're disconnecting
                             break
                         }
                         Logger.dHex(TAG, "Sending message", messageToSend)
-                        val data = encapsulateInDo53(messageToSend)
+                        val data = encapsulateInDo53(ByteString(messageToSend))
 
                         // Less 7 for the APDU header and 3 for LE
                         //
@@ -556,24 +551,22 @@ class DataTransportNfc(
                             if (size > maxChunkSize) {
                                 size = maxChunkSize
                             }
-                            val chunk = ByteArray(size)
-                            System.arraycopy(data, offset, chunk, 0, size)
                             var le = 0
                             if (!moreChunksComing) {
                                 le = maxTransceiveLength
                             }
                             val envelopeCommand = buildApdu(
                                 if (moreChunksComing) 0x10 else 0x00,
-                                0xc3, 0x00, 0x00, chunk, le
+                                0xc3, 0x00, 0x00, data.substring(offset, size), le
                             )
                             Logger.dHex(TAG, "envelopeCommand", envelopeCommand)
                             val t0 = System.currentTimeMillis()
-                            val envelopeResponse = _isoDep!!.transceive(envelopeCommand)
+                            val envelopeResponse = _isoDep!!.transceive(envelopeCommand.toByteArray())
                             val t1 = System.currentTimeMillis()
                             val durationSec = (t1 - t0) / 1000.0
                             val bitsPerSec =
                                 ((envelopeCommand.size + envelopeResponse.size) * 8 / durationSec).toInt()
-                            Logger.d(TAG, String.format(
+                            Logger.d(TAG, String.format(Locale.US,
                                     "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
                                     durationSec,
                                     envelopeCommand.size,
@@ -621,13 +614,13 @@ class DataTransportNfc(
                                     0xc0, 0x00, 0x00, null, leForGetResponse
                                 )
                                 val t0 = System.currentTimeMillis()
-                                val grResponse = _isoDep!!.transceive(grCommand)
+                                val grResponse = _isoDep!!.transceive(grCommand.toByteArray())
                                 val t1 = System.currentTimeMillis()
                                 val durationSec = (t1 - t0) / 1000.0
                                 val bitsPerSec =
                                     ((grCommand.size + grResponse.size) * 8 / durationSec).toInt()
                                 Logger.d(
-                                    TAG, String.format(
+                                    TAG, String.format(Locale.US,
                                         "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
                                         durationSec,
                                         grCommand.size,
@@ -792,8 +785,8 @@ class DataTransportNfc(
          */
         fun processCommandApdu(
             hostApduService: HostApduService,
-            apdu: ByteArray
-        ): ByteArray? {
+            apdu: ByteString
+        ): ByteString? {
             if (activeTransports.size == 0) {
                 Logger.w(TAG, "processCommandApdu: No active DataTransportNfc")
                 return null

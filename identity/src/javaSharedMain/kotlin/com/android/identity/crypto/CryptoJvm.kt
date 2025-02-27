@@ -1,6 +1,7 @@
 package com.android.identity.crypto
 
 import com.android.identity.util.UUID
+import com.android.identity.util.concat
 import com.android.identity.util.fromJavaUuid
 import com.android.identity.util.toBase64Url
 import com.google.crypto.tink.HybridDecrypt
@@ -357,7 +358,7 @@ actual object Crypto {
         return try {
             val rawSignature = when (publicKey.curve) {
                 EcCurve.ED25519, EcCurve.ED448 -> {
-                    signature.r + signature.s
+                    signature.r.concat(signature.s).toByteArray()
                 }
                 else -> {
                     signature.toDerEncoded()
@@ -397,7 +398,7 @@ actual object Crypto {
                 val keyPair = kpg.generateKeyPair()
                 val publicKey = keyPair.public.toEcPublicKey(curve)
                 check(publicKey is EcPublicKeyDoubleCoordinate)
-                val d = (keyPair.private as BCECPrivateKey).d.toByteArray()
+                val d = ByteString((keyPair.private as BCECPrivateKey).d.toByteArray())
                 EcPrivateKeyDoubleCoordinate(curve, d, publicKey.x, publicKey.y)
             }
 
@@ -407,7 +408,7 @@ actual object Crypto {
                     generateKeyPair().run {
                         val privateKey = this.private as Ed25519PrivateKeyParameters
                         val publicKey = this.public as Ed25519PublicKeyParameters
-                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                        EcPrivateKeyOkp(curve, ByteString(privateKey.encoded), ByteString(publicKey.encoded))
                     }
                 }
             }
@@ -418,7 +419,7 @@ actual object Crypto {
                     generateKeyPair().run {
                         val privateKey = this.private as X25519PrivateKeyParameters
                         val publicKey = this.public as X25519PublicKeyParameters
-                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                        EcPrivateKeyOkp(curve, ByteString(privateKey.encoded), ByteString(publicKey.encoded))
                     }
                 }
             }
@@ -429,7 +430,7 @@ actual object Crypto {
                     generateKeyPair().run {
                         val privateKey = this.private as Ed448PrivateKeyParameters
                         val publicKey = this.public as Ed448PublicKeyParameters
-                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                        EcPrivateKeyOkp(curve, ByteString(privateKey.encoded), ByteString(publicKey.encoded))
                     }
                 }
             }
@@ -440,7 +441,7 @@ actual object Crypto {
                     generateKeyPair().run {
                         val privateKey = this.private as X448PrivateKeyParameters
                         val publicKey = this.public as X448PublicKeyParameters
-                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                        EcPrivateKeyOkp(curve, ByteString(privateKey.encoded), ByteString(publicKey.encoded))
                     }
                 }
             }
@@ -478,7 +479,7 @@ actual object Crypto {
                 )
             }
             val spec = ECPrivateKeySpec(
-                BigIntegers.fromUnsignedByteArray(key.d),
+                BigIntegers.fromUnsignedByteArray(key.d.toByteArray()),
                 ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
             )
             val kf = KeyFactory.getInstance("EC")
@@ -492,35 +493,35 @@ actual object Crypto {
                         update(message)
                         sign()
                     }
-                EcSignature.fromDerEncoded(key.curve.bitSize, derEncodedSignature)
+                EcSignature.fromDerEncoded(key.curve.bitSize, ByteString(derEncodedSignature))
             } catch (e: Exception) {
                 throw IllegalStateException("Unexpected Exception", e)
             }
         }
 
         EcCurve.ED25519 -> {
-            val privateKey = Ed25519PrivateKeyParameters(key.d, 0)
+            val privateKey = Ed25519PrivateKeyParameters(key.d.toByteArray(), 0)
             val rawSignature = Ed25519Signer().run {
                 init(true, privateKey)
                 update(message, 0, message.size)
                 generateSignature()
             }
             EcSignature(
-                rawSignature.sliceArray(IntRange(0, rawSignature.size/2 - 1)),
-                rawSignature.sliceArray(IntRange(rawSignature.size/2, rawSignature.size - 1))
+                ByteString(rawSignature.sliceArray(IntRange(0, rawSignature.size/2 - 1))),
+                ByteString(rawSignature.sliceArray(IntRange(rawSignature.size/2, rawSignature.size - 1)))
             )
         }
 
         EcCurve.ED448 -> {
-            val privateKey = Ed448PrivateKeyParameters(key.d, 0)
+            val privateKey = Ed448PrivateKeyParameters(key.d.toByteArray(), 0)
             val rawSignature = Ed448Signer(byteArrayOf()).run {
                 init(true, privateKey)
                 update(message, 0, message.size)
                 generateSignature()
             }
             EcSignature(
-                rawSignature.sliceArray(IntRange(0, rawSignature.size/2 - 1)),
-                rawSignature.sliceArray(IntRange(rawSignature.size/2, rawSignature.size - 1))
+                ByteString(rawSignature.sliceArray(IntRange(0, rawSignature.size/2 - 1))),
+                ByteString(rawSignature.sliceArray(IntRange(rawSignature.size/2, rawSignature.size - 1)))
             )
         }
 
@@ -550,7 +551,7 @@ actual object Crypto {
             EcCurve.BRAINPOOLP512R1 -> {
                 require(otherKey.curve == key.curve) { "Other key for ECDH is not ${key.curve.name}" }
                 ECPrivateKeySpec(
-                    BigIntegers.fromUnsignedByteArray(key.d),
+                    BigIntegers.fromUnsignedByteArray(key.d.toByteArray()),
                     ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
                 ).run {
                     val kf = KeyFactory.getInstance("EC")
@@ -574,8 +575,8 @@ actual object Crypto {
             EcCurve.X25519 -> {
                 require(otherKey.curve == EcCurve.X25519) { "Other key for ECDH is not Curve X448" }
                 otherKey as EcPublicKeyOkp
-                val otherKeyX = X25519PublicKeyParameters(otherKey.x, 0)
-                val privateKey = X25519PrivateKeyParameters(key.d, 0)
+                val otherKeyX = X25519PublicKeyParameters(otherKey.x.toByteArray(), 0)
+                val privateKey = X25519PrivateKeyParameters(key.d.toByteArray(), 0)
                 val ka = X25519Agreement()
                 ka.init(privateKey)
                 val buf = ByteArray(ka.agreementSize)
@@ -586,8 +587,8 @@ actual object Crypto {
             EcCurve.X448 -> {
                 require(otherKey.curve == EcCurve.X448) { "Other key for ECDH is not Curve X448" }
                 otherKey as EcPublicKeyOkp
-                val otherKeyX = X448PublicKeyParameters(otherKey.x, 0)
-                val privateKey = X448PrivateKeyParameters(key.d, 0)
+                val otherKeyX = X448PublicKeyParameters(otherKey.x.toByteArray(), 0)
+                val privateKey = X448PrivateKeyParameters(key.d.toByteArray(), 0)
                 val ka = X448Agreement()
                 ka.init(privateKey)
                 val buf = ByteArray(ka.agreementSize)
@@ -720,7 +721,7 @@ actual object Crypto {
 
         val encapsulatedKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
             EcCurve.P256,
-            output.sliceArray(IntRange(0, encapsulatedPublicKeySize - 1))
+            ByteString(output.sliceArray(IntRange(0, encapsulatedPublicKeySize - 1)))
         )
         val encryptedData = output.sliceArray(IntRange(encapsulatedPublicKeySize, output.size - 1))
 
@@ -760,7 +761,7 @@ actual object Crypto {
         val decryptor = privateKeysetHandle!!.getPrimitive(HybridDecrypt::class.java)
 
         // Tink expects the input to be (serialized encapsulated key || ciphertext)
-        return decryptor.decrypt(encapsulatedPublicKey.asUncompressedPointEncoding + cipherText, aad)
+        return decryptor.decrypt(encapsulatedPublicKey.asUncompressedPointEncoding.toByteArray() + cipherText, aad)
     }
 
     @OptIn(ExperimentalEncodingApi::class)
@@ -860,7 +861,7 @@ actual object Crypto {
         recipientKey: EcPrivateKey
     ): JsonObject {
         val encryptedJWT = EncryptedJWT.parse(encryptedJwt.jsonPrimitive.content)
-        val encKey = ECKey(
+        @Suppress("DEPRECATION") val encKey = ECKey(
             Curve.P_256,
             recipientKey.publicKey.javaPublicKey as ECPublicKey,
             recipientKey.javaPrivateKey as ECPrivateKey,
@@ -878,7 +879,7 @@ actual object Crypto {
         type: String?,
         x5c: X509CertChain?
     ): JsonElement {
-        val ecKey = ECKey(
+        @Suppress("DEPRECATION") val ecKey = ECKey(
             Curve.P_256,
             key.publicKey.javaPublicKey as ECPublicKey,
             key.javaPrivateKey as ECPrivateKey,
@@ -888,7 +889,7 @@ actual object Crypto {
         val builder = JWSHeader.Builder(JWSAlgorithm.ES256)
         if (x5c != null) {
             builder.x509CertChain(x5c.certificates.map { cert ->
-                com.nimbusds.jose.util.Base64.from(cert.encodedCertificate.toBase64Url())
+                com.nimbusds.jose.util.Base64.from(cert.encodedCertificate.toByteArray().toBase64Url())
             })
         }
         if (type != null) {
@@ -926,7 +927,9 @@ actual object Crypto {
         signedJwt: JsonElement
     ): JwsInfo {
         val sjwt = SignedJWT.parse(signedJwt.jsonPrimitive.content)
-        val x5c = sjwt.header?.x509CertChain?.mapNotNull { runCatching { X509Cert(it.decode()) }.getOrNull() }
+        val x5c = sjwt.header?.x509CertChain?.mapNotNull {
+            runCatching { X509Cert(ByteString(it.decode())) }.getOrNull()
+        }
         return JwsInfo(
             claimsSet = Json.parseToJsonElement(sjwt.jwtClaimsSet.toString()).jsonObject,
             type = sjwt.header.type?.toString(),

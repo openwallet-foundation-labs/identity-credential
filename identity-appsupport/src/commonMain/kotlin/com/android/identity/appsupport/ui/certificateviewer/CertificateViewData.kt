@@ -73,7 +73,7 @@ data class CertificateViewData(
             val pkNamedCurve: String? = runCatching { cert.ecPublicKey.curve.name }.getOrNull()
 
             val pkValue: String = ASN1.encode(
-                (ASN1.decode(cert.tbsCertificate) as ASN1Sequence).elements[6]
+                (ASN1.decode(cert.tbsCertificate.toByteArray()) as ASN1Sequence).elements[6]
             ).toHex(byteDivider = " ")
 
             val extensions = formatExtensions(cert)
@@ -121,7 +121,7 @@ data class CertificateViewData(
 
                         OID.X509_EXTENSION_ANDROID_KEYSTORE_PROVISIONING_INFORMATION.oid ->
                             Cbor.toDiagnostics(
-                                ext.data.toByteArray(),
+                                ext.data,
                                 setOf(DiagnosticOption.PRETTY_PRINT),
                             )
 

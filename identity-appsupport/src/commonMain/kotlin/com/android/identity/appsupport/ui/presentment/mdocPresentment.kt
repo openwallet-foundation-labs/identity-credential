@@ -28,6 +28,8 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.isEmpty
 
 private const val TAG = "mdocPresentment"
 
@@ -61,11 +63,11 @@ internal suspend fun mdocPresentment(
 
     try {
         var sessionEncryption: SessionEncryption? = null
-        var encodedSessionTranscript: ByteArray? = null
+        var encodedSessionTranscript: ByteString? = null
         while (true) {
             Logger.i(TAG, "Waiting for message from reader...")
             dismissable.value = true
-            val sessionData = transport.waitForMessage()
+            val sessionData = ByteString(transport.waitForMessage())
             dismissable.value = false
             if (sessionData.isEmpty()) {
                 Logger.i(TAG, "Received transport-specific session termination message from reader")
@@ -164,9 +166,9 @@ internal suspend fun mdocPresentment(
                     } else {
                         null
                     }
-                )
+                ).toByteArray()
             )
-            numRequestsServed.value = numRequestsServed.value + 1
+            numRequestsServed.value += 1
             if (!mechanism.allowMultipleRequests) {
                 Logger.i(TAG, "Response sent, closing connection")
                 model.setCompleted()
@@ -190,11 +192,11 @@ internal suspend fun mdocPresentment(
 private suspend fun calcDocument(
     credential: MdocCredential,
     requestedClaims: List<MdocRequestedClaim>,
-    encodedSessionTranscript: ByteArray,
+    encodedSessionTranscript: ByteString,
     eReaderKey: EcPublicKey,
     source: PresentmentSource,
     request: Request
-): ByteArray {
+): ByteString {
     val issuerSigned = Cbor.decode(credential.issuerProvidedData)
     val issuerNamespaces = IssuerNamespaces.fromDataItem(issuerSigned["nameSpaces"])
     val issuerAuthCoseSign1 = issuerSigned["issuerAuth"].asCoseSign1

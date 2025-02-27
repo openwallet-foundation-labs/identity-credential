@@ -91,6 +91,7 @@ import com.android.identity.util.UUID
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 
@@ -104,8 +105,8 @@ class MdocReaderPrompt(
     private var hasStarted = false
     private lateinit var ageRequested: AgeVerificationType
     private lateinit var vibrator: Vibrator
-    var readerEngagement: ByteArray? = null
-    var responseBytes: ByteArray? = null
+    var readerEngagement: ByteString? = null
+    var responseBytes: ByteString? = null
     private var mdocConnectionMethod: ConnectionMethod? = null
 
     private lateinit var responseListener: VerificationHelper.Listener
@@ -147,7 +148,7 @@ class MdocReaderPrompt(
         context = requireActivity().applicationContext
         vibrator = context.getSystemService(Vibrator::class.java)
         responseListener = object : VerificationHelper.Listener {
-            override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+            override fun onReaderEngagementReady(readerEngagement: ByteString) {
                 this@MdocReaderPrompt.readerEngagement = readerEngagement
             }
 
@@ -182,7 +183,7 @@ class MdocReaderPrompt(
                 sendRequest()
             }
 
-            override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+            override fun onResponseReceived(deviceResponseBytes: ByteString) {
                 Logger.d("Listener", "onResponseReceived")
                 responseBytes = deviceResponseBytes
                 navController.navigate("Results")
@@ -211,10 +212,11 @@ class MdocReaderPrompt(
         val bleUuid = UUID.randomUUID()
         connectionMethods.add(
             ConnectionMethodBle(
-                false,
-                true,
-                null,
-                bleUuid)
+                supportsPeripheralServerMode = false,
+                supportsCentralClientMode = true,
+                peripheralServerModeUuid = null,
+                centralClientModeUuid = bleUuid
+            )
         )
         verification = VerificationHelper.Builder(context, responseListener, context.mainExecutor)
             .setDataTransportOptions(DataTransportOptions.Builder().build())
@@ -674,7 +676,8 @@ private fun ResultsScreen(
                     .padding(horizontal = 20.dp)
                     .align(Alignment.CenterHorizontally)
                     .background(portraitColor),
-                    bitmap = BitmapFactory.decodeByteArray(portraitBytes, 0, portraitBytes.size).asImageBitmap(),
+                    bitmap = BitmapFactory
+                        .decodeByteArray(portraitBytes.toByteArray(), 0, portraitBytes.size).asImageBitmap(),
                     contentScale = ContentScale.None,
                     contentDescription = "Portrait image + $resultDescription"
                 )

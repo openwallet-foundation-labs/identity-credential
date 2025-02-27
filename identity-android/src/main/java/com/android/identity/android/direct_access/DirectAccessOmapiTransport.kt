@@ -22,7 +22,7 @@ import android.se.omapi.SEService
 import android.se.omapi.Session
 import androidx.annotation.RequiresApi
 import com.android.identity.util.AndroidContexts
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt16
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -114,7 +114,7 @@ object DirectAccessOmapiTransport {
         if (!isConnected) {
             val provisionAppletAid =
                 byteArrayOf(0xA0.toByte(), 0x00, 0x00, 0x02, 0x48, 0x00, 0x01, 0x01, 0x01)
-            initialize(buildByteString { appendArray(provisionAppletAid) })
+            initialize(buildByteString { appendBarray(provisionAppletAid) })
         }
     }
 

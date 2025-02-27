@@ -57,7 +57,7 @@ fun IsoMdocProximitySharingScreen(
 
     val showQrCode = remember { mutableStateOf<ByteString?>(null) }
     if (showQrCode.value != null && presentmentModel.state.collectAsState().value != PresentmentModel.State.PROCESSING) {
-        Logger.dCbor(TAG, "DeviceEngagement:", showQrCode.value!!.toByteArray())
+        Logger.dCbor(TAG, "DeviceEngagement:", showQrCode.value!!)
         val deviceEngagementQrCode = "mdoc:" + showQrCode.value!!.toByteArray().toBase64Url()
         ShowQrCodeDialog(
             title = { Text(text = "Scan QR code") },
@@ -189,7 +189,7 @@ private suspend fun doHolderFlow(
                 version = "1.0"
             )
             engagementGenerator.addConnectionMethods(advertisedConnectionMethods)
-            encodedDeviceEngagement = ByteString(engagementGenerator.generate())
+            encodedDeviceEngagement = engagementGenerator.generate()
             showQrCode.value = encodedDeviceEngagement
         }
     )

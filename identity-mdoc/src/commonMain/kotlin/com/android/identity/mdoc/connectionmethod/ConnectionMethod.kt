@@ -6,6 +6,7 @@ import com.android.identity.nfc.NdefRecord
 import com.android.identity.nfc.Nfc
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 
 /**
@@ -23,7 +24,7 @@ abstract class ConnectionMethod {
      *
      * This is the reverse operation of [.fromDeviceEngagement].
      */
-    abstract fun toDeviceEngagement(): ByteArray
+    abstract fun toDeviceEngagement(): ByteString
 
     /**
      * Creates a NDEF Connection Handover Carrier Reference record and Auxiliary Data Reference records.
@@ -56,7 +57,7 @@ abstract class ConnectionMethod {
          * isn't supported.
          * @throws IllegalArgumentException if the given CBOR is malformed.
          */
-        fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethod? {
+        fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteString): ConnectionMethod? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             when (type) {
@@ -149,7 +150,7 @@ abstract class ConnectionMethod {
             var supportsPeripheralServerMode = false
             var supportsCentralClientMode = false
             var uuid: UUID? = null
-            var mac: ByteArray? = null
+            var mac: ByteString? = null
             var psm: Int? = null
             for (ble in bleMethods) {
                 if (ble.supportsPeripheralServerMode) {

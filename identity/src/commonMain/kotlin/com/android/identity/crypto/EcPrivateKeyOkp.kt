@@ -6,6 +6,8 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.toCoseLabel
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.contentEquals
 
 /**
  * EC Private Key with Octet Key Pairs.
@@ -14,8 +16,8 @@ import com.android.identity.cose.toCoseLabel
  */
 data class EcPrivateKeyOkp(
     override val curve: EcCurve,
-    override val d: ByteArray,
-    val x: ByteArray
+    override val d: ByteString,
+    val x: ByteString
 ): EcPrivateKey(curve, d) {
 
     override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
@@ -36,16 +38,16 @@ data class EcPrivateKeyOkp(
         other as EcPrivateKeyOkp
 
         if (curve != other.curve) return false
-        if (!d.contentEquals(other.d)) return false
-        if (!x.contentEquals(other.x)) return false
+        if (d != other.d) return false
+        if (x != other.x) return false
 
         return true
     }
 
     override fun hashCode(): Int {
         var result = curve.hashCode()
-        result = 31 * result + d.contentHashCode()
-        result = 31 * result + x.contentHashCode()
+        result = 31 * result + d.hashCode()
+        result = 31 * result + x.hashCode()
         return result
     }
 }

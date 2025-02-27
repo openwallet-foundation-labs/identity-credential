@@ -107,7 +107,7 @@ class SecureEnclaveSecureArea private constructor(
     private suspend fun insertKey(
         alias: String?,
         settings: SecureEnclaveCreateKeySettings,
-        keyBlob: ByteArray,
+        keyBlob: ByteString,
         publicKey: EcPublicKey,
     ): String {
         val map = CborMap.builder()
@@ -118,14 +118,14 @@ class SecureEnclaveSecureArea private constructor(
         map.put("curve", settings.ecCurve.coseCurveIdentifier)
         map.put("publicKey", publicKey.toDataItem())
         map.put("keyBlob", keyBlob)
-        return storageTable.insert(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
+        return storageTable.insert(alias, Cbor.encode(map.end().build()), partitionId)
     }
 
-    private suspend fun loadKey(alias: String): Pair<ByteArray, SecureEnclaveKeyInfo> {
+    private suspend fun loadKey(alias: String): Pair<ByteString, SecureEnclaveKeyInfo> {
         val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
-        val map = Cbor.decode(data.toByteArray())
+        val map = Cbor.decode(data)
         val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
         val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
         val userAuthenticationTypes =
@@ -150,7 +150,7 @@ class SecureEnclaveSecureArea private constructor(
 
     override suspend fun sign(
         alias: String,
-        dataToSign: ByteArray,
+        dataToSign: ByteString,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         val (keyBlob, keyInfo) = loadKey(alias)
@@ -162,14 +162,14 @@ class SecureEnclaveSecureArea private constructor(
             keyUnlockData
         }
         check(unlockData is SecureEnclaveKeyUnlockData?)
-        return Crypto.secureEnclaveEcSign(keyBlob, dataToSign, unlockData)
+        return Crypto.secureEnclaveEcSign(keyBlob.toByteArray(), dataToSign.toByteArray(), unlockData)
     }
 
     override suspend fun keyAgreement(
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
+    ): ByteString {
         val (keyBlob, keyInfo) = loadKey(alias)
         check(otherKey.curve == EcCurve.P256)
         check(keyInfo.keyPurposes.contains(KeyPurpose.AGREE_KEY))
@@ -180,7 +180,7 @@ class SecureEnclaveSecureArea private constructor(
             keyUnlockData
         }
         check(unlockData is SecureEnclaveKeyUnlockData?)
-        return Crypto.secureEnclaveEcKeyAgreement(keyBlob, otherKey, unlockData)
+        return ByteString(Crypto.secureEnclaveEcKeyAgreement(keyBlob.toByteArray(), otherKey, unlockData))
     }
 
     override suspend fun getKeyInfo(alias: String): KeyInfo {

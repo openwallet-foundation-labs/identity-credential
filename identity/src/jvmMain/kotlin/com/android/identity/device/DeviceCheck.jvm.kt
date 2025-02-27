@@ -24,6 +24,6 @@ actual object DeviceCheck {
         deviceAttestationId: String,
         assertion: Assertion
     ): DeviceAssertion {
-        return DeviceAssertion(ByteString(), ByteString(assertion.toCbor()))
+        return DeviceAssertion(ByteString(), assertion.toCbor())
     }
 }

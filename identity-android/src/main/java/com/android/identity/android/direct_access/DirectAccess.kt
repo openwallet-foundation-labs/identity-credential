@@ -23,7 +23,7 @@ import com.android.identity.cbor.Cbor.decode
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.util.Logger
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendBstring
 import com.android.identity.util.appendUInt16
 import com.android.identity.util.appendUInt8
@@ -140,7 +140,7 @@ object DirectAccess {
         offset: Int,
         length: Int,
         operation: Byte,
-    ): ByteArray? {
+    ): ByteString? {
         check(slot in 0..127) {
             "slot is out of the valid range (0-127)"
         }
@@ -148,8 +148,8 @@ object DirectAccess {
             buildByteString {
                 appendUInt16(cmd) // set instruction
                 appendUInt8(slot)
-                append(operation)
-                appendArray(Cbor.encode((Bstr(data.substring(offset, offset+length).toByteArray()))))
+                appendUInt8(operation.toUInt())
+                appendBstring(Cbor.encode((Bstr(data.substring(offset, offset+length).toByteArray()))))
             }
         )
 
@@ -159,7 +159,7 @@ object DirectAccess {
             "Operation failed. Response status: $status" }
         if (response.size > 2) {
             val input = response.substring(response.size - 2)
-            return decode(input.toByteArray()).asBstr
+            return decode(input).asBstr
         }
         return null
     }
@@ -297,9 +297,9 @@ object DirectAccess {
             val apdu = makeCommandApdu(
                 buildByteString {
                     appendUInt16(notBeforeBytes.size)
-                    appendArray(notBeforeBytes)
+                    appendBarray(notBeforeBytes)
                     appendUInt16(notAfterBytes.size)
-                    appendArray(notAfterBytes)
+                    appendBarray(notAfterBytes)
                 }
             )
 
@@ -310,8 +310,8 @@ object DirectAccess {
             val input = response.substring(response.size - 2)
 
             var signingCert: X509CertChain? = null
-            var encryptedData: ByteArray? = null
-            val map = decode(input.toByteArray()) //TODO: b/393388370 - CBor+
+            var encryptedData: ByteString? = null
+            val map = decode(input) //TODO: b/393388370 - CBor+
             val keys = map.asMap.keys
             for (keyItem in keys) {
                 val value = keyItem.asNumber.toInt()
@@ -328,7 +328,7 @@ object DirectAccess {
                     else -> throw IllegalStateException("createPresentationPackage unknown key item")
                 }
             }
-            return Pair(signingCert!!, ByteString(encryptedData!!))
+            return Pair(signingCert!!, encryptedData!!)
         } catch (e: IOException) {
             Logger.d(TAG, "Failed to create presentation package")
             throw java.lang.IllegalStateException("Failed to create presentation package", e)
@@ -368,7 +368,7 @@ object DirectAccess {
      */
     fun certifyCredential(
         documentSlot: Int,
-        credentialData: ByteArray,
+        credentialData: ByteString,
         encryptedPresentationData: ByteString
     ): ByteString {
         val bsb = ByteStringBuilder()
@@ -383,10 +383,10 @@ object DirectAccess {
                 offset = 0,
                 length = encryptedPresentationData.size,
                 operation= PROVISION_BEGIN
-            )?.let { bsb.appendArray(it) }
+            )?.let { bsb.appendBstring(it) }
 
             // UPDATE
-            val encodedCredData = ByteString(Cbor.encode(Bstr(credentialData))) //TODO: b/393388370 - Cbor+
+            val encodedCredData = Cbor.encode(Bstr(credentialData))
             var remaining = encodedCredData.size
             var start = 0
             val maxTransmitBufSize = 512
@@ -398,7 +398,7 @@ object DirectAccess {
                     offset = start,
                     length = maxTransmitBufSize,
                     operation = PROVISION_UPDATE
-                )?.let { bsb.appendArray(it) } //TODO: b/393388370 - Perhaps the null should not update start/remaining?
+                )?.let { bsb.appendBstring(it) } //TODO: b/393388370 - Perhaps the null should not update start/remaining?
                 start += maxTransmitBufSize
                 remaining -= maxTransmitBufSize
             }
@@ -411,7 +411,7 @@ object DirectAccess {
                 offset = start,
                 length = remaining,
                 operation = PROVISION_FINISH
-            )?.let { bsb.appendArray(it) }
+            )?.let { bsb.appendBstring(it) }
 
         } catch (e: IOException) {
             throw java.lang.IllegalStateException("Failed to provision credential data $e")

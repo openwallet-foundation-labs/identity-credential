@@ -74,6 +74,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 class NoMatchingDocumentException(message: String): Exception(message) {}
 
@@ -82,9 +83,9 @@ class PresentationActivity : FragmentActivity() {
     companion object {
         private const val TAG = "PresentationActivity"
         private var transport: DataTransport?
-        private var handover: ByteArray?
+        private var handover: ByteString?
         private var eDeviceKey: EcPrivateKey?
-        private var deviceEngagement: ByteArray?
+        private var deviceEngagement: ByteString?
         private var resultStringId: Int = 0
         private var resultDrawableId: Int = 0
         private var phase = MutableLiveData<Phase>()
@@ -108,8 +109,8 @@ class PresentationActivity : FragmentActivity() {
         }
 
         fun startPresentation(
-            context: Context, transport: DataTransport, handover: ByteArray,
-            eDeviceKey: EcPrivateKey, deviceEngagement: ByteArray
+            context: Context, transport: DataTransport, handover: ByteString,
+            eDeviceKey: EcPrivateKey, deviceEngagement: ByteString
         ) {
             this.transport = transport
             this.handover = handover
@@ -172,7 +173,7 @@ class PresentationActivity : FragmentActivity() {
     }
 
     // device request bytes
-    private var deviceRequestByteArray: ByteArray? = null
+    private var deviceRequestByteArray: ByteString? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     // Listener for obtaining request bytes from NFC/QR presentation engagements
@@ -182,7 +183,7 @@ class PresentationActivity : FragmentActivity() {
             Logger.i(TAG, "onEReaderKeyReceived")
         }
 
-        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
+        override fun onDeviceRequest(deviceRequestBytes: ByteString) {
             Logger.i(TAG, "onDeviceRequest")
 
             deviceRequestByteArray = deviceRequestBytes

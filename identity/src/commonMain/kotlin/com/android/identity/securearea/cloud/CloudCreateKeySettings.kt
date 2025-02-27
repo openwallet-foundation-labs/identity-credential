@@ -5,6 +5,7 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.config.SecureAreaConfigurationCloud
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Holds cloud-specific settings related to key creation.
@@ -16,7 +17,7 @@ class CloudCreateKeySettings private constructor(
     /**
      * Attestation challenge.
      */
-    val attestationChallenge: ByteArray,
+    val attestationChallenge: ByteString,
 
     /**
      * Whether user authentication is required.
@@ -49,7 +50,7 @@ class CloudCreateKeySettings private constructor(
      *
      * @param attestationChallenge challenge to include in attestation for the key.
      */
-    class Builder(private val attestationChallenge: ByteArray) {
+    class Builder(private val attestationChallenge: ByteString) {
         private var keyPurposes = setOf(KeyPurpose.SIGN)
         private var ecCurve = EcCurve.P256
         private var userAuthenticationRequired = false

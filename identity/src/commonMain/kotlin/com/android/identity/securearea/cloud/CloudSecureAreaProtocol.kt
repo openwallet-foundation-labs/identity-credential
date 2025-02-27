@@ -143,8 +143,8 @@ object CloudSecureAreaProtocol {
      */
     data class RegisterResponse0(
         val attestationChallenge: ByteString,
-        val cloudChallenge: ByteArray,
-        val serverState: ByteArray
+        val cloudChallenge: ByteString,
+        val serverState: ByteString
     ) : Command()
 
     /**
@@ -174,11 +174,11 @@ object CloudSecureAreaProtocol {
      * The server proceeds to prepare a [RegisterResponse1] message.
      */
     data class RegisterRequest1(
-        val deviceChallenge: ByteArray,
+        val deviceChallenge: ByteString,
         val deviceAttestation: DeviceAttestation,
         val deviceBindingKey: CoseKey,
         val deviceBindingKeyAttestation: X509CertChain?,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     /**
@@ -200,7 +200,7 @@ object CloudSecureAreaProtocol {
      */
     data class RegisterResponse1(
         val cloudBindingKeyAttestation: X509CertChain,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     /**
@@ -213,7 +213,7 @@ object CloudSecureAreaProtocol {
      *
      */
     data class E2EESetupRequest0(
-        val registrationContext: ByteArray
+        val registrationContext: ByteString
     ) : Command()
 
     /**
@@ -238,8 +238,8 @@ object CloudSecureAreaProtocol {
      * @property serverState
      */
     data class E2EESetupResponse0(
-        val cloudNonce: ByteArray,
-        val serverState: ByteArray
+        val cloudNonce: ByteString,
+        val serverState: ByteString
     ) : Command()
 
     /**
@@ -274,10 +274,10 @@ object CloudSecureAreaProtocol {
      */
     data class E2EESetupRequest1(
         val eDeviceKey: CoseKey,
-        val deviceNonce: ByteArray,
+        val deviceNonce: ByteString,
         val signature: EcSignature,
         val deviceAssertion: DeviceAssertion,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     /**
@@ -329,17 +329,17 @@ object CloudSecureAreaProtocol {
     data class E2EESetupResponse1(
         val eCloudKey: CoseKey,
         val signature: EcSignature,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     data class E2EERequest(
-        val encryptedRequest: ByteArray,
-        val e2eeContext: ByteArray
+        val encryptedRequest: ByteString,
+        val e2eeContext: ByteString
     ) : Command()
 
     data class E2EEResponse(
-        val encryptedResponse: ByteArray,
-        val e2eeContext: ByteArray
+        val encryptedResponse: ByteString,
+        val e2eeContext: ByteString
     ) : Command()
 
     data class RegisterStage2Request0(
@@ -347,7 +347,7 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     data class RegisterStage2Response0(
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     data class CreateKeyRequest0(
@@ -359,39 +359,39 @@ object CloudSecureAreaProtocol {
         val passphraseRequired: Boolean,
         val userAuthenticationRequired: Boolean,
         val userAuthenticationTypes: Long,
-        val challenge: ByteArray
+        val challenge: ByteString
     ) : Command()
 
     data class CreateKeyResponse0(
-        val cloudChallenge: ByteArray,
-        val serverState: ByteArray
+        val cloudChallenge: ByteString,
+        val serverState: ByteString
     ) : Command()
 
     data class CreateKeyRequest1(
         val localKey: CoseKey,
         val localKeyAttestation: X509CertChain?,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     data class CreateKeyResponse1(
         val remoteKeyAttestation: X509CertChain,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     data class SignRequest0(
-        val dataToSign: ByteArray,
-        val keyContext: ByteArray
+        val dataToSign: ByteString,
+        val keyContext: ByteString
     ) : Command()
 
     data class SignResponse0(
-        val cloudNonce: ByteArray,
-        val serverState: ByteArray
+        val cloudNonce: ByteString,
+        val serverState: ByteString
     ) : Command()
 
     data class SignRequest1(
         val signature: EcSignature,
         val passphrase: String?,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     data class SignResponse1(
@@ -402,23 +402,23 @@ object CloudSecureAreaProtocol {
 
     data class KeyAgreementRequest0(
         val otherPublicKey: CoseKey,
-        val keyContext: ByteArray
+        val keyContext: ByteString
     ) : Command()
 
     data class KeyAgreementResponse0(
-        val cloudNonce: ByteArray,
-        val serverState: ByteArray
+        val cloudNonce: ByteString,
+        val serverState: ByteString
     ) : Command()
 
     data class KeyAgreementRequest1(
         val signature: EcSignature,
         val passphrase: String?,
-        val serverState: ByteArray
+        val serverState: ByteString
     ) : Command()
 
     data class KeyAgreementResponse1(
         val result: Int,
-        val zab: ByteArray?,
+        val zab: ByteString?,
         val waitDurationMillis: Long
     ) : Command()
 

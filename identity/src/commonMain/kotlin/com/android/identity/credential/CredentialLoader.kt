@@ -52,7 +52,7 @@ class CredentialLoader {
      */
     suspend fun loadCredential(document: Document, identifier: String): Credential? {
         val blob = Credential.load(document, identifier) ?: return null
-        val dataItem = Cbor.decode(blob.toByteArray())
+        val dataItem = Cbor.decode(blob)
         val credentialType = dataItem["credentialType"].asTstr
         val createCredentialFunction = createCredentialFunctions[credentialType]
             ?: throw IllegalStateException("Credential type $credentialType not registered")

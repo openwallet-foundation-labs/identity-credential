@@ -191,7 +191,7 @@ internal class EphemeralStorageTable(
     }
 
     internal suspend fun serialize(out: ByteStringBuilder) {
-        Bstr(spec.encodeToByteString().toByteArray()).encode(out)
+        Bstr(spec.encodeToByteString()).encode(out)
         val tableData = lock.withLock {
             storedData.map { item -> item.toDataItem() }
         }
@@ -204,11 +204,11 @@ internal class EphemeralStorageTable(
         internal fun deserialize(
             storage: EphemeralStorage,
             clock: Clock,
-            input: ByteArray,
+            input: ByteString,
             offset: Int
         ): Pair<Int, EphemeralStorageTable> {
             val (offset1, specData) = Cbor.decode(input, offset)
-            val spec = StorageTableSpec.decodeByteString(ByteString(specData.asBstr))
+            val spec = StorageTableSpec.decodeByteString(specData.asBstr)
             val (offset2, tableData) = Cbor.decode(input, offset1)
             val table = EphemeralStorageTable(storage, spec, clock)
             for (itemData in tableData.asArray) {

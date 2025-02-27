@@ -30,7 +30,7 @@ import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.fromHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlin.test.BeforeTest
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -42,11 +42,11 @@ class DeviceRequestParserTest {
     fun testDeviceRequestParserWithVectors() {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex())
         val encodedSessionTranscript =
             Cbor.encode(Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor)
         val parser = DeviceRequestParser(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex(),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex()),
             encodedSessionTranscript
         )
         val request = parser.parse()
@@ -55,18 +55,18 @@ class DeviceRequestParserTest {
         assertEquals(1, docRequests.size.toLong())
         val dr = docRequests.iterator().next()
         assertEquals(MDL_DOCTYPE, dr.docType)
-        assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex(),
+        assertEquals(
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex()),
             dr.itemsRequest
         )
         val readerCertChain = dr.readerCertificateChain
         assertEquals(1, readerCertChain!!.certificates.size.toLong())
-        assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex(),
+        assertEquals(
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex()),
             readerCertChain.certificates[0].encodedCertificate
         )
-        assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_READER_AUTH.fromHex(),
+        assertEquals(
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_READER_AUTH.fromHex()),
             dr.readerAuth
         )
         assertTrue(dr.readerAuthenticated)
@@ -96,7 +96,7 @@ class DeviceRequestParserTest {
     fun testDeviceRequestParserWithVectorsMalformedReaderSignature() {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         val encodedSessionTranscriptBytes =
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex())
         val encodedSessionTranscript =
             Cbor.encode(Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor)
 
@@ -107,7 +107,7 @@ class DeviceRequestParserTest {
         assertEquals(0x1f.toByte().toLong(), encodedDeviceRequest[655].toLong())
         encodedDeviceRequest[655] = 0x1e
         val parser = DeviceRequestParser(
-            encodedDeviceRequest,
+            ByteString(encodedDeviceRequest),
             encodedSessionTranscript
         )
         val request = parser.parse()
@@ -116,14 +116,14 @@ class DeviceRequestParserTest {
         assertEquals(1, docRequests.size.toLong())
         val dr = docRequests.iterator().next()
         assertEquals(MDL_DOCTYPE, dr.docType)
-        assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex(),
+        assertEquals(
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST.fromHex()),
             dr.itemsRequest
         )
         val readerCertChain = dr.readerCertificateChain
         assertEquals(1, readerCertChain!!.certificates.size.toLong())
-        assertContentEquals(
-            TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex(),
+        assertEquals(
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_READER_CERT.fromHex()),
             readerCertChain.certificates[0].encodedCertificate
         )
         assertFalse(dr.readerAuthenticated)
@@ -159,7 +159,7 @@ class DeviceRequestParserTest {
             validUntil = validUntil
         ).build()
         val readerCertChain = X509CertChain(listOf(readerCert))
-        val mdlRequestInfo: MutableMap<String, ByteArray> = HashMap()
+        val mdlRequestInfo: MutableMap<String, ByteString> = HashMap()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem())
         val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)

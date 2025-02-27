@@ -21,7 +21,7 @@ class WalletDocumentMetadata private constructor(
     private val data: Data = if (serializedData == null || serializedData.isEmpty()) {
         Data()
     } else {
-        Data.fromCbor(serializedData.toByteArray())
+        Data.fromCbor(serializedData)
     }
 
     override val provisioned get() = data.provisioned
@@ -33,8 +33,8 @@ class WalletDocumentMetadata private constructor(
 
     override val displayName get() = data.documentConfiguration!!.displayName
     override val typeDisplayName get() = data.documentConfiguration!!.typeDisplayName
-    override val cardArt get() = ByteString(data.documentConfiguration!!.cardArt)
-    override val issuerLogo get() = ByteString(data.issuingAuthorityConfiguration!!.issuingAuthorityLogo)
+    override val cardArt get() = data.documentConfiguration!!.cardArt
+    override val issuerLogo get() = data.issuingAuthorityConfiguration!!.issuingAuthorityLogo
 
     /** The identifier for the [IssuingAuthority] the credential belongs to */
     val issuingAuthorityIdentifier: String get() = data.issuingAuthorityIdentifier!!
@@ -132,7 +132,7 @@ class WalletDocumentMetadata private constructor(
 
     private suspend fun save() {
         check(lock.isLocked)
-        saveFn(ByteString(data.toCbor()))
+        saveFn(data.toCbor())
     }
 
     @CborSerializable

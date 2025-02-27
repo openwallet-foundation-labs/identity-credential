@@ -7,7 +7,8 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.nfc.NdefRecord
 import com.android.identity.util.Logger
-import com.android.identity.util.toHex
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 
 /**
  * Connection method for Wifi Aware.
@@ -21,7 +22,7 @@ class ConnectionMethodWifiAware(
     val passphraseInfoPassphrase: String?,
     val channelInfoChannelNumber: Long?,
     val channelInfoOperatingClass: Long?,
-    val bandInfoSupportedBands: ByteArray?
+    val bandInfoSupportedBands: ByteString?
 ): ConnectionMethod() {
     override fun equals(other: Any?): Boolean {
         return other is ConnectionMethodWifiAware &&
@@ -31,6 +32,7 @@ class ConnectionMethodWifiAware(
                 other.bandInfoSupportedBands == bandInfoSupportedBands
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     override fun toString(): String {
         val builder = StringBuilder("wifi_aware")
         if (passphraseInfoPassphrase != null) {
@@ -47,12 +49,12 @@ class ConnectionMethodWifiAware(
         }
         if (bandInfoSupportedBands != null) {
             builder.append(":base_info_supported_bands=")
-            builder.append(bandInfoSupportedBands.toHex())
+            builder.append(bandInfoSupportedBands.toHexString())
         }
         return builder.toString()
     }
 
-    override fun toDeviceEngagement(): ByteArray {
+    override fun toDeviceEngagement(): ByteString {
         val builder = CborMap.builder()
         if (passphraseInfoPassphrase != null) {
             builder.put(OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE, passphraseInfoPassphrase)
@@ -90,6 +92,14 @@ class ConnectionMethodWifiAware(
         return null
     }
 
+    override fun hashCode(): Int {
+        var result = passphraseInfoPassphrase?.hashCode() ?: 0
+        result = 31 * result + (channelInfoChannelNumber?.hashCode() ?: 0)
+        result = 31 * result + (channelInfoOperatingClass?.hashCode() ?: 0)
+        result = 31 * result + (bandInfoSupportedBands?.hashCode() ?: 0)
+        return result
+    }
+
     companion object {
         private const val TAG = "ConnectionMethodWifiAware"
         const val METHOD_TYPE = 3L
@@ -99,7 +109,7 @@ class ConnectionMethodWifiAware(
         private const val OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER = 2L
         private const val OPTION_KEY_BAND_INFO_SUPPORTED_BANDS = 3L
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodWifiAware? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteString): ConnectionMethodWifiAware? {
             val array = decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber

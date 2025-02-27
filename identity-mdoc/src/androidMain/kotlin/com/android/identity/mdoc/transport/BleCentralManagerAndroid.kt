@@ -26,7 +26,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt32
 import com.android.identity.util.toHex
 import com.android.identity.util.toJavaUuid
@@ -549,7 +549,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
     override suspend fun checkReaderIdentMatches(eSenderKey: EcPublicKey) {
         check(device != null && gatt != null && identCharacteristicUuid != null)
 
-        val ikm = Cbor.encode(Tagged(24, Bstr(Cbor.encode(eSenderKey.toCoseKey().toDataItem()))))
+        val ikm = Cbor.encode(Tagged(24, Bstr(Cbor.encode(eSenderKey.toCoseKey().toDataItem())))).toByteArray()
         val info = "BLEIdent".encodeToByteArray()
         val salt = byteArrayOf()
         expectedIdentValue = Crypto.hkdf(Algorithm.HMAC_SHA256, ikm, salt, info, 16)
@@ -720,7 +720,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
             l2capSocket?.outputStream?.write(
                 buildByteString {
                     appendUInt32(message.size)
-                    appendArray(message)
+                    appendBarray(message)
                 }.toByteArray()
             )
             l2capSocket?.outputStream?.flush()

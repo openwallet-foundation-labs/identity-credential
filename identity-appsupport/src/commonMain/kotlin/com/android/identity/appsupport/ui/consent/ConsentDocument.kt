@@ -1,5 +1,7 @@
 package com.android.identity.appsupport.ui.consent
 
+import kotlinx.io.bytestring.ByteString
+
 /**
  * Details with the document that is being presented in the consent dialog.
  *
@@ -10,5 +12,5 @@ package com.android.identity.appsupport.ui.consent
 data class ConsentDocument(
     val name: String,
     val description: String,
-    val cardArt: ByteArray
+    val cardArt: ByteString
 )

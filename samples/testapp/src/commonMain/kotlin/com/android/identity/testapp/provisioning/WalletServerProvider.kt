@@ -30,7 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlin.time.Duration.Companion.seconds
 
@@ -172,7 +171,7 @@ class WalletServerProvider(
 
         val serverTable = platformStorage().getTable(serverTableSpec)
         var serverData = serverTable.get(key = baseUrl)?.let {
-            ServerData.fromCbor(it.toByteArray())
+            ServerData.fromCbor(it)
         }
 
         val secureAreaProvider = platformSecureAreaProvider()
@@ -189,9 +188,9 @@ class WalletServerProvider(
             // TODO: save clientId and deviceAttestationId in storage
             val newServerData = ServerData(challenge.clientId, result.deviceAttestationId)
             if (serverData == null) {
-                serverTable.insert(baseUrl, ByteString(newServerData.toCbor()))
+                serverTable.insert(baseUrl, newServerData.toCbor())
             } else {
-                serverTable.update(baseUrl, ByteString(newServerData.toCbor()))
+                serverTable.update(baseUrl, newServerData.toCbor())
             }
             serverData = newServerData
         } else {

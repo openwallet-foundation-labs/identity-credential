@@ -23,6 +23,7 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.origininfo.OriginInfo
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper to generate `DeviceEngagement` or `ReaderEngagement` CBOR.
@@ -70,7 +71,7 @@ class EngagementGenerator(
      *
      * @return the bytes of the `Engagement` structure.
      */
-    fun generate(): ByteArray {
+    fun generate(): ByteString {
         val encodedCoseKey = Cbor.encode(eSenderKey.toCoseKey(emptyMap()).toDataItem())
         val security = CborArray.builder()
             .add(1) // cipher suite
@@ -81,11 +82,11 @@ class EngagementGenerator(
             .put(0, version)
             .put(1, security)
         val deviceRetrievalMethodsArray = deviceRetrievalMethodsArrayBuilder.end().build()
-        if (!deviceRetrievalMethodsArray.asArray.isEmpty()) {
+        if (deviceRetrievalMethodsArray.asArray.isNotEmpty()) {
             mapBuilder.put(2, deviceRetrievalMethodsArray)
         }
         val originInfoArray = originInfoArrayBuilder.end().build()
-        if (!originInfoArray.asArray.isEmpty()) {
+        if (originInfoArray.asArray.isNotEmpty()) {
             mapBuilder.put(5, originInfoArray)
         }
         return Cbor.encode(mapBuilder.end().build())

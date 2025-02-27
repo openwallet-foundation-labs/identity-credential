@@ -21,10 +21,10 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.fromHex
-import com.android.identity.util.toHex
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -43,121 +43,122 @@ class MobileSecurityObjectGeneratorTest {
         }
     }
     
-    private fun generateISODigest(digestAlgorithm: String): Map<Long, ByteArray> {
+    private fun generateISODigest(digestAlgorithm: String): Map<Long, ByteString> {
         val alg = getDigestAlg(digestAlgorithm)
-        val isoDigestIDs = mutableMapOf<Long, ByteArray>()
-        isoDigestIDs[0L] = Crypto.digest(alg, "aardvark".encodeToByteArray())
-        isoDigestIDs[1L] = Crypto.digest(alg, "alligator".encodeToByteArray())
-        isoDigestIDs[2L] = Crypto.digest(alg, "baboon".encodeToByteArray())
-        isoDigestIDs[3L] = Crypto.digest(alg, "butterfly".encodeToByteArray())
-        isoDigestIDs[4L] = Crypto.digest(alg, "cat".encodeToByteArray())
-        isoDigestIDs[5L] = Crypto.digest(alg, "cricket".encodeToByteArray())
-        isoDigestIDs[6L] = Crypto.digest(alg, "dog".encodeToByteArray())
-        isoDigestIDs[7L] = Crypto.digest(alg, "elephant".encodeToByteArray())
-        isoDigestIDs[8L] = Crypto.digest(alg, "firefly".encodeToByteArray())
-        isoDigestIDs[9L] = Crypto.digest(alg, "frog".encodeToByteArray())
-        isoDigestIDs[10L] = Crypto.digest(alg, "gecko".encodeToByteArray())
-        isoDigestIDs[11L] = Crypto.digest(alg, "hippo".encodeToByteArray())
-        isoDigestIDs[12L] = Crypto.digest(alg, "iguana".encodeToByteArray())
+        val isoDigestIDs = mutableMapOf<Long, ByteString>()
+        isoDigestIDs[0L] = ByteString(Crypto.digest(alg, "aardvark".encodeToByteArray()))
+        isoDigestIDs[1L] = ByteString(Crypto.digest(alg, "alligator".encodeToByteArray()))
+        isoDigestIDs[2L] = ByteString(Crypto.digest(alg, "baboon".encodeToByteArray()))
+        isoDigestIDs[3L] = ByteString(Crypto.digest(alg, "butterfly".encodeToByteArray()))
+        isoDigestIDs[4L] = ByteString(Crypto.digest(alg, "cat".encodeToByteArray()))
+        isoDigestIDs[5L] = ByteString(Crypto.digest(alg, "cricket".encodeToByteArray()))
+        isoDigestIDs[6L] = ByteString(Crypto.digest(alg, "dog".encodeToByteArray()))
+        isoDigestIDs[7L] = ByteString(Crypto.digest(alg, "elephant".encodeToByteArray()))
+        isoDigestIDs[8L] = ByteString(Crypto.digest(alg, "firefly".encodeToByteArray()))
+        isoDigestIDs[9L] = ByteString(Crypto.digest(alg, "frog".encodeToByteArray()))
+        isoDigestIDs[10L] = ByteString(Crypto.digest(alg, "gecko".encodeToByteArray()))
+        isoDigestIDs[11L] = ByteString(Crypto.digest(alg, "hippo".encodeToByteArray()))
+        isoDigestIDs[12L] = ByteString(Crypto.digest(alg, "iguana".encodeToByteArray()))
         return isoDigestIDs
     }
 
-    private fun generateISOUSDigest(digestAlgorithm: String): Map<Long, ByteArray> {
+    private fun generateISOUSDigest(digestAlgorithm: String): Map<Long, ByteString> {
         val alg = getDigestAlg(digestAlgorithm)
-        val isoUSDigestIDs: MutableMap<Long, ByteArray> = HashMap()
-        isoUSDigestIDs[0L] = Crypto.digest(alg, "jaguar".encodeToByteArray())
-        isoUSDigestIDs[1L] = Crypto.digest(alg, "jellyfish".encodeToByteArray())
-        isoUSDigestIDs[2L] = Crypto.digest(alg, "koala".encodeToByteArray())
-        isoUSDigestIDs[3L] = Crypto.digest(alg, "lemur".encodeToByteArray())
+        val isoUSDigestIDs: MutableMap<Long, ByteString> = HashMap()
+        isoUSDigestIDs[0L] = ByteString(Crypto.digest(alg, "jaguar".encodeToByteArray()))
+        isoUSDigestIDs[1L] = ByteString(Crypto.digest(alg, "jellyfish".encodeToByteArray()))
+        isoUSDigestIDs[2L] = ByteString(Crypto.digest(alg, "koala".encodeToByteArray()))
+        isoUSDigestIDs[3L] = ByteString(Crypto.digest(alg, "lemur".encodeToByteArray()))
         return isoUSDigestIDs
     }
 
-    private fun checkISODigest(isoDigestIDs: Map<Long, ByteArray>?, digestAlgorithm: String) {
+    private fun checkISODigest(isoDigestIDs: Map<Long, ByteString>?, digestAlgorithm: String) {
         val alg = getDigestAlg(digestAlgorithm)
         assertEquals(
             setOf(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L),
             isoDigestIDs!!.keys
         )
-        assertContentEquals(
-            Crypto.digest(alg, "aardvark".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "aardvark".encodeToByteArray())),
             isoDigestIDs[0L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "alligator".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "alligator".encodeToByteArray())),
             isoDigestIDs[1L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "baboon".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "baboon".encodeToByteArray())),
             isoDigestIDs[2L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "butterfly".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "butterfly".encodeToByteArray())),
             isoDigestIDs[3L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "cat".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "cat".encodeToByteArray())),
             isoDigestIDs[4L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "cricket".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "cricket".encodeToByteArray())),
             isoDigestIDs[5L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "dog".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "dog".encodeToByteArray())),
             isoDigestIDs[6L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "elephant".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "elephant".encodeToByteArray())),
             isoDigestIDs[7L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "firefly".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "firefly".encodeToByteArray())),
             isoDigestIDs[8L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "frog".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "frog".encodeToByteArray())),
             isoDigestIDs[9L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "gecko".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "gecko".encodeToByteArray())),
             isoDigestIDs[10L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "hippo".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "hippo".encodeToByteArray())),
             isoDigestIDs[11L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "iguana".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "iguana".encodeToByteArray())),
             isoDigestIDs[12L]
         )
     }
 
-    private fun checkISOUSDigest(isoUSDigestIDs: Map<Long, ByteArray>?, digestAlgorithm: String) {
+    private fun checkISOUSDigest(isoUSDigestIDs: Map<Long, ByteString>?, digestAlgorithm: String) {
         val alg = getDigestAlg(digestAlgorithm)
         assertEquals(setOf(0L, 1L, 2L, 3L), isoUSDigestIDs!!.keys)
-        assertContentEquals(
-            Crypto.digest(alg, "jaguar".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "jaguar".encodeToByteArray())),
             isoUSDigestIDs[0L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "jellyfish".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "jellyfish".encodeToByteArray())),
             isoUSDigestIDs[1L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "koala".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "koala".encodeToByteArray())),
             isoUSDigestIDs[2L]
         )
-        assertContentEquals(
-            Crypto.digest(alg, "lemur".encodeToByteArray()),
+        assertEquals(
+            ByteString(Crypto.digest(alg, "lemur".encodeToByteArray())),
             isoUSDigestIDs[3L]
         )
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     fun testFullMSO(digestAlgorithm: String) {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex(),
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex()),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex())
         )
         val signedTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
         val validFromTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
@@ -166,8 +167,8 @@ class MobileSecurityObjectGeneratorTest {
         val deviceKeyAuthorizedDataElements: MutableMap<String, List<String>> = HashMap()
         deviceKeyAuthorizedDataElements["a"] = listOf("1", "2", "f")
         deviceKeyAuthorizedDataElements["b"] = listOf("4", "5", "k")
-        val keyInfo: MutableMap<Long, ByteArray> = HashMap()
-        keyInfo[10L] = "C985".fromHex()
+        val keyInfo: MutableMap<Long, ByteString> = HashMap()
+        keyInfo[10L] = ByteString("C985".fromHex())
         val encodedMSO = MobileSecurityObjectGenerator(
             digestAlgorithm,
             "org.iso.18013.5.1.mDL", deviceKeyFromVector
@@ -202,8 +203,8 @@ class MobileSecurityObjectGeneratorTest {
         assertEquals(deviceKeyAuthorizedDataElements, mso.deviceKeyAuthorizedDataElements)
         assertEquals(keyInfo.keys, mso.deviceKeyInfo!!.keys)
         assertEquals(
-            keyInfo[10L]!!.toHex(),
-            mso.deviceKeyInfo!![10L]!!.toHex()
+            keyInfo[10L]!!.toHexString(),
+            mso.deviceKeyInfo!![10L]!!.toHexString()
         )
         assertEquals(signedTimestamp, mso.signed)
         assertEquals(validFromTimestamp, mso.validFrom)
@@ -215,8 +216,8 @@ class MobileSecurityObjectGeneratorTest {
     fun testBasicMSO() {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex(),
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex()),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex())
         )
         val signedTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
         val validFromTimestamp = Instant.fromEpochMilliseconds(1601559002000L)
@@ -270,8 +271,8 @@ class MobileSecurityObjectGeneratorTest {
     fun testMSOExceptions() {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex(),
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex()),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex())
         )
         assertFailsWith<IllegalArgumentException>(
             "expect exception for illegal digestAlgorithm") {
@@ -364,8 +365,8 @@ class MobileSecurityObjectGeneratorTest {
     fun testNoFractionalSeconds() {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex(),
-            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex()
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex()),
+            ByteString(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex())
         )
         val signedTimestamp = Instant.fromEpochSeconds(1800, HALF_SEC_IN_NANOSECONDS)
         val validFromTimestamp = Instant.fromEpochSeconds(3600, HALF_SEC_IN_NANOSECONDS)

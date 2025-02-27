@@ -5,6 +5,7 @@ import com.android.identity.claim.VcClaim
 import com.android.identity.credential.Credential
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
+import kotlinx.io.bytestring.ByteString
 
 /**
  * A SD-JWT VC credential, according to [draft-ietf-oauth-sd-jwt-vc-03]
@@ -26,13 +27,13 @@ interface SdJwtVcCredential {
      * This data must be the encoded string containing the SD-JWT VC. The SD-JWT VC itself is by
      * disclosures: `<header>.<body>.<signature>~<Disclosure 1>~<Disclosure 2>~...~<Disclosure N>~`
      */
-    val issuerProvidedData: ByteArray
+    val issuerProvidedData: ByteString
 
     fun getClaimsImpl(
         documentTypeRepository: DocumentTypeRepository?
     ): List<VcClaim> {
         val ret = mutableListOf<VcClaim>()
-        val sdJwt = SdJwtVerifiableCredential.fromString(issuerProvidedData.decodeToString())
+        val sdJwt = SdJwtVerifiableCredential.fromString(issuerProvidedData.toString())
         val dt = documentTypeRepository?.getDocumentTypeForVc(vct)
         for (disclosure in sdJwt.disclosures) {
             val attribute = dt?.vcDocumentType?.claims?.get(disclosure.key)

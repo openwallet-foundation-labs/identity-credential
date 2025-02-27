@@ -29,6 +29,7 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * An mdoc credential, according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html).
@@ -127,7 +128,7 @@ class MdocCredential : SecureAreaBoundCredential {
     // Override certify() to check that the issuerProvidedData is of the right form.
     //
     override suspend fun certify(
-        issuerProvidedAuthenticationData: ByteArray,
+        issuerProvidedAuthenticationData: ByteString,
         validFrom: Instant,
         validUntil: Instant
     ) {

@@ -17,6 +17,7 @@ package com.android.identity.mdoc.mso
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DataItem
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Helper class for parsing the bytes of `StaticAuthData`
@@ -25,7 +26,7 @@ import com.android.identity.cbor.DataItem
  *
  * @param encodedStaticAuthData the bytes of `StaticAuthData` CBOR.
  */
-class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
+class StaticAuthDataParser(private val encodedStaticAuthData: ByteString) {
 
     /**
      * Parses the StaticAuthData.
@@ -48,15 +49,15 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
         /**
          * The IssuerAuth set in the `StaticAuthData` CBOR.
          */
-        lateinit var issuerAuth: ByteArray
+        lateinit var issuerAuth: ByteString
 
-        private val _digestIdMapping = mutableMapOf<String, List<ByteArray>>()
+        private val _digestIdMapping = mutableMapOf<String, List<ByteString>>()
 
         /**
          * The mapping between `Namespace`s and a list of
          * `IssuerSignedItemMetadataBytes` as set in the `StaticAuthData` CBOR.
          */
-        val digestIdMapping: Map<String, List<ByteArray>>
+        val digestIdMapping: Map<String, List<ByteString>>
             get() = _digestIdMapping
 
         private fun parseDigestIdMapping(digestIdMapping: DataItem) {
@@ -70,7 +71,7 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
             }
         }
 
-        internal fun parse(encodedStaticAuthData: ByteArray) =
+        internal fun parse(encodedStaticAuthData: ByteString) =
             Cbor.decode(encodedStaticAuthData).run {
                 issuerAuth = Cbor.encode(this["issuerAuth"])
                 if (this.hasKey("digestIdMapping")) {

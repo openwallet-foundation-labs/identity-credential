@@ -143,6 +143,8 @@ public class UtilTest {
      * @return bytes of a COSE_Sign1 for proof of provisioning
      * @throws IdentityCredentialException if the given data is not in the correct format
      */
+    // TODO: b/393388370 - removed to passs tests. NBo usagas of this deprecated code
+    /*
     @SuppressWarnings("deprecation")
     public static
     @NonNull byte[] provisionSelfSignedCredential(
@@ -294,7 +296,7 @@ public class UtilTest {
         } // for each authkey
 
         return signedPop;
-    }
+    }*/
 
     @Test
     public void prettyPrintMultipleCompleteTypes() throws CborException {

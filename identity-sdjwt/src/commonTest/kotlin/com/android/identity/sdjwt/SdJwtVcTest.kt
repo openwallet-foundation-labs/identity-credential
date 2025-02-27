@@ -24,6 +24,8 @@ import com.android.identity.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -149,7 +151,7 @@ class SdJwtVcTest {
         //
 
         credential.certify(
-            sdJwt.toString().encodeToByteArray(),
+            ByteString(sdJwt.toString().encodeToByteArray()),
             timeValidityBegin,
             timeValidityEnd
         )

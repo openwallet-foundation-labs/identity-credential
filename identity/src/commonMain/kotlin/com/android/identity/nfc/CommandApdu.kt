@@ -4,11 +4,10 @@ import com.android.identity.util.ByteDataReader
 import com.android.identity.util.appendBstring
 import com.android.identity.util.appendUInt16
 import com.android.identity.util.appendUInt8
+import com.android.identity.util.emptyByteString
 import com.android.identity.util.getUInt16
 import com.android.identity.util.getUInt8
 import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.buildByteString
 
 /**
@@ -94,7 +93,7 @@ data class CommandApdu(
             val ins = reader.getUInt8()
             val p1 = reader.getUInt8()
             val p2 = reader.getUInt8()
-            var payload = ByteString(byteArrayOf())
+            var payload = emptyByteString()
             var lc = 0
             var le = 0
             if (encoded.size == 5) {

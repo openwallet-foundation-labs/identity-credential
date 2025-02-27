@@ -2,6 +2,7 @@ package com.android.identity.issuance
 
 import com.android.identity.cbor.annotation.CborSerializable
 import com.android.identity.issuance.evidence.DirectAccessDocumentConfiguration
+import kotlinx.io.bytestring.ByteString
 
 /**
  * The configuration data for a specific document.
@@ -27,7 +28,7 @@ data class DocumentConfiguration(
      * This should resemble a physical card and be the same aspect ratio (3 3⁄8 in × 2 1⁄8 in,
      * see also ISO/IEC 7810 ID-1).
      */
-    val cardArt: ByteArray,
+    val cardArt: ByteString,
 
     /**
      * If `true`, require that the user authenticates to view document information.

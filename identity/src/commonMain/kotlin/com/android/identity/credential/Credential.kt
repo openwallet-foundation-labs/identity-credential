@@ -144,7 +144,7 @@ abstract class Credential {
     suspend fun addToDocument() {
         check(_identifier == null)
         val table = document.store.storage.getTable(credentialTableSpec)
-        val blob = ByteString(Cbor.encode(toDataItem()))
+        val blob = Cbor.encode(toDataItem())
         _identifier = table.insert(key = null, partitionId = document.identifier, data = blob)
         document.addCredential(this)
     }
@@ -186,11 +186,11 @@ abstract class Credential {
      *
      * @throws IllegalStateException if the credential is not yet certified.
      */
-    val issuerProvidedData: ByteArray
+    val issuerProvidedData: ByteString
         get() = _issuerProvidedData
             ?: throw IllegalStateException("This credential is not yet certified")
     @Volatile
-    private var _issuerProvidedData: ByteArray? = null
+    private var _issuerProvidedData: ByteString? = null
 
     /**
      * The point in time the issuer-provided data is valid from.
@@ -259,7 +259,7 @@ abstract class Credential {
      * @param validUntil the point in time after which the data is not valid.
      */
     open suspend fun certify(
-        issuerProvidedAuthenticationData: ByteArray,
+        issuerProvidedAuthenticationData: ByteString,
         validFrom: Instant,
         validUntil: Instant
     ) {
@@ -325,7 +325,7 @@ abstract class Credential {
     private suspend fun save() {
         check(lock.isLocked)
         val table = document.store.storage.getTable(credentialTableSpec)
-        val blob = ByteString(Cbor.encode(toDataItem()))
+        val blob = Cbor.encode(toDataItem())
         table.update(partitionId = document.identifier, key = identifier, data = blob)
     }
 

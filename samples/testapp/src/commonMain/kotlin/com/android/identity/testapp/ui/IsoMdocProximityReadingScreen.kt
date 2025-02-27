@@ -74,6 +74,7 @@ import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
+import com.android.identity.util.emptyByteString
 import com.android.identity.util.fromBase64Url
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,6 +88,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.isEmpty
 import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.qrcode.ScanQrCodeDialog
@@ -141,8 +143,8 @@ fun IsoMdocProximityReadingScreen(
     val readerShowQrScanner = remember { mutableStateOf(false) }
     val readerTransport = remember { mutableStateOf<MdocTransport?>(null) }
     val readerSessionEncryption = remember { mutableStateOf<SessionEncryption?>(null) }
-    val readerSessionTranscript = remember { mutableStateOf<ByteArray?>(null) }
-    val readerMostRecentDeviceResponse = remember { mutableStateOf<ByteArray?>(null) }
+    val readerSessionTranscript = remember { mutableStateOf<ByteString?>(null) }
+    val readerMostRecentDeviceResponse = remember { mutableStateOf<ByteString?>(null) }
     val connectionMethodPickerData = remember { mutableStateOf<ConnectionMethodPickerData?>(null) }
     val eReaderKey = remember { mutableStateOf<EcPrivateKey?>(null) }
 
@@ -321,12 +323,12 @@ fun IsoMdocProximityReadingScreen(
                                             readerCert = app.readerCert,
                                             readerRootCert = app.readerRootCert
                                         )
-                                    readerMostRecentDeviceResponse.value = byteArrayOf()
+                                    readerMostRecentDeviceResponse.value = emptyByteString()
                                     readerTransport.value!!.sendMessage(
                                         readerSessionEncryption.value!!.encryptMessage(
                                             messagePlaintext = encodedDeviceRequest,
                                             statusCode = null
-                                        )
+                                        ).toByteArray()
                                     )
                                 } catch (error: Throwable) {
                                     Logger.e(TAG, "Caught exception", error)
@@ -343,7 +345,9 @@ fun IsoMdocProximityReadingScreen(
                             coroutineScope.launch {
                                 try {
                                     readerTransport.value!!.sendMessage(
-                                        SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                                        SessionEncryption
+                                            .encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                                            .toByteArray()
                                     )
                                     readerTransport.value!!.close()
                                 } catch (error: Throwable) {
@@ -546,13 +550,13 @@ private suspend fun doReaderFlow(
     showToast: (message: String) -> Unit,
     readerTransport: MutableState<MdocTransport?>,
     readerSessionEncryption: MutableState<SessionEncryption?>,
-    readerSessionTranscript: MutableState<ByteArray?>,
-    readerMostRecentDeviceResponse: MutableState<ByteArray?>,
+    readerSessionTranscript: MutableState<ByteString?>,
+    readerMostRecentDeviceResponse: MutableState<ByteString?>,
     eReaderKey: MutableState<EcPrivateKey?>,
     selectedRequest: MutableState<RequestPickerEntry>,
     selectConnectionMethod: suspend (connectionMethods: List<ConnectionMethod>) -> ConnectionMethod?
 ) {
-    val deviceEngagement = EngagementParser(encodedDeviceEngagement.toByteArray()).parse()
+    val deviceEngagement = EngagementParser(encodedDeviceEngagement).parse()
     val eDeviceKey = deviceEngagement.eSenderKey
     Logger.i(TAG, "Using curve ${eDeviceKey.curve.name} for session encryption")
     eReaderKey.value = Crypto.createEcPrivateKey(eDeviceKey.curve)
@@ -639,8 +643,8 @@ private suspend fun doReaderFlowWithTransport(
     showToast: (message: String) -> Unit,
     readerTransport: MutableState<MdocTransport?>,
     readerSessionEncryption: MutableState<SessionEncryption?>,
-    readerSessionTranscript: MutableState<ByteArray?>,
-    readerMostRecentDeviceResponse: MutableState<ByteArray?>,
+    readerSessionTranscript: MutableState<ByteString?>,
+    readerMostRecentDeviceResponse: MutableState<ByteString?>,
     selectedRequest: MutableState<RequestPickerEntry>,
     eDeviceKey: EcPublicKey,
     eReaderKey: EcPrivateKey,
@@ -675,10 +679,10 @@ private suspend fun doReaderFlowWithTransport(
             sessionEncryption.encryptMessage(
                 messagePlaintext = encodedDeviceRequest,
                 statusCode = null
-            )
+            ).toByteArray()
         )
         while (true) {
-            val sessionData = transport.waitForMessage()
+            val sessionData = ByteString(transport.waitForMessage())
             if (sessionData.isEmpty()) {
                 showToast("Received transport-specific session termination message from holder")
                 transport.close()
@@ -702,7 +706,8 @@ private suspend fun doReaderFlowWithTransport(
                 Logger.i(TAG, "Holder did not indicate they are closing the connection. " +
                         "Auto-close is enabled, so sending termination message, closing, and " +
                         "ending reader loop")
-                transport.sendMessage(SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION))
+                transport.sendMessage(SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                    .toByteArray())
                 transport.close()
                 break
             }
@@ -785,8 +790,8 @@ private fun RequestPicker(
 @Composable
 private fun ShowReaderResults(
     app: App,
-    readerMostRecentDeviceResponse: MutableState<ByteArray?>,
-    readerSessionTranscript: MutableState<ByteArray?>,
+    readerMostRecentDeviceResponse: MutableState<ByteString?>,
+    readerSessionTranscript: MutableState<ByteString?>,
     eReaderKey: EcPrivateKey
 ) {
     val deviceResponse1 = readerMostRecentDeviceResponse.value

@@ -20,6 +20,7 @@ import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.storage.ephemeral.EphemeralStorage
 import com.android.identity.util.AndroidContexts
+import com.android.identity.util.emptyByteString
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -462,7 +463,7 @@ class CloudSecureAreaTest {
             csa.getKeyInfo("testKey").attestation.certChain!!.certificates[0]
                 .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
         ))
-        Assert.assertEquals(ByteString(byteArrayOf()), attestation.challenge)
+        Assert.assertEquals(emptyByteString(), attestation.challenge)
 
         // Now delete it...
         csa.deleteKey("testKey")

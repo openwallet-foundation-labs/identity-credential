@@ -52,13 +52,14 @@ import com.android.identity.storage.ephemeral.EphemeralStorage
 import com.android.identity.testapp.App
 import com.android.identity.util.Logger
 import com.android.identity.util.toBase64Url
-import com.android.identity.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.encodeToByteString
+import kotlinx.io.bytestring.toHexString
 import kotlin.time.Duration.Companion.days
 
 private val TAG = "CloudSecureAreaScreen"
@@ -422,7 +423,7 @@ private suspend fun csaAttestation(
     val thirtyDaysFromNow = now + 30.days
     cloudSecureArea!!.createKey(
         "testKey",
-        CloudCreateKeySettings.Builder("Challenge".encodeToByteArray())
+        CloudCreateKeySettings.Builder("Challenge".encodeToByteString())
             .setUserAuthenticationRequired(true, setOf(
                 CloudUserAuthType.PASSCODE,
                 CloudUserAuthType.BIOMETRIC
@@ -454,6 +455,7 @@ private suspend fun csaTest(
     }
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 private suspend fun csaTestUnguarded(
     keyPurpose: KeyPurpose,
     curve: EcCurve,
@@ -468,7 +470,7 @@ private suspend fun csaTestUnguarded(
         return
     }
 
-    val builder = CloudCreateKeySettings.Builder("Challenge".encodeToByteArray())
+    val builder = CloudCreateKeySettings.Builder("Challenge".encodeToByteString())
         .setEcCurve(curve)
         .setKeyPurposes(setOf(keyPurpose))
         .setUserAuthenticationRequired(authRequired, authTypes)
@@ -481,13 +483,13 @@ private suspend fun csaTestUnguarded(
         val t0 = Clock.System.now()
         val signature = cloudSecureArea!!.sign(
             "testKey",
-            "data".encodeToByteArray(),
+            "data".encodeToByteString(),
             KeyUnlockInteractive())
         val t1 = Clock.System.now()
         Logger.d(
             TAG,
             "Made signature with key " +
-                    "r=${signature.r.toHex()} s=${signature.s.toHex()}",
+                    "r=${signature.r.toHexString()} s=${signature.s.toHexString()}",
         )
         showToast("EC signature in (${t1 - t0})")
     } else {

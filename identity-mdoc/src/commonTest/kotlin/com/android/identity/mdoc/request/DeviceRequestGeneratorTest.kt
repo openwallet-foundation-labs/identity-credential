@@ -28,8 +28,8 @@ import com.android.identity.crypto.X500Name
 import com.android.identity.crypto.X509Cert
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -71,7 +71,7 @@ class DeviceRequestGeneratorTest {
             validUntil = validUntil
         ).build()
         val readerCertChain = X509CertChain(listOf(readerCert))
-        val mdlRequestInfo = mutableMapOf<String, ByteArray>()
+        val mdlRequestInfo = mutableMapOf<String, ByteString>()
         mdlRequestInfo["foo"] = Cbor.encode(Tstr("bar"))
         mdlRequestInfo["bar"] = Cbor.encode(42.toDataItem())
         val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
@@ -124,8 +124,8 @@ class DeviceRequestGeneratorTest {
         val requestInfo = docRequest.requestInfo
         assertNotNull(requestInfo)
         assertEquals(2, requestInfo.keys.size.toLong())
-        assertContentEquals(Cbor.encode(Tstr("bar")), requestInfo["foo"])
-        assertContentEquals(Cbor.encode(42.toDataItem()), requestInfo["bar"])
+        assertEquals(Cbor.encode(Tstr("bar")), requestInfo["foo"])
+        assertEquals(Cbor.encode(42.toDataItem()), requestInfo["bar"])
         docRequest = it.next()
         assertTrue(docRequest.readerAuthenticated)
         assertEquals(MVR_DOCTYPE, docRequest.docType)

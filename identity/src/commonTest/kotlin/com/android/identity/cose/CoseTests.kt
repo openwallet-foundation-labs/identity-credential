@@ -11,7 +11,10 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
+import com.android.identity.util.appendString
 import com.android.identity.util.fromHex
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.hexToByteString
 import kotlin.test.BeforeTest
 
 import kotlin.test.Test
@@ -21,15 +24,16 @@ import kotlin.test.assertTrue
 
 class CoseTests {
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun coseKeyDecode() {
         // This checks we can decode the first key from the Example set in
         //
         //   https://datatracker.ietf.org/doc/html/rfc9052#name-public-keys
         //
-        val x = "65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d".fromHex()
-        val y = "1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c".fromHex()
-        val id = "meriadoc.brandybuck@buckland.example".encodeToByteArray()
+        val x = "65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d".hexToByteString()
+        val y = "1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c".hexToByteString()
+        val id = buildByteString { appendString("meriadoc.brandybuck@buckland.example") }
         val item = CborMap.builder()
             .put(-1, 1)
             .put(-2, x)
@@ -40,21 +44,21 @@ class CoseTests {
             .build()
         val coseKey = item.asCoseKey
         assertEquals(Cose.COSE_KEY_TYPE_EC2, coseKey.keyType.asNumber)
-        assertContentEquals(id, coseKey.labels[Cose.COSE_KEY_KID.toCoseLabel]!!.asBstr)
-        assertContentEquals(x, coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr)
-        assertContentEquals(y, coseKey.labels[Cose.COSE_KEY_PARAM_Y.toCoseLabel]!!.asBstr)
+        assertEquals(id, coseKey.labels[Cose.COSE_KEY_KID.toCoseLabel]!!.asBstr)
+        assertEquals(x, coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr)
+        assertEquals(y, coseKey.labels[Cose.COSE_KEY_PARAM_Y.toCoseLabel]!!.asBstr)
 
         // Also check we can get an EcPublicKey from this
         val key = coseKey.ecPublicKey as EcPublicKeyDoubleCoordinate
         assertEquals(EcCurve.P256, key.curve)
-        assertContentEquals(x, key.x)
-        assertContentEquals(y, key.y)
+        assertEquals(x, key.x)
+        assertEquals(y, key.y)
     }
 
     @Test
     fun coseSign1() {
         val key = Crypto.createEcPrivateKey(EcCurve.P256)
-        val dataToSign = "This is the data to sign.".encodeToByteArray()
+        val dataToSign = buildByteString { appendString("This is the data to sign.") }
         val coseSignature = Cose.coseSign1Sign(
             key,
             dataToSign,
@@ -75,6 +79,7 @@ class CoseTests {
 
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun coseSign1TestVector() {
         // This is the COSE_Sign1 example from
@@ -103,8 +108,8 @@ class CoseTests {
             ),
             ("8eb33e4ca31d1c465ab05aac34cc6b23d58fef5c083106c4" +
                     "d25a91aef0b0117e2af9a291aa32e14ab834dc56ed2a223444547e01f11d3b0916e5" +
-                    "a4c345cacb36").fromHex(),
-            "This is the content.".encodeToByteArray()
+                    "a4c345cacb36").hexToByteString(),
+            buildByteString { appendString("This is the content.") }
         )
 
         assertTrue(
@@ -133,7 +138,7 @@ class CoseTests {
                 signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
             )
         )
-        val message = "Hello World".encodeToByteArray()
+        val message = buildByteString { appendString("Hello World") }
         val coseSignature = Cose.coseSign1Sign(
             privateKey,
             message,

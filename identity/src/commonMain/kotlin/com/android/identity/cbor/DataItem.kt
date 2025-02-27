@@ -6,8 +6,6 @@ import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseMac0
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
-import com.android.identity.securearea.KeyAttestation
-import com.android.identity.securearea.fromDataItem
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteString

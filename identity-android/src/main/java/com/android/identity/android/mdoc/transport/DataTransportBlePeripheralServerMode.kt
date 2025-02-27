@@ -297,11 +297,11 @@ class DataTransportBlePeripheralServerMode(
     private fun connectAsMdocReader() {
         // Start scanning...
         bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-        val bluetoothAdapter = bluetoothManager!!.getAdapter()
+        val bluetoothAdapter = bluetoothManager!!.adapter
         val macAddress = connectionMethod.peripheralServerModeMacAddress
         if (macAddress != null) {
             Logger.i(TAG, "MAC address provided, no scanning needed")
-            val device = bluetoothAdapter.getRemoteDevice(macAddress)
+            val device = bluetoothAdapter.getRemoteDevice(macAddress.toByteArray())
             connectToDevice(device)
             return
         }

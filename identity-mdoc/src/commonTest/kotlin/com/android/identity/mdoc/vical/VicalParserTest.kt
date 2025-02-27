@@ -2,9 +2,9 @@ package com.android.identity.mdoc.vical
 
 import com.android.identity.crypto.X509Cert
 import com.android.identity.util.fromBase64Url
+import kotlinx.io.bytestring.ByteString
 import kotlin.collections.joinToString
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.text.replace
@@ -934,7 +934,7 @@ yPxFAiAaQMxnrcRJopU6SRrNTq1x29UlFJdaE7XHvdXu1sXnDA==
 
     @Test
     fun testAustroadsVical() {
-        val signedVical = SignedVical.parse(AUSTROADS_VICAL_20240919_BASE64.fromBase64Url())
+        val signedVical = SignedVical.parse(ByteString(AUSTROADS_VICAL_20240919_BASE64.fromBase64Url()))
 
         // Check the VICAL contains a single certificate...
         assertEquals(1, signedVical.vicalProviderCertificateChain.certificates.size)
@@ -998,13 +998,13 @@ Mbff+DlHy77+wXISb35NiZ8FdVHgC2ut4fDQTRN4
 
     @Test
     fun testAamvaVical() {
-        val signedVical = SignedVical.parse(AAMVA_VICAL_20240925_BASE64.fromBase64Url())
+        val signedVical = SignedVical.parse(ByteString(AAMVA_VICAL_20240925_BASE64.fromBase64Url()))
 
         // Check the VICAL contains three certificates.
         assertEquals(3, signedVical.vicalProviderCertificateChain.certificates.size)
 
         // Check the root certificate is the AAMVA root
-        assertContentEquals(
+        assertEquals(
             X509Cert.fromPem(AAMVA_DTS_ROOT_PEM).encodedCertificate,
             signedVical.vicalProviderCertificateChain.certificates[2].encodedCertificate
         )

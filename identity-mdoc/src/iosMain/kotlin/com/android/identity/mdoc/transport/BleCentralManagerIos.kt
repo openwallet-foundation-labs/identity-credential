@@ -8,7 +8,7 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
-import com.android.identity.util.appendArray
+import com.android.identity.util.appendBarray
 import com.android.identity.util.appendUInt32
 import com.android.identity.util.toByteArray
 import com.android.identity.util.toKotlinError
@@ -532,7 +532,7 @@ internal class BleCentralManagerIos : BleCentralManager {
         val ikm = Cbor.encode(Tagged(24, Bstr(Cbor.encode(eSenderKey.toCoseKey().toDataItem()))))
         val info = "BLEIdent".encodeToByteArray()
         val salt = byteArrayOf()
-        val expectedIdentValue = Crypto.hkdf(Algorithm.HMAC_SHA256, ikm, salt, info, 16)
+        val expectedIdentValue = Crypto.hkdf(Algorithm.HMAC_SHA256, ikm.toByteArray(), salt, info, 16)
         val identValue = identCharacteristic!!.value!!.toByteArray()
         if (!(expectedIdentValue contentEquals identValue)) {
             close()
@@ -648,7 +648,7 @@ internal class BleCentralManagerIos : BleCentralManager {
         Logger.i(TAG, "l2capSendMessage ${message.size} length")
         val messageWithHeader = buildByteString {
             appendUInt32(message.size)
-            appendArray(message)
+            appendBarray(message)
         }.toByteArray()
 
         // NOTE: for some reason, iOS just fills in zeroes near the end if we send a

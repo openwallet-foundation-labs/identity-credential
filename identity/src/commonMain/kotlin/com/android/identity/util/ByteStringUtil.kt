@@ -3,45 +3,57 @@ package com.android.identity.util
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
 
 /** ByteStringBuffer extension functions to append commonly used types. */
 
+fun ByteString.concat(bStr: ByteString) =
+    buildByteString {
+        append(this@concat)
+        append(bStr)
+    }
+
 //region Writers
 
-fun ByteStringBuilder.appendInt8(value: Int, validRange: IntRange = Byte.MIN_VALUE..Byte.MAX_VALUE) {
+fun ByteStringBuilder.appendInt8(value: Int, validRange: IntRange = Byte.MIN_VALUE..Byte.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int8 range" }
     append(value.toByte())
+    return this
 }
 
-fun ByteStringBuilder.appendInt16(value: Int, validRange: IntRange) {
+fun ByteStringBuilder.appendInt16(value: Int, validRange: IntRange = Int.MIN_VALUE..Int.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int16 range" }
     append((value shr 8).toByte())
     append(value.toByte())
+    return this
 }
 
-fun ByteStringBuilder.appendInt16Le(value: Int, validRange: IntRange = Short.MIN_VALUE..Short.MAX_VALUE) {
+fun ByteStringBuilder.appendInt16Le(value: Int, validRange: IntRange = Short.MIN_VALUE..Short.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int16 range" }
     append(value.toByte())
     append((value shr 8).toByte())
+    return this
 }
 
-fun ByteStringBuilder.appendInt32(value: Int, validRange: IntRange = Int.MIN_VALUE..Int.MAX_VALUE) {
+fun ByteStringBuilder.appendInt32(value: Int, validRange: IntRange = Int.MIN_VALUE..Int.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int32 range" }
     append((value shr 24).toByte())
     append((value shr 16).toByte())
     append((value shr 8).toByte())
     append((value shr 0).toByte())
+    return this
 }
 
-fun ByteStringBuilder.appendInt32Le(value: Int, validRange: IntRange = Int.MIN_VALUE..Int.MAX_VALUE) {
+fun ByteStringBuilder.appendInt32Le(value: Int, validRange: IntRange = Int.MIN_VALUE..Int.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int32 range" }
     append((value shr 0).toByte())
     append((value shr 8).toByte())
     append((value shr 16).toByte())
     append((value shr 24).toByte())
+    return this
 }
 
-fun ByteStringBuilder.appendInt64(value: Long, validRange: LongRange = Long.MIN_VALUE..Long.MAX_VALUE) {
+fun ByteStringBuilder.appendInt64(value: Long, validRange: LongRange = Long.MIN_VALUE..Long.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int64 range" }
     append((value shr 56).toByte())
     append((value shr 48).toByte())
@@ -51,9 +63,10 @@ fun ByteStringBuilder.appendInt64(value: Long, validRange: LongRange = Long.MIN_
     append((value shr 16).toByte())
     append((value shr 8).toByte())
     append((value shr 0).toByte())
+    return this
 }
 
-fun ByteStringBuilder.appendInt64Le(value: Long, validRange: LongRange = Long.MIN_VALUE..Long.MAX_VALUE) {
+fun ByteStringBuilder.appendInt64Le(value: Long, validRange: LongRange = Long.MIN_VALUE..Long.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of Int64 range" }
     append((value shr 0).toByte())
     append((value shr 8).toByte())
@@ -63,92 +76,112 @@ fun ByteStringBuilder.appendInt64Le(value: Long, validRange: LongRange = Long.MI
     append((value shr 40).toByte())
     append((value shr 48).toByte())
     append((value shr 56).toByte())
+    return this
+}
+
+fun ByteStringBuilder.appendUInt8(
+    value: UByte,
+    validRange: UIntRange = UByte.MIN_VALUE..UByte.MAX_VALUE): ByteStringBuilder
+{
+    require(value in validRange) { "Value $value is out of UInt8 range" }
+    append(value.toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt8(
     value: UInt,
-    validRange: UIntRange = UByte.MIN_VALUE..UByte.MAX_VALUE)
+    validRange: UIntRange = UByte.MIN_VALUE..UByte.MAX_VALUE): ByteStringBuilder
 {
     require(value in validRange) { "Value $value is out of UInt8 range" }
     append(value.toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt8(
     value: Int,
     validRange: UIntRange = UByte.MIN_VALUE..UByte.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to UInt8" }
     val uIntValue = value.toUInt()
     appendUInt8(uIntValue, validRange)
+    return this
 }
 
 fun ByteStringBuilder.appendUInt16(
     value: UInt,
     validRange: UIntRange = UShort.MIN_VALUE..UShort.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of UInt16 range" }
     append((value shr 8).toByte())
     append(value.toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt16(
     value: Int,
     validRange: UIntRange = UShort.MIN_VALUE..UShort.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to UInt16" }
     appendUInt16(value.toUInt(), validRange)
+    return this
 }
 
 fun ByteStringBuilder.appendUInt16Le(
     value: UInt,
     validRange: UIntRange = UShort.MIN_VALUE..UShort.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of UInt16 range" }
     append(value.toByte())
     append((value shr 8).toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt16Le(
     value: Int,
     validRange: UIntRange = UShort.MIN_VALUE..UShort.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to UInt16" }
     appendUInt16Le(value.toUInt(), validRange)
+    return this
 }
 
-fun ByteStringBuilder.appendUInt32(value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE) {
+fun ByteStringBuilder.appendUInt32(value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of UInt32 range" }
     append((value shr 24).toByte())
     append((value shr 16).toByte())
     append((value shr 8).toByte())
     append((value shr 0).toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt32(
     value: Int,
     validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to UInt32" }
     appendUInt32(value.toUInt(), validRange)
+    return this
 }
 
-fun ByteStringBuilder.appendUInt32Le(value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE) {
+fun ByteStringBuilder.appendUInt32Le(value: UInt, validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of UInt32 range" }
     append((value shr 0).toByte())
     append((value shr 8).toByte())
     append((value shr 16).toByte())
     append((value shr 24).toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt32Le(
     value: Int,
     validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to UInt32" }
     appendUInt32Le(value.toUInt(), validRange)
+    return this
 }
 
-fun ByteStringBuilder.appendUInt64(value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE) {
+fun ByteStringBuilder.appendUInt64(value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of UInt64 range" }
     append((value shr 56).toByte())
     append((value shr 48).toByte())
@@ -158,17 +191,19 @@ fun ByteStringBuilder.appendUInt64(value: ULong, validRange: ULongRange = ULong.
     append((value shr 16).toByte())
     append((value shr 8).toByte())
     append((value shr 0).toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt64(
     value: Long,
     validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to ULong" }
     appendUInt64(value.toULong(), validRange)
+    return this
 }
 
-fun ByteStringBuilder.appendUInt64Le(value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE) {
+fun ByteStringBuilder.appendUInt64Le(value: ULong, validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE): ByteStringBuilder {
     require(value in validRange) { "Value $value is out of UInt64 range" }
     append((value shr 0).toByte())
     append((value shr 8).toByte())
@@ -178,26 +213,37 @@ fun ByteStringBuilder.appendUInt64Le(value: ULong, validRange: ULongRange = ULon
     append((value shr 40).toByte())
     append((value shr 48).toByte())
     append((value shr 56).toByte())
+    return this
 }
 
 fun ByteStringBuilder.appendUInt64Le(
     value: Long,
     validRange: ULongRange = ULong.MIN_VALUE..ULong.MAX_VALUE
-) {
+): ByteStringBuilder {
     require(value >= 0) { "Value $value is negative and cannot be converted to ULong" }
     appendUInt64Le(value.toULong(), validRange)
+    return this
 }
 
-fun ByteStringBuilder.appendArray(bArray:ByteArray) {
+fun ByteStringBuilder.appendString(string:String): ByteStringBuilder {
+    append(string.encodeToByteArray())
+    return this
+}
+
+fun ByteStringBuilder.appendBarray(bArray:ByteArray): ByteStringBuilder {
     if (bArray.isNotEmpty()) append(bArray)
+    return this
 }
 
-fun ByteStringBuilder.appendBstring(bString:ByteString) {
+fun ByteStringBuilder.appendBstring(bString:ByteString): ByteStringBuilder {
     append(bString)
+    return this
 }
 //endregion
 
 //region Readers
+
+fun emptyByteString() = ByteString(ByteArray(0))
 
 fun ByteString.getInt8(offset: Int): Byte {
     require(size >= Byte.SIZE_BYTES) { "Buffer size is less than Int8 size" }
