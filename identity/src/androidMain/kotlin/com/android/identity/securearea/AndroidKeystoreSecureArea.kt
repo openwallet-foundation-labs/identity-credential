@@ -27,6 +27,7 @@ import com.android.identity.R
 import com.android.identity.securearea.AndroidKeystoreSecureArea.Capabilities
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import com.android.identity.context.applicationContext
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
@@ -34,21 +35,10 @@ import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaPublicKey
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyAttestation
-import com.android.identity.securearea.KeyInfo
-import com.android.identity.securearea.KeyInvalidatedException
-import com.android.identity.securearea.KeyLockedException
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.securearea.KeyUnlockInteractive
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.keyPurposeSet
+import com.android.identity.prompt.showBiometricPrompt
 import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
-import com.android.identity.ui.UiModelAndroid
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -118,7 +108,6 @@ class AndroidKeystoreSecureArea private constructor(
     private val storageTable: StorageTable,
     private val partitionId: String
 ) : SecureArea {
-    private val context: Context = AndroidContexts.applicationContext
 
     override val identifier: String
         get() = IDENTIFIER
@@ -131,10 +120,10 @@ class AndroidKeystoreSecureArea private constructor(
 
     init {
         keymintTeeFeatureLevel = getFeatureVersionKeystore(
-            context, false
+            applicationContext, false
         )
         keymintSbFeatureLevel = getFeatureVersionKeystore(
-            context, true
+            applicationContext, true
         )
     }
 
@@ -219,7 +208,8 @@ class AndroidKeystoreSecureArea private constructor(
                 else -> throw IllegalArgumentException("Curve is not supported")
             }
             if (aSettings.userAuthenticationRequired) {
-                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                val keyguardManager =
+                    applicationContext.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                 if (!keyguardManager.isDeviceSecure) {
                     throw ScreenLockRequiredException(
                         "Screen lock must be set up to create keys with user authentication"
@@ -448,9 +438,9 @@ class AndroidKeystoreSecureArea private constructor(
                 return signNonInteractive(alias, dataToSign, unlockData)
             } catch (_: KeyLockedException) {
                 unlockData = AndroidKeystoreKeyUnlockData(this, alias)
-                val res = AndroidContexts.applicationContext.resources
+                val res = applicationContext.resources
                 val keyInfo = getKeyInfo(alias)
-                if (!UiModelAndroid.showBiometricPrompt(
+                if (!showBiometricPrompt(
                         cryptoObject = unlockData.getCryptoObjectForSigning(),
                         title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
                         subtitle = keyUnlockData.subtitle ?: res.getString(R.string.aks_auth_default_subtitle),
@@ -530,9 +520,9 @@ class AndroidKeystoreSecureArea private constructor(
                 return keyAgreementNonInteractive(alias, otherKey)
             } catch (_: KeyLockedException) {
                 unlockData = AndroidKeystoreKeyUnlockData(this, alias)
-                val res = AndroidContexts.applicationContext.resources
+                val res = applicationContext.resources
                 val keyInfo = getKeyInfo(alias)
-                if (!UiModelAndroid.showBiometricPrompt(
+                if (!showBiometricPrompt(
                         cryptoObject = unlockData.cryptoObjectForKeyAgreement,
                         title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
                         subtitle = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_subtitle),
@@ -720,11 +710,10 @@ class AndroidKeystoreSecureArea private constructor(
      * the normal hardware-backed keystore and - if available - the StrongBox-backed keystore.
      */
     class Capabilities {
-        private val context = AndroidContexts.applicationContext
-        private val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        private val keyguardManager = applicationContext.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         private val apiLevel = Build.VERSION.SDK_INT
-        private val teeFeatureLevel = getFeatureVersionKeystore(context, false)
-        private val sbFeatureLevel = getFeatureVersionKeystore(context, true)
+        private val teeFeatureLevel = getFeatureVersionKeystore(applicationContext, false)
+        private val sbFeatureLevel = getFeatureVersionKeystore(applicationContext, true)
 
         val secureLockScreenSetup: Boolean
             /**

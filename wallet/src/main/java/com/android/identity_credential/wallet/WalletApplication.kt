@@ -29,6 +29,7 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.android.identity.android.direct_access.DirectAccess
 import com.android.identity.android.direct_access.DirectAccessCredential
+import com.android.identity.context.initializeApplication
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.credential.CredentialLoader
@@ -57,7 +58,6 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.dynamicregistration.PowerOffReceiver
 import com.android.identity_credential.wallet.logging.EventLogger
@@ -136,7 +136,7 @@ class WalletApplication : Application() {
         Logger.d(TAG, "onCreate")
 
         // warm up Direct Access transport to prevent delays later
-        AndroidContexts.setApplicationContext(applicationContext)
+        initializeApplication(applicationContext)
         DirectAccess.warmupTransport()
 
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt

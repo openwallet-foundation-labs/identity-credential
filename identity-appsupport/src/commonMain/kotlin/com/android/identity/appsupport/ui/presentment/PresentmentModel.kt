@@ -3,6 +3,7 @@ package com.android.identity.appsupport.ui.presentment
 import com.android.identity.credential.Credential
 import com.android.identity.document.Document
 import com.android.identity.mdoc.sessionencryption.SessionEncryption
+import com.android.identity.prompt.PromptModel
 import com.android.identity.request.Request
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
@@ -125,6 +126,8 @@ class PresentmentModel {
     val error: Throwable?
         get() = _error
 
+    private var promptModel: PromptModel? = null
+
     /**
      * Resets the model to [State.IDLE].
      */
@@ -141,11 +144,24 @@ class PresentmentModel {
     }
 
     /**
+     * Provides [PromptModel], required if presentment involves popping up any prompts, such
+     * as biometrics or passphrase.
+     */
+    fun setPromptModel(promptModel: PromptModel) {
+        this.promptModel = promptModel
+    }
+
+    /**
      * Sets the model to [State.CONNECTING].
      */
     fun setConnecting() {
         check(_state.value == State.IDLE)
-        _presentmentScope = CoroutineScope(Dispatchers.Main)
+        val coroutineContext = if (promptModel == null) {
+            Dispatchers.Main
+        } else {
+            Dispatchers.Main + promptModel!!
+        }
+        _presentmentScope = CoroutineScope(coroutineContext)
         _state.value = State.CONNECTING
     }
 
@@ -220,6 +236,9 @@ class PresentmentModel {
         _mechanism?.close()
         _mechanism = null
         _error = error
+        if (error != null) {
+            Logger.e(TAG, "Error presenting", error)
+        }
         _state.value = State.COMPLETED
         // TODO: Hack to ensure that [state] collectors (using [presentationScope]) gets called for State.COMPLETED
         _presentmentScope?.launch {

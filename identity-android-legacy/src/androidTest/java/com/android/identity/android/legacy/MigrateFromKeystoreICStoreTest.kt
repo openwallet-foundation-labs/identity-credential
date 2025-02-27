@@ -25,13 +25,13 @@ import com.android.identity.android.legacy.Util.cborEncodeString
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Cbor.toDiagnostics
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.context.initializeApplication
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto.checkSignature
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.toEcPublicKey
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.android.AndroidStorage
-import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
@@ -48,7 +48,7 @@ class MigrateFromKeystoreICStoreTest {
     fun testMigrateToCredentialStore() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storage = AndroidStorage(":memory:")
-        AndroidContexts.setApplicationContext(context)
+        initializeApplication(context)
         val aksSecureArea = AndroidKeystoreSecureArea.create(storage)
         val icStore = Utility.getIdentityCredentialStore(context)
 

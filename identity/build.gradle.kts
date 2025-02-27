@@ -115,6 +115,7 @@ kotlin {
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
                 implementation(libs.androidx.biometrics)
+                implementation(libs.androidx.lifecycle.viewmodel)
             }
         }
 

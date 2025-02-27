@@ -31,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.util.AndroidContexts
+import com.android.identity.prompt.AndroidPromptModel
 import com.android.identity_credential.wallet.credentialoffer.extractCredentialIssuerData
 import com.android.identity_credential.wallet.dynamicregistration.AidRegistrationUtil
 import com.android.identity_credential.wallet.navigation.WalletDestination
@@ -42,7 +42,7 @@ import com.android.identity_credential.wallet.util.getUrlQueryFromCustomSchemeUr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.multipaz.compose.UiProvider
+import org.multipaz.compose.prompt.PromptDialogs
 
 class MainActivity : FragmentActivity() {
     companion object {
@@ -52,6 +52,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var application: WalletApplication
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
+    private val promptModel: AndroidPromptModel by viewModels()
     private val routeRequest = MutableLiveData<String?>(null)
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
@@ -68,16 +69,6 @@ class MainActivity : FragmentActivity() {
             Manifest.permission.NFC to R.string.permission_nfc,
             Manifest.permission.ACCESS_FINE_LOCATION to R.string.permission_bluetooth_connect
         ))
-    }
-
-    override fun onResume() {
-        super.onResume()
-        AndroidContexts.setCurrentActivity(this)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        AndroidContexts.setCurrentActivity(null)
     }
 
     override fun onStart() {
@@ -112,7 +103,7 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    UiProvider()
+                    PromptDialogs(promptModel)
                     val navController = rememberNavController()
                     val route = routeRequest.observeAsState()
                     LaunchedEffect(route.value) {
@@ -128,6 +119,7 @@ class MainActivity : FragmentActivity() {
                         permissionTracker = permissionTracker,
                         qrEngagementViewModel = qrEngagementViewModel,
                         documentModel = application.documentModel,
+                        promptModel = promptModel,
                         readerModel = application.readerModel,
                     )
                 }

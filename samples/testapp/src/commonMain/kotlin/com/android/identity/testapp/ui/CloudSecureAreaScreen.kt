@@ -87,7 +87,7 @@ fun CloudSecureAreaScreen(
     }
     val showConnectDialog = remember { mutableStateOf(false) }
 
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { app.promptModel }
 
     if (showConnectDialog.value) {
         CsaConnectDialog(

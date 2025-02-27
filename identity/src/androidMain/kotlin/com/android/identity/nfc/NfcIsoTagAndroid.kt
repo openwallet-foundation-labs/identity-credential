@@ -5,7 +5,7 @@ import android.nfc.tech.IsoDep
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
-internal class NfcIsoTagAndroid(
+class NfcIsoTagAndroid(
     private val tag: IsoDep,
     private val tagContext: CoroutineContext,
 ): NfcIsoTag() {

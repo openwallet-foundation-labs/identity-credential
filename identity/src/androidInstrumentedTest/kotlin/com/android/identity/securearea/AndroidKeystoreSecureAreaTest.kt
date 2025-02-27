@@ -24,18 +24,13 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.TestUtil
+import com.android.identity.context.initializeApplication
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyInfo
-import com.android.identity.securearea.KeyLockedException
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.AndroidAttestationExtensionParser
-import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -67,7 +62,7 @@ class AndroidKeystoreSecureAreaTest {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
-        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().targetContext)
+        initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
         val storage = AndroidStorage(databasePath = null, clock = Clock.System)
         secureAreaProvider = SecureAreaProvider {
             AndroidKeystoreSecureArea.create(storage)

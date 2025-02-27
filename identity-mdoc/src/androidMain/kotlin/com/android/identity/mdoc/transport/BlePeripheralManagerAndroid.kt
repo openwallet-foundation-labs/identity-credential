@@ -20,10 +20,10 @@ import android.os.ParcelUuid
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tagged
+import com.android.identity.context.applicationContext
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import com.android.identity.util.toHex
@@ -131,8 +131,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
 
     override val incomingMessages = Channel<ByteArray>(Channel.UNLIMITED)
 
-    private val context = AndroidContexts.applicationContext
-    private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
+    private val bluetoothManager = applicationContext.getSystemService(BluetoothManager::class.java)
     private var gattServer: BluetoothGattServer? = null
     private var service: BluetoothGattService? = null
     private var readCharacteristic: BluetoothGattCharacteristic? = null
@@ -394,7 +393,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
     }
 
     override suspend fun advertiseService(uuid: UUID) {
-        gattServer = bluetoothManager.openGattServer(context, gattServerCallback)
+        gattServer = bluetoothManager.openGattServer(applicationContext, gattServerCallback)
         service = BluetoothGattService(
             uuid.toJavaUuid(),
             BluetoothGattService.SERVICE_TYPE_PRIMARY

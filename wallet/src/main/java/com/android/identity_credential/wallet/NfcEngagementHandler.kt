@@ -29,7 +29,6 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.util.NfcUtil
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import kotlinx.coroutines.runBlocking
 
@@ -55,7 +54,7 @@ class NfcEngagementHandler : HostApduService() {
             // This is invoked _just_ before the NFC tag reader will do a READ_BINARY
             // for the Handover Select message. Vibrate the device to indicate to the
             // user they can start removing the device from the reader.
-            val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+            val vibrator = ContextCompat.getSystemService(applicationContext, Vibrator::class.java)
             val vibrationEffect = VibrationEffect.createWaveform(longArrayOf(0, 500, 50, 300), -1)
             vibrator?.vibrate(vibrationEffect)
         }

@@ -1,4 +1,4 @@
-package com.android.identity.ui
+package com.android.identity.prompt
 
 /**
  * Constants used to convey which icon to show when using [UiViewAndroid.showScanNfcTagDialog].

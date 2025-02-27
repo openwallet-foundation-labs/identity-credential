@@ -23,6 +23,7 @@ fun PresentmentScreen(
 ) {
     Presentment(
         presentmentModel = presentmentModel,
+        promptModel = app.promptModel,
         documentTypeRepository = app.documentTypeRepository,
         source = TestAppPresentmentSource(app),
         onPresentmentComplete = onPresentationComplete,

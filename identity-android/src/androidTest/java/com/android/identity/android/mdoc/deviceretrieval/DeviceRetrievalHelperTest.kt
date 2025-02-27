@@ -30,6 +30,7 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.toDataItem
+import com.android.identity.context.initializeApplication
 import com.android.identity.cose.Cose
 import com.android.identity.cose.Cose.coseSign1Sign
 import com.android.identity.cose.CoseLabel
@@ -70,7 +71,6 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Constants
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock.System.now
@@ -115,7 +115,7 @@ class DeviceRetrievalHelperTest {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
-        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().targetContext)
+        initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
 
         storage = AndroidStorage(":memory:")
         secureAreaRepository = SecureAreaRepository.build {

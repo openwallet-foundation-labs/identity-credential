@@ -21,7 +21,7 @@ import android.se.omapi.Reader
 import android.se.omapi.SEService
 import android.se.omapi.Session
 import androidx.annotation.RequiresApi
-import com.android.identity.util.AndroidContexts
+import com.android.identity.context.applicationContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,7 +55,7 @@ object DirectAccessOmapiTransport {
 
     init {
         val executor = Executors.newSingleThreadExecutor()
-        seService = SEService(AndroidContexts.applicationContext, executor) {}
+        seService = SEService(applicationContext, executor) {}
     }
 
     /**
@@ -209,7 +209,7 @@ object DirectAccessOmapiTransport {
         if (!seService.isConnected) {
             val executor = Executors.newSingleThreadExecutor()
             val latch = CountDownLatch(1)
-            seService = SEService(AndroidContexts.applicationContext, executor, latch::countDown)
+            seService = SEService(applicationContext, executor, latch::countDown)
             val connected = latch.await(CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             if (!connected || !seService.isConnected) {
                 throw IllegalStateException("Failed to connect to SEService")
