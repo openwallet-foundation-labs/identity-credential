@@ -7,5 +7,5 @@ import com.android.identity.document.Document
 data class DocumentInfo(
     val document: Document,
     val cardArt: ImageBitmap,
-    val credentials: List<Credential>
+    val credentialInfos: List<CredentialInfo>
 )

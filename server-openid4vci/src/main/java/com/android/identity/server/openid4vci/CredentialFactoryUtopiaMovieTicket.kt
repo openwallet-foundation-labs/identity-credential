@@ -54,7 +54,7 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random,
             payload = identityAttributes,
-            vct = UtopiaMovieTicket.VCTYPE,
+            vct = UtopiaMovieTicket.MOVIE_TICKET_VCT,
             issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
         )
 
@@ -80,6 +80,6 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
     }
 
     companion object {
-        private val FORMAT = Openid4VciFormatSdJwt(UtopiaMovieTicket.VCTYPE)
+        private val FORMAT = Openid4VciFormatSdJwt(UtopiaMovieTicket.MOVIE_TICKET_VCT)
     }
 }

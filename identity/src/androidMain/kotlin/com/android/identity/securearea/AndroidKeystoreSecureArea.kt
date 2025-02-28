@@ -586,9 +586,24 @@ class AndroidKeystoreSecureArea private constructor(
         }
         // If the LSKF is removed, all auth-bound keys are removed and the result is
         // that KeyStore.getEntry() returns null.
+        //
         val entry = ks.getEntry(alias, null)
             ?: throw KeyInvalidatedException("This key is no longer available")
 
+        return Pair(entry, data.toByteArray())
+    }
+
+    // @throws IllegalArgumentException if the key doesn't exist.
+    // @throws KeyInvalidatedException if LSKF was removed and the key is no longer available.
+    private suspend fun loadKeyIgnoreKeyInvalidated(alias: String): Pair<KeyStore.Entry?, ByteArray> {
+        val data = storageTable.get(alias, partitionId)
+            ?: throw IllegalArgumentException("No key with given alias")
+
+        val ks = KeyStore.getInstance("AndroidKeyStore")
+        withContext(Dispatchers.IO) {
+            ks.load(null)
+        }
+        val entry = ks.getEntry(alias, null)
         return Pair(entry, data.toByteArray())
     }
 
@@ -602,12 +617,15 @@ class AndroidKeystoreSecureArea private constructor(
     }
 
     override suspend fun getKeyInfo(alias: String): AndroidKeystoreKeyInfo {
-        val (entry, data) = loadKey(alias)
+        val (entry, data) = loadKeyIgnoreKeyInvalidated(alias)
         return try {
-            val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
-            val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
-            val keyInfo =
+            val keyInfo = if (entry != null) {
+                val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
+                val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
                 factory.getKeySpec(privateKey, android.security.keystore.KeyInfo::class.java)
+            } else {
+                null
+            }
             val map = Cbor.decode(data)
             val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
             val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
@@ -621,12 +639,12 @@ class AndroidKeystoreSecureArea private constructor(
             val attestKeyAlias = map.getOrNull("attestKeyAlias")?.asTstr
             var validFrom: Instant? = null
             var validUntil: Instant? = null
-            if (keyInfo.keyValidityStart != null) {
+            if (keyInfo?.keyValidityStart != null) {
                 validFrom = Instant.fromEpochMilliseconds(
                     keyInfo.keyValidityStart!!.time
                 )
             }
-            if (keyInfo.keyValidityForOriginationEnd != null) {
+            if (keyInfo?.keyValidityForOriginationEnd != null) {
                 validUntil = Instant.fromEpochMilliseconds(
                     keyInfo.keyValidityForOriginationEnd!!.time
                 )
@@ -635,7 +653,7 @@ class AndroidKeystoreSecureArea private constructor(
             val publicKey = attestationCertChain.certificates.first().ecPublicKey
 
             val userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (keyInfo != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val type = keyInfo.userAuthenticationType
                 if (type and KeyProperties.AUTH_DEVICE_CREDENTIAL != 0) {
                     userAuthenticationTypes.add(UserAuthenticationType.LSKF)

@@ -5,6 +5,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Tagged
 import com.android.identity.credential.Credential
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.document.Document
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -20,6 +21,7 @@ import com.android.identity.mdoc.transport.MdocTransportClosedException
 import com.android.identity.mdoc.util.toMdocRequest
 import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Request
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
@@ -146,6 +148,9 @@ internal suspend fun mdocPresentment(
                     credential = mdocCredential,
                     requestedClaims = request.requestedClaims,
                     encodedSessionTranscript = encodedSessionTranscript,
+                    eReaderKey = SessionEncryption.getEReaderKey(sessionData),
+                    source = source,
+                    request = request
                 ))
                 mdocCredential.increaseUsageCount()
             }
@@ -185,7 +190,10 @@ internal suspend fun mdocPresentment(
 private suspend fun calcDocument(
     credential: MdocCredential,
     requestedClaims: List<MdocRequestedClaim>,
-    encodedSessionTranscript: ByteArray
+    encodedSessionTranscript: ByteArray,
+    eReaderKey: EcPublicKey,
+    source: PresentmentSource,
+    request: Request
 ): ByteArray {
     val issuerSigned = Cbor.decode(credential.issuerProvidedData)
     val issuerNamespaces = IssuerNamespaces.fromDataItem(issuerSigned["nameSpaces"])
@@ -202,12 +210,30 @@ private suspend fun calcDocument(
 
     documentGenerator.setIssuerNamespaces(issuerNamespaces.filter(requestedClaims))
 
-    documentGenerator.setDeviceNamespacesSignature(
-        NameSpacedData.Builder().build(),
-        credential.secureArea,
-        credential.alias,
-        KeyUnlockInteractive(),
-    )
+    // Prefer MACing if possible... this requires that we can do key agreement (AGREE_KEY purpose)
+    // and that the curve of DeviceKey matches EReaderKey...
+    //
+    // TODO: support MAC keys from v1.1 request.
+    //
+    val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
+    val preferSignature = source.shouldPreferSignatureToKeyAgreement(credential, request)
+    val keyAgreementPossible = keyInfo.keyPurposes.contains(KeyPurpose.AGREE_KEY) && eReaderKey.curve == keyInfo.publicKey.curve
+    if (!preferSignature && keyAgreementPossible) {
+        documentGenerator.setDeviceNamespacesMac(
+            dataElements = NameSpacedData.Builder().build(),
+            secureArea = credential.secureArea,
+            keyAlias = credential.alias,
+            keyUnlockData = KeyUnlockInteractive(),
+            eReaderKey = eReaderKey
+        )
+    } else {
+        documentGenerator.setDeviceNamespacesSignature(
+            NameSpacedData.Builder().build(),
+            credential.secureArea,
+            credential.alias,
+            KeyUnlockInteractive(),
+        )
+    }
 
     return documentGenerator.generate()
 }

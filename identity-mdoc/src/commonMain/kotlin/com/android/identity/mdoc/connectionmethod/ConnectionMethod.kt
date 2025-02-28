@@ -143,50 +143,50 @@ abstract class ConnectionMethod {
                     result.add(cm)
                 }
             }
-            if (bleMethods.size > 0) {
-                var supportsPeripheralServerMode = false
-                var supportsCentralClientMode = false
-                var uuid: UUID? = null
-                var mac: ByteArray? = null
-                var psm: Int? = null
-                for (ble in bleMethods) {
-                    if (ble.supportsPeripheralServerMode) {
-                        supportsPeripheralServerMode = true
-                    }
-                    if (ble.supportsCentralClientMode) {
-                        supportsCentralClientMode = true
-                    }
-                    val c = ble.centralClientModeUuid
-                    val p = ble.peripheralServerModeUuid
-                    if (uuid == null) {
-                        if (c != null) {
-                            uuid = c
-                        } else if (p != null) {
-                            uuid = p
-                        }
-                    } else {
-                        require(!(c != null && uuid != c)) { "UUIDs for both BLE modes are not the same" }
-                        require(!(p != null && uuid != p)) { "UUIDs for both BLE modes are not the same" }
-                    }
-                    if (mac == null && ble.peripheralServerModeMacAddress != null) {
-                        mac = ble.peripheralServerModeMacAddress
-                    }
-                    if (psm == null && ble.peripheralServerModePsm != null) {
-                        psm = ble.peripheralServerModePsm
-                    }
-                }
-                val combined =
-                    ConnectionMethodBle(
-                        supportsPeripheralServerMode,
-                        supportsCentralClientMode,
-                        if (supportsPeripheralServerMode) uuid else null,
-                        if (supportsCentralClientMode) uuid else null
-                    )
-                combined.peripheralServerModeMacAddress = mac
-                combined.peripheralServerModePsm = psm
-                result.add(combined)
+            if (bleMethods.size == 0) {
+                return result
             }
-            return result
+            var supportsPeripheralServerMode = false
+            var supportsCentralClientMode = false
+            var uuid: UUID? = null
+            var mac: ByteArray? = null
+            var psm: Int? = null
+            for (ble in bleMethods) {
+                if (ble.supportsPeripheralServerMode) {
+                    supportsPeripheralServerMode = true
+                }
+                if (ble.supportsCentralClientMode) {
+                    supportsCentralClientMode = true
+                }
+                val c = ble.centralClientModeUuid
+                val p = ble.peripheralServerModeUuid
+                if (uuid == null) {
+                    if (c != null) {
+                        uuid = c
+                    } else if (p != null) {
+                        uuid = p
+                    }
+                } else {
+                    require(!(c != null && uuid != c)) { "UUIDs for both BLE modes are not the same" }
+                    require(!(p != null && uuid != p)) { "UUIDs for both BLE modes are not the same" }
+                }
+                if (mac == null && ble.peripheralServerModeMacAddress != null) {
+                    mac = ble.peripheralServerModeMacAddress
+                }
+                if (psm == null && ble.peripheralServerModePsm != null) {
+                    psm = ble.peripheralServerModePsm
+                }
+            }
+            val combined =
+                ConnectionMethodBle(
+                    supportsPeripheralServerMode,
+                    supportsCentralClientMode,
+                    if (supportsPeripheralServerMode) uuid else null,
+                    if (supportsCentralClientMode) uuid else null
+                )
+            combined.peripheralServerModeMacAddress = mac
+            combined.peripheralServerModePsm = psm
+            return listOf(combined) + result
         }
 
         /**

@@ -15,9 +15,9 @@ import kotlinx.datetime.LocalDate
  * 2024-08-14" (WG4/N4583)
  */
 object PhotoID {
-    const val PHOTO_ID_DOCTYPE = "org.iso.23220.photoid.1"
+    const val PHOTO_ID_DOCTYPE = "org.iso.23220.photoID.1"
     const val ISO_23220_2_NAMESPACE = "org.iso.23220.1"
-    const val PHOTO_ID_NAMESPACE = "org.iso.23220.photoid.1"
+    const val PHOTO_ID_NAMESPACE = "org.iso.23220.photoID.1"
     const val DTC_NAMESPACE = "org.iso.23220.dtc.1"
 
     /**

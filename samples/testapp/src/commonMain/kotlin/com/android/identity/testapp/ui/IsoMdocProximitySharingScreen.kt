@@ -143,6 +143,7 @@ fun IsoMdocProximitySharingScreen(
                                             handover = Simple.NULL,
                                             options = options,
                                             allowMultipleRequests = settingsModel.presentmentAllowMultipleRequests.value,
+                                            sessionEncryptionCurve = settingsModel.presentmentSessionEncryptionCurve.value,
                                             showToast = showToast,
                                             presentmentModel = presentmentModel,
                                             showQrCode = showQrCode,
@@ -168,13 +169,14 @@ private suspend fun doHolderFlow(
     connectionMethods: List<ConnectionMethod>,
     handover: DataItem,
     options: MdocTransportOptions,
+    sessionEncryptionCurve: EcCurve,
     allowMultipleRequests: Boolean,
     showToast: (message: String) -> Unit,
     presentmentModel: PresentmentModel,
     showQrCode: MutableState<ByteString?>,
     onNavigateToPresentationScreen: () -> Unit,
 ) {
-    val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+    val eDeviceKey = Crypto.createEcPrivateKey(sessionEncryptionCurve)
     lateinit var encodedDeviceEngagement: ByteString
     val transport = connectionMethods.advertiseAndWait(
         role = MdocTransport.Role.MDOC,

@@ -1,6 +1,7 @@
 package com.android.identity.testapp
 
 import android.os.Build
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.securearea.UserAuthenticationType
@@ -78,16 +79,24 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
 
 actual fun platformCreateKeySettings(
     challenge: ByteString,
+    curve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
     validUntil: Instant
 ): CreateKeySettings {
+    var timeoutMillis = 0L
+    // Work around Android bug where ECDH keys don't work with timeout 0, see
+    // AndroidKeystoreUnlockData.cryptoObjectForKeyAgreement for details.
+    if (keyPurposes.contains(KeyPurpose.AGREE_KEY)) {
+        timeoutMillis = 1000L
+    }
     return AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
+        .setEcCurve(curve)
         .setKeyPurposes(keyPurposes)
         .setUserAuthenticationRequired(
             required = userAuthenticationRequired,
-            timeoutMillis = 0,
+            timeoutMillis = timeoutMillis,
             userAuthenticationTypes = setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
         )
         .setValidityPeriod(validFrom, validUntil)

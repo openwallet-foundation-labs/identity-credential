@@ -1,25 +1,22 @@
 package com.android.identity.documenttype.knowntypes
 
-import com.android.identity.cbor.toDataItem
-import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Object containing the metadata of the Utopia Movie Ticket Document Type.
  */
 object UtopiaMovieTicket {
-    const val VCTYPE = "http://utopia.example.com/vct/movieticket"
+    const val MOVIE_TICKET_VCT = "https://utopia.example.com/vct/movieticket"
 
     /**
      * Build the Movie Ticket Document Type.
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("Movie Ticket")
-            .addVcDocumentType(VCTYPE)
+            .addVcDocumentType(vct = MOVIE_TICKET_VCT, keyBound = false)
             .addVcAttribute(
                 DocumentAttributeType.Number,
                 "ticket_number",
@@ -53,7 +50,7 @@ object UtopiaMovieTicket {
                 JsonPrimitive(SampleData.MOVIE_RATING)
             )
             .addVcAttribute(
-                DocumentAttributeType.DateTime,
+                DocumentAttributeType.Date,
                 "movie_date",
                 "Date",
                 "Year-month-day of the admission purchased.",

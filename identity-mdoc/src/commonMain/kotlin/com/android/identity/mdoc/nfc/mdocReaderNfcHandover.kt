@@ -90,7 +90,7 @@ suspend fun mdocReaderNfcHandover(
             .build()
 
         return MdocReaderNfcHandoverResult(
-            connectionMethods = connectionMethods,
+            connectionMethods = ConnectionMethod.disambiguate(connectionMethods),
             encodedDeviceEngagement = ByteString(encodedDeviceEngagement),
             handover = handover,
         )
@@ -114,7 +114,8 @@ suspend fun mdocReaderNfcHandover(
 
     // Now send Handover Request message, the resulting NDEF message is Handover Response..
     //
-    val hrMessage = generateHandoverRequestMessage(negotiatedHandoverConnectionMethods)
+    val combinedNegotiatedHandoverConnectionMethods = ConnectionMethod.combine(negotiatedHandoverConnectionMethods)
+    val hrMessage = generateHandoverRequestMessage(combinedNegotiatedHandoverConnectionMethods)
     val hsMessage = tag.ndefTransact(hrMessage, hspr.wtInt, hspr.nWait)
 
     var bleUuid: UUID? = null
@@ -141,7 +142,7 @@ suspend fun mdocReaderNfcHandover(
         .build()
 
     return MdocReaderNfcHandoverResult(
-        connectionMethods = connectionMethods,
+        connectionMethods = ConnectionMethod.disambiguate(connectionMethods),
         encodedDeviceEngagement = ByteString(encodedDeviceEngagement),
         handover = handover,
     )

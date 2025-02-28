@@ -546,6 +546,7 @@ actual object Crypto {
             EcCurve.BRAINPOOLP320R1,
             EcCurve.BRAINPOOLP384R1,
             EcCurve.BRAINPOOLP512R1 -> {
+                require(otherKey.curve == key.curve) { "Other key for ECDH is not ${key.curve.name}" }
                 ECPrivateKeySpec(
                     BigIntegers.fromUnsignedByteArray(key.d),
                     ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
@@ -557,7 +558,7 @@ actual object Crypto {
                         ka.init(privateKey)
                         ka.doPhase(otherKey.javaPublicKey, true)
                         ka.generateSecret()
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         throw IllegalStateException("Unexpected Exception", e)
                     }
                 }
@@ -569,7 +570,8 @@ actual object Crypto {
             }
 
             EcCurve.X25519 -> {
-                check(otherKey is EcPublicKeyOkp)
+                require(otherKey.curve == EcCurve.X25519) { "Other key for ECDH is not Curve X448" }
+                otherKey as EcPublicKeyOkp
                 val otherKeyX = X25519PublicKeyParameters(otherKey.x, 0)
                 val privateKey = X25519PrivateKeyParameters(key.d, 0)
                 val ka = X25519Agreement()
@@ -580,7 +582,8 @@ actual object Crypto {
             }
 
             EcCurve.X448 -> {
-                check(otherKey is EcPublicKeyOkp)
+                require(otherKey.curve == EcCurve.X448) { "Other key for ECDH is not Curve X448" }
+                otherKey as EcPublicKeyOkp
                 val otherKeyX = X448PublicKeyParameters(otherKey.x, 0)
                 val privateKey = X448PrivateKeyParameters(key.d, 0)
                 val ka = X448Agreement()

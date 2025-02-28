@@ -2,6 +2,7 @@ package com.android.identity.testapp
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.NativeSQLiteDriver
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
@@ -130,6 +131,7 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
 
 actual fun platformCreateKeySettings(
     challenge: ByteString,
+    curve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
@@ -139,10 +141,12 @@ actual fun platformCreateKeySettings(
     // is not used. Neither is [challenge].
     if (platformIsEmulator) {
         return SoftwareCreateKeySettings.Builder()
+            .setEcCurve(curve)
             .setKeyPurposes(keyPurposes)
             .setPassphraseRequired(userAuthenticationRequired, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
             .build()
     } else {
+        require(curve == EcCurve.P256)
         return SecureEnclaveCreateKeySettings.Builder()
             .setKeyPurposes(keyPurposes)
             .setUserAuthenticationRequired(

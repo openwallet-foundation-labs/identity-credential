@@ -152,8 +152,9 @@ class MdocNfcEngagementHelper(
                         EngagementGenerator.ENGAGEMENT_VERSION_1_0
                     ).generate()
 
+                    val combinedStaticHandoverMethods = ConnectionMethod.combine(staticHandoverMethods!!)
                     val handoverSelectMessage = generateHandoverSelectMessage(
-                        methods = staticHandoverMethods!!,
+                        methods = combinedStaticHandoverMethods,
                         encodedDeviceEngagement = encodedDeviceEngagement,
                         skipUuids = false,
                     )

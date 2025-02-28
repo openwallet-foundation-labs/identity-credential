@@ -26,7 +26,7 @@ object GermanPersonalID {
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("German Personal ID")
-            .addVcDocumentType(EUPID_VCT)
+            .addVcDocumentType(vct = EUPID_VCT, keyBound = true)
             .addVcAttribute(
                 DocumentAttributeType.String,
                 "family_name",

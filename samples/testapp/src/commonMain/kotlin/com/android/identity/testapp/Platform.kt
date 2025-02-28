@@ -1,5 +1,6 @@
 package com.android.identity.testapp
 
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
@@ -33,6 +34,7 @@ expect fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea>
  * returned by [platformSecureAreaProvider].
  *
  * @param challenge the challenge to use in the generated attestation, if the [SecureArea] supports that.
+ * @param curve the curve to use.
  * @param keyPurposes the key purposes
  * @param userAuthenticationRequired set to `true` to require user authentication, `false` otherwise.
  * @param validFrom when the key should be valid from.
@@ -40,6 +42,7 @@ expect fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea>
  */
 expect fun platformCreateKeySettings(
     challenge: ByteString,
+    curve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,

@@ -135,10 +135,11 @@ interface SecureArea {
     /**
      * Gets information about a key.
      *
+     * This works even on keys that are invalidated.
+     *
      * @param alias the alias of the EC key to use.
      * @return a [KeyInfo] object.
      * @throws IllegalArgumentException if there is no key with the given alias.
-     * @throws KeyInvalidatedException if the key is invalidated.
      */
     suspend fun getKeyInfo(alias: String): KeyInfo
 

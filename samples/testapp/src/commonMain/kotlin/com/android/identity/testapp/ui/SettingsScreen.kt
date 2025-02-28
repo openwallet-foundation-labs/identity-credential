@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.identity.crypto.EcCurve
 import com.android.identity.testapp.App
 import com.android.identity.testapp.Platform
 import com.android.identity.testapp.TestAppSettingsModel
@@ -125,6 +126,16 @@ fun SettingsScreen(
             SettingHeadline("ISO mdoc Transport Options")
         }
         item {
+            SettingMultipleChoice(
+                title = "Session Encryption Curve",
+                choices = EcCurve.entries.map { it.name },  // TODO: only include curves that can do key agreement
+                initialChoice = app.settingsModel.presentmentSessionEncryptionCurve.value.toString(),
+                onChoiceSelected = { choice ->
+                    app.settingsModel.presentmentSessionEncryptionCurve.value = EcCurve.entries.find { it.name == choice }!!
+                },
+            )
+        }
+        item {
             SettingToggle(
                 title = "Use L2CAP if available",
                 isChecked = app.settingsModel.presentmentBleL2CapEnabled.collectAsState().value,
@@ -215,6 +226,13 @@ fun SettingsScreen(
                 title = "Skip user authentication",
                 isChecked = !app.settingsModel.presentmentRequireAuthentication.collectAsState().value,
                 onCheckedChange = { app.settingsModel.presentmentRequireAuthentication.value = !it },
+            )
+        }
+        item {
+            SettingToggle(
+                title = "Prefer Key Agreement to Signature",
+                isChecked = !app.settingsModel.presentmentPreferSignatureToKeyAgreement.collectAsState().value,
+                onCheckedChange = { app.settingsModel.presentmentPreferSignatureToKeyAgreement.value = !it },
             )
         }
 

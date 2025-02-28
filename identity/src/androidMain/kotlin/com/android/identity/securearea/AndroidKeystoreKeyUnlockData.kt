@@ -111,7 +111,7 @@ class AndroidKeystoreKeyUnlockData(
                 // TODO: Unfortunately we forgot to add support in CryptoObject for KeyAgreement
                 //  when we added ECHD to AOSP so this will not work until the platform gains
                 //  support for constructing a CryptoObject from a KeyAgreement object. See
-                //  b/282058146 for details.
+                //  b/282058146 and b/400115331 for details.
                 throw IllegalStateException("ECDH for keys with timeout 0 is not currently supported")
             } catch (e: Exception) {
                 throw IllegalStateException(e)
