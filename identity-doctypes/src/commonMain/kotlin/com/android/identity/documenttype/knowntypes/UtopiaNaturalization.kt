@@ -19,7 +19,7 @@ object UtopiaNaturalization {
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("Utopia Naturalization Certificate")
-            .addVcDocumentType(VCT)
+            .addVcDocumentType(vct = VCT, keyBound = true)
             .addVcAttribute(
                 DocumentAttributeType.String,
                 "family_name",

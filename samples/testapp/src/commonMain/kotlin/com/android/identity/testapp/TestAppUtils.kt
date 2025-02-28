@@ -12,7 +12,9 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509Cert
@@ -24,6 +26,7 @@ import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaMovieTicket
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.issuersigned.buildIssuerNamespaces
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
@@ -31,6 +34,7 @@ import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.sdjwt.Issuer
 import com.android.identity.sdjwt.SdJwtVcGenerator
 import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
+import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.sdjwt.util.JsonWebKey
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
@@ -38,6 +42,7 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
+import identitycredential.samples.testapp.generated.resources.movie_ticket_cart_art
 import identitycredential.samples.testapp.generated.resources.photo_id_card_art
 import identitycredential.samples.testapp.generated.resources.pid_card_art
 import kotlinx.datetime.Clock
@@ -64,6 +69,7 @@ object TestAppUtils {
     const val MDOC_CREDENTIAL_DOMAIN_NO_AUTH = "mdoc_credential_domain_no_auth"
     const val SDJWT_CREDENTIAL_DOMAIN_AUTH = "sdjwt_credential_domain_auth"
     const val SDJWT_CREDENTIAL_DOMAIN_NO_AUTH = "sdjwt_credential_domain_no_auth"
+    const val SDJWT_CREDENTIAL_DOMAIN_KEYLESS = "sdjwt_credential_domain_keyless"
 
     fun generateEncodedDeviceRequest(
         request: DocumentCannedRequest,
@@ -113,7 +119,8 @@ object TestAppUtils {
     val provisionedDocumentTypes = listOf(
         DrivingLicense.getDocumentType(),
         PhotoID.getDocumentType(),
-        EUPersonalID.getDocumentType()
+        EUPersonalID.getDocumentType(),
+        UtopiaMovieTicket.getDocumentType()
     )
 
     suspend fun provisionTestDocuments(
@@ -121,15 +128,18 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
+            curve: EcCurve,
             keyPurposes: Set<KeyPurpose>,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
-        dsCert: X509Cert
+        dsCert: X509Cert,
+        deviceKeyPurposes: Set<KeyPurpose>,
+        deviceKeyCurve: EcCurve,
     ) {
-        if (documentStore.listDocuments().size >= 4) {
+        if (documentStore.listDocuments().size >= 5) {
             // Assume documents are provisioned
             // TODO: do we want a more granular check
             return
@@ -140,6 +150,8 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
+            deviceKeyPurposes,
+            deviceKeyCurve,
             DrivingLicense.getDocumentType(),
             "Erika",
             "Erika's Driving License",
@@ -151,6 +163,8 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
+            deviceKeyPurposes,
+            deviceKeyCurve,
             PhotoID.getDocumentType(),
             "Erika",
             "Erika's Photo ID",
@@ -162,6 +176,8 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
+            deviceKeyPurposes,
+            deviceKeyCurve,
             PhotoID.getDocumentType(),
             "Erika #2",
             "Erika's Photo ID #2",
@@ -173,10 +189,25 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
+            deviceKeyPurposes,
+            deviceKeyCurve,
             EUPersonalID.getDocumentType(),
             "Erika",
             "Erika's EU PID",
             Res.drawable.pid_card_art
+        )
+        provisionDocument(
+            documentStore,
+            secureArea,
+            secureAreaCreateKeySettingsFunc,
+            dsKey,
+            dsCert,
+            deviceKeyPurposes,
+            deviceKeyCurve,
+            UtopiaMovieTicket.getDocumentType(),
+            "Erika",
+            "Erika's Movie Ticket",
+            Res.drawable.movie_ticket_cart_art
         )
     }
 
@@ -187,6 +218,7 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
+            curve: EcCurve,
             keyPurposes: Set<KeyPurpose>,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
@@ -194,6 +226,8 @@ object TestAppUtils {
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
+        deviceKeyPurposes: Set<KeyPurpose>,
+        deviceKeyCurve: EcCurve,
         documentType: DocumentType,
         givenNameOverride: String,
         displayName: String,
@@ -224,6 +258,8 @@ object TestAppUtils {
                 documentType = documentType,
                 secureArea = secureArea,
                 secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
+                deviceKeyCurve = deviceKeyCurve,
+                deviceKeyPurposes = deviceKeyPurposes,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
@@ -239,6 +275,8 @@ object TestAppUtils {
                 documentType = documentType,
                 secureArea = secureArea,
                 secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
+                deviceKeyCurve = deviceKeyCurve,
+                deviceKeyPurposes = deviceKeyPurposes,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
@@ -255,11 +293,14 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
+            curve: EcCurve,
             keyPurposes: Set<KeyPurpose>,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
+        deviceKeyPurposes: Set<KeyPurpose>,
+        deviceKeyCurve: EcCurve,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -299,7 +340,8 @@ object TestAppUtils {
                 docType = documentType.mdocDocumentType!!.docType,
                 createKeySettings = secureAreaCreateKeySettingsFunc(
                     "Challenge".encodeToByteString(),
-                    setOf(KeyPurpose.SIGN),
+                    deviceKeyCurve,
+                    deviceKeyPurposes,
                     userAuthenticationRequired,
                     validFrom,
                     validUntil
@@ -368,11 +410,14 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
+            curve: EcCurve,
             keyPurposes: Set<KeyPurpose>,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
+        deviceKeyPurposes: Set<KeyPurpose>,
+        deviceKeyCurve: EcCurve,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -400,30 +445,45 @@ object TestAppUtils {
             }
         }
 
-        for (domain in listOf(SDJWT_CREDENTIAL_DOMAIN_AUTH, SDJWT_CREDENTIAL_DOMAIN_NO_AUTH)) {
-            val userAuthenticationRequired = (domain == SDJWT_CREDENTIAL_DOMAIN_AUTH)
-
-            val credential = KeyBoundSdJwtVcCredential.create(
-                document = document,
-                asReplacementForIdentifier = null,
-                domain = domain,
-                secureArea = secureArea,
-                vct = documentType.vcDocumentType!!.type,
-                createKeySettings = secureAreaCreateKeySettingsFunc(
-                    "Challenge".encodeToByteString(),
-                    setOf(KeyPurpose.SIGN),
-                    userAuthenticationRequired,
-                    validFrom,
-                    validUntil
+        val domains = if (documentType.vcDocumentType!!.keyBound) {
+            listOf(SDJWT_CREDENTIAL_DOMAIN_AUTH, SDJWT_CREDENTIAL_DOMAIN_NO_AUTH)
+        } else {
+            listOf(SDJWT_CREDENTIAL_DOMAIN_KEYLESS)
+        }
+        for (domain in domains) {
+            val credential = if (documentType.vcDocumentType!!.keyBound) {
+                val userAuthenticationRequired = (domain == SDJWT_CREDENTIAL_DOMAIN_AUTH)
+                KeyBoundSdJwtVcCredential.create(
+                    document = document,
+                    asReplacementForIdentifier = null,
+                    domain = domain,
+                    secureArea = secureArea,
+                    vct = documentType.vcDocumentType!!.type,
+                    createKeySettings = secureAreaCreateKeySettingsFunc(
+                        "Challenge".encodeToByteString(),
+                        deviceKeyCurve,
+                        deviceKeyPurposes,
+                        userAuthenticationRequired,
+                        validFrom,
+                        validUntil
+                    )
                 )
-            )
+            } else {
+                KeylessSdJwtVcCredential.create(
+                    document = document,
+                    asReplacementForIdentifier = null,
+                    domain = domain,
+                    vct = documentType.vcDocumentType!!.type,
+                )
+            }
 
             val sdJwtVcGenerator = SdJwtVcGenerator(
                 vct = credential.vct,
                 payload = identityAttributes,
                 issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1"), // TODO
             )
-            sdJwtVcGenerator.publicKey = JsonWebKey(credential.getAttestation().publicKey)
+            sdJwtVcGenerator.publicKey =
+                (credential as? SecureAreaBoundCredential)?.let { JsonWebKey(it.getAttestation().publicKey) }
             sdJwtVcGenerator.timeSigned = signedAt
             sdJwtVcGenerator.timeValidityBegin = validFrom
             sdJwtVcGenerator.timeValidityEnd = validUntil

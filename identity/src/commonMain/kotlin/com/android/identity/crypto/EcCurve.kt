@@ -5,40 +5,48 @@ package com.android.identity.crypto
  *
  * All curve identifiers are from the
  * [IANA COSE registry](https://www.iana.org/assignments/cose/cose.xhtml).
+ *
+ * @property coseCurveIdentifier the COSE curve identifier.
+ * @property supportsSigning `true` if the curve supports Signing.
+ * @property supportsKeyAgreement `true` if the curve supports Key Agreement.
  */
-enum class EcCurve(val coseCurveIdentifier: Int) {
+enum class EcCurve(
+    val coseCurveIdentifier: Int,
+    val supportsSigning: Boolean,
+    val supportsKeyAgreement: Boolean,
+) {
     /** The curve identifier for P-256  */
-    P256(1),
+    P256(coseCurveIdentifier = 1, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for P-384  */
-    P384(2),
+    P384(coseCurveIdentifier = 2, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for P-521  */
-    P521(3),
+    P521(coseCurveIdentifier = 3, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for brainpoolP256r1  */
-    BRAINPOOLP256R1(256),
+    BRAINPOOLP256R1(coseCurveIdentifier = 256, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for brainpoolP320r1  */
-    BRAINPOOLP320R1(257),
+    BRAINPOOLP320R1(coseCurveIdentifier = 257, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for brainpoolP384r1  */
-    BRAINPOOLP384R1(258),
+    BRAINPOOLP384R1(coseCurveIdentifier = 258, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for brainpoolP512r1  */
-    BRAINPOOLP512R1(259),
+    BRAINPOOLP512R1(coseCurveIdentifier = 259, supportsSigning = true, supportsKeyAgreement = true),
 
     /** The curve identifier for Ed25519 (EdDSA only)  */
-    ED25519(6),
+    ED25519(coseCurveIdentifier = 6, supportsSigning = true, supportsKeyAgreement = false),
 
     /** The curve identifier for X25519 (ECDH only)  */
-    X25519(4),
+    X25519(coseCurveIdentifier = 4, supportsSigning = false, supportsKeyAgreement = true),
 
     /** The curve identifier for Ed448 (EdDSA only)  */
-    ED448(7),
+    ED448(coseCurveIdentifier = 7, supportsSigning = true, supportsKeyAgreement = false),
 
     /** The curve identifier for X448 (ECDH only)  */
-    X448(5);
+    X448(coseCurveIdentifier =5, supportsSigning = false, supportsKeyAgreement = true);
 
     companion object {
         private val coseToJwk = mapOf(

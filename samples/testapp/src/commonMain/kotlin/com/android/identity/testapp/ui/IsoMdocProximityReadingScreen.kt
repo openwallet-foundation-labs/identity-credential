@@ -144,6 +144,7 @@ fun IsoMdocProximityReadingScreen(
     val readerSessionTranscript = remember { mutableStateOf<ByteArray?>(null) }
     val readerMostRecentDeviceResponse = remember { mutableStateOf<ByteArray?>(null) }
     val connectionMethodPickerData = remember { mutableStateOf<ConnectionMethodPickerData?>(null) }
+    val eReaderKey = remember { mutableStateOf<EcPrivateKey?>(null) }
 
     var readerJob by remember { mutableStateOf<Job?>(null) }
 
@@ -235,6 +236,7 @@ fun IsoMdocProximityReadingScreen(
                                 readerSessionEncryption = readerSessionEncryption,
                                 readerSessionTranscript = readerSessionTranscript,
                                 readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                                eReaderKey = eReaderKey,
                                 selectedRequest = selectedRequest,
                                 selectConnectionMethod = { connectionMethods ->
                                     if (app.settingsModel.readerAutomaticallySelectTransport.value) {
@@ -293,7 +295,7 @@ fun IsoMdocProximityReadingScreen(
                     modifier = Modifier.weight(1.0f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript)
+                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript, eReaderKey.value!!)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -397,7 +399,7 @@ fun IsoMdocProximityReadingScreen(
                     modifier = Modifier.weight(1.0f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript)
+                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript, eReaderKey.value!!)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Column(
@@ -501,6 +503,7 @@ fun IsoMdocProximityReadingScreen(
                                                 readerSessionEncryption = readerSessionEncryption,
                                                 readerSessionTranscript = readerSessionTranscript,
                                                 readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                                                eReaderKey = eReaderKey,
                                                 selectedRequest = selectedRequest,
                                                 selectConnectionMethod = { connectionMethods ->
                                                     if (app.settingsModel.readerAutomaticallySelectTransport.value) {
@@ -545,12 +548,14 @@ private suspend fun doReaderFlow(
     readerSessionEncryption: MutableState<SessionEncryption?>,
     readerSessionTranscript: MutableState<ByteArray?>,
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
+    eReaderKey: MutableState<EcPrivateKey?>,
     selectedRequest: MutableState<RequestPickerEntry>,
     selectConnectionMethod: suspend (connectionMethods: List<ConnectionMethod>) -> ConnectionMethod?
 ) {
     val deviceEngagement = EngagementParser(encodedDeviceEngagement.toByteArray()).parse()
     val eDeviceKey = deviceEngagement.eSenderKey
-    val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
+    Logger.i(TAG, "Using curve ${eDeviceKey.curve.name} for session encryption")
+    eReaderKey.value = Crypto.createEcPrivateKey(eDeviceKey.curve)
 
     val transport = if (existingTransport != null) {
         existingTransport
@@ -590,7 +595,7 @@ private suspend fun doReaderFlow(
                             readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
                             selectedRequest = selectedRequest,
                             eDeviceKey = eDeviceKey,
-                            eReaderKey = eReaderKey,
+                            eReaderKey = eReaderKey.value!!,
                         )
                         true
                     }
@@ -619,7 +624,7 @@ private suspend fun doReaderFlow(
         readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
         selectedRequest = selectedRequest,
         eDeviceKey = eDeviceKey,
-        eReaderKey = eReaderKey,
+        eReaderKey = eReaderKey.value!!,
     )
 }
 
@@ -782,6 +787,7 @@ private fun ShowReaderResults(
     app: App,
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
     readerSessionTranscript: MutableState<ByteArray?>,
+    eReaderKey: EcPrivateKey
 ) {
     val deviceResponse1 = readerMostRecentDeviceResponse.value
     if (deviceResponse1 == null || deviceResponse1.isEmpty()) {
@@ -791,7 +797,11 @@ private fun ShowReaderResults(
             fontWeight = FontWeight.Bold,
         )
     } else {
-        val parser = DeviceResponseParser(deviceResponse1, readerSessionTranscript.value!!)
+        val parser = DeviceResponseParser(
+            encodedDeviceResponse = deviceResponse1,
+            encodedSessionTranscript = readerSessionTranscript.value!!,
+        )
+        parser.setEphemeralReaderKey(eReaderKey)
         val deviceResponse2 = parser.parse()
         if (deviceResponse2.documents.isEmpty()) {
             Text(

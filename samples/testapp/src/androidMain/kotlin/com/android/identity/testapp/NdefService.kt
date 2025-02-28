@@ -109,7 +109,7 @@ class NdefService: HostApduService() {
         listenForCancellationFromUiJob?.cancel()
         listenForCancellationFromUiJob = null
 
-        val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val eDeviceKey = Crypto.createEcPrivateKey(settingsModel.presentmentSessionEncryptionCurve.value)
         val timeStarted = Clock.System.now()
 
         presentmentModel.reset()

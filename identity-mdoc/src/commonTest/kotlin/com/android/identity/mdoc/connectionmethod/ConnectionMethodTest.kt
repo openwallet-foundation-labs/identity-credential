@@ -274,7 +274,7 @@ class ConnectionMethodTest {
         )
         val combined = ConnectionMethod.combine(disambiguated)
         assertEquals(2, combined.size.toLong())
-        val ble = combined[1] as ConnectionMethodBle
+        val ble = combined[0] as ConnectionMethodBle
         assertTrue(ble.supportsPeripheralServerMode)
         assertTrue(ble.supportsCentralClientMode)
         assertEquals(uuid, ble.peripheralServerModeUuid)

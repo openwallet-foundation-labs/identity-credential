@@ -154,6 +154,7 @@ actual object Crypto {
         key: EcPrivateKey,
         otherKey: EcPublicKey
     ): ByteArray {
+        require(otherKey.curve == key.curve) { "Other key for ECDH is not ${key.curve.name}" }
         val otherKeyRaw = when (otherKey) {
             is EcPublicKeyDoubleCoordinate -> otherKey.x + otherKey.y
             is EcPublicKeyOkp -> otherKey.x

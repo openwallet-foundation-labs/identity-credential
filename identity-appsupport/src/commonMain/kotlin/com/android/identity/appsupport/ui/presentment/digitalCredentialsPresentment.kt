@@ -35,6 +35,7 @@ import com.android.identity.request.VcRequestedClaim
 import com.android.identity.sdjwt.SdJwtVerifiableCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.sdjwt.util.JsonWebKey
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
@@ -894,13 +895,21 @@ private suspend fun calcDocument(
 
     documentGenerator.setIssuerNamespaces(issuerNamespaces.filter(requestedClaims))
 
+    // TODO: support MAC keys from v1.1 request and use setDeviceNamespacesMac() when possible
+    //   depending on the value of PresentmentSource.preferSignatureToKeyAgreement(). See also
+    //   calcDocument in mdocPresentment.kt.
+    //
     val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
-    documentGenerator.setDeviceNamespacesSignature(
-        NameSpacedData.Builder().build(),
-        credential.secureArea,
-        credential.alias,
-        KeyUnlockInteractive(),
-    )
+    if (!keyInfo.keyPurposes.contains(KeyPurpose.SIGN)) {
+        throw IllegalStateException("KeyPurpose.SIGN is required for W3C DC API and key has purposes ${keyInfo.keyPurposes}")
+    } else {
+        documentGenerator.setDeviceNamespacesSignature(
+            dataElements = NameSpacedData.Builder().build(),
+            secureArea = credential.secureArea,
+            keyAlias = credential.alias,
+            keyUnlockData = KeyUnlockInteractive(),
+        )
+    }
 
     return documentGenerator.generate()
 }

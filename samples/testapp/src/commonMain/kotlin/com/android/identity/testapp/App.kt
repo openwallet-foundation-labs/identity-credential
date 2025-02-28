@@ -42,6 +42,7 @@ import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.PhotoID
+import com.android.identity.documenttype.knowntypes.UtopiaMovieTicket
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.mdoc.vical.SignedVical
@@ -83,6 +84,7 @@ import com.android.identity.testapp.ui.VerifierType
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
+import com.android.identity.util.toHex
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.back_button
 import io.ktor.http.decodeURLPart
@@ -121,9 +123,6 @@ class App private constructor() {
     lateinit var iacaKey: EcPrivateKey
     lateinit var iacaCert: X509Cert
 
-    lateinit var dsKey: EcPrivateKey
-    lateinit var dsCert: X509Cert
-
     lateinit var readerRootKey: EcPrivateKey
     lateinit var readerRootCert: X509Cert
 
@@ -143,7 +142,6 @@ class App private constructor() {
             Pair(::documentModelInit, "documentModelInit"),
             Pair(::keyStorageInit, "keyStorageInit"),
             Pair(::iacaInit, "iacaInit"),
-            Pair(::dsInit, "dsInit"),
             Pair(::readerRootInit, "readerRootInit"),
             Pair(::readerInit, "readerInit"),
             Pair(::trustManagersInit, "trustManagersInit"),
@@ -168,6 +166,7 @@ class App private constructor() {
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
+        documentTypeRepository.addDocumentType(UtopiaMovieTicket.getDocumentType())
     }
 
     private suspend fun documentStoreInit() {
@@ -195,10 +194,10 @@ class App private constructor() {
             document -> MdocCredential(document)
         }
         credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
-                document -> KeyBoundSdJwtVcCredential(document)
+            document -> KeyBoundSdJwtVcCredential(document)
         }
         credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential::class) {
-                document -> KeylessSdJwtVcCredential(document)
+            document -> KeylessSdJwtVcCredential(document)
         }
         documentStore = DocumentStore(
             storage = platformStorage(),
@@ -319,29 +318,6 @@ class App private constructor() {
             }
     }
 
-    private suspend fun dsInit() {
-        dsKey = keyStorage.get("dsKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
-            ?: run {
-                val key = Crypto.createEcPrivateKey(EcCurve.P256)
-                keyStorage.insert("dsKey", ByteString(Cbor.encode(key.toDataItem())))
-                key
-            }
-        dsCert = keyStorage.get("dsCert")?.let { X509Cert.fromDataItem(Cbor.decode(it.toByteArray())) }
-            ?: run {
-                val cert = MdocUtil.generateDsCertificate(
-                    iacaCert = iacaCert,
-                    iacaKey = iacaKey,
-                    dsKey = dsKey.publicKey,
-                    subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST DS"),
-                    serial = ASN1Integer(1L),
-                    validFrom = certsValidFrom,
-                    validUntil = certsValidUntil,
-                )
-                keyStorage.insert("dsCert", ByteString(Cbor.encode(cert.toDataItem())))
-                cert
-            }
-    }
-
     private suspend fun readerRootInit() {
         readerRootKey = keyStorage.get("readerRootKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
             ?: run {
@@ -383,7 +359,6 @@ class App private constructor() {
         issuerTrustManager = TrustManager()
         val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
         for (certInfo in signedVical.vical.certificateInfos) {
-            println("certInfo: ${certInfo.certificate.subject.name}")
             issuerTrustManager.addTrustPoint(
                 TrustPoint(
                     certInfo.certificate,
@@ -573,8 +548,8 @@ class App private constructor() {
                             documentModel = documentModel,
                             softwareSecureArea = softwareSecureArea,
                             settingsModel = settingsModel,
-                            dsKey = dsKey,
-                            dsCert = dsCert,
+                            iacaKey = iacaKey,
+                            iacaCert = iacaCert,
                             showToast = { message: String -> showToast(message) },
                             onViewDocument = { documentId ->
                                 navController.navigate(DocumentViewerDestination.route + "/${documentId}")

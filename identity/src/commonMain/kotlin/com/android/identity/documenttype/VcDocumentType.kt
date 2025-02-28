@@ -24,7 +24,8 @@ import kotlinx.serialization.json.JsonElement
  */
 class VcDocumentType private constructor(
     val type: String,
-    val claims: Map<String, DocumentAttribute>
+    val claims: Map<String, DocumentAttribute>,
+    val keyBound: Boolean
 ) {
 
     /**
@@ -32,7 +33,8 @@ class VcDocumentType private constructor(
      */
     data class Builder(
         val type: String,
-        val claims: MutableMap<String, DocumentAttribute> = mutableMapOf()
+        val claims: MutableMap<String, DocumentAttribute> = mutableMapOf(),
+        val keyBound: Boolean = true,
     ) {
         /**
          * Add a claim to the metadata of the VC Document Type.
@@ -60,6 +62,6 @@ class VcDocumentType private constructor(
         /**
          * Build the [VcDocumentType].
          */
-        fun build() = VcDocumentType(type, claims)
+        fun build() = VcDocumentType(type, claims, keyBound)
     }
 }

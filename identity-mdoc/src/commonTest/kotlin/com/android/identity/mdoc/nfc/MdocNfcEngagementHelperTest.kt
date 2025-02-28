@@ -113,9 +113,9 @@ class MdocNfcEngagementHelperTest {
                 CommandApdu(cla=0, ins=164, p1=0, p2=12, payload=ByteString(size=2 hex=e104), le=0)
                 ResponseApdu(status=36864, payload=ByteString(size=0))
                 CommandApdu(cla=0, ins=176, p1=0, p2=0, payload=ByteString(size=0), le=2)
-                ResponseApdu(status=36864, payload=ByteString(size=2 hex=0146))
-                CommandApdu(cla=0, ins=176, p1=0, p2=2, payload=ByteString(size=0), le=326)
-                ResponseApdu(status=36864, payload=ByteString(size=326 hex=91022d487315910209616301013001046d646f63110209616301013001046d646f6351020b616301036e666301046d646f631c1e580469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a20063312e30018201d818584ba4010220012158207104f7e2c2e95ca76482c0c963d454b7e5d053c5b59ce89d00ff7c7d7ab6ff7d225820f442821292c2453ec67c75233ea56e1734c211ae26b259fdf232b5b3d82b1ba21a2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c011107b66eef55ee782ea2514bb6a1c42ad5b31a2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c001107b66eef55ee782ea2514bb6a1c42ad5b35c110a0369736f2e6f72673a31383031333a6e66636e6663010301ffff0402010000))
+                ResponseApdu(status=36864, payload=ByteString(size=2 hex=00fe))
+                CommandApdu(cla=0, ins=176, p1=0, p2=2, payload=ByteString(size=0), le=254)
+                ResponseApdu(status=36864, payload=ByteString(size=254 hex=91021f487315910209616301013001046d646f6351020b616301036e666301046d646f631c1e580469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a20063312e30018201d818584ba4010220012158207104f7e2c2e95ca76482c0c963d454b7e5d053c5b59ce89d00ff7c7d7ab6ff7d225820f442821292c2453ec67c75233ea56e1734c211ae26b259fdf232b5b3d82b1ba21a2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c031107b66eef55ee782ea2514bb6a1c42ad5b35c110a0369736f2e6f72673a31383031333a6e66636e6663010301ffff0402010000))
             """.trimIndent().trim(),
             tag.transcript.toString().trim()
         )
@@ -169,7 +169,7 @@ class MdocNfcEngagementHelperTest {
                 ResponseApdu(status=36864, payload=ByteString(size=2 hex=0006))
                 CommandApdu(cla=0, ins=176, p1=0, p2=2, payload=ByteString(size=0), le=6)
                 ResponseApdu(status=36864, payload=ByteString(size=6 hex=d10201546500))
-                CommandApdu(cla=0, ins=214, p1=0, p2=0, payload=ByteString(size=237 hex=00eb91021e487215910204616301013000110204616301013000510206616301036e6663001c1e060a69736f2e6f72673a31383031333a726561646572656e676167656d656e746d646f63726561646572a10063312e301a2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c001107b66eef55ee782ea2514bb6a1c42ad5b31a2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c011107b66eef55ee782ea2514bb6a1c42ad5b35c110a0369736f2e6f72673a31383031333a6e66636e6663010301ffff0402010000), le=0)
+                CommandApdu(cla=0, ins=214, p1=0, p2=0, payload=ByteString(size=170 hex=00a8910215487215910204616301013000510206616301036e6663001c1e060a69736f2e6f72673a31383031333a726561646572656e676167656d656e746d646f63726561646572a10063312e301a2015016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c031107b66eef55ee782ea2514bb6a1c42ad5b35c110a0369736f2e6f72673a31383031333a6e66636e6663010301ffff0402010000), le=0)
                 ResponseApdu(status=36864, payload=ByteString(size=0))
                 CommandApdu(cla=0, ins=176, p1=0, p2=0, payload=ByteString(size=0), le=2)
                 ResponseApdu(status=36864, payload=ByteString(size=2 hex=00ba))
@@ -178,6 +178,93 @@ class MdocNfcEngagementHelperTest {
             """.trimIndent().trim(),
             tag.transcript.toString().trim()
         )
+    }
+
+    @Test
+    fun testStaticBleDifferentUUIDs() = runTest {
+        val bleUuid1 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
+        val bleUuid2 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb7")
+        val staticHandoverConnectionMethods = listOf(
+            ConnectionMethodBle(
+                supportsPeripheralServerMode = false,
+                supportsCentralClientMode = true,
+                peripheralServerModeUuid = null,
+                centralClientModeUuid = bleUuid1
+            ),
+            ConnectionMethodBle(
+                supportsPeripheralServerMode = true,
+                supportsCentralClientMode = false,
+                peripheralServerModeUuid = bleUuid2,
+                centralClientModeUuid = null
+            ),
+        )
+
+        var errorFromEngagementHelper: Throwable? = null
+        val eDeviceKeyPub = getEDeviceKeyPub()
+        val engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKeyPub,
+            onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                assertEquals(staticHandoverConnectionMethods, connectionMethods)
+            },
+            onError = { error ->
+                errorFromEngagementHelper = error
+            },
+            staticHandoverMethods = staticHandoverConnectionMethods,
+        )
+
+        val e = assertFailsWith<NfcCommandFailedException> {
+            val tag = LoopbackIsoTag(engagementHelper)
+            val result = mdocReaderNfcHandover(
+                tag = tag,
+                negotiatedHandoverConnectionMethods = staticHandoverConnectionMethods,
+            )
+        }
+        assertEquals("Error selecting file, status 6f00", e.message)
+
+        assertNotNull(errorFromEngagementHelper)
+        assertEquals("Error processing APDU: UUIDs for both BLE modes are not the same", errorFromEngagementHelper.message)
+    }
+
+    @Test
+    fun testNegotiatedBleDifferentUUIDs() = runTest {
+        val bleUuid1 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
+        val bleUuid2 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb7")
+        val connectionMethods = listOf(
+            ConnectionMethodBle(
+                supportsPeripheralServerMode = false,
+                supportsCentralClientMode = true,
+                peripheralServerModeUuid = null,
+                centralClientModeUuid = bleUuid1
+            ),
+            ConnectionMethodBle(
+                supportsPeripheralServerMode = true,
+                supportsCentralClientMode = false,
+                peripheralServerModeUuid = bleUuid2,
+                centralClientModeUuid = null
+            ),
+        )
+
+        val eDeviceKeyPub = getEDeviceKeyPub()
+        val engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKeyPub,
+            onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                assertEquals(1, connectionMethods.size)
+            },
+            onError = { error ->
+                fail("onError should not be called with $error")
+            },
+            negotiatedHandoverPicker = { methods -> methods.first() }
+        )
+
+        // This should throw b/c the UUIDs are different..
+        val tag = LoopbackIsoTag(engagementHelper)
+        val e = assertFailsWith(IllegalArgumentException::class) {
+            mdocReaderNfcHandover(
+                tag = tag,
+                negotiatedHandoverConnectionMethods = connectionMethods,
+            )
+        }
+        assertEquals("UUIDs for both BLE modes are not the same", e.message)
     }
 
     private fun testNfcEngagementHelper(

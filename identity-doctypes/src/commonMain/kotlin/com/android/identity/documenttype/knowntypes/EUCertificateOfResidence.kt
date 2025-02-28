@@ -24,7 +24,7 @@ object EUCertificateOfResidence {
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("EU Certificate of Residency")
             .addMdocDocumentType(DOCTYPE)
-            .addVcDocumentType(VCT)
+            .addVcDocumentType(vct = VCT, keyBound = true)
             .addAttribute(
                 DocumentAttributeType.String,
                 "family_name",

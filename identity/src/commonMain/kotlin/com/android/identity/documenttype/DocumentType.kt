@@ -71,10 +71,14 @@ class DocumentType private constructor(
         /**
          * Initialize the [vcBuilder].
          *
-         * @param vcType the type of the VC Document Type.
+         * @param vct the Verifiable Credential Type.
+         * @param keyBound whether credentials should be bound to a key residing on the device.
          */
-        fun addVcDocumentType(vcType: String) = apply {
-            vcBuilder = VcDocumentType.Builder(vcType)
+        fun addVcDocumentType(
+            vct: String,
+            keyBound: Boolean,
+        ) = apply {
+            vcBuilder = VcDocumentType.Builder(vct, keyBound = keyBound)
         }
 
         /**

@@ -5,34 +5,27 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.android.identity.cbor.Cbor
+import com.android.identity.cose.Cose
+import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.SecureAreaBoundCredential
-import com.android.identity.crypto.X509CertChain
 import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
-import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.testapp.DocumentModel
 import com.android.identity.util.toBase64Url
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.toLocalDateTime
 import org.multipaz.compose.datetime.formattedDateTime
 
 @Composable
@@ -46,7 +39,7 @@ fun CredentialViewerScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val documentInfo = documentModel.documentInfos[documentId]
-    val credential = documentInfo?.credentials?.find { it.identifier == credentialId  }
+    val credentialInfo = documentInfo?.credentialInfos?.find { it.credential.identifier == credentialId  }
 
     val scrollState = rememberScrollState()
     Column(
@@ -56,28 +49,65 @@ fun CredentialViewerScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (credential == null) {
+        if (credentialInfo == null) {
             Text("No credential for documentId ${documentId} credentialId ${credentialId}")
         } else {
-            KeyValuePairText("Class", credential::class.simpleName.toString())
-            KeyValuePairText("Identifier", credential.identifier)
-            KeyValuePairText("Domain", credential.domain)
-            KeyValuePairText("Valid From", formattedDateTime(credential.validFrom))
-            KeyValuePairText("Valid Until", formattedDateTime(credential.validUntil))
-            KeyValuePairText("Certified", credential.isCertified.toString())
-            KeyValuePairText("Usage Count", credential.usageCount.toString())
-            when (credential) {
+            KeyValuePairText("Class", credentialInfo.credential::class.simpleName.toString())
+            KeyValuePairText("Identifier", credentialInfo.credential.identifier)
+            KeyValuePairText("Domain", credentialInfo.credential.domain)
+            KeyValuePairText("Valid From", formattedDateTime(credentialInfo.credential.validFrom))
+            KeyValuePairText("Valid Until", formattedDateTime(credentialInfo.credential.validUntil))
+            KeyValuePairText("Certified", if (credentialInfo.credential.isCertified) "Yes" else "No")
+            KeyValuePairText("Usage Count", credentialInfo.credential.usageCount.toString())
+            when (credentialInfo.credential) {
                 is MdocCredential -> {
-                    KeyValuePairText("ISO mdoc DocType", credential.docType)
+                    KeyValuePairText("ISO mdoc DocType", credentialInfo.credential.docType)
+                    KeyValuePairText(
+                        keyText = "ISO mdoc DS Key Certificate",
+                        valueText = buildAnnotatedString {
+                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
+                                append("Click for details")
+                            }
+                        },
+                        modifier = Modifier.clickable {
+                            coroutineScope.launch {
+                                val issuerSigned = Cbor.decode(credentialInfo.credential.issuerProvidedData)
+                                val issuerAuthCoseSign1 = issuerSigned["issuerAuth"].asCoseSign1
+                                val certChain =
+                                    issuerAuthCoseSign1.unprotectedHeaders[
+                                        CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)
+                                    ]!!.asX509CertChain
+                                onViewCertificateChain(Cbor.encode(certChain.toDataItem()).toBase64Url())
+                            }
+                        }
+                    )
                 }
                 is SdJwtVcCredential -> {
-                    KeyValuePairText("Verifiable Credential Type", credential.vct)
+                    KeyValuePairText("Verifiable Credential Type", credentialInfo.credential.vct)
+                    // TODO: Show cert chain for key used to sign issuer-signed data. Involves
+                    //  getting this over the network as specified in section 5 "JWT VC Issuer Metadata"
+                    //  of https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/ ... how annoying
                 }
             }
 
-            if (credential is SecureAreaBoundCredential) {
-                KeyValuePairText("Secure Area", credential.secureArea.displayName)
-                KeyValuePairText("Secure Area Identifier", credential.secureArea.identifier)
+            if (credentialInfo.credential is SecureAreaBoundCredential) {
+                KeyValuePairText("Secure Area", credentialInfo.credential.secureArea.displayName)
+                KeyValuePairText("Secure Area Identifier", credentialInfo.credential.secureArea.identifier)
+                KeyValuePairText("Device Key Curve", credentialInfo.keyInfo!!.publicKey.curve.name)
+                KeyValuePairText("Device Key Purposes", credentialInfo.keyInfo.keyPurposes.toString())
+                KeyValuePairText("Device Key Invalidated",
+                    buildAnnotatedString {
+                        if (credentialInfo.keyInvalidated) {
+                            withStyle(style = SpanStyle(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )) {
+                                append("YES")
+                            }
+                        } else {
+                            append("No")
+                        }
+                    })
                 KeyValuePairText(
                     keyText = "Device Key Attestation",
                     valueText = buildAnnotatedString {
@@ -87,7 +117,7 @@ fun CredentialViewerScreen(
                     },
                     modifier = Modifier.clickable {
                         coroutineScope.launch {
-                            val attestation = credential.getAttestation()
+                            val attestation = credentialInfo.credential.getAttestation()
                             if (attestation.certChain != null) {
                                 onViewCertificateChain(Cbor.encode(attestation.certChain!!.toDataItem()).toBase64Url())
                             } else {

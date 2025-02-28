@@ -49,9 +49,32 @@ interface PresentmentSource {
      *
      * @param credential the credential being presented.
      * @param request the request.
-     * @return `true` if the consent prompt should be shown, `false` otherwise
+     * @return `true` if the consent prompt should be shown, `false` otherwise.
      */
     fun shouldShowConsentPrompt(
+        credential: Credential,
+        request: Request,
+    ): Boolean
+
+    /**
+     * Function to determine if a Signature should be used for the response if both
+     * Key Agreement and Signatures are possible options.
+     *
+     * Key Agreement provides better privacy to the credential holder because it does not
+     * require producing a potentially non-repudiable signature over reader-provided data.
+     * The holder can always deny the MAC value to a third party because the reader
+     * could have produced it by itself.
+     *
+     * In some cases the reader might prefer a Signature to get proof that the credential
+     * holder really participated in the transaction. This function provides a mechanism
+     * for the holder to honor such a request. The request from the reader to express
+     * this preference would need to be provided out-of-band by the reader.
+     *
+     * @param credential the credential being presented.
+     * @param request the request.
+     * @return `true` to always use signatures even if key agreement is possible.
+     */
+    fun shouldPreferSignatureToKeyAgreement(
         credential: Credential,
         request: Request,
     ): Boolean
