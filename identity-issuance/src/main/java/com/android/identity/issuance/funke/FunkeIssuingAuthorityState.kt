@@ -759,11 +759,11 @@ class FunkeIssuingAuthorityState(
         val builder = NameSpacedData.Builder()
         for ((namespaceName, namespace) in documentType.mdocDocumentType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {
-                if (dataElement.attribute.sampleValue != null) {
+                if (dataElement.attribute.sampleValueMdoc != null) {
                     builder.putEntry(
                         namespaceName,
                         dataElementName,
-                        Cbor.encode(dataElement.attribute.sampleValue!!)
+                        Cbor.encode(dataElement.attribute.sampleValueMdoc!!)
                     )
                 }
             }

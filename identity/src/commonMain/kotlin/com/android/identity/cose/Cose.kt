@@ -4,9 +4,9 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.toDataItem
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
@@ -172,7 +172,6 @@ object Cose {
      * @param alias the alias for the private key to use to sign with.
      * @param message the data to sign.
      * @param includeMessageInPayload whether to include the message in the COSE_Sign1 payload.
-     * @param signatureAlgorithm the signature algorithm to use.
      * @param protectedHeaders the protected headers to include.
      * @param unprotectedHeaders the unprotected headers to include.
      * @param keyUnlockData a [KeyUnlockData] for unlocking the key in the [SecureArea].
@@ -182,23 +181,24 @@ object Cose {
         alias: String,
         message: ByteArray,
         includeMessageInPayload: Boolean,
-        signatureAlgorithm: Algorithm,
         protectedHeaders: Map<CoseLabel, DataItem>,
         unprotectedHeaders: Map<CoseLabel, DataItem>,
         keyUnlockData: KeyUnlockData?
     ): CoseSign1 {
-        val encodedProtectedHeaders = if (protectedHeaders.isNotEmpty()) {
-            val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
-            Cbor.encode(phb.end().build())
-        } else {
-            byteArrayOf()
-        }
+        val adjustedProtectedHeaders = mutableMapOf<CoseLabel, DataItem>()
+        adjustedProtectedHeaders.putAll(protectedHeaders)
+        val keyInfo = secureArea.getKeyInfo(alias)
+        adjustedProtectedHeaders[CoseNumberLabel(COSE_LABEL_ALG)] =
+            keyInfo.signingAlgorithm.coseAlgorithmIdentifier.toDataItem()
+
+        val phb = CborMap.builder()
+        adjustedProtectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
+        val encodedProtectedHeaders = Cbor.encode(phb.end().build())
         val toBeSigned = coseBuildToBeSigned(encodedProtectedHeaders, message)
-        val signature = secureArea.sign(alias, signatureAlgorithm, toBeSigned, keyUnlockData)
+        val signature = secureArea.sign(alias, toBeSigned, keyUnlockData)
 
         return CoseSign1(
-            protectedHeaders = protectedHeaders,
+            protectedHeaders = adjustedProtectedHeaders.toMap(),
             unprotectedHeaders = unprotectedHeaders,
             signature = signature.toCoseEncoded(),
             payload = if (includeMessageInPayload) message else null

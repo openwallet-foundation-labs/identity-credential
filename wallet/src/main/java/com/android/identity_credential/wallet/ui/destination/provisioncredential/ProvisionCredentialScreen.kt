@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.request.Claim
+import com.android.identity.claim.Claim
 import com.android.identity.request.Requester
 import com.android.identity.credential.Credential
 import com.android.identity.crypto.Algorithm
@@ -52,8 +52,10 @@ import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
+import com.android.identity.request.MdocRequestedClaim
+import com.android.identity.request.RequestedClaim
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
@@ -397,7 +399,7 @@ suspend fun openid4VpPresentation(
             .add(Pair(name, intentToRetain))
     }
 
-    val claims = MdocUtil.generateClaims(
+    val requestedClaims = MdocUtil.generateRequestedClaims(
         docType,
         requestedData,
         walletApp.documentTypeRepository,
@@ -413,7 +415,7 @@ suspend fun openid4VpPresentation(
     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(
         fragmentActivity,
         credential,
-        claims,
+        requestedClaims,
         null,
         originUri,
         encodedSessionTranscript
@@ -474,7 +476,7 @@ private fun maybeEncryptJwtResponse(
 private suspend fun showPresentmentFlowAndGetDeviceResponse(
     fragmentActivity: FragmentActivity,
     mdocCredential: MdocCredential,
-    claims: List<Claim>,
+    requestedClaims: List<RequestedClaim>,
     trustPoint: TrustPoint?,
     websiteOrigin: String?,
     encodedSessionTranscript: ByteArray,
@@ -483,7 +485,7 @@ private suspend fun showPresentmentFlowAndGetDeviceResponse(
     @Suppress("UNCHECKED_CAST")
     val request = MdocRequest(
         requester = Requester(websiteOrigin = websiteOrigin),
-        claims = claims as List<MdocClaim>,
+        requestedClaims = requestedClaims as List<MdocRequestedClaim>,
         docType = mdocCredential.docType
     )
     val documentCborBytes = showMdocPresentmentFlow(

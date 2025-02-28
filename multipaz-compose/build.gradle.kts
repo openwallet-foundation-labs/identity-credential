@@ -56,8 +56,10 @@ kotlin {
 
                 implementation(project(":identity"))
                 implementation(project(":identity-mdoc"))
+                implementation(project(":identity-sdjwt"))
                 implementation(project(":identity-appsupport"))
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
                 implementation(libs.qrose)
                 implementation(libs.easyqrscan)
                 implementation(libs.kotlinx.io.core)

@@ -7,6 +7,9 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 
 /**
  * Object containing the metadata of the German ID Document Type.
@@ -30,7 +33,7 @@ object GermanPersonalID {
                 "Family Name",
                 "Current last name(s), surname(s), or primary identifier of the PID holder",
                 Icon.PERSON,
-                SampleData.FAMILY_NAME.toDataItem()
+                JsonPrimitive(SampleData.FAMILY_NAME)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -38,7 +41,7 @@ object GermanPersonalID {
                 "Given Names",
                 "Current first name(s), other name(s), or secondary identifier of the PID holder",
                 Icon.PERSON,
-                SampleData.GIVEN_NAME.toDataItem()
+                JsonPrimitive(SampleData.GIVEN_NAME)
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -46,7 +49,7 @@ object GermanPersonalID {
                 "Date of Birth",
                 "Day, month, and year on which the PID holder was born. If unknown, approximate date of birth.",
                 Icon.TODAY,
-                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
+                JsonPrimitive(SampleData.BIRTH_DATE)
             )
             .addVcAttribute(
                 DocumentAttributeType.Number,
@@ -54,7 +57,7 @@ object GermanPersonalID {
                 "Age in Years",
                 "The age of the PID holder in years",
                 Icon.TODAY,
-                SampleData.AGE_IN_YEARS.toDataItem()
+                JsonPrimitive(SampleData.AGE_IN_YEARS)
             )
             .addVcAttribute(
                 DocumentAttributeType.Number,
@@ -62,7 +65,7 @@ object GermanPersonalID {
                 "Year of Birth",
                 "The year when the PID holder was born",
                 Icon.TODAY,
-                SampleData.AGE_BIRTH_YEAR.toDataItem()
+                JsonPrimitive(SampleData.AGE_BIRTH_YEAR)
             )
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
@@ -70,7 +73,7 @@ object GermanPersonalID {
                 "Older Than 12",
                 "Age over 12?",
                 Icon.TODAY,
-                SampleData.AGE_OVER.toDataItem()
+                JsonPrimitive(SampleData.AGE_OVER)
             )
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
@@ -78,7 +81,7 @@ object GermanPersonalID {
                 "Older Than 14",
                 "Age over 14?",
                 Icon.TODAY,
-                SampleData.AGE_OVER.toDataItem()
+                JsonPrimitive(SampleData.AGE_OVER)
             )
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
@@ -86,15 +89,16 @@ object GermanPersonalID {
                 "Older Than 16",
                 "Age over 16?",
                 Icon.TODAY,
-                SampleData.AGE_OVER_16.toDataItem()
+                JsonPrimitive(SampleData.AGE_OVER_16)
             )
+            // TODO: nest in age_equal_or_over object
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
                 "18",
                 "Older Than 18",
                 "Age over 18?",
                 Icon.TODAY,
-                SampleData.AGE_OVER_18.toDataItem()
+                JsonPrimitive(SampleData.AGE_OVER_18)
             )
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
@@ -102,7 +106,7 @@ object GermanPersonalID {
                 "Older Than 21",
                 "Age over 21?",
                 Icon.TODAY,
-                SampleData.AGE_OVER_21.toDataItem()
+                JsonPrimitive(SampleData.AGE_OVER_21)
             )
             .addVcAttribute(
                 DocumentAttributeType.Boolean,
@@ -110,7 +114,7 @@ object GermanPersonalID {
                 "Older Than 65",
                 "Age over 65?",
                 Icon.TODAY,
-                SampleData.AGE_OVER.toDataItem()
+                JsonPrimitive(SampleData.AGE_OVER_65)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -118,7 +122,7 @@ object GermanPersonalID {
                 "Family Name at Birth",
                 "Last name(s), surname(s), or primary identifier of the PID holder at birth",
                 Icon.PERSON,
-                SampleData.FAMILY_NAME_BIRTH.toDataItem()
+                JsonPrimitive(SampleData.FAMILY_NAME_BIRTH)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -126,7 +130,7 @@ object GermanPersonalID {
                 "Place of Birth",
                 "Country and municipality or state/province where the PID holder was born",
                 Icon.PLACE,
-                SampleData.BIRTH_PLACE.toDataItem()
+                JsonPrimitive(SampleData.BIRTH_PLACE)
             )
             .addVcAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -134,7 +138,7 @@ object GermanPersonalID {
                 "Country of Birth",
                 "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1",
                 Icon.PLACE,
-                SampleData.BIRTH_COUNTRY.toDataItem()
+                JsonPrimitive(SampleData.BIRTH_COUNTRY)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -142,7 +146,7 @@ object GermanPersonalID {
                 "State of Birth",
                 "The state, province, district, or local area where the PID User was born",
                 Icon.PLACE,
-                SampleData.BIRTH_STATE.toDataItem()
+                JsonPrimitive(SampleData.BIRTH_STATE)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -150,7 +154,7 @@ object GermanPersonalID {
                 "City of Birth",
                 "The municipality, city, town, or village where the PID User was born",
                 Icon.PLACE,
-                SampleData.BIRTH_CITY.toDataItem()
+                JsonPrimitive(SampleData.BIRTH_CITY)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -158,7 +162,7 @@ object GermanPersonalID {
                 "Resident Address",
                 "The full address of the place where the PID holder currently resides and/or may be contacted (street/house number, municipality etc.)",
                 Icon.PLACE,
-                SampleData.RESIDENT_ADDRESS.toDataItem()
+                JsonPrimitive(SampleData.RESIDENT_ADDRESS)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -166,7 +170,7 @@ object GermanPersonalID {
                 "Resident City",
                 "The city where the PID holder currently resides",
                 Icon.PLACE,
-                SampleData.RESIDENT_CITY.toDataItem()
+                JsonPrimitive(SampleData.RESIDENT_CITY)
             )
             .addVcAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -174,7 +178,7 @@ object GermanPersonalID {
                 "Resident Country",
                 "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1",
                 Icon.PLACE,
-                SampleData.RESIDENT_COUNTRY.toDataItem()
+                JsonPrimitive(SampleData.RESIDENT_COUNTRY)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -182,7 +186,7 @@ object GermanPersonalID {
                 "Resident Postal Code",
                 "The postal code of the place where the PID holder currently resides",
                 Icon.PLACE,
-                SampleData.RESIDENT_POSTAL_CODE.toDataItem()
+                JsonPrimitive(SampleData.RESIDENT_POSTAL_CODE)
             )
             .addVcAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -190,7 +194,7 @@ object GermanPersonalID {
                 "Gender",
                 "PID holder’s gender",
                 Icon.EMERGENCY,
-                SampleData.SEX_ISO218.toDataItem()
+                JsonPrimitive(SampleData.SEX_ISO218)
             )
             .addVcAttribute(
                 DocumentAttributeType.ComplexType,
@@ -198,7 +202,9 @@ object GermanPersonalID {
                 "Nationality",
                 "List of Alpha-2 country codes as specified in ISO 3166-1, representing the nationality of the PID User.",
                 Icon.LANGUAGE,
-                CborArray.builder().add(SampleData.NATIONALITY.toDataItem()).end().build()
+                buildJsonArray {
+                    add(JsonPrimitive(SampleData.NATIONALITY))
+                }
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -206,7 +212,7 @@ object GermanPersonalID {
                 "Date of Issue",
                 "Date (and possibly time) when the PID was issued.",
                 Icon.DATE_RANGE,
-                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
+                JsonPrimitive(SampleData.ISSUE_DATE)
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -214,7 +220,7 @@ object GermanPersonalID {
                 "Date of Expiry",
                 "Date (and possibly time) when the PID will expire.",
                 Icon.CALENDAR_CLOCK,
-                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
+                JsonPrimitive(SampleData.EXPIRY_DATE)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -224,7 +230,7 @@ object GermanPersonalID {
                         "ISO 3166 Alpha-2 country code of the respective Member State if there is" +
                         "no separate authority authorized to issue PIDs.",
                 Icon.ACCOUNT_BALANCE,
-                SampleData.ISSUING_AUTHORITY_EU_PID.toDataItem()
+                JsonPrimitive(SampleData.ISSUING_AUTHORITY_EU_PID)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -232,7 +238,7 @@ object GermanPersonalID {
                 "Document Number",
                 "A number for the PID, assigned by the PID Provider.",
                 Icon.NUMBERS,
-                SampleData.DOCUMENT_NUMBER.toDataItem()
+                JsonPrimitive(SampleData.DOCUMENT_NUMBER)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -240,7 +246,7 @@ object GermanPersonalID {
                 "Administrative Number",
                 "A number assigned by the PID Provider for audit control or other purposes.",
                 Icon.NUMBERS,
-                SampleData.ADMINISTRATIVE_NUMBER.toDataItem()
+                JsonPrimitive(SampleData.ADMINISTRATIVE_NUMBER)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -250,7 +256,7 @@ object GermanPersonalID {
                         "ISO 3166-2:2020, Clause 8. The first part of the code SHALL be the same " +
                         "as the value for issuing_country.",
                 Icon.ACCOUNT_BALANCE,
-                SampleData.ISSUING_JURISDICTION.toDataItem()
+                JsonPrimitive(SampleData.ISSUING_JURISDICTION)
             )
             .addVcAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -259,7 +265,7 @@ object GermanPersonalID {
                 "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s " +
                         "country or territory",
                 Icon.ACCOUNT_BALANCE,
-                SampleData.ISSUING_COUNTRY.toDataItem()
+                JsonPrimitive(SampleData.ISSUING_COUNTRY)
             )
             .addSampleRequest(
                 id = "age_over_18",

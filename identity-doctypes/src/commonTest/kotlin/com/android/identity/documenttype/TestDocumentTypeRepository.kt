@@ -26,7 +26,6 @@ class TestDocumentTypeRepository {
         assertEquals(1, documentTypes.count())
         assertEquals("Driving License", documentTypes[0].displayName)
         assertEquals("org.iso.18013.5.1.mDL", documentTypes[0].mdocDocumentType?.docType)
-        assertEquals("Iso18013DriversLicenseCredential", documentTypes[0].vcDocumentType?.type)
         assertEquals(
             "org.iso.18013.5.1",
             documentTypes[0].mdocDocumentType?.namespaces?.iterator()?.next()?.key
@@ -127,7 +126,7 @@ class TestDocumentTypeRepository {
         assertEquals(
             "1976-02-03T06:30:00",
             MdocDataElement(
-                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
+                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                 false
             ).renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),
@@ -137,7 +136,7 @@ class TestDocumentTypeRepository {
         assertEquals(
             "1976-02-03T06:30:00",
             MdocDataElement(
-                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
+                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                 false
             ).renderValue(
                 CborMap.builder()
@@ -152,7 +151,7 @@ class TestDocumentTypeRepository {
             assertEquals(
                 "1976-02-03T00:00:00",
                 MdocDataElement(
-                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
+                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                     false
                 ).renderValue(
                     LocalDate.parse("1976-02-03").toDataItemFullDate(),
@@ -162,7 +161,7 @@ class TestDocumentTypeRepository {
             assertEquals(
                 "1976-02-03T00:00:00",
                 MdocDataElement(
-                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null),
+                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                     false
                 ).renderValue(
                     CborMap.builder()

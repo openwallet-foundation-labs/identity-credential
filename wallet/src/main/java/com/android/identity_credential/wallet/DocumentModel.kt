@@ -992,7 +992,6 @@ class DocumentModel(
                             subtitle = activity.resources.getString(R.string.issuance_biometric_prompt_subtitle),
                             secureArea = credential.secureArea,
                             alias = credential.alias,
-                            algorithm = Algorithm.ES256,
                             messageToSign = challenge.messageToSign
                         )
                         possessionProofs.add(KeyPossessionProof(signature))
@@ -1034,7 +1033,6 @@ suspend fun signWithUnlock(
     subtitle: String,
     secureArea: SecureArea,
     alias: String,
-    algorithm: Algorithm,
     messageToSign: ByteString
 ): ByteString {
     // initially null and updated when catching a KeyLockedException in the while-loop below
@@ -1044,7 +1042,6 @@ suspend fun signWithUnlock(
         try {
             val signature = secureArea.sign(
                 alias,
-                algorithm,
                 messageToSign.toByteArray(),
                 keyUnlockData = keyUnlockData
             )
@@ -1054,8 +1051,8 @@ suspend fun signWithUnlock(
             when (secureArea) {
                 // show Biometric prompt
                 is AndroidKeystoreSecureArea -> {
-                    val unlockData = AndroidKeystoreKeyUnlockData(alias)
-                    val cryptoObject = unlockData.getCryptoObjectForSigning(algorithm)
+                    val unlockData = AndroidKeystoreKeyUnlockData(secureArea, alias)
+                    val cryptoObject = unlockData.getCryptoObjectForSigning()
 
                     // update KeyUnlockData to be used on the next loop iteration
                     keyUnlockData = unlockData

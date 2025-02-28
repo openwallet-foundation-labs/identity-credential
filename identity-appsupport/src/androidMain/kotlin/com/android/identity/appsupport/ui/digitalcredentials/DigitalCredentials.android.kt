@@ -1,21 +1,22 @@
 package com.android.identity.appsupport.ui.digitalcredentials
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import com.android.identity.appsupport.credman.IdentityCredentialEntry
-import com.android.identity.appsupport.credman.IdentityCredentialField
-import com.android.identity.appsupport.credman.IdentityCredentialRegistry
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.DataItem
+import com.android.identity.claim.organizeByNamespace
 import com.android.identity.document.Document
-import com.android.identity.document.DocumentAdded
-import com.android.identity.document.DocumentDeleted
 import com.android.identity.document.DocumentStore
-import com.android.identity.document.DocumentUpdated
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.storage.StorageTableSpec
+import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
+import com.google.android.gms.identitycredentials.RegistrationRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -26,11 +27,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.time.sample
-import kotlinx.io.bytestring.decodeToString
-import kotlinx.io.bytestring.encodeToByteString
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import java.io.ByteArrayOutputStream
 
 private const val TAG = "DigitalCredentials"
 
@@ -40,13 +38,22 @@ private class RegistrationData (
     val listeningJob: Job,
 )
 
-private val credmanIdTableSpec = StorageTableSpec(
-    name = "CredmanIdMapping",
-    supportPartitions = false,
-    supportExpiration = false
-)
-
 private val exportedStores = mutableMapOf<DocumentStore, RegistrationData>()
+
+private fun getClaimDisplayName(
+    documentTypeRepository: DocumentTypeRepository,
+    vct: String,
+    claimName: String
+): String {
+    val documentType = documentTypeRepository.getDocumentTypeForVc(vct)
+    if (documentType != null) {
+        val attr = documentType.vcDocumentType?.claims?.get(claimName)
+        if (attr != null) {
+            return attr.displayName
+        }
+    }
+    return claimName
+}
 
 private fun getDataElementDisplayName(
     documentTypeRepository: DocumentTypeRepository,
@@ -54,9 +61,9 @@ private fun getDataElementDisplayName(
     nameSpaceName: String,
     dataElementName: String
 ): String {
-    val credType = documentTypeRepository.getDocumentTypeForMdoc(docTypeName)
-    if (credType != null) {
-        val mdocDataElement = credType.mdocDocumentType!!
+    val documentType = documentTypeRepository.getDocumentTypeForMdoc(docTypeName)
+    if (documentType != null) {
+        val mdocDataElement = documentType.mdocDocumentType!!
             .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
         if (mdocDataElement != null) {
             return mdocDataElement.attribute.displayName
@@ -66,8 +73,6 @@ private fun getDataElementDisplayName(
 }
 
 private suspend fun updateCredman() {
-    var idCount = 0
-    val entries = mutableListOf<IdentityCredentialEntry>()
     val context = AndroidContexts.applicationContext
     val appInfo = context.applicationInfo
     val appName = if (appInfo.labelRes != 0) {
@@ -75,91 +80,177 @@ private suspend fun updateCredman() {
     } else {
         appInfo.nonLocalizedLabel.toString()
     }
+
+    val docsBuilder = CborArray.builder()
+
     for ((_, regData) in exportedStores) {
-        val credmanIdTable = regData.documentStore.storage.getTable(credmanIdTableSpec)
-        credmanIdTable.deleteAll()
         for (documentId in regData.documentStore.listDocuments()) {
             val document = regData.documentStore.lookupDocument(documentId) ?: continue
-            val mdocCredential = (document.getCertifiedCredentials().find { it is MdocCredential }
-                ?: continue) as MdocCredential
-            val credentialType =
-                regData.documentTypeRepository.getDocumentTypeForMdoc(mdocCredential.docType)
 
-            val fields = mutableListOf<IdentityCredentialField>()
-            fields.add(
-                IdentityCredentialField(
-                    name = "doctype",
-                    value = mdocCredential.docType,
-                    displayName = "Document Type",
-                    displayValue = mdocCredential.docType
+            val mdocCredential = document.getCertifiedCredentials().find { it is MdocCredential }
+            if (mdocCredential != null) {
+                docsBuilder.add(
+                    exportMdocCredential(
+                        appName = appName,
+                        document = document,
+                        credential = mdocCredential as MdocCredential,
+                        documentTypeRepository = regData.documentTypeRepository
+                    )
                 )
-            )
-
-            val documentMetadata = document.metadata
-            val cardArt = documentMetadata.cardArt!!.toByteArray()
-            val nameSpacedData = documentMetadata.nameSpacedData
-            val displayName = documentMetadata.displayName!!
-
-            Logger.i(TAG, "exporting $displayName as $idCount")
-
-            nameSpacedData.nameSpaceNames.map { nameSpaceName ->
-                nameSpacedData.getDataElementNames(nameSpaceName).map { dataElementName ->
-                    val fieldName = nameSpaceName + "." + dataElementName
-                    val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
-
-                    val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
-                        ?.get(nameSpaceName)?.dataElements?.get(dataElementName)
-                    val valueString = mdocDataElement
-                        ?.renderValue(Cbor.decode(valueCbor))
-                        ?: Cbor.toDiagnostics(valueCbor)
-
-                    val dataElementDisplayName = getDataElementDisplayName(
-                        regData.documentTypeRepository,
-                        mdocCredential.docType,
-                        nameSpaceName,
-                        dataElementName
-                    )
-                    fields.add(
-                        IdentityCredentialField(
-                            name = fieldName,
-                            value = valueString,
-                            displayName = dataElementDisplayName,
-                            displayValue = valueString
-                        )
-                    )
-                }
             }
 
-            val options = BitmapFactory.Options()
-            options.inMutable = true
-            val credBitmap = BitmapFactory.decodeByteArray(
-                cardArt,
-                0,
-                cardArt.size,
-                options
-            )
-
-            credmanIdTable.insert(idCount.toString(), document.identifier.encodeToByteString())
-            entries.add(
-                IdentityCredentialEntry(
-                    id = (idCount++).toLong(),
-                    format = "mdoc",
-                    title = displayName,
-                    subtitle = appName,
-                    icon = credBitmap,
-                    fields = fields.toList(),
-                    disclaimer = null,
-                    warning = null,
+            val sdJwtVcCredential = document.getCertifiedCredentials().find { it is SdJwtVcCredential }
+            if (sdJwtVcCredential != null) {
+                docsBuilder.add(
+                    exportSdJwtVcCredential(
+                        appName = appName,
+                        document = document,
+                        credential = sdJwtVcCredential as SdJwtVcCredential,
+                        documentTypeRepository = regData.documentTypeRepository
+                    )
                 )
-            )
+            }
         }
     }
 
-    val registry = IdentityCredentialRegistry(entries)
-    val client = IdentityCredentialManager.Companion.getClient(context)
-    client.registerCredentials(registry.toRegistrationRequest(context))
+    val credentialsCbor = Cbor.encode(docsBuilder.end().build())
+    //Logger.iCbor(TAG, "credentialsCbor", credentialsCbor)
+    val client = IdentityCredentialManager.getClient(context)
+    client.registerCredentials(
+        RegistrationRequest(
+            credentials = credentialsCbor,
+            matcher = loadMatcher(context),
+            type = "com.credman.IdentityCredential",
+            requestType = "",
+            protocolTypes = emptyList(),
+        )
+    )
         .addOnSuccessListener { Logger.i(TAG, "CredMan registry succeeded") }
         .addOnFailureListener { Logger.i(TAG, "CredMan registry failed $it") }
+}
+
+private suspend fun exportMdocCredential(
+    appName: String,
+    document: Document,
+    credential: MdocCredential,
+    documentTypeRepository: DocumentTypeRepository,
+): DataItem {
+    val credentialType = documentTypeRepository.getDocumentTypeForMdoc(credential.docType)
+
+    val documentMetadata = document.metadata
+    val cardArt = documentMetadata.cardArt!!.toByteArray()
+    val displayName = documentMetadata.displayName!!
+
+    val options = BitmapFactory.Options()
+    options.inMutable = true
+    val credBitmap = BitmapFactory.decodeByteArray(
+        cardArt,
+        0,
+        cardArt.size,
+        options
+    )
+    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 128, 128, true)
+    val stream = ByteArrayOutputStream()
+    scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
+    val cardArtResized = stream.toByteArray()
+    Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+
+    val docBuilder = CborMap.builder()
+    docBuilder.put("title", displayName)
+    docBuilder.put("subtitle", appName)
+    docBuilder.put("bitmap", cardArtResized)
+    val mdocBuilder = CborMap.builder()
+    mdocBuilder.put("id", document.identifier)
+    mdocBuilder.put("docType", credential.docType)
+
+    val mdocNsMapBuilder = mdocBuilder.putMap("namespaces")
+
+    val claims = credential.getClaims(documentTypeRepository)
+    for ((namespace, claimsInNamespace) in claims.organizeByNamespace()) {
+        val mdocNsBuilder = mdocNsMapBuilder.putMap(namespace)
+        for (claim in claimsInNamespace) {
+            val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
+                ?.get(namespace)?.dataElements?.get(claim.dataElementName)
+            val valueString = mdocDataElement
+                ?.renderValue(claim.value)
+                ?: Cbor.toDiagnostics(claim.value)
+
+            val dataElementDisplayName = getDataElementDisplayName(
+                documentTypeRepository,
+                credential.docType,
+                claim.namespaceName,
+                claim.dataElementName
+            )
+
+            val dataElementBuilder = mdocNsBuilder.putArray(claim.dataElementName)
+            dataElementBuilder.add(dataElementDisplayName)
+            dataElementBuilder.add(valueString)
+        }
+        mdocNsBuilder.end()
+    }
+    docBuilder.put("mdoc", mdocBuilder.end().build())
+    return docBuilder.end().build()
+}
+
+private suspend fun exportSdJwtVcCredential(
+    appName: String,
+    document: Document,
+    credential: SdJwtVcCredential,
+    documentTypeRepository: DocumentTypeRepository,
+): DataItem {
+    val credentialType = documentTypeRepository.getDocumentTypeForVc(credential.vct)
+
+    val documentMetadata = document.metadata
+    val cardArt = documentMetadata.cardArt!!.toByteArray()
+    val displayName = documentMetadata.displayName!!
+
+    val options = BitmapFactory.Options()
+    options.inMutable = true
+    val credBitmap = BitmapFactory.decodeByteArray(
+        cardArt,
+        0,
+        cardArt.size,
+        options
+    )
+    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 128, 128, true)
+    val stream = ByteArrayOutputStream()
+    scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
+    val cardArtResized = stream.toByteArray()
+    Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+
+    val docBuilder = CborMap.builder()
+    docBuilder.put("title", displayName)
+    docBuilder.put("subtitle", appName)
+    docBuilder.put("bitmap", cardArtResized)
+    val vcBuilder = CborMap.builder()
+    vcBuilder.put("id", document.identifier)
+    vcBuilder.put("vct", credential.vct)
+
+    val claimsBuilder = vcBuilder.putMap("claims")
+    val claims = credential.getClaimsImpl(documentTypeRepository)
+    for (claim in claims) {
+        val valueString = claim.render()
+
+        val claimDisplayName = getClaimDisplayName(
+            documentTypeRepository,
+            credential.vct,
+            claim.claimName,
+        )
+
+        val arrayBuilder = claimsBuilder.putArray(claim.claimName)
+        arrayBuilder.add(claimDisplayName)
+        arrayBuilder.add(valueString)
+    }
+    docBuilder.put("sdjwt", vcBuilder.end().build())
+    return docBuilder.end().build()
+}
+
+private fun loadMatcher(context: Context): ByteArray {
+    val stream = context.assets.open("identitycredentialmatcher.wasm");
+    val matcher = ByteArray(stream.available())
+    stream.read(matcher)
+    stream.close()
+    return matcher
 }
 
 internal actual val defaultAvailable = true
@@ -211,14 +302,7 @@ internal actual suspend fun defaultStopExportingCredentials(
     updateCredman()
 }
 
-suspend fun DocumentStore.lookupForCredmanId(
-    credmanId: Long
-): Document? {
-    val credmanIdTable = storage.getTable(credmanIdTableSpec)
-    val documentId = credmanIdTable.get(credmanId.toString())
-    if (documentId != null) {
-        return lookupDocument(documentId.decodeToString())
-    }
-    return null
+suspend fun DocumentStore.lookupForCredmanId(credManId: String): Document? {
+    return lookupDocument(credManId)
 }
 

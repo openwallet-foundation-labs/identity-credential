@@ -35,14 +35,20 @@
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle btn-lg overflow-visible" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false" id="protocolDropdown">
-                    W3C Digital Credentials API (Preview)
+                    W3C Digital Credentials API (OpenID4VP)
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item w3c-option" value="w3c_dc_preview" href="#">
+                    <li><a class="dropdown-item mdoc-only" value="w3c_dc_preview" href="#">
                         W3C Digital Credentials API (Preview)
                     </a></li>
-                    <li><a class="dropdown-item w3c-option" value="w3c_dc_arf" href="#">
+                    <li><a class="dropdown-item mdoc-only" value="w3c_dc_arf" href="#">
                         W3C Digital Credentials API (Austroads Request Forwarding)
+                    </a></li>
+                    <li><a class="dropdown-item mdoc-only" value="w3c_dc_mdoc_api" href="#">
+                        W3C Digital Credentials API (18013-7 Annex C)
+                    </a></li>
+                    <li><a class="dropdown-item" value="w3c_dc_openid4vp" href="#">
+                        W3C Digital Credentials API (OpenID4VP)
                     </a></li>
                     <li><a class="dropdown-item" value="openid4vp_plain" href="#">
                         OpenID4VP (openid4vp:// URI scheme)
@@ -58,9 +64,18 @@
                     </button></li>
                 </ul>
             </div>
-            <div id="scheme-form" class="input-group mb-3 w-25" hidden style="flex-basis: 40%;">
-                <input class="form-control text-end" type="text" placeholder="custom-uri-scheme" id="scheme-input">
-            </div>
+        </div>
+
+        <div id="scheme-form" class="input-group mb-3 w-25" hidden style="flex-basis: 40%;">
+            <input class="form-control text-end" type="text" placeholder="custom-uri-scheme" id="scheme-input">
+        </div>
+        <div id="openid4vp-sign-request" class="mb-3 w-25" hidden style="flex-basis: 40%;">
+            <input type="checkbox" name="openid4vp-sign-request-input" id="openid4vp-sign-request-input" checked>
+            <label for="openid4vp-sign-request-input">Sign Request</label>
+        </div>
+        <div id="openid4vp-encrypt-response" class="mb-3 w-25" hidden style="flex-basis: 40%;">
+            <input type="checkbox" name="openid4vp-encrypt-response-input" id="openid4vp-encrypt-response-input" checked>
+            <label for="openid4vp-encrypt-response-input">Encrypt Response</label>
         </div>
 
     </main>

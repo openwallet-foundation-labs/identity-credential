@@ -3,6 +3,9 @@
 package com.android.identity.crypto
 
 import com.android.identity.util.UUID
+import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Cryptographic support routines.
@@ -207,4 +210,45 @@ expect object Crypto {
 
     // TODO: replace with non-platform specific code
     internal fun validateCertChain(certChain: X509CertChain): Boolean
+
+    // TODO: replace with non-platform specific code
+    internal fun encryptJwtEcdhEs(
+        key: EcPublicKey,
+        encAlgorithm: Algorithm,
+        claims: JsonObject,
+        apu: String,
+        apv: String
+    ): JsonElement
+
+    // TODO: replace with non-platform specific code
+    internal fun decryptJwtEcdhEs(
+        encryptedJwt: JsonElement,
+        recipientKey: EcPrivateKey
+    ): JsonObject
+
+    // TODO: replace with non-platform specific code
+    internal fun jwsSign(
+        key: EcPrivateKey,
+        signatureAlgorithm: Algorithm,
+        claimsSet: JsonObject,
+        type: String?,
+        x5c: X509CertChain?
+    ): JsonElement
+
+    // TODO: replace with non-platform specific code
+    internal fun jwsVerify(
+        signedJwt: JsonElement,
+        publicKey: EcPublicKey
+    )
+
+    // TODO: replace with non-platform specific code
+    internal fun jwsGetInfo(
+        signedJwt: JsonElement,
+    ): JwsInfo
 }
+
+internal data class JwsInfo(
+    val claimsSet: JsonObject,
+    val type: String?,
+    val x5c: X509CertChain?
+)

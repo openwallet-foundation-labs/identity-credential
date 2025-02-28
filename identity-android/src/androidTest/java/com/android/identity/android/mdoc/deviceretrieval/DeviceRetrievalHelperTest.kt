@@ -99,6 +99,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var document: Document
+    private lateinit var nameSpacedData: NameSpacedData
     private lateinit var mdocCredential: MdocCredential
     private lateinit var timeSigned: Instant
     private lateinit var timeValidityBegin: Instant
@@ -135,12 +136,11 @@ class DeviceRetrievalHelperTest {
     private suspend fun asyncSetup() {
         // Create the document...
         document = documentStore.createDocument()
-        val nameSpacedData = NameSpacedData.Builder()
+        nameSpacedData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryBoolean(AAMVA_NAMESPACE, "real_id", true)
             .build()
-        (document.metadata as SimpleDocumentMetadata).setNameSpacedData(nameSpacedData)
 
         // Create a credential... make sure the credential used supports both
         // mdoc ECDSA and MAC authentication.
@@ -206,13 +206,13 @@ class DeviceRetrievalHelperTest {
         //
         // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
         //
-        val protectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
-            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+        val protectedHeaders = mapOf<CoseLabel, DataItem>(
+            CoseNumberLabel(Cose.COSE_LABEL_ALG) to
+                    Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
         )
-        val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
-            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertChain(listOf(documentSignerCert)).toDataItem()
+        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN) to
+                    X509CertChain(listOf(documentSignerCert)).toDataItem()
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(
@@ -401,7 +401,7 @@ class DeviceRetrievalHelperTest {
                     val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
                         mergeIssuerNamesSpaces(
                             generateDocumentRequest(request),
-                            document.metadata.nameSpacedData,
+                            nameSpacedData,
                             staticAuthData
                         )
                     generator.addDocument(
@@ -415,8 +415,7 @@ class DeviceRetrievalHelperTest {
                                 deviceSignedData,
                                 mdocCredential.secureArea,
                                 mdocCredential.alias,
-                                null,
-                                Algorithm.ES256
+                                null
                             )
                             .generate()
                     )

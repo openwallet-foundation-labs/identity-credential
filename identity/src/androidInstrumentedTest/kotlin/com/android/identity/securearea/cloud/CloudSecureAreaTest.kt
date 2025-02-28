@@ -328,7 +328,7 @@ class CloudSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            csa.sign("testKey", Algorithm.ES256, dataToSign, null)
+            csa.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -472,7 +472,7 @@ class CloudSecureAreaTest {
     fun testWrongPassphraseDelay_signing() = runTest {
         testWrongPassphraseDelayHelper(
             useKey = { alias, csa, unlockData ->
-                csa.sign(alias, Algorithm.ES256, byteArrayOf(1, 2, 3), unlockData)
+                csa.sign(alias, byteArrayOf(1, 2, 3), unlockData)
         })
     }
 

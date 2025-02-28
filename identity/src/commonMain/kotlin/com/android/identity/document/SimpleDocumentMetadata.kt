@@ -26,7 +26,6 @@ class SimpleDocumentMetadata private constructor(
     override val typeDisplayName get() = data.typeDisplayName
     override val cardArt get() = data.cardArt
     override val issuerLogo get() = data.issuerLogo
-    override val nameSpacedData get() = data.nameSpacedData
 
     override suspend fun documentDeleted() {}
 
@@ -38,7 +37,6 @@ class SimpleDocumentMetadata private constructor(
             typeDisplayName = lastData.typeDisplayName,
             cardArt = lastData.cardArt,
             issuerLogo = lastData.issuerLogo,
-            nameSpacedData = lastData.nameSpacedData
         )
         data = newData
         saveFn(ByteString(data.toCbor()))
@@ -57,24 +55,9 @@ class SimpleDocumentMetadata private constructor(
             typeDisplayName = typeDisplayName,
             cardArt = cardArt,
             issuerLogo = issuerLogo,
-            nameSpacedData = lastData.nameSpacedData
         )
         data = newData
         saveFn(ByteString(data.toCbor()))
-    }
-
-    suspend fun setNameSpacedData(nameSpacedData: NameSpacedData) {
-        val lastData = data
-        val newData = Data(
-            provisioned = lastData.provisioned,
-            displayName = lastData.displayName,
-            typeDisplayName = lastData.typeDisplayName,
-            cardArt = lastData.cardArt,
-            issuerLogo = lastData.issuerLogo,
-            nameSpacedData = nameSpacedData
-        )
-        data = newData
-        saveFn(ByteString(nameSpacedData.encodeAsCbor()))
     }
 
     @CborSerializable
@@ -84,7 +67,6 @@ class SimpleDocumentMetadata private constructor(
         val typeDisplayName: String? = null,
         val cardArt: ByteString? = null,
         val issuerLogo: ByteString? = null,
-        val nameSpacedData: NameSpacedData = DocumentMetadata.emptyNamespacedData
     ) {
         companion object
     }

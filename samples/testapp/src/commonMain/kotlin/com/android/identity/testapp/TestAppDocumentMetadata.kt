@@ -26,9 +26,6 @@ class TestAppDocumentMetadata private constructor(
     override val issuerLogo: ByteString?
         get() = null
 
-    override val nameSpacedData: NameSpacedData
-        get() = data.nameSpacedData
-
     init {
         data = if (serializedData == null || serializedData.isEmpty()) {
             TestData()
@@ -41,9 +38,8 @@ class TestAppDocumentMetadata private constructor(
         displayName: String,
         typeDisplayName: String,
         cardArt: ByteString,
-        nameSpacedData: NameSpacedData
     ) {
-        val data = TestData(displayName, typeDisplayName, cardArt, nameSpacedData)
+        val data = TestData(displayName, typeDisplayName, cardArt)
         this.data = data
         saveFn(ByteString(data.toCbor()))
     }
@@ -66,7 +62,6 @@ class TestAppDocumentMetadata private constructor(
         val displayName: String = "",
         val typeDisplayName: String = "",
         val cardArt: ByteString = ByteString(),
-        val nameSpacedData: NameSpacedData = NameSpacedData.Builder().build()
     ) {
         companion object
     }

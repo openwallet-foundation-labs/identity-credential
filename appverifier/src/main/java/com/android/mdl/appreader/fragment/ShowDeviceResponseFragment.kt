@@ -170,8 +170,8 @@ class ShowDeviceResponseFragment : Fragment() {
                 chain = certChain.certificates,
                 //customValidators = customValidators
             )
-            if (result.trustChain.any()){
-                certChain = X509CertChain(result.trustChain)
+            if (result.trustChain != null) {
+                certChain = result.trustChain!!
             }
             if (!result.isTrusted) {
                 sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error?.message}<br>")

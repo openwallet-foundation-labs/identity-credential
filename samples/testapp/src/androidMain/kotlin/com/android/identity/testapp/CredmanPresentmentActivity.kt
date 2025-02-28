@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import androidx.credentials.DigitalCredential
+import androidx.credentials.ExperimentalDigitalCredentialApi
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.GetDigitalCredentialOption
+import androidx.credentials.provider.PendingIntentHandler
+import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
 import org.multipaz.compose.AppTheme
 import com.android.identity.appsupport.ui.digitalcredentials.lookupForCredmanId
@@ -16,8 +22,6 @@ import org.multipaz.compose.presentment.Presentment
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
 import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
-import com.google.android.gms.identitycredentials.GetCredentialResponse
-import com.google.android.gms.identitycredentials.IntentHelper
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
@@ -46,20 +50,26 @@ class CredmanPresentmentActivity: FragmentActivity() {
         }
     }
 
+    @OptIn(ExperimentalDigitalCredentialApi::class)
     private suspend fun startPresentment(app: App) {
         try {
-            val request = IntentHelper.extractGetCredentialRequest(intent)
-                ?: throw IllegalStateException("Error extracting GetCredentialRequest")
-            val credentialId = intent.getLongExtra(IntentHelper.EXTRA_CREDENTIAL_ID, -1).toInt()
+            val request = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)
+            val credentialId = request!!.selectedEntryId!!
 
-            val callingAppInfo = IntentHelper.extractCallingAppInfo(intent)!!
+            val stream = assets.open("privilegedUserAgents.json")
+            val data = ByteArray(stream.available())
+            stream.read(data)
+            stream.close()
+            val privilegedUserAgents = data.decodeToString()
+
+            val callingAppInfo = request.callingAppInfo
             val callingPackageName = callingAppInfo.packageName
-            val callingOrigin = callingAppInfo.origin
-
-            val json = JSONObject(request.credentialOptions.get(0).requestMatcher)
+            val callingOrigin = callingAppInfo.getOrigin(privilegedUserAgents)
+            val option = request.credentialOptions[0] as GetDigitalCredentialOption
+            val json = JSONObject(option.requestJson)
             val provider = json.getJSONArray("providers").getJSONObject(0)
 
-            val document = app.documentStore.lookupForCredmanId(credentialId.toLong())
+            val document = app.documentStore.lookupForCredmanId(credentialId)
                 ?: throw Error("No registered document for ID $credentialId")
 
             val mechanism = object : DigitalCredentialsPresentmentMechanism(
@@ -70,14 +80,12 @@ class CredmanPresentmentActivity: FragmentActivity() {
                 document = document
             ) {
                 override fun sendResponse(response: String) {
-                    val bundle = Bundle()
-                    bundle.putByteArray("identityToken", response.toByteArray())
-                    val credentialResponse = com.google.android.gms.identitycredentials.Credential("type", bundle)
-
                     val resultData = Intent()
-                    IntentHelper.setGetCredentialResponse(
+                    PendingIntentHandler.setGetCredentialResponse(
                         resultData,
-                        GetCredentialResponse(credentialResponse)
+                        GetCredentialResponse(
+                            DigitalCredential(response)
+                        )
                     )
                     setResult(RESULT_OK, resultData)
                 }

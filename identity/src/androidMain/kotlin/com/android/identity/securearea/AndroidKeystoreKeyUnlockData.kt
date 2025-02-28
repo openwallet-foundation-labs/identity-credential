@@ -15,9 +15,11 @@ import java.security.spec.InvalidKeySpecException
  *
  * @param alias the alias of the key to unlock.
  */
-class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
+class AndroidKeystoreKeyUnlockData(
+    val secureArea: AndroidKeystoreSecureArea,
+    val alias: String
+): KeyUnlockData {
     internal var signature: Signature? = null
-    internal var signatureAlgorithm: Algorithm? = null
     private var cryptoObjectForSigning: BiometricPrompt.CryptoObject? = null
 
     /**
@@ -32,10 +34,9 @@ class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
      * key was created with a zero timeout as per
      * [AndroidKeystoreSecureArea.CreateKeySettings.Builder.setUserAuthenticationRequired].
      *
-     * @param signatureAlgorithm the signature algorithm to use.
      * @return A [BiometricPrompt.CryptoObject] or `null`.
      */
-    fun getCryptoObjectForSigning(signatureAlgorithm: Algorithm): BiometricPrompt.CryptoObject? {
+    suspend fun getCryptoObjectForSigning(): BiometricPrompt.CryptoObject? {
         if (cryptoObjectForSigning != null) {
             return cryptoObjectForSigning
         }
@@ -58,12 +59,12 @@ class AndroidKeystoreKeyUnlockData(val alias: String): KeyUnlockData {
             } catch (e: InvalidKeySpecException) {
                 throw IllegalStateException("Given key is not an Android Keystore key", e)
             }
+            val signatureAlgorithm = secureArea.getKeyInfo(alias).signingAlgorithm
             signature = Signature.getInstance(
                 AndroidKeystoreSecureArea.getSignatureAlgorithmName(signatureAlgorithm)
             )
             signature!!.initSign(privateKey)
             cryptoObjectForSigning = BiometricPrompt.CryptoObject(signature!!)
-            this.signatureAlgorithm = signatureAlgorithm
             return cryptoObjectForSigning
         } catch (e: Exception) {
             throw IllegalStateException(e)

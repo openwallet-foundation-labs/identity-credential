@@ -17,6 +17,7 @@
 package com.android.identity.documenttype
 
 import com.android.identity.cbor.DataItem
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Class containing the metadata of an W3C VC Document Type.
@@ -49,10 +50,10 @@ class VcDocumentType private constructor(
             displayName: String,
             description: String,
             icon: Icon? = null,
-            sampleValue: DataItem? = null
+            sampleValue: JsonElement? = null
         ) = apply {
             claims[identifier] = DocumentAttribute(
-                type, identifier, displayName, description, icon, sampleValue
+                type, identifier, displayName, description, icon, null, sampleValue
             )
         }
 

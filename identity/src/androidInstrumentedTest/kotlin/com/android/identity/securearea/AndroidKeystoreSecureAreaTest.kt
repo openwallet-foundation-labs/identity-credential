@@ -88,7 +88,7 @@ class AndroidKeystoreSecureAreaTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", Algorithm.ES256, byteArrayOf(1, 2), null)
+            ks.sign("testKey", byteArrayOf(1, 2), null)
             Assert.fail()
         } catch (e: IllegalArgumentException) {
             // Expected path.
@@ -133,7 +133,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -191,7 +191,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
         val dataToSign = byteArrayOf(4, 5, 6)
         try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
             Assert.fail("Should not be reached")
         } catch (e: KeyLockedException) {
             /* expected path */
@@ -224,7 +224,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
         val dataToSign = byteArrayOf(4, 5, 6)
         try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
             Assert.fail("Should not be reached")
         } catch (e: KeyLockedException) {
             /* expected path */
@@ -248,6 +248,7 @@ class AndroidKeystoreSecureAreaTest {
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
+        Assert.assertEquals(Algorithm.ES256, keyInfo.signingAlgorithm)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
         Assert.assertEquals(42, keyInfo.userAuthenticationTimeoutMillis)
@@ -257,7 +258,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
         val dataToSign = byteArrayOf(4, 5, 6)
         try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
             Assert.fail("Should not be reached")
         } catch (e: KeyLockedException) {
             /* expected path */
@@ -296,11 +297,11 @@ class AndroidKeystoreSecureAreaTest {
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setEcCurve(EcCurve.ED25519)
             .build()
-        ks.createKey("testKey", settings)
-        val keyInfo = ks.getKeyInfo("testKey")
+        val keyInfo = ks.createKey("testKey", settings)
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.ED25519, keyInfo.publicKey.curve)
+        Assert.assertEquals(Algorithm.EDDSA, keyInfo.signingAlgorithm)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
         Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
@@ -310,7 +311,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.EDDSA, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -345,7 +346,7 @@ class AndroidKeystoreSecureAreaTest {
         )
         val dataToSign = byteArrayOf(4, 5, 6)
         try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
             Assert.fail("Signing shouldn't work with a key w/o KEY_PURPOSE_SIGN")
         } catch (e: IllegalArgumentException) {
             // Expected path.
@@ -527,7 +528,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertArrayEquals(theirSharedSecret, ourSharedSecret)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -588,7 +589,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
-            ks.sign("testKey", Algorithm.ES256, dataToSign, null)
+            ks.sign("testKey", dataToSign, null)
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
@@ -795,6 +796,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNotNull(keyInfo)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
+        Assert.assertEquals(Algorithm.ES256, keyInfo.signingAlgorithm)
         val parser = AndroidAttestationExtensionParser(
             keyInfo.attestation.certChain!!.certificates[0]
         )

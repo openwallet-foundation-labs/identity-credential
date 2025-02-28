@@ -1,7 +1,9 @@
 package com.android.identity.securearea.software
 
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.CreateKeySettings.Companion.defaultSigningAlgorithm
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.config.SecureAreaConfigurationSoftware
@@ -16,12 +18,14 @@ class SoftwareCreateKeySettings internal constructor(
     val passphraseConstraints: PassphraseConstraints?,
     ecCurve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
+    signingAlgorithm: Algorithm,
     val subject: String?,
     val validFrom: Instant?,
     val validUntil: Instant?
 ) : CreateKeySettings(
     keyPurposes,
-    ecCurve
+    ecCurve,
+    signingAlgorithm
 ) {
     /**
      * A builder for [SoftwareCreateKeySettings].
@@ -29,6 +33,7 @@ class SoftwareCreateKeySettings internal constructor(
     class Builder {
         private var keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN)
         private var ecCurve: EcCurve = EcCurve.P256
+        private var signingAlgorithm: Algorithm = Algorithm.UNSET
         private var passphraseRequired: Boolean = false
         private var passphrase: String? = null
         private var passphraseConstraints: PassphraseConstraints? = null
@@ -76,6 +81,17 @@ class SoftwareCreateKeySettings internal constructor(
          */
         fun setEcCurve(curve: EcCurve) = apply {
             ecCurve = curve
+        }
+
+        /**
+         * Sets the signing algorithm.
+         *
+         * This is only relevant if [KeyPurpose.SIGN] is used. If unset, an appropriate
+         * default is selected using [defaultSigningAlgorithm].
+         */
+        fun setSigningAlgorithm(algorithm: Algorithm): Builder {
+            this.signingAlgorithm = algorithm
+            return this
         }
 
         /**
@@ -128,9 +144,14 @@ class SoftwareCreateKeySettings internal constructor(
          *
          * @return a new [SoftwareCreateKeySettings].
          */
-        fun build(): SoftwareCreateKeySettings =
-            SoftwareCreateKeySettings(
+        fun build(): SoftwareCreateKeySettings {
+            if (keyPurposes.contains(KeyPurpose.SIGN) && signingAlgorithm == Algorithm.UNSET) {
+                signingAlgorithm = defaultSigningAlgorithm(keyPurposes, ecCurve)
+            }
+            return SoftwareCreateKeySettings(
                 passphraseRequired, passphrase, passphraseConstraints, ecCurve,
-                keyPurposes, subject, validFrom, validUntil)
+                keyPurposes, signingAlgorithm, subject, validFrom, validUntil
+            )
+        }
     }
 }

@@ -141,7 +141,7 @@ class AndroidKeystoreSecureArea private constructor(
     override suspend fun createKey(
         alias: String?,
         createKeySettings: CreateKeySettings
-    ): KeyInfo {
+    ): AndroidKeystoreKeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(alias, partitionId)
@@ -150,12 +150,15 @@ class AndroidKeystoreSecureArea private constructor(
         // This will throw an exception if an already-used alias is given.
         val newKeyAlias = storageTable.insert(alias, ByteString(), partitionId)
 
-        val aSettings: AndroidKeystoreCreateKeySettings
-        aSettings = if (createKeySettings is AndroidKeystoreCreateKeySettings) {
+        val aSettings = if (createKeySettings is AndroidKeystoreCreateKeySettings) {
             createKeySettings
         } else {
-            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            AndroidKeystoreCreateKeySettings.Builder("".toByteArray()).build()
+            // If user passed in a generic SecureArea.CreateKeySettings, honor them.
+            AndroidKeystoreCreateKeySettings.Builder("".toByteArray())
+                .setKeyPurposes(createKeySettings.keyPurposes)
+                .setEcCurve(createKeySettings.ecCurve)
+                .setSigningAlgorithm(createKeySettings.signingAlgorithm)
+                .build()
         }
 
         try {
@@ -433,23 +436,22 @@ class AndroidKeystoreSecureArea private constructor(
 
     override suspend fun sign(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         if (keyUnlockData !is KeyUnlockInteractive) {
-            return signNonInteractive(alias, signatureAlgorithm, dataToSign, keyUnlockData)
+            return signNonInteractive(alias, dataToSign, keyUnlockData)
         }
         var unlockData: AndroidKeystoreKeyUnlockData? = null
         do {
             try {
-                return signNonInteractive(alias, signatureAlgorithm, dataToSign, unlockData)
+                return signNonInteractive(alias, dataToSign, unlockData)
             } catch (_: KeyLockedException) {
-                unlockData = AndroidKeystoreKeyUnlockData(alias)
+                unlockData = AndroidKeystoreKeyUnlockData(this, alias)
                 val res = AndroidContexts.applicationContext.resources
                 val keyInfo = getKeyInfo(alias)
                 if (!UiModelAndroid.showBiometricPrompt(
-                        cryptoObject = unlockData.getCryptoObjectForSigning(signatureAlgorithm),
+                        cryptoObject = unlockData.getCryptoObjectForSigning(),
                         title = keyUnlockData.title ?: res.getString(R.string.aks_auth_default_title),
                         subtitle = keyUnlockData.subtitle ?: res.getString(R.string.aks_auth_default_subtitle),
                         userAuthenticationTypes = keyInfo.userAuthenticationTypes,
@@ -464,24 +466,23 @@ class AndroidKeystoreSecureArea private constructor(
 
     private suspend fun signNonInteractive(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?,
     ): EcSignature {
         val (entry, data) = loadKey(alias)
         val decodedData = Cbor.decode(data)
         val curve = EcCurve.fromInt(decodedData["curve"].asNumber.toInt())
-
+        val signingAlgorithm = if (decodedData.hasKey("signingAlgorithm")) {
+            Algorithm.fromInt(decodedData["signingAlgorithm"].asNumber.toInt())
+        } else {
+            Algorithm.UNSET
+        }
         if (keyUnlockData != null) {
             val unlockData = keyUnlockData as AndroidKeystoreKeyUnlockData
             require(unlockData.alias == alias) {
                 "keyUnlockData has alias ${unlockData.alias} which differs from passed-in alias $alias"
             }
             if (unlockData.signature != null) {
-                require(unlockData.signatureAlgorithm === signatureAlgorithm) {
-                    "keyUnlockData has signature algorithm ${unlockData.signatureAlgorithm} " +
-                    "which differs from passed-in algorithm $signatureAlgorithm"
-                }
                 return try {
                     unlockData.signature!!.update(dataToSign)
                     val derEncodedSignature = unlockData.signature!!.sign()
@@ -494,7 +495,7 @@ class AndroidKeystoreSecureArea private constructor(
 
         return try {
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
-            val s = Signature.getInstance(getSignatureAlgorithmName(signatureAlgorithm))
+            val s = Signature.getInstance(getSignatureAlgorithmName(signingAlgorithm))
             s.initSign(privateKey)
             s.update(dataToSign)
             val derEncodedSignature = s.sign()
@@ -528,7 +529,7 @@ class AndroidKeystoreSecureArea private constructor(
             try {
                 return keyAgreementNonInteractive(alias, otherKey)
             } catch (_: KeyLockedException) {
-                unlockData = AndroidKeystoreKeyUnlockData(alias)
+                unlockData = AndroidKeystoreKeyUnlockData(this, alias)
                 val res = AndroidContexts.applicationContext.resources
                 val keyInfo = getKeyInfo(alias)
                 if (!UiModelAndroid.showBiometricPrompt(
@@ -609,6 +610,11 @@ class AndroidKeystoreSecureArea private constructor(
                 factory.getKeySpec(privateKey, android.security.keystore.KeyInfo::class.java)
             val map = Cbor.decode(data)
             val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
+            val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
+                Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
+            } else {
+                Algorithm.UNSET
+            }
             val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
             val userAuthenticationTimeoutMillis = map["userAuthenticationTimeoutMillis"].asNumber
             val isStrongBoxBacked = map["useStrongBox"].asBoolean
@@ -646,6 +652,7 @@ class AndroidKeystoreSecureArea private constructor(
                 publicKey,
                 KeyAttestation(publicKey, attestationCertChain),
                 keyPurposes,
+                signingAlgorithm,
                 attestKeyAlias,
                 userAuthenticationRequired,
                 userAuthenticationTimeoutMillis,
@@ -666,6 +673,9 @@ class AndroidKeystoreSecureArea private constructor(
     ) {
         val map = CborMap.builder()
         map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))
+        if (settings.signingAlgorithm != Algorithm.UNSET) {
+            map.put("signingAlgorithm", settings.signingAlgorithm.coseAlgorithmIdentifier)
+        }
         if (settings.attestKeyAlias != null) {
             map.put("attestKeyAlias", settings.attestKeyAlias)
         }

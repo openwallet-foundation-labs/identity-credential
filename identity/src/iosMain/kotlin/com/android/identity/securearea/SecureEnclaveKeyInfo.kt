@@ -1,5 +1,6 @@
 package com.android.identity.securearea
 
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyPurpose
@@ -12,6 +13,7 @@ class SecureEnclaveKeyInfo internal constructor(
     alias: String,
     publicKey: EcPublicKey,
     keyPurposes: Set<KeyPurpose>,
+    signingAlgorithm: Algorithm,
 
     /**
      * Whether the user authentication is required to use the key.
@@ -23,4 +25,4 @@ class SecureEnclaveKeyInfo internal constructor(
      */
     val userAuthenticationTypes: Set<SecureEnclaveUserAuthType>
 
-): KeyInfo(alias, publicKey, keyPurposes, KeyAttestation(publicKey, null))
+): KeyInfo(alias, publicKey, keyPurposes, signingAlgorithm, KeyAttestation(publicKey, null))

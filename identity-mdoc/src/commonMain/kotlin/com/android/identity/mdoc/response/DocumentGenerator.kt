@@ -29,6 +29,7 @@ import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.mdoc.issuersigned.IssuerNamespaces
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -51,6 +52,7 @@ class DocumentGenerator
     private var errors: Map<String, Map<String, Long>>? = null
     private var issuerNamespaces: Map<String, List<ByteArray>>? = null
     private var deviceSigned: DataItem? = null
+    private var issuerNamespacesNew: IssuerNamespaces? = null
 
     /**
      * Sets document errors.
@@ -78,12 +80,16 @@ class DocumentGenerator
         issuerNamespaces = issuerNameSpaces
     }
 
+    fun setIssuerNamespaces(issuerNamespaces: IssuerNamespaces) {
+        this.issuerNamespacesNew = issuerNamespaces
+    }
+
     private suspend fun setDeviceNamespaces(
         dataElements: NameSpacedData,
         secureArea: SecureArea,
         keyAlias: String,
         keyUnlockData: KeyUnlockData?,
-        signatureAlgorithm: Algorithm,
+        useMac: Boolean,
         eReaderKey: EcPublicKey?
     ) = apply {
         val mapBuilder = CborMap.builder()
@@ -110,20 +116,14 @@ class DocumentGenerator
         val deviceAuthenticationBytes = Cbor.encode(Tagged(24, Bstr(deviceAuthentication)))
         var encodedDeviceSignature: ByteArray? = null
         var encodedDeviceMac: ByteArray? = null
-        if (signatureAlgorithm !== Algorithm.UNSET) {
+        if (!useMac) {
             encodedDeviceSignature = Cbor.encode(
                 Cose.coseSign1Sign(
                     secureArea,
                     keyAlias,
                     deviceAuthenticationBytes,
                     false,
-                    signatureAlgorithm,
-                    mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
-                        )
-                    ),
+                    mapOf(),
                     mapOf(),
                     keyUnlockData
                 ).toDataItem()
@@ -190,16 +190,15 @@ class DocumentGenerator
         dataElements: NameSpacedData,
         secureArea: SecureArea,
         keyAlias: String,
-        keyUnlockData: KeyUnlockData?,
-        signatureAlgorithm: Algorithm
+        keyUnlockData: KeyUnlockData?
     ) = apply {
         setDeviceNamespaces(
             dataElements,
             secureArea,
             keyAlias,
             keyUnlockData,
-            signatureAlgorithm,
-            null
+            useMac = false,
+            eReaderKey = null
         )
     }
 
@@ -229,8 +228,8 @@ class DocumentGenerator
             secureArea,
             keyAlias,
             keyUnlockData,
-            Algorithm.UNSET,
-            eReaderKey
+            useMac = true,
+            eReaderKey = eReaderKey
         )
     }
 
@@ -247,7 +246,17 @@ class DocumentGenerator
     fun generate(): ByteArray {
         checkNotNull(deviceSigned) { "DeviceSigned isn't set" }
         val issuerSignedMapBuilder = CborMap.builder()
-        if (issuerNamespaces != null) {
+        if (issuerNamespacesNew != null) {
+            val insOuter = CborMap.builder()
+            for ((namespace, innerMap) in issuerNamespacesNew!!.data) {
+                val insInner = insOuter.putArray(namespace)
+                for ((_, issuerSignedItem) in innerMap) {
+                    insInner.add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(issuerSignedItem.toDataItem()))))
+                }
+            }
+            insOuter.end()
+            issuerSignedMapBuilder.put("nameSpaces", insOuter.end().build())
+        } else if (issuerNamespaces != null) {
             val insOuter = CborMap.builder()
             for (ns in issuerNamespaces!!.keys) {
                 val insInner = insOuter.putArray(ns)

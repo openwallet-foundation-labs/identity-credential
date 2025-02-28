@@ -11,7 +11,6 @@ import com.android.identity.appsupport.ui.consent.ConsentDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
-import com.android.identity.crypto.Algorithm
 import com.android.identity.document.Document
 import com.android.identity.document.NameSpacedData
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
@@ -29,12 +28,12 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import com.android.identity.request.Claim
-import com.android.identity.request.Requester
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.Claim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
+import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.Request
-import com.android.identity.request.VcClaim
+import com.android.identity.request.RequestedClaim
 import com.android.identity.request.VcRequest
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity_credential.wallet.ui.prompt.consent.showConsentPrompt
@@ -78,13 +77,12 @@ private suspend fun showPresentmentFlowImpl(
             // The only way we should get a KeyLockedException is if this is a secure area bound
             // credential.
             val secureAreaBoundCredential = credential as SecureAreaBoundCredential
-            when (secureAreaBoundCredential.secureArea) {
+            when (val secureArea = secureAreaBoundCredential.secureArea) {
                 // show Biometric prompt
                 is AndroidKeystoreSecureArea -> {
                     val unlockData =
-                        AndroidKeystoreKeyUnlockData(secureAreaBoundCredential.alias)
-                    val cryptoObject =
-                        unlockData.getCryptoObjectForSigning(Algorithm.ES256)
+                        AndroidKeystoreKeyUnlockData(secureArea, secureAreaBoundCredential.alias)
+                    val cryptoObject = unlockData.getCryptoObjectForSigning()
 
                     // update KeyUnlockData to be used on the next loop iteration
                     keyUnlockData = unlockData
@@ -217,7 +215,7 @@ suspend fun showMdocPresentmentFlow(
         document,
         credential
     ) { keyUnlockData: KeyUnlockData? ->
-        mdocSignAndGenerate(request.claims, credential, encodedSessionTranscript, keyUnlockData)
+        mdocSignAndGenerate(request.requestedClaims, credential, encodedSessionTranscript, keyUnlockData)
     }
 }
 
@@ -240,7 +238,7 @@ suspend fun showSdJwtPresentmentFlow(
         val sdJwt = SdJwtVerifiableCredential.fromString(
             String(credential.issuerProvidedData, Charsets.US_ASCII))
 
-        val requestedAttributes = request.claims.map { it.claimName }.toSet()
+        val requestedAttributes = request.requestedClaims.map { it.claimName }.toSet()
         Logger.i(
             TAG, "Filtering requested attributes (${requestedAttributes.joinToString()}) " +
                     "from disclosed attributes (${sdJwt.disclosures.joinToString { it.key }})")
@@ -259,15 +257,14 @@ suspend fun showSdJwtPresentmentFlow(
             secureAreaBoundCredential?.secureArea,
             secureAreaBoundCredential?.alias,
             keyUnlockData,
-            Algorithm.ES256,
-            nonce!!,
-            clientId!!
+            nonce,
+            clientId
         ).toString().toByteArray(Charsets.US_ASCII)
     }
 }
 
 private suspend fun mdocSignAndGenerate(
-    claims: List<Claim>,
+    requestedClaims: List<RequestedClaim>,
     credential: SecureAreaBoundCredential,
     encodedSessionTranscript: ByteArray,
     keyUnlockData: KeyUnlockData?
@@ -275,7 +272,7 @@ private suspend fun mdocSignAndGenerate(
     // create the document generator for the suitable Document (of DocumentRequest)
     val documentGenerator =
         createDocumentGenerator(
-            claims = claims,
+            requestedClaims = requestedClaims,
             document = credential.document,
             credential = credential,
             sessionTranscript = encodedSessionTranscript
@@ -285,8 +282,7 @@ private suspend fun mdocSignAndGenerate(
         NameSpacedData.Builder().build(),
         credential.secureArea,
         credential.alias,
-        keyUnlockData,
-        Algorithm.ES256
+        keyUnlockData
     )
     // increment the credential's usage count since it just finished signing the data successfully
     credential.increaseUsageCount()
@@ -295,14 +291,14 @@ private suspend fun mdocSignAndGenerate(
 }
 
 private fun createDocumentGenerator(
-    claims: List<Claim>,
+    requestedClaims: List<RequestedClaim>,
     document: Document,
     credential: Credential,
     sessionTranscript: ByteArray,
 ): DocumentGenerator {
     val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
     val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-        getNamespacesAndDataElements(claims),
+        getNamespacesAndDataElements(requestedClaims),
         document.documentConfiguration.mdocConfiguration!!.staticData,
         staticAuthData
     )
@@ -322,11 +318,11 @@ private fun createDocumentGenerator(
 }
 
 private fun getNamespacesAndDataElements(
-    claims: List<Claim>
+    requestedClaims: List<RequestedClaim>
 ): Map<String, List<String>> {
     val ret = mutableMapOf<String, MutableList<String>>()
-    for (field in claims) {
-        field as MdocClaim
+    for (field in requestedClaims) {
+        field as MdocRequestedClaim
         val listOfDataElements = ret.getOrPut(field.namespaceName) { mutableListOf() }
         listOfDataElements.add(field.dataElementName)
     }

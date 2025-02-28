@@ -65,7 +65,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
     override suspend fun createKey(
         alias: String?,
         createKeySettings: com.android.identity.securearea.CreateKeySettings
-    ): KeyInfo {
+    ): SoftwareKeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(alias)
@@ -74,8 +74,12 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         val settings = if (createKeySettings is SoftwareCreateKeySettings) {
             createKeySettings
         } else {
-            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            SoftwareCreateKeySettings.Builder().build()
+            // If user passed in a generic SecureArea.CreateKeySettings, honor them.
+            SoftwareCreateKeySettings.Builder()
+                .setKeyPurposes(createKeySettings.keyPurposes)
+                .setEcCurve(createKeySettings.ecCurve)
+                .setSigningAlgorithm(createKeySettings.signingAlgorithm)
+                .build()
         }
         try {
             val privateKey = Crypto.createEcPrivateKey(settings.ecCurve)
@@ -111,6 +115,9 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
             if (settings.passphraseConstraints != null) {
                 mapBuilder.put("passphraseConstraints", settings.passphraseConstraints.toDataItem())
             }
+            if (settings.signingAlgorithm != Algorithm.UNSET) {
+                mapBuilder.put("signingAlgorithm", settings.signingAlgorithm.coseAlgorithmIdentifier)
+            }
             val newAlias = storageTable.insert(
                 key = alias,
                 data = ByteString(Cbor.encode(mapBuilder.end().build()))
@@ -142,6 +149,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
 
     private data class KeyData(
         val keyPurposes: Set<KeyPurpose>,
+        val signingAlgorithm: Algorithm,
         val privateKey: EcPrivateKey,
     )
 
@@ -176,7 +184,12 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         } else {
             map["privateKey"].asCoseKey
         }
-        return KeyData(keyPurposes, privateKeyCoseKey.ecPrivateKey)
+        val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
+            Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
+        } else {
+            Algorithm.UNSET
+        }
+        return KeyData(keyPurposes, signingAlgorithm, privateKeyCoseKey.ecPrivateKey)
     }
 
     /**
@@ -241,26 +254,24 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
 
     override suspend fun sign(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         return interactionHelper(
             alias,
             keyUnlockData,
-            op = { unlockData -> signNonInteractive(alias, signatureAlgorithm, dataToSign, unlockData) }
+            op = { unlockData -> signNonInteractive(alias, dataToSign, unlockData) }
         )
     }
 
     private suspend fun signNonInteractive(
         alias: String,
-        signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         val keyData = loadKey(alias, keyUnlockData)
         require(keyData.keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        return Crypto.sign(keyData.privateKey, signatureAlgorithm, dataToSign)
+        return Crypto.sign(keyData.privateKey, keyData.signingAlgorithm, dataToSign)
     }
 
     override suspend fun keyAgreement(
@@ -295,11 +306,17 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         val passphraseConstraints = map.getOrNull("passphraseConstraints")?.let {
             PassphraseConstraints.fromDataItem(it)
         }
+        val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
+            Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
+        } else {
+            Algorithm.UNSET
+        }
         return SoftwareKeyInfo(
             alias,
             publicKey,
             KeyAttestation(publicKey, null),
             keyPurposes,
+            signingAlgorithm,
             passphraseRequired,
             passphraseConstraints
         )

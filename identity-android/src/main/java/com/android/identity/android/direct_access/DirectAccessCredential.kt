@@ -20,11 +20,13 @@ import androidx.annotation.RequiresApi
 import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MapBuilder
+import com.android.identity.claim.Claim
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialLoader
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.securearea.KeyAttestation
 import kotlinx.datetime.Instant
 
@@ -201,5 +203,11 @@ class DirectAccessCredential: Credential {
         val metadata = document.metadata as DirectAccessDocumentMetadata
         val documentSlot = metadata.directAccessDocumentSlot
         DirectAccess.setActiveCredential(documentSlot, encryptedPresentationData)
+    }
+
+    override fun getClaims(
+        documentTypeRepository: DocumentTypeRepository?
+    ): List<Claim> {
+        TODO("Not yet implemented")
     }
 }

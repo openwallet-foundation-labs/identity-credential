@@ -54,14 +54,17 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
-import com.android.identity.request.Claim
+import com.android.identity.claim.Claim
 import com.android.identity.request.Requester
-import com.android.identity.request.VcClaim
+import com.android.identity.claim.VcClaim
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.request.MdocClaim
+import com.android.identity.claim.MdocClaim
 import com.android.identity.request.MdocRequest
+import com.android.identity.request.MdocRequestedClaim
+import com.android.identity.request.RequestedClaim
 import com.android.identity.request.VcRequest
+import com.android.identity.request.VcRequestedClaim
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
@@ -384,7 +387,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         credentialFormat: CredentialFormat,
         inputDescriptor: JsonObject,
         now: Instant
-    ): Pair<Credential, List<Claim>> {
+    ): Pair<Credential, List<RequestedClaim>> {
         // TODO: b/393388152 - reported as unreachable code?
         return when(credentialFormat) {
             CredentialFormat.MDOC_MSO -> {
@@ -392,20 +395,20 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                     document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_MDOC, now)
                         ?: throw IllegalStateException("No credentials available")
                 val (docType, requestedData) = parseInputDescriptorForMdoc(inputDescriptor)
-                val claims = MdocUtil.generateClaims(
+                val requestedClaims = MdocUtil.generateRequestedClaims(
                     docType,
                     requestedData,
                     walletApp.documentTypeRepository,
                     credential as MdocCredential
                 )
-                return Pair(credential, claims)
+                return Pair(credential, requestedClaims)
             }
             CredentialFormat.SD_JWT_VC -> {
                 val (vct, requestedClaims) = parseInputDescriptorForVc(inputDescriptor)
                 val credential =
                     document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC, now)
                         ?: throw IllegalStateException("No credentials available")
-                val claims = VcClaim.Companion.generateClaims(
+                val claims = VcRequestedClaim.Companion.generateClaims(
                     vct,
                     requestedClaims,
                     walletApp.documentTypeRepository,
@@ -570,16 +573,21 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         }
 
         Logger.i(TAG, "Setting vp_token: $vpToken")
-        val claimSet = JWTClaimsSet.parse(Json.encodeToString(buildJsonObject {
+        val claimSetObj = buildJsonObject {
             // put("id_token", idToken) // depends on response type, only supporting vp_token for now
             put("state", authorizationRequest.state)
             put("vp_token", vpToken)
             put("presentation_submission", Json.encodeToJsonElement(presentationSubmission))
-        }))
+        }
+        val claimSet = JWTClaimsSet.parse(Json.encodeToString(claimSetObj))
+
+        Logger.i(TAG, "claimSetObj = $claimSetObj")
 
         // If the request provided the right fields so we can encrypt the response, encrypt it.
         val jwtResponse =
             maybeEncryptJwtResponse(claimSet, authorizationRequest, generatedNonce, httpClient)
+
+        Logger.i(TAG, "jwtResponse = ${jwtResponse.serialize()}")
 
         // send response
         Logger.i(TAG, "Sending response to ${authorizationRequest.responseUri}")
@@ -655,7 +663,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
     @OptIn(ExperimentalEncodingApi::class)
     private suspend fun generateVpToken(
-        claims: List<Claim>,
+        claims: List<RequestedClaim>,
         credential: Credential,
         trustPoint: TrustPoint?,
         authorizationRequest: AuthorizationRequest,
@@ -670,7 +678,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 @Suppress("UNCHECKED_CAST")
                 val request = MdocRequest(
                     requester = Requester(),  // TODO: pass origin.
-                    claims = claims as List<MdocClaim>,
+                    requestedClaims = claims as List<MdocRequestedClaim>,
                     docType = credential.docType
                 )
                 val documentResponse = showMdocPresentmentFlow(
@@ -698,7 +706,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 @Suppress("UNCHECKED_CAST")
                 val request = VcRequest(
                     requester = Requester(),  // TODO: pass origin.
-                    claims = claims as List<VcClaim>,
+                    requestedClaims = claims as List<VcRequestedClaim>,
                     vct = credential.vct
                 )
                 showSdJwtPresentmentFlow(
@@ -1057,18 +1065,18 @@ internal fun formatAsDocumentRequest(inputDescriptor: JsonObject): DocumentReque
  * @param vcCredential if set, the returned list is filtered so it only references claims
  *     available in the credential.
  */
-private fun VcClaim.Companion.generateClaims(
+private fun VcRequestedClaim.Companion.generateClaims(
     vct: String,
     claims: List<String>,
     documentTypeRepository: DocumentTypeRepository,
     vcCredential: SdJwtVcCredential?,
-): List<VcClaim> {
+): List<VcRequestedClaim> {
     val vcType = documentTypeRepository.getDocumentTypeForVc(vct)?.vcDocumentType
-    val ret = mutableListOf<VcClaim>()
+    val ret = mutableListOf<VcRequestedClaim>()
     for (claimName in claims) {
         val attribute = vcType?.claims?.get(claimName)
         ret.add(
-            VcClaim(
+            VcRequestedClaim(
                 attribute?.displayName ?: claimName,
                 attribute,
                 claimName
@@ -1079,9 +1087,9 @@ private fun VcClaim.Companion.generateClaims(
 }
 
 private fun filterConsentFields(
-    list: List<VcClaim>,
+    list: List<VcRequestedClaim>,
     credential: SdJwtVcCredential?
-): List<VcClaim> {
+): List<VcRequestedClaim> {
     if (credential == null) {
         return list
     }

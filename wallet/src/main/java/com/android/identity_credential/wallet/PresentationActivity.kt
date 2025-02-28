@@ -53,7 +53,6 @@ import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.request.Requester
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.document.Document
@@ -68,9 +67,9 @@ import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.logging.EventLogger
 import com.android.identity_credential.wallet.presentation.UserCanceledPromptException
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
-import com.android.identity.request.MdocClaim
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.util.toMdocRequest
+import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -293,6 +292,16 @@ class PresentationActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AndroidContexts.setCurrentActivity(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AndroidContexts.setCurrentActivity(null)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

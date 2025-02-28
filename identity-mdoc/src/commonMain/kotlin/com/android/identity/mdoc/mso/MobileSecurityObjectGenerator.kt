@@ -19,7 +19,9 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborBuilder
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItemDateTimeString
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.mdoc.issuersigned.IssuerNamespaces
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
 
@@ -95,6 +97,28 @@ class MobileSecurityObjectGenerator(
             valueDigestsInner.put(digestID, digest)
         }
         valueDigestsInner.end()
+    }
+
+    fun addValueDigests(
+        issuerNamespaces: IssuerNamespaces
+    ) {
+        digestEmpty = false
+        // TODO: port MobileSecurityObjectGenerator to take an [Algorithm] instead of string
+        val algorithm = when (mDigestAlgorithm) {
+            "SHA-256" -> Algorithm.SHA256
+            "SHA-384" -> Algorithm.SHA384
+            "SHA-512" -> Algorithm.SHA512
+            else -> Algorithm.UNSET
+        }
+        for ((namespaceName, innerMap) in issuerNamespaces.data) {
+            val valueDigestsInner = mValueDigestsOuter.putMap(namespaceName)
+            for ((_, issuerSignedItem) in innerMap) {
+                val digestId = issuerSignedItem.digestId
+                val digest = issuerSignedItem.calculateDigest(algorithm)
+                valueDigestsInner.put(digestId, digest.toByteArray())
+            }
+            valueDigestsInner.end()
+        }
     }
 
     /**

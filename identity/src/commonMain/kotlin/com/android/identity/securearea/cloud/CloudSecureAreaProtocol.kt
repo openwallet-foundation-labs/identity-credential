@@ -353,6 +353,7 @@ object CloudSecureAreaProtocol {
     data class CreateKeyRequest0(
         val purposes: Set<KeyPurpose>,
         val curve: EcCurve,
+        val signingAlgorithm: Int?,
         val validFromMillis: Long,
         val validUntilMillis: Long,
         val passphraseRequired: Boolean,
@@ -378,7 +379,6 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     data class SignRequest0(
-        val signatureAlgorithm: Int,
         val dataToSign: ByteArray,
         val keyContext: ByteArray
     ) : Command()

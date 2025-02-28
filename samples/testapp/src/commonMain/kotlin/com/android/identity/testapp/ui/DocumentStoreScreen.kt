@@ -12,21 +12,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.X509Cert
-import com.android.identity.document.DocumentAdded
-import com.android.identity.document.DocumentDeleted
 import com.android.identity.document.DocumentStore
-import com.android.identity.document.DocumentUpdated
 import com.android.identity.secure_area_test_app.ui.CsaConnectDialog
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
@@ -37,96 +32,31 @@ import com.android.identity.securearea.cloud.CloudSecureArea
 import com.android.identity.securearea.cloud.CloudUserAuthType
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.ephemeral.EphemeralStorage
+import com.android.identity.testapp.DocumentModel
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.testapp.TestAppUtils
 import com.android.identity.testapp.platformCreateKeySettings
 import com.android.identity.testapp.platformSecureAreaProvider
 import com.android.identity.testapp.platformStorage
-import com.android.identity.util.Logger
 import io.ktor.http.encodeURLParameter
-import io.ktor.http.encodeURLPath
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.compose.decodeImage
 
 private const val TAG = "DocumentStoreScreen"
-
-private data class DocumentInfo(
-    val documentId: String,
-    val name: String,
-    val cardArt: ImageBitmap,
-)
-
-private class DocumentModel(
-    val scope: CoroutineScope,
-    val documentStore: DocumentStore,
-) {
-    val documentInfos = mutableStateListOf<DocumentInfo>()
-
-    suspend fun initialize() {
-        val docIds = documentStore.listDocuments()
-        for (documentId in docIds) {
-            val document = documentStore.lookupDocument(documentId)
-            if (document != null) {
-                documentInfos.add(DocumentInfo(
-                    documentId = documentId,
-                    name = document.metadata.displayName!!,
-                    cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
-                ))
-            }
-        }
-
-        documentStore.eventFlow
-            .onEach { event ->
-                Logger.i(TAG, "DocumentStore event ${event::class.simpleName} ${event.documentId}")
-                when (event) {
-                    is DocumentAdded -> {
-                        val document = documentStore.lookupDocument(event.documentId)
-                        if (document != null) {
-                            documentInfos.add(
-                                DocumentInfo(
-                                    documentId = document.identifier,
-                                    name = document.metadata.displayName!!,
-                                    cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
-                                )
-                            )
-                        }
-                    }
-
-                    is DocumentDeleted -> {
-                        documentInfos.find { it.documentId == event.documentId }?.let {
-                            documentInfos.remove(it)
-                        }
-                    }
-
-                    is DocumentUpdated -> {
-                        // Right now, do nothing
-                    }
-                }
-            }
-            .launchIn(scope)
-    }
-
-}
 
 @Composable
 fun DocumentStoreScreen(
     documentStore: DocumentStore,
+    documentModel: DocumentModel,
     softwareSecureArea: SoftwareSecureArea,
     settingsModel: TestAppSettingsModel,
     dsKey: EcPrivateKey,
     dsCert: X509Cert,
-    showToast: (message: String) -> Unit
+    showToast: (message: String) -> Unit,
+    onViewDocument: (documentId: String) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val model by remember { mutableStateOf(DocumentModel(coroutineScope, documentStore)) }
-    LaunchedEffect(model) {
-        model.initialize()
-    }
 
     val showCsaConnectDialog = remember { mutableStateOf(false) }
     if (showCsaConnectDialog.value) {
@@ -154,13 +84,16 @@ fun DocumentStoreScreen(
                         provisionTestDocuments(
                             documentStore = documentStore,
                             secureArea = cloudSecureArea,
-                            secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired ->
+                            secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired,
+                                                                validFrom, validUntil ->
                                 CloudCreateKeySettings.Builder(challenge.toByteArray())
                                     .setKeyPurposes(keyPurposes)
                                     .setPassphraseRequired(true)
-                                    .setUserAuthenticationRequired(true, setOf(
-                                        CloudUserAuthType.PASSCODE, CloudUserAuthType.BIOMETRIC
-                                    ))
+                                    .setUserAuthenticationRequired(
+                                        userAuthenticationRequired,
+                                        setOf(CloudUserAuthType.PASSCODE, CloudUserAuthType.BIOMETRIC)
+                                    )
+                                    .setValidityPeriod(validFrom, validUntil)
                                     .build()
                             },
                             dsKey = dsKey,
@@ -215,7 +148,8 @@ fun DocumentStoreScreen(
                     provisionTestDocuments(
                         documentStore = documentStore,
                         secureArea = softwareSecureArea,
-                        secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired ->
+                        secureAreaCreateKeySettingsFunc = { challenge, keyPurposes, userAuthenticationRequired,
+                                                            validFrom, validUntil ->
                             SoftwareCreateKeySettings.Builder()
                                 .setKeyPurposes(keyPurposes)
                                 .setPassphraseRequired(true, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
@@ -240,7 +174,7 @@ fun DocumentStoreScreen(
         item {
             Text(text = "Current Documents in DocumentStore")
         }
-        if (model.documentInfos.isEmpty()) {
+        if (documentModel.documentInfos.isEmpty()) {
             item {
                 Text(
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -249,7 +183,7 @@ fun DocumentStoreScreen(
                 )
             }
         } else {
-            for (documentInfo in model.documentInfos) {
+            for ((_, documentInfo) in documentModel.documentInfos) {
                 item {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -263,10 +197,11 @@ fun DocumentStoreScreen(
                             contentDescription = null,
                         )
                         TextButton(onClick = {
+                            onViewDocument(documentInfo.document.identifier)
                             // TODO: Go to page showing document details and credentials
                         }) {
                             Text(
-                                text = documentInfo.name
+                                text = documentInfo.document.metadata.displayName ?: "(displayName not set)"
                             )
                         }
                     }
@@ -282,7 +217,9 @@ private suspend fun provisionTestDocuments(
     secureAreaCreateKeySettingsFunc: (
         challenge: ByteString,
         keyPurposes: Set<KeyPurpose>,
-        userAuthenticationRequired: Boolean
+        userAuthenticationRequired: Boolean,
+        validFrom: Instant,
+        validUntil: Instant
     ) -> CreateKeySettings,
     dsKey: EcPrivateKey,
     dsCert: X509Cert,

@@ -48,7 +48,7 @@ internal object FunkeUtil {
     suspend fun communicationSign(env: FlowEnvironment, clientId: String, message: ByteArray): ByteArray {
         val secureArea = env.getInterface(SecureAreaProvider::class)!!.get()
         val alias = "FunkeComm_" + clientId
-        val sig = secureArea.sign(alias, Algorithm.ES256, message, null)
+        val sig = secureArea.sign(alias, message, null)
         return sig.toCoseEncoded()
     }
 

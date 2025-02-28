@@ -6,6 +6,7 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.Icon
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Naturalization Certificate of the fictional State of Utopia.
@@ -25,7 +26,7 @@ object UtopiaNaturalization {
                 "Family Name",
                 "Current last name(s), surname(s), or primary identifier of the naturalized person",
                 Icon.PERSON,
-                SampleData.FAMILY_NAME.toDataItem()
+                JsonPrimitive(SampleData.FAMILY_NAME)
             )
             .addVcAttribute(
                 DocumentAttributeType.String,
@@ -33,7 +34,7 @@ object UtopiaNaturalization {
                 "Given Names",
                 "Current first name(s), other name(s), or secondary identifier of the naturalized person",
                 Icon.PERSON,
-                SampleData.GIVEN_NAME.toDataItem()
+                JsonPrimitive(SampleData.GIVEN_NAME)
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -41,7 +42,7 @@ object UtopiaNaturalization {
                 "Date of Birth",
                 "Day, month, and year on which the naturalized person was born. If unknown, approximate date of birth.",
                 Icon.TODAY,
-                LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate()
+                JsonPrimitive(SampleData.BIRTH_DATE)
             )
             .addVcAttribute(
                 DocumentAttributeType.Date,
@@ -49,7 +50,7 @@ object UtopiaNaturalization {
                 "Date of Naturalization",
                 "Date (and possibly time) when the person was naturalized.",
                 Icon.DATE_RANGE,
-                LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate()
+                JsonPrimitive(SampleData.ISSUE_DATE)
             )
             .addSampleRequest(
                 id = "full",

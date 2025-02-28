@@ -72,7 +72,7 @@ actual fun UiProvider(lifecycleOwner: LifecycleOwner) {
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) {
+            if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                 UiModelAndroid.registerView(provider)
             } else if (event == Lifecycle.Event.ON_STOP) {
                 UiModelAndroid.unregisterView(provider)

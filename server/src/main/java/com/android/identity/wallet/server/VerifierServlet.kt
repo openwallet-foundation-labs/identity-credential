@@ -14,8 +14,9 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.crypto.JsonWebEncryption
+import com.android.identity.crypto.JsonWebSignature
 import com.android.identity.crypto.X500Name
-import com.android.identity.crypto.X509Cert
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
@@ -42,9 +43,7 @@ import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.util.Logger
 import com.android.identity.util.fromBase64Url
-import com.android.identity.util.fromHex
 import com.android.identity.util.toBase64Url
-import com.android.identity.util.toHex
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -62,7 +61,9 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.Serializable
@@ -70,8 +71,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
 import net.minidev.json.JSONStyle
@@ -84,9 +91,13 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
+private const val TAG = "VerifierServlet"
+
 enum class Protocol {
     W3C_DC_PREVIEW,
     W3C_DC_ARF,
+    W3C_DC_MDOC_API,
+    W3C_DC_OPENID4VP,
     PLAIN_OPENID4VP,
     EUDI_OPENID4VP,
     MDOC_OPENID4VP,
@@ -135,12 +146,16 @@ data class Session(
     val requestDocType: String,     // mdoc DocType or VC vct
     val requestId: String,          // DocumentWellKnownRequest.id
     val protocol: Protocol,
-    val nonce: String,
+    val nonce: ByteString,
     val origin: String,
     val encryptionKey: EcPrivateKey,
+    val signRequest: Boolean = true,
+    val encryptResponse: Boolean = true,
     var responseUri: String? = null,
     var deviceResponse: ByteArray? = null,
-    var sessionTranscript: ByteArray? = null
+    var verifiablePresentation: String? = null,
+    var sessionTranscript: ByteArray? = null,
+    var responseWasEncrypted: Boolean = false,
 ) {
     companion object
 }
@@ -172,7 +187,9 @@ private data class DCBeginRequest(
     val docType: String,
     val requestId: String,
     val protocol: String,
-    val origin: String
+    val origin: String,
+    val signRequest: Boolean,
+    val encryptResponse: Boolean,
 )
 
 @Serializable
@@ -264,8 +281,6 @@ class VerifierServlet : BaseHttpServlet() {
     }
 
     companion object {
-        private const val TAG = "VerifierServlet"
-
         val SESSION_EXPIRATION_INTERVAL = 1.days
 
         private val verifierSessionTableSpec = StorageTableSpec(
@@ -378,31 +393,40 @@ class VerifierServlet : BaseHttpServlet() {
 
         // TODO: for now, instead of using the per-site Reader Root generated at first run, use the
         //  well-know OWF IC Reader root checked into Git.
-        val owfIcReaderCert = X509Cert.fromPem("""
------BEGIN CERTIFICATE-----
-MIICCTCCAY+gAwIBAgIQZc/0rhdjZ9n3XoZYzpt2GjAKBggqhkjOPQQDAzA+MS8wLQYDVQQDDCZP
-V0YgSWRlbnRpdHkgQ3JlZGVudGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCWlowHhcNMjQw
-OTE3MTY1NjA5WhcNMjkwOTE3MTY1NjA5WjA+MS8wLQYDVQQDDCZPV0YgSWRlbnRpdHkgQ3JlZGVu
-dGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCWlowdjAQBgcqhkjOPQIBBgUrgQQAIgNiAATM
-1ZVDQ7E4A+ujJl0J7Op8qvy/BSgg/UCTw+WrwYI32/jV9pk8Qu5BSTbUDZE2PQheqy4s3j8y1gMu
-+Q5pemhYn/c4OMYXZY8uD+t4Wo9UFoSDkFbvlumZ/cuO5TTAI76jUjBQMB0GA1UdDgQWBBTgtILK
-HJ50qO/Nc33zshz2aX4+4TAfBgNVHSMEGDAWgBTgtILKHJ50qO/Nc33zshz2aX4+4TAOBgNVHQ8B
-Af8EBAMCAQYwCgYIKoZIzj0EAwMDaAAwZQIxALmOcU+Ggax3wHbD8tcd8umuDxzimf9PSICjvlh5
-kwR0/1SZZF7bqMAOQXsrwNYFLgIwLVirmU4WvRlUktR2Ty5kxgDG0iy+g00ur9JXCF+wAUQjKHbg
-VvIQ6NRr06GwpPJR
------END CERTIFICATE-----
-        """.trimIndent())
+        val owfIcReaderRootKeyPub = EcPublicKey.fromPem(
+            """
+                    -----BEGIN PUBLIC KEY-----
+                    MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE+QDye70m2O0llPXMjVjxVZz3m5k6agT+
+                    wih+L79b7jyqUl99sbeUnpxaLD+cmB3HK3twkA7fmVJSobBc+9CDhkh3mx6n+YoH
+                    5RulaSWThWBfMyRjsfVODkosHLCDnbPV
+                    -----END PUBLIC KEY-----
+                """.trimIndent().trim(),
+            EcCurve.P384
+        )
+        val owfIcReaderRootKey = EcPrivateKey.fromPem(
+            """
+                    -----BEGIN PRIVATE KEY-----
+                    MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCcRuzXW3pW2h9W8pu5
+                    /CSR6JSnfnZVATq+408WPoNC3LzXqJEQSMzPsI9U1q+wZ2yhZANiAAT5APJ7vSbY
+                    7SWU9cyNWPFVnPebmTpqBP7CKH4vv1vuPKpSX32xt5SenFosP5yYHccre3CQDt+Z
+                    UlKhsFz70IOGSHebHqf5igflG6VpJZOFYF8zJGOx9U4OSiwcsIOds9U=
+                    -----END PRIVATE KEY-----
+                """.trimIndent().trim(),
+            owfIcReaderRootKeyPub
+        )
+        val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
+        val certsValidUntil = LocalDate.parse("2034-12-01").atStartOfDayIn(TimeZone.UTC)
+        val owfIcReaderRootCert = MdocUtil.generateReaderRootCertificate(
+            readerRootKey = owfIcReaderRootKey,
+            subject = X500Name.fromName("CN=OWF IC TestApp Reader Root"),
+            serial = ASN1Integer(1L),
+            validFrom = certsValidFrom,
+            validUntil = certsValidUntil,
+        )
 
-        val owfIcReaderRoot = EcPrivateKey.fromPem("""
------BEGIN PRIVATE KEY-----
-MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDDxgrZBXnoO54/hZM2DAGrByoWRatjH9hGs
-lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
------END PRIVATE KEY-----
-        """.trimIndent(),
-            owfIcReaderCert.ecPublicKey)
         val readerKeyCertificate = MdocUtil.generateReaderCertificate(
-            readerRootCert = owfIcReaderCert,
-            readerRootKey = owfIcReaderRoot,
+            readerRootCert = owfIcReaderRootCert,
+            readerRootKey = owfIcReaderRootKey,
             readerKey = readerKey.publicKey,
             subject = X500Name.fromName(readerKeySubject),
             serial = ASN1Integer(1L),
@@ -411,7 +435,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         )
         return Pair(
             readerKey,
-            X509CertChain(listOf(readerKeyCertificate) + owfIcReaderCert)
+            X509CertChain(listOf(readerKeyCertificate) + owfIcReaderRootCert)
         )
     }
 
@@ -517,11 +541,14 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
     ) {
         val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
         val request = Json.decodeFromString<DCBeginRequest>(requestString)
+        Logger.i(TAG, "format ${request.format} protocol ${request.protocol}")
 
         val protocol = when (request.protocol) {
             // Keep in sync with verifier.html
             "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
             "w3c_dc_arf" -> Protocol.W3C_DC_ARF
+            "w3c_dc_mdoc_api" -> Protocol.W3C_DC_MDOC_API
+            "w3c_dc_openid4vp" -> Protocol.W3C_DC_OPENID4VP
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -535,13 +562,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         // Create a new session
         val session = Session(
-            nonce = Random.Default.nextBytes(16).toHex(),
+            nonce = ByteString(Random.Default.nextBytes(16)),
             origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
             requestFormat = request.format,
             requestDocType = request.docType,
             requestId = request.requestId,
-            protocol = protocol
+            protocol = protocol,
+            signRequest = request.signRequest,
+            encryptResponse = request.encryptResponse,
         )
         val sessionId = runBlocking {
             verifierSessionTable.insert(
@@ -558,14 +587,18 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         val dcRequestString = mdocCalcDcRequestString(
             documentTypeRepo,
+            request.format,
+            session,
             lookupWellknownRequest(session.requestFormat, session.requestDocType, session.requestId),
             session.protocol,
-            session.nonce.fromHex(),
+            session.nonce,
             session.origin,
             session.encryptionKey,
             session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate,
             readerAuthKey,
-            readerAuthKeyCertification
+            readerAuthKeyCertification,
+            request.signRequest,
+            request.encryptResponse,
         )
         Logger.i(TAG, "dcRequestString: $dcRequestString")
         val json = Json { ignoreUnknownKeys = true }
@@ -600,6 +633,8 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             when (session.protocol) {
                 Protocol.W3C_DC_PREVIEW ->handleDcGetDataPreview(session, request.credentialResponse)
                 Protocol.W3C_DC_ARF -> handleDcGetDataArf(session, request.credentialResponse)
+                Protocol.W3C_DC_MDOC_API -> handleDcGetDataMdocApi(session, request.credentialResponse)
+                Protocol.W3C_DC_OPENID4VP -> handleDcGetDataOpenID4VP(session, request.credentialResponse)
                 else -> throw IllegalArgumentException("unsupported protocol ${session.protocol}")
             }
         } catch (e: Throwable) {
@@ -609,7 +644,19 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         }
 
         try {
-            handleGetDataMdoc(session, resp)
+            when (session.requestFormat) {
+                "mdoc" -> {
+                    handleGetDataMdoc(session, resp)
+                }
+                "vc" -> {
+                    val clientIdToUse = if (session.signRequest) {
+                        "x509_san_uri:${session.origin}/server/verifier.html"
+                    } else {
+                        "web-origin:${session.origin}"
+                    }
+                    handleGetDataSdJwt(session, resp, clientIdToUse)
+                }
+            }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
             resp.status = HttpServletResponse.SC_BAD_REQUEST
@@ -629,10 +676,11 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(tokenBase64.fromBase64Url())
         val uncompressed = (session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
         session.sessionTranscript = generateBrowserSessionTranscript(
-            session.nonce.fromHex(),
+            session.nonce,
             session.origin,
             Crypto.digest(Algorithm.SHA256, uncompressed)
         )
+        session.responseWasEncrypted = true
         session.deviceResponse = Crypto.hpkeDecrypt(
             Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
             session.encryptionKey,
@@ -656,7 +704,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
 
         val arfEncryptionInfo = CborMap.builder()
-            .put("nonce", session.nonce.fromHex())
+            .put("nonce", session.nonce.toByteArray())
             .put("readerPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
             .end()
             .build()
@@ -681,6 +729,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                     .build()
             )
 
+        session.responseWasEncrypted = true
         session.deviceResponse = Crypto.hpkeDecrypt(
             Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
             session.encryptionKey,
@@ -690,6 +739,120 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
         Logger.iCbor(TAG, "SessionTranscript", session.sessionTranscript!!)
+    }
+
+    private fun handleDcGetDataMdocApi(
+        session: Session,
+        credentialResponse: String
+    ) {
+        val response = Json.parseToJsonElement(credentialResponse).jsonObject
+        val encryptedResponseBase64 = response["Response"]!!.jsonPrimitive.content
+
+        val array = Cbor.decode(encryptedResponseBase64.fromBase64Url()).asArray
+        if (array.get(0).asTstr != "dcapi") {
+            throw IllegalArgumentException("Excepted dcapi as first array element")
+        }
+        val encryptionParameters = array.get(1).asMap
+        val enc = encryptionParameters[Tstr("enc")]!!.asBstr
+        val encapsulatedPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
+            EcCurve.P256,
+            enc
+        )
+        val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
+
+        val arfEncryptionInfo = CborMap.builder()
+            .put("nonce", session.nonce.toByteArray())
+            .put("recipientPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
+            .end()
+            .build()
+        val encryptionInfo = CborArray.builder()
+            .add("dcapi")
+            .add(arfEncryptionInfo)
+            .end()
+            .build()
+        val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
+
+        val dcapiInfo = CborArray.builder()
+            .add(base64EncryptionInfo)
+            .add(session.origin)
+            .end()
+            .build()
+
+        session.sessionTranscript = Cbor.encode(
+            CborArray.builder()
+                .add(Simple.NULL) // DeviceEngagementBytes
+                .add(Simple.NULL) // EReaderKeyBytes
+                .addArray() // BrowserHandover
+                .add("dcapi")
+                .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
+                .end()
+                .end()
+                .build()
+        )
+
+        session.responseWasEncrypted = true
+        session.deviceResponse = Crypto.hpkeDecrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            session.encryptionKey,
+            cipherText,
+            session.sessionTranscript!!,
+            encapsulatedPublicKey)
+
+        Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
+        Logger.iCbor(TAG, "SessionTranscript", session.sessionTranscript!!)
+    }
+
+    private fun handleDcGetDataOpenID4VP(
+        session: Session,
+        credentialResponse: String
+    ) {
+        val response = Json.parseToJsonElement(credentialResponse).jsonObject
+
+        val encryptedResponse = response["response"]
+        val vpToken = if (encryptedResponse != null) {
+            session.responseWasEncrypted = true
+            val decryptedResponse = JsonWebEncryption.decrypt(encryptedResponse, session.encryptionKey).jsonObject
+            decryptedResponse["vp_token"]!!.jsonObject
+        } else {
+            response["vp_token"]!!.jsonObject
+        }
+        Logger.i(TAG, "vp_token: ${vpToken.toString()}")
+        val vpTokenForCred = vpToken["cred1"]!!.jsonPrimitive.content
+
+        when (session.requestFormat) {
+            "mdoc" -> {
+                val effectiveClientId = if (session.signRequest) {
+                    "x509_san_uri:${session.origin}/server/verifier.html"
+                } else {
+                    "web-origin:${session.origin}"
+                }
+                val handoverInfo = Cbor.encode(
+                    CborArray.builder()
+                        .add(session.origin)
+                        .add(effectiveClientId)
+                        .add(session.nonce.toByteArray().toBase64Url())
+                        .end()
+                        .build()
+                )
+                session.sessionTranscript = Cbor.encode(
+                    CborArray.builder()
+                        .add(Simple.NULL) // DeviceEngagementBytes
+                        .add(Simple.NULL) // EReaderKeyBytes
+                        .addArray()
+                        .add("OpenID4VPDCAPIHandover")
+                        .add(Crypto.digest(Algorithm.SHA256, handoverInfo))
+                        .end()
+                        .end()
+                        .build()
+                )
+                Logger.iCbor(TAG, "handoverInfo", handoverInfo)
+                Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
+                session.deviceResponse = vpTokenForCred.fromBase64Url()
+            }
+            "vc" -> {
+                session.verifiablePresentation = vpTokenForCred
+            }
+        }
     }
 
     private fun handleOpenID4VPBegin(
@@ -705,6 +868,8 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             // Keep in sync with verifier.html
             "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
             "w3c_dc_arf" -> Protocol.W3C_DC_ARF
+            "w3c_dc_mdoc_api" -> Protocol.W3C_DC_MDOC_API
+            "w3c_dc_openid4vp" -> Protocol.W3C_DC_OPENID4VP
             "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
             "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
             "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -718,7 +883,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
         // Create a new session
         val session = Session(
-            nonce = Random.Default.nextBytes(16).toHex(),
+            nonce = ByteString(Random.Default.nextBytes(16)),
             origin = request.origin,
             encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
             requestFormat = request.format,
@@ -821,7 +986,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             .claim("response_uri", responseUri)
             .claim("response_type", "vp_token")
             .claim("response_mode", "direct_post.jwt")
-            .claim("nonce", session.nonce)
+            .claim("nonce", session.nonce.toByteArray().toBase64Url())
             .claim("state", sessionId)
             .claim("presentation_definition", presentationDefinition)
             .claim("client_metadata", calcClientMetadata(session, session.requestFormat))
@@ -841,6 +1006,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         signedJWT.sign(signer)
 
         val s = signedJWT.serialize()
+        Logger.i(TAG, "Signed JWT: $s")
         resp.contentType = "application/oauth-authz-req+jwt"
         resp.outputStream.write(s.encodeToByteArray())
         resp.status = HttpServletResponse.SC_OK
@@ -925,10 +1091,11 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             encryptedJWT.decrypt(decrypter)
 
             val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
+            session.responseWasEncrypted = true
             if (session.requestFormat == "mdoc") {
                 session.deviceResponse = vpToken.fromBase64Url()
             } else {
-                session.deviceResponse = vpToken.toByteArray()
+                session.verifiablePresentation = vpToken
             }
 
             // According to ISO 23220-4, the mdoc profile is required to have the apv and apu params
@@ -996,7 +1163,7 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
         try {
             when (session.requestFormat) {
                 "mdoc" -> handleGetDataMdoc(session, resp)
-                "vc" -> handleGetDataSdJwt(session, resp)
+                "vc" -> handleGetDataSdJwt(session, resp, clientId)
             }
         } catch (e: Throwable) {
             Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
@@ -1044,6 +1211,10 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
                     lines.add(OpenID4VPResultLine(dataElementName, renderedValue))
                 }
             }
+            lines.add(OpenID4VPResultLine("Response end-to-end encrypted", "${session.responseWasEncrypted}"))
+            lines.add(OpenID4VPResultLine("DeviceSigned Authenticated", "${document.deviceSignedAuthenticated}"))
+            lines.add(OpenID4VPResultLine("IssuerSigned Authenticated", "${document.issuerSignedAuthenticated}"))
+            lines.add(OpenID4VPResultLine("Number of Digest Failures", "${document.numIssuerEntryDigestMatchFailures}"))
         }
 
         val json = Json { ignoreUnknownKeys = true }
@@ -1053,26 +1224,14 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
     private fun handleGetDataSdJwt(
         session: Session,
         resp: HttpServletResponse,
+        clientIdToUse: String,
     ) {
-        val presentationString = session.deviceResponse!!.decodeToString()
+        val presentationString = session.verifiablePresentation!!
         Logger.d(TAG, "Handling SD-JWT: $presentationString")
         val presentation = SdJwtVerifiablePresentation.fromString(presentationString)
-        val nonceStr = session.nonce
-
-        // on the verifier, check that the key binding can be verified with the
-        // key mentioned in the SD-JWT:
-        val isKeyBound = presentation.verifyKeyBinding(
-            checkAudience = { clientId == it },
-            checkNonce = { nonceStr == it },
-            checkCreationTime = { true /* TODO: sometimes flaky it < Clock.System.now() */ }
-        )
-
-        // also on the verifier, check the signature over the SD-JWT from the issuer
-        // TODO: We need to verify the issuer signature. Where do we get the public
-        // key of the issuer?
-        //presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
 
         val lines = mutableListOf<OpenID4VPResultLine>()
+
         for (disclosure in presentation.sdJwtVc.disclosures.sortedBy { it.key }) {
             val valueToAdd = when (disclosure.value) {
                 is JsonPrimitive -> disclosure.value.jsonPrimitive.content
@@ -1102,9 +1261,30 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
             disclosedClaims.add(key)
             Logger.i(TAG, "Adding special case $key: $value")
         }
-        if (!isKeyBound) {
-            lines.add(OpenID4VPResultLine("Key bound", "false"))
+
+        // on the verifier, check that the key binding can be verified with the
+        // key mentioned in the SD-JWT:
+        Logger.i(TAG, "using client_id ${clientIdToUse}")
+        try {
+            if (presentation.verifyKeyBinding(
+                    checkAudience = { clientIdToUse == it },
+                    checkNonce = {
+                        session.nonce.toByteArray().toBase64Url() == it
+                    },
+                    checkCreationTime = { true /* TODO: sometimes flaky it < Clock.System.now() */ }
+                )) {
+                lines.add(OpenID4VPResultLine("Key-binding", "Verified"))
+            } else {
+                lines.add(OpenID4VPResultLine("Key-binding", "Not Key-bound"))
+            }
+        } catch (e: Throwable) {
+            lines.add(OpenID4VPResultLine("Key-binding", "Verification failed: ${e.message}"))
         }
+
+        // also on the verifier, check the signature over the SD-JWT from the issuer
+        // TODO: We need to verify the issuer signature. Where do we get the public
+        // key of the issuer?
+        //presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
 
         val json = Json { ignoreUnknownKeys = true }
         resp.outputStream.write(json.encodeToString(OpenID4VPResultData(lines)).encodeToByteArray())
@@ -1143,14 +1323,18 @@ private fun createSessionTranscriptOpenID4VP(
 
 private fun mdocCalcDcRequestString(
     documentTypeRepository: DocumentTypeRepository,
+    format: String,
+    session: Session,
     request: DocumentCannedRequest,
     protocol: Protocol,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
     readerAuthKey: EcPrivateKey,
-    readerAuthKeyCertification: X509CertChain
+    readerAuthKeyCertification: X509CertChain,
+    signRequest: Boolean,
+    encryptResponse: Boolean,
 ): String {
     when (protocol) {
         Protocol.W3C_DC_PREVIEW -> {
@@ -1174,6 +1358,34 @@ private fun mdocCalcDcRequestString(
                 readerAuthKeyCertification
             )
         }
+        Protocol.W3C_DC_MDOC_API -> {
+            return mdocCalcDcRequestStringMdocApi(
+                documentTypeRepository,
+                request,
+                nonce,
+                origin,
+                readerKey,
+                readerPublicKey,
+                readerAuthKey,
+                readerAuthKeyCertification
+            )
+        }
+        Protocol.W3C_DC_OPENID4VP -> {
+            return calcDcRequestStringOpenID4VP(
+                documentTypeRepository,
+                format,
+                session,
+                request,
+                nonce,
+                origin,
+                readerKey,
+                readerPublicKey,
+                readerAuthKey,
+                readerAuthKeyCertification,
+                signRequest,
+                encryptResponse,
+            )
+        }
         else -> {
             throw IllegalStateException("Unsupported protocol $protocol")
         }
@@ -1183,7 +1395,7 @@ private fun mdocCalcDcRequestString(
 private fun mdocCalcDcRequestStringPreview(
     documentTypeRepository: DocumentTypeRepository,
     request: DocumentCannedRequest,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerPublicKey: EcPublicKeyDoubleCoordinate
     ): String {
@@ -1209,16 +1421,150 @@ private fun mdocCalcDcRequestStringPreview(
     }
     selector.put("fields", fields)
 
-    top.put("nonce", nonce.toBase64Url())
+    top.put("nonce", nonce.toByteArray().toBase64Url())
     top.put("readerPublicKey", readerPublicKey.asUncompressedPointEncoding.toBase64Url())
 
     return top.toString(JSONStyle.NO_COMPRESS)
 }
 
+private fun calcDcRequestStringOpenID4VP(
+    documentTypeRepository: DocumentTypeRepository,
+    format: String,
+    session: Session,
+    request: DocumentCannedRequest,
+    nonce: ByteString,
+    origin: String,
+    readerKey: EcPrivateKey,
+    readerPublicKey: EcPublicKeyDoubleCoordinate,
+    readerAuthKey: EcPrivateKey,
+    readerAuthKeyCertification: X509CertChain,
+    signRequest: Boolean,
+    encryptResponse: Boolean
+): String {
+    val responseMode = if (encryptResponse) {
+        Logger.i(TAG, "readerPublicKey is ${readerPublicKey}")
+        "dc_api.jwt"
+    } else {
+        "dc_api"
+    }
+
+    val clientMetadata = buildJsonObject {
+        put("vp_formats", buildJsonObject {
+            putJsonObject("mso_mdoc") {
+                putJsonArray("alg") {
+                    add(JsonPrimitive("ES256"))
+                }
+            }
+            putJsonObject("dc+sd-jwt") {
+                putJsonArray("sd-jwt_alg_values") {
+                    add(JsonPrimitive("ES256"))
+                }
+                putJsonArray("kb-jwt_alg_values") {
+                    add(JsonPrimitive("ES256"))
+                }
+            }
+        })
+        // TODO:  "require_signed_request_object": true
+        if (encryptResponse) {
+            put("authorization_encrypted_response_alg", JsonPrimitive("ECDH-ES"))
+            put("authorization_encrypted_response_enc", JsonPrimitive("A128GCM"))
+        }
+        putJsonObject("jwks") {
+            putJsonArray("keys") {
+                if (encryptResponse) {
+                    addJsonObject {
+                        put("kty", JsonPrimitive("EC"))
+                        put("use", JsonPrimitive("enc"))
+                        put("crv", JsonPrimitive("P-256"))
+                        put("alg", JsonPrimitive("ECDH-ES"))
+                        put("x", JsonPrimitive(readerPublicKey.x.toBase64Url()))
+                        put("y", JsonPrimitive(readerPublicKey.y.toBase64Url()))
+                    }
+                }
+            }
+        }
+    }
+
+    val unsignedRequest = buildJsonObject {
+        put("response_type", JsonPrimitive("vp_token"))
+        put("response_mode", JsonPrimitive(responseMode))
+        put("client_metadata", clientMetadata)
+        // Only include client_id for signed requests
+        if (signRequest) {
+            put("client_id", JsonPrimitive("x509_san_uri:${session.origin}/server/verifier.html"))
+        }
+        put("nonce", JsonPrimitive(nonce.toByteArray().toBase64Url()))
+
+        putJsonObject("dcql_query") {
+            putJsonArray("credentials") {
+                if (format == "vc") {
+                    addJsonObject {
+                        put("id", JsonPrimitive("cred1"))
+                        put("format", JsonPrimitive("dc+sd-jwt"))
+                        putJsonObject("meta") {
+                            put("vct_values",
+                                buildJsonArray {
+                                    add(JsonPrimitive(request.vcRequest!!.vct))
+                                }
+                            )
+                        }
+                        putJsonArray("claims") {
+                            // TODO: support path-based claims, e.g. ["address", "postal_code"]
+                            for (claim in request.vcRequest!!.claimsToRequest) {
+                                addJsonObject {
+                                    putJsonArray("path") {
+                                        add(JsonPrimitive(claim.identifier))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    addJsonObject {
+                        put("id", JsonPrimitive("cred1"))
+                        put("format", JsonPrimitive("mso_mdoc"))
+                        putJsonObject("meta") {
+                            put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
+                        }
+                        putJsonArray("claims") {
+                            for (ns in request.mdocRequest!!.namespacesToRequest) {
+                                for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                                    addJsonObject {
+                                        putJsonArray("path") {
+                                            add(JsonPrimitive(ns.namespace))
+                                            add(JsonPrimitive(de.attribute.identifier))
+                                        }
+                                        put("intent_to_retain", JsonPrimitive(intentToRetain))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!signRequest) {
+        return unsignedRequest.toString()
+    }
+    val signedRequestElement = JsonWebSignature.sign(
+        key = readerAuthKey,
+        signatureAlgorithm = readerAuthKey.curve.defaultSigningAlgorithm,
+        claimsSet = unsignedRequest,
+        type = "oauth-authz-req+jwt",
+        x5c = readerAuthKeyCertification
+    )
+    val signedRequest = buildJsonObject {
+        put("request", JsonPrimitive(signedRequestElement.jsonPrimitive.content))
+    }
+    return signedRequest.toString()
+}
+
 private fun mdocCalcDcRequestStringArf(
     documentTypeRepository: DocumentTypeRepository,
     request: DocumentCannedRequest,
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1226,7 +1572,7 @@ private fun mdocCalcDcRequestStringArf(
     readerAuthKeyCertification: X509CertChain
 ): String {
     val arfEncryptionInfo = CborMap.builder()
-        .put("nonce", nonce)
+        .put("nonce", nonce.toByteArray())
         .put("readerPublicKey", readerPublicKey.toCoseKey().toDataItem())
         .end()
         .build()
@@ -1245,6 +1591,71 @@ private fun mdocCalcDcRequestStringArf(
             .add("ARFHandoverv2")
             .add(base64EncryptionInfo)
             .add(origin)
+            .end()
+            .end()
+            .build()
+    )
+
+    val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
+    for (ns in request.mdocRequest!!.namespacesToRequest) {
+        for ((de, intentToRetain) in ns.dataElementsToRequest) {
+            itemsToRequest.getOrPut(ns.namespace) { mutableMapOf() }
+                .put(de.attribute.identifier, intentToRetain)
+        }
+    }
+    val generator = DeviceRequestGenerator(sessionTranscript)
+    generator.addDocumentRequest(
+        docType = request.mdocRequest!!.docType,
+        itemsToRequest = itemsToRequest,
+        requestInfo = null,
+        readerKey = readerAuthKey,
+        signatureAlgorithm = Algorithm.ES256,
+        readerKeyCertificateChain = readerAuthKeyCertification,
+    )
+    val deviceRequest = generator.generate()
+    val base64DeviceRequest = deviceRequest.toBase64Url()
+
+    val top = JSONObject()
+    top.put("deviceRequest", base64DeviceRequest)
+    top.put("encryptionInfo", base64EncryptionInfo)
+    return top.toString(JSONStyle.NO_COMPRESS)
+}
+
+private fun mdocCalcDcRequestStringMdocApi(
+    documentTypeRepository: DocumentTypeRepository,
+    request: DocumentCannedRequest,
+    nonce: ByteString,
+    origin: String,
+    readerKey: EcPrivateKey,
+    readerPublicKey: EcPublicKeyDoubleCoordinate,
+    readerAuthKey: EcPrivateKey,
+    readerAuthKeyCertification: X509CertChain
+): String {
+    val encryptionParameters = CborMap.builder()
+        .put("nonce", nonce.toByteArray())
+        .put("recipientPublicKey", readerPublicKey.toCoseKey().toDataItem())
+        .end()
+        .build()
+    val encryptionInfo = CborArray.builder()
+        .add("dcapi")
+        .add(encryptionParameters)
+        .end()
+        .build()
+    val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
+
+    val dcapiInfo = CborArray.builder()
+        .add(base64EncryptionInfo)
+        .add(origin)
+        .end()
+        .build()
+
+    val sessionTranscript = Cbor.encode(
+        CborArray.builder()
+            .add(Simple.NULL) // DeviceEngagementBytes
+            .add(Simple.NULL) // EReaderKeyBytes
+            .addArray() // BrowserHandover
+            .add("dcapi")
+            .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
             .end()
             .end()
             .build()
@@ -1448,7 +1859,7 @@ private fun parseCredentialDocument(encodedCredentialDocument: ByteArray
 //      pkRHash
 //    ]
 private fun generateBrowserSessionTranscript(
-    nonce: ByteArray,
+    nonce: ByteString,
     origin: String,
     requesterIdHash: ByteArray
 ): ByteArray {
@@ -1471,7 +1882,7 @@ private fun generateBrowserSessionTranscript(
             .add(Simple.NULL) // EReaderKeyBytes
             .addArray() // BrowserHandover
             .add(BROWSER_HANDOVER_V1)
-            .add(nonce)
+            .add(nonce.toByteArray())
             .add(originInfoBytes)
             .add(requesterIdHash)
             .end()
