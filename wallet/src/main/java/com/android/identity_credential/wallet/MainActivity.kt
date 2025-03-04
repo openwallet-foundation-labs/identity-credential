@@ -52,7 +52,6 @@ class MainActivity : FragmentActivity() {
     private lateinit var application: WalletApplication
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
-    private val promptModel: AndroidPromptModel by viewModels()
     private val routeRequest = MutableLiveData<String?>(null)
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
@@ -103,7 +102,7 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    PromptDialogs(promptModel)
+                    PromptDialogs(application.promptModel)
                     val navController = rememberNavController()
                     val route = routeRequest.observeAsState()
                     LaunchedEffect(route.value) {
@@ -119,7 +118,7 @@ class MainActivity : FragmentActivity() {
                         permissionTracker = permissionTracker,
                         qrEngagementViewModel = qrEngagementViewModel,
                         documentModel = application.documentModel,
-                        promptModel = promptModel,
+                        promptModel = application.promptModel,
                         readerModel = application.readerModel,
                     )
                 }

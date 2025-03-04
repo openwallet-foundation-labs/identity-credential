@@ -69,10 +69,14 @@ import com.android.identity_credential.wallet.presentation.UserCanceledPromptExc
 import com.android.identity_credential.wallet.presentation.showMdocPresentmentFlow
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.util.toMdocRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.compose.prompt.PromptDialogs
 
 class NoMatchingDocumentException(message: String): Exception(message) {}
 
@@ -304,6 +308,7 @@ class PresentationActivity : FragmentActivity() {
 
         setContent {
             val phaseState: Phase by phase.observeAsState(Phase.NOT_CONNECTED)
+            PromptDialogs(walletApp.promptModel)
             ConnectingToReader(phaseState)
             Result(phaseState)
         }
@@ -341,7 +346,7 @@ class PresentationActivity : FragmentActivity() {
                      * Start the Presentment Flow where a Presentment is shown for every
                      * [DocumentRequest] that has a suitable [Document].
                      */
-                    lifecycleScope.launch {
+                    lifecycleScopeLaunch {
                         try {
                             val deviceRequest = DeviceRequestParser(
                                 deviceRequestByteArray!!,
@@ -446,7 +451,7 @@ class PresentationActivity : FragmentActivity() {
 
                 Phase.SHOW_RESULT -> {
                     Logger.i(TAG, "Phase: Showing result")
-                    lifecycleScope.launch {
+                    lifecycleScopeLaunch {
                         // the amount of time to show the result for
                         delay(resultDelay)
                         phase.value = Phase.POST_RESULT
@@ -455,7 +460,7 @@ class PresentationActivity : FragmentActivity() {
 
                 Phase.POST_RESULT -> {
                     Logger.i(TAG, "Phase: Post showing result")
-                    lifecycleScope.launch {
+                    lifecycleScopeLaunch {
                         // delay before finishing activity, to ensure the result is fading out
                         delay(500)
                         phase.value = Phase.NOT_CONNECTED
@@ -550,4 +555,9 @@ class PresentationActivity : FragmentActivity() {
         transport = null
         handover = null
     }
+
+    private fun lifecycleScopeLaunch(block: suspend CoroutineScope.() -> Unit): Job =
+        lifecycleScope.launch {
+            withContext(walletApp.promptModel, block)
+        }
 }

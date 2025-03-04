@@ -50,6 +50,7 @@ class CredmanPresentmentActivity: FragmentActivity() {
         enableEdgeToEdge()
 
         CoroutineScope(Dispatchers.Main).launch {
+            presentmentModel.setPromptModel(NdefService.promptModel)
             startPresentment(App.getInstance(NdefService.promptModel))
         }
     }

@@ -103,8 +103,11 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.formUrlEncode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.InternalAPI
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Required
@@ -122,6 +125,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.multipaz.compose.prompt.PromptDialogs
 import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -243,11 +247,12 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
         setContent {
             val phaseState: Phase by phase.observeAsState(Phase.TRANSACTING)
             IdentityCredentialTheme {
+                PromptDialogs(walletApp.promptModel)
                 Result(phaseState)
             }
         }
 
-        lifecycleScope.launch {
+        lifecycleScopeLaunch {
             try {
                 createAndSendResponse(authorizationRequest)
                 resultStringId = R.string.presentation_result_success_message
@@ -282,7 +287,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
                 Phase.SHOW_RESULT -> {
                     Logger.i(TAG, "Phase: Showing result")
-                    lifecycleScope.launch {
+                    lifecycleScopeLaunch {
                         // the amount of time to show the result for
                         delay(resultDelay)
                         phase.value = Phase.POST_RESULT
@@ -291,7 +296,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
 
                 Phase.POST_RESULT -> {
                     Logger.i(TAG, "Phase: Post showing result")
-                    lifecycleScope.launch {
+                    lifecycleScopeLaunch {
                         // delay before finishing activity, to ensure the result is fading out
                         delay(500)
                         // Once faded out, switch back to browser if the transaction succeeded
@@ -728,6 +733,11 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             }
         }
     }
+
+    private fun lifecycleScopeLaunch(block: suspend CoroutineScope.() -> Unit): Job =
+        lifecycleScope.launch {
+            withContext(walletApp.promptModel, block)
+        }
 }
 
 // returns <namespace, dataElem>
