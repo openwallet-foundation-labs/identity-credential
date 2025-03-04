@@ -69,6 +69,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.android.identity.prompt.PromptModel
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.DocumentModel
@@ -91,10 +92,11 @@ fun MainScreen(
     qrEngagementViewModel: QrEngagementViewModel,
     documentModel: DocumentModel,
     settingsModel: SettingsModel,
+    promptModel: PromptModel,
     context: Context,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope { promptModel }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {

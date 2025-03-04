@@ -1,5 +1,6 @@
 package com.android.identity.securearea.cloud
 
+import com.android.identity.context.applicationContext
 import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.securearea.UserAuthenticationType
@@ -9,14 +10,13 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
-import com.android.identity.util.AndroidContexts
 import kotlinx.io.bytestring.ByteString
 import java.io.File
 
 
 private val androidStorage: AndroidStorage by lazy {
     AndroidStorage(
-        File(AndroidContexts.applicationContext.dataDir.path, "storage.db").absolutePath
+        File(applicationContext.dataDir.path, "storage.db").absolutePath
     )
 }
 

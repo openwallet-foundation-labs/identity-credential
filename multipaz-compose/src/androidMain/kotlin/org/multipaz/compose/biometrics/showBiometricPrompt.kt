@@ -8,7 +8,6 @@ import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.securearea.UserAuthenticationType
-import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -30,6 +29,7 @@ import kotlin.coroutines.resumeWithException
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 suspend fun showBiometricPrompt(
+    activity: FragmentActivity,
     cryptoObject: CryptoObject?,
     title: String,
     subtitle: String,
@@ -41,6 +41,7 @@ suspend fun showBiometricPrompt(
         suspendCancellableCoroutine { continuation ->
             showBiometricPromptAsync(
                 cryptoObject = cryptoObject,
+                activity = activity,
                 title = title,
                 subtitle = subtitle,
                 userAuthenticationTypes = userAuthenticationTypes,
@@ -54,6 +55,7 @@ suspend fun showBiometricPrompt(
 }
 
 private fun showBiometricPromptAsync(
+    activity: FragmentActivity,
     title: String,
     subtitle: String,
     cryptoObject: CryptoObject?,
@@ -63,7 +65,6 @@ private fun showBiometricPromptAsync(
     onDismissed: () -> Unit,
     onError: (error: Throwable) -> Unit,
 ) {
-    val activity = AndroidContexts.currentActivity ?: throw IllegalStateException("No activity in AndroidContexts")
     if (userAuthenticationTypes.isEmpty()) {
         onError(
             IllegalStateException(

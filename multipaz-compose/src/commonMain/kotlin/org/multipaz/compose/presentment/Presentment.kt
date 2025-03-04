@@ -46,6 +46,7 @@ import com.android.identity.appsupport.ui.presentment.PresentmentSource
 import com.android.identity.appsupport.ui.presentment.PresentmentTimeout
 import com.android.identity.document.Document
 import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.prompt.PromptModel
 import identitycredential.multipaz_compose.generated.resources.Res
 import identitycredential.multipaz_compose.generated.resources.presentment_canceled
 import identitycredential.multipaz_compose.generated.resources.presentment_connecting_to_reader
@@ -91,6 +92,7 @@ private const val TAG = "Presentment"
 @Composable
 fun Presentment(
     presentmentModel: PresentmentModel,
+    promptModel: PromptModel,
     documentTypeRepository: DocumentTypeRepository,
     source: PresentmentSource,
     onPresentmentComplete: () -> Unit,
@@ -98,7 +100,7 @@ fun Presentment(
     appIconPainter: Painter,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     // Make sure we clean up the PresentmentModel when we're done. This is to ensure
     // the mechanism is properly shut down, for example for proximity we need to release

@@ -32,6 +32,7 @@ import com.android.identity.mdoc.transport.MdocTransport
 import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.mdoc.transport.advertiseAndWait
+import com.android.identity.prompt.PromptModel
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
@@ -49,10 +50,11 @@ private const val TAG = "IsoMdocProximitySharingScreen"
 fun IsoMdocProximitySharingScreen(
     presentmentModel: PresentmentModel,
     settingsModel: TestAppSettingsModel,
+    promptModel: PromptModel,
     onNavigateToPresentmentScreen: () -> Unit,
     showToast: (message: String) -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
     val blePermissionState = rememberBluetoothPermissionState()
 
     val showQrCode = remember { mutableStateOf<ByteString?>(null) }

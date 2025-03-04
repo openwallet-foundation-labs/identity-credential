@@ -20,9 +20,10 @@ import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.nfc.CommandApdu
 import com.android.identity.appsupport.ui.presentment.PresentmentModel
 import com.android.identity.appsupport.ui.presentment.PresentmentTimeout
+import com.android.identity.context.initializeApplication
 import com.android.identity.mdoc.transport.advertiseAndWait
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
-import com.android.identity.util.AndroidContexts
+import com.android.identity.prompt.AndroidPromptModel
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -43,12 +44,15 @@ class NdefService: HostApduService() {
         private var engagement: MdocNfcEngagementHelper? = null
         private var disableEngagementJob: Job? = null
         private var listenForCancellationFromUiJob: Job? = null
-        val presentmentModel: PresentmentModel by lazy { PresentmentModel() }
+        val promptModel = AndroidPromptModel()
+        val presentmentModel: PresentmentModel by lazy {
+            PresentmentModel().apply { setPromptModel(promptModel) }
+        }
     }
 
 
     private fun vibrate(pattern: List<Int>) {
-        val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+        val vibrator = ContextCompat.getSystemService(applicationContext, Vibrator::class.java)
         val vibrationEffect = VibrationEffect.createWaveform(pattern.map { it.toLong() }.toLongArray(), -1)
         vibrator?.vibrate(vibrationEffect)
     }
@@ -71,7 +75,7 @@ class NdefService: HostApduService() {
     override fun onCreate() {
         Logger.i(TAG, "onCreate")
         super.onCreate()
-        AndroidContexts.setApplicationContext(applicationContext)
+        initializeApplication(applicationContext)
 
         // Note: Every millisecond literally counts here because we're handling a
         // NFC tap and users tend to remove their phone from the reader really fast.

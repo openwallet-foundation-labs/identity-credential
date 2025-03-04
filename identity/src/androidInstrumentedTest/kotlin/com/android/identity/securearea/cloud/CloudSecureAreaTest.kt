@@ -5,6 +5,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.asn1.ASN1Integer
 import com.android.identity.asn1.OID
+import com.android.identity.context.applicationContext
+import com.android.identity.context.initializeApplication
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
@@ -19,7 +21,6 @@ import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
 import com.android.identity.storage.ephemeral.EphemeralStorage
-import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -47,7 +48,7 @@ class CloudSecureAreaTest {
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
-        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().context)
+        initializeApplication(InstrumentationRegistry.getInstrumentation().context)
     }
 
     var serverTime = Instant.fromEpochMilliseconds(0)
@@ -56,7 +57,7 @@ class CloudSecureAreaTest {
         storageTable: StorageTable,
         private val packageToAllow: String?,
     ) : CloudSecureArea(storageTable, "CloudSecureArea", "uri-not-used") {
-        val context = AndroidContexts.applicationContext
+        val context = applicationContext
         private lateinit var server: CloudSecureAreaServer
 
         public override suspend fun initialize() {
@@ -409,7 +410,7 @@ class CloudSecureAreaTest {
         // Setup the server to only accept our package name. This should cause register to succeed().
         val csa = LoopbackCloudSecureArea(
             EphemeralStorage().getTable(tableSpec),
-            AndroidContexts.applicationContext.packageName
+            applicationContext.packageName
         )
         csa.initialize()
         csa.register(

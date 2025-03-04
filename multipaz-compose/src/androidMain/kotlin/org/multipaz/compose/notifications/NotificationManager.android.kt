@@ -7,7 +7,7 @@ import android.content.Context.NOTIFICATION_SERVICE
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.android.identity.util.AndroidContexts
+import com.android.identity.context.applicationContext
 import com.android.identity.util.UUID
 
 object NotificationManagerAndroid {
@@ -33,8 +33,7 @@ object NotificationManagerAndroid {
             notificationChannelTitle,
             NotificationManager.IMPORTANCE_HIGH
         )
-        val context = AndroidContexts.applicationContext
-        val notificationManager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
         channel
     }
@@ -50,8 +49,7 @@ object NotificationManagerAndroid {
 
         val effectiveNotificationId = notificationId ?: "notification_${UUID.randomUUID()}"
 
-        val context = AndroidContexts.applicationContext
-        val builder = NotificationCompat.Builder(context, notificationChannel.id).apply {
+        val builder = NotificationCompat.Builder(applicationContext, notificationChannel.id).apply {
             setSmallIcon(smallIconResourceId!!)
             if (notification.image != null) {
                 setLargeIcon(notification.image.asAndroidBitmap())
@@ -62,7 +60,7 @@ object NotificationManagerAndroid {
             setPriority(NotificationCompat.PRIORITY_HIGH)
         }
 
-        NotificationManagerCompat.from(context).notify(
+        NotificationManagerCompat.from(applicationContext).notify(
             effectiveNotificationId,
             1,
             builder.build()
@@ -72,13 +70,11 @@ object NotificationManagerAndroid {
     }
 
     suspend fun cancel(notificationId: NotificationId) {
-        val context = AndroidContexts.applicationContext
-        NotificationManagerCompat.from(context).cancel(notificationId, 1)
+        NotificationManagerCompat.from(applicationContext).cancel(notificationId, 1)
     }
 
     suspend fun cancelAll() {
-        val context = AndroidContexts.applicationContext
-        NotificationManagerCompat.from(context).cancelAll()
+        NotificationManagerCompat.from(applicationContext).cancelAll()
     }
 }
 

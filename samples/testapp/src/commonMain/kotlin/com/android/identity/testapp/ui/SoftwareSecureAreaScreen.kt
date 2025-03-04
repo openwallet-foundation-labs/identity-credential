@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
+import com.android.identity.prompt.PromptModel
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockInteractive
@@ -34,9 +35,10 @@ private val softwareSecureAreaProvider = SecureAreaProvider {
 @Preview
 @Composable
 fun SoftwareSecureAreaScreen(
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     LazyColumn(
         modifier = Modifier.padding(8.dp)

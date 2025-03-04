@@ -2,13 +2,13 @@ package com.android.identity.testapp
 
 import android.os.Build
 import com.android.identity.crypto.EcCurve
+import com.android.identity.context.applicationContext
 import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
-import com.android.identity.util.AndroidContexts
 import com.android.identity.securearea.SecureAreaProvider
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
@@ -17,7 +17,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.jetbrains.compose.resources.getString
 import org.multipaz.compose.notifications.NotificationManagerAndroid
 import java.io.File
 import java.net.NetworkInterface
@@ -41,7 +40,7 @@ actual suspend fun platformInit() {
     }
     NotificationManagerAndroid.setSmallIcon(R.drawable.ic_stat_name)
     NotificationManagerAndroid.setChannelTitle(
-        AndroidContexts.applicationContext.getString(R.string.notification_channel_title)
+        applicationContext.getString(R.string.notification_channel_title)
     )
 }
 
@@ -61,7 +60,7 @@ actual fun getLocalIpAddress(): String {
 
 private val androidStorage: AndroidStorage by lazy {
     AndroidStorage(
-        File(AndroidContexts.applicationContext.dataDir.path, "storage.db").absolutePath
+        File(applicationContext.dataDir.path, "storage.db").absolutePath
     )
 }
 

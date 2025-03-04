@@ -1,8 +1,10 @@
 package com.android.identity.nfc
 
+import com.android.identity.prompt.PromptDismissedException
 import com.android.identity.util.Logger
 import com.android.identity.util.toKotlinError
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,8 +24,6 @@ import kotlin.coroutines.resumeWithException
 
 private class NfcTagReader<T> {
 
-    private class DialogCanceledException : Throwable()
-
     companion object {
         private const val TAG = "NfcTagReader"
     }
@@ -38,7 +38,7 @@ private class NfcTagReader<T> {
         ) {
             if (didInvalidateWithError.domain == NFCErrorDomain &&
                 didInvalidateWithError.code == NFCReaderSessionInvalidationErrorUserCanceled) {
-                continuation?.resumeWithException(DialogCanceledException())
+                continuation?.resumeWithException(PromptDismissedException())
                 continuation = null
             } else {
                 continuation?.resumeWithException(didInvalidateWithError.toKotlinError())
@@ -102,7 +102,7 @@ private class NfcTagReader<T> {
             tag: NfcIsoTag,
             updateMessage: (message: String) -> Unit
         ) -> T?
-    ): T? {
+    ): T {
         check(NFCTagReaderSession.readingAvailable) { "The device doesn't support NFC tag reading" }
 
         try {
@@ -114,8 +114,8 @@ private class NfcTagReader<T> {
             }
             session.invalidateSession()
             return ret
-        } catch (e: DialogCanceledException) {
-            return null
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             session.invalidateSessionWithErrorMessage(e.message!!)
             throw e
@@ -123,13 +123,13 @@ private class NfcTagReader<T> {
     }
 }
 
-actual suspend fun<T> scanNfcTag(
+actual suspend fun<T: Any> scanNfcTag(
     message: String,
     tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
     ) -> T?
-): T? {
+): T {
     val reader = NfcTagReader<T>()
     return reader.beginSession(message, tagInteractionFunc)
 }

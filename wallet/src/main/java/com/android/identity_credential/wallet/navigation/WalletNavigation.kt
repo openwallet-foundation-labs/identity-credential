@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.android.identity.prompt.PromptModel
 import com.android.identity.util.fromBase64Url
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.PermissionTracker
@@ -67,6 +68,7 @@ fun WalletNavigation(
     permissionTracker: PermissionTracker,
     qrEngagementViewModel: QrEngagementViewModel,
     documentModel: DocumentModel,
+    promptModel: PromptModel,
     readerModel: ReaderModel,
 ) {
     val onNavigate = { routeWithArgs: String -> navigateTo(navController, routeWithArgs) }
@@ -83,6 +85,7 @@ fun WalletNavigation(
                 qrEngagementViewModel = qrEngagementViewModel,
                 documentModel = documentModel,
                 settingsModel = application.settingsModel,
+                promptModel = promptModel,
                 context = application.applicationContext,
             )
         }
@@ -208,6 +211,7 @@ fun WalletNavigation(
                 onNavigate = onNavigate,
                 permissionTracker = permissionTracker,
                 walletServerProvider = application.walletServerProvider,
+                promptModel = promptModel,
                 developerMode = application.settingsModel.developerModeEnabled.value ?: false
             )
         }

@@ -10,30 +10,29 @@ import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.android.identity.context.applicationContext
 import com.android.identity.securearea.AndroidKeystoreSecureArea
-import com.android.identity.util.AndroidContexts
 
 private class AndroidScreenLockState(): ScreenLockState {
 
     override val hasScreenLock = AndroidKeystoreSecureArea.Capabilities().secureLockScreenSetup
 
     override suspend fun launchSettingsPageWithScreenLock() {
-        val context = AndroidContexts.applicationContext
         val intent = Intent(Settings.ACTION_SECURITY_SETTINGS)
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ContextCompat.startActivity(context, intent, null)
+        ContextCompat.startActivity(applicationContext, intent, null)
     }
 }
 
 @Composable
 actual fun rememberScreenLockState(): ScreenLockState {
     val recomposeCounter = remember { mutableIntStateOf(0) }
-    LaunchedEffect(recomposeCounter.value) {}
+    LaunchedEffect(recomposeCounter.intValue) {}
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            recomposeCounter.value = recomposeCounter.value + 1
+            recomposeCounter.intValue += 1
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {

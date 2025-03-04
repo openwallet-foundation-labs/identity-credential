@@ -18,6 +18,7 @@ package com.android.identity.android.document
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.TestUtil
 import com.android.identity.claim.Claim
+import com.android.identity.context.initializeApplication
 import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.CredentialLoader
@@ -32,7 +33,6 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.Storage
 import com.android.identity.storage.android.AndroidStorage
 import com.android.identity.util.AndroidAttestationExtensionParser
-import com.android.identity.util.AndroidContexts
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
@@ -52,7 +52,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
     @Before
     fun setup() {
-        AndroidContexts.setApplicationContext(InstrumentationRegistry.getInstrumentation().targetContext)
+        initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
         storage = AndroidStorage(":memory:")
         secureAreaRepository = SecureAreaRepository.build {
             add(AndroidKeystoreSecureArea.create(storage))

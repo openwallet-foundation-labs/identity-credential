@@ -20,10 +20,10 @@ import androidx.annotation.RequiresApi
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tagged
+import com.android.identity.context.applicationContext
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import com.android.identity.util.toHex
@@ -126,8 +126,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
 
     override val incomingMessages = Channel<ByteArray>(Channel.UNLIMITED)
 
-    private val context = AndroidContexts.applicationContext
-    private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
+    private val bluetoothManager = applicationContext.getSystemService(BluetoothManager::class.java)
     private var device: BluetoothDevice? = null
     private var gatt: BluetoothGatt? = null
     private var service: BluetoothGattService? = null
@@ -468,7 +467,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
             try {
                 suspendCancellableCoroutine<Boolean> { continuation ->
                     setWaitCondition(WaitState.CONNECT_TO_PERIPHERAL, continuation)
-                    gatt = device!!.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+                    gatt = device!!.connectGatt(applicationContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
                 }
                 break
             } catch (error: ConnectionFailedException) {

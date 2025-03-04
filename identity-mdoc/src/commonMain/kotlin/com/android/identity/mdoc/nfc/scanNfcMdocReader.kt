@@ -8,6 +8,7 @@ import com.android.identity.mdoc.transport.MdocTransportFactory
 import com.android.identity.mdoc.transport.MdocTransportOptions
 import com.android.identity.mdoc.transport.NfcTransportMdocReader
 import com.android.identity.nfc.scanNfcTag
+import com.android.identity.prompt.PromptDismissedException
 import com.android.identity.util.Logger
 import com.android.identity.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -83,72 +84,70 @@ suspend fun scanNfcMdocReader(
     try {
         val result = scanNfcTag(
             message = message,
-            tagInteractionFunc = { tag, updateMessage ->
+            tagInteractionFunc = tagInteractionFunc@{ tag, updateMessage ->
                 val handoverResult = mdocReaderNfcHandover(
                     tag = tag,
                     negotiatedHandoverConnectionMethods = negotiatedHandoverTransports.map { it.connectionMethod },
                 )
                 if (handoverResult == null) {
-                    null
+                    return@tagInteractionFunc null
+                }
+                val connectionMethod = if (handoverResult.connectionMethods.size == 1) {
+                    handoverResult.connectionMethods[0]
                 } else {
-                    val connectionMethod = if (handoverResult.connectionMethods.size == 1) {
-                        handoverResult.connectionMethods[0]
-                    } else {
-                        selectConnectionMethod(handoverResult.connectionMethods)
-                    }
-                    if (connectionMethod == null) {
-                        null
-                    } else {
-                        // Now that we're connected, close remaining transports and see if one of the warmed-up
-                        // transports was chosen (can happen for negotiated handover, never for static handover)
-                        //
-                        var transport: MdocTransport? = null
-                        transportsToClose.forEach {
-                            if (it.connectionMethod == connectionMethod) {
-                                transport = it
-                            } else {
-                                Logger.i(TAG, "Closing connection with CM ${it.connectionMethod}")
-                                it.close()
-                            }
-                        }
-                        transportsToClose.clear()
-                        if (transport == null) {
-                            transport = transportFactory.createTransport(
-                                connectionMethod,
-                                MdocTransport.Role.MDOC_READER,
-                                options
-                            )
-                        }
+                    selectConnectionMethod(handoverResult.connectionMethods)
+                }
+                if (connectionMethod == null) {
+                    return@tagInteractionFunc null
+                }
 
-                        val result = ScanNfcMdocReaderResult(
-                            transport = transport,
-                            encodedDeviceEngagement = handoverResult.encodedDeviceEngagement,
-                            handover = handoverResult.handover
-                        )
-
-                        // If using NFC transport, run onHandover synchronously to keep the NFC tag reading
-                        // dialog visible and NfcIsoTag instance alive.
-                        if (result.transport is NfcTransportMdocReader) {
-                            result.transport.setTag(tag)
-                            onHandover(
-                                result.transport,
-                                result.encodedDeviceEngagement,
-                                result.handover,
-                                updateMessage
-                            )
-                        }
-                        result
+                // Now that we're connected, close remaining transports and see if one of the warmed-up
+                // transports was chosen (can happen for negotiated handover, never for static handover)
+                //
+                var transport: MdocTransport? = null
+                transportsToClose.forEach {
+                    if (it.connectionMethod == connectionMethod) {
+                        transport = it
+                    } else {
+                        Logger.i(TAG, "Closing connection with CM ${it.connectionMethod}")
+                        it.close()
                     }
                 }
+                transportsToClose.clear()
+                if (transport == null) {
+                    transport = transportFactory.createTransport(
+                        connectionMethod,
+                        MdocTransport.Role.MDOC_READER,
+                        options
+                    )
+                }
+
+                val result = ScanNfcMdocReaderResult(
+                    transport = transport!!,
+                    encodedDeviceEngagement = handoverResult.encodedDeviceEngagement,
+                    handover = handoverResult.handover
+                )
+
+                // If using NFC transport, run onHandover synchronously to keep the NFC tag reading
+                // dialog visible and NfcIsoTag instance alive.
+                if (result.transport is NfcTransportMdocReader) {
+                    result.transport.setTag(tag)
+                    onHandover(
+                        result.transport,
+                        result.encodedDeviceEngagement,
+                        result.handover,
+                        updateMessage
+                    )
+                }
+                result
             }
         )
-        if (result == null) {
-            return false
-        }
         if (result.transport !is NfcTransportMdocReader) {
             onHandover(result.transport, result.encodedDeviceEngagement, result.handover, null)
         }
         return true
+    } catch (_: PromptDismissedException) {
+        return false
     } finally {
         // Close listening transports that went unused.
         transportsToClose.forEach {

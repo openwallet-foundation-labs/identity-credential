@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.android.identity.nfc.Nfc
 import com.android.identity.nfc.scanNfcTag
+import com.android.identity.prompt.PromptDismissedException
+import com.android.identity.prompt.PromptModel
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import kotlinx.coroutines.launch
@@ -18,9 +20,10 @@ private const val TAG = "NfcScreen"
 
 @Composable
 fun NfcScreen(
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     LazyColumn(
         modifier = Modifier.padding(8.dp)
@@ -41,11 +44,9 @@ fun NfcScreen(
                                     ccFile
                                 }
                             )
-                            if (ccFile != null) {
-                                showToast("NDEF CC file: ${ccFile.toHex()}")
-                            } else {
-                                showToast("Dialog dismissed by user")
-                            }
+                            showToast("NDEF CC file: ${ccFile.toHex()}")
+                        } catch (e: PromptDismissedException) {
+                            showToast("Dialog dismissed by user")
                         } catch (e: Throwable) {
                             Logger.e(TAG, "Fail", e)
                             e.printStackTrace()

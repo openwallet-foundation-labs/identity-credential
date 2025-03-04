@@ -48,7 +48,6 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.documenttype.DocumentAttributeType
@@ -137,7 +136,7 @@ fun IsoMdocProximityReadingScreen(
     val dropdownExpanded = remember { mutableStateOf(false) }
     val selectedRequest = remember { mutableStateOf(availableRequests[0]) }
     val blePermissionState = rememberBluetoothPermissionState()
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { app.promptModel }
     val readerShowQrScanner = remember { mutableStateOf(false) }
     val readerTransport = remember { mutableStateOf<MdocTransport?>(null) }
     val readerSessionEncryption = remember { mutableStateOf<SessionEncryption?>(null) }
@@ -576,38 +575,32 @@ private suspend fun doReaderFlow(
             MdocTransportOptions(bleUseL2CAP = bleUseL2CAP)
         )
         if (transport is NfcTransportMdocReader) {
-            if (scanNfcTag(
-                    message = "QR engagement with NFC Data Transfer. Move into NFC field of the mdoc",
-                    tagInteractionFunc = { tag, updateMessage ->
-                        transport.setTag(tag)
-                        doReaderFlowWithTransport(
-                            app = app,
-                            transport = transport,
-                            encodedDeviceEngagement = encodedDeviceEngagement,
-                            handover = handover,
-                            updateNfcDialogMessage = updateNfcDialogMessage,
-                            allowMultipleRequests = allowMultipleRequests,
-                            bleUseL2CAP = bleUseL2CAP,
-                            showToast = showToast,
-                            readerTransport = readerTransport,
-                            readerSessionEncryption = readerSessionEncryption,
-                            readerSessionTranscript = readerSessionTranscript,
-                            readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
-                            selectedRequest = selectedRequest,
-                            eDeviceKey = eDeviceKey,
-                            eReaderKey = eReaderKey.value!!,
-                        )
-                        true
-                    }
-                ) == true
-            ) {
-                return
-            } else {
-                throw IllegalStateException("Reading cancelled")
-            }
-        } else {
-            transport
+            scanNfcTag(
+                message = "QR engagement with NFC Data Transfer. Move into NFC field of the mdoc",
+                tagInteractionFunc = { tag, _ ->
+                    transport.setTag(tag)
+                    doReaderFlowWithTransport(
+                        app = app,
+                        transport = transport,
+                        encodedDeviceEngagement = encodedDeviceEngagement,
+                        handover = handover,
+                        updateNfcDialogMessage = updateNfcDialogMessage,
+                        allowMultipleRequests = allowMultipleRequests,
+                        bleUseL2CAP = bleUseL2CAP,
+                        showToast = showToast,
+                        readerTransport = readerTransport,
+                        readerSessionEncryption = readerSessionEncryption,
+                        readerSessionTranscript = readerSessionTranscript,
+                        readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
+                        selectedRequest = selectedRequest,
+                        eDeviceKey = eDeviceKey,
+                        eReaderKey = eReaderKey.value!!,
+                    )
+                }
+            )
+            return
         }
+        transport
     }
     doReaderFlowWithTransport(
         app = app,

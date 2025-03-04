@@ -13,9 +13,9 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 import com.android.identity.device.AssertionNonce
 import com.android.identity.device.DeviceCheck
+import com.android.identity.prompt.requestPassphrase
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyAttestation
-import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
@@ -50,7 +50,6 @@ import com.android.identity.storage.Storage
 import com.android.identity.storage.StorageEngine
 import com.android.identity.storage.StorageTable
 import com.android.identity.storage.StorageTableSpec
-import com.android.identity.ui.UiModel
 import com.android.identity.util.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -583,7 +582,7 @@ open class CloudSecureArea protected constructor(
                 }
                 when (e.reason) {
                     CloudKeyLockedException.Reason.WRONG_PASSPHRASE -> {
-                        cloudKeyUnlockData.passphrase = UiModel.requestPassphrase(
+                        cloudKeyUnlockData.passphrase = requestPassphrase(
                             // TODO: translations
                             title = keyUnlockData.title ?: "Verify it's you",
                             subtitle = keyUnlockData.subtitle ?: defaultSubtitle,

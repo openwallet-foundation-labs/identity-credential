@@ -175,9 +175,10 @@ internal suspend fun mdocPresentment(
                 Logger.i(TAG, "Response sent, keeping connection open")
             }
         }
-    } catch (_: MdocTransportClosedException) {
+    } catch (err: MdocTransportClosedException) {
         // Nothing to do, this is thrown when transport.close() is called from another coroutine, that
         // is, the X in the top-right
+        err.printStackTrace()
         Logger.i(TAG, "Ending holderJob due to MdocTransportClosedException")
         model.setCompleted()
     } catch (error: Throwable) {

@@ -49,14 +49,15 @@ import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.securearea.AndroidKeystoreSecureArea
 import com.android.identity.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
+import com.android.identity.context.applicationContext
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.X509CertChain
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.prompt.PromptModel
 import com.android.identity.securearea.KeyUnlockInteractive
 import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyPurpose
-import com.android.identity.util.AndroidContexts
 import com.android.identity.testapp.platformSecureAreaProvider
 import com.android.identity.util.Logger
 import com.android.identity.util.toBase64Url
@@ -74,15 +75,16 @@ private val androidKeystoreCapabilities: AndroidKeystoreSecureArea.Capabilities 
 }
 
 private val keymintVersionTee: Int by lazy {
-    getFeatureVersionKeystore(AndroidContexts.applicationContext, false)
+    getFeatureVersionKeystore(applicationContext, false)
 }
 
 private val keymintVersionStrongBox: Int by lazy {
-    getFeatureVersionKeystore(AndroidContexts.applicationContext, true)
+    getFeatureVersionKeystore(applicationContext, true)
 }
 
 @Composable
 actual fun AndroidKeystoreSecureAreaScreen(
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit,
     onViewCertificate: (encodedCertificateData: String) -> Unit
 ) {
@@ -98,7 +100,7 @@ actual fun AndroidKeystoreSecureAreaScreen(
             })
     }
 
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     LazyColumn {
 

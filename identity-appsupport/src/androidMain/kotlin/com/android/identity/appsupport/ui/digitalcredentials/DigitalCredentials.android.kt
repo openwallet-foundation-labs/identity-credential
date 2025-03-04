@@ -8,12 +8,12 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.claim.organizeByNamespace
+import com.android.identity.context.applicationContext
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
-import com.android.identity.util.AndroidContexts
 import com.android.identity.util.Logger
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import com.google.android.gms.identitycredentials.RegistrationRequest
@@ -73,10 +73,9 @@ private fun getDataElementDisplayName(
 }
 
 private suspend fun updateCredman() {
-    val context = AndroidContexts.applicationContext
-    val appInfo = context.applicationInfo
+    val appInfo = applicationContext.applicationInfo
     val appName = if (appInfo.labelRes != 0) {
-        context.getString(appInfo.labelRes)
+        applicationContext.getString(appInfo.labelRes)
     } else {
         appInfo.nonLocalizedLabel.toString()
     }
@@ -115,11 +114,11 @@ private suspend fun updateCredman() {
 
     val credentialsCbor = Cbor.encode(docsBuilder.end().build())
     //Logger.iCbor(TAG, "credentialsCbor", credentialsCbor)
-    val client = IdentityCredentialManager.getClient(context)
+    val client = IdentityCredentialManager.getClient(applicationContext)
     client.registerCredentials(
         RegistrationRequest(
             credentials = credentialsCbor,
-            matcher = loadMatcher(context),
+            matcher = loadMatcher(applicationContext),
             type = "com.credman.IdentityCredential",
             requestType = "",
             protocolTypes = emptyList(),

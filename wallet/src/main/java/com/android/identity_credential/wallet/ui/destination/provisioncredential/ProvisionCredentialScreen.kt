@@ -53,6 +53,7 @@ import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.claim.MdocClaim
+import com.android.identity.prompt.PromptModel
 import com.android.identity.request.MdocRequest
 import com.android.identity.request.MdocRequestedClaim
 import com.android.identity.request.RequestedClaim
@@ -94,6 +95,7 @@ fun ProvisionDocumentScreen(
     application: WalletApplication,
     secureAreaRepository: SecureAreaRepository,
     provisioningViewModel: ProvisioningViewModel,
+    promptModel: PromptModel,
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
     walletServerProvider: WalletServerProvider,
@@ -170,7 +172,7 @@ fun ProvisionDocumentScreen(
                     }
 
                     is EvidenceRequestSetupCloudSecureArea -> {
-                        val coroutineScope = rememberCoroutineScope()
+                        val coroutineScope = rememberCoroutineScope { promptModel }
                         EvidenceRequestSetupCloudSecureAreaView(
                             context = context,
                             secureAreaRepository = secureAreaRepository,

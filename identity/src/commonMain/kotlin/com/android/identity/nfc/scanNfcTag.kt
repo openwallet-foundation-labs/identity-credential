@@ -1,5 +1,7 @@
 package com.android.identity.nfc
 
+import com.android.identity.prompt.PromptDismissedException
+
 /**
  * Shows a dialog prompting the user to scan a NFC tag.
  *
@@ -22,13 +24,14 @@ package com.android.identity.nfc
  *
  * @param message the message to initially show in the dialog.
  * @param tagInteractionFunc the function which is called when the tag is in the field, see above.
- * @return `null` if the user canceled the dialog, the return value of [tagInteractionFunc] otherwise.
+ * @return return value of [tagInteractionFunc]
+ * @throws PromptDismissedException if the user canceled the dialog
  * @throws Throwable exceptions thrown in [tagInteractionFunc] are rethrown.
  */
-expect suspend fun<T> scanNfcTag(
+expect suspend fun<T: Any> scanNfcTag(
     message: String,
     tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
     ) -> T?,
-): T?
+): T
