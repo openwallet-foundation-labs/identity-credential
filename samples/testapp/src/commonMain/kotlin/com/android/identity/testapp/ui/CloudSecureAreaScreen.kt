@@ -150,7 +150,7 @@ fun CloudSecureAreaScreen(
 
         item {
             TextButton(onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
+                coroutineScope.launch {
                     try {
                         val attestation = csaAttestation(showToast)
                         if (attestation != null) {
@@ -233,7 +233,7 @@ fun CloudSecureAreaScreen(
 
                         item {
                             TextButton(onClick = {
-                                CoroutineScope(Dispatchers.IO).launch {
+                                coroutineScope.launch {
                                     csaTest(
                                         keyPurpose = keyPurpose,
                                         curve = curve,
