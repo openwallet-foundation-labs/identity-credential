@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.multipaz.compose.prompt.PromptDialogs
 
 class NfcPresentmentActivity : FragmentActivity() {
     companion object {
@@ -39,6 +40,7 @@ class NfcPresentmentActivity : FragmentActivity() {
         setContent {
             AppTheme {
                 Scaffold { innerPadding ->
+                    PromptDialogs(app.promptModel)
                     Presentment(
                         presentmentModel = NdefService.presentmentModel,
                         documentTypeRepository = app.documentTypeRepository,

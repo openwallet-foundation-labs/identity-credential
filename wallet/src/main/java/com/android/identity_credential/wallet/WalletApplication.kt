@@ -49,6 +49,8 @@ import com.android.identity.issuance.WalletDocumentMetadata
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.vical.SignedVical
+import com.android.identity.prompt.AndroidPromptModel
+import com.android.identity.prompt.PromptModel
 import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
 import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
 import com.android.identity.securearea.SecureAreaProvider
@@ -122,6 +124,7 @@ class WalletApplication : Application() {
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
     lateinit var readerModel: ReaderModel
+    lateinit var promptModel: PromptModel
     lateinit var eventLogger: EventLogger
     private lateinit var secureAreaProvider: SecureAreaProvider<AndroidKeystoreSecureArea>
     lateinit var walletServerProvider: WalletServerProvider
@@ -153,6 +156,8 @@ class WalletApplication : Application() {
         documentTypeRepository.addDocumentType(EUCertificateOfResidence.getDocumentType())
         documentTypeRepository.addDocumentType(UtopiaNaturalization.getDocumentType())
         documentTypeRepository.addDocumentType(UtopiaMovieTicket.getDocumentType())
+
+        promptModel = AndroidPromptModel()
 
         // init storage
         val storageFile = File(applicationContext.noBackupFilesDir.path, "main.db")

@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
 import com.android.identity.context.getActivity
 import com.android.identity.prompt.BiometricPromptState
 import com.android.identity.prompt.SinglePromptModel
@@ -17,6 +18,10 @@ internal fun BiometricPromptDialog(model: SinglePromptModel<BiometricPromptState
     val activity = LocalContext.current.getActivity() as FragmentActivity
     val dialogState = model.dialogState.collectAsState(SinglePromptModel.NoDialogState())
     val dialogStateValue = dialogState.value
+    if (!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+        // Only currently-running activity should show biometric prompt
+        return
+    }
     LaunchedEffect(dialogStateValue) {
         when (dialogStateValue) {
             is SinglePromptModel.DialogShownState -> {

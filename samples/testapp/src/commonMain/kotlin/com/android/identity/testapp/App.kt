@@ -134,8 +134,6 @@ class App private constructor(val promptModel: PromptModel) {
 
     lateinit var readerTrustManager: TrustManager
 
-    private var _promptModel: PromptModel? = null
-
     private suspend fun init() {
         val initFuncs = listOf<Pair<suspend () -> Unit, String>>(
             Pair(::platformInit, "platformInit"),

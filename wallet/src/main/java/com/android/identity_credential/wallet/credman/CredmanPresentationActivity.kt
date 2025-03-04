@@ -19,6 +19,7 @@ package com.android.identity_credential.wallet.credman
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
+import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
@@ -52,9 +53,13 @@ import org.json.JSONObject
 
 import com.google.android.gms.identitycredentials.GetCredentialResponse
 import com.google.android.gms.identitycredentials.IntentHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.StringTokenizer
 import kotlinx.datetime.Clock
+import org.multipaz.compose.prompt.PromptDialogs
 
 
 /**
@@ -76,6 +81,9 @@ class CredmanPresentationActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContent {
+            PromptDialogs(walletApp.promptModel)
+        }
         try {
 
             val cmrequest = IntentHelper.extractGetCredentialRequest(intent)
@@ -127,7 +135,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                         .add(Pair(name, intentToRetain))
                 }
 
-                lifecycleScope.launch {
+                lifecycleScopeLaunch {
                     val mdocCredential = getMdocCredentialForCredentialId(credentialId)
                     val claims = MdocUtil.generateRequestedClaims(
                         docType,
@@ -216,7 +224,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     encodedSessionTranscript
                 ).parse().docRequests[0]
 
-                lifecycleScope.launch {
+                lifecycleScopeLaunch {
                     val mdocCredential = getMdocCredentialForCredentialId(credentialId)
                     val claims = docRequest.toMdocRequest(
                         documentTypeRepository = walletApp.documentTypeRepository,
@@ -328,7 +336,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                     requestedData.getOrPut(namespace) { mutableListOf() }
                         .add(Pair(name, intentToRetain))
                 }
-                lifecycleScope.launch {
+                lifecycleScopeLaunch {
                     val mdocCredential = getMdocCredentialForCredentialId(credentialId)
                     val claims = MdocUtil.generateRequestedClaims(
                         docType,
@@ -457,4 +465,9 @@ class CredmanPresentationActivity : FragmentActivity() {
         val credentialResponse = Credential("type", bundle)
         return GetCredentialResponse(credentialResponse)
     }
+
+    private fun lifecycleScopeLaunch(block: suspend CoroutineScope.() -> Unit): Job =
+        lifecycleScope.launch {
+            withContext(walletApp.promptModel, block)
+        }
 }
