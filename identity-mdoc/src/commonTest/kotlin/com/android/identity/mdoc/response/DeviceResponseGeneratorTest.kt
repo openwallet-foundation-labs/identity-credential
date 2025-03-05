@@ -135,7 +135,7 @@ class DeviceResponseGeneratorTest {
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
+            Algorithm.SHA256,
             DOC_TYPE,
             mdocCredential.getAttestation().publicKey
         )

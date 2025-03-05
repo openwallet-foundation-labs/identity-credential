@@ -166,7 +166,7 @@ class MainActivity : ComponentActivity() {
 
             // Generate an MSO and issuer-signed data for this credentials.
             val msoGenerator = MobileSecurityObjectGenerator(
-                "SHA-256",
+                Algorithm.SHA256,
                 MDL_DOCTYPE,
                 pendingCredential.getAttestation().publicKey
             )

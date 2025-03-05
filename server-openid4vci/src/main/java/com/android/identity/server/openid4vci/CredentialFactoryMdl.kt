@@ -72,7 +72,7 @@ internal class CredentialFactoryMdl : CredentialFactory {
         // Generate an MSO and issuer-signed data for this authentication key.
         val docType = DrivingLicense.MDL_DOCTYPE
         val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
+            Algorithm.SHA256,
             docType,
             authenticationKey!!
         )

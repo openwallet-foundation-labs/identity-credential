@@ -64,7 +64,7 @@ class MdocNfcEngagementHelper(
             "Can't use both static and negotiated handover at the same time"
         }
         if (static) {
-            check(!staticHandoverMethods.isEmpty()) {
+            check(staticHandoverMethods!!.isNotEmpty()) {
                 "Must have at least one ConnectionMethod for static handover"
             }
         }
@@ -107,25 +107,20 @@ class MdocNfcEngagementHelper(
                 val fileWriteAccessCondition = if (negotiatedHandoverPicker != null) 0x00 else 0xff.toByte()
                 // TODO: Specify CAPABILITIES FILE in a less obscure fashion.
                 selectedFilePayload = ByteString(
-                    0x00.toByte(),
-                    0x0f.toByte(),
-                    0x20.toByte(),
-                    0x7f.toByte(),
-                    0xff.toByte(),
-                    0x7f.toByte(),
-                    0xff.toByte(),
-                    0x04.toByte(),
-                    0x06.toByte(),
-                    0xe1.toByte(),
-                    0x04.toByte(),
-                    0x7f.toByte(),
-                    0xff.toByte(),
+                    0x00.toByte(), 0x0f.toByte(), // payload size?
+                    0x20.toByte(), // ?
+                    0x7f.toByte(), 0xff.toByte(), // ?
+                    0x7f.toByte(), 0xff.toByte(), // ?
+                    0x04.toByte(), // ?
+                    0x06.toByte(), // ?
+                    0xe1.toByte(), 0x04.toByte(), // fileId. TODO: b/394621076 - appendUInt16(Nfc.MDOC_NFC_NDEF_FILE_ID)
+                    0x7f.toByte(), 0xff.toByte(), //?
                     0x00.toByte(),           // file read access condition (allow read)
                     fileWriteAccessCondition // file write access condition (allow/disallow write)
                 )
             }
-            // TODO: This is the fileId in the CAPABILITIES file listed above. Use constant when fixing the above TODO.
-            0xe104 -> {
+
+            Nfc.MDOC_NDEF_CAPABILITIES_FILE_ID -> {
                 if (negotiatedHandoverPicker != null) {
                     val initialNdefMessage = NdefMessage(
                         records = listOf(
