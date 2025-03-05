@@ -76,6 +76,10 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return androidKeystoreSecureAreaProvider
 }
 
+actual val platformSecureAreaHasKeyAgreement by lazy {
+    AndroidKeystoreSecureArea.Capabilities().keyAgreementSupported
+}
+
 actual fun platformCreateKeySettings(
     challenge: ByteString,
     curve: EcCurve,

@@ -29,6 +29,8 @@ expect fun platformStorage(): Storage
  */
 expect fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea>
 
+expect val platformSecureAreaHasKeyAgreement: Boolean
+
 /**
  * Gets a [CreateKeySettings] object for creating auth-bound keys that works with the [SecureArea] returned
  * returned by [platformSecureAreaProvider].

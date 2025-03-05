@@ -129,6 +129,8 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return secureEnclaveSecureAreaProvider
 }
 
+actual val platformSecureAreaHasKeyAgreement = true
+
 actual fun platformCreateKeySettings(
     challenge: ByteString,
     curve: EcCurve,
