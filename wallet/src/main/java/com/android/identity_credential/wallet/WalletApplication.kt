@@ -1,3 +1,6 @@
+@file:Suppress("DEPRECATION")
+// TODO: for the deprecated PreferenceManager only.
+
 package com.android.identity_credential.wallet
 
 import android.Manifest

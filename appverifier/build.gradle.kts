@@ -7,7 +7,6 @@ plugins {
     id("kotlin-android")
     alias(libs.plugins.navigation.safe.args)
     alias(libs.plugins.parcelable)
-    alias(libs.plugins.kapt)
 }
 
 val projectVersionCode: Int by rootProject.extra
@@ -15,6 +14,9 @@ val projectVersionName: String by rootProject.extra
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        allWarningsAsErrors = true
+    }
 }
 
 android {

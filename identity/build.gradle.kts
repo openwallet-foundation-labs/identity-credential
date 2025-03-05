@@ -44,6 +44,7 @@ kotlin {
                     includeDirs.headerFilterOnly("$rootDir/identity/SwiftBridge/build/Release-$platform/include")
 
                     val interopTask = tasks[interopProcessingTaskName]
+                    @Suppress("DEPRECATION")
                     interopTask.dependsOn(":identity:SwiftBridge:build${platform.capitalize()}")
                 }
 

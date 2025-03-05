@@ -7,6 +7,7 @@ val projectVersionCode: Int by extra {
         commandLine("git", "rev-list", "HEAD", "--count")
         standardOutput = stdout
     }
+    @Suppress("DEPRECATION")
     stdout.toString().trim().toInt()
 }
 
@@ -17,6 +18,7 @@ val projectVersionName: String by extra {
         commandLine("git", "describe", "--tags", "--dirty")
         standardOutput = stdout
     }
+    @Suppress("DEPRECATION")
     stdout.toString().trim()
 }
 
@@ -32,6 +34,5 @@ plugins {
     alias(libs.plugins.gretty) apply false
     alias(libs.plugins.navigation.safe.args) apply false
     alias(libs.plugins.parcelable) apply false
-    alias(libs.plugins.kapt) apply false
     alias(libs.plugins.buildconfig) apply false
 }

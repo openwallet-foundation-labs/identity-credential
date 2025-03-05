@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+@file:Suppress("DEPRECATION")
+// TODO: for the deprecated PreferenceManager only.
+
 package com.android.identity.preconsent_mdl
 
 import android.annotation.SuppressLint

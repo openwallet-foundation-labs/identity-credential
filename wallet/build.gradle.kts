@@ -19,6 +19,9 @@ buildConfig {
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        allWarningsAsErrors = true
+    }
 }
 
 android {

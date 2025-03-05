@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.konan.target.HostManager
 
 if (HostManager.hostIsMac) {
     listOf("iphoneos", "iphonesimulator").forEach { sdk ->
+        @Suppress("DEPRECATION")
         tasks.create<Exec>("build${sdk.capitalize()}") {
             group = "build"
 

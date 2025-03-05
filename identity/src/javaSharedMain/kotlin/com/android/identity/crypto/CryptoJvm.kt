@@ -858,6 +858,7 @@ actual object Crypto {
         recipientKey: EcPrivateKey
     ): JsonObject {
         val encryptedJWT = EncryptedJWT.parse(encryptedJwt.jsonPrimitive.content)
+        @Suppress("DEPRECATION")
         val encKey = ECKey(
             Curve.P_256,
             recipientKey.publicKey.javaPublicKey as ECPublicKey,
@@ -876,6 +877,7 @@ actual object Crypto {
         type: String?,
         x5c: X509CertChain?
     ): JsonElement {
+        @Suppress("DEPRECATION")
         val ecKey = ECKey(
             Curve.P_256,
             key.publicKey.javaPublicKey as ECPublicKey,
