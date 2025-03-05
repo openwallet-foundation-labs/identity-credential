@@ -135,9 +135,14 @@ class Document internal constructor(
         }
     }
 
-    // Called from Credential.addToDocument
-    internal suspend fun addCredential(newCredential: Credential) {
+    // Called from Credential.addToDocument, init block is executed behind identity
+    // cache lock before attempting to add to the cache.
+    internal suspend fun addCredential(
+        newCredential: Credential,
+        init: suspend ()-> Unit
+    ) {
         lock.withLock {
+            init()
             check(!credentialCache.containsKey(newCredential.identifier))
             credentialCache[newCredential.identifier] = newCredential
         }

@@ -145,8 +145,9 @@ abstract class Credential {
         check(_identifier == null)
         val table = document.store.storage.getTable(credentialTableSpec)
         val blob = ByteString(Cbor.encode(toDataItem()))
-        _identifier = table.insert(key = null, partitionId = document.identifier, data = blob)
-        document.addCredential(this)
+        document.addCredential(this) {
+            _identifier = table.insert(key = null, partitionId = document.identifier, data = blob)
+        }
     }
 
     /**

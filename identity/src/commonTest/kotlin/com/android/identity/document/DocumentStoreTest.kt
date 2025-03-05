@@ -28,13 +28,17 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.Storage
 import com.android.identity.storage.ephemeral.EphemeralStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlinx.datetime.Instant;
 import kotlinx.io.bytestring.ByteString
 import kotlin.test.BeforeTest
@@ -68,7 +72,7 @@ class DocumentStoreTest {
             TestSecureAreaBoundCredential::class
         ) { document -> TestSecureAreaBoundCredential(document) }
         credentialLoader.addCredentialImplementation(
-            Credential::class
+            TestCredential::class
         ) { document -> TestCredential(document) }
     }
 
@@ -650,6 +654,36 @@ class DocumentStoreTest {
         assertEquals(replacement, document.getReplacementCredentialFor(toBeReplaced.identifier))
         document.deleteCredential(toBeReplaced.identifier)
         assertNull(replacement.replacementForIdentifier)
+    }
+
+    @Test
+    fun concurrentRead() = runDocumentTest { documentStore ->
+        // One coroutine repeatedly reads documents and credentials from the store
+        // (imitating UI) and another repeatedly adds and deletes a document
+        val frontEndJob = CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                for (documentId in documentStore.listDocuments()) {
+                    // May be deleted before we load it
+                    val document = documentStore.lookupDocument(documentId) ?: continue
+                    document.getCredentials()
+                }
+                yield()  // so that this coroutine does not spin without a chance to be cancelled
+            }
+        }
+        // this imitates back-end
+        for (m in 0..300) {
+            val document = documentStore.createDocument()
+            for (n in 0..9) {
+                TestCredential(
+                    document,
+                    null,
+                    CREDENTIAL_DOMAIN
+                ).addToDocument()
+                yield()
+            }
+            documentStore.deleteDocument(document.identifier)
+        }
+        frontEndJob.cancelAndJoin()
     }
 
     class TestCredential: Credential {
