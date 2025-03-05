@@ -258,7 +258,7 @@ class CredentialServlet : BaseServlet() {
         // Generate an MSO and issuer-signed data for this authentication key.
         val docType = EUPersonalID.EUPID_DOCTYPE
         val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
+            Algorithm.SHA256,
             docType,
             authenticationKey
         )

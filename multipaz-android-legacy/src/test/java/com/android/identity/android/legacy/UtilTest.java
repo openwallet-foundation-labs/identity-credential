@@ -29,6 +29,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import org.multipaz.crypto.Algorithm;
 import org.multipaz.crypto.EcCurve;
 import org.multipaz.crypto.EcPublicKeyJvmKt;
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator;
@@ -191,7 +192,7 @@ public class UtilTest {
 
             MobileSecurityObjectGenerator msoGenerator =
                     new MobileSecurityObjectGenerator(
-                            "SHA-256",
+                            Algorithm.SHA256,
                             docType,
                             EcPublicKeyJvmKt.toEcPublicKey(authKey, EcCurve.P256))
                             .setValidityInfo(

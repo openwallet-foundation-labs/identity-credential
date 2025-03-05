@@ -161,7 +161,7 @@ class DeviceResponseGeneratorTest {
         ).build()
         for (mdocCredential in listOf(mdocCredentialSign, mdocCredentialMac)) {
             val msoGenerator = MobileSecurityObjectGenerator(
-                "SHA-256",
+                Algorithm.SHA256,
                 DOC_TYPE,
                 mdocCredential.getAttestation().publicKey
             )

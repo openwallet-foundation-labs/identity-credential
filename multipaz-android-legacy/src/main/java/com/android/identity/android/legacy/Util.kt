@@ -94,7 +94,6 @@ import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-// TODO: b/393388152 - Multiple unused methods.
 /**
  * Utility functions.
  */

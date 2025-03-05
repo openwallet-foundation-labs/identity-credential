@@ -161,7 +161,7 @@ class DeviceRetrievalHelperTest {
 
         // Generate an MSO and issuer-signed data for this credential.
         val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
+            Algorithm.SHA256,
             MDL_DOCTYPE,
             mdocCredential.getAttestation().publicKey
         )

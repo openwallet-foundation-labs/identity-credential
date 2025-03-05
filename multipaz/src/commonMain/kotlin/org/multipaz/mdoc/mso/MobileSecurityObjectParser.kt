@@ -15,11 +15,13 @@
  */
 package org.multipaz.mdoc.mso
 
+import io.ktor.util.toLowerCasePreservingASCIIRules
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.EcPublicKey
 import kotlinx.datetime.Instant
+import org.multipaz.crypto.Algorithm
 
 /**
  * Helper class for parsing the bytes of `MobileSecurityObject`
@@ -63,7 +65,7 @@ class MobileSecurityObjectParser(
         /**
          * The digest algorithm set in the `MobileSecurityObject` CBOR.
          */
-        lateinit var digestAlgorithm: String
+        lateinit var digestAlgorithm: Algorithm
 
         /**
          * The document type set in the `MobileSecurityObject` CBOR.
@@ -222,13 +224,12 @@ class MobileSecurityObjectParser(
             require(version.compareTo("1.0") >= 0) {
                 "Given version '$version' not >= '1.0'"
             }
-
-            digestAlgorithm = mso["digestAlgorithm"].asTstr
-            val allowableDigestAlgorithms: List<String> =
-                mutableListOf("SHA-256", "SHA-384", "SHA-512")
-            require(allowableDigestAlgorithms.contains(digestAlgorithm)) {
-                "Given digest algorithm '" + digestAlgorithm +
-                        "' one of " + allowableDigestAlgorithms
+            require(mso["digestAlgorithm"].asTstr in listOf("SHA-256", "SHA-384", "SHA-512"))
+            digestAlgorithm = Algorithm.fromHashAlgorithmIdentifier(
+                mso["digestAlgorithm"].asTstr.toLowerCasePreservingASCIIRules())
+            val allowableDigestAlgorithms = listOf(Algorithm.SHA256, Algorithm.SHA384, Algorithm.SHA512)
+            require(digestAlgorithm in allowableDigestAlgorithms) {
+                "Given digest algorithm '$digestAlgorithm' one of $allowableDigestAlgorithms"
             }
             docType = mso["docType"].asTstr
             parseValueDigests(mso["valueDigests"])
