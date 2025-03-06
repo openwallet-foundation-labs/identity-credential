@@ -86,6 +86,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.compose.cards.InfoCard
+import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.qrcode.ScanQrCodeDialog
@@ -858,10 +860,14 @@ private fun ShowDocumentData(
     ) {
 
         for (text in documentData.infoTexts) {
-            InfoCard(text)
+            InfoCard {
+                Text(text)
+            }
         }
         for (text in documentData.warningTexts) {
-            WarningCard(text)
+            WarningCard {
+                Text(text)
+            }
         }
 
         if (numDocuments > 1) {

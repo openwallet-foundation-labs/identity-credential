@@ -519,6 +519,7 @@ class App private constructor(val promptModel: PromptModel) {
                 ) {
                     composable(route = StartDestination.route) {
                         StartScreen(
+                            documentModel = documentModel,
                             onClickAbout = { navController.navigate(AboutDestination.route) },
                             onClickDocumentStore = { navController.navigate(DocumentStoreDestination.route) },
                             onClickSoftwareSecureArea = { navController.navigate(SoftwareSecureAreaDestination.route) },

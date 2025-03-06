@@ -39,6 +39,7 @@ import com.android.identity.testapp.DocumentModel
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.testapp.TestAppUtils
 import com.android.identity.testapp.platformCreateKeySettings
+import com.android.identity.testapp.platformSecureAreaHasKeyAgreement
 import com.android.identity.testapp.platformSecureAreaProvider
 import com.android.identity.testapp.platformStorage
 import io.ktor.http.encodeURLParameter
@@ -143,6 +144,11 @@ fun DocumentStoreScreen(
         item {
             TextButton(onClick = {
                 coroutineScope.launch {
+                    if (deviceKeyPurposeAgreeKey.value && !platformSecureAreaHasKeyAgreement) {
+                        showToast("Platform Secure Area does not have Key Agreement support. " +
+                                "Either uncheck AGREE_KEY or try another Secure Area.")
+                        return@launch
+                    }
                     val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningKeyCurve.value, iacaKey, iacaCert)
                     provisionTestDocuments(
                         documentStore = documentStore,
@@ -321,6 +327,12 @@ private suspend fun provisionTestDocuments(
     if (deviceKeyPurposeAgreeKey) {
         deviceKeyPurposes.add(KeyPurpose.AGREE_KEY)
     }
+    if (deviceKeyPurposes.isEmpty()) {
+        showToast("At least one purpose must be set.")
+        return
+    }
+    // TODO: When SecureArea gains ability to convey which curves it supports (see Issue #850) add check here
+    //  and show a Toast explaining if the chosen curve isn't supported.
     try {
         TestAppUtils.provisionTestDocuments(
             documentStore,

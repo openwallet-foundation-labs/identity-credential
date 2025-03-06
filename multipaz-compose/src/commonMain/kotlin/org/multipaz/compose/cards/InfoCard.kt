@@ -21,14 +21,16 @@ import androidx.compose.ui.unit.dp
 /**
  * A composable which shows a card with information.
  *
+ * @param modifier A Modifier.
  * @param content the content.
  */
 @Composable
 fun InfoCard(
+    modifier: Modifier = Modifier,
     content: @Composable (() -> Unit)
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .padding(8.dp)
             .fillMaxWidth()
             .clip(shape = RoundedCornerShape(8.dp))

@@ -25,6 +25,7 @@ import com.android.identity.testapp.App
 import com.android.identity.testapp.Platform
 import com.android.identity.testapp.TestAppSettingsModel
 import com.android.identity.testapp.platform
+import org.multipaz.compose.cards.WarningCard
 
 @Composable
 fun SettingsScreen(
@@ -41,7 +42,9 @@ fun SettingsScreen(
         item { SettingHeadline("ISO mdoc NFC Engagement Settings") }
         item {
             if (!nfcAvailable) {
-                WarningCard("NFC Engagement as an mdoc is not supported on ${platform.displayName}")
+                WarningCard {
+                    Text("NFC Engagement as an mdoc is not supported on ${platform.displayName}")
+                }
             }
         }
         item {
