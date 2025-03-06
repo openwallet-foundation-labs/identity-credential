@@ -222,7 +222,7 @@ class CredentialData {
         builder.setUserAuthenticationRequired(false);
         item = map.get(new UnicodeString("capabilityType"));
         if (item != null) {
-            // TODO: deal with -1 as per entryNamespaceToCbor()
+            // TODO: [legacy] - deal with -1 as per entryNamespaceToCbor()
             builder.setUserAuthenticationRequired(true);
             item = map.get(new UnicodeString("timeout"));
             builder.setUserAuthenticationTimeout(
@@ -245,7 +245,7 @@ class CredentialData {
             }
         }
         if (accessControlProfile.isUserAuthenticationRequired()) {
-            mapBuilder.put("capabilityType", 1); // TODO: what value to put here?
+            mapBuilder.put("capabilityType", 1); // TODO: [legacy] - what value to put here?
             long timeout = accessControlProfile.getUserAuthenticationTimeout();
             if (timeout != 0) {
                 mapBuilder.put("timeout", timeout);
@@ -707,7 +707,7 @@ class CredentialData {
     }
 
     private void createDataEncryptionKey() {
-        // TODO: it could maybe be nice to encrypt data with the appropriate auth-bound
+        // TODO: [legacy] - it could maybe be nice to encrypt data with the appropriate auth-bound
         //  key (the one associated with the ACP with the longest timeout), if it doesn't
         //  have a no-auth ACP.
         try {
@@ -1207,7 +1207,7 @@ class CredentialData {
     }
 
     PersonalizationData.NamespaceData lookupNamespaceData(String nameSpace) {
-        // TODO: This might be slow, maybe build map at load/build time
+        // TODO: [legacy] - This might be slow, maybe build map at load/build time
         for (PersonalizationData.NamespaceData namespaceData : mNamespaceDatas) {
             if (namespaceData.getNamespaceName().equals(nameSpace)) {
                 return namespaceData;

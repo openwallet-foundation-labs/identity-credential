@@ -30,6 +30,7 @@ import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
+import com.android.identity.android.util.BleUtil
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
 import com.android.identity.util.toJavaUuid
@@ -201,10 +202,13 @@ class DataTransportBleCentralClientMode(
         gattServer?.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
     }
 
-    // TODO: Check if BLE is enabled and error out if not so...
     private fun connectAsMdoc() {
         bluetoothManager = context.getSystemService(BluetoothManager::class.java)
-        val bluetoothAdapter = bluetoothManager!!.getAdapter()
+        val bluetoothAdapter = BleUtil.getBleAdapterOrNull(bluetoothManager)
+        if (bluetoothAdapter == null) {
+            reportError(Error("BLE is not enabled"))
+            return
+        }
         val macAddress = connectionMethod.peripheralServerModeMacAddress
         if (macAddress != null) {
             Logger.i(TAG, "MAC address provided, no scanning needed")
@@ -318,7 +322,10 @@ class DataTransportBleCentralClientMode(
     }
 
     override fun connect() {
-        // TODO: Check if BLE is enabled and error out if not so...
+        if (BleUtil.getBleAdapterOrNull(context) == null) {
+            reportError(Error("BLE is not enabled"))
+            return
+        }
         if (role === Role.MDOC) {
             connectAsMdoc()
         } else {

@@ -29,6 +29,11 @@ object Nfc {
     const val NDEF_CAPABILITY_CONTAINER_FILE_ID = 0xe103
 
     /**
+     * The File Identifier for the MDOC NFC Data Transfer file.
+     */
+    const val MDOC_NDEF_CAPABILITIES_FILE_ID = 0xe104
+
+    /**
      * The [ResponseApdu.status] for indicating a request was successful.
      *
      * Reference: ISO/IEC 7816-4 clause 5.6

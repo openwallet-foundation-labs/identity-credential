@@ -21,7 +21,7 @@ import androidx.annotation.Keep
  * Represents a single instant in time. Ideally, we'd use `java.time.Instant`, but we cannot
  * do so until we move to API level 26.
  *
- * TODO: using Kotlin's Instant type instead.
+ * TODO: [legacy] - using Kotlin's Instant type instead.
  */
 class Timestamp private constructor(private val epochMillis: Long) {
     /**

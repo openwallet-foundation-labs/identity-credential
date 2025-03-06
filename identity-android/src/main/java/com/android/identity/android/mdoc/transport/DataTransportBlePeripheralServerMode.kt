@@ -30,6 +30,7 @@ import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
+import com.android.identity.android.util.BleUtil
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
 import com.android.identity.util.toJavaUuid
@@ -206,7 +207,11 @@ class DataTransportBlePeripheralServerMode(
         val bluetoothManager = context.getSystemService(
             BluetoothManager::class.java
         )
-        val bluetoothAdapter = bluetoothManager.adapter
+        val bluetoothAdapter = BleUtil.getBleAdapterOrNull(bluetoothManager)
+        if (bluetoothAdapter == null) {
+            reportError(Error("Bluetooth not available"))
+            return
+        }
 
         // TODO: It would be nice if we got get the MAC address that will be assigned to
         //  this advertisement so we can send it to the mDL reader, out of band. Android
@@ -214,7 +219,6 @@ class DataTransportBlePeripheralServerMode(
         //  added without violating the security/privacy goals behind removing identifiers.
         //
 
-        // TODO: Check if BLE is enabled and error out if not so...
         var characteristicL2CAPUuid: UUID? = null
         if (options.bleUseL2CAP) {
             characteristicL2CAPUuid = characteristicL2CAPUuidMdoc
@@ -325,7 +329,10 @@ class DataTransportBlePeripheralServerMode(
     }
 
     override fun connect() {
-        // TODO: Check if BLE is enabled and error out if not so...
+        if (BleUtil.getBleAdapterOrNull(context) == null) {
+            reportError(Error("Bluetooth not available"))
+            return
+        }
         if (role === Role.MDOC) {
             connectAsMdoc()
         } else {

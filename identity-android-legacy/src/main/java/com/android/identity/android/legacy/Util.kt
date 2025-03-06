@@ -94,7 +94,6 @@ import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-// TODO: b/393388152 - Multiple unused methods.
 /**
  * Utility functions.
  */
@@ -118,7 +117,7 @@ object Util {
     private const val COSE_KEY_PARAM_Y: Long = -3
     private const val COSE_KEY_PARAM_CRV_P256: Long = 1
 
-    /* TODO: add cborBuildDate() which generates a full-date where
+    /* TODO: [legacy] - add cborBuildDate() which generates a full-date where
      *
      *  full-date = #6.1004(tstr),
      *
@@ -577,7 +576,7 @@ object Util {
      *
      * Currently only ECDSA signatures are supported.
      *
-     * TODO: add support and tests for Ed25519 and Ed448.
+     * TODO: [legacy] - add support and tests for Ed25519 and Ed448.
      */
     @JvmStatic
     fun coseSign1Sign(
@@ -597,7 +596,7 @@ object Util {
     /**
      * Currently only ECDSA signatures are supported.
      *
-     * TODO: add support and tests for Ed25519 and Ed448.
+     * TODO: [legacy] - add support and tests for Ed25519 and Ed448.
      */
     @JvmStatic
     fun coseSign1CheckSignature(
@@ -1254,7 +1253,7 @@ object Util {
 
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
                 val value = checkedStringValue(dataItem)
-                // TODO: escape ' in |value|
+                // TODO: [legacy] - escape ' in |value|
                 sb.append("'$value'")
             }
 
@@ -1419,7 +1418,7 @@ object Util {
      * type.
      * @return CBOR data conforming to the CDDL mentioned above.
      *
-     * TODO: docType is no longer optional so change docType to be NonNull and update all callers.
+     * TODO: [legacy] - docType is no longer optional so change docType to be NonNull and update all callers.
      */
     @JvmStatic
     fun createItemsRequest(
@@ -1561,7 +1560,7 @@ object Util {
         return data
     }
 
-    // TODO: Maybe return List<DataItem> instead of reencoding.
+    // TODO: [legacy] - Maybe return List<DataItem> instead of reencoding.
     //
     @JvmStatic
     fun extractDeviceRetrievalMethods(

@@ -71,6 +71,9 @@ enum class Algorithm(val coseAlgorithmIdentifier: Int) {
     /** RSASSA-PKCS1-v1_5 using SHA-512 */
     RS512(-259),
 
+    /** Invalid value for Unit tests. Make sure not intersecting with other values */
+    INVALID(-1)
+
     ;
 
     /**
