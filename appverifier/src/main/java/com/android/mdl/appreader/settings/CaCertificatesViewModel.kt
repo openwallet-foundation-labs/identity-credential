@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.android.identity.crypto.javaX509Certificate
+import org.multipaz.crypto.javaX509Certificate
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,9 +1,9 @@
-package com.android.identity.wallet.server
+package org.multipaz.wallet.server
 
-import com.android.identity.flow.handler.FlowDispatcherLocal
-import com.android.identity.flow.handler.FlowExceptionMap
-import com.android.identity.issuance.wallet.WalletServerState
-import com.android.identity.server.BaseFlowHttpServlet
+import org.multipaz.flow.handler.FlowDispatcherLocal
+import org.multipaz.flow.handler.FlowExceptionMap
+import org.multipaz.issuance.wallet.WalletServerState
+import org.multipaz.server.BaseFlowHttpServlet
 
 // To run this servlet for development, use this command:
 //

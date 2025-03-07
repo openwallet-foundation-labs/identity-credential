@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
-import com.android.identity.datetime.formatLocalized
+import org.multipaz.datetime.formatLocalized
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.driving_license_card_art
 import kotlinx.coroutines.launch

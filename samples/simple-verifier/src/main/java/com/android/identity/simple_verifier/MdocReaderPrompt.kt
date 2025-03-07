@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.simple_verifier
+package org.multipaz.simple_verifier
 
 import android.content.Context
 import android.content.DialogInterface
@@ -75,19 +75,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.crypto.Algorithm
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.util.Logger
+import org.multipaz.crypto.Algorithm
+import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.mdoc.response.DeviceResponseParser
+import org.multipaz.util.Logger
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.CodeScannerView
 import com.budiyev.android.codescanner.DecodeCallback
 import com.budiyev.android.codescanner.ErrorCallback
 import com.budiyev.android.codescanner.ScanMode
-import com.android.identity.simple_verifier.ui.theme.IdentityCredentialTheme
-import com.android.identity.util.UUID
+import org.multipaz.simple_verifier.ui.theme.IdentityCredentialTheme
+import org.multipaz.util.UUID
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment

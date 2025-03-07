@@ -1,5 +1,7 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,10 +10,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.identity.testapp.Platform
-import com.android.identity.testapp.platform
+import org.multipaz.testapp.DocumentModel
+import org.multipaz.testapp.Platform
+import org.multipaz.testapp.platform
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.about_screen_title
 import identitycredential.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
@@ -32,10 +36,14 @@ import identitycredential.samples.testapp.generated.resources.rich_text_title
 import identitycredential.samples.testapp.generated.resources.screen_lock_title
 import identitycredential.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.testapp.generated.resources.software_secure_area_screen_title
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.multipaz.compose.cards.WarningCard
+import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 
 @Composable
 fun StartScreen(
+    documentModel: DocumentModel,
     onClickAbout: () -> Unit = {},
     onClickDocumentStore: () -> Unit = {},
     onClickSoftwareSecureArea: () -> Unit = {},
@@ -56,6 +64,9 @@ fun StartScreen(
     onClickNotifications: () -> Unit = {},
     onClickScreenLock: () -> Unit = {},
 ) {
+    val blePermissionState = rememberBluetoothPermissionState()
+    val coroutineScope = rememberCoroutineScope()
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -63,6 +74,29 @@ fun StartScreen(
         LazyColumn(
             modifier = Modifier.padding(8.dp)
         ) {
+            item {
+                if (documentModel.documentInfos.isEmpty()) {
+                    WarningCard(
+                        modifier = Modifier.clickable() {
+                            onClickDocumentStore()
+                        }
+                    ) {
+                        Text("Document Store is empty so proximity and W3C DC presentment won't work. Click to fix.")
+                    }
+                } else {
+                    if (!blePermissionState.isGranted) {
+                        WarningCard(
+                            modifier = Modifier.clickable() {
+                                coroutineScope.launch {
+                                    blePermissionState.launchPermissionRequest()
+                                }
+                            }
+                        ) {
+                            Text("Proximity presentment require BLE permissions to be granted. Click to fix.")
+                        }
+                    }
+                }
+            }
             item {
                 TextButton(onClick = onClickAbout) {
                     Text(stringResource(Res.string.about_screen_title))

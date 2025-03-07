@@ -1,4 +1,4 @@
-package com.android.identity.simple_verifier
+package org.multipaz.simple_verifier
 
 import org.junit.Assert
 import org.junit.Test

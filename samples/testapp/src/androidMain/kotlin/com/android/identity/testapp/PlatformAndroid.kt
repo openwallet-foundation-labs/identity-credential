@@ -1,22 +1,22 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.os.Build
-import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.securearea.AndroidKeystoreSecureArea
-import com.android.identity.securearea.UserAuthenticationType
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.SecureArea
-import com.android.identity.util.AndroidContexts
-import com.android.identity.securearea.SecureAreaProvider
-import com.android.identity.storage.Storage
-import com.android.identity.storage.android.AndroidStorage
+import org.multipaz.crypto.EcCurve
+import org.multipaz.context.applicationContext
+import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.securearea.UserAuthenticationType
+import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.KeyPurpose
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.storage.Storage
+import org.multipaz.storage.android.AndroidStorage
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.jetbrains.compose.resources.getString
 import org.multipaz.compose.notifications.NotificationManagerAndroid
 import java.io.File
 import java.net.NetworkInterface
@@ -40,7 +40,7 @@ actual suspend fun platformInit() {
     }
     NotificationManagerAndroid.setSmallIcon(R.drawable.ic_stat_name)
     NotificationManagerAndroid.setChannelTitle(
-        AndroidContexts.applicationContext.getString(R.string.notification_channel_title)
+        applicationContext.getString(R.string.notification_channel_title)
     )
 }
 
@@ -60,7 +60,7 @@ actual fun getLocalIpAddress(): String {
 
 private val androidStorage: AndroidStorage by lazy {
     AndroidStorage(
-        File(AndroidContexts.applicationContext.dataDir.path, "storage.db").absolutePath
+        File(applicationContext.dataDir.path, "storage.db").absolutePath
     )
 }
 
@@ -76,18 +76,30 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return androidKeystoreSecureAreaProvider
 }
 
+actual val platformSecureAreaHasKeyAgreement by lazy {
+    AndroidKeystoreSecureArea.Capabilities().keyAgreementSupported
+}
+
 actual fun platformCreateKeySettings(
     challenge: ByteString,
+    curve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
     validUntil: Instant
 ): CreateKeySettings {
+    var timeoutMillis = 0L
+    // Work around Android bug where ECDH keys don't work with timeout 0, see
+    // AndroidKeystoreUnlockData.cryptoObjectForKeyAgreement for details.
+    if (keyPurposes.contains(KeyPurpose.AGREE_KEY)) {
+        timeoutMillis = 1000L
+    }
     return AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
+        .setEcCurve(curve)
         .setKeyPurposes(keyPurposes)
         .setUserAuthenticationRequired(
             required = userAuthenticationRequired,
-            timeoutMillis = 0,
+            timeoutMillis = timeoutMillis,
             userAuthenticationTypes = setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
         )
         .setValidityPeriod(validFrom, validUntil)

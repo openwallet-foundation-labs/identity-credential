@@ -1,4 +1,4 @@
-package com.android.identity.testapp.multidevicetests
+package org.multipaz.testapp.multidevicetests
 
 data class Results(
     val plan: Plan = Plan.ALL_TESTS,

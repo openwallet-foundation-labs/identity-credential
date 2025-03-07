@@ -14,11 +14,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.android.identity.preconsent_mdl"
+    namespace = "org.multipaz.preconsent_mdl"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.android.identity.preconsent_mdl"
+        applicationId = "org.multipaz.preconsent_mdl"
         minSdk = 28
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
@@ -50,11 +50,10 @@ android {
 }
 
 dependencies {
-    ksp(project(":processor"))
-    implementation(project(":processor-annotations"))
-    implementation(project(":identity"))
-    implementation(project(":identity-mdoc"))
-    implementation(project(":identity-android"))
+    ksp(project(":multipaz-cbor-rpc"))
+    implementation(project(":multipaz-cbor-rpc-annotations"))
+    implementation(project(":multipaz"))
+    implementation(project(":multipaz-android-legacy"))
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)

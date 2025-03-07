@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -44,17 +44,17 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
-import com.android.identity.document.NameSpacedData
-import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.mdoc.request.DeviceRequestParser
-import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.mdoc.response.DocumentGenerator
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
-import com.android.identity.crypto.Algorithm
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.util.Constants
-import com.android.identity.util.Logger
+import org.multipaz.document.NameSpacedData
+import org.multipaz.mdoc.mso.StaticAuthDataParser
+import org.multipaz.mdoc.request.DeviceRequestParser
+import org.multipaz.mdoc.response.DeviceResponseGenerator
+import org.multipaz.mdoc.response.DocumentGenerator
+import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.preconsent_mdl.ui.theme.IdentityCredentialTheme
+import org.multipaz.crypto.Algorithm
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.util.Constants
+import org.multipaz.util.Logger
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 

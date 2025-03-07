@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
@@ -6,25 +6,26 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.ContextCompat
-import com.android.identity.cbor.DataItem
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.mdoc.nfc.MdocNfcEngagementHelper
-import com.android.identity.appsupport.ui.presentment.MdocPresentmentMechanism
-import com.android.identity.mdoc.transport.MdocTransport
-import com.android.identity.mdoc.transport.MdocTransportFactory
-import com.android.identity.mdoc.transport.MdocTransportOptions
-import com.android.identity.nfc.CommandApdu
-import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.appsupport.ui.presentment.PresentmentTimeout
-import com.android.identity.mdoc.transport.advertiseAndWait
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
-import com.android.identity.util.AndroidContexts
-import com.android.identity.util.Logger
-import com.android.identity.util.UUID
+import org.multipaz.cbor.DataItem
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
+import org.multipaz.models.ui.presentment.MdocPresentmentMechanism
+import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.transport.MdocTransportFactory
+import org.multipaz.mdoc.transport.MdocTransportOptions
+import org.multipaz.nfc.CommandApdu
+import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.models.ui.presentment.PresentmentTimeout
+import org.multipaz.context.initializeApplication
+import org.multipaz.mdoc.transport.advertiseAndWait
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.prompt.AndroidPromptModel
+import org.multipaz.util.Logger
+import org.multipaz.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,12 +44,15 @@ class NdefService: HostApduService() {
         private var engagement: MdocNfcEngagementHelper? = null
         private var disableEngagementJob: Job? = null
         private var listenForCancellationFromUiJob: Job? = null
-        val presentmentModel: PresentmentModel by lazy { PresentmentModel() }
+        val promptModel = AndroidPromptModel()
+        val presentmentModel: PresentmentModel by lazy {
+            PresentmentModel().apply { setPromptModel(promptModel) }
+        }
     }
 
 
     private fun vibrate(pattern: List<Int>) {
-        val vibrator = ContextCompat.getSystemService(AndroidContexts.applicationContext, Vibrator::class.java)
+        val vibrator = ContextCompat.getSystemService(applicationContext, Vibrator::class.java)
         val vibrationEffect = VibrationEffect.createWaveform(pattern.map { it.toLong() }.toLongArray(), -1)
         vibrator?.vibrate(vibrationEffect)
     }
@@ -71,7 +75,7 @@ class NdefService: HostApduService() {
     override fun onCreate() {
         Logger.i(TAG, "onCreate")
         super.onCreate()
-        AndroidContexts.setApplicationContext(applicationContext)
+        initializeApplication(applicationContext)
 
         // Note: Every millisecond literally counts here because we're handling a
         // NFC tap and users tend to remove their phone from the reader really fast.
@@ -109,7 +113,7 @@ class NdefService: HostApduService() {
         listenForCancellationFromUiJob?.cancel()
         listenForCancellationFromUiJob = null
 
-        val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val eDeviceKey = Crypto.createEcPrivateKey(settingsModel.presentmentSessionEncryptionCurve.value)
         val timeStarted = Clock.System.now()
 
         presentmentModel.reset()

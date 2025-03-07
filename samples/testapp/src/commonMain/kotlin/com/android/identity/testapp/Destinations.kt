@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.navigation.NavType
 import androidx.navigation.navArgument

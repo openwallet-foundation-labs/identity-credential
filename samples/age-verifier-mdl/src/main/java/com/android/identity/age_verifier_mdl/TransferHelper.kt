@@ -1,4 +1,4 @@
-package com.android.identity.age_verifier_mdl
+package org.multipaz.age_verifier_mdl
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -13,16 +13,16 @@ import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
 import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.securearea.AndroidKeystoreSecureArea
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
-import com.android.identity.securearea.SecureAreaProvider
-import com.android.identity.storage.Storage
-import com.android.identity.storage.android.AndroidStorage
-import com.android.identity.util.Logger
-import com.android.identity.util.UUID
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.storage.Storage
+import org.multipaz.storage.android.AndroidStorage
+import org.multipaz.util.Logger
+import org.multipaz.util.UUID
 import java.io.File
 
 // TODO: b/393388152 - PreferenceManager is deprecated. Consider refactoring to AndroidX

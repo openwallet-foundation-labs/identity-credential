@@ -1,15 +1,17 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import com.android.identity.appsupport.ui.presentment.PresentmentSource
-import com.android.identity.credential.Credential
-import com.android.identity.document.Document
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.request.MdocRequest
-import com.android.identity.request.Request
-import com.android.identity.request.VcRequest
-import com.android.identity.sdjwt.credential.SdJwtVcCredential
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.models.ui.presentment.PresentmentSource
+import org.multipaz.credential.Credential
+import org.multipaz.document.Document
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.request.MdocRequest
+import org.multipaz.request.Request
+import org.multipaz.request.VcRequest
+import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
+import org.multipaz.trustmanagement.TrustPoint
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
@@ -47,6 +49,13 @@ class TestAppPresentmentSource(
         request: Request,
     ): Boolean {
         return app.settingsModel.presentmentShowConsentPrompt.value
+    }
+
+    override fun shouldPreferSignatureToKeyAgreement(
+        credential: Credential,
+        request: Request
+    ): Boolean {
+        return app.settingsModel.presentmentPreferSignatureToKeyAgreement.value
     }
 }
 
@@ -133,10 +142,14 @@ private suspend fun sdjwtFindCredentialInDocument(
     now: Instant,
     document: Document,
 ): Credential? {
-    val domain = if (app.settingsModel.presentmentRequireAuthentication.value) {
-        TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_AUTH
+    val domain = if (document.getCertifiedCredentials().firstOrNull() is KeylessSdJwtVcCredential) {
+        TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_KEYLESS
     } else {
-        TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_NO_AUTH
+        if (app.settingsModel.presentmentRequireAuthentication.value) {
+            TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_AUTH
+        } else {
+            TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_NO_AUTH
+        }
     }
     for (credential in document.getCertifiedCredentials()) {
         if (credential is SdJwtVcCredential && credential.vct == request.vct) {

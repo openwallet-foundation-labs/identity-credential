@@ -1,49 +1,49 @@
-package com.android.identity.wallet.server
+package org.multipaz.wallet.server
 
-import com.android.identity.asn1.ASN1Integer
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborArray
-import com.android.identity.cbor.CborMap
-import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.cbor.Simple
-import com.android.identity.cbor.Tstr
-import com.android.identity.cbor.annotation.CborSerializable
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.crypto.JsonWebEncryption
-import com.android.identity.crypto.JsonWebSignature
-import com.android.identity.crypto.X500Name
-import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaPublicKey
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.documenttype.DocumentCannedRequest
-import com.android.identity.documenttype.knowntypes.DrivingLicense
-import com.android.identity.documenttype.knowntypes.EUCertificateOfResidence
-import com.android.identity.documenttype.knowntypes.EUPersonalID
-import com.android.identity.documenttype.knowntypes.GermanPersonalID
-import com.android.identity.documenttype.knowntypes.PhotoID
-import com.android.identity.documenttype.knowntypes.UtopiaMovieTicket
-import com.android.identity.documenttype.knowntypes.UtopiaNaturalization
-import com.android.identity.flow.handler.FlowNotifications
-import com.android.identity.flow.server.Configuration
-import com.android.identity.flow.server.FlowEnvironment
-import com.android.identity.flow.server.getTable
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.sdjwt.presentation.SdJwtVerifiablePresentation
-import com.android.identity.sdjwt.vc.JwtBody
-import com.android.identity.server.BaseHttpServlet
-import com.android.identity.storage.StorageTable
-import com.android.identity.storage.StorageTableSpec
-import com.android.identity.util.Logger
-import com.android.identity.util.fromBase64Url
-import com.android.identity.util.toBase64Url
+import org.multipaz.asn1.ASN1Integer
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborArray
+import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.DiagnosticOption
+import org.multipaz.cbor.Simple
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.annotation.CborSerializable
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
+import org.multipaz.crypto.JsonWebEncryption
+import org.multipaz.crypto.JsonWebSignature
+import org.multipaz.crypto.X500Name
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.javaPrivateKey
+import org.multipaz.crypto.javaPublicKey
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.documenttype.DocumentCannedRequest
+import org.multipaz.documenttype.knowntypes.DrivingLicense
+import org.multipaz.documenttype.knowntypes.EUCertificateOfResidence
+import org.multipaz.documenttype.knowntypes.EUPersonalID
+import org.multipaz.documenttype.knowntypes.GermanPersonalID
+import org.multipaz.documenttype.knowntypes.PhotoID
+import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
+import org.multipaz.documenttype.knowntypes.UtopiaNaturalization
+import org.multipaz.flow.handler.FlowNotifications
+import org.multipaz.flow.server.Configuration
+import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.flow.server.getTable
+import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.mdoc.response.DeviceResponseParser
+import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.sdjwt.presentation.SdJwtVerifiablePresentation
+import org.multipaz.sdjwt.vc.JwtBody
+import org.multipaz.server.BaseHttpServlet
+import org.multipaz.storage.StorageTable
+import org.multipaz.storage.StorageTableSpec
+import org.multipaz.util.Logger
+import org.multipaz.util.fromBase64Url
+import org.multipaz.util.toBase64Url
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -218,7 +218,7 @@ private data class DCArfResponse(
  * Verifier servlet (may trigger warning as unused in the code).
  *
  * This is using the configuration and storage interfaces from
- * [com.android.identity.server.ServerEnvironment].
+ * [org.multipaz.server.ServerEnvironment].
  */
 class VerifierServlet : BaseHttpServlet() {
 

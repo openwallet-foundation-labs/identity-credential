@@ -1,6 +1,6 @@
 package com.android.mdl.appreader.settings
 
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.trustmanagement.TrustPoint
 import java.util.Date
 
 data class CertificateItem(

@@ -1,4 +1,4 @@
-package com.android.identity.simple_verifier.ui.theme
+package org.multipaz.simple_verifier.ui.theme
 
 import android.app.Activity
 import android.os.Build

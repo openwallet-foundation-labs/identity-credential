@@ -1,10 +1,10 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.testapp.App
-import com.android.identity.testapp.TestAppPresentmentSource
+import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.testapp.App
+import org.multipaz.testapp.TestAppPresentmentSource
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
@@ -23,6 +23,7 @@ fun PresentmentScreen(
 ) {
     Presentment(
         presentmentModel = presentmentModel,
+        promptModel = app.promptModel,
         documentTypeRepository = app.documentTypeRepository,
         source = TestAppPresentmentSource(app),
         onPresentmentComplete = onPresentationComplete,

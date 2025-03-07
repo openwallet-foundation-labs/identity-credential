@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -45,22 +45,23 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.securearea.AndroidKeystoreSecureArea
-import com.android.identity.securearea.UserAuthenticationType
-import com.android.identity.cbor.Cbor
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.securearea.KeyUnlockInteractive
-import com.android.identity.securearea.KeyAttestation
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.util.AndroidContexts
-import com.android.identity.testapp.platformSecureAreaProvider
-import com.android.identity.util.Logger
-import com.android.identity.util.toBase64Url
-import com.android.identity.util.toHex
+import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.securearea.UserAuthenticationType
+import org.multipaz.cbor.Cbor
+import org.multipaz.context.applicationContext
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.javaX509Certificate
+import org.multipaz.prompt.PromptModel
+import org.multipaz.securearea.KeyUnlockInteractive
+import org.multipaz.securearea.KeyAttestation
+import org.multipaz.securearea.KeyPurpose
+import org.multipaz.testapp.platformSecureAreaProvider
+import org.multipaz.util.Logger
+import org.multipaz.util.toBase64Url
+import org.multipaz.util.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,15 +75,16 @@ private val androidKeystoreCapabilities: AndroidKeystoreSecureArea.Capabilities 
 }
 
 private val keymintVersionTee: Int by lazy {
-    getFeatureVersionKeystore(AndroidContexts.applicationContext, false)
+    getFeatureVersionKeystore(applicationContext, false)
 }
 
 private val keymintVersionStrongBox: Int by lazy {
-    getFeatureVersionKeystore(AndroidContexts.applicationContext, true)
+    getFeatureVersionKeystore(applicationContext, true)
 }
 
 @Composable
 actual fun AndroidKeystoreSecureAreaScreen(
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit,
     onViewCertificate: (encodedCertificateData: String) -> Unit
 ) {
@@ -98,7 +100,7 @@ actual fun AndroidKeystoreSecureAreaScreen(
             })
     }
 
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     LazyColumn {
 

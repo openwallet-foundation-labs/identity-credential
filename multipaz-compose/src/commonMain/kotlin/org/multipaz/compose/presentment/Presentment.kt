@@ -39,13 +39,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.appsupport.ui.presentment.PresentmentCanceled
-import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.appsupport.ui.presentment.PresentmentSource
-import com.android.identity.appsupport.ui.presentment.PresentmentTimeout
-import com.android.identity.document.Document
-import com.android.identity.documenttype.DocumentTypeRepository
+import org.multipaz.models.ui.consent.ConsentDocument
+import org.multipaz.models.ui.presentment.PresentmentCanceled
+import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.models.ui.presentment.PresentmentSource
+import org.multipaz.models.ui.presentment.PresentmentTimeout
+import org.multipaz.document.Document
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.prompt.PromptModel
 import identitycredential.multipaz_compose.generated.resources.Res
 import identitycredential.multipaz_compose.generated.resources.presentment_canceled
 import identitycredential.multipaz_compose.generated.resources.presentment_connecting_to_reader
@@ -91,6 +92,7 @@ private const val TAG = "Presentment"
 @Composable
 fun Presentment(
     presentmentModel: PresentmentModel,
+    promptModel: PromptModel,
     documentTypeRepository: DocumentTypeRepository,
     source: PresentmentSource,
     onPresentmentComplete: () -> Unit,
@@ -98,7 +100,7 @@ fun Presentment(
     appIconPainter: Painter,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     // Make sure we clean up the PresentmentModel when we're done. This is to ensure
     // the mechanism is properly shut down, for example for proximity we need to release

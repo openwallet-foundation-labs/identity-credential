@@ -1,9 +1,10 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -15,13 +16,15 @@ import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
 import org.multipaz.compose.AppTheme
-import com.android.identity.appsupport.ui.digitalcredentials.lookupForCredmanId
-import com.android.identity.appsupport.ui.presentment.DigitalCredentialsPresentmentMechanism
+import org.multipaz.models.ui.digitalcredentials.lookupForCredmanId
+import org.multipaz.models.ui.presentment.DigitalCredentialsPresentmentMechanism
 import org.multipaz.compose.presentment.Presentment
-import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.util.AndroidContexts
-import com.android.identity.util.Logger
+import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.context.initializeApplication
+import org.multipaz.prompt.AndroidPromptModel
+import org.multipaz.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name
@@ -31,7 +34,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.json.JSONObject
-import org.multipaz.compose.UiProvider
+import org.multipaz.compose.prompt.PromptDialogs
 
 class CredmanPresentmentActivity: FragmentActivity() {
     companion object {
@@ -43,10 +46,12 @@ class CredmanPresentmentActivity: FragmentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        initializeApplication(this.applicationContext)
         enableEdgeToEdge()
 
         CoroutineScope(Dispatchers.Main).launch {
-            startPresentment(App.getInstance())
+            presentmentModel.setPromptModel(NdefService.promptModel)
+            startPresentment(App.getInstance(NdefService.promptModel))
         }
     }
 
@@ -109,9 +114,10 @@ class CredmanPresentmentActivity: FragmentActivity() {
         setContent {
             AppTheme {
                 Scaffold { innerPadding ->
-                    UiProvider()
+                    PromptDialogs(app.promptModel)
                     Presentment(
                         presentmentModel = presentmentModel,
+                        promptModel = app.promptModel,
                         documentTypeRepository = app.documentTypeRepository,
                         source = TestAppPresentmentSource(app),
                         onPresentmentComplete = { finish() },
@@ -122,16 +128,6 @@ class CredmanPresentmentActivity: FragmentActivity() {
                 }
             }
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        AndroidContexts.setCurrentActivity(this)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        AndroidContexts.setCurrentActivity(null)
     }
 
     override fun onDestroy() {

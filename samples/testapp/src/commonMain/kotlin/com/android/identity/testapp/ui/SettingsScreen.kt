@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,10 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.testapp.App
-import com.android.identity.testapp.Platform
-import com.android.identity.testapp.TestAppSettingsModel
-import com.android.identity.testapp.platform
+import org.multipaz.crypto.EcCurve
+import org.multipaz.testapp.App
+import org.multipaz.testapp.Platform
+import org.multipaz.testapp.TestAppSettingsModel
+import org.multipaz.testapp.platform
+import org.multipaz.compose.cards.WarningCard
 
 @Composable
 fun SettingsScreen(
@@ -40,7 +42,9 @@ fun SettingsScreen(
         item { SettingHeadline("ISO mdoc NFC Engagement Settings") }
         item {
             if (!nfcAvailable) {
-                WarningCard("NFC Engagement as an mdoc is not supported on ${platform.displayName}")
+                WarningCard {
+                    Text("NFC Engagement as an mdoc is not supported on ${platform.displayName}")
+                }
             }
         }
         item {
@@ -123,6 +127,16 @@ fun SettingsScreen(
         }
         item {
             SettingHeadline("ISO mdoc Transport Options")
+        }
+        item {
+            SettingMultipleChoice(
+                title = "Session Encryption Curve",
+                choices = EcCurve.entries.map { it.name },  // TODO: only include curves that can do key agreement
+                initialChoice = app.settingsModel.presentmentSessionEncryptionCurve.value.toString(),
+                onChoiceSelected = { choice ->
+                    app.settingsModel.presentmentSessionEncryptionCurve.value = EcCurve.entries.find { it.name == choice }!!
+                },
+            )
         }
         item {
             SettingToggle(
@@ -215,6 +229,13 @@ fun SettingsScreen(
                 title = "Skip user authentication",
                 isChecked = !app.settingsModel.presentmentRequireAuthentication.collectAsState().value,
                 onCheckedChange = { app.settingsModel.presentmentRequireAuthentication.value = !it },
+            )
+        }
+        item {
+            SettingToggle(
+                title = "Prefer Key Agreement to Signature",
+                isChecked = !app.settingsModel.presentmentPreferSignatureToKeyAgreement.collectAsState().value,
+                onCheckedChange = { app.settingsModel.presentmentPreferSignatureToKeyAgreement.value = !it },
             )
         }
 

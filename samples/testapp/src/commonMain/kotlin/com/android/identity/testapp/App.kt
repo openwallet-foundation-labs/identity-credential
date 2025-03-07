@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,63 +26,66 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.appsupport.ui.digitalcredentials.DigitalCredentials
-import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.asn1.ASN1Integer
-import com.android.identity.cbor.Cbor
-import com.android.identity.credential.CredentialLoader
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.X500Name
-import com.android.identity.crypto.X509Cert
-import com.android.identity.document.DocumentStore
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.documenttype.knowntypes.DrivingLicense
-import com.android.identity.documenttype.knowntypes.EUPersonalID
-import com.android.identity.documenttype.knowntypes.PhotoID
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.mdoc.vical.SignedVical
-import com.android.identity.sdjwt.credential.KeyBoundSdJwtVcCredential
-import com.android.identity.sdjwt.credential.KeylessSdJwtVcCredential
-import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
-import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.securearea.cloud.CloudSecureArea
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.StorageTable
-import com.android.identity.storage.StorageTableSpec
-import com.android.identity.testapp.ui.AboutScreen
-import com.android.identity.testapp.ui.AndroidKeystoreSecureAreaScreen
-import com.android.identity.testapp.ui.CertificateScreen
-import com.android.identity.testapp.ui.CertificateViewerExamplesScreen
-import com.android.identity.testapp.ui.ConsentModalBottomSheetListScreen
-import com.android.identity.testapp.ui.ConsentModalBottomSheetScreen
-import com.android.identity.testapp.ui.CredentialClaimsViewerScreen
-import com.android.identity.testapp.ui.CredentialViewerScreen
-import com.android.identity.testapp.ui.DocumentStoreScreen
-import com.android.identity.testapp.ui.DocumentViewerScreen
-import com.android.identity.testapp.ui.IsoMdocMultiDeviceTestingScreen
-import com.android.identity.testapp.ui.IsoMdocProximityReadingScreen
-import com.android.identity.testapp.ui.IsoMdocProximitySharingScreen
-import com.android.identity.testapp.ui.NfcScreen
-import com.android.identity.testapp.ui.NotificationsScreen
-import com.android.identity.testapp.ui.PassphraseEntryFieldScreen
-import com.android.identity.testapp.ui.PassphrasePromptScreen
-import com.android.identity.testapp.ui.PresentmentScreen
-import com.android.identity.testapp.ui.ProvisioningTestScreen
-import com.android.identity.testapp.ui.QrCodesScreen
-import com.android.identity.testapp.ui.RichTextScreen
-import com.android.identity.testapp.ui.ScreenLockScreen
-import com.android.identity.testapp.ui.SecureEnclaveSecureAreaScreen
-import com.android.identity.testapp.ui.SettingsScreen
-import com.android.identity.testapp.ui.SoftwareSecureAreaScreen
-import com.android.identity.testapp.ui.StartScreen
-import com.android.identity.testapp.ui.VerifierType
-import com.android.identity.trustmanagement.TrustManager
-import com.android.identity.trustmanagement.TrustPoint
-import com.android.identity.util.Logger
+import org.multipaz.models.ui.digitalcredentials.DigitalCredentials
+import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.asn1.ASN1Integer
+import org.multipaz.cbor.Cbor
+import org.multipaz.credential.CredentialLoader
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.X500Name
+import org.multipaz.crypto.X509Cert
+import org.multipaz.document.DocumentStore
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.documenttype.knowntypes.DrivingLicense
+import org.multipaz.documenttype.knowntypes.EUPersonalID
+import org.multipaz.documenttype.knowntypes.PhotoID
+import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.mdoc.vical.SignedVical
+import org.multipaz.prompt.PromptModel
+import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
+import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
+import org.multipaz.secure_area_test_app.ui.CloudSecureAreaScreen
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.securearea.cloud.CloudSecureArea
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.StorageTable
+import org.multipaz.storage.StorageTableSpec
+import org.multipaz.testapp.ui.AboutScreen
+import org.multipaz.testapp.ui.AndroidKeystoreSecureAreaScreen
+import org.multipaz.testapp.ui.CertificateScreen
+import org.multipaz.testapp.ui.CertificateViewerExamplesScreen
+import org.multipaz.testapp.ui.ConsentModalBottomSheetListScreen
+import org.multipaz.testapp.ui.ConsentModalBottomSheetScreen
+import org.multipaz.testapp.ui.CredentialClaimsViewerScreen
+import org.multipaz.testapp.ui.CredentialViewerScreen
+import org.multipaz.testapp.ui.DocumentStoreScreen
+import org.multipaz.testapp.ui.DocumentViewerScreen
+import org.multipaz.testapp.ui.IsoMdocMultiDeviceTestingScreen
+import org.multipaz.testapp.ui.IsoMdocProximityReadingScreen
+import org.multipaz.testapp.ui.IsoMdocProximitySharingScreen
+import org.multipaz.testapp.ui.NfcScreen
+import org.multipaz.testapp.ui.NotificationsScreen
+import org.multipaz.testapp.ui.PassphraseEntryFieldScreen
+import org.multipaz.testapp.ui.PassphrasePromptScreen
+import org.multipaz.testapp.ui.PresentmentScreen
+import org.multipaz.testapp.ui.ProvisioningTestScreen
+import org.multipaz.testapp.ui.QrCodesScreen
+import org.multipaz.testapp.ui.RichTextScreen
+import org.multipaz.testapp.ui.ScreenLockScreen
+import org.multipaz.testapp.ui.SecureEnclaveSecureAreaScreen
+import org.multipaz.testapp.ui.SettingsScreen
+import org.multipaz.testapp.ui.SoftwareSecureAreaScreen
+import org.multipaz.testapp.ui.StartScreen
+import org.multipaz.testapp.ui.VerifierType
+import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.util.Logger
+import org.multipaz.util.toHex
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.back_button
 import io.ktor.http.decodeURLPart
@@ -101,14 +104,14 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.AppTheme
-import org.multipaz.compose.UiProvider
+import org.multipaz.compose.prompt.PromptDialogs
 
 /**
  * Application singleton.
  *
  * Use [App.Companion.getInstance] to get an instance.
  */
-class App private constructor() {
+class App private constructor(val promptModel: PromptModel) {
 
     lateinit var settingsModel: TestAppSettingsModel
 
@@ -120,9 +123,6 @@ class App private constructor() {
 
     lateinit var iacaKey: EcPrivateKey
     lateinit var iacaCert: X509Cert
-
-    lateinit var dsKey: EcPrivateKey
-    lateinit var dsCert: X509Cert
 
     lateinit var readerRootKey: EcPrivateKey
     lateinit var readerRootCert: X509Cert
@@ -143,7 +143,6 @@ class App private constructor() {
             Pair(::documentModelInit, "documentModelInit"),
             Pair(::keyStorageInit, "keyStorageInit"),
             Pair(::iacaInit, "iacaInit"),
-            Pair(::dsInit, "dsInit"),
             Pair(::readerRootInit, "readerRootInit"),
             Pair(::readerInit, "readerInit"),
             Pair(::trustManagersInit, "trustManagersInit"),
@@ -168,6 +167,7 @@ class App private constructor() {
         documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
+        documentTypeRepository.addDocumentType(UtopiaMovieTicket.getDocumentType())
     }
 
     private suspend fun documentStoreInit() {
@@ -195,10 +195,10 @@ class App private constructor() {
             document -> MdocCredential(document)
         }
         credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
-                document -> KeyBoundSdJwtVcCredential(document)
+            document -> KeyBoundSdJwtVcCredential(document)
         }
         credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential::class) {
-                document -> KeylessSdJwtVcCredential(document)
+            document -> KeylessSdJwtVcCredential(document)
         }
         documentStore = DocumentStore(
             storage = platformStorage(),
@@ -319,29 +319,6 @@ class App private constructor() {
             }
     }
 
-    private suspend fun dsInit() {
-        dsKey = keyStorage.get("dsKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
-            ?: run {
-                val key = Crypto.createEcPrivateKey(EcCurve.P256)
-                keyStorage.insert("dsKey", ByteString(Cbor.encode(key.toDataItem())))
-                key
-            }
-        dsCert = keyStorage.get("dsCert")?.let { X509Cert.fromDataItem(Cbor.decode(it.toByteArray())) }
-            ?: run {
-                val cert = MdocUtil.generateDsCertificate(
-                    iacaCert = iacaCert,
-                    iacaKey = iacaKey,
-                    dsKey = dsKey.publicKey,
-                    subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST DS"),
-                    serial = ASN1Integer(1L),
-                    validFrom = certsValidFrom,
-                    validUntil = certsValidUntil,
-                )
-                keyStorage.insert("dsCert", ByteString(Cbor.encode(cert.toDataItem())))
-                cert
-            }
-    }
-
     private suspend fun readerRootInit() {
         readerRootKey = keyStorage.get("readerRootKey")?.let { EcPrivateKey.fromDataItem(Cbor.decode(it.toByteArray())) }
             ?: run {
@@ -383,7 +360,6 @@ class App private constructor() {
         issuerTrustManager = TrustManager()
         val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
         for (certInfo in signedVical.vical.certificateInfos) {
-            println("certInfo: ${certInfo.certificate.subject.name}")
             issuerTrustManager.addTrustPoint(
                 TrustPoint(
                     certInfo.certificate,
@@ -467,11 +443,13 @@ class App private constructor() {
         private var app: App? = null
         private val appLock = Mutex()
 
-        suspend fun getInstance(): App {
+        suspend fun getInstance(promptModel: PromptModel): App {
             appLock.withLock {
                 if (app == null) {
-                    app = App()
+                    app = App(promptModel)
                     app!!.init()
+                } else {
+                    check(app!!.promptModel === promptModel)
                 }
             }
             return app!!
@@ -480,11 +458,12 @@ class App private constructor() {
         // TODO: Only used in MainViewController.kt because of deadlocks when doing
         //       `val app = runBlocking { App.getInstance() }`. Investigate.
         //
-        fun getInstanceAndInitializeInBackground(): App {
+        fun getInstanceAndInitializeInBackground(promptModel: PromptModel): App {
             if (app != null) {
+                check(app!!.promptModel === promptModel)
                 return app!!
             }
-            app = App()
+            app = App(promptModel)
             CoroutineScope(Dispatchers.IO).launch {
                 app!!.init()
             }
@@ -500,7 +479,7 @@ class App private constructor() {
 
     private lateinit var snackbarHostState: SnackbarHostState
 
-    private val presentmentModel = PresentmentModel()
+    private val presentmentModel = PresentmentModel().apply { setPromptModel(promptModel) }
 
     @Composable
     @Preview
@@ -528,7 +507,7 @@ class App private constructor() {
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             ) { innerPadding ->
 
-                UiProvider()
+                PromptDialogs(promptModel)
 
                 NavHost(
                     navController = navController,
@@ -540,6 +519,7 @@ class App private constructor() {
                 ) {
                     composable(route = StartDestination.route) {
                         StartScreen(
+                            documentModel = documentModel,
                             onClickAbout = { navController.navigate(AboutDestination.route) },
                             onClickDocumentStore = { navController.navigate(DocumentStoreDestination.route) },
                             onClickSoftwareSecureArea = { navController.navigate(SoftwareSecureAreaDestination.route) },
@@ -573,8 +553,8 @@ class App private constructor() {
                             documentModel = documentModel,
                             softwareSecureArea = softwareSecureArea,
                             settingsModel = settingsModel,
-                            dsKey = dsKey,
-                            dsCert = dsCert,
+                            iacaKey = iacaKey,
+                            iacaCert = iacaCert,
                             showToast = { message: String -> showToast(message) },
                             onViewDocument = { documentId ->
                                 navController.navigate(DocumentViewerDestination.route + "/${documentId}")
@@ -639,10 +619,11 @@ class App private constructor() {
                         )
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {
-                        SoftwareSecureAreaScreen(showToast = { message -> showToast(message) })
+                        SoftwareSecureAreaScreen(promptModel, showToast = { message -> showToast(message) })
                     }
                     composable(route = AndroidKeystoreSecureAreaDestination.route) {
                         AndroidKeystoreSecureAreaScreen(
+                            promptModel = promptModel,
                             showToast = { message -> showToast(message) },
                             onViewCertificate = { encodedCertificateData ->
                                 navController.navigate(CertificateViewerDestination.route + "/${encodedCertificateData}")
@@ -704,6 +685,7 @@ class App private constructor() {
                     }
                     composable(route = NfcDestination.route) {
                         NfcScreen(
+                            promptModel = promptModel,
                             showToast = { message -> showToast(message) }
                         )
                     }
@@ -711,6 +693,7 @@ class App private constructor() {
                         IsoMdocProximitySharingScreen(
                             presentmentModel = presentmentModel,
                             settingsModel = settingsModel,
+                            promptModel = promptModel,
                             onNavigateToPresentmentScreen = {
                                 navController.navigate(PresentmentDestination.route)
                             },

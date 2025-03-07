@@ -1,7 +1,7 @@
-package com.android.identity.testapp.provisioning
+package org.multipaz.testapp.provisioning
 
-import com.android.identity.flow.transport.HttpTransport
-import com.android.identity.util.Logger
+import org.multipaz.flow.transport.HttpTransport
+import org.multipaz.util.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpRequestTimeoutException

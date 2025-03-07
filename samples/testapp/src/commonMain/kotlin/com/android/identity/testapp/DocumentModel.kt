@@ -1,12 +1,13 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
-import com.android.identity.document.DocumentAdded
-import com.android.identity.document.DocumentDeleted
-import com.android.identity.document.DocumentStore
-import com.android.identity.document.DocumentUpdated
-import com.android.identity.util.Logger
+import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.document.Document
+import org.multipaz.document.DocumentAdded
+import org.multipaz.document.DocumentDeleted
+import org.multipaz.document.DocumentStore
+import org.multipaz.document.DocumentUpdated
+import org.multipaz.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -18,10 +19,6 @@ class DocumentModel(
     val scope: CoroutineScope,
     val documentStore: DocumentStore,
 ) {
-    companion object {
-        private const val TAG = "DocumentModel"
-    }
-
     val documentInfos = mutableStateMapOf<String, DocumentInfo>()
 
     private val lock = Mutex()
@@ -34,7 +31,7 @@ class DocumentModel(
                 documentInfos[documentId] = DocumentInfo(
                     document = document,
                     cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
-                    credentials = document.getCredentials()
+                    credentialInfos = document.buildCredentialInfos()
                 )
             }
         }
@@ -50,7 +47,7 @@ class DocumentModel(
                                 documentInfos[event.documentId] = DocumentInfo(
                                     document = document,
                                     cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
-                                    credentials = document.getCredentials()
+                                    credentialInfos = document.buildCredentialInfos()
                                 )
                             }
                         }
@@ -65,7 +62,7 @@ class DocumentModel(
                                 documentInfos[event.documentId] = DocumentInfo(
                                     document = document,
                                     cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
-                                    credentials = document.getCredentials()
+                                    credentialInfos = document.buildCredentialInfos()
                                 )
                             }
                         }
@@ -75,4 +72,27 @@ class DocumentModel(
             .launchIn(scope)
     }
 
+    companion object {
+        private const val TAG = "DocumentModel"
+
+        private suspend fun Document.buildCredentialInfos(): List<CredentialInfo> {
+            return getCredentials().map { credential ->
+                val keyInfo = if (credential is SecureAreaBoundCredential) {
+                    credential.secureArea.getKeyInfo(credential.alias)
+                } else {
+                    null
+                }
+                val keyInvalidated = if (credential is SecureAreaBoundCredential) {
+                    credential.secureArea.getKeyInvalidated(credential.alias)
+                } else {
+                    false
+                }
+                CredentialInfo(
+                    credential = credential,
+                    keyInfo = keyInfo,
+                    keyInvalidated = keyInvalidated
+                )
+            }
+        }
+    }
 }

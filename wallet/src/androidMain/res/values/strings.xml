@@ -1,0 +1,572 @@
+<resources>
+    <string name="app_name">Wallet</string>
+    <string name="engagement_aid_group_desc">mDL AID Group</string>
+    <string name="off_host_engagement_aid_group_desc">mDL AID Off Host Group</string>
+    <string name="nfc_engagement_service_desc">@string/app_name</string>
+    <string name="app_name_presentation">Wallet Presentation</string>
+
+    <!-- Permissions -->
+    <string name="permission_camera">Camera access is needed to scan your document</string>
+    <string name="permission_nfc">Access to NFC is needed to send credentials and to communicate to other NFC-enabled documents</string>
+    <string name="permission_bluetooth_advertise">This application needs to advertise itself on bluetooth to send credential data</string>
+    <string name="permission_bluetooth_connect">Access to bluetooth connection is needed to send credential data</string>
+    <string name="permission_bluetooth_scan">Access to bluetooth scanning is needed to send credential data</string>
+    <string name="permission_button_grant_permission">Grant Permission</string>
+    <string name="permission_button_grant_permissions">Grant Permissions</string>
+    <string name="permission_button_grant">Grant Permission</string>
+    <string name="permission_post_notifications_rationale_md">
+        ## Receive notifications?
+        \n\n
+        If there are updates to your document the issuer will send an updated document to your
+        device. If you are interested, we can send a notification to make you aware of when
+        this happens. This requires granting a permission.
+        \n\n
+        If you previously denied this permission, attempting to grant it again might not do
+        anything and you may need to manually go into Settings and manually enable notifications
+        for this application.
+    </string>
+    <string name="permission_post_notifications_grant_permission_button_text">Grant Permission</string>
+    <string name="permission_post_notifications_continue_without_permission_button_text">No Thanks</string>
+
+    <!-- Proximity presentation permissions -->
+    <string name="proximity_permissions_snackbar_text">Permissions required for proximity presentations</string>
+    <string name="proximity_permissions_snackbar_action_label">Grant</string>
+    <string name="proximity_permissions_qr_alert_dialog_title">Missing Permissions</string>
+    <string name="proximity_permissions_qr_alert_dialog_content">
+        Proximity presentation requires permissions to be granted.
+    </string>
+    <string name="proximity_permissions_qr_alert_dialog_dismiss_button">Cancel</string>
+    <string name="proximity_permissions_qr_alert_dialog_confirm_button">Grant Permission</string>
+    <string name="proximity_permissions_nfc_notification_title">Missing Permissions</string>
+    <string name="proximity_permissions_nfc_notification_content">
+        Proximity presentation requires permissions to be granted.
+    </string>
+
+    <!-- No screenlock setup snackbar -->
+    <string name="no_screenlock_snackbar_text">
+        This device has no screen lock. Some things may not work.
+    </string>
+    <string name="no_screenlock_snackbar_action_label">Add Screen Lock</string>
+
+    <!-- Notifications about documents -->
+    <string name="notifications_document_application_approved_and_ready_to_use">
+        The application has been reviewed and your document is ready to use.
+    </string>
+    <string name="notifications_document_update_from_issuer">
+        The document has been updated with new information from the issuer.
+    </string>
+    <string name="notifications_document_deleted_by_issuer">
+        The document has been deleted by the issuer.
+    </string>
+
+    <!-- Wallet drawer -->
+    <string name="wallet_drawer_title">Wallet</string>
+    <string name="wallet_drawer_add">Add to Wallet</string>
+    <string name="wallet_drawer_settings">Settings</string>
+    <string name="wallet_drawer_identity_reader">Identity Reader</string>
+    <string name="wallet_drawer_about">About Wallet</string>
+
+    <!-- Wallet screen -->
+    <string name="wallet_screen_title">Wallet</string>
+    <string name="wallet_screen_nfc_icon_content_description">NFC Icon</string>
+    <string name="wallet_screen_nfc_presentation_instructions">Tap to share or use code</string>
+    <string name="wallet_screen_qr_icon_content_description">QR Icon</string>
+    <string name="wallet_screen_show_qr">Show code</string>
+    <string name="wallet_screen_empty">Add documents and manage your documents in one place.</string>
+    <string name="wallet_screen_add">Add a document</string>
+    <string name="wallet_screen_permissions">Need permissions</string>
+    <string name="wallet_screen_permissions_dismiss">Dismiss</string>
+    <string name="qr_lskf_warning_dismiss_btn">Ok</string>
+    <string name="qr_lskf_warning_dialog_title">Unable to Present Document</string>
+    <string name="qr_lskf_warning_dialog_text">In order to present the document, your device must have a lock-screen pin/password/pattern</string>
+    <string name="add_cred_lskf_warning_dismiss_btn">Ok</string>
+    <string name="add_cred_lskf_warning_dialog_title">Unable to Add Document</string>
+    <string name="add_cred_lskf_warning_dialog_text">In order to add a document to your wallet, your device must have a lock-screen pin/password/pattern</string>
+
+    <!-- About screen -->
+    <string name="about_screen_title">About Wallet</string>
+
+    <!-- Reader screens -->
+    <string name="reader_screen_title">Identity Reader</string>
+    <string name="reader_screen_nfc_icon_content_description">NFC Icon</string>
+    <string name="reader_screen_nfc_presentation_instructions">Tap to read or scan code</string>
+    <string name="reader_screen_qr_icon_content_description">QR Icon</string>
+    <string name="reader_screen_scan_qr_button_text">Scan code</string>
+    <string name="reader_screen_identity_data_to_request">Identity Data to Request:</string>
+    <string name="reader_screen_scan_qr_dialog_title">Scan QR Code</string>
+    <string name="reader_screen_scan_qr_dialog_text">Scan QR code from identity holder\'s device</string>
+    <string name="reader_screen_scan_qr_dialog_dismiss_button">Close</string>
+    <string name="reader_screen_scan_qr_dialog_missing_permission_text">Camera permission is needed to scan QR code.</string>
+    <string name="reader_screen_scan_qr_dialog_request_permission_button">Request permission</string>
+    <string name="reader_screen_waiting_for_connection_title">Requesting Identity</string>
+    <string name="reader_screen_waiting_for_connection_text">Waiting for connection to be established</string>
+    <string name="reader_screen_waiting_for_response_title">Requesting Identity</string>
+    <string name="reader_screen_waiting_for_response_text">Waiting for response</string>
+    <string name="reader_result_screen_title">Identity Documents Received</string>
+    <string name="reader_result_screen_no_documents_returned">No Documents Returned</string>
+    <string name="reader_screen_error_title">Error Requesting Identity</string>
+    <string name="reader_screen_error_prefix">An error occurred: %1$s</string>
+    <string name="reader_result_screen_unverified_data_warning">UNVERIFIED DATA\nDO NOT USE</string>
+    <string name="reader_result_screen_document_number">Document Number</string>
+    <string name="reader_result_screen_document_n_of_m">%1$d of %2$d</string>
+    <string name="reader_result_screen_doctype">DocType</string>
+    <string name="reader_result_screen_valid_from">Valid From</string>
+    <string name="reader_result_screen_valid_until">Valid Until</string>
+    <string name="reader_result_screen_signed_at">Signed At</string>
+    <string name="reader_result_screen_expected_update">Expected Update</string>
+    <string name="reader_result_screen_expected_update_not_set">Not Set</string>
+    <string name="reader_result_screen_namespace">Namespace</string>
+    <string name="reader_result_screen_bitmap_missing_description">Unknown Data Element</string>
+    <string name="reader_model_info_in_trust_list">Document Issuer \'%1$s\' is in trust list.</string>
+    <string name="reader_model_warning_not_in_trust_list">Document Issuer \'%1$s\' is not in trust list.</string>
+    <string name="reader_model_warning_device_auth">Device Authentication failed.</string>
+    <string name="reader_model_warning_issuer_auth">Issuer Authentication failed.</string>
+    <string name="reader_model_warning_data_elem_auth">One or more issuer provided data elements failed to authenticate.</string>
+    <string name="reader_model_warning_validity_period">Document information is not valid at this point in time.</string>
+
+    <!-- Reader Show Error -->
+    <string name="reader_show_error_screen_title">Error Requesting</string>
+
+    <!-- Settings screen -->
+    <string name="settings_screen_title">Settings</string>
+    <string name="settings_screen_dev_mode_title">Developer Mode</string>
+    <string name="settings_screen_dev_mode_subtitle_on">Additional functionality for developers is enabled</string>
+    <string name="settings_screen_dev_mode_subtitle_off">Additional functionality for developers not enabled</string>
+    <string name="settings_screen_log_to_file_title">Logging</string>
+    <string name="settings_screen_log_to_file_subtitle_on">Diagnostic messages are being logged</string>
+    <string name="settings_screen_log_to_file_subtitle_off">Diagnostic messages are not being logged</string>
+    <string name="settings_screen_activities_logging_title">Log Activity</string>
+    <string name="settings_screen_activities_logging_subtitle_on">Activities are being logged</string>
+    <string name="settings_screen_activities_logging_subtitle_off">Activities are not being logged</string>
+    <string name="settings_screen_activities_logging_shared_in_person">Shared in person</string>
+    <string name="settings_screen_activities_logging_shared_to_website">Shared to website</string>
+    <string name="settings_screen_activities_logging_shared_to_application">Shared to application</string>
+    <string name="settings_screen_activities_logging_unknown_requester">Unknown requester</string>
+    <string name="settings_screen_activities_logging_unverified_requester">Unverified requester</string>
+    <string name="settings_screen_activities_logging_disclaimer">
+        The activity log is kept on this device and is encrypted at rest. It is never shared with the application
+        vendor, device manufacturer, or anyone else.
+    </string>
+    <string name="settings_screen_activities_logging_delete_all_entries">Delete all entries</string>
+    <string name="settings_screen_activities_logging_confirm_deletion">Confirm Deletion</string>
+    <string name="settings_screen_activities_logging_confirm_deletion_detailed">
+        Are you sure you want to delete all activity entries for this document?
+    </string>
+    <string name="settings_screen_log_to_file_clear_button">Clear log</string>
+    <string name="settings_screen_log_to_file_share_button">Share log</string>
+    <string name="settings_screen_log_to_file_chooser_title">Share Log</string>
+    <string name="settings_screen_wallet_server_title">Wallet Server</string>
+    <string name="settings_screen_wallet_server_built_in">Built-in Wallet Server (dev:)</string>
+    <string name="settings_screen_built_in_issuer_settings">Built-in Issuer Settings</string>
+    <string name="settings_screen_cloud_secure_area_title">Cloud Secure Area</string>
+    <string name="settings_screen_min_server_title">Minimal Wallet Server</string>
+    <string name="settings_screen_proximity_sharing_button_title">Proximity Sharing Settings</string>
+    <string name="settings_screen_proximity_sharing_button_subtitle">Settings related to in-person presentment</string>
+
+    <string name="settings_proximity_sharing_screen_title">Proximity Sharing Settings</string>
+    <string name="settings_proximity_sharing_screen_device_engagement_settings_title">Device Engagement</string>
+    <string name="settings_proximity_sharing_screen_device_engagement_settings_explanation">Configure whether to use static or negotiated handover when engaging with a mdoc reader over NFC.</string>
+    <string name="settings_proximity_sharing_screen_nfc_static_handover_title">NFC Static Handover</string>
+    <string name="settings_proximity_sharing_screen_nfc_negotiated_handover_title">NFC Negotiated Handover</string>
+
+    <string name="settings_proximity_sharing_screen_device_retrieval_title">Device Retrieval</string>
+    <string name="settings_proximity_sharing_screen_device_retrieval_explanation">When using QR or NFC static handover, these are the device retrieval methods offered to the mdoc reader. When acting as a mdoc reader and using NFC negotiated handover, these are the device retrieval methods offered to the mdoc.</string>
+    <string name="settings_proximity_sharing_screen_device_retrieval_ble_mdoc_central_client_mode_title">BLE mdoc central client mode</string>
+    <string name="settings_proximity_sharing_screen_device_retrieval_ble_mdoc_peripheral_server_mode_title">BLE mdoc peripheral server mode</string>
+
+    <string name="settings_proximity_sharing_screen_options_title">Options</string>
+    <string name="settings_proximity_sharing_screen_options_explanation">Configure options which affect device retrieval.</string>
+    <string name="settings_proximity_sharing_screen_options_ble_l2cap_enabled_title">BLE L2CAP support</string>
+
+    <!-- Set Wallet Server URL dialog -->
+    <string name="settings_screen_set_wallet_server_url_dialog_title">Wallet Server</string>
+    <string name="settings_screen_set_wallet_server_url_dialog_message">
+        This is a developer-focused setting for specifying the URL of the Wallet Server instance
+        the application should connect to.\n\nSome popular options are included in the links below.
+    </string>
+    <string name="settings_screen_set_wallet_server_url_dialog_confirm_button">Set</string>
+    <string name="settings_screen_set_wallet_server_url_dialog_dismiss_button">Cancel</string>
+    <string name="settings_screen_set_wallet_server_url_label">URL</string>
+    <string name="settings_screen_set_wallet_server_url_link_built_in">Built-in Wallet Server</string>
+    <string name="settings_screen_set_wallet_server_url_link_emulator">Emulator with Wallet Server running on developer host</string>
+    <string name="settings_screen_set_wallet_server_url_tunneled">Wallet Server tunneled to device with \'adb reverse tcp:8080 tcp:8080\'</string>
+
+    <!-- Set Cloud Secure Area URL dialog -->
+    <string name="settings_screen_set_cloud_secure_area_url_dialog_title">Cloud Secure Area</string>
+    <string name="settings_screen_set_cloud_secure_area_url_dialog_message">
+        This is a developer-focused setting for specifying the URL of the Cloud Secure Area instance
+        the application should connect to.\n\nSome popular options are included in the links below.
+    </string>
+
+    <!-- Set Minimal Wallet Server URL dialog -->
+    <string name="settings_screen_set_min_server_url_dialog_title">Minimal Wallet Server</string>
+    <string name="settings_screen_set_min_server_url_dialog_message">
+        This is a developer-focused setting for specifying the URL of the Minimal Wallet Server
+        instance the application should connect to.\n\nSome popular options are included in the
+        links below.
+    </string>
+
+    <!-- Generic set URL dialog (both Cloud Secure Area and Minimal Wallet Server) -->
+    <string name="settings_screen_set_server_url_dialog_confirm_button">Set</string>
+    <string name="settings_screen_set_server_url_dialog_dismiss_button">Cancel</string>
+    <string name="settings_screen_set_server_url_label">URL</string>
+    <string name="settings_screen_set_server_url_link_emulator">Emulator with server running on developer host</string>
+    <string name="settings_screen_set_server_url_tunneled">Server tunneled to device with \'adb reverse tcp:8080 tcp:8080\'</string>
+
+    <!-- Confirmation dialog for setting wallet server url -->
+    <string name="settings_screen_confirm_set_wallet_server_url_dialog_title">Confirm setting Wallet Server URL</string>
+    <string name="settings_screen_confirm_set_wallet_server_url_dialog_message">
+        All existing documents will be deleted if you change the Wallet Server URL.
+    </string>
+    <string name="settings_screen_confirm_set_server_url_dialog_confirm">Confirm</string>
+    <string name="settings_screen_confirm_set_server_url_dialog_dismiss">Cancel</string>
+
+    <!-- Add to Wallet screen -->
+    <string name="add_screen_title">Add to Wallet</string>
+    <string name="add_screen_loading">Loading</string>
+    <string name="add_screen_loading_error">Error loading issuers</string>
+    <string name="add_screen_select_issuer">Select the kind of document to add</string>
+
+    <!-- DocumentInfoScreen -->
+    <string name="document_info_screen_title">Document</string>
+    <string name="document_info_screen_confirm_deletion_title">Confirm Deletion</string>
+    <string name="document_info_screen_confirm_deletion_message">Are you sure you want to delete this document?</string>
+    <string name="document_info_screen_confirm_deletion_confirm_button">Delete</string>
+    <string name="document_info_screen_confirm_deletion_dismiss_button">Cancel</string>
+    <string name="document_info_screen_menu_item_check_for_update">Check for Update</string>
+    <string name="document_info_screen_menu_item_show_data">Show Data</string>
+    <string name="document_info_screen_menu_item_show_credentials">Show Credentials</string>
+    <string name="document_info_screen_menu_item_request_update">Request Update</string>
+    <string name="document_info_screen_menu_activities_log">Show Usage</string>
+    <string name="document_info_screen_menu_activities_log_screen_empty">No activities logged yet</string>
+    <string name="document_info_screen_menu_activities_log_screen_shared_in_person">"Shared in-person"</string>
+    <string name="document_info_screen_menu_activities_log_screen_shared_with_website">"Shared with website"</string>
+    <string name="document_info_screen_menu_activities_log_screen_shared_with_application">"Shared with application"</string>
+    <string name="document_info_screen_menu_activities_log_screen_unknown_share">"Unknown share type"</string>
+    <string name="document_info_screen_menu_activities_log_screen_share_type">"Share Type"</string>
+    <string name="document_info_screen_menu_activities_log_screen_requester">"Requester"</string>
+    <string name="document_info_screen_menu_activities_log_screen_data_shared">"Data shared"</string>
+    <string name="document_info_screen_request_update_title">Request Update</string>
+    <string name="document_info_screen_request_update_message">
+        This is a Developer Mode feature to request a document update from the Issuing Authority.
+    </string>
+    <string name="document_info_screen_request_update_remote_deletion_checkbox_string">
+        Request deletion
+    </string>
+    <string name="document_info_screen_request_update_notify_application_checkbox_string">
+        Notify application
+    </string>
+    <string name="document_info_screen_request_update_confirm_button">Request Update</string>
+    <string name="document_info_screen_request_update_dismiss_button">Cancel</string>
+    <string name="document_info_screen_menu_item_delete">Delete</string>
+    <string name="document_info_screen_data_name">Name</string>
+    <string name="document_info_screen_data_issuer">Issuer</string>
+    <string name="document_info_screen_data_status">Status</string>
+    <string name="document_info_screen_data_last_update_check">Last Update Check</string>
+    <string name="document_info_screen_error_dialog_title">Error Refreshing</string>
+    <string name="document_info_screen_error_dialog_confirm_button">OK</string>
+    <string name="document_info_screen_refresh_error_missing_screenlock">
+        A screen lock must be set up to refresh this document.
+    </string>
+
+    <!-- DocumentDetailsScreen -->
+    <string name="document_details_screen_title">Document Data</string>
+    <string name="document_details_screen_disclaimer">UNVERIFIED DATA\nDO NOT USE</string>
+    <string name="document_details_screen_flash_pass_lecture">Do not share this screen. It is not secure for presenting info directly as authenticity cannot be verified.</string>
+    <string name="document_details_boolean_true_value">True</string>
+    <string name="document_details_boolean_false_value">False</string>
+    <string name="document_details_screen_warning_icon_unverified_data">Warning Icon</string>
+
+    <!-- CredentialInfoScreen -->
+    <string name="credential_info_screen_title">Credentials</string>
+    <string name="credential_info_screen_no_credentials">No Credentials Available</string>
+
+    <!-- DocumentModel -->
+    <string name="document_model_status_no_such_document">No such document</string>
+    <string name="document_model_status_proofing_required">User proofing required</string>
+    <string name="document_model_status_proofing_processing">Application is processing</string>
+    <string name="document_model_status_proofing_failed">Application not approved</string>
+    <string name="document_model_status_configuration_available">Update available</string>
+    <string name="document_model_status_no_usable_credential">Credentials expired or missing</string>
+    <string name="document_model_status_ready">Ready to be used</string>
+    <string name="document_model_status_deletion_requested">Deletion requested</string>
+    <string name="document_model_refresh_no_update_toast_text">No update available</string>
+
+    <!-- Provisioning screen -->
+    <string name="provisioning_title">Provisioning</string>
+    <string name="provisioning_idle">Waiting…</string>
+    <string name="provisioning_creating_key">Generating keys…</string>
+    <string name="provisioning_unknown_evidence_type">Evidence type not supported: %1$s</string>
+    <string name="provisioning_submitting">Submitting evidence…</string>
+    <string name="provisioning_error">Error provisioning: %1$s</string>
+    <string name="provisioning_unexpected">Unexpected state: %1$s</string>
+    <string name="provisioning_request_unexpected">Unexpected request type</string>
+
+    <!-- Presentation screen -->
+    <string name="presentation_credential_usage_warning">Reused Credential</string>
+    <string name="presentation_biometric_prompt_title">Verify it\'s you</string>
+    <string name="presentation_biometric_prompt_subtitle">Authentication is required to share this information</string>
+    <string name="presentation_lskf_warning_dismiss_btn">Ok</string>
+    <string name="presentation_lskf_warning_dialog_title">Unable to Present Document</string>
+    <string name="presentation_lskf_warning_dialog_text">In order to present the document, your device must have a lock-screen pin/password/pattern</string>
+    <string name="presentation_waiting_for_reader">Waiting for reader to connect…</string>
+    <string name="presentation_result_success_message">The information was shared</string>
+    <string name="presentation_result_error_message">An error occurred</string>
+    <string name="presentation_result_error_message_reader_timeout">Timed out waiting for reader to connect</string>
+
+
+    <!-- Credential issuance -->
+    <string name="issuance_biometric_prompt_title">Use your screen lock</string>
+    <string name="issuance_biometric_prompt_subtitle">Authentication is required to bind issued credential to this device</string>
+
+    <!-- QR screen -->
+    <string name="qr_title">Share using QR code</string>
+    <string name="qr_instructions">Present QR code to verifier</string>
+    <string name="qr_error_generating">Error generating QR code</string>
+    <string name="qr_button_retry">Retry</string>
+
+    <!-- Evidence screens -->
+    <string name="evidence_question_label_answer">Answer</string>
+    <string name="evidence_camera_scan_mrz_title">Take a photo of your document</string>
+    <string name="evidence_camera_scan_mrz_instruction">
+        Center the main page of your Passport or Machine Readable Zone (MRZ) of your Id card. Upon successfully
+        recognizing the document Id, you will progress to the next screen.
+    </string>
+
+    <string name="evidence_nfc_scan_title">Scan the NFC chip on your document</string>
+    <string name="evidence_nfc_scan_info">Move your phone over the document to start scanning.
+        Confirmation will appear when successful.</string>
+    <string name="evidence_nfc_scan_passport_symbol_check">Check your document for any chip or NFC-\n
+        related symbols to ensure it is scannable</string>
+    <string name="evidence_nfc_scan_passport_symbol_accesibility_description">Biometric Passport Symbol</string>
+    <string name="evidence_create_passphrase_label_passphrase">Passphrase</string>
+    <string name="evidence_create_passphrase_label_pin">PIN</string>
+    <string name="evidence_create_passphrase_next">Next</string>
+    <string name="evidence_create_passphrase_confirm">Confirm</string>
+    <string name="evidence_create_passphrase_no_match">The passphrase didn\'t match, please try again</string>
+    <string name="evidence_create_passphrase_no_match_pin">The PIN didn\'t match, please try again</string>
+    <string name="evidence_nfc_scan_successful_title">Document Scanning Successful</string>
+
+    <!-- Passphrase Prompt -->
+    <string name="passphrase_prompt_next">Next</string>
+    <string name="passphrase_prompt_cancel">Cancel</string>
+    <string name="passphrase_prompt_pin_title">Enter PIN</string>
+    <string name="passphrase_prompt_pin_content">Enter the PIN for the document</string>
+    <string name="passphrase_prompt_passphrase_title">Enter Passphrase</string>
+    <string name="passphrase_prompt_passphrase_content">Enter the Passphrase for the document</string>
+    <string name="passphrase_pin_screen_delete">Delete</string>
+    <string name="passphrase_pin_screen_done">Done</string>
+    <string name="passphrase_prompt_csa_pin_title">Enter Wallet PIN</string>
+    <string name="passphrase_prompt_csa_pin_content">Enter the Wallet PIN chosen when document was set up</string>
+    <string name="passphrase_prompt_csa_passphrase_title">Enter Wallet Passphrase</string>
+    <string name="passphrase_prompt_csa_passphrase_content">Enter the Wallet Passphrase chosen when document was set up</string>
+
+    <!-- NFC status -->
+    <string name="nfc_status_initializing">Initializing...</string>
+    <string name="nfc_status_pace_unable_to_initialize">Unable to initialize</string>
+    <string name="nfc_status_reading_data">Reading... %1$d%%</string>
+    <string name="nfc_status_finished">Finished</string>
+
+    <!-- eID reading -->
+    <string name="eid_status_preparing">Initializing eID reading module</string>
+    <string name="eid_status_ready">Ready to read eID card</string>
+    <string name="eid_status_started">Initializing…</string>
+    <string name="eid_start_workflow">Start</string>
+    <string name="eid_start_workflow_with_simulator">Start using Simulator</string>
+    <string name="eid_access_rights_title">Please allow reading the following items</string>
+    <string name="eid_access_right_first_name">First name</string>
+    <string name="eid_access_right_last_name">Last name</string>
+    <string name="eid_access_right_maiden_name">Birth (maiden) name</string>
+    <string name="eid_access_right_date_of_birth">Date of birth</string>
+    <string name="eid_access_right_place_of_birth">Place of birth</string>
+    <string name="eid_access_right_address">Address</string>
+    <string name="eid_access_right_nationality">Nationality</string>
+    <string name="eid_access_right_pseudonym">Pseudonym</string>
+    <string name="eid_access_right_age_verification">Age</string>
+    <string name="eid_access_right_allow">Allow</string>
+    <string name="eid_nfc_scanning">Scanning eID using NFC</string>
+    <string name="eid_enter_pin">Enter your PIN</string>
+    <string name="eid_network_error">Error establishing network connection</string>
+    <string name="eid_pin_error">Incorrect PIN entered too many times. The card is locked. Use Ausweis App to unlock the card.</string>
+    <string name="eid_generic_error">Error scanning or processing the card</string>
+    <string name="eid_try_again">Try again</string>
+
+    <!-- External browser -->
+    <string name="browser_continue">Launching browser, continue there…</string>
+
+    <!-- Presentation while issuing evidence -->
+    <string name="presentation_evidence_message">
+        The Issuing Authority requires you to authenticate yourself.
+        You can do this by presenting the eID you have in your wallet.
+    </string>
+    <string name="presentation_evidence_ok">Present eID</string>
+    <string name="presentation_evidence_cancel">Use Web Browser</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_go_back_icon">Go back</string>
+    <string name="accessibility_menu_icon">Menu</string>
+    <string name="accessibility_artwork_for">Artwork for %1$s</string>
+    <string name="accessibility_portrait">Portrait of Holder</string>
+    <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
+    <string name="accessibility_qr_code">QR code</string>
+
+    <!-- SelfSignedMdlIssuingAuthority -->
+    <string name="utopia_mdl_issuing_authority_description">Utopia Driving License</string>
+    <string name="utopia_mdl_issuing_authority_name">Utopia Department of Motor Vehicles</string>
+    <string name="utopia_mdl_issuing_authority_tos"><![CDATA[
+        <img src=\'utopia_logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Department of Motor Vehicles\'/>
+        <h2>Provisioning a Mobile Driving License (mDL)</h2>
+        <p>In the following screens, information will be collected to provision an mDL.</p>
+        <p>The mDL can either contain hard-coded data for a fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the application the mDL is generated and signed on-device. In future
+        versions the collected evidence will be conveyed securely and privately to an issuance
+        server for evaluation and signing of the mDL.</p>
+        <p>The created mDL will be bound to this device.</p>
+    ]]></string>
+    <string name="utopia_mdl_issuing_authority_accept">I understand</string>
+    <string name="utopia_mdl_issuing_authority_reject">Cancel</string>
+    <string name="utopia_mdl_issuing_authority_hardcoded_or_derived">Scan ePassport/eID?</string>
+    <string name="utopia_mdl_issuing_authority_hardcoded_option">No, create mDL with hard-coded data</string>
+    <string name="utopia_mdl_issuing_authority_passport_option">Yes, derive the mDL from ePassport/eID</string>
+    <string name="utopia_mdl_issuing_authority_continue">Continue</string>
+    <string name="utopia_mdl_issuing_authority_application_finish">
+        Your application is about to be sent the ID issuer for verification. You will get notified
+        when the application is approved.
+    </string>
+    <string name="utopia_mdl_issuing_authority_pending_document_title">Utopia mDL (pending)</string>
+    <string name="utopia_mdl_issuing_authority_document_title">%1$s\'s mDL</string>
+
+    <string name="utopia_local_issuing_authority_tos"><![CDATA[
+        <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Department of Motor Vehicles\'/>
+        <h2>Provisioning a Mobile Driving License (mDL)</h2>
+        <p>In the following screens, information will be collected to provision an mDL.</p>
+        <p>The mDL can either contain hard-coded data for a fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the Issuing Authority the mDL is generated and signed on-device.
+        In other versions the collected evidence is conveyed securely and privately to an issuance
+        server for evaluation and signing of the mDL.</p>
+        <p>The created mDL will be bound to this device.</p>
+    ]]>
+    </string>
+
+    <string name="utopia_local_issuing_authority_pid_tos"><![CDATA[
+        <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Government\'/>
+        <h2>Provisioning a Personal ID (PID)</h2>
+        <p>In the following screens, information will be collected to provision a PID.</p>
+        <p>The PID can either contain hard-coded data for a fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the Issuing Authority the PID is generated and signed on-device.
+        In other versions the collected evidence is conveyed securely and privately to an issuance
+        server for evaluation and signing of the PID.</p>
+        <p>The created PID will be bound to this device.</p>
+    ]]>
+    </string>
+
+    <string name="utopia_local_issuing_authority_photoid_tos"><![CDATA[
+        <img src=\'logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Government\'/>
+        <h2>Provisioning a Photo ID</h2>
+        <p>In the following screens, information will be collected to provision a Photo ID.</p>
+        <p>The Photo ID can either contain hard-coded data for a fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the Issuing Authority the Photo ID is generated and signed on-device.
+        In other versions the collected evidence is conveyed securely and privately to an issuance
+        server for evaluation and signing of the Photo ID.</p>
+        <p>The created Photo ID will be bound to this device.</p>
+    ]]>
+    </string>
+
+    <!-- SelfSignedEuPidIssuingAuthority -->
+    <string name="utopia_eu_pid_issuing_authority_description">Utopia Personal Information Document</string>
+    <string name="utopia_eu_pid_issuing_authority_name">Utopia Central Registry</string>
+    <string name="utopia_eu_pid_issuing_authority_tos">
+        ![State of Utopia Central Registry seal](utopia_logo.png){
+           style=height:150px;display:block;margin:auto}\n\n
+        ## Provisioning a Personal Information Document (PID)\n\n
+        In the following screens, information will be collected to provision a PID.\n\n
+        The PID can either contain hard-coded data for fictional person or
+        data derived from the chip in an ePassport or eID document.\n\n
+        In this version of the application the PID is generated and signed on-device. In future
+        versions the collected evidence will be conveyed securely and privately to an issuance
+        server for evaluation and signing of the PID.\n\n
+        The created PID will be bound to this device.
+    </string>
+    <string name="utopia_eu_pid_issuing_authority_accept">I understand</string>
+    <string name="utopia_eu_pid_issuing_authority_reject">Cancel</string>
+    <string name="utopia_eu_pid_issuing_authority_hardcoded_or_derived">Scan ePassport/eID?</string>
+    <string name="utopia_eu_pid_issuing_authority_hardcoded_option">No, create PID with hard-coded data</string>
+    <string name="utopia_eu_pid_issuing_authority_passport_option">Yes, derive the PID from ePassport</string>
+    <string name="utopia_eu_pid_issuing_authority_id_option">Yes, derive the PID from eID</string>
+    <string name="utopia_eu_pid_issuing_authority_enter_can">Enter the 6-digit Card Access Number printed on your card</string>
+    <string name="utopia_eu_pid_issuing_authority_continue">Continue</string>
+    <string name="utopia_eu_pid_issuing_authority_application_finish">
+        Your application is about to be sent the ID issuer for verification. You will get notified
+        when the application is approved.
+    </string>
+    <string name="utopia_eu_pid_issuing_authority_pending_document_title">Utopia PID (pending)</string>
+    <string name="utopia_eu_pid_issuing_authority_document_title">%1$s\'s PID</string>
+
+    <!-- Funke issuing authority TOS -->
+    <string name="funke_issuing_authority_tos"><![CDATA[
+        <h2>Provisioning a Personal Identification Data (PID) credential</h2>
+        <p>In the following screens, information will be collected to provision a PID for
+        a fictional person used for testing only.</p>
+        <p>The PID is generated and signed on the government server. The created PID will be bound to
+        this device.</p>
+    ]]></string>
+
+    <!-- Generic issuing authority TOS -->
+    <string name="generic_issuing_authority_tos"><![CDATA[
+        <h2>Provisioning $ID_NAME credential</h2>
+        <p>In the following screens, information will be collected to provision
+            <b>$ID_NAME</b> from <b>$ISSUER_NAME</b>.</p>
+        <p>The created <b>$ID_NAME</b> will be bound to this device.</p>
+    ]]></string>
+
+    <!-- Credential Offer -->
+    <string name="credential_offer_scan">Scan Credential Offer</string>
+    <string name="credential_offer_details">QR code for OpenID for Verifiable Credential Issuance (draft #14)</string>
+
+    <!-- Biometric Prompt -->
+    <string name="biometric_prompt_negative_btn_lskf">Use PIN</string>
+    <string name="biometric_prompt_negative_btn_no_lskf">Cancel</string>
+
+    <!-- Asset name (for localized assets -->
+    <string name="asset_about_md">about.md</string>
+
+    <!-- DurationFromNowText -->
+    <string name="duration_just_now">just now</string>
+    <string name="duration_in_a_few_moments">in a few moments</string>
+    <string name="duration_less_than_a_minute">less than a minute</string>
+    <string name="duration_years_and_months">%1$s and %2$s</string>
+    <string name="duration_months_and_days">%1$s and %2$s</string>
+    <string name="duration_weeks_and_days">%1$s and %2$s</string>
+    <string name="duration_days_and_hours">%1$s and %2$s</string>
+    <string name="duration_hours_and_minutes">%1$s and %2$s</string>
+    <string name="duration_time_ago">%1$s ago</string>
+    <string name="duration_time_from_now">%1$s from now</string>
+    <string name="selfie_video_failed">Failed to record selfie video. Please tap Back and try again.</string>
+    <string name="record_selfie_title">Record a selfie video</string>
+    <string name="initial_selfie_video_instructions">Follow these instructions to record a selfie video to upload for identity verification. Press \"Start recording\" when ready.</string>
+    <string name="selfie_instructions_face_front">Face directly toward the camera</string>
+    <string name="selfie_instructions_tilt_head_up">Tilt your head up</string>
+    <string name="selfie_instructions_tilt_head_down">Tilt your head down</string>
+    <string name="selfie_video_start_recording_button">Start recording</string>
+    <string name="selfie_video_finish_button">Finish</string>
+    <string name="selfie_video_continue_to_next_pose_button">Continue</string>
+    <string name="selfie_instructions_finishing_video">Thank you. Finishing video...</string>
+    <string name="selfie_instructions_smile">Smile</string>
+    <string name="selfie_instructions_too_many_faces">Too many faces found. Please ensure you only have one person on camera.</string>
+    <string name="qr_alert_dialog_bt_disabled_title">Bluetooth disabled</string>
+    <string name="qr_alert_dialog_bt_disabled_text">Bluetooth must be enabled to share a QR connection code</string>
+    <string name="qr_alert_dialog_bt_enable_button">Enable</string>
+    <string name="presentation_result_no_matching_document_message">No available documents can fulfill the request.</string>
+    <string name="welcome_to_your_wallet_image">Welcome to your wallet image</string>
+    <string name="welcome_to_your_open_wallet_empty">Welcome to your Multipaz Wallet</string>
+    <string name="settings_screen_debug_actions_section">Debug actions</string>
+    <string name="settings_screen_trigger_periodic_sync_button">Trigger Periodic Sync</string>
+</resources>

@@ -1,12 +1,13 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborArray
-import com.android.identity.cbor.Tstr
-import com.android.identity.cbor.toDataItem
-import com.android.identity.storage.Storage
-import com.android.identity.storage.StorageTable
-import com.android.identity.storage.StorageTableSpec
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborArray
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.toDataItem
+import org.multipaz.crypto.EcCurve
+import org.multipaz.storage.Storage
+import org.multipaz.storage.StorageTable
+import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,7 @@ import kotlin.Boolean
 /**
  * A model for settings for samples/testapp.
  *
- * TODO: Port [com.android.identity.testapp.ui.ProvisioningTestScreen] to use this.
+ * TODO: Port [org.multipaz.testapp.ui.ProvisioningTestScreen] to use this.
  */
 class TestAppSettingsModel private constructor(
     private val readOnly: Boolean
@@ -71,7 +72,8 @@ class TestAppSettingsModel private constructor(
             when (T::class) {
                 Boolean::class -> { dataItem.asBoolean as T }
                 String::class -> { dataItem.asTstr as T }
-                List::class -> { dataItem.asArray.map { item -> (item as Tstr).value } as T}
+                List::class -> { dataItem.asArray.map { item -> (item as Tstr).value } as T }
+                EcCurve::class -> { EcCurve.entries.find { it.name == dataItem.asTstr } as T }
                 else -> { throw IllegalStateException("Type not supported") }
             }
         } ?: defaultValue
@@ -93,6 +95,10 @@ class TestAppSettingsModel private constructor(
                             val builder = CborArray.builder()
                             (newValue as List<*>).forEach { builder.add(Tstr(it as String)) }
                             builder.end().build()
+                        }
+
+                        EcCurve::class -> {
+                            (newValue as EcCurve).name.toDataItem()
                         }
 
                         else -> {
@@ -121,6 +127,7 @@ class TestAppSettingsModel private constructor(
         bind(presentmentBleCentralClientModeEnabled, "presentmentBleCentralClientModeEnabled", true)
         bind(presentmentBlePeripheralServerModeEnabled, "presentmentBlePeripheralServerModeEnabled", false)
         bind(presentmentNfcDataTransferEnabled, "presentmentNfcDataTransferEnabled", false)
+        bind(presentmentSessionEncryptionCurve, "presentmentSessionEncryptionCurve", EcCurve.P256)
         bind(presentmentBleL2CapEnabled, "presentmentBleL2CapEnabled", true)
         bind(presentmentUseNegotiatedHandover, "presentmentUseNegotiatedHandover", true)
         bind(presentmentAllowMultipleRequests, "presentmentAllowMultipleRequests", false)
@@ -133,6 +140,7 @@ class TestAppSettingsModel private constructor(
         )
         bind(presentmentShowConsentPrompt, "presentmentShowConsentPrompt", true)
         bind(presentmentRequireAuthentication, "presentmentRequireAuthentication", true)
+        bind(presentmentPreferSignatureToKeyAgreement, "presentmentPreferSignatureToKeyAgreement", false)
 
         bind(readerBleCentralClientModeEnabled, "readerBleCentralClientModeEnabled", true)
         bind(readerBlePeripheralServerModeEnabled, "readerBlePeripheralServerModeEnabled", true)
@@ -147,12 +155,14 @@ class TestAppSettingsModel private constructor(
     val presentmentBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)
     val presentmentBlePeripheralServerModeEnabled = MutableStateFlow<Boolean>(false)
     val presentmentNfcDataTransferEnabled = MutableStateFlow<Boolean>(false)
+    val presentmentSessionEncryptionCurve = MutableStateFlow<EcCurve>(EcCurve.P256)
     val presentmentBleL2CapEnabled = MutableStateFlow<Boolean>(false)
     val presentmentUseNegotiatedHandover = MutableStateFlow<Boolean>(false)
     val presentmentAllowMultipleRequests = MutableStateFlow<Boolean>(false)
     val presentmentNegotiatedHandoverPreferredOrder = MutableStateFlow<List<String>>(listOf())
     val presentmentShowConsentPrompt = MutableStateFlow<Boolean>(false)
     val presentmentRequireAuthentication = MutableStateFlow<Boolean>(false)
+    val presentmentPreferSignatureToKeyAgreement = MutableStateFlow<Boolean>(false)
 
     val readerBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)
     val readerBlePeripheralServerModeEnabled = MutableStateFlow<Boolean>(false)

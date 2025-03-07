@@ -1,11 +1,11 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.compose.ui.graphics.ImageBitmap
-import com.android.identity.credential.Credential
-import com.android.identity.document.Document
+import org.multipaz.credential.Credential
+import org.multipaz.document.Document
 
 data class DocumentInfo(
     val document: Document,
     val cardArt: ImageBitmap,
-    val credentials: List<Credential>
+    val credentialInfos: List<CredentialInfo>
 )

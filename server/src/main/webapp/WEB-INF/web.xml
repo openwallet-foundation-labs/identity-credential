@@ -7,7 +7,7 @@
     <servlet>
         <display-name>FlowServlet</display-name>
         <servlet-name>FlowServlet</servlet-name>
-        <servlet-class>com.android.identity.wallet.server.FlowServlet</servlet-class>
+        <servlet-class>org.multipaz.wallet.server.FlowServlet</servlet-class>
         <load-on-startup>0</load-on-startup>
 
         <init-param>
@@ -169,7 +169,7 @@
     <servlet>
         <display-name>AdminServlet</display-name>
         <servlet-name>AdminServlet</servlet-name>
-        <servlet-class>com.android.identity.wallet.server.AdminServlet</servlet-class>
+        <servlet-class>org.multipaz.wallet.server.AdminServlet</servlet-class>
 
         <!-- must be loaded after FlowServlet in order to use FlowNotifications! -->
         <load-on-startup>1</load-on-startup>
@@ -193,7 +193,7 @@
     <servlet>
         <display-name>LandingServlet</display-name>
         <servlet-name>LandingServlet</servlet-name>
-        <servlet-class>com.android.identity.wallet.server.LandingServlet</servlet-class>
+        <servlet-class>org.multipaz.wallet.server.LandingServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>
 
@@ -205,7 +205,7 @@
     <servlet>
         <display-name>CsaServlet</display-name>
         <servlet-name>CsaServlet</servlet-name>
-        <servlet-class>com.android.identity.wallet.server.CloudSecureAreaServlet</servlet-class>
+        <servlet-class>org.multipaz.wallet.server.CloudSecureAreaServlet</servlet-class>
         <load-on-startup>0</load-on-startup>
 
         <init-param>
@@ -230,7 +230,7 @@
     <servlet>
         <display-name>VerifierServlet</display-name>
         <servlet-name>VerifierServlet</servlet-name>
-        <servlet-class>com.android.identity.wallet.server.VerifierServlet</servlet-class>
+        <servlet-class>org.multipaz.wallet.server.VerifierServlet</servlet-class>
         <load-on-startup>0</load-on-startup>
 
         <init-param>
@@ -276,7 +276,7 @@
     <servlet>
         <display-name>ParServlet</display-name>
         <servlet-name>ParServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.ParServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.ParServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -288,7 +288,7 @@
     <servlet>
         <display-name>AuthorizeServlet</display-name>
         <servlet-name>AuthorizeServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.AuthorizeServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.AuthorizeServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -300,7 +300,7 @@
     <servlet>
         <display-name>AuthorizeChallengeServlet</display-name>
         <servlet-name>AuthorizeChallengeServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.AuthorizeChallengeServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.AuthorizeChallengeServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -312,7 +312,7 @@
     <servlet>
         <display-name>Openid4VpResponseServlet</display-name>
         <servlet-name>Openid4VpResponseServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.Openid4VpResponseServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.Openid4VpResponseServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -324,7 +324,7 @@
     <servlet>
         <display-name>FinishAuthorizationServlet</display-name>
         <servlet-name>FinishAuthorizationServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.FinishAuthorizationServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.FinishAuthorizationServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -336,7 +336,7 @@
     <servlet>
         <display-name>TokenServlet</display-name>
         <servlet-name>TokenServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.TokenServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.TokenServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -348,7 +348,7 @@
     <servlet>
         <display-name>CredentialServlet</display-name>
         <servlet-name>CredentialServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.CredentialServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.CredentialServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -360,7 +360,7 @@
     <servlet>
         <display-name>CredentialRequestServlet</display-name>
         <servlet-name>CredentialRequestServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.CredentialRequestServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.CredentialRequestServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -372,7 +372,7 @@
     <servlet>
         <display-name>QrServlet</display-name>
         <servlet-name>QrServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.QrServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.QrServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -384,7 +384,7 @@
     <servlet>
         <display-name>WellKnownOpenidCredentialIssuanceServlet</display-name>
         <servlet-name>WellKnownOpenidCredentialIssuanceServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.WellKnownOpenidCredentialIssuerServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.WellKnownOpenidCredentialIssuerServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 
@@ -396,7 +396,7 @@
     <servlet>
         <display-name>WellKnownOauthAuthorizationServlet</display-name>
         <servlet-name>WellKnownOauthAuthorizationServlet</servlet-name>
-        <servlet-class>com.android.identity.server.openid4vci.WellKnownOauthAuthorizationServlet</servlet-class>
+        <servlet-class>org.multipaz.server.openid4vci.WellKnownOauthAuthorizationServlet</servlet-class>
         <load-on-startup>10</load-on-startup>
     </servlet>
 

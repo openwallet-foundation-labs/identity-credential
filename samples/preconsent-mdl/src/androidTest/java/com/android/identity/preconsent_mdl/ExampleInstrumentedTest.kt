@@ -1,4 +1,4 @@
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.android.identity.preconsent_mdl", appContext.packageName)
+        assertEquals("org.multipaz.preconsent_mdl", appContext.packageName)
     }
 }

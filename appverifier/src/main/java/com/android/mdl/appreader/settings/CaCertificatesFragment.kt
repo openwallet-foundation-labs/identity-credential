@@ -14,8 +14,8 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
-import com.android.identity.crypto.X509Cert
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.crypto.X509Cert
+import org.multipaz.trustmanagement.TrustPoint
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier

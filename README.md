@@ -1,4 +1,4 @@
-# Identity Credential
+# Multipaz
 
 This repository contains libraries and applications for working
 with *Real-World Identity*. The initial focus for this work
@@ -6,31 +6,31 @@ was mdoc/mDL according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69
 and related standards (mainly ISO 23220 series and ISO 18013-7)
 but the current scope also include other credential formats.
 
-## Identity Credential Libraries
+## Multipaz Libraries
 
 The project includes libraries written in Kotlin:
 
-- `identity` provides the core building blocks and which can also be used
-   in server-side environments.
-- `identity-mdoc` provides data structures and routines for working with
-   mdoc credentials. This library can also be used in server-side-environments
-- `identity-sdjwt` provides data structures and routines for working with
-   [IETF SD-JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
-   credentials. This library can also be used in server-side environments.
-- `identity-android` provides Android-specific extensions. It is designed to
+- `multipaz` provides the core building blocks and which can also be used
+   in server-side environments. It includes mdoc folders that provide
+   data structures and routines for working with mdoc credentials. There are
+   sdjwt folders that provide data structures and routines for working with
+   [IETF SD-JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/). This library can also be used in server-side-environments.
+   The library is written using Kotlin Multiplatform, so there are
+   platform-specific folders that contain extensions specific to Android and
+   iOS. The Android extensions are designed to
    run on Android (API 24 or later) and will take advantage of
    Android-specific features including hardware-backed Keystore, NFC, Bluetooth
    Low Energy, and so on.
-- `identity-android-legacy` contains an older version of the APIs for
+- `multipaz-android-legacy` contains an older version of the APIs for
    applications not yet migrated to the newer libraries. At some point this
    library will be removed. Unlike the other libraries and applications, this
    library is in Java, not Kotlin.
-- `identity-doctypes` contains known credential document types (for example
+- `multipaz-doctypes` contains known credential document types (for example
    ISO/IEC 18013-5:2021 mDL and EU PID) along with human-readable descriptions
    of claims / data elements and also sample data. This is packaged separately
-   from the core `identity` library because its size is non-negligible and not
+   from the core `multipaz` library because its size is non-negligible and not
    all applications need this or they may bring their own.
-- `identity-csa` contains library code for implementing a Cloud-based Secure
+- `multipaz-csa` contains library code for implementing a Cloud-based Secure
    Area. This is discussed more in-depth below.
 
 These libraries are intended to be used by Wallet Applications (mobile
@@ -45,19 +45,19 @@ provide the following building blocks
     Each key will have an attestation which can be used to prove to Relying
     Parties (such as a credential issuer) that the private part of the key
     only exists in a Secure Area.
-  - The `identity-android` library includes an implementation based on
+  - The androidMain directory in `multipaz` includes an implementation based on
     [Android Keystore](https://developer.android.com/training/articles/keystore)
     with support for requiring user authentication (biometric or lock-screen
     knowledge factor, e.g. system PIN) for unlocking the key and also can use
     [StrongBox](https://source.android.com/docs/compatibility/13/android-13-cdd#9112_strongbox)
     if available on the device. This is appropriate to use in Android
     applications implementing ISO/IEC 18013-5:2021 for storing `DeviceKey`.
-  - The `identity` library includes an implementation backed by BouncyCastle
+  - The `multipaz` library includes an implementation backed by BouncyCastle
     with support for passphrase-protected keys. This isn't suitable for use
     in Mobile Applications as its not backed by Secure Hardware.
   - A protocol for a Cloud Secure Area is provided along with production quality
     client-side implementation and a reference implementation of the server side
-    in the `identity-csa` library. The provided server implementation isn't suitable
+    in the `multipaz-csa` library. The provided server implementation isn't suitable
     for production use.
     - The point of this is to provide a secure and privacy-preserving protocol
       with end-to-end encryption directly from the app to a Secure Area
@@ -119,9 +119,9 @@ The `server` application can be customized using the `server/web.xml` file.
 
 ### Command-line tool
 
-A command-line tool `identityctl` is included which can be used to generate
+A command-line tool `multipazctl` is included which can be used to generate
 ISO/IEC 18013-5:2021 IACA test certificates among other things. Use
-`./gradlew --quiet runIdentityCtl --args "help"` for documentation on supported
+`./gradlew --quiet runMultipazCtl --args "help"` for documentation on supported
 verbs and options.
 
 ### Library releases, Versioning, and Documentation
@@ -160,12 +160,12 @@ with an eye towards a production-quality and easily rebrandable identity
 wallet application. Wallet app now attempts to connect to the wallet server on start-up, if
 that fails it continues in the standalone matter.
 
-The `identity-issuance` module contains code for server-based credential issuance. It defines
+The `multipaz-issuance` module contains code for server-based credential issuance. It defines
 server/client interfaces as well as provides the implementation for them. Server environment
 (such as settings, resources or persistent storage) is abstracted away, so the code can be run on
 the client as well (only for development and demos).
 
-The `server` module exposes server-side code (currently only from `identity-issuance`) as a
+The `server` module exposes server-side code (currently only from `multipaz-issuance`) as a
 runnable servlet. It contains the servlet itself and implementations for the server environment
 interfaces. Server configuration file, resources and database can be found in 
 `server/environment` folder.
@@ -198,6 +198,9 @@ samples are included
 
 ## ISO 18013-7 Reader Website
 
+TODO: This section is out of date. `wwwverifier` is no longer part of this
+repository.
+
 The `wwwverifier` module contains the source code for a website acting as an
 mdoc reader according to the latest ISO 18013-7 working draft (as of Sep 2023)
 and it's implementing  the so-called REST API. There is currently a test instance
@@ -212,7 +215,7 @@ the credential after user consent.
 ### Building and deploying the ISO 18013-7 Reader Website
 
 First, a project must first be created at https://console.cloud.google.com. Afterwards,
-navigate to Cloud Shell (https://shell.cloud.google.com), and clone the Identity Credential
+navigate to Cloud Shell (https://shell.cloud.google.com), and clone the Multipaz
 Library repository:
 
 ```
@@ -266,7 +269,5 @@ and replace the following field with your website URL:
 
 # Name
 
-The name of the project is currently "Identity Credential" and it's using
-`com.android.identity` as the Java package name. This is because of the
-fact that the project was contributed from Google. Work is underway
-to find a new name and Java package name, see [Issue #422](../../issues/422).
+The name of the project is currently "Multipaz" and it's using
+`org.multipaz` as the Java package name.

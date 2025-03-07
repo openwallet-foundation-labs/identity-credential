@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,19 +8,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.identity.nfc.Nfc
-import com.android.identity.nfc.scanNfcTag
-import com.android.identity.util.Logger
-import com.android.identity.util.toHex
+import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.scanNfcTag
+import org.multipaz.prompt.PromptDismissedException
+import org.multipaz.prompt.PromptModel
+import org.multipaz.util.Logger
+import org.multipaz.util.toHex
 import kotlinx.coroutines.launch
 
 private const val TAG = "NfcScreen"
 
 @Composable
 fun NfcScreen(
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     LazyColumn(
         modifier = Modifier.padding(8.dp)
@@ -41,11 +44,9 @@ fun NfcScreen(
                                     ccFile
                                 }
                             )
-                            if (ccFile != null) {
-                                showToast("NDEF CC file: ${ccFile.toHex()}")
-                            } else {
-                                showToast("Dialog dismissed by user")
-                            }
+                            showToast("NDEF CC file: ${ccFile.toHex()}")
+                        } catch (e: PromptDismissedException) {
+                            showToast("Dialog dismissed by user")
                         } catch (e: Throwable) {
                             Logger.e(TAG, "Fail", e)
                             e.printStackTrace()

@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,18 +9,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.securearea.KeyLockedException
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.KeyUnlockInteractive
-import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.SecureAreaProvider
-import com.android.identity.securearea.software.SoftwareCreateKeySettings
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.ephemeral.EphemeralStorage
-import com.android.identity.util.Logger
-import com.android.identity.util.toHex
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.prompt.PromptModel
+import org.multipaz.securearea.KeyLockedException
+import org.multipaz.securearea.KeyPurpose
+import org.multipaz.securearea.KeyUnlockInteractive
+import org.multipaz.securearea.PassphraseConstraints
+import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.securearea.software.SoftwareCreateKeySettings
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.Logger
+import org.multipaz.util.toHex
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -34,9 +35,10 @@ private val softwareSecureAreaProvider = SecureAreaProvider {
 @Preview
 @Composable
 fun SoftwareSecureAreaScreen(
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { promptModel }
 
     LazyColumn(
         modifier = Modifier.padding(8.dp)

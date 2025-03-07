@@ -1,4 +1,4 @@
-package com.android.identity.simple_verifier.ui.theme
+package org.multipaz.simple_verifier.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

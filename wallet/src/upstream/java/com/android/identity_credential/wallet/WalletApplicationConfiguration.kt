@@ -1,4 +1,4 @@
-package com.android.identity_credential.wallet
+package org.multipaz_credential.wallet
 
 /**
  * Configuration for the Wallet Application.

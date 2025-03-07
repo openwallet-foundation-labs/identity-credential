@@ -1,19 +1,20 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.NativeSQLiteDriver
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureAreaProvider
-import com.android.identity.securearea.SecureEnclaveCreateKeySettings
-import com.android.identity.securearea.SecureEnclaveSecureArea
-import com.android.identity.securearea.SecureEnclaveUserAuthType
-import com.android.identity.securearea.software.SoftwareCreateKeySettings
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.Storage
-import com.android.identity.storage.sqlite.SqliteStorage
+import org.multipaz.crypto.EcCurve
+import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.KeyPurpose
+import org.multipaz.securearea.PassphraseConstraints
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.securearea.SecureEnclaveCreateKeySettings
+import org.multipaz.securearea.SecureEnclaveSecureArea
+import org.multipaz.securearea.SecureEnclaveUserAuthType
+import org.multipaz.securearea.software.SoftwareCreateKeySettings
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.Storage
+import org.multipaz.storage.sqlite.SqliteStorage
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.allocArray
@@ -128,8 +129,11 @@ actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return secureEnclaveSecureAreaProvider
 }
 
+actual val platformSecureAreaHasKeyAgreement = true
+
 actual fun platformCreateKeySettings(
     challenge: ByteString,
+    curve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
@@ -139,10 +143,12 @@ actual fun platformCreateKeySettings(
     // is not used. Neither is [challenge].
     if (platformIsEmulator) {
         return SoftwareCreateKeySettings.Builder()
+            .setEcCurve(curve)
             .setKeyPurposes(keyPurposes)
             .setPassphraseRequired(userAuthenticationRequired, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
             .build()
     } else {
+        require(curve == EcCurve.P256)
         return SecureEnclaveCreateKeySettings.Builder()
             .setKeyPurposes(keyPurposes)
             .setUserAuthenticationRequired(

@@ -1,4 +1,4 @@
-package com.android.identity.secure_area_test_app.ui
+package org.multipaz.secure_area_test_app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,21 +38,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.android.identity.cbor.Cbor
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.securearea.KeyAttestation
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.KeyUnlockInteractive
-import com.android.identity.securearea.PassphraseConstraints
-import com.android.identity.securearea.cloud.CloudCreateKeySettings
-import com.android.identity.securearea.cloud.CloudSecureArea
-import com.android.identity.securearea.cloud.CloudUserAuthType
-import com.android.identity.storage.ephemeral.EphemeralStorage
-import com.android.identity.testapp.App
-import com.android.identity.util.Logger
-import com.android.identity.util.toBase64Url
-import com.android.identity.util.toHex
+import org.multipaz.cbor.Cbor
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.securearea.KeyAttestation
+import org.multipaz.securearea.KeyPurpose
+import org.multipaz.securearea.KeyUnlockInteractive
+import org.multipaz.securearea.PassphraseConstraints
+import org.multipaz.securearea.cloud.CloudCreateKeySettings
+import org.multipaz.securearea.cloud.CloudSecureArea
+import org.multipaz.securearea.cloud.CloudUserAuthType
+import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.testapp.App
+import org.multipaz.util.Logger
+import org.multipaz.util.toBase64Url
+import org.multipaz.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -87,7 +87,7 @@ fun CloudSecureAreaScreen(
     }
     val showConnectDialog = remember { mutableStateOf(false) }
 
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope { app.promptModel }
 
     if (showConnectDialog.value) {
         CsaConnectDialog(
@@ -150,7 +150,7 @@ fun CloudSecureAreaScreen(
 
         item {
             TextButton(onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
+                coroutineScope.launch {
                     try {
                         val attestation = csaAttestation(showToast)
                         if (attestation != null) {
@@ -233,7 +233,7 @@ fun CloudSecureAreaScreen(
 
                         item {
                             TextButton(onClick = {
-                                CoroutineScope(Dispatchers.IO).launch {
+                                coroutineScope.launch {
                                     csaTest(
                                         keyPurpose = keyPurpose,
                                         curve = curve,

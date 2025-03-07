@@ -1,28 +1,28 @@
-package com.android.identity.testapp.provisioning
+package org.multipaz.testapp.provisioning
 
-import com.android.identity.cbor.Bstr
-import com.android.identity.device.DeviceCheck
-import com.android.identity.device.AssertionNonce
-import com.android.identity.device.DeviceAttestation
-import com.android.identity.flow.handler.FlowDispatcher
-import com.android.identity.flow.handler.FlowDispatcherHttp
-import com.android.identity.flow.handler.FlowExceptionMap
-import com.android.identity.flow.handler.FlowNotifier
-import com.android.identity.flow.handler.FlowNotifierPoll
-import com.android.identity.flow.handler.FlowPollHttp
-import com.android.identity.flow.transport.HttpTransport
-import com.android.identity.issuance.ClientAuthentication
-import com.android.identity.issuance.IssuingAuthority
-import com.android.identity.issuance.IssuingAuthorityException
-import com.android.identity.issuance.LandingUrlUnknownException
-import com.android.identity.issuance.WalletApplicationCapabilities
-import com.android.identity.issuance.WalletServer
-import com.android.identity.issuance.WalletServerImpl
-import com.android.identity.issuance.register
-import com.android.identity.storage.StorageTableSpec
-import com.android.identity.testapp.platformSecureAreaProvider
-import com.android.identity.testapp.platformStorage
-import com.android.identity.util.Logger
+import org.multipaz.cbor.Bstr
+import org.multipaz.device.DeviceCheck
+import org.multipaz.device.AssertionNonce
+import org.multipaz.device.DeviceAttestation
+import org.multipaz.flow.handler.FlowDispatcher
+import org.multipaz.flow.handler.FlowDispatcherHttp
+import org.multipaz.flow.handler.FlowExceptionMap
+import org.multipaz.flow.handler.FlowNotifier
+import org.multipaz.flow.handler.FlowNotifierPoll
+import org.multipaz.flow.handler.FlowPollHttp
+import org.multipaz.flow.transport.HttpTransport
+import org.multipaz.issuance.ClientAuthentication
+import org.multipaz.issuance.IssuingAuthority
+import org.multipaz.issuance.IssuingAuthorityException
+import org.multipaz.issuance.LandingUrlUnknownException
+import org.multipaz.issuance.WalletApplicationCapabilities
+import org.multipaz.issuance.WalletServer
+import org.multipaz.issuance.WalletServerImpl
+import org.multipaz.issuance.register
+import org.multipaz.storage.StorageTableSpec
+import org.multipaz.testapp.platformSecureAreaProvider
+import org.multipaz.testapp.platformStorage
+import org.multipaz.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -162,7 +162,7 @@ class WalletServerProvider(
         dispatcher = FlowDispatcherHttp(httpClient, exceptionMapBuilder.build())
 
         // "root" is the entry point for the server, see FlowState annotation on
-        // com.android.identity.issuance.wallet.WalletServerState
+        // org.multipaz.issuance.wallet.WalletServerState
         val walletServer = WalletServerImpl(
             flowPath = "root",
             flowState = Bstr(byteArrayOf()),

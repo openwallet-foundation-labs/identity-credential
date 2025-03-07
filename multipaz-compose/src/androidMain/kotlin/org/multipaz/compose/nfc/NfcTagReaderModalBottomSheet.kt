@@ -1,4 +1,4 @@
-package com.android.identity.nfc
+package org.multipaz.nfc
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement

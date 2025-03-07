@@ -1,6 +1,6 @@
 package com.android.mdl.appreader.trustmanagement
 
-import com.android.identity.util.toHex
+import org.multipaz.util.toHex
 import org.bouncycastle.asn1.DEROctetString
 import org.bouncycastle.asn1.x509.Extension
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier
