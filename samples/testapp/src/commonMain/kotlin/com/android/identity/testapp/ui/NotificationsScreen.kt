@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import org.multipaz.datetime.formatLocalized
-import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.driving_license_card_art
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.driving_license_card_art
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone

@@ -40,11 +40,11 @@ import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.util.Logger
-import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.driving_license_card_art
-import identitycredential.samples.testapp.generated.resources.movie_ticket_cart_art
-import identitycredential.samples.testapp.generated.resources.photo_id_card_art
-import identitycredential.samples.testapp.generated.resources.pid_card_art
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.driving_license_card_art
+import multipazproject.samples.testapp.generated.resources.movie_ticket_cart_art
+import multipazproject.samples.testapp.generated.resources.photo_id_card_art
+import multipazproject.samples.testapp.generated.resources.pid_card_art
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString

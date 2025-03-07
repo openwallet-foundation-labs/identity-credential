@@ -5,9 +5,9 @@ import androidx.compose.runtime.Composable
 import org.multipaz.models.ui.presentment.PresentmentModel
 import org.multipaz.testapp.App
 import org.multipaz.testapp.TestAppPresentmentSource
-import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.app_icon
-import identitycredential.samples.testapp.generated.resources.app_name
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.app_icon
+import multipazproject.samples.testapp.generated.resources.app_name
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.presentment.Presentment
