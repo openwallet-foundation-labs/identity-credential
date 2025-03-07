@@ -645,8 +645,6 @@ fun ByteStringBuilder.appendByteString(bString: ByteString): ByteStringBuilder {
 
 //region Readers
 
-fun emptyByteString() = ByteString(ByteArray(0))
-
 /**
  * Gets an 8-bit signed integer (Int8) from this [ByteString] at the specified [offset].
  *
