@@ -15,7 +15,6 @@ import org.multipaz.sdjwt.SdJwtVerifiableCredential.AttributeNotDisclosedExcepti
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.presentation.SdJwtVerifiablePresentation
 import org.multipaz.sdjwt.util.JsonWebKey
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -81,9 +80,7 @@ class SdJwtVcTest {
             "domain",
             secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!,
             "IdentityCredential",
-            SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build()
+            SoftwareCreateKeySettings.Builder().build()
         )
 
         // at the issuer, start creating the credential...

@@ -1,22 +1,21 @@
 package org.multipaz.securearea.cloud
 
-import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.config.SecureAreaConfigurationCloud
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 
 /**
  * Holds cloud-specific settings related to key creation.
  */
 class CloudCreateKeySettings private constructor(
-    keyPurposes: Set<KeyPurpose>,
-    ecCurve: EcCurve,
+    algorithm: Algorithm,
 
     /**
      * Attestation challenge.
      */
-    val attestationChallenge: ByteArray,
+    val attestationChallenge: ByteString,
 
     /**
      * Whether user authentication is required.
@@ -42,16 +41,15 @@ class CloudCreateKeySettings private constructor(
      * Whether the key is protected by a passphrase.
      */
     val passphraseRequired: Boolean,
-) : CreateKeySettings(keyPurposes, ecCurve) {
+) : CreateKeySettings(algorithm, attestationChallenge) {
 
     /**
      * A builder for [CloudCreateKeySettings].
      *
      * @param attestationChallenge challenge to include in attestation for the key.
      */
-    class Builder(private val attestationChallenge: ByteArray) {
-        private var keyPurposes = setOf(KeyPurpose.SIGN)
-        private var ecCurve = EcCurve.P256
+    class Builder(private val attestationChallenge: ByteString) {
+        private var algorithm = Algorithm.ESP256
         private var userAuthenticationRequired = false
         private var userAuthenticationTypes = setOf<CloudUserAuthType>()
         private var validFrom: Instant? = null
@@ -65,8 +63,7 @@ class CloudCreateKeySettings private constructor(
          * @return the builder.
          */
         fun applyConfiguration(configuration: SecureAreaConfigurationCloud) = apply {
-            setKeyPurposes(KeyPurpose.decodeSet(configuration.purposes))
-            setEcCurve(EcCurve.fromInt(configuration.curve))
+            setAlgorithm(Algorithm.fromName(configuration.algorithm))
             setPassphraseRequired(configuration.passphraseRequired)
             setUserAuthenticationRequired(
                 configuration.userAuthenticationRequired,
@@ -74,30 +71,17 @@ class CloudCreateKeySettings private constructor(
             )
         }
 
-        /**
-         * Sets the key purpose.
-         *
-         * By default the key purpose is [KeyPurpose.SIGN].
-         *
-         * @param keyPurposes one or more purposes.
-         * @return the builder.
-         * @throws IllegalArgumentException if no purpose is set.
-         */
-        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) = apply {
-            require(!keyPurposes.isEmpty()) { "Purpose cannot be empty" }
-            this.keyPurposes = keyPurposes
-        }
 
         /**
-         * Sets the curve to use for EC keys.
+         * Sets the algorithm for the key.
          *
-         * By default [EcCurve.P256] is used.
+         * By default [Algorithm.ESP256] is used.
          *
-         * @param curve the curve to use.
+         * @param algorithm a fully specified algorithm.
          * @return the builder.
          */
-        fun setEcCurve(curve: EcCurve) = apply {
-            ecCurve = curve
+        fun setAlgorithm(algorithm: Algorithm) = apply {
+            this.algorithm = algorithm
         }
 
         /**
@@ -158,8 +142,7 @@ class CloudCreateKeySettings private constructor(
          */
         fun build(): CloudCreateKeySettings {
             return CloudCreateKeySettings(
-                keyPurposes,
-                ecCurve,
+                algorithm,
                 attestationChallenge,
                 userAuthenticationRequired,
                 userAuthenticationTypes,

@@ -5,12 +5,12 @@ import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.securearea.UserAuthenticationType
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 import java.io.File
 
 
@@ -33,7 +33,7 @@ internal actual suspend fun cloudSecureAreaGetPlatformSecureArea(
 
 internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
     challenge: ByteString,
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
     userAuthenticationRequired: Boolean,
     userAuthenticationTypes: Set<CloudUserAuthType>
 ): CreateKeySettings {
@@ -56,8 +56,8 @@ internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
         else -> throw IllegalStateException("Unexpected userAuthenticationTypes $userAuthenticationTypes")
     }
 
-    return AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
-        .setKeyPurposes(keyPurposes)
+    return AndroidKeystoreCreateKeySettings.Builder(challenge)
+        .setAlgorithm(algorithm)
         .setUserAuthenticationRequired(
             required = userAuthenticationRequired,
             timeoutMillis = 0,

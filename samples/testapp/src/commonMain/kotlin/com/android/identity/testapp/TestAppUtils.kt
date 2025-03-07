@@ -37,7 +37,6 @@ import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.util.Logger
 import multipazproject.samples.testapp.generated.resources.Res
@@ -128,16 +127,14 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
     ) {
         if (documentStore.listDocuments().size >= 5) {
             // Assume documents are provisioned
@@ -150,8 +147,7 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
             DrivingLicense.getDocumentType(),
             "Erika",
             "Erika's Driving License",
@@ -163,8 +159,7 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
             PhotoID.getDocumentType(),
             "Erika",
             "Erika's Photo ID",
@@ -176,8 +171,7 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
             PhotoID.getDocumentType(),
             "Erika #2",
             "Erika's Photo ID #2",
@@ -189,8 +183,7 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
             EUPersonalID.getDocumentType(),
             "Erika",
             "Erika's EU PID",
@@ -202,8 +195,7 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
             UtopiaMovieTicket.getDocumentType(),
             "Erika",
             "Erika's Movie Ticket",
@@ -218,16 +210,14 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
         documentType: DocumentType,
         givenNameOverride: String,
         displayName: String,
@@ -258,8 +248,7 @@ object TestAppUtils {
                 documentType = documentType,
                 secureArea = secureArea,
                 secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
-                deviceKeyCurve = deviceKeyCurve,
-                deviceKeyPurposes = deviceKeyPurposes,
+                deviceKeyAlgorithm = deviceKeyAlgorithm,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
@@ -275,8 +264,7 @@ object TestAppUtils {
                 documentType = documentType,
                 secureArea = secureArea,
                 secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
-                deviceKeyCurve = deviceKeyCurve,
-                deviceKeyPurposes = deviceKeyPurposes,
+                deviceKeyAlgorithm = deviceKeyAlgorithm,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
@@ -293,14 +281,12 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -340,8 +326,7 @@ object TestAppUtils {
                 docType = documentType.mdocDocumentType!!.docType,
                 createKeySettings = secureAreaCreateKeySettingsFunc(
                     "Challenge".encodeToByteString(),
-                    deviceKeyCurve,
-                    deviceKeyPurposes,
+                    deviceKeyAlgorithm,
                     userAuthenticationRequired,
                     validFrom,
                     validUntil
@@ -367,7 +352,7 @@ object TestAppUtils {
             val protectedHeaders = mapOf<CoseLabel, DataItem>(
                 Pair(
                     CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                    Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+                    Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
                 )
             )
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
@@ -410,14 +395,12 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -461,8 +444,7 @@ object TestAppUtils {
                     vct = documentType.vcDocumentType!!.type,
                     createKeySettings = secureAreaCreateKeySettingsFunc(
                         "Challenge".encodeToByteString(),
-                        deviceKeyCurve,
-                        deviceKeyPurposes,
+                        deviceKeyAlgorithm,
                         userAuthenticationRequired,
                         validFrom,
                         validUntil

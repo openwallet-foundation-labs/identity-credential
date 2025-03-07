@@ -42,7 +42,6 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.KeyAttestation
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.cloud.CloudCreateKeySettings
@@ -53,12 +52,12 @@ import org.multipaz.testapp.App
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import org.multipaz.util.toHex
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.crypto.Algorithm
 import kotlin.time.Duration.Companion.days
 
 private val TAG = "CloudSecureAreaScreen"
@@ -173,83 +172,63 @@ fun CloudSecureAreaScreen(
             }
         }
 
-        for ((keyPurpose, keyPurposeDesc) in arrayOf(
-            Pair(KeyPurpose.SIGN, "Signature"),
-            Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
+        for (algorithm in listOf(
+            Algorithm.ESP256,
+            Algorithm.ESP384,
+            Algorithm.ESP512,
+            Algorithm.ESB256,
+            Algorithm.ESB320,
+            Algorithm.ESB384,
+            Algorithm.ESB512,
+            Algorithm.ED25519,
+            Algorithm.ED448,
+            Algorithm.ECDH_P256,
+            Algorithm.ECDH_P384,
+            Algorithm.ECDH_P521,
+            Algorithm.ECDH_BRAINPOOLP256R1,
+            Algorithm.ECDH_BRAINPOOLP320R1,
+            Algorithm.ECDH_BRAINPOOLP384R1,
+            Algorithm.ECDH_BRAINPOOLP512R1,
+            Algorithm.ECDH_X25519,
+            Algorithm.ECDH_X448,
         )) {
-            for ((curve, curveName, purposes) in arrayOf(
-                Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.P384, "P-384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.P521, "P-521", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(
-                    EcCurve.BRAINPOOLP256R1,
-                    "Brainpool 256",
-                    setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
-                ),
-                Triple(
-                    EcCurve.BRAINPOOLP320R1,
-                    "Brainpool 320",
-                    setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
-                ),
-                Triple(
-                    EcCurve.BRAINPOOLP384R1,
-                    "Brainpool 384",
-                    setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
-                ),
-                Triple(
-                    EcCurve.BRAINPOOLP512R1,
-                    "Brainpool 512",
-                    setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
-                ),
-                Triple(EcCurve.ED25519, "Ed25519", setOf(KeyPurpose.SIGN)),
-                Triple(EcCurve.X25519, "X25519", setOf(KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.ED448, "Ed448", setOf(KeyPurpose.SIGN)),
-                Triple(EcCurve.X448, "X448", setOf(KeyPurpose.AGREE_KEY)),
+            for ((passphraseRequired, passphraseDescription) in arrayOf(
+                Pair(false, ""),
+                Pair(true, "- Passphrase ")
             )) {
-                if (!purposes.contains(keyPurpose)) {
-                    // No common purpose
-                    continue
-                }
-
-                for ((passphraseRequired, passphraseDescription) in arrayOf(
-                    Pair(false, ""),
-                    Pair(true, "- Passphrase ")
+                for ((userAuthRequired, userAuthTypes, authDesc) in listOf(
+                    Triple(false, setOf(), ""),
+                    Triple(true, setOf(CloudUserAuthType.PASSCODE), "- Auth (PIN only)"),
+                    Triple(true, setOf(CloudUserAuthType.BIOMETRIC), "- Auth (Biometric only)"),
+                    Triple(true, setOf(
+                        CloudUserAuthType.PASSCODE,
+                        CloudUserAuthType.BIOMETRIC
+                    ), "- Auth (PIN or Biometric)")
                 )) {
-                    for ((userAuthRequired, userAuthTypes, authDesc) in listOf(
-                        Triple(false, setOf(), ""),
-                        Triple(true, setOf(CloudUserAuthType.PASSCODE), "- Auth (PIN only)"),
-                        Triple(true, setOf(CloudUserAuthType.BIOMETRIC), "- Auth (Biometric only)"),
-                        Triple(true, setOf(
-                            CloudUserAuthType.PASSCODE,
-                            CloudUserAuthType.BIOMETRIC
-                        ), "- Auth (PIN or Biometric)")
-                    )) {
-                        // For brevity, only do passphrase and auth for first item (P-256 Signature)
-                        if (!(curve == EcCurve.P256 && keyPurpose == KeyPurpose.SIGN)) {
-                            if (userAuthRequired || passphraseRequired) {
-                                continue
-                            }
+                    // For brevity, only do passphrase and auth for first item (P-256 Signature)
+                    if (!(algorithm.curve!! == EcCurve.P256 && algorithm.isSigning)) {
+                        if (userAuthRequired || passphraseRequired) {
+                            continue
                         }
+                    }
 
-                        item {
-                            TextButton(onClick = {
-                                coroutineScope.launch {
-                                    csaTest(
-                                        keyPurpose = keyPurpose,
-                                        curve = curve,
-                                        authRequired = userAuthRequired,
-                                        authTypes = userAuthTypes,
-                                        passphraseRequired = passphraseRequired,
-                                        showToast = showToast
-                                    )
-                                }
-                            })
-                            {
-                                Text(
-                                    text = "$curveName $keyPurposeDesc $passphraseDescription$authDesc",
-                                    fontSize = 15.sp
+                    item {
+                        TextButton(onClick = {
+                            coroutineScope.launch {
+                                csaTest(
+                                    algorithm = algorithm,
+                                    authRequired = userAuthRequired,
+                                    authTypes = userAuthTypes,
+                                    passphraseRequired = passphraseRequired,
+                                    showToast = showToast
                                 )
                             }
+                        })
+                        {
+                            Text(
+                                text = "${algorithm.name} $passphraseDescription$authDesc",
+                                fontSize = 15.sp
+                            )
                         }
                     }
                 }
@@ -422,7 +401,7 @@ private suspend fun csaAttestation(
     val thirtyDaysFromNow = now + 30.days
     cloudSecureArea!!.createKey(
         "testKey",
-        CloudCreateKeySettings.Builder("Challenge".encodeToByteArray())
+        CloudCreateKeySettings.Builder("Challenge".encodeToByteString())
             .setUserAuthenticationRequired(true, setOf(
                 CloudUserAuthType.PASSCODE,
                 CloudUserAuthType.BIOMETRIC
@@ -434,8 +413,7 @@ private suspend fun csaAttestation(
 }
 
 private suspend fun csaTest(
-    keyPurpose: KeyPurpose,
-    curve: EcCurve,
+    algorithm: Algorithm,
     authRequired: Boolean,
     authTypes: Set<CloudUserAuthType>,
     passphraseRequired: Boolean,
@@ -443,11 +421,11 @@ private suspend fun csaTest(
 ) {
     Logger.d(
         TAG,
-        "cksTest keyPurpose:$keyPurpose curve:$curve authRequired:$authRequired"
+        "cksTest keyPurpose:$algorithm authRequired:$authRequired"
     )
     try {
         csaTestUnguarded(
-            keyPurpose, curve, authRequired, authTypes, passphraseRequired, showToast
+            algorithm, authRequired, authTypes, passphraseRequired, showToast
         )
     } catch (e: Throwable) {
         showToast("${e.message}")
@@ -455,8 +433,7 @@ private suspend fun csaTest(
 }
 
 private suspend fun csaTestUnguarded(
-    keyPurpose: KeyPurpose,
-    curve: EcCurve,
+    algorithm: Algorithm,
     authRequired: Boolean,
     authTypes: Set<CloudUserAuthType>,
     passphraseRequired: Boolean,
@@ -468,16 +445,15 @@ private suspend fun csaTestUnguarded(
         return
     }
 
-    val builder = CloudCreateKeySettings.Builder("Challenge".encodeToByteArray())
-        .setEcCurve(curve)
-        .setKeyPurposes(setOf(keyPurpose))
+    val builder = CloudCreateKeySettings.Builder("Challenge".encodeToByteString())
+        .setAlgorithm(algorithm)
         .setUserAuthenticationRequired(authRequired, authTypes)
     if (passphraseRequired) {
         builder.setPassphraseRequired(true)
     }
     cloudSecureArea!!.createKey("testKey", builder.build())
 
-    if (keyPurpose == KeyPurpose.SIGN) {
+    if (algorithm.isSigning) {
         val t0 = Clock.System.now()
         val signature = cloudSecureArea!!.sign(
             "testKey",
@@ -491,7 +467,7 @@ private suspend fun csaTestUnguarded(
         )
         showToast("EC signature in (${t1 - t0})")
     } else {
-        val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
+        val otherKeyPairForEcdh = Crypto.createEcPrivateKey(algorithm.curve!!)
         val t0 = Clock.System.now()
         val Zab = cloudSecureArea!!.keyAgreement(
             "testKey",

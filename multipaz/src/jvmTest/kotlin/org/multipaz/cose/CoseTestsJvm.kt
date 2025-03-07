@@ -113,7 +113,7 @@ class CoseTestsJvm {
         val coseSign1 = Cbor.decode(issuerAuth.fromHex()).asCoseSign1
 
         val signatureAlgorithm = coseSign1.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber
-        assertEquals(signatureAlgorithm, Algorithm.ES256.coseAlgorithmIdentifier.toLong())
+        assertEquals(signatureAlgorithm, Algorithm.ES256.coseAlgorithmIdentifier!!.toLong())
 
         // TODO:
         /*

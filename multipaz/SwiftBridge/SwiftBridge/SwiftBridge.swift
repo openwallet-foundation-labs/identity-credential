@@ -122,15 +122,12 @@ import DeviceCheck
         }
     }
     
-    static let PURPOSE_SIGNING = 1
-    static let PURPOSE_KEY_AGREEMENT = 2
-    
     static let ACCESS_CONTROL_DEVICE_PASSCODE = 1
     static let ACCESS_CONTROL_BIOMETRY_CURRENT_SET = 2
     static let ACCESS_CONTROL_BIOMETRY_ANY = 4
     static let ACCESS_CONTROL_USER_PRESENCE = 8
     
-    @objc(secureEnclaveCreateEcPrivateKey: :) public class func secureEnclaveCreateEcPrivateKey(purposes: Int, accessControlCreateFlags: Int) -> Array<Data> {
+    @objc(secureEnclaveCreateEcPrivateKey: :) public class func secureEnclaveCreateEcPrivateKey(isForKeyAgreement: Bool, accessControlCreateFlags: Int) -> Array<Data> {
         
         let authContext = LAContext()
         
@@ -155,7 +152,7 @@ import DeviceCheck
             return []
         }
         
-        if (purposes & PURPOSE_SIGNING != 0) {
+        if (!isForKeyAgreement) {
             guard let key = try? SecureEnclave.P256.Signing.PrivateKey.init(
                 accessControl: accessControl,
                 authenticationContext: authContext

@@ -4,7 +4,6 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.KeyInfo
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 
 /**
@@ -17,14 +16,12 @@ class SoftwareKeyInfo internal constructor(
     alias: String,
     publicKey: EcPublicKey,
     attestation: KeyAttestation,
-    keyPurposes: Set<KeyPurpose>,
-    signingAlgorithm: Algorithm,
+    algorithm: Algorithm,
     val isPassphraseProtected: Boolean,
     val passphraseConstraints: PassphraseConstraints?
 ): KeyInfo(
     alias,
+    algorithm,
     publicKey,
-    keyPurposes,
-    signingAlgorithm,
     attestation
 )

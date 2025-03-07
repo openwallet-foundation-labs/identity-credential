@@ -26,13 +26,10 @@ import org.multipaz.prompt.requestPassphrase
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
-import org.multipaz.securearea.KeyPurpose.Companion.encodeSet
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.fromDataItem
-import org.multipaz.securearea.keyPurposeSet
 import org.multipaz.securearea.toDataItem
 import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
@@ -61,6 +58,15 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
 
     override val displayName get() = "Software Secure Area"
 
+    private val supportedAlgorithms_: List<Algorithm> by lazy {
+        Algorithm.entries.filter {
+            it.fullySpecified && Crypto.supportedCurves.contains(it.curve!!)
+        }
+    }
+
+    override val supportedAlgorithms: List<Algorithm>
+        get() = supportedAlgorithms_
+
     override suspend fun createKey(
         alias: String?,
         createKeySettings: org.multipaz.securearea.CreateKeySettings
@@ -75,16 +81,13 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         } else {
             // If user passed in a generic SecureArea.CreateKeySettings, honor them.
             SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(createKeySettings.keyPurposes)
-                .setEcCurve(createKeySettings.ecCurve)
-                .setSigningAlgorithm(createKeySettings.signingAlgorithm)
+                .setAlgorithm(createKeySettings.algorithm)
                 .build()
         }
         try {
-            val privateKey = Crypto.createEcPrivateKey(settings.ecCurve)
+            val privateKey = Crypto.createEcPrivateKey(settings.algorithm.curve!!)
             val mapBuilder = CborMap.builder().apply {
-                put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
-                put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
+                put("algorithm", settings.algorithm.name)
                 put("passphraseRequired", settings.passphraseRequired)
             }
 
@@ -113,9 +116,6 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
             mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem())
             if (settings.passphraseConstraints != null) {
                 mapBuilder.put("passphraseConstraints", settings.passphraseConstraints.toDataItem())
-            }
-            if (settings.signingAlgorithm != Algorithm.UNSET) {
-                mapBuilder.put("signingAlgorithm", settings.signingAlgorithm.coseAlgorithmIdentifier)
             }
             val newAlias = storageTable.insert(
                 key = alias,
@@ -147,8 +147,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
     }
 
     private data class KeyData(
-        val keyPurposes: Set<KeyPurpose>,
-        val signingAlgorithm: Algorithm,
+        val algorithm: Algorithm,
         val privateKey: EcPrivateKey,
     )
 
@@ -164,7 +163,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         val data = storageTable.get(alias)
             ?: throw IllegalArgumentException("No key with given alias")
         val map = Cbor.decode(data.toByteArray())
-        val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
+        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val privateKeyCoseKey = if (passphraseRequired) {
             if (passphrase == null) {
@@ -183,12 +182,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         } else {
             map["privateKey"].asCoseKey
         }
-        val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
-            Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
-        } else {
-            Algorithm.UNSET
-        }
-        return KeyData(keyPurposes, signingAlgorithm, privateKeyCoseKey.ecPrivateKey)
+        return KeyData(algorithm, privateKeyCoseKey.ecPrivateKey)
     }
 
     /**
@@ -269,8 +263,8 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         val keyData = loadKey(alias, keyUnlockData)
-        require(keyData.keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        return Crypto.sign(keyData.privateKey, keyData.signingAlgorithm, dataToSign)
+        require(keyData.algorithm.isSigning) { "Key algorithm is not for Signing" }
+        return Crypto.sign(keyData.privateKey, keyData.algorithm, dataToSign)
     }
 
     override suspend fun keyAgreement(
@@ -291,7 +285,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         keyUnlockData: KeyUnlockData?
     ): ByteArray {
         val keyData = loadKey(alias, keyUnlockData)
-        require(keyData.keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
+        require(keyData.algorithm.isKeyAgreement) { "Key algorithm is not for Key Agreement" }
         return Crypto.keyAgreement(keyData.privateKey, otherKey)
     }
 
@@ -299,23 +293,17 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         val data = storageTable.get(alias)
             ?: throw IllegalArgumentException("No key with the given alias '$alias'")
         val map = Cbor.decode(data.toByteArray())
-        val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
+        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val publicKey = map["publicKey"].asCoseKey.ecPublicKey
         val passphraseConstraints = map.getOrNull("passphraseConstraints")?.let {
             PassphraseConstraints.fromDataItem(it)
         }
-        val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
-            Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
-        } else {
-            Algorithm.UNSET
-        }
         return SoftwareKeyInfo(
             alias,
             publicKey,
             KeyAttestation(publicKey, null),
-            keyPurposes,
-            signingAlgorithm,
+            algorithm,
             passphraseRequired,
             passphraseConstraints
         )

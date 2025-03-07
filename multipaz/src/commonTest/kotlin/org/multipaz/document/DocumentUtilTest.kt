@@ -21,7 +21,6 @@ import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -64,7 +63,7 @@ class DocumentUtilTest {
         val document = documentStore.createDocument()
         assertEquals(0, document.getCertifiedCredentials().size.toLong())
         assertEquals(0, document.getPendingCredentials().size.toLong())
-        val authKeySettings = CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+        val authKeySettings = CreateKeySettings()
         val numCreds = 10
         val maxUsesPerCred = 5
         val minValidTimeMillis = 10L

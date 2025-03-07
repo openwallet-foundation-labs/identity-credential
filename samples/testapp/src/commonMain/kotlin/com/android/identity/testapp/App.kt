@@ -619,7 +619,11 @@ class App private constructor(val promptModel: PromptModel) {
                         )
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {
-                        SoftwareSecureAreaScreen(promptModel, showToast = { message -> showToast(message) })
+                        SoftwareSecureAreaScreen(
+                            softwareSecureArea = app!!.softwareSecureArea,
+                            promptModel = promptModel,
+                            showToast = { message -> showToast(message) }
+                        )
                     }
                     composable(route = AndroidKeystoreSecureAreaDestination.route) {
                         AndroidKeystoreSecureAreaScreen(

@@ -126,7 +126,7 @@ class DeviceRequestParser(
                         val readerAuthCoseSign1 = readerAuth.asCoseSign1
                         val readerCertChainDataItem =
                             readerAuthCoseSign1.unprotectedHeaders[CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)]
-                        val signatureAlgorithm = Algorithm.fromInt(
+                        val signatureAlgorithm = Algorithm.fromCoseAlgorithmIdentifier(
                             readerAuthCoseSign1.protectedHeaders[
                                 CoseNumberLabel(Cose.COSE_LABEL_ALG)
                             ]!!.asNumber.toInt()

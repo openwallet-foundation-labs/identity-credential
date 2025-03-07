@@ -3,12 +3,10 @@ package org.multipaz.securearea.cloud
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.cose.CoseKey
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcSignature
 import org.multipaz.device.DeviceCheck
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.DeviceAttestation
-import org.multipaz.securearea.KeyPurpose
 import kotlinx.io.bytestring.ByteString
 
 /**
@@ -351,9 +349,7 @@ object CloudSecureAreaProtocol {
     ) : Command()
 
     data class CreateKeyRequest0(
-        val purposes: Set<KeyPurpose>,
-        val curve: EcCurve,
-        val signingAlgorithm: Int?,
+        val algorithm: String,
         val validFromMillis: Long,
         val validUntilMillis: Long,
         val passphraseRequired: Boolean,

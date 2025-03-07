@@ -3,7 +3,6 @@ package org.multipaz.securearea.cloud
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.NativeSQLiteDriver
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureEnclaveCreateKeySettings
 import org.multipaz.securearea.SecureEnclaveSecureArea
@@ -15,6 +14,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -49,7 +49,7 @@ internal actual suspend fun cloudSecureAreaGetPlatformSecureArea(
 
 internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
     challenge: ByteString,
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
     userAuthenticationRequired: Boolean,
     userAuthenticationTypes: Set<CloudUserAuthType>
 ): CreateKeySettings {
@@ -75,7 +75,7 @@ internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
     }
 
     return SecureEnclaveCreateKeySettings.Builder()
-        .setKeyPurposes(keyPurposes)
+        .setAlgorithm(algorithm)
         .setUserAuthenticationRequired(
             required = userAuthenticationRequired,
             userAuthenticationTypes = secureEnclaveUserAuthTypes

@@ -1,13 +1,12 @@
 package org.multipaz.testapp
 
-import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 
 enum class Platform(val displayName: String) {
     ANDROID("Android"),
@@ -44,8 +43,7 @@ expect val platformSecureAreaHasKeyAgreement: Boolean
  */
 expect fun platformCreateKeySettings(
     challenge: ByteString,
-    curve: EcCurve,
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
     validUntil: Instant

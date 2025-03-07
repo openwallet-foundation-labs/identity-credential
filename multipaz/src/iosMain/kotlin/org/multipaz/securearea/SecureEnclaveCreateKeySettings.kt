@@ -1,6 +1,8 @@
 package org.multipaz.securearea
 
+import kotlinx.io.bytestring.buildByteString
 import org.multipaz.cbor.DataItem
+import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcCurve
 
 
@@ -8,8 +10,7 @@ import org.multipaz.crypto.EcCurve
  * Class for holding Secure Enclave settings related to key creation.
  */
 class SecureEnclaveCreateKeySettings private constructor(
-
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
 
     /**
      * Whether user authentication is required.
@@ -21,13 +22,13 @@ class SecureEnclaveCreateKeySettings private constructor(
      */
     val userAuthenticationTypes: Set<SecureEnclaveUserAuthType>
 
-) : CreateKeySettings(keyPurposes, EcCurve.P256) {
+) : CreateKeySettings(algorithm, buildByteString {}) {
 
     /**
      * A builder for [SecureEnclaveCreateKeySettings].
      */
     class Builder {
-        private var keyPurposes = setOf(KeyPurpose.SIGN)
+        private var algorithm: Algorithm = Algorithm.ESP256
         private var userAuthenticationRequired = false
         private var userAuthenticationTypes = setOf<SecureEnclaveUserAuthType>()
 
@@ -42,7 +43,7 @@ class SecureEnclaveCreateKeySettings private constructor(
             var userAuthenticationTypes = setOf<SecureEnclaveUserAuthType>()
             for ((key, value) in configuration.asMap) {
                 when (key.asTstr) {
-                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
+                    "algorithm" -> setAlgorithm(Algorithm.fromName(value.asTstr))
                     "userAuthenticationRequired" -> userAutenticationRequired = value.asBoolean
                     "userAuthenticationTypes" -> userAuthenticationTypes =
                         SecureEnclaveUserAuthType.decodeSet(value.asNumber)
@@ -52,18 +53,15 @@ class SecureEnclaveCreateKeySettings private constructor(
         }
 
         /**
-         * Sets the key purpose.
+         * Sets the algorithm for the key.
          *
-         * By default the key purpose is [KeyPurpose.SIGN].
+         * By default [Algorithm.ESP256] is used.
          *
-         * @param keyPurposes one or more purposes.
+         * @param algorithm a fully specified algorithm.
          * @return the builder.
-         * @throws IllegalArgumentException if no purpose is set.
          */
-        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>): Builder {
-            require(!keyPurposes.isEmpty()) { "Purposes cannot be empty" }
-            this.keyPurposes = keyPurposes
-            return this
+        fun setAlgorithm(algorithm: Algorithm) = apply {
+            this.algorithm = algorithm
         }
 
         /**
@@ -90,7 +88,7 @@ class SecureEnclaveCreateKeySettings private constructor(
          */
         fun build(): SecureEnclaveCreateKeySettings {
             return SecureEnclaveCreateKeySettings(
-                keyPurposes,
+                algorithm,
                 userAuthenticationRequired,
                 userAuthenticationTypes
             )

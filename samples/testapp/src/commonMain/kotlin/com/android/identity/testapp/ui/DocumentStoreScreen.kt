@@ -27,7 +27,6 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.secure_area_test_app.ui.CsaConnectDialog
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.cloud.CloudCreateKeySettings
@@ -49,6 +48,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 
 private const val TAG = "DocumentStoreScreen"
 
@@ -95,11 +95,10 @@ fun DocumentStoreScreen(
                         provisionTestDocuments(
                             documentStore = documentStore,
                             secureArea = cloudSecureArea,
-                            secureAreaCreateKeySettingsFunc = { challenge, curve, keyPurposes, userAuthenticationRequired,
+                            secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
                                                                 validFrom, validUntil ->
-                                CloudCreateKeySettings.Builder(challenge.toByteArray())
-                                    .setEcCurve(curve)
-                                    .setKeyPurposes(keyPurposes)
+                                CloudCreateKeySettings.Builder(challenge)
+                                    .setAlgorithm(algorithm)
                                     .setPassphraseRequired(true)
                                     .setUserAuthenticationRequired(
                                         userAuthenticationRequired,
@@ -173,11 +172,10 @@ fun DocumentStoreScreen(
                     provisionTestDocuments(
                         documentStore = documentStore,
                         secureArea = softwareSecureArea,
-                        secureAreaCreateKeySettingsFunc = { challenge, curve, keyPurposes, userAuthenticationRequired,
+                        secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
                                                             validFrom, validUntil ->
                             SoftwareCreateKeySettings.Builder()
-                                .setEcCurve(curve)
-                                .setKeyPurposes(keyPurposes)
+                                .setAlgorithm(algorithm)
                                 .setPassphraseRequired(true, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
                                 .build()
                         },
@@ -307,8 +305,7 @@ private suspend fun provisionTestDocuments(
     secureArea: SecureArea,
     secureAreaCreateKeySettingsFunc: (
         challenge: ByteString,
-        curve: EcCurve,
-        keyPurposes: Set<KeyPurpose>,
+        algorithm: Algorithm,
         userAuthenticationRequired: Boolean,
         validFrom: Instant,
         validUntil: Instant
@@ -320,6 +317,9 @@ private suspend fun provisionTestDocuments(
     deviceKeyCurve: EcCurve,
     showToast: (message: String) -> Unit
 ) {
+    // TODO:
+    val deviceKeyAlgorithm = Algorithm.ESP256
+    /*
     val deviceKeyPurposes = mutableSetOf<KeyPurpose>()
     if (deviceKeyPurposeSign) {
         deviceKeyPurposes.add(KeyPurpose.SIGN)
@@ -331,6 +331,8 @@ private suspend fun provisionTestDocuments(
         showToast("At least one purpose must be set.")
         return
     }
+
+     */
     // TODO: When SecureArea gains ability to convey which curves it supports (see Issue #850) add check here
     //  and show a Toast explaining if the chosen curve isn't supported.
     try {
@@ -340,8 +342,7 @@ private suspend fun provisionTestDocuments(
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve
+            deviceKeyAlgorithm,
         )
     } catch (e: Throwable) {
         e.printStackTrace()

@@ -34,8 +34,6 @@ import org.multipaz.request.VcRequest
 import org.multipaz.request.VcRequestedClaim
 import org.multipaz.sdjwt.SdJwtVerifiableCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
-import org.multipaz.sdjwt.util.JsonWebKey
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
@@ -900,8 +898,10 @@ private suspend fun calcDocument(
     //   calcDocument in mdocPresentment.kt.
     //
     val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
-    if (!keyInfo.keyPurposes.contains(KeyPurpose.SIGN)) {
-        throw IllegalStateException("KeyPurpose.SIGN is required for W3C DC API and key has purposes ${keyInfo.keyPurposes}")
+    if (!keyInfo.algorithm.isSigning) {
+        throw IllegalStateException(
+            "Signing is required for W3C DC API but its algorithm ${keyInfo.algorithm.name} is not for signing"
+        )
     } else {
         documentGenerator.setDeviceNamespacesSignature(
             dataElements = NameSpacedData.Builder().build(),

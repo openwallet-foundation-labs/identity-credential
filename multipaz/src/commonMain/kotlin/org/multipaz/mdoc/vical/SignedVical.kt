@@ -67,7 +67,7 @@ data class SignedVical(
             includeDataInPayload = true,
             signatureAlgorithm = signingAlgorithm,
             protectedHeaders = mapOf(
-                Pair(CoseNumberLabel(Cose.COSE_LABEL_ALG), signingAlgorithm.coseAlgorithmIdentifier.toDataItem())
+                Pair(CoseNumberLabel(Cose.COSE_LABEL_ALG), signingAlgorithm.coseAlgorithmIdentifier!!.toDataItem())
             ),
             unprotectedHeaders = mapOf(
                 Pair(CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN), vicalProviderCertificateChain.toDataItem())
@@ -105,7 +105,7 @@ data class SignedVical(
                 ?: throw IllegalArgumentException("x5chain not set")
 
             val signatureAlgorithm = signature.protectedHeaders[CoseNumberLabel(Cose.COSE_LABEL_ALG)]?.asNumber?.toInt()
-                ?.let { Algorithm.fromInt(it) }
+                ?.let { Algorithm.fromCoseAlgorithmIdentifier(it) }
                 ?: throw IllegalArgumentException("Signature Algorithm not set")
 
             if (!Cose.coseSign1Check(

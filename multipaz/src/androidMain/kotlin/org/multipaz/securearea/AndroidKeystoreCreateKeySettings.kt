@@ -2,28 +2,20 @@ package org.multipaz.securearea
 
 import android.os.Build
 import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.EcCurve
-import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.CreateKeySettings.Companion.defaultSigningAlgorithm
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.config.SecureAreaConfigurationAndroidKeystore
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 
 /**
  * Class for holding Android Keystore-specific settings related to key creation.
  */
 class AndroidKeystoreCreateKeySettings private constructor(
-
-    keyPurposes: Set<KeyPurpose>,
-
-    ecCurve: EcCurve,
-
-    signingAlgorithm: Algorithm,
+    algorithm: Algorithm,
 
     /**
      * The attestation challenge.
      */
-    val attestationChallenge: ByteArray,
+    val attestationChallenge: ByteString,
 
     /**
      * Gets whether user authentication is required.
@@ -62,17 +54,15 @@ class AndroidKeystoreCreateKeySettings private constructor(
      */
     val validUntil: Instant?
 
-) : CreateKeySettings(keyPurposes, ecCurve) {
+) : CreateKeySettings(algorithm, attestationChallenge) {
 
     /**
      * A builder for [CreateKeySettings].
      *
      * @param attestationChallenge challenge to include in attestation for the key.
      */
-    class Builder(private val attestationChallenge: ByteArray) {
-        private var keyPurposes = setOf(KeyPurpose.SIGN)
-        private var curve = EcCurve.P256
-        private var signingAlgorithm = Algorithm.UNSET
+    class Builder(private val attestationChallenge: ByteString) {
+        private var algorithm: Algorithm = Algorithm.ESP256
         private var userAuthenticationRequired = false
         private var userAuthenticationTimeoutMillis: Long = 0
 
@@ -89,8 +79,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
          * @return the builder.
          */
         fun applyConfiguration(configuration: SecureAreaConfigurationAndroidKeystore) = apply {
-            setKeyPurposes(KeyPurpose.decodeSet(configuration.purposes))
-            setEcCurve(EcCurve.fromInt(configuration.curve))
+            setAlgorithm(Algorithm.fromName(configuration.algorithm))
             setUseStrongBox(configuration.useStrongBox)
             setUserAuthenticationRequired(
                 configuration.userAuthenticationRequired,
@@ -100,42 +89,15 @@ class AndroidKeystoreCreateKeySettings private constructor(
         }
 
         /**
-         * Sets the key purpose.
+         * Sets the algorithm for the key.
          *
-         * By default the key purpose is [KeyPurpose.SIGN].
+         * By default [Algorithm.ESP256] is used.
          *
-         * @param keyPurposes one or more purposes.
-         * @return the builder.
-         * @throws IllegalArgumentException if no purpose is set.
-         */
-        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>): Builder {
-            require(!keyPurposes.isEmpty()) { "Purposes cannot be empty" }
-            this.keyPurposes = keyPurposes
-            return this
-        }
-
-        /**
-         * Sets the curve to use for EC keys.
-         *
-         * By default [EcCurve.P256] is used.
-         *
-         * @param curve the curve to use.
+         * @param algorithm a fully specified algorithm.
          * @return the builder.
          */
-        fun setEcCurve(curve: EcCurve): Builder {
-            this.curve = curve
-            return this
-        }
-
-        /**
-         * Sets the signing algorithm.
-         *
-         * This is only relevant if [KeyPurpose.SIGN] is used. If unset, an appropriate
-         * default is selected using [defaultSigningAlgorithm].
-         */
-        fun setSigningAlgorithm(algorithm: Algorithm): Builder {
-            this.signingAlgorithm = algorithm
-            return this
+        fun setAlgorithm(algorithm: Algorithm) = apply {
+            this.algorithm = algorithm
         }
 
         /**
@@ -230,13 +192,8 @@ class AndroidKeystoreCreateKeySettings private constructor(
          * @return a new [CreateKeySettings].
          */
         fun build(): AndroidKeystoreCreateKeySettings {
-            if (keyPurposes.contains(KeyPurpose.SIGN) && signingAlgorithm == Algorithm.UNSET) {
-                signingAlgorithm = defaultSigningAlgorithm(keyPurposes, curve)
-            }
             return AndroidKeystoreCreateKeySettings(
-                keyPurposes,
-                curve,
-                signingAlgorithm,
+                algorithm,
                 attestationChallenge,
                 userAuthenticationRequired,
                 userAuthenticationTimeoutMillis,

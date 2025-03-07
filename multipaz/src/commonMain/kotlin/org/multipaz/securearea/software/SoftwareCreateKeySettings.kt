@@ -1,13 +1,11 @@
 package org.multipaz.securearea.software
 
 import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.CreateKeySettings.Companion.defaultSigningAlgorithm
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.config.SecureAreaConfigurationSoftware
 import kotlinx.datetime.Instant;
+import kotlinx.io.bytestring.buildByteString
 
 /**
  * Class used to indicate key creation settings for software-backed keys.
@@ -16,24 +14,19 @@ class SoftwareCreateKeySettings internal constructor(
     val passphraseRequired: Boolean,
     val passphrase: String?,
     val passphraseConstraints: PassphraseConstraints?,
-    ecCurve: EcCurve,
-    keyPurposes: Set<KeyPurpose>,
-    signingAlgorithm: Algorithm,
+    algorithm: Algorithm,
     val subject: String?,
     val validFrom: Instant?,
     val validUntil: Instant?
 ) : CreateKeySettings(
-    keyPurposes,
-    ecCurve,
-    signingAlgorithm
+    algorithm,
+    buildByteString {}
 ) {
     /**
      * A builder for [SoftwareCreateKeySettings].
      */
     class Builder {
-        private var keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN)
-        private var ecCurve: EcCurve = EcCurve.P256
-        private var signingAlgorithm: Algorithm = Algorithm.UNSET
+        private var algorithm: Algorithm = Algorithm.ESP256
         private var passphraseRequired: Boolean = false
         private var passphrase: String? = null
         private var passphraseConstraints: PassphraseConstraints? = null
@@ -48,8 +41,7 @@ class SoftwareCreateKeySettings internal constructor(
          * @return the builder.
          */
         fun applyConfiguration(configuration: SecureAreaConfigurationSoftware) = apply {
-            setKeyPurposes(KeyPurpose.decodeSet(configuration.purposes))
-            setEcCurve(EcCurve.fromInt(configuration.curve))
+            setAlgorithm(Algorithm.fromName(configuration.algorithm))
             setPassphraseRequired(
                 required = configuration.passphrase != null,
                 passphrase = configuration.passphrase,
@@ -58,40 +50,15 @@ class SoftwareCreateKeySettings internal constructor(
         }
 
         /**
-         * Sets the key purposes.
+         * Sets the algorithm for the key.
          *
-         * By default the key purpose is [KeyPurpose.SIGN].
+         * By default [Algorithm.ESP256] is used.
          *
-         * @param keyPurposes one or more purposes.
-         * @return the builder.
-         * @throws IllegalArgumentException if no purpose is set.
-         */
-        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) = apply {
-            require(keyPurposes.isNotEmpty()) { "Purposes cannot be empty" }
-            this.keyPurposes = keyPurposes
-        }
-
-        /**
-         * Sets the curve to use for EC keys.
-         *
-         * By default [EcCurve.P256] is used.
-         *
-         * @param curve the curve to use.
+         * @param algorithm a fully specified algorithm.
          * @return the builder.
          */
-        fun setEcCurve(curve: EcCurve) = apply {
-            ecCurve = curve
-        }
-
-        /**
-         * Sets the signing algorithm.
-         *
-         * This is only relevant if [KeyPurpose.SIGN] is used. If unset, an appropriate
-         * default is selected using [defaultSigningAlgorithm].
-         */
-        fun setSigningAlgorithm(algorithm: Algorithm): Builder {
-            this.signingAlgorithm = algorithm
-            return this
+        fun setAlgorithm(algorithm: Algorithm) = apply {
+            this.algorithm = algorithm
         }
 
         /**
@@ -145,12 +112,8 @@ class SoftwareCreateKeySettings internal constructor(
          * @return a new [SoftwareCreateKeySettings].
          */
         fun build(): SoftwareCreateKeySettings {
-            if (keyPurposes.contains(KeyPurpose.SIGN) && signingAlgorithm == Algorithm.UNSET) {
-                signingAlgorithm = defaultSigningAlgorithm(keyPurposes, ecCurve)
-            }
             return SoftwareCreateKeySettings(
-                passphraseRequired, passphrase, passphraseConstraints, ecCurve,
-                keyPurposes, signingAlgorithm, subject, validFrom, validUntil
+                passphraseRequired, passphrase, passphraseConstraints, algorithm, subject, validFrom, validUntil
             )
         }
     }

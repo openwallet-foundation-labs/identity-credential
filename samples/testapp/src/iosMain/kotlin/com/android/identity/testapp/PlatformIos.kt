@@ -4,7 +4,6 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.NativeSQLiteDriver
 import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
@@ -32,6 +31,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -133,8 +133,7 @@ actual val platformSecureAreaHasKeyAgreement = true
 
 actual fun platformCreateKeySettings(
     challenge: ByteString,
-    curve: EcCurve,
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
     validUntil: Instant
@@ -143,14 +142,13 @@ actual fun platformCreateKeySettings(
     // is not used. Neither is [challenge].
     if (platformIsEmulator) {
         return SoftwareCreateKeySettings.Builder()
-            .setEcCurve(curve)
-            .setKeyPurposes(keyPurposes)
+            .setAlgorithm(algorithm)
             .setPassphraseRequired(userAuthenticationRequired, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
             .build()
     } else {
-        require(curve == EcCurve.P256)
+        require(algorithm.curve!! == EcCurve.P256)
         return SecureEnclaveCreateKeySettings.Builder()
-            .setKeyPurposes(keyPurposes)
+            .setAlgorithm(algorithm)
             .setUserAuthenticationRequired(
                 required = userAuthenticationRequired,
                 userAuthenticationTypes = setOf(SecureEnclaveUserAuthType.USER_PRESENCE)

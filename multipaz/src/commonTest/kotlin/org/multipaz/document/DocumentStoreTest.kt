@@ -22,7 +22,6 @@ import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -41,6 +40,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import kotlinx.datetime.Instant;
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
+import org.multipaz.crypto.Algorithm
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -279,7 +280,7 @@ class DocumentStoreTest {
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
-                CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+                CreateKeySettings()
             )
             n++
         }
@@ -355,7 +356,7 @@ class DocumentStoreTest {
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
-                CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+                CreateKeySettings()
             )
             n++
         }
@@ -385,7 +386,7 @@ class DocumentStoreTest {
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
-                CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+                CreateKeySettings()
             )
             n++
         }
@@ -504,7 +505,7 @@ class DocumentStoreTest {
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
-                CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256),
+                CreateKeySettings(),
             )
             n++
         }
@@ -573,7 +574,7 @@ class DocumentStoreTest {
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
-                CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+                CreateKeySettings()
             )
             pendingCredential.certify(
                 byteArrayOf(0, n.toByte()),
@@ -592,7 +593,7 @@ class DocumentStoreTest {
             credToReplace.identifier,
             CREDENTIAL_DOMAIN,
             secureArea,
-            CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings()
         )
         // ... it's not replaced until certify() is called
         assertEquals(1, document.getPendingCredentials().size.toLong())
@@ -634,7 +635,7 @@ class DocumentStoreTest {
             toBeReplaced.identifier,
             CREDENTIAL_DOMAIN,
             secureArea,
-            CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings()
         )
         assertEquals(toBeReplaced.identifier, replacement.replacementForIdentifier)
         assertSame(replacement, document.getReplacementCredentialFor(toBeReplaced.identifier))
@@ -648,7 +649,7 @@ class DocumentStoreTest {
             toBeReplaced.identifier,
             CREDENTIAL_DOMAIN,
             secureArea,
-            CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256)
+            CreateKeySettings()
         )
         assertEquals(toBeReplaced.identifier, replacement.replacementForIdentifier)
         assertEquals(replacement, document.getReplacementCredentialFor(toBeReplaced.identifier))

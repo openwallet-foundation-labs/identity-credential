@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 class JwtHeader(val algorithm: Algorithm, val kid: String?): JwtJsonObject() {
     override fun buildJson(): JsonObjectBuilder.() -> Unit = {
         put("typ", JsonPrimitive(SD_JWT_VC_TYPE))
-        put("alg", JsonPrimitive(algorithm.jwseAlgorithmIdentifier))
+        put("alg", JsonPrimitive(algorithm.joseAlgorithmIdentifier!!))
         kid?.let {
             put("kid", JsonPrimitive(it))
         }
@@ -35,7 +35,7 @@ class JwtHeader(val algorithm: Algorithm, val kid: String?): JwtJsonObject() {
             }
             val algorithm = jsonObj.getString("alg")
             val kid = jsonObj.getStringOrNull("kid")
-            return JwtHeader(Algorithm.fromJwseAlgorithmIdentifier(algorithm), kid)
+            return JwtHeader(Algorithm.fromJoseAlgorithmIdentifier(algorithm), kid)
         }
     }
 }

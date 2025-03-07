@@ -8,7 +8,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.securearea.SecureEnclaveCreateKeySettings
 import org.multipaz.securearea.SecureEnclaveKeyUnlockData
@@ -36,70 +35,70 @@ actual fun SecureEnclaveSecureAreaScreen(showToast: (message: String) -> Unit) {
     LazyColumn {
         item {
             TextButton(
-                onClick = { seTest(KeyPurpose.SIGN,
+                onClick = { seTest(Algorithm.ESP256,
                     setOf(),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Signature") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.SIGN,
+                onClick = { seTest(Algorithm.ESP256,
                     setOf(SecureEnclaveUserAuthType.DEVICE_PASSCODE),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Signature - Auth (Passcode)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.SIGN,
+                onClick = { seTest(Algorithm.ESP256,
                     setOf(SecureEnclaveUserAuthType.BIOMETRY_CURRENT_SET),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Signature - Auth (Biometrics)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.SIGN,
+                onClick = { seTest(Algorithm.ESP256,
                     setOf(SecureEnclaveUserAuthType.DEVICE_PASSCODE, SecureEnclaveUserAuthType.BIOMETRY_CURRENT_SET),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Signature - Auth (Passcode AND Biometrics)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.SIGN,
+                onClick = { seTest(Algorithm.ESP256,
                     setOf(SecureEnclaveUserAuthType.USER_PRESENCE),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Signature - Auth (Passcode OR Biometrics)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.AGREE_KEY,
+                onClick = { seTest(Algorithm.ECDH_P256,
                     setOf(),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Key Agreement") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.AGREE_KEY,
+                onClick = { seTest(Algorithm.ECDH_P256,
                     setOf(SecureEnclaveUserAuthType.DEVICE_PASSCODE),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Key Agreement - Auth (Passcode)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.AGREE_KEY,
+                onClick = { seTest(Algorithm.ECDH_P256,
                     setOf(SecureEnclaveUserAuthType.BIOMETRY_CURRENT_SET),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Key Agreement - Auth (Biometrics)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.AGREE_KEY,
+                onClick = { seTest(Algorithm.ECDH_P256,
                     setOf(SecureEnclaveUserAuthType.DEVICE_PASSCODE, SecureEnclaveUserAuthType.BIOMETRY_CURRENT_SET),
                     coroutineScope,
                     showToast) },
                 content = { Text("P-256 Key Agreement - Auth (Passcode AND Biometrics)") }
             )
             TextButton(
-                onClick = { seTest(KeyPurpose.AGREE_KEY,
+                onClick = { seTest(Algorithm.ECDH_P256,
                     setOf(SecureEnclaveUserAuthType.USER_PRESENCE),
                     coroutineScope,
                     showToast) },
@@ -111,14 +110,14 @@ actual fun SecureEnclaveSecureAreaScreen(showToast: (message: String) -> Unit) {
 }
 
 private fun seTest(
-    keyPurpose: KeyPurpose,
+    algorithm: Algorithm,
     userAuthTypes: Set<SecureEnclaveUserAuthType>,
     coroutineScope: CoroutineScope,
     showToast: (message: String) -> Unit
 ) {
     coroutineScope.launch {
         try {
-            seTestUnguarded(keyPurpose, userAuthTypes, showToast)
+            seTestUnguarded(algorithm, userAuthTypes, showToast)
         } catch (e: Throwable) {
             e.printStackTrace();
             showToast("${e.message}")
@@ -127,7 +126,7 @@ private fun seTest(
 }
 
 private suspend fun seTestUnguarded(
-    keyPurpose: KeyPurpose,
+    algorithm: Algorithm,
     userAuthTypes: Set<SecureEnclaveUserAuthType>,
     showToast: (message: String) -> Unit
 ) {
@@ -135,7 +134,7 @@ private suspend fun seTestUnguarded(
     secureEnclaveSecureArea.createKey(
         "testKey",
         SecureEnclaveCreateKeySettings.Builder()
-            .setKeyPurposes(setOf(keyPurpose))
+            .setAlgorithm(algorithm)
             .setUserAuthenticationRequired(!userAuthTypes.isEmpty(), userAuthTypes)
             .build()
     )
@@ -145,7 +144,7 @@ private suspend fun seTestUnguarded(
 
     val keyUnlockData = SecureEnclaveKeyUnlockData(laContext)
 
-    if (keyPurpose == KeyPurpose.SIGN) {
+    if (algorithm.isSigning) {
         val dataToSign = "data".encodeToByteArray()
         val t0 = Clock.System.now()
         val signature = secureEnclaveSecureArea.sign(

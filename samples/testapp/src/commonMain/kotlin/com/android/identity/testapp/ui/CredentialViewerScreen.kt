@@ -93,8 +93,7 @@ fun CredentialViewerScreen(
             if (credentialInfo.credential is SecureAreaBoundCredential) {
                 KeyValuePairText("Secure Area", credentialInfo.credential.secureArea.displayName)
                 KeyValuePairText("Secure Area Identifier", credentialInfo.credential.secureArea.identifier)
-                KeyValuePairText("Device Key Curve", credentialInfo.keyInfo!!.publicKey.curve.name)
-                KeyValuePairText("Device Key Purposes", credentialInfo.keyInfo.keyPurposes.toString())
+                KeyValuePairText("Device Key Algorithm", credentialInfo.keyInfo!!.algorithm.description)
                 KeyValuePairText("Device Key Invalidated",
                     buildAnnotatedString {
                         if (credentialInfo.keyInvalidated) {

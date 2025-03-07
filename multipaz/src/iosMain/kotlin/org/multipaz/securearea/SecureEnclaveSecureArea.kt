@@ -68,26 +68,25 @@ class SecureEnclaveSecureArea private constructor(
     override val displayName: String
         get() = "Secure Enclave Secure Area"
 
+    override val supportedAlgorithms: List<Algorithm>
+        get() = listOf(Algorithm.ESP256, Algorithm.ECDH_P256)
+
     override suspend fun createKey(alias: String?, createKeySettings: CreateKeySettings): KeyInfo {
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(alias, partitionId)
         }
 
-        // If key is used to sign, Algorithm.ES256 is the only option
-        check(!createKeySettings.keyPurposes.contains(KeyPurpose.SIGN) ||
-                createKeySettings.signingAlgorithm == Algorithm.ES256)
+        // Signing and Key Agreemnt with P-256 is the only thing that'll work.
+        check(createKeySettings.algorithm == Algorithm.ESP256 || createKeySettings.algorithm == Algorithm.ECDH_P256)
 
         val settings = if (createKeySettings is SecureEnclaveCreateKeySettings) {
             createKeySettings
         } else {
             // If user passed in a generic SecureArea.CreateKeySettings, honor that (although
             // only key settings can really be honored).
-            check(createKeySettings.ecCurve == EcCurve.P256)
-            check(!createKeySettings.keyPurposes.contains(KeyPurpose.SIGN) ||
-                createKeySettings.signingAlgorithm == Algorithm.ES256)
             SecureEnclaveCreateKeySettings.Builder()
-                .setKeyPurposes(createKeySettings.keyPurposes)
+                .setAlgorithm(createKeySettings.algorithm)
                 .build()
         }
 
@@ -96,7 +95,7 @@ class SecureEnclaveSecureArea private constructor(
             accessControlCreateFlags = SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes)
         }
         val (keyBlob, pubKey) = Crypto.secureEnclaveCreateEcPrivateKey(
-            settings.keyPurposes,
+            settings.algorithm,
             accessControlCreateFlags
         )
         Logger.d(TAG, "EC key with alias '$alias' created")
@@ -111,11 +110,10 @@ class SecureEnclaveSecureArea private constructor(
         publicKey: EcPublicKey,
     ): String {
         val map = CborMap.builder()
-        map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))
+        map.put("algorithm", settings.algorithm.name)
         map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
         map.put("userAuthenticationTypes",
             SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes))
-        map.put("curve", settings.ecCurve.coseCurveIdentifier)
         map.put("publicKey", publicKey.toDataItem())
         map.put("keyBlob", keyBlob)
         return storageTable.insert(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
@@ -126,7 +124,7 @@ class SecureEnclaveSecureArea private constructor(
             ?: throw IllegalArgumentException("No key with given alias")
 
         val map = Cbor.decode(data.toByteArray())
-        val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
+        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
         val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
         val userAuthenticationTypes =
             SecureEnclaveUserAuthType.decodeSet(map["userAuthenticationTypes"].asNumber)
@@ -135,9 +133,8 @@ class SecureEnclaveSecureArea private constructor(
 
         val keyInfo = SecureEnclaveKeyInfo(
             alias,
+            algorithm,
             publicKey,
-            keyPurposes,
-            Algorithm.ES256,
             userAuthenticationRequired,
             userAuthenticationTypes)
 
@@ -154,7 +151,7 @@ class SecureEnclaveSecureArea private constructor(
         keyUnlockData: KeyUnlockData?
     ): EcSignature {
         val (keyBlob, keyInfo) = loadKey(alias)
-        check(keyInfo.keyPurposes.contains(KeyPurpose.SIGN))
+        check(keyInfo.algorithm.isSigning)
         val unlockData = if (keyUnlockData is KeyUnlockInteractive) {
             // TODO: create LAContext with title/subtitle from KeyUnlockInteractive
             null
@@ -172,7 +169,7 @@ class SecureEnclaveSecureArea private constructor(
     ): ByteArray {
         val (keyBlob, keyInfo) = loadKey(alias)
         check(otherKey.curve == EcCurve.P256)
-        check(keyInfo.keyPurposes.contains(KeyPurpose.AGREE_KEY))
+        check(keyInfo.algorithm.isKeyAgreement)
         val unlockData = if (keyUnlockData is KeyUnlockInteractive) {
             // TODO: create LAContext with title/subtitle from KeyUnlockInteractive
             null

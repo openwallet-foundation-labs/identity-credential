@@ -24,7 +24,7 @@ class JwtBody(
     val publicKey: JsonWebKey? = null): JwtJsonObject() {
     override fun buildJson(): JsonObjectBuilder.() -> Unit = {
         put("_sd", JsonArray(disclosureHashes.map { disclosure -> JsonPrimitive(disclosure) }))
-        put("_sd_alg", JsonPrimitive(sdHashAlg.hashAlgorithmIdentifier))
+        put("_sd_alg", JsonPrimitive(sdHashAlg.hashAlgorithmName!!))
         put("iss", JsonPrimitive(issuer))
         put("vct", JsonPrimitive(docType))
         timeSigned?.let { put("iat", JsonPrimitive(it.epochSeconds)) }

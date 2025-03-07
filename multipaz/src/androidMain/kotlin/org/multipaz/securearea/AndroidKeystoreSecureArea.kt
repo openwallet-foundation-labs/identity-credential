@@ -44,9 +44,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.encodeToByteString
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
+import org.multipaz.crypto.Crypto
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -115,6 +118,26 @@ class AndroidKeystoreSecureArea private constructor(
     override val displayName: String
         get() = "Android Keystore Secure Area"
 
+    private val supportedAlgorithms_: List<Algorithm> by lazy {
+        val algorithms = mutableListOf(
+            Algorithm.ESP256
+        )
+        val capabilities = Capabilities()
+        if (capabilities.curve25519Supported) {
+            algorithms.add(Algorithm.ED25519)
+        }
+        if (capabilities.keyAgreementSupported) {
+            algorithms.add(Algorithm.ECDH_P256)
+            if (capabilities.curve25519Supported) {
+                algorithms.add(Algorithm.ECDH_X25519)
+            }
+        }
+        algorithms
+    }
+
+    override val supportedAlgorithms: List<Algorithm>
+        get() = supportedAlgorithms_
+
     private val keymintTeeFeatureLevel: Int
     private val keymintSbFeatureLevel: Int
 
@@ -143,10 +166,8 @@ class AndroidKeystoreSecureArea private constructor(
             createKeySettings
         } else {
             // If user passed in a generic SecureArea.CreateKeySettings, honor them.
-            AndroidKeystoreCreateKeySettings.Builder("".toByteArray())
-                .setKeyPurposes(createKeySettings.keyPurposes)
-                .setEcCurve(createKeySettings.ecCurve)
-                .setSigningAlgorithm(createKeySettings.signingAlgorithm)
+            AndroidKeystoreCreateKeySettings.Builder(createKeySettings.nonce)
+                .setAlgorithm(createKeySettings.algorithm)
                 .build()
         }
 
@@ -155,10 +176,10 @@ class AndroidKeystoreSecureArea private constructor(
                 KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore"
             )
             var purposes = 0
-            if (aSettings.keyPurposes.contains(KeyPurpose.SIGN)) {
+            if (aSettings.algorithm.isSigning) {
                 purposes = purposes or KeyProperties.PURPOSE_SIGN
             }
-            if (aSettings.keyPurposes.contains(KeyPurpose.AGREE_KEY)) {
+            if (aSettings.algorithm.isKeyAgreement) {
                 purposes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     purposes or KeyProperties.PURPOSE_AGREE_KEY
                 } else {
@@ -185,26 +206,10 @@ class AndroidKeystoreSecureArea private constructor(
                 }
             }
             val builder = KeyGenParameterSpec.Builder(newKeyAlias, purposes)
-            when (aSettings.ecCurve) {
-                EcCurve.P256 ->                     // Works with both purposes.
-                    builder.setDigests(KeyProperties.DIGEST_SHA256)
-
-                EcCurve.ED25519 -> {
-                    // Only works with KEY_PURPOSE_SIGN
-                    require(aSettings.keyPurposes.contains(KeyPurpose.SIGN)) { "Curve Ed25519 only works with purpose SIGN" }
-                    builder.setAlgorithmParameterSpec(ECGenParameterSpec("ed25519"))
-                }
-
-                EcCurve.X25519 -> {
-                    // Only works with KEY_PURPOSE_AGREE_KEY
-                    require(aSettings.keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Curve X25519 only works with purpose AGREE_KEY" }
-                    builder.setAlgorithmParameterSpec(ECGenParameterSpec("x25519"))
-                }
-
-                EcCurve.BRAINPOOLP256R1, EcCurve.BRAINPOOLP320R1, EcCurve.BRAINPOOLP384R1, EcCurve.BRAINPOOLP512R1, EcCurve.ED448, EcCurve.P384, EcCurve.P521, EcCurve.X448 -> throw IllegalArgumentException(
-                    "Curve is not supported"
-                )
-
+            when (aSettings.algorithm.curve) {
+                EcCurve.P256 -> builder.setDigests(KeyProperties.DIGEST_SHA256)
+                EcCurve.ED25519 -> builder.setAlgorithmParameterSpec(ECGenParameterSpec("ed25519"))
+                EcCurve.X25519 -> builder.setAlgorithmParameterSpec(ECGenParameterSpec("x25519"))
                 else -> throw IllegalArgumentException("Curve is not supported")
             }
             if (aSettings.userAuthenticationRequired) {
@@ -254,7 +259,7 @@ class AndroidKeystoreSecureArea private constructor(
                     builder.setAttestKeyAlias(aSettings.attestKeyAlias)
                 }
             }
-            builder.setAttestationChallenge(aSettings.attestationChallenge)
+            builder.setAttestationChallenge(aSettings.attestationChallenge.toByteArray())
             if (aSettings.validFrom != null) {
                 val notBefore = Date(aSettings.validFrom.toEpochMilliseconds())
                 val notAfter = Date(aSettings.validUntil!!.toEpochMilliseconds())
@@ -340,7 +345,7 @@ class AndroidKeystoreSecureArea private constructor(
 
         // Need to generate the data which getKeyInfo() reads from disk.
         val settingsBuilder =
-            AndroidKeystoreCreateKeySettings.Builder("".toByteArray(StandardCharsets.UTF_8))
+            AndroidKeystoreCreateKeySettings.Builder(buildByteString {})
 
         // attestation
         val attestationCerts = mutableListOf<X509Cert>()
@@ -356,18 +361,14 @@ class AndroidKeystoreSecureArea private constructor(
             throw IllegalStateException(e)
         }
 
-        // curve - not available in KeyInfo, assume P-256
-
-        // keyPurposes
-        val purposes: MutableSet<KeyPurpose> = LinkedHashSet()
+        // algorithm
         val ksPurposes = keyInfo.purposes
         if (ksPurposes and KeyProperties.PURPOSE_SIGN != 0) {
-            purposes.add(KeyPurpose.SIGN)
+            settingsBuilder.setAlgorithm(Algorithm.ESP256)
         }
         if (ksPurposes and KeyProperties.PURPOSE_AGREE_KEY != 0) {
-            purposes.add(KeyPurpose.AGREE_KEY)
+            settingsBuilder.setAlgorithm(Algorithm.ECDH_P256)
         }
-        settingsBuilder.setKeyPurposes(purposes)
 
         // useStrongBox
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -461,12 +462,7 @@ class AndroidKeystoreSecureArea private constructor(
     ): EcSignature {
         val (entry, data) = loadKey(alias)
         val decodedData = Cbor.decode(data)
-        val curve = EcCurve.fromInt(decodedData["curve"].asNumber.toInt())
-        val signingAlgorithm = if (decodedData.hasKey("signingAlgorithm")) {
-            Algorithm.fromInt(decodedData["signingAlgorithm"].asNumber.toInt())
-        } else {
-            Algorithm.UNSET
-        }
+        val algorithm = Algorithm.fromName(decodedData["algorithm"].asTstr)
         if (keyUnlockData != null) {
             val unlockData = keyUnlockData as AndroidKeystoreKeyUnlockData
             require(unlockData.alias == alias) {
@@ -476,7 +472,7 @@ class AndroidKeystoreSecureArea private constructor(
                 return try {
                     unlockData.signature!!.update(dataToSign)
                     val derEncodedSignature = unlockData.signature!!.sign()
-                    signatureFromDer(curve, derEncodedSignature)
+                    signatureFromDer(algorithm.curve!!, derEncodedSignature)
                 } catch (e: SignatureException) {
                     throw IllegalStateException(e.message, e)
                 }
@@ -485,11 +481,11 @@ class AndroidKeystoreSecureArea private constructor(
 
         return try {
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
-            val s = Signature.getInstance(getSignatureAlgorithmName(signingAlgorithm))
+            val s = Signature.getInstance(getSignatureAlgorithmName(algorithm))
             s.initSign(privateKey)
             s.update(dataToSign)
             val derEncodedSignature = s.sign()
-            signatureFromDer(curve, derEncodedSignature)
+            signatureFromDer(algorithm.curve!!, derEncodedSignature)
         } catch (e: UserNotAuthenticatedException) {
             throw KeyLockedException("User not authenticated", e)
         } catch (e: SignatureException) {
@@ -617,12 +613,7 @@ class AndroidKeystoreSecureArea private constructor(
                 null
             }
             val map = Cbor.decode(data)
-            val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
-            val signingAlgorithm = if (map.hasKey("signingAlgorithm")) {
-                Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
-            } else {
-                Algorithm.UNSET
-            }
+            val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
             val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
             val userAuthenticationTimeoutMillis = map["userAuthenticationTimeoutMillis"].asNumber
             val isStrongBoxBacked = map["useStrongBox"].asBoolean
@@ -657,10 +648,9 @@ class AndroidKeystoreSecureArea private constructor(
             }
             AndroidKeystoreKeyInfo(
                 alias,
+                algorithm,
                 publicKey,
                 KeyAttestation(publicKey, attestationCertChain),
-                keyPurposes,
-                signingAlgorithm,
                 attestKeyAlias,
                 userAuthenticationRequired,
                 userAuthenticationTimeoutMillis,
@@ -680,10 +670,7 @@ class AndroidKeystoreSecureArea private constructor(
         attestation: X509CertChain
     ) {
         val map = CborMap.builder()
-        map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))
-        if (settings.signingAlgorithm != Algorithm.UNSET) {
-            map.put("signingAlgorithm", settings.signingAlgorithm.coseAlgorithmIdentifier)
-        }
+        map.put("algorithm", settings.algorithm.name)
         if (settings.attestKeyAlias != null) {
             map.put("attestKeyAlias", settings.attestKeyAlias)
         }
@@ -691,7 +678,6 @@ class AndroidKeystoreSecureArea private constructor(
         map.put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
         map.put("useStrongBox", settings.useStrongBox)
         map.put("attestation", attestation.toDataItem())
-        map.put("curve", settings.ecCurve.coseCurveIdentifier)
         storageTable.update(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
     }
 
@@ -821,9 +807,11 @@ class AndroidKeystoreSecureArea private constructor(
 
         internal fun getSignatureAlgorithmName(signatureAlgorithm: Algorithm): String {
             return when (signatureAlgorithm) {
-                Algorithm.ES256 -> "SHA256withECDSA"
-                Algorithm.ES384 -> "SHA384withECDSA"
-                Algorithm.ES512 -> "SHA512withECDSA"
+                Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256 -> "SHA256withECDSA"
+                Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB384, Algorithm.ESB320 -> "SHA384withECDSA"
+                Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> "SHA512withECDSA"
+                Algorithm.ED25519 -> "Ed25519"
+                Algorithm.ED448 -> "Ed448"
                 Algorithm.EDDSA -> "Ed25519"
                 else -> throw IllegalArgumentException(
                     "Unsupported signing algorithm with id $signatureAlgorithm"

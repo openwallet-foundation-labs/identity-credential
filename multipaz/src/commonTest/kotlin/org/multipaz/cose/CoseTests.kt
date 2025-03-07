@@ -7,12 +7,7 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
-import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
-import org.multipaz.securearea.software.SoftwareSecureArea
-import org.multipaz.storage.EphemeralStorageEngine
 import org.multipaz.util.fromHex
-import kotlin.test.BeforeTest
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -117,7 +112,6 @@ class CoseTests {
         )
     }
 
-
     fun coseSign1_helper(curve: EcCurve) {
         // TODO: use assumeTrue() when available in kotlin-test
         if (!Crypto.supportedCurves.contains(curve)) {
@@ -130,7 +124,7 @@ class CoseTests {
         val protectedHeaders = mapOf<CoseLabel, DataItem>(
             Pair(
                 Cose.COSE_LABEL_ALG.toCoseLabel,
-                signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
+                signatureAlgorithm.coseAlgorithmIdentifier!!.toDataItem()
             )
         )
         val message = "Hello World".encodeToByteArray()
@@ -152,6 +146,9 @@ class CoseTests {
             )
         )
     }
+
+    // TODO: Write unit test for Cose.coseSign1Sign() which checks that the non-fully-specified curve is in the
+    //  protected header.
 
     @Test fun coseSign1_P256() = coseSign1_helper(EcCurve.P256)
     @Test fun coseSign1_P384() = coseSign1_helper(EcCurve.P384)

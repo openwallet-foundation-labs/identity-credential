@@ -2,18 +2,14 @@ package org.multipaz.securearea
 
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.securearea.KeyInfo
-import org.multipaz.securearea.KeyPurpose
-import kotlinx.datetime.Instant
 
 /**
  * Secure Enclave specific class for information about a key.
  */
 class SecureEnclaveKeyInfo internal constructor(
     alias: String,
+    algorithm: Algorithm,
     publicKey: EcPublicKey,
-    keyPurposes: Set<KeyPurpose>,
-    signingAlgorithm: Algorithm,
 
     /**
      * Whether the user authentication is required to use the key.
@@ -25,4 +21,4 @@ class SecureEnclaveKeyInfo internal constructor(
      */
     val userAuthenticationTypes: Set<SecureEnclaveUserAuthType>
 
-): KeyInfo(alias, publicKey, keyPurposes, signingAlgorithm, KeyAttestation(publicKey, null))
+): KeyInfo(alias, algorithm, publicKey, KeyAttestation(publicKey, null))

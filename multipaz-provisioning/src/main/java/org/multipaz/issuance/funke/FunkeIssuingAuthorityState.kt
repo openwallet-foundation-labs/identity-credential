@@ -45,7 +45,6 @@ import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.mso.StaticAuthDataParser
 import org.multipaz.sdjwt.SdJwtVerifiableCredential
 import org.multipaz.sdjwt.vc.JwtBody
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
@@ -66,6 +65,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.crypto.Algorithm
 import kotlin.time.Duration.Companion.seconds
 
 @FlowState(
@@ -324,14 +324,12 @@ class FunkeIssuingAuthorityState(
         refreshAccessIfNeeded(env, documentId, document)
 
         val cNonce = document.access!!.cNonce!!
-        val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
         val configuration = if (document.secureAreaIdentifier!!.startsWith("CloudSecureArea?")) {
             CredentialConfiguration(
                 challenge = ByteString(cNonce.toByteArray()),
                 keyAssertionRequired = true,
                 secureAreaConfiguration = SecureAreaConfigurationCloud(
-                    purposes = KeyPurpose.encodeSet(purposes),
-                    curve = EcCurve.P256.coseCurveIdentifier,
+                    algorithm = Algorithm.ESP256.name,
                     cloudSecureAreaId = document.secureAreaIdentifier!!,
                     passphraseRequired = true,
                     useStrongBox = true,
@@ -345,8 +343,7 @@ class FunkeIssuingAuthorityState(
                 challenge = ByteString(cNonce.toByteArray()),
                 keyAssertionRequired = true,
                 secureAreaConfiguration = SecureAreaConfigurationAndroidKeystore(
-                    purposes = KeyPurpose.encodeSet(purposes),
-                    curve = EcCurve.P256.coseCurveIdentifier,
+                    algorithm = Algorithm.ESP256.name,
                     useStrongBox = true,
                     userAuthenticationRequired = true,
                     userAuthenticationTimeoutMillis = 0,

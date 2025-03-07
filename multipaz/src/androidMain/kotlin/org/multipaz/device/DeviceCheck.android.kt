@@ -15,7 +15,7 @@ actual object DeviceCheck {
         secureArea: SecureArea,
         challenge: ByteString
     ): DeviceAttestationResult {
-        val keySettings = AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
+        val keySettings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .build()
         val keyInfo = secureArea.createKey(null, keySettings)
         return DeviceAttestationResult(

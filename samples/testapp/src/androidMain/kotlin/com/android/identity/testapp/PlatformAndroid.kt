@@ -7,7 +7,6 @@ import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.securearea.UserAuthenticationType
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
@@ -18,6 +17,7 @@ import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.compose.notifications.NotificationManagerAndroid
+import org.multipaz.crypto.Algorithm
 import java.io.File
 import java.net.NetworkInterface
 import java.security.Security
@@ -82,21 +82,20 @@ actual val platformSecureAreaHasKeyAgreement by lazy {
 
 actual fun platformCreateKeySettings(
     challenge: ByteString,
-    curve: EcCurve,
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
     userAuthenticationRequired: Boolean,
     validFrom: Instant,
     validUntil: Instant
 ): CreateKeySettings {
+    check(algorithm.fullySpecified)
     var timeoutMillis = 0L
     // Work around Android bug where ECDH keys don't work with timeout 0, see
     // AndroidKeystoreUnlockData.cryptoObjectForKeyAgreement for details.
-    if (keyPurposes.contains(KeyPurpose.AGREE_KEY)) {
+    if (algorithm.isKeyAgreement) {
         timeoutMillis = 1000L
     }
-    return AndroidKeystoreCreateKeySettings.Builder(challenge.toByteArray())
-        .setEcCurve(curve)
-        .setKeyPurposes(keyPurposes)
+    return AndroidKeystoreCreateKeySettings.Builder(challenge)
+        .setAlgorithm(algorithm)
         .setUserAuthenticationRequired(
             required = userAuthenticationRequired,
             timeoutMillis = timeoutMillis,

@@ -21,7 +21,6 @@ import org.multipaz.mdoc.transport.MdocTransportClosedException
 import org.multipaz.mdoc.util.toMdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
@@ -218,7 +217,7 @@ private suspend fun calcDocument(
     //
     val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
     val preferSignature = source.shouldPreferSignatureToKeyAgreement(credential, request)
-    val keyAgreementPossible = keyInfo.keyPurposes.contains(KeyPurpose.AGREE_KEY) && eReaderKey.curve == keyInfo.publicKey.curve
+    val keyAgreementPossible = keyInfo.algorithm.isKeyAgreement && eReaderKey.curve == keyInfo.publicKey.curve
     if (!preferSignature && keyAgreementPossible) {
         documentGenerator.setDeviceNamespacesMac(
             dataElements = NameSpacedData.Builder().build(),

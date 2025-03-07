@@ -2,9 +2,6 @@ package org.multipaz.securearea
 
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.securearea.KeyAttestation
-import org.multipaz.securearea.KeyInfo
-import org.multipaz.securearea.KeyPurpose
 import kotlinx.datetime.Instant
 
 /**
@@ -12,10 +9,9 @@ import kotlinx.datetime.Instant
  */
 class AndroidKeystoreKeyInfo internal constructor(
     alias: String,
+    algorithm: Algorithm,
     publicKey: EcPublicKey,
     attestation: KeyAttestation,
-    keyPurposes: Set<KeyPurpose>,
-    signingAlgorithm: Algorithm,
 
     /**
      * The attest key alias for the key, if any.
@@ -55,4 +51,4 @@ class AndroidKeystoreKeyInfo internal constructor(
      * The point in time after which the key is not valid, if set.
      */
     val validUntil: Instant?
-) : KeyInfo(alias, publicKey, keyPurposes, signingAlgorithm, attestation)
+) : KeyInfo(alias, algorithm, publicKey, attestation)

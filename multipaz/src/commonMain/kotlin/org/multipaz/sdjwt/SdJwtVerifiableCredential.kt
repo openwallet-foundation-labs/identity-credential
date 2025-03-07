@@ -139,7 +139,7 @@ class SdJwtVerifiableCredential(
         val (keyBindingHeaderStr, keyBindingBodyStr, signatureStr) =
             if (secureArea != null && alias != null) {
                 val keyInfo = secureArea.getKeyInfo(alias)
-                val keyBindingHeaderStr = KeyBindingHeader(keyInfo.signingAlgorithm).toString()
+                val keyBindingHeaderStr = KeyBindingHeader(keyInfo.algorithm).toString()
                 val sdHash = Crypto.digest(this.sdHashAlg, toString().encodeToByteArray()).toBase64Url()
                 val keyBindingBodyStr = KeyBindingBody(nonce, audience, creationTime, sdHash).toString()
 

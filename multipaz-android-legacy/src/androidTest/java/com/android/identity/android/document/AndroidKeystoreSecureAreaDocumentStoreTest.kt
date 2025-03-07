@@ -34,6 +34,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
 import org.multipaz.util.AndroidAttestationExtensionParser
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.bytestring.ByteString
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -74,7 +75,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         val document = documentStore.createDocument()
 
         // Create pending credential and check its attestation
-        val authKeyChallenge = byteArrayOf(20, 21, 22)
+        val authKeyChallenge = ByteString(20, 21, 22)
         val secureArea =
             secureAreaRepository.getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)
         val pendingCredential = TestSecureAreaBoundCredential.create(
@@ -89,7 +90,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         val parser =
             AndroidAttestationExtensionParser(attestation.certChain!!.certificates[0])
         Assert.assertArrayEquals(
-            authKeyChallenge,
+            authKeyChallenge.toByteArray(),
             parser.attestationChallenge
         )
         if (!TestUtil.isRunningOnEmulator) {

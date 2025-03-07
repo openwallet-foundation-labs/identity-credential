@@ -115,7 +115,7 @@ class DeviceRequestGenerator(
             val protectedHeaders = mapOf<CoseLabel, DataItem>(
                 Pair(
                     CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                    signatureAlgorithm.coseAlgorithmIdentifier.toDataItem()
+                    signatureAlgorithm.coseAlgorithmIdentifier!!.toDataItem()
                 )
             )
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
