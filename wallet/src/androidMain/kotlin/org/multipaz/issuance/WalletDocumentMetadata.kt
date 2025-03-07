@@ -109,14 +109,20 @@ class WalletDocumentMetadata private constructor(
         }
     }
 
-    suspend fun setDocumentSlot(documentSlot: Int) {
+    suspend fun setDocumentSlot(documentSlot: Int) =
         lock.withLock {
             data.documentSlot = documentSlot
             save()
         }
-    }
 
-    override var directAccessDocumentSlot: Int = data.documentSlot ?: -1
+    override var directAccessDocumentSlot: Int = -1
+    get() : Int {
+        return if (data.documentSlot != null) {
+            data.documentSlot!!
+        } else {
+            -1
+        }
+    }
 
     suspend fun initialize(
         issuingAuthorityIdentifier: String,

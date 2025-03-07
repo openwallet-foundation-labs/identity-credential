@@ -744,7 +744,7 @@ class DocumentModel(
             if (document.numDocumentConfigurationsDownloaded == 0L) {
                 if (document.documentConfiguration.directAccessConfiguration != null) {
                     document.walletDocumentMetadata.setDocumentSlot(
-                        DirectAccess.allocateDocumentSlot()
+                        DirectAccess.allocateDocumentSlot(document.documentConfiguration.mdocConfiguration!!.docType)
                     )
                 }
                 walletApplication.postNotificationForDocument(
@@ -796,7 +796,7 @@ class DocumentModel(
                     WalletApplication.CREDENTIAL_DOMAIN_DIRECT_ACCESS,
                     CredentialFormat.DirectAccess
                 ) { credentialToReplace, credentialDomain, secureArea, createKeySettings ->
-                    DirectAccessCredential(
+                    DirectAccessCredential.create(
                         document,
                         credentialToReplace,
                         credentialDomain,

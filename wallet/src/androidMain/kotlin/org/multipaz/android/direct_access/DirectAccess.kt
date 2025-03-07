@@ -46,6 +46,7 @@ import kotlin.time.Duration.Companion.days
 object DirectAccess {
 
     private const val TAG = "DirectAccess"
+    private const val MDL_DOC_TYPE = "org.iso.18013.5.1.mDL"
     private const val PROVISION_BEGIN: Byte = 0
     private const val PROVISION_UPDATE: Byte = 1
     private const val PROVISION_FINISH: Byte = 2
@@ -176,11 +177,13 @@ object DirectAccess {
      * Allocates space (a slot) in the Direct Access applet for a
      * document to be provisioned to.
      *
+     * @param docType doc type of the document.
      * @return ID of the allocated slot, -1 if no slot is available
      */
-    fun allocateDocumentSlot(): Int {
+    fun allocateDocumentSlot(docType: String): Int {
         val apdu: ByteArray?
         val response: ByteArray?
+        check(docType.compareTo(MDL_DOC_TYPE) == 0) { "Given docType '$docType' != '$MDL_DOC_TYPE'" }
         try {
             transport.closeConnection()
             transport.openConnection()
@@ -188,6 +191,8 @@ object DirectAccess {
             val bos = ByteArrayOutputStream()
             // set instruction
             bos.write(buildByteString {appendUInt16(CMD_MDOC_CREATE)}.toByteArray())
+            bos.write(buildByteString {appendUInt16(docType.length)}.toByteArray())
+            bos.write(docType.toByteArray())
             apdu = makeCommandApdu(bos.toByteArray())
 
             response = transport.sendData(apdu)
