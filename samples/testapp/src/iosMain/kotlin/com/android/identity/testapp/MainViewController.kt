@@ -1,7 +1,7 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.compose.ui.window.ComposeUIViewController
-import com.android.identity.prompt.IosPromptModel
+import org.multipaz.prompt.IosPromptModel
 
 private val app = App.getInstanceAndInitializeInBackground(IosPromptModel())
 

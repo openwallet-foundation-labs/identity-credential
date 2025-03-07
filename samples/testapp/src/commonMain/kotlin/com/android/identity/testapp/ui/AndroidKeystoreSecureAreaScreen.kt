@@ -1,7 +1,7 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.runtime.Composable
-import com.android.identity.prompt.PromptModel
+import org.multipaz.prompt.PromptModel
 
 @Composable
 expect fun AndroidKeystoreSecureAreaScreen(

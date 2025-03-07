@@ -8,7 +8,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.android.identity.jpeg2k"
+    namespace = "org.multipaz.jpeg2k"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

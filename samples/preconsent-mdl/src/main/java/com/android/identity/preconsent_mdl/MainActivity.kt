@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import android.Manifest
 import android.content.Context
@@ -54,28 +54,28 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.android.identity.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.securearea.AndroidKeystoreSecureArea
-import com.android.identity.cbor.Bstr
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.Tagged
-import com.android.identity.cbor.toDataItem
-import com.android.identity.cbor.toDataItemDateTimeString
-import com.android.identity.cose.Cose
-import com.android.identity.cose.CoseLabel
-import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.document.NameSpacedData
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
-import com.android.identity.mdoc.mso.StaticAuthDataGenerator
-import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
-import com.android.identity.util.Logger
+import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.cbor.Bstr
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.toDataItem
+import org.multipaz.cbor.toDataItemDateTimeString
+import org.multipaz.cose.Cose
+import org.multipaz.cose.CoseLabel
+import org.multipaz.cose.CoseNumberLabel
+import org.multipaz.document.NameSpacedData
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
+import org.multipaz.mdoc.mso.StaticAuthDataGenerator
+import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.preconsent_mdl.ui.theme.IdentityCredentialTheme
+import org.multipaz.util.Logger
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant

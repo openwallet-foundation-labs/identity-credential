@@ -1,6 +1,6 @@
-package com.android.identity.server
+package org.multipaz.server
 
-import com.android.identity.flow.server.Resources
+import org.multipaz.flow.server.Resources
 import kotlinx.io.bytestring.ByteString
 
 internal object ServerResources: Resources {

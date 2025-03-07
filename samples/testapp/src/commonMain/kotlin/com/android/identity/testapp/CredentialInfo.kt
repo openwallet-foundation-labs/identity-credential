@@ -1,7 +1,7 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import com.android.identity.credential.Credential
-import com.android.identity.securearea.KeyInfo
+import org.multipaz.credential.Credential
+import org.multipaz.securearea.KeyInfo
 
 data class CredentialInfo(
     val credential: Credential,

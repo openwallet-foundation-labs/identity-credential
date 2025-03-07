@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.simple_verifier
+package org.multipaz.simple_verifier
 
 import android.Manifest
 import android.content.Intent
@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
-import com.android.identity.simple_verifier.ui.theme.IdentityCredentialTheme
+import org.multipaz.simple_verifier.ui.theme.IdentityCredentialTheme
 
 class MainActivity : FragmentActivity() {
 

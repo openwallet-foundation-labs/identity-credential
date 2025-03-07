@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,17 +9,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.identity.asn1.ASN1Integer
-import com.android.identity.asn1.ASN1String
-import com.android.identity.cbor.Cbor
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
-import com.android.identity.crypto.X500Name
-import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.X509CertChain
-import com.android.identity.crypto.X509KeyUsage
-import com.android.identity.util.fromHex
-import com.android.identity.util.toBase64Url
+import org.multipaz.asn1.ASN1Integer
+import org.multipaz.asn1.ASN1String
+import org.multipaz.cbor.Cbor
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X500Name
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.util.fromHex
+import org.multipaz.util.toBase64Url
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant

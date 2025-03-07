@@ -1,9 +1,9 @@
 package org.multipaz.compose.notifications
 
 import androidx.compose.ui.graphics.ImageBitmap
-import com.android.identity.util.UUID
-import com.android.identity.util.toKotlinError
-import com.android.identity.util.toNSData
+import org.multipaz.util.UUID
+import org.multipaz.util.toKotlinError
+import org.multipaz.util.toNSData
 import io.github.alexzhirkevich.qrose.ImageFormat
 import io.github.alexzhirkevich.qrose.toByteArray
 import kotlinx.cinterop.ExperimentalForeignApi

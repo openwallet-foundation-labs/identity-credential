@@ -1,6 +1,6 @@
-package com.android.identity.server
+package org.multipaz.server
 
-import com.android.identity.flow.server.Configuration
+import org.multipaz.flow.server.Configuration
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

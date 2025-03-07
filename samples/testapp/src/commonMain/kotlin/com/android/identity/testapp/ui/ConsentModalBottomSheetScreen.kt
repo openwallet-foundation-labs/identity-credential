@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -9,18 +9,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.android.identity.appsupport.ui.consent.ConsentDocument
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborMap
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Cert
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.documenttype.knowntypes.DrivingLicense
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.request.DeviceRequestParser
-import com.android.identity.mdoc.util.toMdocRequest
-import com.android.identity.request.Requester
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.models.ui.consent.ConsentDocument
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborMap
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.X509Cert
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.documenttype.knowntypes.DrivingLicense
+import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.mdoc.request.DeviceRequestParser
+import org.multipaz.mdoc.util.toMdocRequest
+import org.multipaz.request.Requester
+import org.multipaz.trustmanagement.TrustPoint
 import identitycredential.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi

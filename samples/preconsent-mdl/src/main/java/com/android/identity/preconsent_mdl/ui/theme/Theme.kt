@@ -1,4 +1,4 @@
-package com.android.identity.preconsent_mdl.ui.theme
+package org.multipaz.preconsent_mdl.ui.theme
 
 import android.app.Activity
 import android.os.Build

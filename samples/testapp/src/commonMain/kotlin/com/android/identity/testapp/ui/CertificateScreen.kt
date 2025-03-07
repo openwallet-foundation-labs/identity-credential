@@ -1,11 +1,11 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.runtime.Composable
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborArray
-import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.X509CertChain
-import com.android.identity.util.fromBase64Url
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborArray
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.util.fromBase64Url
 import org.multipaz.compose.certificateviewer.CertificateViewer
 
 /**

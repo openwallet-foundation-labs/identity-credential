@@ -1,11 +1,11 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import com.android.identity.crypto.EcCurve
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.KeyPurpose
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureAreaProvider
-import com.android.identity.storage.Storage
+import org.multipaz.crypto.EcCurve
+import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.KeyPurpose
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.storage.Storage
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 

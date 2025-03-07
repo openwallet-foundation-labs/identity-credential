@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,8 +13,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.testapp.DocumentModel
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.testapp.DocumentModel
 import org.multipaz.compose.claim.RenderClaimValue
 
 @Composable

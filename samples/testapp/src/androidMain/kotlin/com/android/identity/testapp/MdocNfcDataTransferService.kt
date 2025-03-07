@@ -1,9 +1,9 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
-import com.android.identity.mdoc.transport.NfcTransportMdoc
-import com.android.identity.util.Logger
+import org.multipaz.mdoc.transport.NfcTransportMdoc
+import org.multipaz.util.Logger
 
 class MdocNfcDataTransferService: HostApduService() {
     companion object {

@@ -1,7 +1,7 @@
 package org.multipaz.compose.prompt
 
 import androidx.compose.runtime.Composable
-import com.android.identity.prompt.PromptModel
+import org.multipaz.prompt.PromptModel
 
 @Composable
 expect fun PromptDialogs(promptModel: PromptModel)

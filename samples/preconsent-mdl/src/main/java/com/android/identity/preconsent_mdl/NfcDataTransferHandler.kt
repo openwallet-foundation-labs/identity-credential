@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import com.android.identity.android.mdoc.transport.DataTransportNfc
-import com.android.identity.util.Logger
+import org.multipaz.util.Logger
 
 class NfcDataTransferHandler : HostApduService() {
 

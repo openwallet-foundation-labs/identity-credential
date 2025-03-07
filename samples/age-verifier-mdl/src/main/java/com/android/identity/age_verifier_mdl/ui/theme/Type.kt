@@ -1,4 +1,4 @@
-package com.android.identity.age_verifier_mdl.ui.theme
+package org.multipaz.age_verifier_mdl.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

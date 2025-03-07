@@ -54,10 +54,8 @@ kotlin {
                 implementation(libs.jetbrains.navigation.compose)
                 implementation(libs.jetbrains.navigation.runtime)
 
-                implementation(project(":identity"))
-                implementation(project(":identity-mdoc"))
-                implementation(project(":identity-sdjwt"))
-                implementation(project(":identity-appsupport"))
+                implementation(project(":multipaz"))
+                implementation(project(":multipaz-models"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.qrose)

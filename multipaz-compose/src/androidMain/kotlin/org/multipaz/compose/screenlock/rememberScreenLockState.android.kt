@@ -10,8 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.android.identity.context.applicationContext
-import com.android.identity.securearea.AndroidKeystoreSecureArea
+import org.multipaz.context.applicationContext
+import org.multipaz.securearea.AndroidKeystoreSecureArea
 
 private class AndroidScreenLockState(): ScreenLockState {
 

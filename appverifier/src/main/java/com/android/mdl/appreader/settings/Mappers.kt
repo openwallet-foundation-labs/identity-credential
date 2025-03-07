@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.settings
 
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.crypto.javaX509Certificate
+import org.multipaz.trustmanagement.TrustPoint
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.trustmanagement.getOrganisation

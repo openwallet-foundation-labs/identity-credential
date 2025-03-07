@@ -57,10 +57,9 @@ android {
 }
 
 dependencies {
-    implementation(project(":identity"))
-    implementation(project(":identity-mdoc"))
-    implementation(project(":identity-android"))
-    implementation(project(":identity-doctypes"))
+    implementation(project(":multipaz"))
+    implementation(project(":multipaz-android-legacy"))
+    implementation(project(":multipaz-doctypes"))
     implementation(project(":jpeg2k"))
 
     implementation(libs.kotlinx.datetime)

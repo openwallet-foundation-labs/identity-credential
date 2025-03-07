@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -42,38 +42,38 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.cbor.Bstr
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.cbor.Simple
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.EcPublicKey
-import com.android.identity.documenttype.DocumentAttributeType
-import com.android.identity.documenttype.DocumentCannedRequest
-import com.android.identity.documenttype.DocumentType
-import com.android.identity.documenttype.DocumentTypeRepository
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
-import com.android.identity.mdoc.engagement.EngagementParser
-import com.android.identity.mdoc.nfc.scanNfcMdocReader
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.mdoc.sessionencryption.SessionEncryption
-import com.android.identity.mdoc.transport.MdocTransport
-import com.android.identity.mdoc.transport.MdocTransportClosedException
-import com.android.identity.mdoc.transport.MdocTransportFactory
-import com.android.identity.mdoc.transport.MdocTransportOptions
-import com.android.identity.mdoc.transport.NfcTransportMdocReader
-import com.android.identity.nfc.scanNfcTag
-import com.android.identity.testapp.App
-import com.android.identity.testapp.TestAppUtils
-import com.android.identity.trustmanagement.TrustManager
-import com.android.identity.util.Constants
-import com.android.identity.util.Logger
-import com.android.identity.util.UUID
-import com.android.identity.util.fromBase64Url
+import org.multipaz.cbor.Bstr
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.DiagnosticOption
+import org.multipaz.cbor.Simple
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.documenttype.DocumentAttributeType
+import org.multipaz.documenttype.DocumentCannedRequest
+import org.multipaz.documenttype.DocumentType
+import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.engagement.EngagementParser
+import org.multipaz.mdoc.nfc.scanNfcMdocReader
+import org.multipaz.mdoc.response.DeviceResponseParser
+import org.multipaz.mdoc.sessionencryption.SessionEncryption
+import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.transport.MdocTransportClosedException
+import org.multipaz.mdoc.transport.MdocTransportFactory
+import org.multipaz.mdoc.transport.MdocTransportOptions
+import org.multipaz.mdoc.transport.NfcTransportMdocReader
+import org.multipaz.nfc.scanNfcTag
+import org.multipaz.testapp.App
+import org.multipaz.testapp.TestAppUtils
+import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.util.Constants
+import org.multipaz.util.Logger
+import org.multipaz.util.UUID
+import org.multipaz.util.fromBase64Url
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -889,7 +889,7 @@ private fun ShowDocumentData(
 // TODO:
 //  - add infos/warnings according to TrustManager (need to port TrustManager to KMP), that is
 //    add a warning if the issuer isn't well-known.
-//  - move to identity-appsupport
+//  - move to identity-models
 //  - add fromSdJwtVcResponse()
 private data class DocumentData(
     val infoTexts: List<String>,

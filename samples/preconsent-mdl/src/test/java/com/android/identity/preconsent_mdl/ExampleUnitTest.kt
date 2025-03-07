@@ -1,4 +1,4 @@
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import org.junit.Test
 

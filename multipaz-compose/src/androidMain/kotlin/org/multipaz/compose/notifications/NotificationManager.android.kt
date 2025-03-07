@@ -7,8 +7,8 @@ import android.content.Context.NOTIFICATION_SERVICE
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.android.identity.context.applicationContext
-import com.android.identity.util.UUID
+import org.multipaz.context.applicationContext
+import org.multipaz.util.UUID
 
 object NotificationManagerAndroid {
 

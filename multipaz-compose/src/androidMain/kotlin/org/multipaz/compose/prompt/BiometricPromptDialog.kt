@@ -6,9 +6,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
-import com.android.identity.context.getActivity
-import com.android.identity.prompt.BiometricPromptState
-import com.android.identity.prompt.SinglePromptModel
+import org.multipaz.context.getActivity
+import org.multipaz.prompt.BiometricPromptState
+import org.multipaz.prompt.SinglePromptModel
 
 /**
  * Displays biometric prompt dialog in Composable UI environment.

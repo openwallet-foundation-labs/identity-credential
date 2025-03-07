@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.home
 
 import androidx.lifecycle.ViewModel
-import com.android.identity.documenttype.MdocDataElement
+import org.multipaz.documenttype.MdocDataElement
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList

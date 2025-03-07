@@ -2,7 +2,7 @@ package com.android.mdl.appreader.settings
 
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.android.identity.util.Logger
+import org.multipaz.util.Logger
 
 class UserPreferences(
     private val preferences: SharedPreferences

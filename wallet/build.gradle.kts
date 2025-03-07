@@ -16,7 +16,7 @@ val projectVersionCode: Int by rootProject.extra
 val projectVersionName: String by rootProject.extra
 
 buildConfig {
-    packageName("com.android.identity_credential.wallet")
+    packageName("org.multipaz_credential.wallet")
     buildConfigField("VERSION", projectVersionName)
     useKotlinOutput { internalVisibility = false }
 }
@@ -41,11 +41,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.android.identity_credential.wallet"
+    namespace = "org.multipaz_credential.wallet"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.android.identity_credential.wallet"
+        applicationId = "org.multipaz_credential.wallet"
         minSdk = 29
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
@@ -106,20 +106,17 @@ android {
 }
 
 dependencies {
-    ksp(project(":processor"))
-    implementation(project(":processor-annotations"))
-    implementation(project(":identity"))
-    implementation(project(":identity-doctypes"))
-    implementation(project(":identity-mdoc"))
-    implementation(project(":identity-sdjwt"))
-    implementation(project(":identity-flow"))
-    implementation(project(":identity-android"))
-    implementation(project(":identity-issuance-api"))
-    implementation(project(":identity-issuance"))
-    implementation(project(":identity-appsupport"))
+    ksp(project(":multipaz-cbor-rpc"))
+    implementation(project(":multipaz-cbor-rpc-annotations"))
+    implementation(project(":multipaz"))
+    implementation(project(":multipaz-doctypes"))
+    implementation(project(":multipaz-android-legacy"))
+    implementation(project(":multipaz-provisioning-api"))
+    implementation(project(":multipaz-provisioning"))
+    implementation(project(":multipaz-models"))
     implementation(project(":multipaz-compose"))
-    implementation(project(":mrtd-reader"))
-    implementation(project(":mrtd-reader-android"))
+    implementation(project(":multipaz-mrtd-reader"))
+    implementation(project(":multipaz-mrtd-reader-android"))
     implementation(project(":jpeg2k"))
 
     implementation(libs.kotlinx.coroutines.guava)

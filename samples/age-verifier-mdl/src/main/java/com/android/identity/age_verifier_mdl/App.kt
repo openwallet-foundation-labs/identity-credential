@@ -1,7 +1,7 @@
-package com.android.identity.age_verifier_mdl
+package org.multipaz.age_verifier_mdl
 
 import android.app.Application
-import com.android.identity.util.Logger
+import org.multipaz.util.Logger
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 

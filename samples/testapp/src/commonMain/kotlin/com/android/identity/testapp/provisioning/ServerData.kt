@@ -1,6 +1,6 @@
-package com.android.identity.testapp.provisioning
+package org.multipaz.testapp.provisioning
 
-import com.android.identity.cbor.annotation.CborSerializable
+import org.multipaz.cbor.annotation.CborSerializable
 
 @CborSerializable
 data class ServerData(
