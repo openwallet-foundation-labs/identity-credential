@@ -1,9 +1,9 @@
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
-import com.android.identity.cbor.annotation.CborSerializable
-import com.android.identity.document.Document
-import com.android.identity.document.DocumentMetadata
-import com.android.identity.document.NameSpacedData
+import org.multipaz.cbor.annotation.CborSerializable
+import org.multipaz.document.Document
+import org.multipaz.document.DocumentMetadata
+import org.multipaz.document.NameSpacedData
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isNotEmpty
 

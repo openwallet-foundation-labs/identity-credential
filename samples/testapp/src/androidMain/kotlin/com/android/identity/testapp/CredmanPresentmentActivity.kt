@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.content.Intent
 import android.os.Bundle
@@ -18,13 +18,13 @@ import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.multipaz.compose.AppTheme
-import com.android.identity.appsupport.ui.digitalcredentials.lookupForCredmanId
-import com.android.identity.appsupport.ui.presentment.DigitalCredentialsPresentmentMechanism
+import org.multipaz.models.ui.digitalcredentials.lookupForCredmanId
+import org.multipaz.models.ui.presentment.DigitalCredentialsPresentmentMechanism
 import org.multipaz.compose.presentment.Presentment
-import com.android.identity.appsupport.ui.presentment.PresentmentModel
-import com.android.identity.context.initializeApplication
-import com.android.identity.prompt.AndroidPromptModel
-import com.android.identity.util.Logger
+import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.context.initializeApplication
+import org.multipaz.prompt.AndroidPromptModel
+import org.multipaz.util.Logger
 import identitycredential.samples.testapp.generated.resources.Res
 import identitycredential.samples.testapp.generated.resources.app_icon
 import identitycredential.samples.testapp.generated.resources.app_name

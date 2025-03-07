@@ -16,10 +16,9 @@ java {
 }
 
 dependencies {
-    ksp(project(":processor"))
-    implementation(project(":processor-annotations"))
-    implementation(project(":identity"))
-    implementation(project(":identity-flow"))
+    ksp(project(":multipaz-cbor-rpc"))
+    implementation(project(":multipaz-cbor-rpc-annotations"))
+    implementation(project(":multipaz"))
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)

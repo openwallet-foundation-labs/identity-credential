@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.simple_verifier
+package org.multipaz.simple_verifier
 
 class MdocReaderSettings private constructor(
     private val mRequestedAge: AgeVerificationType,

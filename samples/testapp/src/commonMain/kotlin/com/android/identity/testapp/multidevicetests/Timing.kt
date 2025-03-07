@@ -1,4 +1,4 @@
-package com.android.identity.testapp.multidevicetests
+package org.multipaz.testapp.multidevicetests
 
 data class Timing(
     val min: Int = 0,

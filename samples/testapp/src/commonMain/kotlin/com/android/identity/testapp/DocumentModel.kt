@@ -1,13 +1,13 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import androidx.compose.runtime.mutableStateMapOf
-import com.android.identity.credential.SecureAreaBoundCredential
-import com.android.identity.document.Document
-import com.android.identity.document.DocumentAdded
-import com.android.identity.document.DocumentDeleted
-import com.android.identity.document.DocumentStore
-import com.android.identity.document.DocumentUpdated
-import com.android.identity.util.Logger
+import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.document.Document
+import org.multipaz.document.DocumentAdded
+import org.multipaz.document.DocumentDeleted
+import org.multipaz.document.DocumentStore
+import org.multipaz.document.DocumentUpdated
+import org.multipaz.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach

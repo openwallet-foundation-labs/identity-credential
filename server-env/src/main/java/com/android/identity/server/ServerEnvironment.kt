@@ -1,13 +1,13 @@
-package com.android.identity.server
+package org.multipaz.server
 
-import com.android.identity.flow.handler.FlowNotifications
-import com.android.identity.flow.server.Configuration
-import com.android.identity.flow.server.FlowEnvironment
-import com.android.identity.flow.server.Resources
-import com.android.identity.securearea.SecureAreaProvider
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.Storage
-import com.android.identity.storage.jdbc.JdbcStorage
+import org.multipaz.flow.handler.FlowNotifications
+import org.multipaz.flow.server.Configuration
+import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.flow.server.Resources
+import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.Storage
+import org.multipaz.storage.jdbc.JdbcStorage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
 import java.io.File

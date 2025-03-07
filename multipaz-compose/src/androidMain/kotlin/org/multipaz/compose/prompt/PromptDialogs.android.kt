@@ -1,8 +1,8 @@
 package org.multipaz.compose.prompt
 
 import androidx.compose.runtime.Composable
-import com.android.identity.prompt.AndroidPromptModel
-import com.android.identity.prompt.PromptModel
+import org.multipaz.prompt.AndroidPromptModel
+import org.multipaz.prompt.PromptModel
 
 @Composable
 actual fun PromptDialogs(promptModel: PromptModel) {

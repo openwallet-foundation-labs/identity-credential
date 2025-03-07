@@ -1,3 +1,3 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 actual val platformIsEmulator: Boolean = true

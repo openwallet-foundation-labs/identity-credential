@@ -1,8 +1,8 @@
 package com.android.mdl.appreader.util
 
 import android.content.Context
-import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.EcPrivateKey
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.EcPrivateKey
 import com.android.mdl.appreader.R
 import java.io.InputStream
 import java.nio.charset.StandardCharsets

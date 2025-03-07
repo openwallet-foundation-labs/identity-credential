@@ -1,4 +1,4 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -8,7 +8,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
-import com.android.identity.context.initializeApplication
+import org.multipaz.context.initializeApplication
 import org.multipaz.compose.AppTheme
 import org.multipaz.compose.presentment.Presentment
 import identitycredential.samples.testapp.generated.resources.Res

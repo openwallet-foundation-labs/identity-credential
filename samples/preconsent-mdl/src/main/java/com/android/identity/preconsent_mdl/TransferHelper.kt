@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -25,19 +25,19 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.securearea.AndroidKeystoreSecureArea
-import com.android.identity.credential.CredentialLoader
-import com.android.identity.document.DocumentStore
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.EcPublicKey
-import com.android.identity.mdoc.credential.MdocCredential
-import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.storage.Storage
-import com.android.identity.storage.android.AndroidStorage
-import com.android.identity.util.Constants
-import com.android.identity.util.Logger
+import org.multipaz.securearea.AndroidKeystoreSecureArea
+import org.multipaz.credential.CredentialLoader
+import org.multipaz.document.DocumentStore
+import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.response.DeviceResponseGenerator
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.storage.Storage
+import org.multipaz.storage.android.AndroidStorage
+import org.multipaz.util.Constants
+import org.multipaz.util.Logger
 import kotlinx.datetime.Clock
 import java.io.File
 

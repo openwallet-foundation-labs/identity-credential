@@ -1,11 +1,11 @@
 package com.android.mdl.appreader.readercertgen
 
-import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.X509Cert
-import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaPublicKey
-import com.android.identity.crypto.javaX509Certificate
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.javaPrivateKey
+import org.multipaz.crypto.javaPublicKey
+import org.multipaz.crypto.javaX509Certificate
 import com.android.mdl.appreader.readercertgen.CertificateGenerator.generateCertificate
 import org.bouncycastle.asn1.x509.KeyUsage
 import org.bouncycastle.jce.provider.BouncyCastleProvider

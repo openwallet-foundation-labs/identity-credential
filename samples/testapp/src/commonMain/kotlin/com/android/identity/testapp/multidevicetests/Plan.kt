@@ -1,4 +1,4 @@
-package com.android.identity.testapp.multidevicetests
+package org.multipaz.testapp.multidevicetests
 
 enum class Plan(
     val description: String,

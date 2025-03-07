@@ -1,4 +1,4 @@
-package com.android.identity.age_verifier_mdl
+package org.multipaz.age_verifier_mdl
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -49,12 +49,12 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.identity.age_verifier_mdl.ui.theme.IdentityCredentialTheme
+import org.multipaz.age_verifier_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
-import com.android.identity.crypto.Algorithm
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.util.Logger
+import org.multipaz.crypto.Algorithm
+import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.mdoc.response.DeviceResponseParser
+import org.multipaz.util.Logger
 import java.lang.IllegalStateException
 
 class MainActivity : ComponentActivity() {

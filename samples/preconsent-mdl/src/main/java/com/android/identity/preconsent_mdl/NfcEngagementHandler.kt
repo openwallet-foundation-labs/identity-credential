@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
@@ -29,14 +29,14 @@ import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
 import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.crypto.Crypto
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
-import com.android.identity.crypto.EcCurve
-import com.android.identity.util.Logger
-import com.android.identity.util.UUID
+import org.multipaz.crypto.Crypto
+import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.crypto.EcCurve
+import org.multipaz.util.Logger
+import org.multipaz.util.UUID
 
 class NfcEngagementHandler : HostApduService() {
     companion object {

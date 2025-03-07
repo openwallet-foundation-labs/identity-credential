@@ -15,7 +15,7 @@ val projectVersionCode: Int by rootProject.extra
 val projectVersionName: String by rootProject.extra
 
 buildConfig {
-    packageName("com.android.identity.testapp")
+    packageName("org.multipaz.testapp")
     buildConfigField("VERSION", projectVersionName)
     useKotlinOutput { internalVisibility = false }
 }
@@ -72,7 +72,7 @@ kotlin {
                 implementation(libs.play.services.identity.credentials)
                 implementation(libs.androidx.credentials)
                 implementation(libs.androidx.credentials.registry.provider)
-                implementation(project(":identity-android"))
+                implementation(project(":multipaz-android-legacy"))
             }
         }
 
@@ -91,15 +91,12 @@ kotlin {
                 implementation(libs.jetbrains.lifecycle.viewmodel.compose)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.network)
-                implementation(projects.processorAnnotations)
+                implementation(projects.multipazCborRpcAnnotations)
 
-                implementation(project(":identity"))
-                implementation(project(":identity-mdoc"))
-                implementation(project(":identity-sdjwt"))
-                implementation(project(":identity-appsupport"))
-                implementation(project(":identity-doctypes"))
-                implementation(project(":identity-flow"))
-                implementation(project(":identity-issuance-api"))
+                implementation(project(":multipaz"))
+                implementation(project(":multipaz-models"))
+                implementation(project(":multipaz-doctypes"))
+                implementation(project(":multipaz-provisioning-api"))
                 implementation(project(":multipaz-compose"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)
@@ -114,14 +111,14 @@ kotlin {
 }
 
 android {
-    namespace = "com.android.identity.testapp"
+    namespace = "org.multipaz.testapp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
 
     defaultConfig {
-        applicationId = "com.android.identity.testapp"
+        applicationId = "org.multipaz.testapp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
@@ -158,7 +155,7 @@ android {
 }
 
 dependencies {
-    add("kspCommonMainMetadata", project(":processor"))
+    add("kspCommonMainMetadata", project(":multipaz-cbor-rpc"))
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {

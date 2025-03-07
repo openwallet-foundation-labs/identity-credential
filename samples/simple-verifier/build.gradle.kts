@@ -13,11 +13,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.android.identity.simple_verifier"
+    namespace = "org.multipaz.simple_verifier"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.android.identity.simple_verifier"
+        applicationId = "org.multipaz.simple_verifier"
         minSdk = 29
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
@@ -50,9 +50,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":identity"))
-    implementation(project(":identity-mdoc"))
-    implementation(project(":identity-android"))
+    implementation(project(":multipaz"))
+    implementation(project(":multipaz-android-legacy"))
 
     implementation(libs.kotlinx.datetime)
 

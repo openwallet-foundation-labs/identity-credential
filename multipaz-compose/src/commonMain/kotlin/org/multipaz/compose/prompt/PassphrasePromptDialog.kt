@@ -5,8 +5,8 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
-import com.android.identity.prompt.PassphraseRequest
-import com.android.identity.prompt.SinglePromptModel
+import org.multipaz.prompt.PassphraseRequest
+import org.multipaz.prompt.SinglePromptModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch

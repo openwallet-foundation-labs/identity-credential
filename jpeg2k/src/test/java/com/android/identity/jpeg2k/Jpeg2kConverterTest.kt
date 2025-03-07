@@ -1,4 +1,4 @@
-package com.android.identity.jpeg2k
+package org.multipaz.jpeg2k
 
 import org.junit.Test
 

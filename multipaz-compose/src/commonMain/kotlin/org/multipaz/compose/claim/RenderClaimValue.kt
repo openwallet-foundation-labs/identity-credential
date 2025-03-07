@@ -11,11 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.android.identity.claim.Claim
-import com.android.identity.claim.MdocClaim
-import com.android.identity.claim.VcClaim
-import com.android.identity.documenttype.DocumentAttributeType
-import com.android.identity.util.fromBase64Url
+import org.multipaz.claim.Claim
+import org.multipaz.claim.MdocClaim
+import org.multipaz.claim.VcClaim
+import org.multipaz.documenttype.DocumentAttributeType
+import org.multipaz.util.fromBase64Url
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.compose.decodeImage

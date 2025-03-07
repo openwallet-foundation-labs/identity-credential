@@ -13,11 +13,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.android.identity.age_verifier_mdl"
+    namespace = "org.multipaz.age_verifier_mdl"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.android.identity.age_verifier_mdl"
+        applicationId = "org.multipaz.age_verifier_mdl"
         minSdk = 28
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
@@ -50,9 +50,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":identity"))
-    implementation(project(":identity-mdoc"))
-    implementation(project(":identity-android"))
+    implementation(project(":multipaz"))
+    implementation(project(":multipaz-android-legacy"))
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.io.core)

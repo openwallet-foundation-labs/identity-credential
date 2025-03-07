@@ -41,12 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.android.identity.appsupport.ui.consent.ConsentDocument
+import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.compose.getOutlinedImageVector
-import com.android.identity.request.MdocRequestedClaim
-import com.android.identity.request.Request
-import com.android.identity.request.RequestedClaim
-import com.android.identity.trustmanagement.TrustPoint
+import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.request.Request
+import org.multipaz.request.RequestedClaim
+import org.multipaz.trustmanagement.TrustPoint
 import identitycredential.multipaz_compose.generated.resources.Res
 import identitycredential.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_cancel
 import identitycredential.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_more

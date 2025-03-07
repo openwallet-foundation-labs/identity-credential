@@ -1,4 +1,4 @@
-package com.android.identity.testapp.multidevicetests
+package org.multipaz.testapp.multidevicetests
 
 enum class Test(val description: String) {
     // holder terminates by including status 0x20 in same message as DeviceResponse

@@ -1,9 +1,9 @@
-package com.android.identity.server
+package org.multipaz.server
 
-import com.android.identity.flow.handler.FlowNotifications
-import com.android.identity.flow.handler.InvalidRequestException
-import com.android.identity.flow.server.FlowEnvironment
-import com.android.identity.util.Logger
+import org.multipaz.flow.handler.FlowNotifications
+import org.multipaz.flow.handler.InvalidRequestException
+import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.util.Logger
 import jakarta.servlet.ServletConfig
 import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest

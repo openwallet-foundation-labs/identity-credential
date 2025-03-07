@@ -1,13 +1,13 @@
-package com.android.identity.testapp
+package org.multipaz.testapp
 
-import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborArray
-import com.android.identity.cbor.Tstr
-import com.android.identity.cbor.toDataItem
-import com.android.identity.crypto.EcCurve
-import com.android.identity.storage.Storage
-import com.android.identity.storage.StorageTable
-import com.android.identity.storage.StorageTableSpec
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborArray
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.toDataItem
+import org.multipaz.crypto.EcCurve
+import org.multipaz.storage.Storage
+import org.multipaz.storage.StorageTable
+import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +19,7 @@ import kotlin.Boolean
 /**
  * A model for settings for samples/testapp.
  *
- * TODO: Port [com.android.identity.testapp.ui.ProvisioningTestScreen] to use this.
+ * TODO: Port [org.multipaz.testapp.ui.ProvisioningTestScreen] to use this.
  */
 class TestAppSettingsModel private constructor(
     private val readOnly: Boolean

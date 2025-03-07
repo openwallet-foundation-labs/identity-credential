@@ -38,7 +38,7 @@ import androidx.compose.material.icons.outlined.Stars
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.android.identity.documenttype.Icon
+import org.multipaz.documenttype.Icon
 
 /**
  * Extension function to get an [ImageVector] for an icon.

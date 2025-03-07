@@ -1,4 +1,4 @@
-package com.android.identity.age_verifier_mdl
+package org.multipaz.age_verifier_mdl
 
 import org.junit.Test
 

@@ -1,7 +1,7 @@
-package com.android.identity.preconsent_mdl
+package org.multipaz.preconsent_mdl
 
 import android.app.Application
-import com.android.identity.util.Logger
+import org.multipaz.util.Logger
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 

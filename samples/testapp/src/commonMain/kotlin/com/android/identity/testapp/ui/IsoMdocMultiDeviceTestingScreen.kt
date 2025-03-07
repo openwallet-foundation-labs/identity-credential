@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,12 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.android.identity.testapp.getLocalIpAddress
-import com.android.identity.testapp.multidevicetests.MultiDeviceTestsClient
-import com.android.identity.testapp.multidevicetests.MultiDeviceTestsServer
-import com.android.identity.testapp.multidevicetests.Plan
-import com.android.identity.testapp.multidevicetests.Results
-import com.android.identity.util.Logger
+import org.multipaz.testapp.getLocalIpAddress
+import org.multipaz.testapp.multidevicetests.MultiDeviceTestsClient
+import org.multipaz.testapp.multidevicetests.MultiDeviceTestsServer
+import org.multipaz.testapp.multidevicetests.Plan
+import org.multipaz.testapp.multidevicetests.Results
+import org.multipaz.util.Logger
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.Socket

@@ -7,8 +7,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import com.android.identity.datetime.FormatStyle
-import com.android.identity.datetime.formatLocalized
+import org.multipaz.datetime.FormatStyle
+import org.multipaz.datetime.formatLocalized
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
