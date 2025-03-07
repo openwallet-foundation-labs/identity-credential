@@ -10,7 +10,7 @@ class KeyBindingHeader(val algorithm: Algorithm): JwtJsonObject()  {
 
     override fun buildJson(): JsonObjectBuilder.() -> Unit = {
         put("typ", JsonPrimitive(KEY_BINDING_JWT_TYPE))
-        put("alg", JsonPrimitive(algorithm.jwseAlgorithmIdentifier))
+        put("alg", JsonPrimitive(algorithm.joseAlgorithmIdentifier!!))
     }
 
     companion object {
@@ -24,7 +24,7 @@ class KeyBindingHeader(val algorithm: Algorithm): JwtJsonObject()  {
                 throw IllegalStateException("typ field had illegal value $typ")
             }
             val algorithm = jsonObj.getString("alg")
-            return KeyBindingHeader(Algorithm.fromJwseAlgorithmIdentifier(algorithm))
+            return KeyBindingHeader(Algorithm.fromJoseAlgorithmIdentifier(algorithm))
         }
     }
 }

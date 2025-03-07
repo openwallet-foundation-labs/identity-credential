@@ -1,8 +1,6 @@
 package org.multipaz.securearea.config
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.crypto.EcCurve
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 
 /**
@@ -10,10 +8,8 @@ import org.multipaz.securearea.SecureArea
  */
 @CborSerializable
 sealed class SecureAreaConfiguration(
-    /** The value is a number encoded like in [KeyPurpose.encodeSet] */
-    val purposes: Long,
-    /** The value is a number encoded like [EcCurve.coseCurveIdentifier] */
-    val curve: Int
+    /** The value is a string encoded like [Algorithm.name] */
+    val algorithm: String,
 ) {
     companion object
 }

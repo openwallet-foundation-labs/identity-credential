@@ -16,7 +16,6 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.X509KeyUsage
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
@@ -173,67 +172,59 @@ class CloudSecureAreaTest {
 
         val validFrom = Instant.parse("2025-02-05T23:36:10Z")
         val validUntil = validFrom + 30.days
-        for ((keyPurposes, expectedKeyUsage) in listOf(
-            Pair(
-                setOf(KeyPurpose.SIGN),
+        for (algorithm in csa.supportedAlgorithms) {
+            val expectedKeyUsage = if (algorithm.isSigning) {
                 setOf(X509KeyUsage.DIGITAL_SIGNATURE)
-            ),
-            Pair(
-                setOf(KeyPurpose.AGREE_KEY),
+            } else {
                 setOf(X509KeyUsage.KEY_AGREEMENT)
-            ),
-            Pair(
-                setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY),
-                setOf(X509KeyUsage.DIGITAL_SIGNATURE, X509KeyUsage.KEY_AGREEMENT)
-            ),
-        )) {
-            val challenge = byteArrayOf(1, 2, 3)
+            }
+            val challenge = ByteString(1, 2, 3)
             val tests = mapOf<CloudCreateKeySettings, CloudAttestationExtension>(
                 CloudCreateKeySettings.Builder(challenge)
-                    .setKeyPurposes(keyPurposes)
+                    .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .build() to
                         CloudAttestationExtension(
-                            challenge = ByteString(challenge),
+                            challenge = challenge,
                             passphrase = false,
                             userAuthentication = setOf()
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
-                    .setKeyPurposes(keyPurposes)
+                    .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .setPassphraseRequired(true)
                     .build() to
                         CloudAttestationExtension(
-                            challenge = ByteString(challenge),
+                            challenge = challenge,
                             passphrase = true,
                             userAuthentication = setOf()
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
-                    .setKeyPurposes(keyPurposes)
+                    .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .setUserAuthenticationRequired(true, setOf(CloudUserAuthType.PASSCODE))
                     .build() to
                         CloudAttestationExtension(
-                            challenge = ByteString(challenge),
+                            challenge = challenge,
                             passphrase = false,
                             userAuthentication = setOf(CloudUserAuthType.PASSCODE)
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
-                    .setKeyPurposes(keyPurposes)
+                    .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .setUserAuthenticationRequired(true, setOf(CloudUserAuthType.BIOMETRIC))
                     .build() to
                         CloudAttestationExtension(
-                            challenge = ByteString(challenge),
+                            challenge = challenge,
                             passphrase = false,
                             userAuthentication = setOf(CloudUserAuthType.BIOMETRIC)
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
-                    .setKeyPurposes(keyPurposes)
+                    .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .setUserAuthenticationRequired(
                         true, setOf(
@@ -242,7 +233,7 @@ class CloudSecureAreaTest {
                     )
                     .build() to
                         CloudAttestationExtension(
-                            challenge = ByteString(challenge),
+                            challenge = challenge,
                             passphrase = false,
                             userAuthentication = setOf(
                                 CloudUserAuthType.BIOMETRIC, CloudUserAuthType.PASSCODE
@@ -250,7 +241,7 @@ class CloudSecureAreaTest {
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
-                    .setKeyPurposes(keyPurposes)
+                    .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .setPassphraseRequired(true)
                     .setUserAuthenticationRequired(
@@ -260,7 +251,7 @@ class CloudSecureAreaTest {
                     )
                     .build() to
                         CloudAttestationExtension(
-                            challenge = ByteString(challenge),
+                            challenge = challenge,
                             passphrase = true,
                             userAuthentication = setOf(
                                 CloudUserAuthType.BIOMETRIC, CloudUserAuthType.PASSCODE
@@ -296,7 +287,7 @@ class CloudSecureAreaTest {
         csa.register(
             "",
             PassphraseConstraints.NONE) { true }
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = CloudCreateKeySettings.Builder(challenge).build()
         csa.createKey("test", settings)
 
@@ -304,7 +295,7 @@ class CloudSecureAreaTest {
             csa.getKeyInfo("test").attestation.certChain!!.certificates[0]
                 .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
         ))
-        Assert.assertEquals(ByteString(challenge), attestation.challenge)
+        Assert.assertEquals(challenge, attestation.challenge)
     }
 
     @Test
@@ -317,12 +308,12 @@ class CloudSecureAreaTest {
         csa.register(
             "",
             PassphraseConstraints.NONE) { true }
-        val settings = CloudCreateKeySettings.Builder(byteArrayOf(1, 2, 3)).build()
+        val settings = CloudCreateKeySettings.Builder(ByteString(1, 2, 3)).build()
         csa.createKey("testKey", settings)
         val keyInfo = csa.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
         Assert.assertEquals(setOf<Any>(), keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.validFrom)
@@ -351,14 +342,14 @@ class CloudSecureAreaTest {
             "",
             PassphraseConstraints.NONE) { true }
         val otherKeyPair = Crypto.createEcPrivateKey(EcCurve.P256)
-        val settings = CloudCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
-            .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
+        val settings = CloudCreateKeySettings.Builder(ByteString(1, 2, 3))
+            .setAlgorithm(Algorithm.ECDH_P256)
             .build()
         csa.createKey("testKey", settings)
         val keyInfo = csa.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ECDH_P256, keyInfo.algorithm)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
         Assert.assertEquals(setOf<Any>(), keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.validFrom)
@@ -446,24 +437,25 @@ class CloudSecureAreaTest {
             EphemeralStorage().getTable(tableSpec),
             null
         )
+        val challenge = ByteString(4, 5, 6)
         csa.initialize()
         csa.register(
             "",
             PassphraseConstraints.NONE) { true }
         csa.createKey(
             "testKey",
-             CreateKeySettings()
+             CreateKeySettings(Algorithm.ESP256, challenge)
         )
         val keyInfo = csa.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
 
         // Check that the challenge is empty.
         val attestation = CloudAttestationExtension.decode(ByteString(
             csa.getKeyInfo("testKey").attestation.certChain!!.certificates[0]
                 .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
         ))
-        Assert.assertEquals(ByteString(byteArrayOf()), attestation.challenge)
+        Assert.assertEquals(challenge, attestation.challenge)
 
         // Now delete it...
         csa.deleteKey("testKey")
@@ -472,6 +464,7 @@ class CloudSecureAreaTest {
     @Test
     fun testWrongPassphraseDelay_signing() = runTest {
         testWrongPassphraseDelayHelper(
+            algorithm = Algorithm.ESP256,
             useKey = { alias, csa, unlockData ->
                 csa.sign(alias, byteArrayOf(1, 2, 3), unlockData)
         })
@@ -482,12 +475,14 @@ class CloudSecureAreaTest {
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
         testWrongPassphraseDelayHelper(
+            algorithm = Algorithm.ECDH_P256,
             useKey = { alias, csa, unlockData ->
                 csa.keyAgreement(alias, otherKey.publicKey, unlockData)
         })
     }
 
     suspend fun testWrongPassphraseDelayHelper(
+        algorithm: Algorithm,
         useKey: suspend (alias: String,
                  csa: CloudSecureArea,
                  unlockData: CloudKeyUnlockData?) -> Unit
@@ -504,22 +499,22 @@ class CloudSecureAreaTest {
         ) { true }
 
         csa.createKey("testKey1",
-            CloudCreateKeySettings.Builder(byteArrayOf())
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+            CloudCreateKeySettings.Builder(ByteString())
+                .setAlgorithm(algorithm)
                 .setPassphraseRequired(true)
                 .build()
         )
 
         csa.createKey("testKey2",
-            CloudCreateKeySettings.Builder(byteArrayOf())
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+            CloudCreateKeySettings.Builder(ByteString())
+                .setAlgorithm(algorithm)
                 .setPassphraseRequired(true)
                 .build()
         )
 
         csa.createKey("testKey3NoPassphrase",
-            CloudCreateKeySettings.Builder(byteArrayOf())
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+            CloudCreateKeySettings.Builder(ByteString())
+                .setAlgorithm(algorithm)
                 .build()
         )
 
@@ -614,8 +609,8 @@ class CloudSecureAreaTest {
             PassphraseConstraints.PIN_FOUR_DIGITS,
         ) { true }
         csa2.createKey("client2_testKey1",
-            CloudCreateKeySettings.Builder(byteArrayOf())
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+            CloudCreateKeySettings.Builder(ByteString())
+                .setAlgorithm(algorithm)
                 .setPassphraseRequired(true)
                 .build()
         )

@@ -131,7 +131,7 @@ fun SettingsScreen(
         item {
             SettingMultipleChoice(
                 title = "Session Encryption Curve",
-                choices = EcCurve.entries.map { it.name },  // TODO: only include curves that can do key agreement
+                choices = EcCurve.entries.mapNotNull { if (it.supportsKeyAgreement) it.name else null },
                 initialChoice = app.settingsModel.presentmentSessionEncryptionCurve.value.toString(),
                 onChoiceSelected = { choice ->
                     app.settingsModel.presentmentSessionEncryptionCurve.value = EcCurve.entries.find { it.name == choice }!!

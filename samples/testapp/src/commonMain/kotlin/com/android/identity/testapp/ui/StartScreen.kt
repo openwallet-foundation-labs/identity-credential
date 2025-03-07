@@ -38,6 +38,7 @@ import multipazproject.samples.testapp.generated.resources.secure_enclave_secure
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 
@@ -71,10 +72,10 @@ fun StartScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier.padding(8.dp)
         ) {
-            item {
+            Column {
                 if (documentModel.documentInfos.isEmpty()) {
                     WarningCard(
                         modifier = Modifier.clickable() {
@@ -84,6 +85,13 @@ fun StartScreen(
                         Text("Document Store is empty so proximity and W3C DC presentment won't work. Click to fix.")
                     }
                 } else {
+                    val numDocs = documentModel.documentInfos.size
+                    InfoCard {
+                        Text("Document Store has $numDocs documents. For proximity presentment, use NFC or QR. " +
+                                "For W3C DC API, go to a reader website in a supported browser.")
+                    }
+                }
+                if (!documentModel.documentInfos.isEmpty()) {
                     if (!blePermissionState.isGranted) {
                         WarningCard(
                             modifier = Modifier.clickable() {
@@ -97,120 +105,122 @@ fun StartScreen(
                     }
                 }
             }
-            item {
-                TextButton(onClick = onClickAbout) {
-                    Text(stringResource(Res.string.about_screen_title))
+            LazyColumn {
+                item {
+                    TextButton(onClick = onClickAbout) {
+                        Text(stringResource(Res.string.about_screen_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickDocumentStore) {
-                    Text(stringResource(Res.string.document_store_screen_title))
+                item {
+                    TextButton(onClick = onClickDocumentStore) {
+                        Text(stringResource(Res.string.document_store_screen_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickSoftwareSecureArea) {
-                    Text(stringResource(Res.string.software_secure_area_screen_title))
+                item {
+                    TextButton(onClick = onClickSoftwareSecureArea) {
+                        Text(stringResource(Res.string.software_secure_area_screen_title))
+                    }
                 }
-            }
 
-            when (platform) {
-                Platform.ANDROID -> {
-                    item {
-                        TextButton(onClick = onClickAndroidKeystoreSecureArea) {
-                            Text(stringResource(Res.string.android_keystore_secure_area_screen_title))
+                when (platform) {
+                    Platform.ANDROID -> {
+                        item {
+                            TextButton(onClick = onClickAndroidKeystoreSecureArea) {
+                                Text(stringResource(Res.string.android_keystore_secure_area_screen_title))
+                            }
+                        }
+                    }
+
+                    Platform.IOS -> {
+                        item {
+                            TextButton(onClick = onClickSecureEnclaveSecureArea) {
+                                Text(stringResource(Res.string.secure_enclave_secure_area_screen_title))
+                            }
                         }
                     }
                 }
 
-                Platform.IOS -> {
-                    item {
-                        TextButton(onClick = onClickSecureEnclaveSecureArea) {
-                            Text(stringResource(Res.string.secure_enclave_secure_area_screen_title))
-                        }
+                item {
+                    TextButton(onClick = onClickCloudSecureArea) {
+                        Text(stringResource(Res.string.cloud_secure_area_screen_title))
                     }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickCloudSecureArea) {
-                    Text(stringResource(Res.string.cloud_secure_area_screen_title))
+                item {
+                    TextButton(onClick = onClickPassphraseEntryField) {
+                        Text(stringResource(Res.string.passphrase_entry_field_screen_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickPassphraseEntryField) {
-                    Text(stringResource(Res.string.passphrase_entry_field_screen_title))
+                item {
+                    TextButton(onClick = onClickPassphrasePrompt) {
+                        Text(stringResource(Res.string.passphrase_prompt_screen_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickPassphrasePrompt) {
-                    Text(stringResource(Res.string.passphrase_prompt_screen_title))
+                item {
+                    TextButton(onClick = onClickIssuanceTestField) {
+                        Text(stringResource(Res.string.provisioning_test_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickIssuanceTestField) {
-                    Text(stringResource(Res.string.provisioning_test_title))
+                item {
+                    TextButton(onClick = onClickConsentSheetList) {
+                        Text(stringResource(Res.string.consent_modal_bottom_sheet_list_screen_title))
+                    }
                 }
-            }
+                item {
+                    TextButton(onClick = onClickQrCodes) {
+                        Text(stringResource(Res.string.qr_codes_screen_title))
+                    }
+                }
+                item {
+                    TextButton(onClick = onClickNfc) {
+                        Text(stringResource(Res.string.nfc_screen_title))
+                    }
+                }
+                item {
+                    TextButton(onClick = onClickIsoMdocProximitySharing) {
+                        Text(stringResource(Res.string.iso_mdoc_proximity_sharing_title))
+                    }
+                }
 
-            item {
-                TextButton(onClick = onClickConsentSheetList) {
-                    Text(stringResource(Res.string.consent_modal_bottom_sheet_list_screen_title))
+                item {
+                    TextButton(onClick = onClickIsoMdocProximityReading) {
+                        Text(stringResource(Res.string.iso_mdoc_proximity_reading_title))
+                    }
                 }
-            }
-            item {
-                TextButton(onClick = onClickQrCodes) {
-                    Text(stringResource(Res.string.qr_codes_screen_title))
-                }
-            }
-            item {
-                TextButton(onClick = onClickNfc) {
-                    Text(stringResource(Res.string.nfc_screen_title))
-                }
-            }
-            item {
-                TextButton(onClick = onClickIsoMdocProximitySharing) {
-                    Text(stringResource(Res.string.iso_mdoc_proximity_sharing_title))
-                }
-            }
 
-            item {
-                TextButton(onClick = onClickIsoMdocProximityReading) {
-                    Text(stringResource(Res.string.iso_mdoc_proximity_reading_title))
+                item {
+                    TextButton(onClick = onClickMdocTransportMultiDeviceTesting) {
+                        Text(stringResource(Res.string.iso_mdoc_multi_device_testing_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickMdocTransportMultiDeviceTesting) {
-                    Text(stringResource(Res.string.iso_mdoc_multi_device_testing_title))
+                item {
+                    TextButton(onClick = onClickCertificatesViewerExamples) {
+                        Text(stringResource(Res.string.certificate_viewer_examples_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickCertificatesViewerExamples) {
-                    Text(stringResource(Res.string.certificate_viewer_examples_title))
+                item {
+                    TextButton(onClick = onClickRichText) {
+                        Text(stringResource(Res.string.rich_text_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickRichText) {
-                    Text(stringResource(Res.string.rich_text_title))
+                item {
+                    TextButton(onClick = onClickNotifications) {
+                        Text(stringResource(Res.string.notifications_title))
+                    }
                 }
-            }
 
-            item {
-                TextButton(onClick = onClickNotifications) {
-                    Text(stringResource(Res.string.notifications_title))
-                }
-            }
-
-            item {
-                TextButton(onClick = onClickScreenLock) {
-                    Text(stringResource(Res.string.screen_lock_title))
+                item {
+                    TextButton(onClick = onClickScreenLock) {
+                        Text(stringResource(Res.string.screen_lock_title))
+                    }
                 }
             }
         }

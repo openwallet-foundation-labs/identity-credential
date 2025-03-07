@@ -15,7 +15,6 @@ import org.multipaz.sdjwt.SdJwtVerifiableCredential.AttributeNotDisclosedExcepti
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.presentation.SdJwtVerifiablePresentation
 import org.multipaz.sdjwt.util.JsonWebKey
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -81,9 +80,7 @@ class SdJwtVcTest {
             "domain",
             secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!,
             "IdentityCredential",
-            SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build()
+            SoftwareCreateKeySettings.Builder().build()
         )
 
         // at the issuer, start creating the credential...
@@ -123,7 +120,7 @@ class SdJwtVcTest {
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random(42),
             payload = identityAttributes,
-            issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
+            issuer = Issuer("https://example-issuer.com", Algorithm.ESP256, "key-1")
         )
 
         sdJwtVcGenerator.publicKey = JsonWebKey(credential.getAttestation().publicKey)

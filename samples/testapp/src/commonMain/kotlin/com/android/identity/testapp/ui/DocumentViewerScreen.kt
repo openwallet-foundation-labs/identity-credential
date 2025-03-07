@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -83,20 +84,38 @@ fun DocumentViewerScreen(
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium
                 )
+                val domains = mutableSetOf<String>()
                 for (credentialInfo in documentInfo.credentialInfos) {
-                    KeyValuePairText(
-                        modifier = Modifier
-                            .padding(start = 16.dp)
-                            .clickable {
-                                onViewCredential(documentInfo.document.identifier, credentialInfo.credential.identifier)
-                            },
-                        keyText = credentialInfo.credential::class.simpleName.toString(),
-                        valueText = buildAnnotatedString {
-                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
-                                append("Click for details")
-                            }
-                        }
+                    domains.add(credentialInfo.credential.domain)
+                }
+                for (domain in domains.sorted()) {
+                    Text(
+                        modifier = Modifier.padding(start = 16.dp),
+                        text = "$domain domain",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic
                     )
+                    for (credentialInfo in documentInfo.credentialInfos) {
+                        if (credentialInfo.credential.domain != domain) {
+                            continue
+                        }
+                        KeyValuePairText(
+                            modifier = Modifier
+                                .padding(start = 24.dp)
+                                .clickable {
+                                    onViewCredential(
+                                        documentInfo.document.identifier,
+                                        credentialInfo.credential.identifier
+                                    )
+                                },
+                            keyText = credentialInfo.credential::class.simpleName.toString(),
+                            valueText = buildAnnotatedString {
+                                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
+                                    append("Usage count ${credentialInfo.credential.usageCount}. Click for details")
+                                }
+                            }
+                        )
+                    }
                 }
             }
 

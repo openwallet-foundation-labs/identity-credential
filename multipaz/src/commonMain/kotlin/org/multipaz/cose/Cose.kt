@@ -160,9 +160,12 @@ object Cose {
     /**
      * Creates a COSE_Sign1 signature.
      *
-     * By default, no headers are added. Applications likely want to include [Cose.COSE_LABEL_ALG]
-     * in the protected header and if certification is needed, [Cose.COSE_LABEL_X5CHAIN] in
-     * either the unprotected or protected header.
+     * By default, the [Cose.COSE_LABEL_ALG] header is included in the protected header with the non-fully-defined
+     * [Algorithm] set of the key. For example for a key with [Algorithm.ESP256], the value [Algorithm.ES256]
+     * is included. If [protectedHeaders] already contain [Cose.COSE_LABEL_ALG] it will not be replaced.
+     *
+     * The app can include additional headers, for example if certification is needed, [Cose.COSE_LABEL_X5CHAIN]
+     * can be included in either the unprotected or protected header.
      *
      * This function signs with a key in a Secure Area, for signing with a software-based
      * [EcPrivateKey], see the other function with the same name but taking a [EcPrivateKey]
@@ -187,9 +190,21 @@ object Cose {
     ): CoseSign1 {
         val adjustedProtectedHeaders = mutableMapOf<CoseLabel, DataItem>()
         adjustedProtectedHeaders.putAll(protectedHeaders)
-        val keyInfo = secureArea.getKeyInfo(alias)
-        adjustedProtectedHeaders[CoseNumberLabel(COSE_LABEL_ALG)] =
-            keyInfo.signingAlgorithm.coseAlgorithmIdentifier.toDataItem()
+
+        // This is important - our key likely has a fully defined algorithm (e.g. ESP256) but
+        // it's likely the receiver doesn't understand this. So downgrade to a non-fully-defined
+        // algorithm via EcCurve.defaultSigningAlgorithm (e.g. ES256) unless the caller already
+        // explicitly set the algorithm.
+        //
+        if (!protectedHeaders.containsKey(CoseNumberLabel(COSE_LABEL_ALG))) {
+            val keyInfo = secureArea.getKeyInfo(alias)
+            val signingAlgorithmToConvey = keyInfo.algorithm.curve!!.defaultSigningAlgorithm
+            check(signingAlgorithmToConvey.coseAlgorithmIdentifier != null) {
+                "Key algorithm doesn't have a COSE identifier"
+            }
+            adjustedProtectedHeaders[CoseNumberLabel(COSE_LABEL_ALG)] =
+                signingAlgorithmToConvey.coseAlgorithmIdentifier.toDataItem()
+        }
 
         val phb = CborMap.builder()
         adjustedProtectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }

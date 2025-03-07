@@ -32,7 +32,6 @@ import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
-import kotlin.Boolean
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -59,11 +58,11 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                 .add(serverSecureAreaBoundKey)
                 .add(attestationKey.toCoseKey().toDataItem())
                 .add(attestationKeyCertificates.toDataItem())
-                .add(attestationKeySignatureAlgorithm.coseAlgorithmIdentifier)
+                .add(attestationKeySignatureAlgorithm.coseAlgorithmIdentifier!!)
                 .add(attestationKeyIssuer)
                 .add(cloudBindingKey.toCoseKey().toDataItem())
                 .add(cloudBindingKeyCertificates.toDataItem())
-                .add(cloudBindingKeySignatureAlgorithm.coseAlgorithmIdentifier)
+                .add(cloudBindingKeySignatureAlgorithm.coseAlgorithmIdentifier!!)
                 .add(cloudBindingKeyIssuer)
                 .end().build()
         )
@@ -75,11 +74,11 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                     array[0].asBstr,
                     array[1].asCoseKey.ecPrivateKey,
                     array[2].asX509CertChain,
-                    Algorithm.fromInt(array[3].asNumber.toInt()),
+                    Algorithm.fromCoseAlgorithmIdentifier(array[3].asNumber.toInt()),
                     array[4].asTstr,
                     array[5].asCoseKey.ecPrivateKey,
                     array[6].asX509CertChain,
-                    Algorithm.fromInt(array[7].asNumber.toInt()),
+                    Algorithm.fromCoseAlgorithmIdentifier(array[7].asNumber.toInt()),
                     array[8].asTstr,
                 )
             }

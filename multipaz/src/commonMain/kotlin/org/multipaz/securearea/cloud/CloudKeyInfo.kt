@@ -3,7 +3,6 @@ package org.multipaz.securearea.cloud
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.KeyInfo
-import org.multipaz.securearea.KeyPurpose
 import kotlinx.datetime.Instant
 
 /**
@@ -12,8 +11,7 @@ import kotlinx.datetime.Instant
 class CloudKeyInfo internal constructor(
     alias: String,
     attestation: KeyAttestation,
-    keyPurposes: Set<KeyPurpose>,
-    signingAlgorithm: Algorithm,
+    algorithm: Algorithm,
 
     /**
      * Whether user authentication is required to use the key.
@@ -39,5 +37,5 @@ class CloudKeyInfo internal constructor(
      * Whether the key is passphrase protected.
      */
     val isPassphraseRequired: Boolean,
-) : KeyInfo(alias, attestation.publicKey, keyPurposes, signingAlgorithm, attestation)
+) : KeyInfo(alias, algorithm, attestation.publicKey, attestation)
 

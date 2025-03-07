@@ -4,7 +4,6 @@ import org.multipaz.models.ui.presentment.PresentmentSource
 import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
@@ -14,6 +13,7 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustPoint
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
 
 class TestAppPresentmentSource(
     val app: App
@@ -33,15 +33,23 @@ class TestAppPresentmentSource(
         }
     }
 
-    override suspend fun selectCredentialForPresentment(
+    override suspend fun getDocumentsMatchingRequest(
         request: Request,
-        preSelectedDocument: Document?
-    ): List<Credential> {
-        when (request) {
-            is MdocRequest -> return mdocFindCredentialsForRequest(app, request, preSelectedDocument)
-            is VcRequest -> return sdjwtFindCredentialsForRequest(app, request, preSelectedDocument)
+    ): List<Document> {
+        return when (request) {
+            is MdocRequest -> mdocFindDocumentsForRequest(app, request)
+            is VcRequest -> sdjwtFindDocumentsForRequest(app, request)
         }
+    }
 
+    override suspend fun getCredentialForPresentment(
+        request: Request,
+        document: Document
+    ): CredentialForPresentment {
+        return when (request) {
+            is MdocRequest -> mdocGetCredentialsForPresentment(app, request, document)
+            is VcRequest -> sdjwtGetCredentialsForPresentment(app, request, document)
+        }
     }
 
     override fun shouldShowConsentPrompt(
@@ -52,88 +60,91 @@ class TestAppPresentmentSource(
     }
 
     override fun shouldPreferSignatureToKeyAgreement(
-        credential: Credential,
+        document: Document,
         request: Request
     ): Boolean {
         return app.settingsModel.presentmentPreferSignatureToKeyAgreement.value
     }
 }
 
-private suspend fun mdocFindCredentialsForRequest(
+private suspend fun mdocFindDocumentsForRequest(
     app: App,
     request: MdocRequest,
-    preSelectedDocument: Document?
-): List<Credential> {
+): List<Document> {
     val now = Clock.System.now()
-    val result = mutableListOf<Credential>()
-
-    if (preSelectedDocument != null) {
-        val credential = mdocFindCredentialInDocument(app, request, now, preSelectedDocument)
-        if (credential != null) {
-            result.add(credential)
-            return result
-        }
-    }
+    val result = mutableListOf<Document>()
 
     for (documentName in app.documentStore.listDocuments()) {
         val document = app.documentStore.lookupDocument(documentName) ?: continue
-        val credential = mdocFindCredentialInDocument(app, request, now, document)
-        if (credential != null) {
-            result.add(credential)
+        if (mdocDocumentMatchesRequest(request, document)) {
+            result.add(document)
         }
     }
     return result
 }
 
-private suspend fun mdocFindCredentialInDocument(
-    app: App,
+private suspend fun mdocDocumentMatchesRequest(
     request: MdocRequest,
-    now: Instant,
     document: Document,
-): Credential? {
-    val domain = if (app.settingsModel.presentmentRequireAuthentication.value) {
-        TestAppUtils.MDOC_CREDENTIAL_DOMAIN_AUTH
-    } else {
-        TestAppUtils.MDOC_CREDENTIAL_DOMAIN_NO_AUTH
-    }
+): Boolean {
     for (credential in document.getCertifiedCredentials()) {
         if (credential is MdocCredential && credential.docType == request.docType) {
-            val credentialCandidate = document.findCredential(
-                domain = domain,
-                now = now
-            )
-            if (credentialCandidate != null) {
-                return credentialCandidate
-            }
+            return true
         }
     }
-    return null
+    return false
 }
 
-private suspend fun sdjwtFindCredentialsForRequest(
+private suspend fun mdocGetCredentialsForPresentment(
+    app: App,
+    request: MdocRequest,
+    document: Document,
+): CredentialForPresentment {
+    val now = Clock.System.now()
+
+    val (signingDomain, keyAgreementDomain) = if (app.settingsModel.presentmentRequireAuthentication.value) {
+        Pair(TestAppUtils.CREDENTIAL_DOMAIN_MDOC_USER_AUTH, TestAppUtils.CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH)
+    } else {
+        Pair(TestAppUtils.CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH, TestAppUtils.CREDENTIAL_DOMAIN_MDOC_MAC_NO_USER_AUTH)
+    }
+    return CredentialForPresentment(
+        credential = document.findCredential(
+            domain = signingDomain,
+            now = now
+        ),
+        credentialKeyAgreement = document.findCredential(
+            domain = keyAgreementDomain,
+            now = now
+        )
+    )
+}
+
+private suspend fun sdjwtFindDocumentsForRequest(
     app: App,
     request: VcRequest,
-    preSelectedDocument: Document?
-): List<Credential> {
+): List<Document> {
     val now = Clock.System.now()
-    val result = mutableListOf<Credential>()
-
-    if (preSelectedDocument != null) {
-        val credential = sdjwtFindCredentialInDocument(app, request, now, preSelectedDocument)
-        if (credential != null) {
-            result.add(credential)
-            return result
-        }
-    }
+    val result = mutableListOf<Document>()
 
     for (documentName in app.documentStore.listDocuments()) {
         val document = app.documentStore.lookupDocument(documentName) ?: continue
-        val credential = sdjwtFindCredentialInDocument(app, request, now, document)
-        if (credential != null) {
-            result.add(credential)
+        if (sdjwtDocumentMatchesRequest(request, document)) {
+            result.add(document)
         }
     }
     return result
+}
+
+private suspend fun sdjwtDocumentMatchesRequest(
+    request: VcRequest,
+    document: Document,
+): Boolean {
+    for (credential in document.getCertifiedCredentials()) {
+        if (credential is SdJwtVcCredential && credential.vct == request.vct) {
+            return true
+        }
+    }
+    return false
 }
 
 private suspend fun sdjwtFindCredentialInDocument(
@@ -143,12 +154,12 @@ private suspend fun sdjwtFindCredentialInDocument(
     document: Document,
 ): Credential? {
     val domain = if (document.getCertifiedCredentials().firstOrNull() is KeylessSdJwtVcCredential) {
-        TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_KEYLESS
+        TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_KEYLESS
     } else {
         if (app.settingsModel.presentmentRequireAuthentication.value) {
-            TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_AUTH
+            TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_USER_AUTH
         } else {
-            TestAppUtils.SDJWT_CREDENTIAL_DOMAIN_NO_AUTH
+            TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH
         }
     }
     for (credential in document.getCertifiedCredentials()) {
@@ -163,4 +174,34 @@ private suspend fun sdjwtFindCredentialInDocument(
         }
     }
     return null
+}
+
+private suspend fun sdjwtGetCredentialsForPresentment(
+    app: App,
+    request: VcRequest,
+    document: Document,
+): CredentialForPresentment {
+    val now = Clock.System.now()
+
+    if (document.getCertifiedCredentials().firstOrNull() is KeylessSdJwtVcCredential) {
+        return CredentialForPresentment(
+            credential = document.findCredential(
+                domain = TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_KEYLESS,
+                now = now
+            ),
+            credentialKeyAgreement = null
+        )
+    }
+    val domain = if (app.settingsModel.presentmentRequireAuthentication.value) {
+        TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_USER_AUTH
+    } else {
+        TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH
+    }
+    return CredentialForPresentment(
+        credential = document.findCredential(
+            domain = domain,
+            now = now
+        ),
+        credentialKeyAgreement = null
+    )
 }

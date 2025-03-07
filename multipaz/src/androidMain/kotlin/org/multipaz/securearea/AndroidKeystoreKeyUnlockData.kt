@@ -59,7 +59,7 @@ class AndroidKeystoreKeyUnlockData(
             } catch (e: InvalidKeySpecException) {
                 throw IllegalStateException("Given key is not an Android Keystore key", e)
             }
-            val signatureAlgorithm = secureArea.getKeyInfo(alias).signingAlgorithm
+            val signatureAlgorithm = secureArea.getKeyInfo(alias).algorithm
             signature = Signature.getInstance(
                 AndroidKeystoreSecureArea.getSignatureAlgorithmName(signatureAlgorithm)
             )

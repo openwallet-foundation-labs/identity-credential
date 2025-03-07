@@ -46,7 +46,7 @@ fun initiateOpenid4Vp(
 
     val header = buildJsonObject {
         put("typ", JsonPrimitive("oauth-authz-req+jwt"))
-        put("alg", JsonPrimitive(publicKey.curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier))
+        put("alg", JsonPrimitive(publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
         put("jwk", publicKey.toJson(null))
         put("x5c", buildJsonArray {
             for (cert in singleUseReaderKeyCertChain.certificates) {
@@ -78,7 +78,7 @@ private fun EcPublicKey.toJson(keyId: String?): JsonObject {
         if (keyId != null) {
             put("kid", JsonPrimitive(keyId))
         }
-        put("alg", JsonPrimitive(curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier))
+        put("alg", JsonPrimitive(curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
         put("use", JsonPrimitive("sig"))
     }
 }

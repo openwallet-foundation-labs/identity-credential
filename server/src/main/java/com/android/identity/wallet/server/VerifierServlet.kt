@@ -232,7 +232,7 @@ class VerifierServlet : BaseHttpServlet() {
             CborArray.builder()
                 .add(readerRootKey.toCoseKey().toDataItem())
                 .add(readerRootKeyCertificates.toDataItem())
-                .add(readerRootKeySignatureAlgorithm.coseAlgorithmIdentifier)
+                .add(readerRootKeySignatureAlgorithm.coseAlgorithmIdentifier!!)
                 .add(readerRootKeyIssuer)
                 .end().build()
         )
@@ -243,7 +243,7 @@ class VerifierServlet : BaseHttpServlet() {
                 return KeyMaterial(
                     array[0].asCoseKey.ecPrivateKey,
                     array[1].asX509CertChain,
-                    Algorithm.fromInt(array[2].asNumber.toInt()),
+                    Algorithm.fromCoseAlgorithmIdentifier(array[2].asNumber.toInt()),
                     array[3].asTstr,
                 )
             }
