@@ -5,6 +5,6 @@
       location = "group:samples/testapp/iosApp/TestApp.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:identity/SwiftBridge/SwiftBridge.xcodeproj">
+      location = "group:multipaz/SwiftBridge/SwiftBridge.xcodeproj">
    </FileRef>
 </Workspace>
