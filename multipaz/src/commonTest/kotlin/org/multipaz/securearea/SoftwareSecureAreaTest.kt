@@ -23,7 +23,6 @@ import org.multipaz.securearea.software.SoftwareKeyUnlockData
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
-import kotlin.enums.EnumEntries
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -393,6 +392,28 @@ class SoftwareSecureAreaTest {
 
             // ... finally, check that both sides compute the same shared secret.
             assertContentEquals(theirSharedSecret, ourSharedSecret)
+        }
+    }
+
+    @Test
+    fun testBatchCreateKey() = runTest {
+        val storage = EphemeralStorage()
+        val sa = SoftwareSecureArea.create(storage)
+        val batchCreateKeyResult = sa.batchCreateKey(10, CreateKeySettings(algorithm = Algorithm.ESP256))
+        assertEquals(batchCreateKeyResult.keyInfos.size, 10)
+        assertNull(batchCreateKeyResult.openid4vciKeyAttestation)
+        for (n in 0..9) {
+            val keyInfo = batchCreateKeyResult.keyInfos[n]
+            val dataToSign = byteArrayOf(4, 5, 6)
+            val signature = sa.sign(keyInfo.alias, dataToSign, null)
+            assertTrue(
+                Crypto.checkSignature(
+                    keyInfo.publicKey,
+                    dataToSign,
+                    keyInfo.algorithm,
+                    signature
+                )
+            )
         }
     }
 }

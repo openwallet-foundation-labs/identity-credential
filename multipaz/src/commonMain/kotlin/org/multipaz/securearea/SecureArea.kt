@@ -83,6 +83,29 @@ interface SecureArea {
     suspend fun createKey(alias: String?, createKeySettings: CreateKeySettings): KeyInfo
 
     /**
+     * Creates a batch of new keys.
+     *
+     * An [OpenID4VCI Key Attestation](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html#name-key-attestation-in-jwt-form)
+     * over all the keys may be returned. By default this doesn't happen but
+     * can be requested by specific implementations through specializations of the [CreateKeySettings] class.
+     *
+     * The default implementation just calls [createKey] in sequence without generating an OpenID4VCI attestation.
+     *
+     * @param numKeys number of keys to create.
+     * @param createKeySettings the settings for the keys to create.
+     */
+    suspend fun batchCreateKey(numKeys: Int, createKeySettings: CreateKeySettings): BatchCreateKeyResult {
+        val keyInfos = mutableListOf<KeyInfo>()
+        for (n in 1..numKeys) {
+            keyInfos.add(createKey(null, createKeySettings))
+        }
+        return BatchCreateKeyResult(
+            keyInfos = keyInfos,
+            openid4vciKeyAttestation = null
+        )
+    }
+
+    /**
      * Deletes a previously created key.
      *
      * If the key to delete doesn't exist, this is a no-op.
