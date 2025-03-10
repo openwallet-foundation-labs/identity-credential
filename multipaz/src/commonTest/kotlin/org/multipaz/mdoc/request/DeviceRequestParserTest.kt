@@ -151,7 +151,7 @@ class DeviceRequestParserTest {
         val readerCert = X509Cert.Builder(
             publicKey = readerKey.publicKey,
             signingKey = readerKey,
-            signatureAlgorithm = Algorithm.ES256,
+            signatureAlgorithm = curve.defaultSigningAlgorithm,
             serialNumber = ASN1Integer(1),
             subject = X500Name.fromName("CN=Test Key"),
             issuer = X500Name.fromName("CN=Test Key"),

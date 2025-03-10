@@ -84,7 +84,7 @@ class JsonWebEncryptionTests {
 
         // Build the Encrypted JWT with Nimbus
         val responseEncryptionAlg = JWEAlgorithm.parse("ECDH-ES")
-        val responseEncryptionMethod = EncryptionMethod.parse(encAlg.jwseAlgorithmIdentifier)
+        val responseEncryptionMethod = EncryptionMethod.parse(encAlg.joseAlgorithmIdentifier)
         val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
             .agreementPartyUInfo(Base64URL(apu.toByteArray().toBase64Url()))
             .agreementPartyUInfo(Base64URL(apv.toByteArray().toBase64Url()))

@@ -140,6 +140,8 @@ enum class EcCurve(
 
     /**
      * The default signing algorithm for the curve.
+     *
+     * For interoperability, a fully specified algorithm is never returned.
      */
     val defaultSigningAlgorithm: Algorithm
         get() = when (this) {
@@ -147,12 +149,30 @@ enum class EcCurve(
             P384 -> Algorithm.ES384
             P521 -> Algorithm.ES512
             BRAINPOOLP256R1 -> Algorithm.ES256
-            BRAINPOOLP320R1 -> Algorithm.ES256
+            BRAINPOOLP320R1 -> Algorithm.ES384
             BRAINPOOLP384R1 -> Algorithm.ES384
             BRAINPOOLP512R1 -> Algorithm.ES512
             ED25519 -> Algorithm.EDDSA
             X25519 -> Algorithm.UNSET
             ED448 -> Algorithm.EDDSA
+            X448 -> Algorithm.UNSET
+        }
+
+    /**
+     * The default signing algorithm for the curve, fully specified.
+     */
+    val defaultSigningAlgorithmFullySpecified: Algorithm
+        get() = when (this) {
+            P256 -> Algorithm.ESP256
+            P384 -> Algorithm.ESP384
+            P521 -> Algorithm.ESP512
+            BRAINPOOLP256R1 -> Algorithm.ESB256
+            BRAINPOOLP320R1 -> Algorithm.ESB384
+            BRAINPOOLP384R1 -> Algorithm.ESB384
+            BRAINPOOLP512R1 -> Algorithm.ESB512
+            ED25519 -> Algorithm.ED25519
+            X25519 -> Algorithm.UNSET
+            ED448 -> Algorithm.ED448
             X448 -> Algorithm.UNSET
         }
 }

@@ -34,8 +34,6 @@ import org.multipaz.request.VcRequest
 import org.multipaz.request.VcRequestedClaim
 import org.multipaz.sdjwt.SdJwtVerifiableCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
-import org.multipaz.sdjwt.util.JsonWebKey
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
@@ -53,6 +51,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
@@ -76,7 +75,7 @@ internal suspend fun digitalCredentialsPresentment(
             "preview" -> digitalCredentialsPreviewProtocol(
                 documentTypeRepository = documentTypeRepository,
                 presentmentModel = model,
-                presentationMechanism = mechanism,
+                presentmentMechanism = mechanism,
                 source = source,
                 showConsentPrompt = showConsentPrompt
             )
@@ -90,14 +89,14 @@ internal suspend fun digitalCredentialsPresentment(
             "austroads-request-forwarding-v2" -> digitalCredentialsArfProtocol(
                 documentTypeRepository = documentTypeRepository,
                 presentmentModel = model,
-                presentationMechanism = mechanism,
+                presentmentMechanism = mechanism,
                 source = source,
                 showConsentPrompt = showConsentPrompt
             )
             "org.iso.mdoc" -> digitalCredentialsMdocApiProtocol(
                 documentTypeRepository = documentTypeRepository,
                 presentmentModel = model,
-                presentationMechanism = mechanism,
+                presentmentMechanism = mechanism,
                 source = source,
                 showConsentPrompt = showConsentPrompt
             )
@@ -115,7 +114,7 @@ internal suspend fun digitalCredentialsPresentment(
 private suspend fun digitalCredentialsPreviewProtocol(
     documentTypeRepository: DocumentTypeRepository,
     presentmentModel: PresentmentModel,
-    presentationMechanism: DigitalCredentialsPresentmentMechanism,
+    presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
     showConsentPrompt: suspend (
         document: Document,
@@ -123,7 +122,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val previewRequest = Json.parseToJsonElement(presentationMechanism.request).jsonObject
+    val previewRequest = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
     val selector = previewRequest["selector"]!!.jsonObject
     val nonceBase64 = previewRequest["nonce"]!!.jsonPrimitive.content
     val readerPublicKeyBase64 = previewRequest["readerPublicKey"]!!.jsonPrimitive.content
@@ -146,29 +145,27 @@ private suspend fun digitalCredentialsPreviewProtocol(
             .add(Pair(name, intentToRetain))
     }
 
-    val mdocCredentials = source.selectCredentialForPresentment(
-        request = MdocRequest(
-            requester = Requester(websiteOrigin = presentationMechanism.webOrigin),
-            requestedClaims = MdocUtil.generateRequestedClaims(
-                docType = docType,
-                requestedData = requestedData,
-                documentTypeRepository = documentTypeRepository,
-                mdocCredential = null
-            ),
-            docType = docType
+    val requestBeforeFiltering = MdocRequest(
+        requester = Requester(websiteOrigin = presentmentMechanism.webOrigin),
+        requestedClaims = MdocUtil.generateRequestedClaims(
+            docType = docType,
+            requestedData = requestedData,
+            documentTypeRepository = documentTypeRepository,
+            mdocCredential = null
         ),
-        preSelectedDocument = presentationMechanism.document
+        docType = docType
     )
-    if (mdocCredentials.isEmpty()) {
-        Logger.w(TAG, "No credential found for docType ${docType}, expected exactly one")
+    val credentialsForPresentment = source.getCredentialForPresentment(
+        request = requestBeforeFiltering,
+        document = presentmentMechanism.document
+    )
+    if (credentialsForPresentment.credential == null) {
+        Logger.w(TAG, "No credential found for docType ${docType}")
         return
     }
-    if (mdocCredentials.size > 1) {
-        Logger.w(TAG, "Unexpected ${mdocCredentials.size} credentials returned, expected exactly one")
-    }
-    val mdocCredential = mdocCredentials[0] as MdocCredential
+    val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
-    val encodedSessionTranscript = if (presentationMechanism.webOrigin == null) {
+    val encodedSessionTranscript = if (presentmentMechanism.webOrigin == null) {
         Cbor.encode(
             CborArray.builder()
                 .add(Simple.NULL) // DeviceEngagementBytes
@@ -176,7 +173,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
                 .addArray()
                 .add("AndroidHandoverv1")
                 .add(nonce)
-                .add(presentationMechanism.appId.encodeToByteArray())
+                .add(presentmentMechanism.appId.encodeToByteArray())
                 .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding))
                 .end()
                 .end()
@@ -188,7 +185,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
                 .put("cat", 1)
                 .put("type", 1)
                 .putMap("details")
-                .put("baseUrl", presentationMechanism.webOrigin)
+                .put("baseUrl", presentmentMechanism.webOrigin)
                 .end()
                 .end()
                 .build()
@@ -209,7 +206,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
     }
 
     val request = MdocRequest(
-        requester = Requester(websiteOrigin = presentationMechanism.webOrigin),
+        requester = Requester(websiteOrigin = presentmentMechanism.webOrigin),
         requestedClaims = MdocUtil.generateRequestedClaims(
             docType = docType,
             requestedData = requestedData,
@@ -223,14 +220,14 @@ private suspend fun digitalCredentialsPreviewProtocol(
         request = request,
     )
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentationMechanism.document, request, null)) {
+        if (!showConsentPrompt(presentmentMechanism.document, request, null)) {
             return
         }
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
-        credential = mdocCredential,
+        credentialForPresentment = credentialsForPresentment,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
@@ -257,7 +254,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
     val responseJson = buildJsonObject {
         put("token", encodedCredentialDocument.toBase64Url())
     }
-    presentationMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(responseJson.toString())
     mdocCredential.increaseUsageCount()
     presentmentModel.setCompleted()
 }
@@ -459,33 +456,28 @@ private suspend fun openID4VPMsoMdoc(
             .add(Pair(name, intentToRetain))
     }
 
-    val mdocCredentials = source.selectCredentialForPresentment(
-        request = MdocRequest(
-            requester = Requester(
-                certChain = requesterCertChain,
-                websiteOrigin = origin
-            ),
-            requestedClaims = MdocUtil.generateRequestedClaims(
-                docType = docType,
-                requestedData = requestedData,
-                documentTypeRepository = documentTypeRepository,
-                mdocCredential = null
-            ),
-            docType = docType
+    val requestBeforeFiltering = MdocRequest(
+        requester = Requester(
+            certChain = requesterCertChain,
+            websiteOrigin = origin
         ),
-        preSelectedDocument = presentmentMechanism.document
+        requestedClaims = MdocUtil.generateRequestedClaims(
+            docType = docType,
+            requestedData = requestedData,
+            documentTypeRepository = documentTypeRepository,
+            mdocCredential = null
+        ),
+        docType = docType
     )
-    if (mdocCredentials.isEmpty()) {
-        Logger.w(TAG, "No credential found for docType ${docType}, expected exactly one")
+    val credentialsForPresentment = source.getCredentialForPresentment(
+        request = requestBeforeFiltering,
+        document = presentmentMechanism.document
+    )
+    if (credentialsForPresentment.credential == null) {
+        Logger.w(TAG, "No credential found for docType ${docType}")
         return null
     }
-    if (mdocCredentials.size > 1) {
-        Logger.w(
-            TAG,
-            "Unexpected ${mdocCredentials.size} credentials returned, expected exactly one"
-        )
-    }
-    val mdocCredential = mdocCredentials[0] as MdocCredential
+    val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
     val handoverInfo = Cbor.encode(
         CborArray.builder()
@@ -536,7 +528,7 @@ private suspend fun openID4VPMsoMdoc(
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(
         calcDocument(
-            credential = mdocCredential,
+            credentialForPresentment = credentialsForPresentment,
             requestedClaims = request.requestedClaims,
             encodedSessionTranscript = encodedSessionTranscript,
         )
@@ -597,18 +589,15 @@ private suspend fun openID4VPSdJwt(
         requestedClaims = requestedClaims,
         vct = vct
     )
-    val vcCredentials = source.selectCredentialForPresentment(
+    val credentialsForPresentment = source.getCredentialForPresentment(
         request = request,
-        preSelectedDocument = presentmentMechanism.document
+        document = presentmentMechanism.document
     )
-    if (vcCredentials.isEmpty()) {
-        Logger.w(TAG, "No credential found for vct ${vct}, expected exactly one")
+    if (credentialsForPresentment.credential == null) {
+        Logger.w(TAG, "No credential found for vct ${vct}")
         return null
     }
-    if (vcCredentials.size > 1) {
-        Logger.w(TAG, "Unexpected ${vcCredentials.size} credentials returned, expected exactly one")
-    }
-    val sdjwtVcCredential = vcCredentials[0] as SdJwtVcCredential
+    val sdjwtVcCredential = credentialsForPresentment.credential as SdJwtVcCredential
 
     // Consent prompt..
     val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
@@ -646,7 +635,7 @@ private suspend fun openID4VPSdJwt(
 private suspend fun digitalCredentialsArfProtocol(
     documentTypeRepository: DocumentTypeRepository,
     presentmentModel: PresentmentModel,
-    presentationMechanism: DigitalCredentialsPresentmentMechanism,
+    presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
     showConsentPrompt: suspend (
         document: Document,
@@ -654,7 +643,7 @@ private suspend fun digitalCredentialsArfProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val arfRequest = Json.parseToJsonElement(presentationMechanism.request).jsonObject
+    val arfRequest = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
@@ -673,7 +662,7 @@ private suspend fun digitalCredentialsArfProtocol(
                 .addArray() // BrowserHandover
                 .add("ARFHandoverv2")
                 .add(encryptionInfoBase64)
-                .add(presentationMechanism.webOrigin!!)
+                .add(presentmentMechanism.webOrigin!!)
                 .end()
                 .end()
                 .build()
@@ -687,29 +676,27 @@ private suspend fun digitalCredentialsArfProtocol(
         encodedSessionTranscript,
     ).parse().docRequests.first()
 
-    val mdocCredentials = source.selectCredentialForPresentment(
-        request = docRequest.toMdocRequest(
-            documentTypeRepository = documentTypeRepository,
-            mdocCredential = null,
-            requesterAppId = presentationMechanism.appId,
-            requesterWebsiteOrigin = presentationMechanism.webOrigin,
-        ),
-        preSelectedDocument = presentationMechanism.document
+    val requestBeforeFiltering = docRequest.toMdocRequest(
+        documentTypeRepository = documentTypeRepository,
+        mdocCredential = null,
+        requesterAppId = presentmentMechanism.appId,
+        requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
-    if (mdocCredentials.isEmpty()) {
-        Logger.w(TAG, "No credential found for docType ${docRequest.docType}, expected exactly one")
+    val credentialsForPresentment = source.getCredentialForPresentment(
+        request = requestBeforeFiltering,
+        document = presentmentMechanism.document
+    )
+    if (credentialsForPresentment.credential == null) {
+        Logger.w(TAG, "No credential found for docType ${docRequest.docType}")
         return
     }
-    if (mdocCredentials.size > 1) {
-        Logger.w(TAG, "Unexpected ${mdocCredentials.size} credentials returned, expected exactly one")
-    }
-    val mdocCredential = mdocCredentials[0] as MdocCredential
-
+    val mdocCredential = credentialsForPresentment.credential as MdocCredential
+    
     val request = docRequest.toMdocRequest(
         documentTypeRepository = documentTypeRepository,
         mdocCredential = mdocCredential,
-        requesterAppId = presentationMechanism.appId,
-        requesterWebsiteOrigin = presentationMechanism.webOrigin,
+        requesterAppId = presentmentMechanism.appId,
+        requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
     val trustPoint = source.findTrustPoint(request)
     val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
@@ -717,14 +704,14 @@ private suspend fun digitalCredentialsArfProtocol(
         request = request,
     )
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentationMechanism.document, request, trustPoint)) {
+        if (!showConsentPrompt(presentmentMechanism.document, request, trustPoint)) {
             return
         }
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
-        credential = mdocCredential,
+        credentialForPresentment = credentialsForPresentment,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
@@ -751,7 +738,7 @@ private suspend fun digitalCredentialsArfProtocol(
     val responseJson = buildJsonObject {
         put("encryptedResponse", encryptedResponse.toBase64Url())
     }
-    presentationMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(responseJson.toString())
     mdocCredential.increaseUsageCount()
     presentmentModel.setCompleted()
 }
@@ -760,7 +747,7 @@ private suspend fun digitalCredentialsArfProtocol(
 private suspend fun digitalCredentialsMdocApiProtocol(
     documentTypeRepository: DocumentTypeRepository,
     presentmentModel: PresentmentModel,
-    presentationMechanism: DigitalCredentialsPresentmentMechanism,
+    presentmentMechanism: DigitalCredentialsPresentmentMechanism,
     source: PresentmentSource,
     showConsentPrompt: suspend (
         document: Document,
@@ -768,7 +755,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val arfRequest = Json.parseToJsonElement(presentationMechanism.request).jsonObject
+    val arfRequest = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
@@ -781,7 +768,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
 
     val dcapiInfo = CborArray.builder()
         .add(encryptionInfoBase64)
-        .add(presentationMechanism.webOrigin!!)
+        .add(presentmentMechanism.webOrigin!!)
         .end()
         .build()
 
@@ -805,29 +792,27 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         encodedSessionTranscript,
     ).parse().docRequests.first()
 
-    val mdocCredentials = source.selectCredentialForPresentment(
-        request = docRequest.toMdocRequest(
-            documentTypeRepository = documentTypeRepository,
-            mdocCredential = null,
-            requesterAppId = presentationMechanism.appId,
-            requesterWebsiteOrigin = presentationMechanism.webOrigin,
-        ),
-        preSelectedDocument = presentationMechanism.document
+    val requestBeforeFiltering = docRequest.toMdocRequest(
+        documentTypeRepository = documentTypeRepository,
+        mdocCredential = null,
+        requesterAppId = presentmentMechanism.appId,
+        requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
-    if (mdocCredentials.isEmpty()) {
-        Logger.w(TAG, "No credential found for docType ${docRequest.docType}, expected exactly one")
+    val credentialsForPresentment = source.getCredentialForPresentment(
+        request = requestBeforeFiltering,
+        document = presentmentMechanism.document
+    )
+    if (credentialsForPresentment.credential == null) {
+        Logger.w(TAG, "No credential found for docType ${docRequest.docType}")
         return
     }
-    if (mdocCredentials.size > 1) {
-        Logger.w(TAG, "Unexpected ${mdocCredentials.size} credentials returned, expected exactly one")
-    }
-    val mdocCredential = mdocCredentials[0] as MdocCredential
+    val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
     val request = docRequest.toMdocRequest(
         documentTypeRepository = documentTypeRepository,
         mdocCredential = mdocCredential,
-        requesterAppId = presentationMechanism.appId,
-        requesterWebsiteOrigin = presentationMechanism.webOrigin,
+        requesterAppId = presentmentMechanism.appId,
+        requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
     val trustPoint = source.findTrustPoint(request)
     val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
@@ -835,14 +820,14 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         request = request,
     )
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentationMechanism.document, request, trustPoint)) {
+        if (!showConsentPrompt(presentmentMechanism.document, request, trustPoint)) {
             return
         }
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
-        credential = mdocCredential,
+        credentialForPresentment = credentialsForPresentment,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
@@ -870,16 +855,22 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     val responseJson = buildJsonObject {
         put("Response", encryptedResponse.toBase64Url())
     }
-    presentationMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(responseJson.toString())
     mdocCredential.increaseUsageCount()
     presentmentModel.setCompleted()
 }
 
 private suspend fun calcDocument(
-    credential: MdocCredential,
+    credentialForPresentment: CredentialForPresentment,
     requestedClaims: List<MdocRequestedClaim>,
     encodedSessionTranscript: ByteArray
 ): ByteArray {
+    // TODO: support MAC keys from v1.1 request and use setDeviceNamespacesMac() when possible
+    //   depending on the value of PresentmentSource.preferSignatureToKeyAgreement(). See also
+    //   calcDocument in mdocPresentment.kt.
+    //
+    val credential = credentialForPresentment.credential as MdocCredential
+
     val issuerSigned = Cbor.decode(credential.issuerProvidedData)
     val issuerNamespaces = IssuerNamespaces.fromDataItem(issuerSigned["nameSpaces"])
     val issuerAuthCoseSign1 = issuerSigned["issuerAuth"].asCoseSign1
@@ -894,14 +885,11 @@ private suspend fun calcDocument(
     )
 
     documentGenerator.setIssuerNamespaces(issuerNamespaces.filter(requestedClaims))
-
-    // TODO: support MAC keys from v1.1 request and use setDeviceNamespacesMac() when possible
-    //   depending on the value of PresentmentSource.preferSignatureToKeyAgreement(). See also
-    //   calcDocument in mdocPresentment.kt.
-    //
     val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
-    if (!keyInfo.keyPurposes.contains(KeyPurpose.SIGN)) {
-        throw IllegalStateException("KeyPurpose.SIGN is required for W3C DC API and key has purposes ${keyInfo.keyPurposes}")
+    if (!keyInfo.algorithm.isSigning) {
+        throw IllegalStateException(
+            "Signing is required for W3C DC API but its algorithm ${keyInfo.algorithm.name} is not for signing"
+        )
     } else {
         documentGenerator.setDeviceNamespacesSignature(
             dataElements = NameSpacedData.Builder().build(),

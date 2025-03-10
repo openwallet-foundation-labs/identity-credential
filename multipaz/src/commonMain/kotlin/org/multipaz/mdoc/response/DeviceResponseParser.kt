@@ -128,7 +128,7 @@ class DeviceResponseParser(
                 issuerAuth.unprotectedHeaders[
                     CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)
                 ]!!.asX509CertChain
-            val signatureAlgorithm = Algorithm.fromInt(
+            val signatureAlgorithm = Algorithm.fromCoseAlgorithmIdentifier(
                 issuerAuth.protectedHeaders[
                     CoseNumberLabel(Cose.COSE_LABEL_ALG)
                 ]!!.asNumber.toInt()
@@ -245,7 +245,7 @@ class DeviceResponseParser(
                 // 18013-5 clause "9.1.3.6 mdoc ECDSA / EdDSA Authentication" guarantees
                 // that alg is in the protected header
                 //
-                val signatureAlgorithm = Algorithm.fromInt(
+                val signatureAlgorithm = Algorithm.fromCoseAlgorithmIdentifier(
                     deviceSignatureCoseSign1.protectedHeaders[
                         CoseNumberLabel(Cose.COSE_LABEL_ALG)
                     ]!!.asNumber.toInt()
@@ -276,7 +276,7 @@ class DeviceResponseParser(
                     mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem()
+                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier!!.toDataItem()
                         )
                     ),
                     mapOf()

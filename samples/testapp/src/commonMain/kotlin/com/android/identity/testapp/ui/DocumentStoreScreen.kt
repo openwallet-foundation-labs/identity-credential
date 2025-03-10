@@ -6,10 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -17,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -27,7 +32,6 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.secure_area_test_app.ui.CsaConnectDialog
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.cloud.CloudCreateKeySettings
@@ -49,6 +53,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 
 private const val TAG = "DocumentStoreScreen"
 
@@ -64,10 +69,27 @@ fun DocumentStoreScreen(
     onViewDocument: (documentId: String) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val documentSigningKeyCurve = remember { mutableStateOf<EcCurve>(EcCurve.P256) }
-    val deviceKeyCurve = remember { mutableStateOf<EcCurve>(EcCurve.P256) }
-    val deviceKeyPurposeSign = remember { mutableStateOf<Boolean>(true) }
-    val deviceKeyPurposeAgreeKey = remember { mutableStateOf<Boolean>(true) }
+    val numCredentialsPerDomain = remember { mutableIntStateOf(2) }
+    val deviceKeyAlgorithm = remember { mutableStateOf<Algorithm>(Algorithm.ESP256) }
+    val deviceKeyMacAlgorithm = remember { mutableStateOf<Algorithm>(Algorithm.ECDH_P256) }
+    val documentSigningAlgorithm = remember { mutableStateOf<Algorithm>(Algorithm.ESP256) }
+
+    val showDocumentCreationDialog = remember { mutableStateOf(false) }
+    if (showDocumentCreationDialog.value) {
+        // TODO: would be nice to show a live-updated string "Creating credential 42 of 80"
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = "Creating Documents") },
+            text = { Text(text = "Creating documents and credentials may take a while. " +
+            "This dialog will disappear when the process is complete.") },
+            confirmButton = {
+                Button(
+                    onClick = {}) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     val showCsaConnectDialog = remember { mutableStateOf(false) }
     if (showCsaConnectDialog.value) {
@@ -91,15 +113,14 @@ fun DocumentStoreScreen(
                             constraints
                         ) { true }
                         showToast("Registered with CSA")
-                        val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningKeyCurve.value, iacaKey, iacaCert)
+                        val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                         provisionTestDocuments(
                             documentStore = documentStore,
                             secureArea = cloudSecureArea,
-                            secureAreaCreateKeySettingsFunc = { challenge, curve, keyPurposes, userAuthenticationRequired,
+                            secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
                                                                 validFrom, validUntil ->
-                                CloudCreateKeySettings.Builder(challenge.toByteArray())
-                                    .setEcCurve(curve)
-                                    .setKeyPurposes(keyPurposes)
+                                CloudCreateKeySettings.Builder(challenge)
+                                    .setAlgorithm(algorithm)
                                     .setPassphraseRequired(true)
                                     .setUserAuthenticationRequired(
                                         userAuthenticationRequired,
@@ -111,9 +132,10 @@ fun DocumentStoreScreen(
                             dsKey = dsKey,
                             dsCert = dsCert,
                             showToast = showToast,
-                            deviceKeyPurposeSign = deviceKeyPurposeSign.value,
-                            deviceKeyPurposeAgreeKey = deviceKeyPurposeAgreeKey.value,
-                            deviceKeyCurve = deviceKeyCurve.value,
+                            deviceKeyAlgorithm = deviceKeyAlgorithm.value,
+                            deviceKeyMacAlgorithm = deviceKeyMacAlgorithm.value,
+                            numCredentialsPerDomain = numCredentialsPerDomain.value,
+                            showDocumentCreationDialog = showDocumentCreationDialog,
                         )
 
                     } catch (e: Throwable) {
@@ -144,12 +166,12 @@ fun DocumentStoreScreen(
         item {
             TextButton(onClick = {
                 coroutineScope.launch {
-                    if (deviceKeyPurposeAgreeKey.value && !platformSecureAreaHasKeyAgreement) {
+                    if (deviceKeyMacAlgorithm.value != Algorithm.UNSET && !platformSecureAreaHasKeyAgreement) {
                         showToast("Platform Secure Area does not have Key Agreement support. " +
-                                "Either uncheck AGREE_KEY or try another Secure Area.")
+                                "Unset DeviceKey MAC Algorithm or try another Secure Area.")
                         return@launch
                     }
-                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningKeyCurve.value, iacaKey, iacaCert)
+                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                     provisionTestDocuments(
                         documentStore = documentStore,
                         secureArea = platformSecureAreaProvider().get(),
@@ -157,9 +179,10 @@ fun DocumentStoreScreen(
                         dsKey = dsKey,
                         dsCert = dsCert,
                         showToast = showToast,
-                        deviceKeyPurposeSign = deviceKeyPurposeSign.value,
-                        deviceKeyPurposeAgreeKey = deviceKeyPurposeAgreeKey.value,
-                        deviceKeyCurve = deviceKeyCurve.value,
+                        deviceKeyAlgorithm = deviceKeyAlgorithm.value,
+                        deviceKeyMacAlgorithm = deviceKeyMacAlgorithm.value,
+                        numCredentialsPerDomain = numCredentialsPerDomain.value,
+                        showDocumentCreationDialog = showDocumentCreationDialog,
                     )
                 }
             }) {
@@ -169,24 +192,24 @@ fun DocumentStoreScreen(
         item {
             TextButton(onClick = {
                 coroutineScope.launch {
-                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningKeyCurve.value, iacaKey, iacaCert)
+                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                     provisionTestDocuments(
                         documentStore = documentStore,
                         secureArea = softwareSecureArea,
-                        secureAreaCreateKeySettingsFunc = { challenge, curve, keyPurposes, userAuthenticationRequired,
+                        secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
                                                             validFrom, validUntil ->
                             SoftwareCreateKeySettings.Builder()
-                                .setEcCurve(curve)
-                                .setKeyPurposes(keyPurposes)
+                                .setAlgorithm(algorithm)
                                 .setPassphraseRequired(true, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
                                 .build()
                         },
                         dsKey = dsKey,
                         dsCert = dsCert,
                         showToast = showToast,
-                        deviceKeyPurposeSign = deviceKeyPurposeSign.value,
-                        deviceKeyPurposeAgreeKey = deviceKeyPurposeAgreeKey.value,
-                        deviceKeyCurve = deviceKeyCurve.value,
+                        deviceKeyAlgorithm = deviceKeyAlgorithm.value,
+                        deviceKeyMacAlgorithm = deviceKeyMacAlgorithm.value,
+                        numCredentialsPerDomain = numCredentialsPerDomain.value,
+                        showDocumentCreationDialog = showDocumentCreationDialog,
                     )
                 }
             }) {
@@ -204,41 +227,45 @@ fun DocumentStoreScreen(
             SettingHeadline("Settings for new documents")
         }
         item {
-            SettingToggle(
-                title = "Create DeviceKey with purpose SIGN",
-                isChecked = deviceKeyPurposeSign.value,
-                onCheckedChange = { deviceKeyPurposeSign.value = it },
-                enabled = (deviceKeyCurve.value.supportsSigning == true)
-            )
-        }
-        item {
-            SettingToggle(
-                title = "Create DeviceKey with purpose AGREE_KEY",
-                isChecked = deviceKeyPurposeAgreeKey.value,
-                onCheckedChange = { deviceKeyPurposeAgreeKey.value = it },
-                enabled = (deviceKeyCurve.value.supportsKeyAgreement == true)
-            )
-        }
-        item {
             SettingMultipleChoice(
-                title = "DeviceKey Curve",
-                choices = EcCurve.entries.map { it.name },
-                initialChoice = deviceKeyCurve.value.toString(),
+                title ="Credentials per Domain",
+                choices = listOf(1, 2, 3, 5, 10, 15, 20).map { it.toString() },
+                initialChoice = numCredentialsPerDomain.value.toString(),
                 onChoiceSelected = { choice ->
-                    val curve = EcCurve.entries.find { it.name == choice }!!
-                    deviceKeyCurve.value = curve
-                    deviceKeyPurposeSign.value = curve.supportsSigning
-                    deviceKeyPurposeAgreeKey.value = curve.supportsKeyAgreement
+                    numCredentialsPerDomain.value = choice.toInt(10)
                 },
             )
         }
         item {
             SettingMultipleChoice(
-                title ="Document Signing Key Curve",
-                choices = EcCurve.entries.mapNotNull { if (it.supportsSigning) it.name else null },
-                initialChoice = documentSigningKeyCurve.value.toString(),
+                title = "DeviceKey Algorithm",
+                choices = Algorithm.entries.mapNotNull { if (it.isSigning) it.name else null },
+                initialChoice = deviceKeyAlgorithm.value.toString(),
                 onChoiceSelected = { choice ->
-                    documentSigningKeyCurve.value = EcCurve.entries.find { it.name == choice }!!
+                    val algorithm = Algorithm.entries.find { it.name == choice }!!
+                    deviceKeyAlgorithm.value = algorithm
+                },
+            )
+        }
+        item {
+            SettingMultipleChoice(
+                title = "DeviceKey MAC Algorithm",
+                choices = listOf(Algorithm.UNSET.name) +
+                        Algorithm.entries.mapNotNull { if (it.isKeyAgreement) it.name else null },
+                initialChoice = deviceKeyMacAlgorithm.value.toString(),
+                onChoiceSelected = { choice ->
+                    val algorithm = Algorithm.entries.find { it.name == choice }!!
+                    deviceKeyMacAlgorithm.value = algorithm
+                },
+            )
+        }
+        item {
+            SettingMultipleChoice(
+                title ="Document Signing Algorithm",
+                choices = Algorithm.entries.mapNotNull { if (it.fullySpecified && it.isSigning) it.name else null },
+                initialChoice = documentSigningAlgorithm.value.toString(),
+                onChoiceSelected = { choice ->
+                    documentSigningAlgorithm.value = Algorithm.entries.find { it.name == choice }!!
                 },
             )
         }
@@ -283,13 +310,13 @@ fun DocumentStoreScreen(
 }
 
 private fun generateDsKeyAndCert(
-    curve: EcCurve,
+    algorithm: Algorithm,
     iacaKey: EcPrivateKey,
     iacaCert: X509Cert,
 ): Pair<EcPrivateKey, X509Cert> {
     val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
     val certsValidUntil = LocalDate.parse("2034-12-01").atStartOfDayIn(TimeZone.UTC)
-    val dsKey = Crypto.createEcPrivateKey(curve)
+    val dsKey = Crypto.createEcPrivateKey(algorithm.curve!!)
     val dsCert = MdocUtil.generateDsCertificate(
         iacaCert = iacaCert,
         iacaKey = iacaKey,
@@ -307,32 +334,35 @@ private suspend fun provisionTestDocuments(
     secureArea: SecureArea,
     secureAreaCreateKeySettingsFunc: (
         challenge: ByteString,
-        curve: EcCurve,
-        keyPurposes: Set<KeyPurpose>,
+        algorithm: Algorithm,
         userAuthenticationRequired: Boolean,
         validFrom: Instant,
         validUntil: Instant
     ) -> CreateKeySettings,
     dsKey: EcPrivateKey,
     dsCert: X509Cert,
-    deviceKeyPurposeSign: Boolean,
-    deviceKeyPurposeAgreeKey: Boolean,
-    deviceKeyCurve: EcCurve,
-    showToast: (message: String) -> Unit
+    deviceKeyAlgorithm: Algorithm,
+    deviceKeyMacAlgorithm: Algorithm,
+    numCredentialsPerDomain: Int,
+    showToast: (message: String) -> Unit,
+    showDocumentCreationDialog: MutableState<Boolean>
 ) {
-    val deviceKeyPurposes = mutableSetOf<KeyPurpose>()
-    if (deviceKeyPurposeSign) {
-        deviceKeyPurposes.add(KeyPurpose.SIGN)
-    }
-    if (deviceKeyPurposeAgreeKey) {
-        deviceKeyPurposes.add(KeyPurpose.AGREE_KEY)
-    }
-    if (deviceKeyPurposes.isEmpty()) {
-        showToast("At least one purpose must be set.")
+    // This can be slow... so we show a dialog to help convey this to the user.
+    showDocumentCreationDialog.value = true
+
+    if (documentStore.listDocuments().size >= 5) {
+        // TODO: we need a more granular check once we support provisioning other kinds of documents
+        showToast("Test Documents already provisioned. Delete all documents and try again")
         return
     }
-    // TODO: When SecureArea gains ability to convey which curves it supports (see Issue #850) add check here
-    //  and show a Toast explaining if the chosen curve isn't supported.
+    if (secureArea.supportedAlgorithms.find { it == deviceKeyAlgorithm } == null) {
+        showToast("Secure Area doesn't support algorithm $deviceKeyAlgorithm for DeviceKey")
+        return
+    }
+    if (secureArea.supportedAlgorithms.find { it == deviceKeyMacAlgorithm } == null) {
+        showToast("Secure Area doesn't support algorithm $deviceKeyMacAlgorithm for DeviceKey for MAC")
+        return
+    }
     try {
         TestAppUtils.provisionTestDocuments(
             documentStore,
@@ -340,13 +370,15 @@ private suspend fun provisionTestDocuments(
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve
+            deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm,
+            numCredentialsPerDomain
         )
     } catch (e: Throwable) {
         e.printStackTrace()
         showToast("Error provisioning documents: $e")
     }
+    showDocumentCreationDialog.value = false
 }
 
 

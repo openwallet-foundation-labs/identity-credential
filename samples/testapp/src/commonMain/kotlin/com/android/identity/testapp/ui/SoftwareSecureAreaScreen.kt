@@ -13,28 +13,23 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.PassphraseConstraints
-import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
-import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.multipaz.crypto.Algorithm
 
 private val TAG = "SoftwareSecureAreaScreen"
-
-private val softwareSecureAreaProvider = SecureAreaProvider {
-    SoftwareSecureArea.create(EphemeralStorage())
-}
 
 @Preview
 @Composable
 fun SoftwareSecureAreaScreen(
+    softwareSecureArea: SoftwareSecureArea,
     promptModel: PromptModel,
     showToast: (message: String) -> Unit
 ) {
@@ -43,65 +38,44 @@ fun SoftwareSecureAreaScreen(
     LazyColumn(
         modifier = Modifier.padding(8.dp)
     ) {
-        for ((keyPurpose, keyPurposeDesc) in arrayOf(
-            Pair(KeyPurpose.SIGN, "Signature"),
-            Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
-        )) {
-            for ((curve, curveName, purposes) in arrayOf(
-                Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.P384, "P-384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.P521, "P-521", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.BRAINPOOLP256R1, "Brainpool 256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.BRAINPOOLP320R1, "Brainpool 320", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.BRAINPOOLP384R1, "Brainpool 384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.BRAINPOOLP512R1, "Brainpool 512", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.ED25519, "Ed25519", setOf(KeyPurpose.SIGN)),
-                Triple(EcCurve.X25519, "X25519", setOf(KeyPurpose.AGREE_KEY)),
-                Triple(EcCurve.ED448, "Ed448", setOf(KeyPurpose.SIGN)),
-                Triple(EcCurve.X448, "X448", setOf(KeyPurpose.AGREE_KEY)),
+        for (algorithm in softwareSecureArea.supportedAlgorithms) {
+            for ((passphraseRequired, description) in arrayOf(
+                Pair(true, "- Passphrase"),
+                Pair(false, ""),
             )) {
-                if (!purposes.contains(keyPurpose)) {
-                    // No common purpose
-                    continue
-                }
-                for ((passphraseRequired, description) in arrayOf(
-                    Pair(true, "- Passphrase"),
-                    Pair(false, ""),
-                )) {
-                    // For brevity, only do passphrase for P-256 Signature and P-256 Key Agreement)
-                    if (curve != EcCurve.P256) {
-                        if (passphraseRequired) {
-                            continue;
-                        }
+                // For brevity, only do passphrase for P-256 Signature and P-256 Key Agreement)
+                if (algorithm.curve!! != EcCurve.P256) {
+                    if (passphraseRequired) {
+                        continue;
                     }
+                }
 
-                    item {
-                        TextButton(onClick = {
+                item {
+                    TextButton(onClick = {
 
-                            coroutineScope.launch {
-                                swTest(
-                                    keyPurpose = keyPurpose,
-                                    curve = curve,
-                                    passphrase = if (passphraseRequired) {
-                                        "1111"
-                                    } else {
-                                        null
-                                    },
-                                    passphraseConstraints = if (passphraseRequired) {
-                                        PassphraseConstraints.PIN_FOUR_DIGITS
-                                    } else {
-                                        null
-                                    },
-                                    showToast = showToast
-                                )
-                            }
-                        })
-                        {
-                            Text(
-                                text = "$curveName $keyPurposeDesc $description",
-                                fontSize = 15.sp
+                        coroutineScope.launch {
+                            swTest(
+                                softwareSecureArea = softwareSecureArea,
+                                algorithm = algorithm,
+                                passphrase = if (passphraseRequired) {
+                                    "1111"
+                                } else {
+                                    null
+                                },
+                                passphraseConstraints = if (passphraseRequired) {
+                                    PassphraseConstraints.PIN_FOUR_DIGITS
+                                } else {
+                                    null
+                                },
+                                showToast = showToast
                             )
                         }
+                    })
+                    {
+                        Text(
+                            text = "$algorithm $description",
+                            fontSize = 15.sp
+                        )
                     }
                 }
             }
@@ -110,17 +84,17 @@ fun SoftwareSecureAreaScreen(
 }
 
 private suspend fun swTest(
-    keyPurpose: KeyPurpose,
-    curve: EcCurve,
+    softwareSecureArea: SoftwareSecureArea,
+    algorithm: Algorithm,
     passphrase: String?,
     passphraseConstraints: PassphraseConstraints?,
     showToast: (message: String) -> Unit) {
     Logger.d(
         TAG,
-        "swTest keyPurpose:$keyPurpose curve:$curve passphrase:$passphrase"
+        "swTest algorithm:$algorithm passphrase:$passphrase"
     )
     try {
-        swTestUnguarded(keyPurpose, curve, passphrase, passphraseConstraints, showToast)
+        swTestUnguarded(softwareSecureArea, algorithm, passphrase, passphraseConstraints, showToast)
     } catch (e: Throwable) {
         e.printStackTrace();
         showToast("${e.message}")
@@ -128,20 +102,17 @@ private suspend fun swTest(
 }
 
 private suspend fun swTestUnguarded(
-    keyPurpose: KeyPurpose,
-    curve: EcCurve,
+    softwareSecureArea: SoftwareSecureArea,
+    algorithm: Algorithm,
     passphrase: String?,
     passphraseConstraints: PassphraseConstraints?,
     showToast: (message: String) -> Unit) {
 
     val builder = SoftwareCreateKeySettings.Builder()
-        .setEcCurve(curve)
-        .setKeyPurposes(setOf(keyPurpose))
+        .setAlgorithm(algorithm)
     if (passphrase != null) {
         builder.setPassphraseRequired(true, passphrase, passphraseConstraints)
     }
-
-    val softwareSecureArea = softwareSecureAreaProvider.get()
 
     softwareSecureArea.createKey("testKey", builder.build())
 
@@ -152,7 +123,7 @@ private suspend fun swTestUnguarded(
                 "entering something else to check out error handling",
     )
 
-    if (keyPurpose == KeyPurpose.SIGN) {
+    if (algorithm.isSigning) {
         try {
             val t0 = Clock.System.now()
             val signature = softwareSecureArea.sign(
@@ -172,7 +143,7 @@ private suspend fun swTestUnguarded(
             showToast("${e.message}")
         }
     } else {
-        val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
+        val otherKeyPairForEcdh = Crypto.createEcPrivateKey(algorithm.curve!!)
         try {
             val t0 = Clock.System.now()
             val Zab = softwareSecureArea.keyAgreement(

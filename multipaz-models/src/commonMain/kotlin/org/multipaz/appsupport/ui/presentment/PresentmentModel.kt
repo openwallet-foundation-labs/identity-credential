@@ -327,8 +327,8 @@ class PresentmentModel {
                     mechanism = mechanism as MdocPresentmentMechanism,
                     dismissable = _dismissable,
                     numRequestsServed = _numRequestsServed,
-                    showCredentialPicker = { credentials ->
-                        showCredentialPicker(credentials)
+                    showDocumentPicker = { documents ->
+                        showDocumentPicker(documents)
                     },
                     showConsentPrompt = { document, request, trustPoint ->
                         showConsentPrompt(document, request, trustPoint)
@@ -353,15 +353,8 @@ class PresentmentModel {
 
     private var documentPickerContinuation: CancellableContinuation<Document?>? = null
 
-    private suspend fun showCredentialPicker(credentials: List<Credential>): Credential? {
+    private suspend fun showDocumentPicker(documents: List<Document>): Document? {
         check(_state.value == State.PROCESSING)
-        val documents = mutableListOf<Document>()
-        val documentIdToCredential = mutableMapOf<String, Credential>()
-        for (credential in credentials) {
-            documents.add(credential.document)
-            documentIdToCredential[credential.document.identifier] = credential
-        }
-        check(documentIdToCredential.size == credentials.size) { "Credentials must be from distinct documents" }
         _availableDocuments = documents
         _state.value = State.WAITING_FOR_DOCUMENT_SELECTION
         val ret = suspendCancellableCoroutine<Document?> { continuation ->
@@ -369,7 +362,7 @@ class PresentmentModel {
         }
         _availableDocuments = null
         _state.value = State.PROCESSING
-        return documentIdToCredential[ret?.identifier]
+        return ret
     }
 
     private var _availableDocuments: List<Document>? = null

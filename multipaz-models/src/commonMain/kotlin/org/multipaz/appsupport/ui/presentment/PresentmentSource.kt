@@ -1,5 +1,6 @@
 package org.multipaz.models.ui.presentment
 
+import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
 import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -27,22 +28,28 @@ interface PresentmentSource {
     ): TrustPoint?
 
     /**
-     * Selects one or more credentials eligible for presentment for a request.
+     * Gets the documents that match a given request.
      *
-     * One example where [preSelectedDocument] is non-`null` is when using the W3C Digital Credentials
-     * API on Android where the operating system displays a document picker prior to invoking the
-     * application.
-     *
-     * The credentials returned must be for distinct documents.
+     * The documents returned must be distinct.
      *
      * @param request the request.
-     * @param preSelectedDocument if not `null`, a [Document] preselected by the user.
-     * @return zero, one, or more [Credential] instances eligible for presentment.
+     * @return zero, one, or more [Document] instances eligible for presentment.
      */
-    suspend fun selectCredentialForPresentment(
+    suspend fun getDocumentsMatchingRequest(
         request: Request,
-        preSelectedDocument: Document?
-    ): List<Credential>
+    ): List<Document>
+
+    /**
+     * Returns a credential that can be presented.
+     *
+     * @param request the request.
+     * @param document the document to get a credential from.
+     * @return a [CredentialForPresentment] object with a credential that can be used for presentment.
+     */
+    suspend fun getCredentialForPresentment(
+        request: Request,
+        document: Document
+    ): CredentialForPresentment
 
     /**
      * Function to determine if the consent prompt should be shown.
@@ -70,12 +77,12 @@ interface PresentmentSource {
      * for the holder to honor such a request. The request from the reader to express
      * this preference would need to be provided out-of-band by the reader.
      *
-     * @param credential the credential being presented.
+     * @param document the document being presented.
      * @param request the request.
      * @return `true` to always use signatures even if key agreement is possible.
      */
     fun shouldPreferSignatureToKeyAgreement(
-        credential: Credential,
+        document: Document,
         request: Request,
     ): Boolean
 }

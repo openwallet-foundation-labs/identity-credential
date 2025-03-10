@@ -169,7 +169,7 @@ class ApplicationSupportState(
         }
         val publicKey = attestationData.certificate.ecPublicKey
         val privateKey = attestationData.privateKey
-        val alg = publicKey.curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier
+        val alg = publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier
         val head = buildJsonObject {
             put("typ", JsonPrimitive("keyattestation+jwt"))
             put("alg", JsonPrimitive(alg))
@@ -243,7 +243,7 @@ class ApplicationSupportState(
         }
         val publicKey = attestationData.certificate.ecPublicKey
         val privateKey = attestationData.privateKey
-        val alg = publicKey.curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier
+        val alg = publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier
         val head = buildJsonObject {
             put("typ", JsonPrimitive("JWT"))
             put("alg", JsonPrimitive(alg))

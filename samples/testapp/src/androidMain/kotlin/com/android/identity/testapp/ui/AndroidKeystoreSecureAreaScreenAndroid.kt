@@ -57,7 +57,6 @@ import org.multipaz.crypto.javaX509Certificate
 import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.KeyAttestation
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.testapp.platformSecureAreaProvider
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
@@ -66,6 +65,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.crypto.Algorithm
 import kotlin.time.Duration.Companion.days
 
 private const val TAG = "AndroidKeystoreSecureAreaScreen"
@@ -168,61 +169,53 @@ actual fun AndroidKeystoreSecureAreaScreen(
         for ((strongBox, strongBoxDesc) in arrayOf(
             Pair(false, ""), Pair(true, "StrongBox ")
         )) {
-            for ((keyPurpose, keyPurposeDesc) in arrayOf(
-                Pair(KeyPurpose.SIGN, "Signature"),
-                Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
+            for (algorithm in listOf(
+                Algorithm.ESP256,
+                Algorithm.ED25519,
+                Algorithm.ED448,
+                Algorithm.ECDH_P256,
+                Algorithm.ECDH_X25519,
+                Algorithm.ECDH_X448,
             )) {
-                for ((curve, curveName, purposes) in arrayOf(
-                    Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
-                    Triple(EcCurve.ED25519, "Ed25519", setOf(KeyPurpose.SIGN)),
-                    Triple(EcCurve.X25519, "X25519", setOf(KeyPurpose.AGREE_KEY)),
+                val AUTH_NONE = setOf<UserAuthenticationType>()
+                val AUTH_LSKF_OR_BIOMETRIC = setOf(
+                    UserAuthenticationType.LSKF,
+                    UserAuthenticationType.BIOMETRIC)
+                val AUTH_LSKF_ONLY = setOf(UserAuthenticationType.LSKF)
+                val AUTH_BIOMETRIC_ONLY = setOf(UserAuthenticationType.BIOMETRIC)
+                for ((userAuthType, authTimeout, authDesc) in arrayOf(
+                    Triple(AUTH_NONE, 0L, ""),
+                    Triple(AUTH_LSKF_OR_BIOMETRIC, 0L, "- Auth"),
+                    Triple(AUTH_LSKF_OR_BIOMETRIC, 10 * 1000L, "- Auth (10 sec)"),
+                    Triple(AUTH_LSKF_ONLY, 0L, "- Auth (LSKF Only)"),
+                    Triple(AUTH_BIOMETRIC_ONLY, 0L, "- Auth (Biometric Only)"),
+                    Triple(AUTH_LSKF_OR_BIOMETRIC, -1L, "- Auth (No Confirmation)"),
                 )) {
-                    if (!(purposes.contains(keyPurpose))) {
-                        // No common purpose
+                    // For brevity, Only do auth for P-256 Sign and Mac
+                    if (algorithm.curve!! != EcCurve.P256 && userAuthType != AUTH_NONE) {
                         continue
                     }
 
-                    val AUTH_NONE = setOf<UserAuthenticationType>()
-                    val AUTH_LSKF_OR_BIOMETRIC = setOf(
-                        UserAuthenticationType.LSKF,
-                        UserAuthenticationType.BIOMETRIC)
-                    val AUTH_LSKF_ONLY = setOf(UserAuthenticationType.LSKF)
-                    val AUTH_BIOMETRIC_ONLY = setOf(UserAuthenticationType.BIOMETRIC)
-                    for ((userAuthType, authTimeout, authDesc) in arrayOf(
-                        Triple(AUTH_NONE, 0L, ""),
-                        Triple(AUTH_LSKF_OR_BIOMETRIC, 0L, "- Auth"),
-                        Triple(AUTH_LSKF_OR_BIOMETRIC, 10 * 1000L, "- Auth (10 sec)"),
-                        Triple(AUTH_LSKF_ONLY, 0L, "- Auth (LSKF Only)"),
-                        Triple(AUTH_BIOMETRIC_ONLY, 0L, "- Auth (Biometric Only)"),
-                        Triple(AUTH_LSKF_OR_BIOMETRIC, -1L, "- Auth (No Confirmation)"),
-                    )) {
-                        // For brevity, Only do auth for P-256 Sign and Mac
-                        if (curve != EcCurve.P256 && userAuthType != AUTH_NONE) {
-                            continue
-                        }
-
-                        val biometricConfirmationRequired = (authTimeout >= 0L)
-                        item {
-                            TextButton(onClick = {
-                                coroutineScope.launch {
-                                    aksTest(
-                                        keyPurpose,
-                                        curve,
-                                        userAuthType != AUTH_NONE,
-                                        if (authTimeout < 0L) 0L else authTimeout,
-                                        userAuthType,
-                                        biometricConfirmationRequired,
-                                        strongBox,
-                                        showToast
-                                    )
-                                }
-                            })
-                            {
-                                Text(
-                                    text = "$strongBoxDesc$curveName $keyPurposeDesc $authDesc",
-                                    fontSize = 15.sp
+                    val biometricConfirmationRequired = (authTimeout >= 0L)
+                    item {
+                        TextButton(onClick = {
+                            coroutineScope.launch {
+                                aksTest(
+                                    algorithm,
+                                    userAuthType != AUTH_NONE,
+                                    if (authTimeout < 0L) 0L else authTimeout,
+                                    userAuthType,
+                                    biometricConfirmationRequired,
+                                    strongBox,
+                                    showToast
                                 )
                             }
+                        })
+                        {
+                            Text(
+                                text = "$strongBoxDesc$algorithm $authDesc",
+                                fontSize = 15.sp
+                            )
                         }
                     }
                 }
@@ -487,7 +480,7 @@ private suspend fun aksAttestation(strongBox: Boolean): KeyAttestation {
     val androidKeystoreSecureArea = platformSecureAreaProvider().get() as AndroidKeystoreSecureArea
     androidKeystoreSecureArea.createKey(
         "testKey",
-        AndroidKeystoreCreateKeySettings.Builder("Challenge".toByteArray())
+        AndroidKeystoreCreateKeySettings.Builder("Challenge".encodeToByteString())
             .setUserAuthenticationRequired(
                 true, 10*1000,
                 setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
@@ -500,8 +493,7 @@ private suspend fun aksAttestation(strongBox: Boolean): KeyAttestation {
 }
 
 private suspend fun aksTest(
-    keyPurpose: KeyPurpose,
-    curve: EcCurve,
+    algorithm: Algorithm,
     authRequired: Boolean,
     authTimeoutMillis: Long,
     userAuthType: Set<UserAuthenticationType>,
@@ -510,10 +502,10 @@ private suspend fun aksTest(
     showToast: (message: String) -> Unit) {
     Logger.d(
         TAG,
-        "aksTest keyPurpose:$keyPurpose curve:$curve authRequired:$authRequired authTimeout:$authTimeoutMillis strongBox:$strongBox"
+        "aksTest algorith:$algorithm authRequired:$authRequired authTimeout:$authTimeoutMillis strongBox:$strongBox"
     )
     try {
-        aksTestUnguarded(keyPurpose, curve, authRequired, authTimeoutMillis, userAuthType,
+        aksTestUnguarded(algorithm, authRequired, authTimeoutMillis, userAuthType,
             biometricConfirmationRequired, strongBox, showToast)
     } catch (e: Throwable) {
         e.printStackTrace();
@@ -522,8 +514,7 @@ private suspend fun aksTest(
 }
 
 private suspend fun aksTestUnguarded(
-    keyPurpose: KeyPurpose,
-    curve: EcCurve,
+    algorithm: Algorithm,
     authRequired: Boolean,
     authTimeoutMillis: Long,
     userAuthType: Set<UserAuthenticationType>,
@@ -534,15 +525,15 @@ private suspend fun aksTestUnguarded(
     val androidKeystoreSecureArea = platformSecureAreaProvider().get() as AndroidKeystoreSecureArea
     androidKeystoreSecureArea.createKey(
         "testKey",
-        AndroidKeystoreCreateKeySettings.Builder("Challenge".toByteArray())
-            .setKeyPurposes(setOf(keyPurpose))
+        AndroidKeystoreCreateKeySettings.Builder("Challenge".encodeToByteString())
+            .setAlgorithm(algorithm)
             .setUserAuthenticationRequired(
                 authRequired, authTimeoutMillis, userAuthType)
             .setUseStrongBox(strongBox)
             .build()
     )
 
-    if (keyPurpose == KeyPurpose.SIGN) {
+    if (algorithm.isSigning) {
         val dataToSign = "data".toByteArray()
         val t0 = System.currentTimeMillis()
         val signature = androidKeystoreSecureArea.sign(
@@ -557,7 +548,7 @@ private suspend fun aksTestUnguarded(
         )
         showToast("EC signature in (${t1 - t0} msec)")
     } else {
-        val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
+        val otherKeyPairForEcdh = Crypto.createEcPrivateKey(algorithm.curve!!)
         val t0 = System.currentTimeMillis()
         val Zab = androidKeystoreSecureArea.keyAgreement(
             "testKey",

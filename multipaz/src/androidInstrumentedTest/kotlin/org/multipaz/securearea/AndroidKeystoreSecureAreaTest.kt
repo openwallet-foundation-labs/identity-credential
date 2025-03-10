@@ -50,6 +50,7 @@ import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
+import kotlinx.io.bytestring.ByteString
 
 class AndroidKeystoreSecureAreaTest {
 
@@ -71,7 +72,7 @@ class AndroidKeystoreSecureAreaTest {
 
     @Test
     fun testEcKeyDeletion() = runTest {
-        val settings = AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3)).build()
+        val settings = AndroidKeystoreCreateKeySettings.Builder(ByteString(1, 2, 3)).build()
 
         val ks = secureAreaProvider.get()
 
@@ -109,7 +110,7 @@ class AndroidKeystoreSecureAreaTest {
 
     fun testEcKeySigningHelper(useStrongBox: Boolean) = runTest {
         val ks = secureAreaProvider.get()
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
             .build()
@@ -117,7 +118,7 @@ class AndroidKeystoreSecureAreaTest {
         val keyInfo = ks.getKeyInfo("testKey")
         val attestation = keyInfo.attestation
         Assert.assertTrue(attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
@@ -158,7 +159,7 @@ class AndroidKeystoreSecureAreaTest {
         Assume.assumeFalse(TestUtil.isRunningOnEmulator)
         val ks = secureAreaProvider.get()
 
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
             .setUserAuthenticationRequired(
@@ -172,7 +173,7 @@ class AndroidKeystoreSecureAreaTest {
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
@@ -202,13 +203,13 @@ class AndroidKeystoreSecureAreaTest {
 
         val ks = secureAreaProvider.get()
         val type = setOf(UserAuthenticationType.LSKF)
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUserAuthenticationRequired(true, 42, type)
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
@@ -235,15 +236,14 @@ class AndroidKeystoreSecureAreaTest {
 
         val ks = secureAreaProvider.get()
         val type = setOf(UserAuthenticationType.BIOMETRIC)
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUserAuthenticationRequired(true, 42, type)
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
-        Assert.assertEquals(Algorithm.ES256, keyInfo.signingAlgorithm)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
         Assert.assertEquals(42, keyInfo.userAuthenticationTimeoutMillis)
@@ -266,7 +266,7 @@ class AndroidKeystoreSecureAreaTest {
         //
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
         val type = setOf<UserAuthenticationType>()
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         try {
             AndroidKeystoreCreateKeySettings.Builder(challenge)
                 .setUserAuthenticationRequired(true, 42, type)
@@ -288,15 +288,14 @@ class AndroidKeystoreSecureAreaTest {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
         val ks = secureAreaProvider.get()
 
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
-            .setEcCurve(EcCurve.ED25519)
+            .setAlgorithm(Algorithm.ED25519)
             .build()
         val keyInfo = ks.createKey("testKey", settings)
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ED25519, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.ED25519, keyInfo.publicKey.curve)
-        Assert.assertEquals(Algorithm.EDDSA, keyInfo.signingAlgorithm)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
         Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
@@ -335,8 +334,8 @@ class AndroidKeystoreSecureAreaTest {
         val ks = secureAreaProvider.get()
         ks.createKey(
             "testKey",
-            AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
-                .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
+            AndroidKeystoreCreateKeySettings.Builder(ByteString(1, 2, 3))
+                .setAlgorithm(Algorithm.ECDH_P256)
                 .build()
         )
         val dataToSign = byteArrayOf(4, 5, 6)
@@ -381,14 +380,14 @@ class AndroidKeystoreSecureAreaTest {
         val ks = secureAreaProvider.get()
         ks.createKey(
             "testKey",
-            AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
+            AndroidKeystoreCreateKeySettings.Builder(ByteString(1, 2, 3))
                 .setUseStrongBox(useStrongBox)
-                .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
+                .setAlgorithm(Algorithm.ECDH_P256)
                 .build()
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ECDH_P256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
@@ -428,14 +427,13 @@ class AndroidKeystoreSecureAreaTest {
         val otherKey = Crypto.createEcPrivateKey(EcCurve.X25519)
         ks.createKey(
             "testKey",
-            AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
-                .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
-                .setEcCurve(EcCurve.X25519)
+            AndroidKeystoreCreateKeySettings.Builder(ByteString(1, 2, 3))
+                .setAlgorithm(Algorithm.ECDH_X25519)
                 .build()
         )
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ECDH_X25519, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.X25519, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
@@ -461,83 +459,6 @@ class AndroidKeystoreSecureAreaTest {
     }
 
     @Test
-    fun testEcdhAndSigning() {
-        // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
-        // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        Assume.assumeTrue(
-            context.packageManager.hasSystemFeature(
-                PackageManager.FEATURE_HARDWARE_KEYSTORE, 100
-            )
-        )
-        testEcdhAndSigningHelper(false)
-    }
-
-    @Test
-    fun testEcdhAndSigningStrongBox() {
-        // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_STRONGBOX_KEYSTORE
-        // ECDH is available if FEATURE_STRONGBOX_KEYSTORE is >= 100.
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        Assume.assumeTrue(
-            context.packageManager.hasSystemFeature(
-                PackageManager.FEATURE_STRONGBOX_KEYSTORE, 100
-            )
-        )
-        testEcdhAndSigningHelper(true)
-    }
-
-    fun testEcdhAndSigningHelper(useStrongBox: Boolean) = runTest {
-        val ks = secureAreaProvider.get()
-        val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        ks.createKey(
-            "testKey",
-            AndroidKeystoreCreateKeySettings.Builder(byteArrayOf(1, 2, 3))
-                .setUseStrongBox(useStrongBox)
-                .setKeyPurposes(setOf(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN))
-                .build()
-        )
-        val keyInfo = ks.getKeyInfo("testKey")
-        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN), keyInfo.keyPurposes)
-        Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
-        Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
-        Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
-        Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
-        Assert.assertNull(keyInfo.attestKeyAlias)
-        Assert.assertNull(keyInfo.validFrom)
-        Assert.assertNull(keyInfo.validUntil)
-
-        // First do the ECDH from the perspective of our side...
-        val ourSharedSecret: ByteArray
-        ourSharedSecret = try {
-            ks.keyAgreement("testKey", otherKey.publicKey, null)
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
-
-        // ...now do it from the perspective of the other side...
-        val theirSharedSecret = Crypto.keyAgreement(otherKey, keyInfo.publicKey)
-
-        // ... finally, check that both sides compute the same shared secret.
-        Assert.assertArrayEquals(theirSharedSecret, ourSharedSecret)
-        val dataToSign = byteArrayOf(4, 5, 6)
-        val signature = try {
-            ks.sign("testKey", dataToSign, null)
-        } catch (e: KeyLockedException) {
-            throw AssertionError(e)
-        }
-        Assert.assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.ES256,
-                signature
-            )
-        )
-    }
-
-    @Test
     @Throws(IOException::class)
     fun testEcdhWithoutCorrectPurpose() = runTest {
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
@@ -552,13 +473,8 @@ class AndroidKeystoreSecureAreaTest {
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
         ks.createKey(
             "testKey",
-            AndroidKeystoreCreateKeySettings.Builder(
-                byteArrayOf(
-                    1,
-                    2,
-                    3
-                )
-            ) //.setKeyPurposes(setOf(KeyPurpose.AGREE_KEY))
+            AndroidKeystoreCreateKeySettings.Builder(ByteString(1, 2, 3))
+                .setAlgorithm(Algorithm.ESP256)
                 .build()
         )
         try {
@@ -574,7 +490,7 @@ class AndroidKeystoreSecureAreaTest {
     @Test
     fun testEcKeyCreationDuplicateAlias() = runTest {
         val ks = secureAreaProvider.get()
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge).build()
         ks.createKey("testKey", settings)
         val keyInfoOld: KeyInfo = ks.getKeyInfo("testKey")
@@ -629,7 +545,7 @@ class AndroidKeystoreSecureAreaTest {
         validUntilCalendar[2024, 5, 15, 0, 0] = 0
         val validFrom = fromEpochMilliseconds(validFromCalendar.timeInMillis)
         val validUntil = fromEpochMilliseconds(validUntilCalendar.timeInMillis)
-        val challenge = byteArrayOf(1, 2, 3)
+        val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setUseStrongBox(useStrongBox)
             .setValidityPeriod(validFrom, validUntil)
@@ -640,7 +556,7 @@ class AndroidKeystoreSecureAreaTest {
         // On Android, at least three certificates are present in the chain.
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 3)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
@@ -654,7 +570,7 @@ class AndroidKeystoreSecureAreaTest {
         val parser = AndroidAttestationExtensionParser(
             keyInfo.attestation.certChain!!.certificates[0]
         )
-        Assert.assertArrayEquals(challenge, parser.attestationChallenge)
+        Assert.assertArrayEquals(challenge.toByteArray(), parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
         if (!TestUtil.isRunningOnEmulator) {
             Assert.assertEquals(
@@ -731,7 +647,7 @@ class AndroidKeystoreSecureAreaTest {
         } catch (e: CertificateException) {
             throw IllegalStateException("Error creating attest key", e)
         }
-        val challenge = byteArrayOf(4, 5, 6, 7)
+        val challenge = ByteString(4, 5, 6, 7)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setAttestKeyAlias(attestKeyAlias)
             .setUseStrongBox(useStrongBox)
@@ -740,7 +656,7 @@ class AndroidKeystoreSecureAreaTest {
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.isNotEmpty())
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
@@ -766,7 +682,7 @@ class AndroidKeystoreSecureAreaTest {
         val parser = AndroidAttestationExtensionParser(
             keyInfo.attestation.certChain!!.certificates[0]
         )
-        Assert.assertArrayEquals(challenge, parser.attestationChallenge)
+        Assert.assertArrayEquals(challenge.toByteArray(), parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
         if (!TestUtil.isRunningOnEmulator) {
             Assert.assertEquals(
@@ -784,20 +700,16 @@ class AndroidKeystoreSecureAreaTest {
     @Throws(IOException::class)
     fun testUsingGenericCreateKeySettings() = runTest {
         val ks = secureAreaProvider.get()
-        // Challenge is always empty when using the generic CreateKeySettings
-        val challenge = byteArrayOf()
-        ks.createKey("testKey", CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256))
+        val challenge = ByteString(1, 2, 3)
+        ks.createKey("testKey", CreateKeySettings(Algorithm.ESP256, challenge))
         val keyInfo = ks.getKeyInfo("testKey")
         Assert.assertNotNull(keyInfo)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
-        Assert.assertEquals(Algorithm.ES256, keyInfo.signingAlgorithm)
         val parser = AndroidAttestationExtensionParser(
             keyInfo.attestation.certChain!!.certificates[0]
         )
-        Assert.assertArrayEquals(challenge, parser.attestationChallenge)
-
-        // Now delete it...
+        Assert.assertArrayEquals(challenge.toByteArray(), parser.attestationChallenge)
         ks.deleteKey("testKey")
     }
 }

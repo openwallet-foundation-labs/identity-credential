@@ -15,6 +15,7 @@
  */
 package org.multipaz.securearea
 
+import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
 
@@ -51,6 +52,13 @@ interface SecureArea {
      * The name of the Secure Area, suitable for displaying to the end user.
      */
     val displayName: String
+
+    /**
+     * The list of algorithms the Secure Area supports.
+     *
+     * The algorithms in this list are fully specified.
+     */
+    val supportedAlgorithms: List<Algorithm>
 
     /**
      * Creates a new key.

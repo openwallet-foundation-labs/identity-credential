@@ -147,7 +147,7 @@ class DocumentGenerator
                     mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem()
+                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier!!.toDataItem()
                         )
                     ),
                     mapOf()
