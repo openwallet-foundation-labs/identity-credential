@@ -863,6 +863,8 @@ open class CloudSecureArea protected constructor(
         return "${identifier}_alias_${alias}"
     }
 
+    // TODO: override batchCreateKey and implement server-side command to avoid roundtrips.
+
     companion object {
         const val IDENTIFIER_PREFIX = "CloudSecureArea"
 
