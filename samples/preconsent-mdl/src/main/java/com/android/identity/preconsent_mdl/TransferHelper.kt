@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:Suppress("DEPRECATION")  // For the deprecated PreferenceManager only.
+
 package org.multipaz.preconsent_mdl
 
 import android.annotation.SuppressLint
