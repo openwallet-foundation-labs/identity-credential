@@ -51,6 +51,7 @@ actual fun rememberNotificationPermissionState(): PermissionState {
 
     val hasPermission = runBlocking {
         suspendCancellableCoroutine<Boolean> { continuation ->
+
             center.getNotificationSettingsWithCompletionHandler { settings ->
                 continuation.resume(settings?.authorizationStatus == UNAuthorizationStatusAuthorized)
             }

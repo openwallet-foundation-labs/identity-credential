@@ -5,6 +5,7 @@ import androidx.navigation.navArgument
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.about_screen_title
 import multipazproject.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
+import multipazproject.samples.testapp.generated.resources.camera_title
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_examples_title
 import multipazproject.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.consent_modal_bottom_sheet_list_screen_title
@@ -203,6 +204,11 @@ data object ScreenLockDestination : Destination {
     override val title = Res.string.screen_lock_title
 }
 
+data object CameraDestination : Destination {
+    override val route = "Camera"
+    override val title = Res.string.camera_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -231,4 +237,5 @@ val appDestinations = listOf(
     RichTextDestination,
     NotificationsDestination,
     ScreenLockDestination,
+    CameraDestination,
 )
