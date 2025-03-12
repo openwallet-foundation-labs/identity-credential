@@ -1,6 +1,7 @@
 package org.multipaz.cbor
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.getUInt8
 
 /**
  * Byte String (major type 2), indefinite length.
@@ -26,7 +27,7 @@ data class IndefLengthBstr(val chunks: List<ByteArray>) : DataItem(MajorType.BYT
             val chunks = mutableListOf<ByteArray>()
             var cursor = offset + 1
             while (true) {
-                if (encodedCbor[cursor].toInt().and(0xff) == 0xff) {
+                if (encodedCbor.getUInt8(cursor) == Cbor.BREAK) {
                     // BREAK code, we're done
                     cursor += 1
                     break

@@ -2,7 +2,14 @@ package org.multipaz.cbor
 
 import kotlin.math.pow
 import kotlinx.io.bytestring.ByteStringBuilder
-import kotlin.experimental.or
+import org.multipaz.util.appendUInt16
+import org.multipaz.util.appendUInt32
+import org.multipaz.util.appendUInt64
+import org.multipaz.util.appendUInt8
+import org.multipaz.util.getUInt16
+import org.multipaz.util.getUInt32
+import org.multipaz.util.getUInt64
+import org.multipaz.util.getUInt8
 
 /**
  * CBOR support routines.
@@ -11,6 +18,9 @@ import kotlin.experimental.or
  * [RFC 8849](https://www.rfc-editor.org/rfc/rfc8949.html).
  */
 object Cbor {
+    /** As defined in RFC 8949 3.2.1. The "break" stop code */
+    const val BREAK: UByte = 0xffu
+
     private val HEX_DIGITS = "0123456789abcdef".toCharArray()
 
     internal fun encodeLength(
@@ -24,33 +34,14 @@ object Cbor {
         majorType: MajorType,
         length: ULong
     ) {
-        val majorTypeShifted = (majorType.type shl 5).toByte()
+        val majorTypeShifted = (majorType.type shl 5).toUByte()
         builder.apply {
-            if (length < 24U) {
-                append(majorTypeShifted.or(length.toByte()))
-            } else if (length < (1UL shl 8)) {
-                append(majorTypeShifted.or(24))
-                append(length.toByte())
-            } else if (length < (1UL shl 16)) {
-                append(majorTypeShifted.or(25))
-                append((length shr 8).and(0xffU).toByte())
-                append((length shr 0).and(0xffU).toByte())
-            } else if (length < (1UL shl 32)) {
-                append(majorTypeShifted.or(26))
-                append((length shr 24).and(0xffU).toByte())
-                append((length shr 16).and(0xffU).toByte())
-                append((length shr 8).and(0xffU).toByte())
-                append((length shr 0).and(0xffU).toByte())
-            } else {
-                append(majorTypeShifted.or(27))
-                append((length shr 56).and(0xffU).toByte())
-                append((length shr 48).and(0xffU).toByte())
-                append((length shr 40).and(0xffU).toByte())
-                append((length shr 32).and(0xffU).toByte())
-                append((length shr 24).and(0xffU).toByte())
-                append((length shr 16).and(0xffU).toByte())
-                append((length shr 8).and(0xffU).toByte())
-                append((length shr 0).and(0xffU).toByte())
+            when {
+                length < 24U -> appendUInt8(majorTypeShifted.or(length.toUByte()))
+                length < (1UL shl 8) -> appendUInt8(majorTypeShifted.or(24u)).appendUInt8(length.toUByte())
+                length < (1UL shl 16) -> appendUInt8(majorTypeShifted.or(25u)).appendUInt16(length.toUInt())
+                length < (1UL shl 32) -> appendUInt8(majorTypeShifted.or(26u)).appendUInt32(length.toUInt())
+                else -> appendUInt8(majorTypeShifted.or(27u)).appendUInt64(length)
             }
         }
     }
@@ -73,50 +64,27 @@ object Cbor {
     // field is invalid
     //
     internal fun decodeLength(encodedCbor: ByteArray, offset: Int): Pair<Int, ULong> {
-        val additionalInformation: Int
         try {
-            additionalInformation = encodedCbor[offset].toInt().and(0x1f)
+            val firstByte = encodedCbor[offset].toInt()
+            val additionalInformation = firstByte and 0x1f
+
             if (additionalInformation < 24) {
                 return Pair(offset + 1, additionalInformation.toULong())
             }
-            when (additionalInformation) {
-                24 -> return Pair(offset + 2, encodedCbor[offset + 1].toULong().and(0xffUL))
-                25 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 8) +
-                            encodedCbor[offset + 2].toULong().and(0xffUL)
-                    return Pair(offset + 3, length)
-                }
 
-                26 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 24) +
-                            (encodedCbor[offset + 2].toULong().and(0xffUL) shl 16) +
-                            (encodedCbor[offset + 3].toULong().and(0xffUL) shl 8) +
-                            encodedCbor[offset + 4].toULong().and(0xffUL)
-                    return Pair(offset + 5, length)
-                }
-
-                27 -> {
-                    val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 56) +
-                            (encodedCbor[offset + 2].toULong().and(0xffUL) shl 48) +
-                            (encodedCbor[offset + 3].toULong().and(0xffUL) shl 40) +
-                            (encodedCbor[offset + 4].toULong().and(0xffUL) shl 32) +
-                            (encodedCbor[offset + 5].toULong().and(0xffUL) shl 24) +
-                            (encodedCbor[offset + 6].toULong().and(0xffUL) shl 16) +
-                            (encodedCbor[offset + 7].toULong().and(0xffUL) shl 8) +
-                            encodedCbor[offset + 8].toULong().and(0xffUL)
-                    return Pair(offset + 9, length)
-                }
-
-                31 ->
-                    return Pair(offset + 1, 0UL)  // indefinite length
-                else -> {}
+            return when (additionalInformation) {
+                24 -> Pair(offset + 2, encodedCbor.getUInt8(offset + 1).toULong())
+                25 -> Pair(offset + 3, encodedCbor.getUInt16(offset + 1).toULong())
+                26 -> Pair(offset + 5, encodedCbor.getUInt32(offset + 1).toULong())
+                27 -> Pair(offset + 9, encodedCbor.getUInt64(offset + 1))
+                31 -> Pair(offset + 1, 0UL) // indefinite length
+                else -> throw IllegalArgumentException(
+                    "Illegal additional information value $additionalInformation at offset $offset"
+                )
             }
         } catch (e: IndexOutOfBoundsException) {
             throw IllegalArgumentException("Out of data at offset $offset", e)
         }
-        throw IllegalArgumentException(
-            "Illegal additional information value $additionalInformation at offset $offset"
-        )
     }
 
     // This is based on the C code in https://www.rfc-editor.org/rfc/rfc8949.html#section-appendix.d
@@ -198,8 +166,7 @@ object Cbor {
                     if (additionalInformation < 24) {
                         Simple.decode(encodedCbor, offset)
                     } else if (additionalInformation == 25) {
-                        val raw = (encodedCbor[offset + 1].toInt().and(0xff) shl 8) +
-                                encodedCbor[offset + 2].toInt().and(0xff)
+                        val raw = encodedCbor.getUInt16(offset + 1).toInt()
                         Pair(offset + 3, CborFloat(fromRawHalfFloat(raw)))
                     } else if (additionalInformation == 26) {
                         CborFloat.decode(encodedCbor, offset)

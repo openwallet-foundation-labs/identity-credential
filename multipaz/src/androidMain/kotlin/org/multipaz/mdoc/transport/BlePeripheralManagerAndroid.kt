@@ -38,6 +38,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.getUInt32
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.min
@@ -591,12 +592,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
 
             val inputStream = l2capSocket!!.inputStream
             while (true) {
-                val encodedLength = inputStream.readNOctets(4U)
-                val length = (encodedLength[0].toUInt().and(0xffU) shl 24) +
-                        (encodedLength[1].toUInt().and(0xffU) shl 16) +
-                        (encodedLength[2].toUInt().and(0xffU) shl 8) +
-                        (encodedLength[3].toUInt().and(0xffU) shl 0)
-                val message = inputStream.readNOctets(length)
+                val message = inputStream.readNOctets(inputStream.readNOctets(4U).getUInt32(0))
                 incomingMessages.send(message)
             }
         } catch (e: Throwable) {
