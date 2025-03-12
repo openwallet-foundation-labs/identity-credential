@@ -31,11 +31,14 @@ import platform.UIKit.UIView
 import platform.UIKit.UIViewController
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_global_queue
+import platform.darwin.dispatch_get_main_queue
 
-internal class CameraViewController(
-    private val cameraSelector: CameraSelector
+class CameraViewController(
+    private val cameraSelector: CameraSelector,
+    private val showPreview: Boolean
 ) : UIViewController(nibName = null, bundle = null) {
-    private val TAG = "CameraViewController"
+
+    private val doNotChange: AVCaptureVideoOrientation = 7162530L // Arbitrary code.
     private val previewView = UIView()
     private var previewLayer: AVCaptureVideoPreviewLayer? = null
     private val captureSession = AVCaptureSession()
@@ -44,13 +47,14 @@ internal class CameraViewController(
         super.viewDidLoad()
 
         setupCamera()
-
-        view.backgroundColor = UIColor.blackColor
-        setupPreviewView()
-        setupPreviewLayer()
-
+        if (showPreview) {
+            view.backgroundColor = UIColor.blackColor
+            setupPreviewView()
+            setupPreviewLayer()
+        }
         dispatch_async(dispatch_get_global_queue(0L, 0UL)) {
             captureSession.startRunning()
+            println("Capture session started.")
         }
     }
 
@@ -61,10 +65,19 @@ internal class CameraViewController(
         updatePreviewLayerFrame()
     }
 
+    override fun viewWillDisappear(animated: Boolean) {
+        super.viewWillDisappear(animated)
+
+        // Clean up rotation notification listener.
+        NSNotificationCenter.defaultCenter.removeObserver(this)
+        UIDevice.currentDevice().endGeneratingDeviceOrientationNotifications()
+    }
+
     /** Callback for [OrientationListener]. */
     @OptIn(BetaInteropApi::class)
     @ObjCAction
     fun handleDeviceOrientationDidChange() {
+        println("handleDeviceOrientationDidChange.")
         // Directly update preview orientation when the device rotates.
         updatePreviewLayerFrame()
     }
@@ -91,19 +104,22 @@ internal class CameraViewController(
             }
         } ?: return
 
+        println("Camera found: $camera.")
+
         val videoInput = AVCaptureDeviceInput(device = camera as AVCaptureDevice, error = null)
         if (captureSession.canAddInput(videoInput)) {
             captureSession.addInput(videoInput)
+            println("Capture session input added.")
         } else {
             Logger.e(TAG, "Failed to add input to the capture session.")
             throw IllegalStateException("Failed to add input to the capture session.")
         }
 
-        //TODO: The videoOutput handling is a placeholder for now. E.g.: the proper error handling is needed.
         val videoOutput = AVCaptureVideoDataOutput().apply {
             videoSettings = mapOf(AVVideoCodecKey to AVVideoCodecTypeJPEG)
             alwaysDiscardsLateVideoFrames = true // Improves performance.
         }
+
         if (captureSession.canAddOutput(videoOutput)) {
             captureSession.addOutput(videoOutput)
         }
@@ -139,9 +155,8 @@ internal class CameraViewController(
     private fun updatePreviewLayerFrame() {
         // Align the preview layer to the preview view's bounds and adjust orientation.
         previewLayer?.frame = previewView.bounds
-        getVideoOrientationForDevice()?.let { newOrientation ->
-            previewLayer?.connection?.videoOrientation = newOrientation
-        }
+        val newOrientation = getVideoOrientationForDevice()
+        if (newOrientation != doNotChange) previewLayer?.connection?.videoOrientation = newOrientation
     }
 
     /**
@@ -150,7 +165,7 @@ internal class CameraViewController(
      * @return The corresponding AVCaptureVideoOrientation or null if the device moved close to the horizontal plane
      *     to help avoid the unexpected UX.
      */
-    private fun getVideoOrientationForDevice(): AVCaptureVideoOrientation? {
+    private fun getVideoOrientationForDevice(): AVCaptureVideoOrientation {
         return when (UIDevice.currentDevice.orientation) {
             UIDeviceOrientation.UIDeviceOrientationPortrait -> AVCaptureVideoOrientationPortrait
             UIDeviceOrientation.UIDeviceOrientationLandscapeLeft -> AVCaptureVideoOrientationLandscapeRight

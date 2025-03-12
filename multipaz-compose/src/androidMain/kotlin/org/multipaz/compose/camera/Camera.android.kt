@@ -20,7 +20,6 @@ import org.multipaz.util.Logger
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-
 @Composable
 actual fun Camera(
     cameraSelector: CameraSelector,
@@ -35,7 +34,6 @@ actual fun Camera(
         PreviewView(context)
     }
 
-    //TODO: The actual image analysis will be added later (the API specification is in progress of definition).
     val imageAnalysis = ImageAnalysis.Builder()
         .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
