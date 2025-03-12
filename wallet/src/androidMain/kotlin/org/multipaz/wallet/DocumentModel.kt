@@ -428,7 +428,7 @@ class DocumentModel(
         val kvPairs = mutableMapOf<String, String>()
         kvPairs.put("Document Type", mso.docType)
         kvPairs.put("MSO Version", mso.version)
-        kvPairs.put("Issuer Data Digest Algorithm", mso.digestAlgorithm)
+        kvPairs.put("Issuer Data Digest Algorithm", mso.digestAlgorithm.description)
 
         if (mdocCredential is MdocCredential) {
             addSecureAreaBoundCredentialInfo(mdocCredential, kvPairs)

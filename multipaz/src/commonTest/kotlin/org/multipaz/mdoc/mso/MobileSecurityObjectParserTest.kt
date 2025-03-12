@@ -22,6 +22,7 @@ import org.multipaz.mdoc.TestVectors
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
 import kotlinx.datetime.Instant
+import org.multipaz.crypto.Algorithm
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -42,7 +43,7 @@ class MobileSecurityObjectParserTest {
         // response - the goal is to check that the parser returns the expected values
         val mso = MobileSecurityObjectParser(encodedMobileSecurityObject).parse()
         assertEquals("1.0", mso.version)
-        assertEquals("SHA-256", mso.digestAlgorithm)
+        assertEquals(Algorithm.SHA256, mso.digestAlgorithm)
         assertEquals("org.iso.18013.5.1.mDL", mso.docType)
         assertEquals(
             setOf("org.iso.18013.5.1", "org.iso.18013.5.1.US"),

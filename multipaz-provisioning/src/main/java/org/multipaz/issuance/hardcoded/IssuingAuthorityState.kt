@@ -487,7 +487,7 @@ class IssuingAuthorityState(
             else -> throw IllegalArgumentException("Unknown type $type")
         }
         val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
+            Algorithm.SHA256,
             docType,
             authenticationKey
         )
