@@ -390,6 +390,109 @@ fun ByteStringBuilder.appendUInt16Le(
 }
 
 /**
+ * Appends a 24-bit unsigned integer to this [ByteStringBuilder].
+ *
+ * This function appends the [value] as three bytes to the end of this [ByteStringBuilder].
+ * It also validates that the provided [value] is within the specified [validRange].
+ * By default the valid range is from [UInt.MIN_VALUE] to [UInt.MAX_VALUE - UByte.MIN_VALUE].
+ *
+ * The bytes are appended in Big-Endian order.
+ *
+ * @param value The unsigned integer value to append.
+ * @param validRange The valid range for the unsigned integer value. Defaults to
+ *      [UInt.MIN_VALUE]..[UInt.MAX_VALUE - UByte.MIN_VALUE].
+ * @return This [ByteStringBuilder] instance, allowing for chaining of operations.
+ *
+ * @throws IllegalArgumentException if the [value] is outside the [validRange].
+ */
+fun ByteStringBuilder.appendUInt24(
+    value: UInt,
+    validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE - UByte.MIN_VALUE
+): ByteStringBuilder {
+    value.requireInRange(validRange)
+    append((value shr 16).toByte())
+    append((value shr 8).toByte())
+    append((value shr 0).toByte())
+    return this
+}
+
+/**
+ * Appends a 24-bit unsigned integer to this [ByteStringBuilder].
+ *
+ * This function appends the [value] as three bytes to the end of this [ByteStringBuilder].
+ * It also validates that the provided [value] is within the specified [validRange].
+ * By default the valid range is from [UInt.MIN_VALUE] to [UInt.MAX_VALUE - UByte.MIN_VALUE].
+ *
+ * The bytes are appended in Big-Endian order.
+ *
+ * @param value The integer value to append.
+ * @param validRange The valid range for the unsigned integer value. Defaults to
+ *     [UInt.MIN_VALUE]..[UInt.MAX_VALUE - UByte.MIN_VALUE].
+ * @return This [ByteStringBuilder] instance, allowing for chaining of operations.
+ *
+ * @throws IllegalArgumentException if the [value] is outside the [validRange].
+ */
+fun ByteStringBuilder.appendUInt24(
+    value: Int,
+    validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE - UByte.MIN_VALUE
+): ByteStringBuilder {
+    value.requireInRange(validRange)
+    appendUInt24(value.toUInt(), validRange)
+    return this
+}
+
+/**
+ * Appends a 24-bit unsigned integer to this [ByteStringBuilder] in Little-Endian order.
+ *
+ * This function appends the [value] as three bytes to the end of this [ByteStringBuilder].
+ * It also validates that the provided [value] is within the specified [validRange].
+ * By default the valid range is from [UInt.MIN_VALUE] to [UInt.MAX_VALUE - UByte.MIN_VALUE].
+ *
+ * The bytes are appended in Little-Endian order.
+ *
+ * @param value The unsigned integer value to append.
+ * @param validRange The valid range for the unsigned integer value. Defaults to
+ *     [UInt.MIN_VALUE]..[UInt.MAX_VALUE - UByte.MIN_VALUE].
+ * @return This [ByteStringBuilder] instance, allowing for chaining of operations.
+ *
+ * @throws IllegalArgumentException if the [value] is outside the [validRange].
+ */
+fun ByteStringBuilder.appendUInt24Le(
+    value: UInt,
+    validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE - UByte.MIN_VALUE
+): ByteStringBuilder {
+    value.requireInRange(validRange)
+    append((value shr 0).toByte())
+    append((value shr 8).toByte())
+    append((value shr 16).toByte())
+    return this
+}
+
+/**
+ * Appends a 24-bit unsigned integer to this [ByteStringBuilder] in Little-Endian order.
+ *
+ * This function appends the [value] as three bytes to the end of this [ByteStringBuilder].
+ * It also validates that the provided [value] is within the specified [validRange].
+ * By default the valid range is from [UInt.MIN_VALUE] to [UInt.MAX_VALUE - UByte.MIN_VALUE].
+ *
+ * The bytes are appended in Little-Endian order.
+ *
+ * @param value The integer value to append.
+ * @param validRange The valid range for the unsigned integer value. Defaults to [UInt.MIN_VALUE]..[UInt.MAX_VALUE - UByte.MIN_VALUE].
+ * @return This [ByteStringBuilder] instance, allowing for chaining of operations.
+ *
+ * @throws IllegalArgumentException if the [value] is outside the [validRange].
+ */
+fun ByteStringBuilder.appendUInt24Le(
+    value: Int,
+    validRange: UIntRange = UInt.MIN_VALUE..UInt.MAX_VALUE - UByte.MIN_VALUE
+): ByteStringBuilder {
+    value.requireInRange(validRange)
+    appendUInt32Le(value.toUInt(), validRange)
+    return this
+}
+
+/**
  * Appends a 32-bit unsigned integer to this [ByteStringBuilder].
  *
  * This function appends the [value] as four bytes to the end of this [ByteStringBuilder].

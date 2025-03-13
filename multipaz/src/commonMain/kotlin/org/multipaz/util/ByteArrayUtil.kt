@@ -2,7 +2,6 @@ package org.multipaz.util
 
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
-import kotlinx.io.bytestring.toHexString
 
 /**
  * Extension functions for working with [ByteArray] in Kotlin.
@@ -568,6 +567,46 @@ fun ByteArray.getUInt16Le(offset: Int): UShort {
     val lower = this[offset].toInt() and 0xFF
     val higher = this[offset + 1].toInt() and 0xFF
     return ((higher shl 8) or lower).toUShort()
+}
+
+/**
+ * Reads a UInt24 value (3 bytes) from the byte array at the specified offset.
+ *
+ * This function reads three bytes (UInt24) from the byte array at the specified `offset` and interprets them as an
+ * unsigned 32-bit integer.
+ *
+ * @param offset The offset (index) in the byte array from which the UInt24 value should be read. Must be within the
+ *     valid range of the array's indices.
+ * @return The UInt24 value read from the byte array.
+ *
+ * @throws IndexOutOfBoundsException If the `offset` or `offset` + 2 is negative or greater than or equal to the array's
+ *     size.
+ */
+fun ByteArray.getUInt24(offset: Int): UInt {
+    val b1 = this[offset].toInt() and 0xFF
+    val b2 = this[offset + 1].toInt() and 0xFF
+    val b3 = this[offset + 2].toInt() and 0xFF
+    return ((b1 shl 16) or (b2 shl 8) or b3).toUInt()
+}
+
+/**
+ * Reads a UInt24 value (3 bytes) from the byte array at the specified offset in little-endian order.
+ *
+ * This function reads three bytes (UInt24) from the byte array at the specified `offset` and interprets them as an
+ * unsigned 32-bit integer using little-endian byte order.
+ *
+ * @param offset The offset (index) in the byte array from which the UInt24 value should be read. Must be within the
+ *     valid range of the array's indices.
+ * @return The UInt24 value read from the byte array.
+ *
+ * @throws IndexOutOfBoundsException If the `offset` or `offset` + 2 is negative or greater than or equal to the array's
+ *    size.
+ */
+fun ByteArray.getUInt24Le(offset: Int): UInt {
+    val b1 = this[offset].toInt() and 0xFF
+    val b2 = this[offset + 1].toInt() and 0xFF
+    val b3 = this[offset + 2].toInt() and 0xFF
+    return ((b3 shl 16) or (b2 shl 8) or b1).toUInt()
 }
 
 /**

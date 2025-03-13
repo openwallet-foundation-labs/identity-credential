@@ -121,6 +121,15 @@ class ByteStringBuilderExtensionsTest {
     }
 
     @Test
+    fun appendUInt24_valid() {
+        val byteString = buildByteString { appendUInt24Le(UInt.MIN_VALUE) }
+        assertEquals(UInt.MIN_VALUE, byteString.toByteArray().getUInt24Le(0))
+
+        val byteString2 = buildByteString { appendUInt24Le(0xabcdefu) }
+        assertEquals(0xabcdefu, byteString2.toByteArray().getUInt24Le(0))
+    }
+
+    @Test
     fun appendUInt32_valid() {
         val byteString = buildByteString { appendUInt32Le(UInt.MIN_VALUE) }
         assertEquals(UInt.MIN_VALUE, byteString.toByteArray().getUInt32Le(0))
