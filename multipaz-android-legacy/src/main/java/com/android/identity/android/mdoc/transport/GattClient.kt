@@ -217,9 +217,6 @@ internal class GattClient(
         Logger.d(TAG, "Negotiated MTU $mtu")
         if (characteristicIdent != null && identValue != null) {
             // Read ident characteristics...
-            //
-            // TODO: maybe skip this, it's optional after all...
-            //
             try {
                 if (!gatt.readCharacteristic(characteristicIdent)) {
                     reportError(Error("Error reading from ident characteristic"))
@@ -261,8 +258,6 @@ internal class GattClient(
             if (Logger.isDebugEnabled) {
                 Logger.d(TAG, "Received identValue: ${identValue.toHex()}")
             }
-            // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
-            //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
             if (!Arrays.equals(identValue, this.identValue)) {
                 Logger.w(TAG, "Received ident '${identValue.toHex()}' does not match " +
                             "expected ident '${this.identValue!!.toHex()}'")
@@ -476,9 +471,6 @@ internal class GattClient(
         val chunk = writingQueue.poll() ?: return
         if (chunk.size == 0) {
             Logger.d(TAG, "Chunk is length 0, shutting down GattClient in 1000ms")
-            // TODO: On some devices we lose messages already sent if we don't have a delay like
-            //  this. Need to properly investigate if this is a problem in our stack or the
-            //  underlying BLE subsystem.
             Thread.sleep(1000)
             Logger.d(TAG, "Shutting down GattClient now")
             try {

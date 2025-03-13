@@ -331,7 +331,6 @@ abstract class DataTransport(
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
-            // TODO: move this to DataTransportFactory
             return if (connectionMethod is ConnectionMethodBle) {
                 DataTransportBle.fromConnectionMethod(
                     context,

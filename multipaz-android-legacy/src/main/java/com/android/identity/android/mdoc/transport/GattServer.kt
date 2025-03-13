@@ -246,8 +246,6 @@ internal class GattServer(
                 reportError(Error("Unexpected read request for L2CAP characteristic, not supported"))
                 return
             }
-            // TODO: it's not clear this is the right way to encode the PSM and 18013-5 doesn't
-            //   seem to give enough guidance on it.
             val encodedPsmValue = ByteBuffer.allocate(4).putInt(psm!!).array()
             gattServer!!.sendResponse(
                 device,
@@ -428,9 +426,6 @@ internal class GattServer(
         val chunk = writingQueue.poll() ?: return
         if (chunk.size == 0) {
             Logger.d(TAG, "Chunk is length 0, shutting down GattServer in 1000ms")
-            // TODO: On some devices we lose messages already sent if we don't have a delay like
-            //  this. Need to properly investigate if this is a problem in our stack or the
-            //  underlying BLE subsystem.
             Thread.sleep(1000)
             Logger.d(TAG, "Shutting down GattServer now")
             try {

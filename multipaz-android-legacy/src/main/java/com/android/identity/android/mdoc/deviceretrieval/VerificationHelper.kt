@@ -180,9 +180,6 @@ class VerificationHelper internal constructor(
                 context, cm, DataTransport.Role.MDOC_READER, options!!
             )
             reverseEngagementListeningTransports!!.add(transport)
-            // TODO: we may want to have the DataTransport actually give us a ConnectionMethod,
-            //   for example consider the case where a HTTP-based transport uses a cloud-service
-            //   to relay messages.
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
@@ -547,7 +544,6 @@ class VerificationHelper internal constructor(
                         )
                     }
 
-                    // TODO: look at mapping version in ccFile
                     val ndefFileId =
                         (ccFile[9].toInt() and 0xff) * 256 + (ccFile[10].toInt() and 0xff)
                     Logger.d(TAG, String.format(Locale.US, "NDEF file id: 0x%04x", ndefFileId))
@@ -631,7 +627,7 @@ class VerificationHelper internal constructor(
                         hrConnectionMethods,
                         null,
                         options
-                    ) // TODO: pass ReaderEngagement message
+                    )
                     Logger.dHex(TAG, "Handover Request sent", hrMessage)
                     val hsMessage = ndefTransact(isoDep, hrMessage, spr.tWaitMillis, spr.nWait)
                         ?: throw IllegalStateException("Handover Request failed")
@@ -672,11 +668,6 @@ class VerificationHelper internal constructor(
                         t.setEDeviceKeyBytes(engagement.eSenderKeyBytes)
                     }
 
-                    // TODO: use selected CMs to pick from the list we offered... why would we
-                    //  have to do this? Because some mDL / wallets don't return the UUID in
-                    //  the HS message.
-                    //  For now just assume we only offered a single CM and the other side accepted.
-                    //
                     parsedCms = hrConnectionMethods
                     val handover = CborArray.builder()
                         .add(hsMessage) // Handover Select message

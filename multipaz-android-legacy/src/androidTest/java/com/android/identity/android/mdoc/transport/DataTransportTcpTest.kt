@@ -114,7 +114,5 @@ class DataTransportTcpTest {
         Assert.assertArrayEquals(messageSentByProver, messageReceivedByVerifier[0])
         verifier.close()
         Assert.assertTrue(proverPeerDisconnectedCondVar.block(5000))
-
-        // TODO: also test the path where the prover calls disconnect().
     }
 }

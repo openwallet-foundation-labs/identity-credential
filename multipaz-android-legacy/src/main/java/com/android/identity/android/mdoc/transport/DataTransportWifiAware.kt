@@ -389,8 +389,6 @@ class DataTransportWifiAware(
             return
         }
 
-        // TODO: it's not clear whether port should be included here, we include it for now...
-        //
         mInitiatorIPv6HostString = "[${strippedAddress.hostAddress}]:$peerPort"
         Logger.d(TAG, "Connecting to $mInitiatorIPv6HostString")
         try {
@@ -417,7 +415,6 @@ class DataTransportWifiAware(
         Logger.d(TAG, "close() called")
         inhibitCallbacks()
         if (wifiAwareManager != null) {
-            // TODO: any way to detach?
             wifiAwareManager = null
         }
         if (session != null) {
@@ -616,7 +613,6 @@ Content-Type: application/CBOR
                     bandInfoSupportedBands = ByteArray(len - 1)
                     payload[bandInfoSupportedBands, 0, len - 1]
                 } else {
-                    // TODO: add support for other options...
                     Logger.d(TAG, "Skipping unknown type $type of length $len")
                 }
                 payload.position(offset + len - 1)
@@ -639,7 +635,6 @@ Content-Type: application/CBOR
             if (cm.passphraseInfoPassphrase != null) {
                 t.setPassphrase(cm.passphraseInfoPassphrase!!)
             }
-            // TODO: set mBandInfoSupportedBands, mChannelInfoChannelNumber, mChannelInfoOperatingClass
             return t
         }
 
@@ -652,7 +647,6 @@ Content-Type: application/CBOR
             //
             var baos = ByteArrayOutputStream()
             try {
-                // TODO: use mCipherSuites
                 val cipherSuites = Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128
 
                 // Spec says: The NFC Handover Selector shall include the Cipher Suite Info field

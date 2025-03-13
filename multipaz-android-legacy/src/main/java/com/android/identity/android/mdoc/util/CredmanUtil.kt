@@ -41,9 +41,6 @@ object CredmanUtil {
     //   "pkEm" :  bstr,                                  // An ephemeral key
     // }
     //
-    // TODO: probably need to stuff some stuff into `EncryptionParameters` to bind to
-    //  the session
-    //
     fun generateCredentialDocument(cipherText: ByteArray,
                                    encapsulatedPublicKey: EcPublicKey
     ): ByteArray {
@@ -127,9 +124,6 @@ object CredmanUtil {
         origin: String,
         requesterIdHash: ByteArray
     ): ByteArray {
-        // TODO: Instead of hand-rolling this, we should use OriginInfoDomain which
-        //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
-        //   calls for.
         val originInfoBytes = Cbor.encode(
             CborMap.builder()
                 .put("cat", 1)

@@ -114,7 +114,6 @@ public class ProvisioningTest {
 
         Collection<X509Certificate> certificateChain =
                 wc.getCredentialKeyCertificateChain(challenge);
-        // TODO: inspect cert-chain
 
         // Profile 0 (no authentication)
         AccessControlProfile noAuthProfile =
@@ -249,14 +248,6 @@ public class ProvisioningTest {
                 Util.cborDecode(proofOfProvisioningSignature),
                 new byte[0], // Additional data
                 certificateChain.iterator().next().getPublicKey()));
-
-        // TODO: Check challenge is in certificatechain
-
-        // TODO: Check each cert signs the next one
-
-        // TODO: Check bottom cert is the Google well-know cert
-
-        // TODO: need to also get and check SecurityStatement
 
         return certificateChain;
     }
@@ -706,7 +697,6 @@ public class ProvisioningTest {
         store.deleteCredentialByName("test");
     }
 
-    // TODO: Make sure we test retrieving an entry with multiple ACPs and test all four cases:
     //
     // - ACP1 bad,  ACP2 bad   -> NOT OK
     // - ACP1 good, ACP2 bad   -> OK

@@ -64,9 +64,6 @@ import co.nstant.in.cbor.CborException;
 
 @LargeTest
 @RunWith(AndroidJUnit4.class)
-// TODO: We currently suppress deprecation warnings at this level (instead of at each call-site)
-//  since a lot of the tests use API on IdentityCredential which is deprecated in favor of
-//  PresentationSession. We should port the tests to use the new PresentationSession API instead.
 @SuppressWarnings("deprecation")
 public class DynamicAuthTest {
     private static final String TAG = "DynamicAuthTest";
@@ -604,9 +601,6 @@ public class DynamicAuthTest {
         // ... and we're done. Clean up after ourselves.
         store.deleteCredentialByName(credentialName);
     }
-
-    // TODO: test storeStaticAuthenticationData() throwing UnknownAuthenticationKeyException
-    // on an unknown auth key
 
     @SuppressWarnings("deprecation")
     @Test

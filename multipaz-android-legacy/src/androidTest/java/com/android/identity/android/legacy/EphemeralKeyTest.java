@@ -54,7 +54,6 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-// TODO: For better coverage, use different ECDH and HKDF implementations in test code.
 @SuppressWarnings("deprecation")
 @MediumTest
 @RunWith(AndroidJUnit4.class)

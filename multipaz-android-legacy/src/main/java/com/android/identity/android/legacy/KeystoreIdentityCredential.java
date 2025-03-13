@@ -184,7 +184,6 @@ class KeystoreIdentityCredential extends IdentityCredential {
                                 "Item in nameSpaces array not UnicodeString");
                     }
                     names.add(((UnicodeString) item).getString());
-                    // TODO: check that value is a boolean
                 }
                 result.put(nameSpace, names);
             }

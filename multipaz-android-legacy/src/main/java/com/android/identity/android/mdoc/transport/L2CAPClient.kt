@@ -109,7 +109,6 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
             reportError(Error("Error using L2CAP socket", e))
         }
         try {
-            // TODO: This is to work around a bug in L2CAP
             Thread.sleep(1000)
             socket!!.close()
         } catch (e: IOException) {

@@ -354,9 +354,6 @@ class NfcEngagementHelper private constructor(
                 Logger.dCbor(TAG, "NFC static DeviceEngagement", deviceEngagement)
                 Logger.dCbor(TAG, "NFC static Handover", handover)
 
-                // TODO: We're reporting this just a bit early, we should move this
-                //  to handleReadBinary() instead and emit it once all bytes from
-                //  mSelectedNfcFile has been read
                 reportHandoverSelectMessageSent()
             }
         } else {
@@ -592,8 +589,6 @@ class NfcEngagementHelper private constructor(
                         return NfcUtil.STATUS_WORD_WRONG_PARAMETERS
                     }
                 }
-                // TODO: actually look at these records:
-                //  hrEmbMessageRecords = message.records
             }
 
             // This parses the various carrier specific NDEF records, see
@@ -616,9 +611,6 @@ class NfcEngagementHelper private constructor(
         for (cm in disambiguatedCms) {
             Logger.d(TAG, "Have connectionMethod: $cm")
         }
-
-        // TODO: add a method to the Listener so the application can select which one to use.
-        //  For now we just pick the first method.
         val method = disambiguatedCms[0]
         val listWithSelectedConnectionMethod = mutableListOf<ConnectionMethod>()
         listWithSelectedConnectionMethod.add(method)
@@ -645,9 +637,6 @@ class NfcEngagementHelper private constructor(
         Logger.dCbor(TAG, "NFC negotiated DeviceEngagement", deviceEngagement)
         Logger.dCbor(TAG, "NFC negotiated Handover", handover)
 
-        // TODO: We're reporting this just a bit early, we should move this
-        //  to handleReadBinary() instead and emit it once all bytes from
-        //  mSelectedNfcFile has been read
         reportHandoverSelectMessageSent()
 
         // Technically we should ensure the transports are up until sending the response...

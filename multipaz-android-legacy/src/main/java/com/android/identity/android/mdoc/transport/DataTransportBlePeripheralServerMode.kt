@@ -102,8 +102,6 @@ class DataTransportBlePeripheralServerMode(
                 }
                 scanner = null
             }
-            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
-            //  and thus a NullPointerException when calling stopScan().
         }
 
         override fun onBatchScanResults(results: List<ScanResult>) {
@@ -207,14 +205,6 @@ class DataTransportBlePeripheralServerMode(
             BluetoothManager::class.java
         )
         val bluetoothAdapter = bluetoothManager.adapter
-
-        // TODO: It would be nice if we got get the MAC address that will be assigned to
-        //  this advertisement so we can send it to the mDL reader, out of band. Android
-        //  currently doesn't have any APIs to do this but it's possible this could be
-        //  added without violating the security/privacy goals behind removing identifiers.
-        //
-
-        // TODO: Check if BLE is enabled and error out if not so...
         var characteristicL2CAPUuid: UUID? = null
         if (options.bleUseL2CAP) {
             characteristicL2CAPUuid = characteristicL2CAPUuidMdoc
@@ -325,7 +315,6 @@ class DataTransportBlePeripheralServerMode(
     }
 
     override fun connect() {
-        // TODO: Check if BLE is enabled and error out if not so...
         if (role === Role.MDOC) {
             connectAsMdoc()
         } else {

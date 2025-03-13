@@ -26,7 +26,6 @@ import java.util.concurrent.Executors
 
 class DataTransportHttpTest {
 
-    // TODO: add tests for TLS support
     @Test
     fun uriParsing() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext

@@ -207,9 +207,6 @@ object NfcUtil {
         }
         val carrierConfigurationRecords = mutableListOf<NdefRecord>()
         val alternativeCarrierRecords = mutableListOf<ByteArray>()
-
-        // TODO: we actually need to do the reverse disambiguation to e.g. merge two
-        //  disambiguated BLE ConnectionMethods...
         for (cm in methods) {
             val records = toNdefRecord(cm, auxiliaryReferences, isHandoverSelect)
             if (records != null) {
@@ -323,8 +320,7 @@ object NfcUtil {
                     // - An ERROR_RECORD.
                     //
                     //byte[] ndefMessage = Arrays.copyOfRange(payload, 1, payload.length);
-                    // TODO: check that the ALTERNATIVE_CARRIER_RECORD matches
-                    //   the ALTERNATIVE_CARRIER_CONFIGURATION record retrieved below.
+
                     validHandoverSelectMessage = true
                 }
             }

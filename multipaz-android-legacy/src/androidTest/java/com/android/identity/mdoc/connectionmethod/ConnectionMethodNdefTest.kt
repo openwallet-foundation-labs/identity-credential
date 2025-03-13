@@ -33,10 +33,6 @@ import org.junit.Test
 
 // This is quite similar to ConnectionMethodTest but tests all the NDEF results
 //
-// TODO: port all the NDEF routines to not use any Android specific stuff so we can
-//  include it in the non-Android specific library and combine this test with
-//  ConnectionMethod
-//
 class ConnectionMethodNdefTest {
     @Test
     @SmallTest

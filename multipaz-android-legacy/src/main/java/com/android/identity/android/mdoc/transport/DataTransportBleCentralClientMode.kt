@@ -201,7 +201,6 @@ class DataTransportBleCentralClientMode(
         gattServer?.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
     }
 
-    // TODO: Check if BLE is enabled and error out if not so...
     private fun connectAsMdoc() {
         bluetoothManager = context.getSystemService(BluetoothManager::class.java)
         val bluetoothAdapter = bluetoothManager!!.getAdapter()
@@ -318,7 +317,6 @@ class DataTransportBleCentralClientMode(
     }
 
     override fun connect() {
-        // TODO: Check if BLE is enabled and error out if not so...
         if (role === Role.MDOC) {
             connectAsMdoc()
         } else {

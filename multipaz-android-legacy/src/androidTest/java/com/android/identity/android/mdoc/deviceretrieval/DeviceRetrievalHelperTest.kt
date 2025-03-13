@@ -240,8 +240,6 @@ class DeviceRetrievalHelperTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val condVarDeviceConnected = ConditionVariable()
         val condVarDeviceDisconnected = ConditionVariable()
-
-        // TODO: use loopback instead of TCP transport
         val proverTransport = DataTransportTcp(
             context,
             DataTransport.Role.MDOC,
@@ -457,8 +455,6 @@ class DeviceRetrievalHelperTest {
         val condVarDeviceConnected = ConditionVariable()
         val condVarDeviceRequestReceived = ConditionVariable()
         val condVarOnError = ConditionVariable()
-
-        // TODO: use loopback transport
         val proverTransport = DataTransportTcp(
             context,
             DataTransport.Role.MDOC,

@@ -99,13 +99,6 @@ class KeystoreWritableIdentityCredential extends WritableIdentityCredential {
                 ks.deleteEntry(aliasForCredential);
             }
 
-            // TODO: We most likely want to constrain the life of CredentialKey (through
-            // setKeyValidityStart() and setKeyValidityEnd()) so it's limited to e.g. 5 years
-            // or how long the credential might be valid. For US driving licenses it's typically
-            // up to 5 years, where it expires on your birth day).
-            //
-            // This is likely something the issuer would want to specify.
-
             KeyPairGenerator kpg = KeyPairGenerator.getInstance(
                     KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
             KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(

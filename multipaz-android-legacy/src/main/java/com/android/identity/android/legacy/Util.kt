@@ -1253,7 +1253,6 @@ object Util {
 
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
                 val value = checkedStringValue(dataItem)
-                // TODO: escape ' in |value|
                 sb.append("'$value'")
             }
 
@@ -1560,8 +1559,6 @@ object Util {
         return data
     }
 
-    // TODO: Maybe return List<DataItem> instead of reencoding.
-    //
     @JvmStatic
     fun extractDeviceRetrievalMethods(
         encodedDeviceEngagement: ByteArray
@@ -1693,8 +1690,6 @@ object Util {
     // that the uncompressed X and Y coordinates of the key for the
     // mDL's ephemeral key-pair appear somewhere in the encoded
     // DeviceEngagement.
-    //
-    // TODO: rename to buildFakeSessionTranscript().
     //
     @JvmStatic
     fun buildSessionTranscript(ephemeralKeyPair: KeyPair): ByteArray? {
@@ -1837,8 +1832,6 @@ object Util {
      */
     @JvmStatic
     fun mdocVersionCompare(a: String, b: String): Int {
-        // TODO: this just lexicographically compares the strings as ISO 18013-5 doesn't currently
-        //   define how to compare version strings.
         return a.compareTo(b)
     }
 

@@ -362,8 +362,8 @@ public class UtilTest {
     public void prettyPrintFloat() throws CborException {
         ByteArrayOutputStream baos;
 
-        // TODO: These two tests yield different results on different devices, disable for now
-        /*
+
+        /* These two tests yield different results on different devices, disable for now
         baos = new ByteArrayOutputStream();
         new CborEncoder(baos).encode(new SinglePrecisionFloat(1.1f));
         assertEquals("1.100000023841858", SUtil.cborPrettyPrint(baos.toByteArray()));
@@ -494,7 +494,6 @@ public class UtilTest {
 
     @Test
     public void cborEncodeDecode() {
-        // TODO: add better coverage and check specific encoding etc.
         assertEquals(42, Util.cborDecodeLong(Util.cborEncodeNumber(42)));
         assertEquals(123456, Util.cborDecodeLong(Util.cborEncodeNumber(123456)));
         assertFalse(Util.cborDecodeBoolean(Util.cborEncodeBoolean(false)));
@@ -731,8 +730,6 @@ public class UtilTest {
         assertArrayEquals(data, Util.coseSign1GetData(sig));
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
     }
-
-    // TODO: add tests for Curve25519 and Curve448 curves.
 
     @Test
     public void coseSignAndVerifyDetachedContent() throws Exception {

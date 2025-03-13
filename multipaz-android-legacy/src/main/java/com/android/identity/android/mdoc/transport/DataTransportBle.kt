@@ -266,7 +266,6 @@ abstract class DataTransportBle(
             }
             val psm = cm.peripheralServerModePsm
             if (psm != null) {
-                // TODO: need to actually allocate this number (0x77)
                 baos.write(0x05) // PSM: 4 bytes
                 baos.write(0x77)
                 val psmValue = ByteBuffer.allocate(4)

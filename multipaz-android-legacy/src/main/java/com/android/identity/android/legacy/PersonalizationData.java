@@ -143,7 +143,6 @@ public class PersonalizationData {
                 namespaceData = new NamespaceData(namespace);
                 mData.mNamespaces.put(namespace, namespaceData);
             }
-            // TODO: validate/verify that value is proper CBOR.
             namespaceData.mEntries.put(name, new EntryData(value, accessControlProfileIds));
             return this;
         }

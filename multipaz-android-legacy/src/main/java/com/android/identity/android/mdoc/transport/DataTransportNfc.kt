@@ -644,7 +644,6 @@ class DataTransportNfc(
                                     (grResponse[grrl - 2].toInt() and 0xff) * 0x100 + (grResponse[grrl - 1].toInt() and 0xff)
                                 baos.write(grResponse, 0, grrl - 2)
 
-                                // TODO: add runaway check
                                 if (grrStatus == 0x9000) {
                                     /* If Le ≥ the number of available bytes, the mdoc shall include
                                      * all available bytes in the response and set the status words
@@ -827,7 +826,6 @@ class DataTransportNfc(
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
-            // TODO: set mCommandDataFieldMaxLength and mResponseDataFieldMaxLength
             return DataTransportNfc(context, role, cm, options)
         }
 
