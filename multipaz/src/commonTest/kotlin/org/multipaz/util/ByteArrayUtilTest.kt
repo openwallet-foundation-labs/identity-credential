@@ -2,7 +2,6 @@ package org.multipaz.util
 
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.io.bytestring.buildByteString
-import kotlin.collections.toByteArray
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
