@@ -14,4 +14,7 @@ java {
 
 dependencies {
     implementation(libs.ksp.symbol.processing.api)
+    implementation(libs.kotlinx.io.core)
+
+    testImplementation(libs.junit)
 }

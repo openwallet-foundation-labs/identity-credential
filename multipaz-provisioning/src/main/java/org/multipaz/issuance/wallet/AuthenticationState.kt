@@ -72,6 +72,9 @@ class AuthenticationState(
 
         val attestation = auth.attestation
         if (attestation != null) {
+            // This can be used to dump an example of DeviceAttestation
+            //println("----- Attestation: $clientId")
+            //println(Base64.Mime.encode(attestation.toCbor()))
             if (this.deviceAttestation != null) {
                 throw IllegalStateException("Client already registered")
             }
@@ -89,6 +92,10 @@ class AuthenticationState(
         }
 
         this.deviceAttestation!!.validateAssertion(auth.assertion)
+
+        // This can be used to dump an example of DeviceAssertion
+        //println("---- Assertion")
+        //println(Base64.Mime.encode(auth.assertion.toCbor()))
 
         if ((auth.assertion.assertion as AssertionNonce).nonce != this.nonce) {
             throw IllegalArgumentException("nonce mismatch")

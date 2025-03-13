@@ -1,5 +1,6 @@
 package org.multipaz.processor
 
+import com.google.devtools.ksp.isInternal
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
@@ -12,6 +13,23 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.graphhash.Composite
+import org.multipaz.graphhash.DeferredEdge
+import org.multipaz.graphhash.Edge
+import org.multipaz.graphhash.EdgeKind
+import org.multipaz.graphhash.GraphHasher
+import org.multipaz.graphhash.HashBuilder
+import org.multipaz.graphhash.ImmediateEdge
+import org.multipaz.graphhash.Leaf
+import org.multipaz.graphhash.Node
+import org.multipaz.graphhash.UnassignedLoopException
+import java.security.MessageDigest
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.Base64.PaddingOption
+import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.random.Random
 
 /**
  * Kotlin Annotation Processor that generates serialization and deserialization code for
@@ -26,8 +44,9 @@ class CborSymbolProcessor(
     companion object {
         const val ANNOTATION_PACKAGE = "org.multipaz.cbor.annotation"
         const val ANNOTATION_SERIALIZABLE = "CborSerializable"
+        const val ANNOTATION_SERIALIZABLE_GENERATED = "CborSerializableGenerated"
+        const val ANNOTATION_SERIALIZATION_IMPLEMENTED = "CborSerializationImplemented"
         const val ANNOTATION_MERGE = "CborMerge"
-        const val CBOR_TYPE = "org.multipaz.cbor.Cbor"
         const val BSTR_TYPE = "org.multipaz.cbor.Bstr"
         const val TSTR_TYPE = "org.multipaz.cbor.Tstr"
         const val SIMPLE_TYPE = "org.multipaz.cbor.Simple"
@@ -39,14 +58,15 @@ class CborSymbolProcessor(
         const val TO_DATAITEM_FULLDATE_FUN = "org.multipaz.cbor.toDataItemFullDate"
         const val TO_DATAITEM_FUN = "org.multipaz.cbor.toDataItem"
 
+        val UNDEFINED = ByteString((255).toByte())
+
         fun deserializeValue(
             codeBuilder: CodeBuilder,
             code: String,
             type: KSType
         ): String {
             val declaration = type.declaration
-            val qualifiedName = declaration.qualifiedName!!.asString()
-            return when (qualifiedName) {
+            return when (val qualifiedName = declaration.qualifiedName!!.asString()) {
                 "kotlin.collections.Map", "kotlin.collections.MutableMap" ->
                     with(codeBuilder) {
                         val map = varName("map")
@@ -329,82 +349,124 @@ class CborSymbolProcessor(
                 typeStr
             }
         }
+
+        /**
+         * Extension to encode a [ByteArray] to a URL-safe base64 encoding without padding
+         * as defined in Section 5 of RFC 4648.
+         */
+        @OptIn(ExperimentalEncodingApi::class)
+        private fun ByteString.toBase64Url(): String =
+            Base64.UrlSafe.encode(toByteArray()).trimEnd('=')
+
+        /**
+         * Extension to decode a [ByteArray] from a URL-safe base64 encoded string
+         * as defined in Section 5 of RFC 4648.
+         *
+         * This works for both strings with or without padding.
+         */
+        @OptIn(ExperimentalEncodingApi::class)
+        private fun String.fromBase64Url(): ByteString {
+            return ByteString(Base64.UrlSafe.withPadding(PaddingOption.ABSENT_OPTIONAL)
+                .decode(this))
+        }
+
     }
+
+    private lateinit var resolver: Resolver
+    private lateinit var schemaTypeInfoCache: MutableMap<String, SchemaTypeInfo>
+    private lateinit var compilationUnitClassMap: Map<String, KSClassDeclaration>
 
     /**
      * Processor main entry point.
      */
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        this.resolver = resolver
+        val allSealedSubclasses = mutableMapOf<KSClassDeclaration, MutableSet<KSClassDeclaration>>()
+        val allRegularClasses = mutableSetOf<KSClassDeclaration>()
         resolver.getSymbolsWithAnnotation("$ANNOTATION_PACKAGE.$ANNOTATION_SERIALIZABLE")
             .filterIsInstance<KSClassDeclaration>().forEach Declaration@{ clazz ->
-                for (supertype in clazz.superTypes) {
-                    val superDeclaration = supertype.resolve().declaration
-                    if (superDeclaration is KSClassDeclaration &&
-                        superDeclaration.classKind == ClassKind.CLASS &&
-                        superDeclaration.modifiers.contains(Modifier.SEALED)
-                    ) {
-                        val superAnnotation =
-                            findAnnotation(superDeclaration, ANNOTATION_SERIALIZABLE)
-                        if (superAnnotation == null) {
-                            logger.error(
-                                "Superclass is not marked with @$ANNOTATION_SERIALIZABLE",
-                                clazz
-                            )
-                        } else {
-                            // Annotated subclass
-                            processSubclass(clazz, superDeclaration)
-                            return@Declaration
-                        }
+                val superDeclaration = getSealedSuperclass(clazz)
+                if (superDeclaration != null) {
+                    val superAnnotation = findAnnotation(superDeclaration, ANNOTATION_SERIALIZABLE)
+                    if (superAnnotation == null) {
+                        logger.error(
+                            "Superclass is not marked with @$ANNOTATION_SERIALIZABLE",
+                            clazz
+                        )
+                    } else {
+                        // Annotated subclass
+                        allSealedSubclasses.getOrPut(superDeclaration) { mutableSetOf() }
+                            .add(clazz)
+                        return@Declaration
                     }
                 }
                 if (clazz.modifiers.contains(Modifier.SEALED)) {
                     val subclasses = clazz.getSealedSubclasses()
-                    processSuperclass(clazz, subclasses)
                     for (subclass in subclasses) {
                         // if annotated, it will be processed in another branch
                         if (findAnnotation(subclass, ANNOTATION_SERIALIZABLE) == null) {
-                            processSubclass(subclass, clazz)
+                            allSealedSubclasses.getOrPut(clazz) { mutableSetOf() }
+                                .add(subclass)
                         }
                     }
                 } else {
-                    processClass(clazz)
+                    allRegularClasses.add(clazz)
                 }
             }
+
+        val thisCompilationUnitClasses = allRegularClasses + allSealedSubclasses.keys +
+                allSealedSubclasses.values.flatten()
+        compilationUnitClassMap = thisCompilationUnitClasses.associateBy { it.qualifiedName!!.asString() }
+        schemaTypeInfoCache = mutableMapOf()
+        val schemaIds = computeShemaIds()
+
+        for ((superclass, subclasses) in allSealedSubclasses) {
+            processSuperclass(superclass, subclasses, schemaIds[superclass])
+            for (subclass in subclasses) {
+                processSubclass(subclass, superclass, schemaIds[subclass])
+            }
+        }
+        for (clazz in allRegularClasses) {
+            processClass(clazz, schemaIds[clazz])
+        }
         return listOf()
     }
 
     // Handle a standalone data class.
-    private fun processClass(classDeclaration: KSClassDeclaration) {
-        processDataClass(classDeclaration, null, null)
+    private fun processClass(classDeclaration: KSClassDeclaration, schemaId: ByteString?) {
+        processDataClass(classDeclaration, null, null, schemaId)
     }
 
     // Handle a leaf (data) class that has sealed superclass.
     private fun processSubclass(
         classDeclaration: KSClassDeclaration,
-        superDeclaration: KSClassDeclaration
+        superDeclaration: KSClassDeclaration,
+        schemaId: ByteString?
     ) {
         val typeKey: String = getTypeKey(findAnnotation(superDeclaration, ANNOTATION_SERIALIZABLE))
-        val typeId: String = getTypeId(superDeclaration, classDeclaration)
-        processDataClass(classDeclaration, typeKey, typeId)
+        val typeId: String = getTypeId(superDeclaration, classDeclaration, true)
+        processDataClass(classDeclaration, typeKey, typeId, schemaId)
     }
 
     // Handle a sealed class that has subclasses.
     private fun processSuperclass(
         classDeclaration: KSClassDeclaration,
-        subclasses: Sequence<KSClassDeclaration>
+        subclasses: Set<KSClassDeclaration>,
+        schemaId: ByteString?
     ) {
         val containingFile = classDeclaration.containingFile
         val packageName = classDeclaration.packageName.asString()
         val baseName = classDeclaration.simpleName.asString()
         val annotation = findAnnotation(classDeclaration, ANNOTATION_SERIALIZABLE)
+        val modifier = getModifier(classDeclaration)
 
         with(CodeBuilder()) {
             importQualifiedName(DATA_ITEM_CLASS)
             importQualifiedName(classDeclaration)
 
-            generateSerialization(this, classDeclaration)
+            generateSerialization(this, classDeclaration, schemaId)
 
-            block("fun $baseName.toDataItem(): DataItem") {
+            block("${modifier}fun $baseName.toDataItem(): DataItem") {
                 block("return when (this)") {
                     for (subclass in subclasses) {
                         importQualifiedName(subclass)
@@ -416,12 +478,12 @@ class CborSymbolProcessor(
 
             emptyLine()
             val deserializer = deserializerName(classDeclaration, true)
-            block("fun $deserializer(dataItem: DataItem): $baseName") {
+            block("${modifier}fun $deserializer(dataItem: DataItem): $baseName") {
                 val typeKey = getTypeKey(annotation)
                 line("val type = dataItem[\"$typeKey\"].asTstr")
                 block("return when (type)") {
                     for (subclass in subclasses) {
-                        val typeId = getTypeId(classDeclaration, subclass)
+                        val typeId = getTypeId(classDeclaration, subclass, false)
                         line("\"$typeId\" -> ${deserializerName(subclass, false)}(dataItem)")
                     }
                     line("else -> throw IllegalArgumentException(\"wrong type: \$type\")")
@@ -439,7 +501,9 @@ class CborSymbolProcessor(
 
     private fun processDataClass(
         classDeclaration: KSClassDeclaration,
-        typeKey: String?, typeId: String?
+        typeKey: String?,
+        typeId: String?,
+        schemaId: ByteString?
     ) {
         val containingFile = classDeclaration.containingFile
         val packageName = classDeclaration.packageName.asString()
@@ -448,11 +512,12 @@ class CborSymbolProcessor(
             importQualifiedName(DATA_ITEM_CLASS)
             importQualifiedName(classDeclaration)
 
-            generateSerialization(this, classDeclaration)
+            generateSerialization(this, classDeclaration, schemaId)
 
             var hadMergedMap = false
+            val modifier = getModifier(classDeclaration)
 
-            block("fun $baseName.toDataItem(): DataItem") {
+            block("${modifier}fun $baseName.toDataItem(): DataItem") {
                 importQualifiedName(CBOR_MAP_TYPE)
                 line("val builder = CborMap.builder()")
                 if (typeKey != null) {
@@ -503,7 +568,8 @@ class CborSymbolProcessor(
 
             emptyLine()
             val deserializer = deserializerName(classDeclaration, true)
-            block("fun $deserializer($dataItem: DataItem): $baseName") {
+
+            block("${modifier}fun $deserializer($dataItem: DataItem): $baseName") {
                 val constructorParameters = mutableListOf<String>()
                 classDeclaration.getAllProperties().forEach { property ->
                     if (!property.hasBackingField) {
@@ -579,10 +645,26 @@ class CborSymbolProcessor(
         }
     }
 
+    private fun getModifier(classDeclaration: KSClassDeclaration): String {
+        return if (classDeclaration.isInternal()) "internal " else ""
+    }
+
+    private fun getSealedSuperclass(classDeclaration: KSClassDeclaration): KSClassDeclaration? {
+        for (supertype in classDeclaration.superTypes) {
+            val superDeclaration = supertype.resolve().declaration
+            if (superDeclaration is KSClassDeclaration &&
+                superDeclaration.classKind == ClassKind.CLASS &&
+                superDeclaration.modifiers.contains(Modifier.SEALED)) {
+                return superDeclaration
+            }
+        }
+        return null
+    }
+
     private fun getTypeKey(annotation: KSAnnotation?): String {
         annotation?.arguments?.forEach { arg ->
             when (arg.name?.asString()) {
-                "typeKey" -> {
+                "typeKey" -> if (arg.value != null) {
                     val field = arg.value.toString()
                     if (field.isNotEmpty()) {
                         return field
@@ -593,10 +675,14 @@ class CborSymbolProcessor(
         return "type"
     }
 
-    private fun getTypeId(superclass: KSClassDeclaration, subclass: KSClassDeclaration): String {
+    private fun getTypeId(
+        superclass: KSClassDeclaration,
+        subclass: KSClassDeclaration,
+        warn: Boolean
+    ): String {
         findAnnotation(subclass, ANNOTATION_SERIALIZABLE)?.arguments?.forEach { arg ->
             when (arg.name?.asString()) {
-                "typeId" -> {
+                "typeId" -> if (arg.value != null) {
                     val field = arg.value.toString()
                     if (field.isNotEmpty()) {
                         return field
@@ -606,31 +692,337 @@ class CborSymbolProcessor(
         }
         val superName = superclass.simpleName.asString()
         val name = subclass.simpleName.asString()
-        return if (!name.startsWith(superName)) {
-            logger.warn("Subtype name is not created by appending to supertype, rename or specify typeId explicitly")
-            name
-        } else {
+        return if (name.startsWith(superName)) {
             name.substring(superName.length)
+        } else if (name.endsWith(superName)) {
+            name.substring(0, name.length - superName.length)
+        } else {
+            if (warn) {
+                logger.warn(
+                    "Supertype name is not a prefix or suffix of subtype name, rename or specify typeId explicitly",
+                    subclass
+                )
+            }
+            name
         }
     }
 
     private fun generateSerialization(
-        codeBuilder: CodeBuilder, classDeclaration: KSClassDeclaration) {
-
-        codeBuilder.importQualifiedName("org.multipaz.cbor.Cbor")
+        codeBuilder: CodeBuilder,
+        classDeclaration: KSClassDeclaration,
+        schemaId: ByteString?
+    ) = with(codeBuilder) {
+        importQualifiedName("org.multipaz.cbor.Cbor")
         val baseName = classDeclaration.simpleName.asString()
+        val modifier = getModifier(classDeclaration)
 
-        codeBuilder.block("fun $baseName.toCbor(): ByteArray") {
+        block("${modifier}fun $baseName.toCbor(): ByteArray") {
             line("return Cbor.encode(toDataItem())")
         }
-        codeBuilder.emptyLine()
+        emptyLine()
+
+        if (schemaId != null) {
+            importQualifiedName(BYTESTRING_TYPE)
+            importQualifiedName("$ANNOTATION_PACKAGE.$ANNOTATION_SERIALIZABLE_GENERATED")
+            val bytes = StringBuilder()
+            for (i in 0..<schemaId.size) {
+                if (bytes.isNotEmpty()) {
+                    bytes.append(", ")
+                }
+                bytes.append(schemaId[i])
+            }
+            line("@$ANNOTATION_SERIALIZABLE_GENERATED(schemaId = \"${schemaId.toBase64Url()}\")")
+            line("${modifier}val ${baseName}_cborSchemaId = ByteString($bytes)")
+            emptyLine()
+        }
 
         if (hasCompanion(classDeclaration)) {
-            codeBuilder.block("fun $baseName.Companion.fromCbor(data: ByteArray): $baseName") {
+            block("${modifier}fun $baseName.Companion.fromCbor(data: ByteArray): $baseName") {
                 line("return $baseName.fromDataItem(Cbor.decode(data))")
             }
-            codeBuilder.emptyLine()
+            emptyLine()
+
+            if (schemaId != null) {
+                line("${modifier}val $baseName.Companion.cborSchemaId: ByteString")
+                line("    get() = ${baseName}_cborSchemaId")
+                emptyLine()
+            }
         }
     }
+
+    private fun computeShemaIds(): Map<KSClassDeclaration, ByteString> {
+        for ((qualifiedName, clazz) in compilationUnitClassMap.entries) {
+            if (!schemaTypeInfoCache.contains(qualifiedName)) {
+                getSchemaTypeInfoForDefinedClass(clazz, qualifiedName)
+            }
+        }
+        val graphHasher = GraphHasher {
+            object: HashBuilder {
+                val digest = MessageDigest.getInstance("SHA3-256");
+                override fun update(data: ByteString) = digest.update(data.toByteArray())
+                override fun build(): ByteString = ByteString(digest.digest())
+            }
+        }
+        for (className in compilationUnitClassMap.keys) {
+            val typeInfo = schemaTypeInfoCache[className]!!
+            if (typeInfo.specifiedId != null && typeInfo.specifiedId != UNDEFINED) {
+                graphHasher.setAssignedHash(typeInfo.graphNode, typeInfo.specifiedId)
+            }
+        }
+        val schemaIds = mutableMapOf<KSClassDeclaration, ByteString>()
+        for ((className, declaration) in compilationUnitClassMap) {
+            val typeInfo = schemaTypeInfoCache[className]!!
+            val computedHash = try {
+                graphHasher.hash(typeInfo.graphNode)
+            } catch (err: UnassignedLoopException) {
+                // If a loop detected, abort further processing, as we will hit this loop
+                // repeatedly. Dump the loop members, so it is easy to find them.
+                val nodeToName = schemaTypeInfoCache.entries.associate { Pair(it.value.graphNode, it.key) }
+                for (node in err.loop) {
+                    val name = nodeToName[node]
+                    if (name != null) {
+                        val classDeclaration = compilationUnitClassMap[name]
+                        if (classDeclaration != null) {
+                            logger.error("Dependency loop detected for $name", classDeclaration)
+                        }
+                    }
+                }
+                val random = ByteString(Random.Default.nextBytes(32)).toBase64Url()
+                logger.error("Specify ($className) schemaId on one of the loop members, e.g, schemaId = \"$random\"")
+                return emptyMap()
+            }
+            if (typeInfo.specifiedHash != null && computedHash != typeInfo.specifiedHash) {
+                val encoded = computedHash.toBase64Url()
+                logger.error("Schema change detected, new schemaHash = \"${encoded}\"", declaration)
+            }
+            schemaIds[declaration] = typeInfo.specifiedId ?: computedHash
+        }
+        return schemaIds
+    }
+
+    /**
+     * Get schema type info for a class in this compilation unit.
+     */
+    private fun getSchemaTypeInfoForDefinedClass(
+        clazz: KSClassDeclaration,
+        qualifiedName: String
+    ): SchemaTypeInfo {
+        val (schemaHash, schemaId) = getSchemaHashAndId(clazz, false)
+        val edges = mutableListOf<Edge>()
+        var extra: ByteString? = null
+        if (clazz.modifiers.contains(Modifier.SEALED)) {
+            // For sealed class, the schema is a union of subclasses
+            val annotation = findAnnotation(clazz, ANNOTATION_SERIALIZABLE)!!
+            extra = getTypeKey(annotation).encodeToByteString()
+            for (subclass in clazz.getSealedSubclasses()) {
+                val subclassQualifiedName = subclass.qualifiedName!!.asString()
+                val subclassTypeInfo = schemaTypeInfoCache[qualifiedName] ?:
+                    getSchemaTypeInfoForDefinedClass(subclass, subclassQualifiedName)
+                val name = getTypeId(clazz, subclass, false)
+                edges.add(ImmediateEdge(name, EdgeKind.ALTERNATIVE, subclassTypeInfo.graphNode))
+            }
+        } else {
+            // Otherwise schema is determined by the collection of properties. No need to consider
+            // superclasses specially, as getAllProperties() returns superclass properties too.
+            for (property in clazz.getAllProperties()) {
+                if (!property.hasBackingField) {
+                    continue
+                }
+                if (findAnnotation(property, ANNOTATION_MERGE) != null) {
+                    // this is essentially an open-ended extension map, treat it as a
+                    // special kind of property
+                    extra = "+".encodeToByteString()
+                    continue
+                }
+                val name = property.simpleName.asString()
+                val type = property.type.resolve()
+                // We want exceptions to be serializable (if marked with @CborSerializable),
+                // but we want to skip cause
+                if (name == "cause" && type.declaration.qualifiedName?.asString() == "kotlin.Throwable") {
+                    continue
+                }
+
+                val stableClass = if (schemaHash != null) {
+                    clazz
+                } else {
+                    val superClass = getSealedSuperclass(clazz)
+                    if (superClass == null) {
+                        null
+                    } else {
+                        val (superHash, _) = getSchemaHashAndId(superClass, false)
+                        if (superHash != null) {
+                            superClass
+                        } else {
+                            null
+                        }
+                    }
+                }
+                edges.add(createEdge(name, type, stableClass))
+            }
+        }
+        val typeInfo = SchemaTypeInfo(Composite(edges.toList(), extra), schemaHash, schemaId)
+        schemaTypeInfoCache[qualifiedName] = typeInfo
+        return typeInfo
+    }
+
+    private fun createEdge(
+        name: String,
+        type: KSType,
+        stableOwnerClass: KSClassDeclaration?
+    ): Edge {
+        val typeName = type.declaration.qualifiedName!!.asString()
+        val edgeKind = if (type.isMarkedNullable) EdgeKind.OPTIONAL else EdgeKind.REQUIRED
+        val target = schemaTypeInfoCache[typeName]
+        val compositeType = compilationUnitClassMap[typeName]
+        return if (target != null) {
+            checkStableDependency(stableOwnerClass, typeName, target)
+            ImmediateEdge(name, edgeKind, target.graphNode)
+        } else if (compositeType != null) {
+            DeferredEdge(name, edgeKind) {
+                val schemaTypeInfo = getSchemaTypeInfoForDefinedClass(compositeType, typeName)
+                checkStableDependency(stableOwnerClass, typeName, schemaTypeInfo)
+                schemaTypeInfo.graphNode
+            }
+        } else {
+            val schemaTypeInfo = if (isCollectionType(typeName)) {
+                getSchemaTypeInfoForCollectionClass(type, stableOwnerClass)
+            } else {
+                getSchemaTypeInfoForLeafClass(typeName, type).also {
+                    checkStableDependency(stableOwnerClass, typeName, it)
+                }
+            }
+            ImmediateEdge(name, edgeKind, schemaTypeInfo.graphNode)
+        }
+    }
+
+    private fun checkStableDependency(
+        declaration: KSClassDeclaration?,
+        dependencyTypeName: String,
+        typeInfo: SchemaTypeInfo
+    ) {
+        if (declaration == null) {
+            // Not stable (does not have schemaHash specified)
+            return
+        }
+        if (typeInfo.graphNode is Composite &&
+            typeInfo.specifiedId == null && typeInfo.specifiedHash == null) {
+            logger.warn(
+                "Dependency not stable (does no have schemaId or schemaHash): $dependencyTypeName",
+                declaration
+            )
+        }
+    }
+
+    private fun isCollectionType(typeName: String) = when(typeName) {
+        "kotlin.collections.Map", "kotlin.collections.MutableMap",
+        "kotlin.collections.List", "kotlin.collections.MutableList",
+        "kotlin.collections.Set", "kotlin.collections.MutableSet" -> true
+        else -> false
+    }
+
+    private fun findLeafCborAnnotation(declaration: KSClassDeclaration): KSAnnotation? {
+        val qualifiedName = declaration.qualifiedName!!.asString()
+        // Classes that manually implement CBOR serialization are annotated with this annotation.
+        val annotation = findAnnotation(declaration, ANNOTATION_SERIALIZATION_IMPLEMENTED)
+        if (annotation != null) {
+            return annotation
+        }
+        if (findAnnotation(declaration, ANNOTATION_SERIALIZABLE) == null) {
+            logger.error("$qualifiedName: not Cbor-serializable, must be marked with either @$ANNOTATION_SERIALIZATION_IMPLEMENTED or $ANNOTATION_SERIALIZABLE")
+            return null
+        }
+        val cborSchemaIdProperty = resolver.getKSNameFromString(qualifiedName + "_cborSchemaId")
+        val prop = resolver.getPropertyDeclarationByName(cborSchemaIdProperty, true)
+        if (prop == null) {
+            // This is not expected, if it is in this compilation unit, it should not
+            // be a leaf, and if it is from another compilation unit, XXX_cborSchemaId property
+            // should have been generated.
+            logger.error("$qualifiedName: compilation error, schemaId not found")
+            return null
+        }
+        return findAnnotation(prop, ANNOTATION_SERIALIZABLE_GENERATED)
+    }
+
+    private fun getSchemaHashAndId(
+        declaration: KSClassDeclaration,
+        leaf: Boolean
+    ): Pair<ByteString?, ByteString?> {
+        var schemaId: ByteString? = null
+        var schemaHash: ByteString? = null
+        val annotation =
+            if (leaf) {
+                findLeafCborAnnotation(declaration)
+            } else {
+                findAnnotation(declaration, ANNOTATION_SERIALIZABLE)
+            }
+        annotation?.arguments?.forEach { arg ->
+            when (val name = arg.name?.asString()) {
+                "schemaId", "schemaHash" -> if (arg.value != null) {
+                    val field = arg.value.toString()
+                    if (field.isNotEmpty()) {
+                        val value = if (field == "?") UNDEFINED else field.fromBase64Url()
+                        if (name == "schemaId") {
+                            schemaId = value
+                        } else {
+                            schemaHash = value
+                        }
+                    }
+                }
+            }
+        }
+        return Pair(schemaHash, schemaId)
+    }
+
+    private fun getSchemaTypeInfoForCollectionClass(
+        type: KSType,
+        stableOwnerClass: KSClassDeclaration?
+    ): SchemaTypeInfo {
+        // For the serialization purposes we distinguish only between map and list.
+        // Set is like List and mutability is irrelevant.
+        val edges = mutableListOf<Edge>()
+        for ((index, arg) in type.arguments.withIndex()) {
+            edges.add(createEdge(index.toString(), arg.type!!.resolve(), stableOwnerClass))
+        }
+        // Important: collection classes are parameterized by types, so they are not
+        // defined solely by there names and thus are not cached!
+        return SchemaTypeInfo(Composite(edges.toList()), null, null)
+    }
+
+    private fun simpleLeaf(text: String) = SchemaTypeInfo(Leaf(text), null, null)
+
+    private fun getSchemaTypeInfoForLeafClass(
+        qualifiedName: String,
+        type: KSType
+    ): SchemaTypeInfo {
+        val declaration = type.declaration
+        val typeInfo = if (declaration is KSClassDeclaration &&
+            declaration.classKind == ClassKind.ENUM_CLASS) {
+            val names = declaration.declarations.map { it.simpleName.asString() }.toMutableList()
+            names.sortWith { a, b -> a.compareTo(b) }
+            simpleLeaf("(" + names.joinToString("|") + ")")
+        } else when (qualifiedName) {
+            "kotlin.String" -> simpleLeaf("String")
+            "kotlin.ByteArray", BYTESTRING_TYPE  -> simpleLeaf("ByteString")
+            "kotlin.Long", "kotlin.Int" -> simpleLeaf("Int")
+            "kotlin.Float" -> simpleLeaf("Float")
+            "kotlin.Double" -> simpleLeaf("Double")
+            "kotlin.Boolean" -> simpleLeaf("Boolean")
+            "kotlinx.datetime.Instant" -> simpleLeaf("DateTimeString")
+            "kotlinx.datetime.LocalDate" -> simpleLeaf("DateString")
+            DATA_ITEM_CLASS -> simpleLeaf("Any")
+            else -> {
+                val (schemaHash, schemaId) = getSchemaHashAndId(declaration as KSClassDeclaration, true)
+                SchemaTypeInfo(Leaf(qualifiedName), schemaHash, schemaId ?: schemaHash)
+            }
+        }
+        schemaTypeInfoCache[qualifiedName] = typeInfo
+        return typeInfo
+    }
+
+    class SchemaTypeInfo(
+        val graphNode: Node,
+        val specifiedHash: ByteString?,
+        val specifiedId: ByteString?
+    )
 }
 
