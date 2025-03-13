@@ -21,6 +21,7 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.toDataItem
 
 /**
@@ -38,6 +39,7 @@ import org.multipaz.cbor.toDataItem
  *
  * This type is immutable.
  */
+@CborSerializationImplemented(schemaId = "SDvdesNsJFKYOPuCji1dSn95WSqqNZbzYpCnNsgaadY")
 class NameSpacedData private constructor(
     private val map: MutableMap<String, MutableMap<String, ByteArray>>
 ) {

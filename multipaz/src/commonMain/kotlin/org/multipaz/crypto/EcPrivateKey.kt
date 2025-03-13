@@ -1,12 +1,12 @@
 package org.multipaz.crypto
 
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
-
 
 /**
  * An EC private key.
@@ -14,6 +14,7 @@ import org.multipaz.cose.toCoseLabel
  * @param curve the curve of the key.
  * @param d the private value of the key.
  */
+@CborSerializationImplemented(schemaId = "SKWtVGTV5zyQis4cbfJ9Llls7qIMkcth6Fb3jnTael8")
 sealed class EcPrivateKey(
     open val curve: EcCurve,
     open val d: ByteArray,

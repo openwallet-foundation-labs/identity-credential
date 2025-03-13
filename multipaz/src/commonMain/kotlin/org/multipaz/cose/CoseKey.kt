@@ -5,6 +5,7 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Nint
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.Uint
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 
@@ -13,6 +14,7 @@ import org.multipaz.crypto.EcPublicKey
  *
  * @param labels the labels in the COSE Key.
  */
+@CborSerializationImplemented(schemaId = "Hh5WQQNrvHYOgN9pGAVhxxgvVMe_Z-qCqovxRYXltQM")
 class CoseKey(val labels: Map<CoseLabel, DataItem>) {
 
     init {

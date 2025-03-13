@@ -1,6 +1,7 @@
 package org.multipaz.crypto
 
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseKey
@@ -13,6 +14,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  *
  * @param curve the curve of the key.
  */
+@CborSerializationImplemented(schemaId = "elQPzwBQGz5CU2YDTAgAa5l5sTHdJrxubfMWHJcHjHU")
 sealed class EcPublicKey(
     open val curve: EcCurve
 ) {

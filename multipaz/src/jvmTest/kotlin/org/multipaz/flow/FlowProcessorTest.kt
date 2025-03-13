@@ -20,9 +20,7 @@ import org.multipaz.flow.server.FlowEnvironment
 import org.multipaz.flow.handler.HttpHandler
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.math.sqrt
 import kotlin.random.Random
 import kotlin.test.assertNotNull
@@ -132,7 +130,7 @@ data class DirectQuadraticSolverState(
         } else if (det == 0.0) {
             QuadraticSolution(-equation.b/(2*equation.a))
         } else {
-            throw NoSolutionsException("No solutions")
+            throw NoSolutionsSolverException("No solutions")
         }
         return result
     }
@@ -160,7 +158,7 @@ class MockQuadraticSolverState : AbstractSolverState() {
         if (equation.a == 1.0 && equation.b == -6.0 && equation.c == 9.0) {
             return QuadraticSolution(3.0)
         } else if (equation.a == 1.0 && equation.b == 0.0 && equation.c == 1.0) {
-            throw NoSolutionsException("No solutions")
+            throw NoSolutionsSolverException("No solutions")
         }
         throw IllegalStateException()
     }
@@ -177,7 +175,7 @@ sealed class SolverException(message: String? = null) : Exception(message) {
 }
 
 // No need for annotations or registration for subclasses of sealed class.
-class NoSolutionsException(message: String? = null) : SolverException(message)
+class NoSolutionsSolverException(message: String? = null) : SolverException(message)
 class UnknownSolverException(message: String? = null) : SolverException(message)
 
 @CborSerializable
@@ -346,7 +344,7 @@ class FlowProcessorTest {
             try {
                 solver.solve(QuadraticEquation(a = 1.0, b = 0.0, c = 1.0))
                 fail()
-            } catch (err: NoSolutionsException) {
+            } catch (err: NoSolutionsSolverException) {
                 // expect to happen
             }
             assertEquals(0, factory.getCount())
