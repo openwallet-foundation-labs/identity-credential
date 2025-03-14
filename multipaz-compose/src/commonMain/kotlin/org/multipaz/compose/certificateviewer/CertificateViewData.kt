@@ -1,28 +1,25 @@
-package org.multipaz.models.ui.certificateviewer
+package org.multipaz.compose.certificateviewer
 
+import kotlinx.datetime.Instant
 import org.multipaz.asn1.ASN1
 import org.multipaz.asn1.ASN1Boolean
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.ASN1Sequence
-import org.multipaz.asn1.ASN1String
-import org.multipaz.asn1.ASN1TaggedObject
 import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.crypto.X509Cert
 import org.multipaz.securearea.cloud.CloudAttestationExtension
 import org.multipaz.util.AndroidAttestationExtensionParser
-import org.multipaz.util.unsignedBigIntToString
 import org.multipaz.util.toHex
-import kotlinx.datetime.Instant
-import kotlin.collections.mapValues
+import org.multipaz.util.unsignedBigIntToString
 
 /**
  * View Model immutable data.
  * All data fields of the Certificate as needed for display on the screen.
  * Also defining and using two extension methods to map Certificate fields.
  */
-data class CertificateViewData(
+internal data class CertificateViewData(
     val serialNumber: String,
     val version: String,
     val validFrom: Instant,
@@ -67,7 +64,7 @@ data class CertificateViewData(
 
             val issuer = cert.issuer.components.mapValues { it.value.value }
 
-            val pkAlgorithm: String = OID.lookupByOid(cert.signatureAlgorithmOid)?.description
+            val pkAlgorithm: String = OID.Companion.lookupByOid(cert.signatureAlgorithmOid)?.description
                     ?: "Unexpected algorithm OID ${cert.signatureAlgorithmOid}"
 
             val pkNamedCurve: String? = runCatching { cert.ecPublicKey.curve.name }.getOrNull()
@@ -126,7 +123,7 @@ data class CertificateViewData(
                             )
 
                         OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid ->
-                            CloudAttestationExtension.decode(ext.data).prettyPrint()
+                            CloudAttestationExtension.Companion.decode(ext.data).prettyPrint()
 
                         else -> {
                             try {
@@ -139,7 +136,7 @@ data class CertificateViewData(
                             }
                         }
                     }
-                    val oidEntry = OID.lookupByOid(ext.oid)
+                    val oidEntry = OID.Companion.lookupByOid(ext.oid)
                     val oid = if (oidEntry != null) {
                         "${ext.oid} ${oidEntry.description}"
                     } else {
@@ -151,5 +148,3 @@ data class CertificateViewData(
         }
     }
 }
-
-

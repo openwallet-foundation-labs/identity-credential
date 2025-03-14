@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -16,14 +15,12 @@ import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.viewmodel.compose.viewModel
 import org.multipaz.compose.AppTheme
-import org.multipaz.models.ui.digitalcredentials.lookupForCredmanId
-import org.multipaz.models.ui.presentment.DigitalCredentialsPresentmentMechanism
+import org.multipaz.models.digitalcredentials.lookupForCredmanId
+import org.multipaz.models.presentment.DigitalCredentialsPresentmentMechanism
 import org.multipaz.compose.presentment.Presentment
-import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.context.initializeApplication
-import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.util.Logger
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.app_icon

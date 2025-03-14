@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.consent
+package org.multipaz_credential.wallet.ui.prompt.consent
 
 /**
  * Details with the document that is being presented in the consent dialog.

@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.crypto.Algorithm
@@ -24,6 +23,7 @@ import org.multipaz.trustmanagement.TrustPoint
 import multipazproject.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.multipaz.compose.consent.ConsentModalBottomSheet
 
 private const val IACA_CERT_PEM =
@@ -136,14 +136,13 @@ fun ConsentModalBottomSheetScreen(
     }
 
     if (sheetState.isVisible && cardArt.size > 0) {
+        val cardArtImage = remember { cardArt.decodeToImageBitmap() }
         ConsentModalBottomSheet(
             sheetState = sheetState,
             request = request,
-            ConsentDocument(
-                name = "Erika's Driving License",
-                cardArt = cardArt,
-                description = "Driving License",
-            ),
+            documentName = "Erika's Driving License",
+            documentDescription = "Driving License",
+            documentCardArt = cardArtImage,
             trustPoint = trustPoint,
             onConfirm = {
                 scope.launch {

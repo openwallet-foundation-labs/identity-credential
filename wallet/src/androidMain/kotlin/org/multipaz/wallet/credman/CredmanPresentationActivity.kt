@@ -23,7 +23,6 @@ import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Simple
@@ -60,6 +59,7 @@ import kotlinx.coroutines.withContext
 import java.util.StringTokenizer
 import kotlinx.datetime.Clock
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 
 
 /**

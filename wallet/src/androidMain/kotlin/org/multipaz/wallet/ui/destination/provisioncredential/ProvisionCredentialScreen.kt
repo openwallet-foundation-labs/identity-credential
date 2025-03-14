@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.claim.Claim
 import org.multipaz.request.Requester
 import org.multipaz.credential.Credential
@@ -85,6 +84,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.json.JSONObject
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 import java.util.StringTokenizer
 import kotlin.random.Random
 

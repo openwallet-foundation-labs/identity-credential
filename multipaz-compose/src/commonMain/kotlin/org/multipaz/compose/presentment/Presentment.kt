@@ -39,11 +39,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.multipaz.models.ui.consent.ConsentDocument
-import org.multipaz.models.ui.presentment.PresentmentCanceled
-import org.multipaz.models.ui.presentment.PresentmentModel
-import org.multipaz.models.ui.presentment.PresentmentSource
-import org.multipaz.models.ui.presentment.PresentmentTimeout
+import org.multipaz.models.presentment.PresentmentCanceled
+import org.multipaz.models.presentment.PresentmentModel
+import org.multipaz.models.presentment.PresentmentSource
+import org.multipaz.models.presentment.PresentmentTimeout
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.prompt.PromptModel
@@ -249,19 +248,15 @@ fun Presentment(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
 @Composable
 private fun ConsentPrompt(
     coroutineScope: CoroutineScope,
     presentmentModel: PresentmentModel
 ) {
     val documentMetadata = presentmentModel.consentData.document.metadata
-    val consentDocument = remember {
-        ConsentDocument(
-            name = documentMetadata.displayName!!,
-            description = documentMetadata.typeDisplayName!!,
-            cardArt = documentMetadata.cardArt!!.toByteArray()
-        )
+    val cardArt = remember {
+        documentMetadata.cardArt!!.toByteArray().decodeToImageBitmap()
     }
     // TODO: use sheetGesturesEnabled=false when available - see
     //  https://issuetracker.google.com/issues/288211587 for details
@@ -271,7 +266,9 @@ private fun ConsentPrompt(
     ConsentModalBottomSheet(
         sheetState = sheetState,
         request = presentmentModel.consentData.request,
-        document = consentDocument,
+        documentName = documentMetadata.displayName!!,
+        documentDescription = documentMetadata.typeDisplayName!!,
+        documentCardArt = cardArt,
         trustPoint = presentmentModel.consentData.trustPoint,
         onConfirm = {
             coroutineScope.launch {

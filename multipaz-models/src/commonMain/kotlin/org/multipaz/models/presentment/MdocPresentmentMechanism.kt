@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.EcPrivateKey

@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
@@ -26,7 +26,6 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
 
 private const val TAG = "mdocPresentment"
 

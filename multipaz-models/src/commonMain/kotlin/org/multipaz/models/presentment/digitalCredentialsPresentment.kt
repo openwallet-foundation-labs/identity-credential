@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
 import org.multipaz.request.Requester
 import org.multipaz.cbor.Cbor
@@ -51,7 +51,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 

@@ -32,7 +32,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Simple
@@ -126,6 +125,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi

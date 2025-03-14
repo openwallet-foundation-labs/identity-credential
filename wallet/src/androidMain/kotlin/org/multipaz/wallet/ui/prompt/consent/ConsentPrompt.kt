@@ -7,14 +7,16 @@ import android.view.ViewGroup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.FragmentActivity
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.request.Request
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz_credential.wallet.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.multipaz.compose.consent.ConsentModalBottomSheet
 import kotlin.coroutines.resume
 
@@ -61,7 +63,7 @@ class ConsentPrompt(
      * Define the composable [ConsentModalBottomSheet] and issue callbacks to [onConsentPromptResult]
      * based on which button is tapped.
      */
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalResourceApi::class)
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -77,12 +79,13 @@ class ConsentPrompt(
                         skipPartiallyExpanded = true,
                         confirmValueChange = { it != SheetValue.Hidden }
                     )
-
-                    // define the ConsentPromptComposable (and show)
+                    val cardArtImage = remember { document.cardArt.decodeToImageBitmap() }
                     ConsentModalBottomSheet(
                         sheetState = sheetState,
                         request = request,
-                        document = document,
+                        documentName = document.name,
+                        documentDescription = document.description,
+                        documentCardArt = cardArtImage,
                         trustPoint = trustPoint,
                         // user accepted to send requested credential data
                         onConfirm = {
