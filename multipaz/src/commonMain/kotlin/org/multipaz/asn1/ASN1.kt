@@ -2,6 +2,13 @@ package org.multipaz.asn1
 
 import org.multipaz.util.toHex
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.appendUInt8
+import org.multipaz.util.getUInt16
+import org.multipaz.util.getUInt32
+import org.multipaz.util.getUInt64
+import org.multipaz.util.getUInt8
+import org.multipaz.util.putInt32
+import org.multipaz.util.putUInt32
 import kotlin.math.max
 
 internal data class IdentifierOctets(
@@ -41,16 +48,11 @@ object ASN1 {
         }
 
         if (length < 0x80) {
-            builder.append(length.toByte())
+            builder.appendUInt8(length)
         } else {
             val lengthFieldSize = ((Int.SIZE_BITS - length.countLeadingZeroBits()) + 7)/8
             builder.append((0x80 + lengthFieldSize).toByte())
-            val encodedLength = byteArrayOf(
-                (length shr 24).and(0xff).toByte(),
-                (length shr 16).and(0xff).toByte(),
-                (length shr 8).and(0xff).toByte(),
-                (length shr 0).and(0xff).toByte(),
-            )
+            val encodedLength = ByteArray(4).apply { putUInt32(0, length.toUInt()) }
             for (b in IntRange(4 - lengthFieldSize, 3)) {
                 builder.append(encodedLength[b])
             }
@@ -78,7 +80,7 @@ object ASN1 {
         } else {
             var result = 0
             do {
-                val b = derEncoded[o++].toInt().and(0xff)
+                val b = derEncoded.getUInt8(o++).toInt()
                 result = result shl 7
                 result = result or b.and(0x7f)
             } while (b.and(0x80) != 0)
@@ -88,20 +90,24 @@ object ASN1 {
     }
 
     internal fun decodeLength(derEncoded: ByteArray, offset: Int): Pair<Int, Int> {
-        val len0 = derEncoded[offset].toInt().and(0xff)
-        if (len0.and(0x80) == 0) {
+        val length = derEncoded.getUInt8(offset).toInt()
+        val numOctets = length.and(0x7f)
+        return if (length.and(0x80) == 0) {
             // Short-form
-            return Pair(offset + 1, len0)
+            Pair(offset + 1, length)
         }
-        val numOctets = len0.and(0x7f)
-        if (numOctets == 0) {
-            throw IllegalArgumentException("Indeterminate length not supported")
+        else {
+            Pair(
+                offset + 1 + numOctets,
+                when (numOctets) {
+                    0 -> throw IllegalArgumentException("Indeterminate length not supported")
+                    1 -> derEncoded.getUInt8(offset + 1).toInt()
+                    2 -> derEncoded.getUInt16(offset + 1).toInt()
+                    4 -> derEncoded.getUInt32(offset + 1).toInt()
+                    else -> throw IllegalArgumentException("Length size of $numOctets bytes not supported")
+                }
+            )
         }
-        var value = 0
-        for (n in IntRange(offset + 1, offset + 1 + numOctets - 1)) {
-            value = value.shl(8).or(derEncoded[n].toInt().and(0xff))
-        }
-        return Pair(offset + 1 + numOctets, value)
     }
 
     internal fun decode(derEncoded: ByteArray, offset: Int): Pair<Int, ASN1Object?> {

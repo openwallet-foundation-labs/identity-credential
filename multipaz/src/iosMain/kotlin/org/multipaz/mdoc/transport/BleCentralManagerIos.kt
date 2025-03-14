@@ -29,6 +29,7 @@ import kotlinx.io.asSource
 import kotlinx.io.buffered
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.readByteArray
+import org.multipaz.util.getUInt32
 import platform.CoreBluetooth.CBCentralManager
 import platform.CoreBluetooth.CBCentralManagerDelegateProtocol
 import platform.CoreBluetooth.CBCentralManagerStatePoweredOn
@@ -474,10 +475,7 @@ internal class BleCentralManagerIos : BleCentralManager {
                 )
                 readValueForCharacteristic(l2capCharacteristic!!)
                 val value = l2capCharacteristic!!.value!!.toByteArray()
-                _l2capPsm = ((value[0].toUInt().and(0xffU) shl 24) +
-                        (value[1].toUInt().and(0xffU) shl 16) +
-                        (value[2].toUInt().and(0xffU) shl 8) +
-                        (value[3].toUInt().and(0xffU) shl 0)).toInt()
+                _l2capPsm = value.getUInt32(0).toInt()
                 Logger.i(TAG, "L2CAP PSM is $_l2capPsm")
             } catch (e: Throwable) {
                 Logger.i(TAG, "L2CAP not available on peripheral", e)

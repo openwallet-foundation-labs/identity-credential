@@ -1,6 +1,7 @@
 package org.multipaz.cbor
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.getUInt8
 
 /**
  * Unicode String (major type 3), indefinite length.
@@ -29,7 +30,7 @@ data class IndefLengthTstr(val chunks: List<String>) : DataItem(MajorType.UNICOD
             val chunks = mutableListOf<String>()
             var cursor = offset + 1
             while (true) {
-                if (encodedCbor[cursor].toInt().and(0xff) == 0xff) {
+                if (encodedCbor.getUInt8(cursor) == Cbor.BREAK) {
                     // BREAK code, we're done
                     cursor += 1
                     break

@@ -23,6 +23,8 @@ import org.multipaz.util.UUID
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.util.getInt16
+import org.multipaz.util.getUInt16
 
 const private val TAG = "mdocReaderNfcHandover"
 
@@ -69,7 +71,7 @@ suspend fun mdocReaderNfcHandover(
     val ccFile = tag.readBinary(0, 15)
     check(ccFile.size == 15) { "CC file is ${ccFile.size} bytes, expected 15" }
 
-    val ndefFileId = (ccFile[9].toInt() and 0xff) * 256 + (ccFile[10].toInt() and 0xff)
+    val ndefFileId = ccFile.getUInt16(9).toInt()
 
     tag.selectFile(ndefFileId)
 

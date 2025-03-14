@@ -20,6 +20,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.util.NfcUtil
+import kotlinx.io.bytestring.buildByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
@@ -37,6 +38,8 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.util.appendUInt16
+import org.multipaz.util.getUInt16
 import java.security.Security
 import java.util.Arrays
 import java.util.concurrent.Executor
@@ -142,10 +145,8 @@ class NfcEnagementHelperTest {
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
         Assert.assertEquals(4, responseApdu.size.toLong())
-        Assert.assertEquals(0x90, (responseApdu[2].toInt() and 0xff).toLong())
-        Assert.assertEquals(0x00, (responseApdu[3].toInt() and 0xff).toLong())
-        val initialNdefMessageSize = ((responseApdu[0].toInt() and 0xff) * 0x0100
-                + (responseApdu[1].toInt() and 0xff))
+        Assert.assertEquals(0x9000, responseApdu.getUInt16(2).toInt())
+        val initialNdefMessageSize = responseApdu.getUInt16(0).toInt()
 
         // Read Initial NDEF message
         responseApdu = helper.nfcProcessCommandApdu(
@@ -155,11 +156,8 @@ class NfcEnagementHelperTest {
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
         Assert.assertEquals((initialNdefMessageSize + 2).toLong(), responseApdu.size.toLong())
-        Assert.assertEquals(0x90, (responseApdu[initialNdefMessageSize].toInt() and 0xff).toLong())
-        Assert.assertEquals(
-            0x00,
-            (responseApdu[initialNdefMessageSize + 1].toInt() and 0xff).toLong()
-        )
+        Assert.assertEquals(0x9000, responseApdu.getUInt16(initialNdefMessageSize).toInt())
+
         val initialNdefMessage = Arrays.copyOf(responseApdu, responseApdu.size - 2)
 
         // The Initial NDEF message should contain Handover Select. Check this.
@@ -283,10 +281,8 @@ class NfcEnagementHelperTest {
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
         Assert.assertEquals(4, responseApdu.size.toLong())
-        Assert.assertEquals(0x90, (responseApdu[2].toInt() and 0xff).toLong())
-        Assert.assertEquals(0x00, (responseApdu[3].toInt() and 0xff).toLong())
-        val initialNdefMessageSize = ((responseApdu[0].toInt() and 0xff) * 0x0100
-                + (responseApdu[1].toInt() and 0xff))
+        Assert.assertEquals(0x9000, responseApdu.getUInt16(2).toInt())
+        val initialNdefMessageSize = responseApdu.getUInt16(0).toInt()
 
         // Read Initial NDEF message
         responseApdu = helper.nfcProcessCommandApdu(
@@ -296,11 +292,7 @@ class NfcEnagementHelperTest {
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
         Assert.assertEquals((initialNdefMessageSize + 2).toLong(), responseApdu.size.toLong())
-        Assert.assertEquals(0x90, (responseApdu[initialNdefMessageSize].toInt() and 0xff).toLong())
-        Assert.assertEquals(
-            0x00,
-            (responseApdu[initialNdefMessageSize + 1].toInt() and 0xff).toLong()
-        )
+        Assert.assertEquals(0x9000, responseApdu.getUInt16(initialNdefMessageSize).toInt())
         val initialNdefMessage = Arrays.copyOf(responseApdu, responseApdu.size - 2)
 
         // The Initial NDEF message should contain a Service Parameter record for the
@@ -412,11 +404,7 @@ class NfcEnagementHelperTest {
             var responseApdu: ByteArray
             if (ndefMessage.size < 256 - 2) {
                 // Fits in a single UPDATE_BINARY command
-                val data = ByteArray(ndefMessage.size + 2)
-                @Suppress("KotlinConstantConditions")
-                data[0] = (ndefMessage.size / 0x100 and 0xff).toByte() // = 0x00
-                data[1] = (ndefMessage.size and 0xff).toByte()
-                System.arraycopy(ndefMessage, 0, data, 2, ndefMessage.size)
+                val data = buildByteString { appendUInt16(ndefMessage.size).append(ndefMessage) }.toByteArray()
                 responseApdu = helper.nfcProcessCommandApdu(
                     NfcUtil.createApduUpdateBinary(0, data)
                 )
@@ -448,13 +436,8 @@ class NfcEnagementHelperTest {
                 }
 
                 // Final command is UPDATE_BINARY to write the length
-                val encodedLength = byteArrayOf(
-                    (ndefMessage.size / 0x100 and 0xff).toByte(),
-                    (ndefMessage.size and 0xff).toByte()
-                )
-                responseApdu = helper.nfcProcessCommandApdu(
-                    NfcUtil.createApduUpdateBinary(0, encodedLength)
-                )
+                val encodedLength = buildByteString { appendUInt16(ndefMessage.size) }.toByteArray()
+                responseApdu = helper.nfcProcessCommandApdu(NfcUtil.createApduUpdateBinary(0, encodedLength))
                 Assert.assertNotNull(responseApdu)
                 Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu)
             }
@@ -467,10 +450,8 @@ class NfcEnagementHelperTest {
             // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
             // don't know the length.
             Assert.assertEquals(4, responseApdu.size.toLong())
-            Assert.assertEquals(0x90, (responseApdu[2].toInt() and 0xff).toLong())
-            Assert.assertEquals(0x00, (responseApdu[3].toInt() and 0xff).toLong())
-            val ndefMessageSize = ((responseApdu[0].toInt() and 0xff) * 0x0100
-                    + (responseApdu[1].toInt() and 0xff))
+            Assert.assertEquals(0x9000, responseApdu.getUInt16(2).toInt())
+            val ndefMessageSize = responseApdu.getUInt16(0).toInt()
 
             // Read NDEF message
             responseApdu = helper.nfcProcessCommandApdu(
@@ -480,8 +461,7 @@ class NfcEnagementHelperTest {
             // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
             // don't know the length.
             Assert.assertEquals((ndefMessageSize + 2).toLong(), responseApdu.size.toLong())
-            Assert.assertEquals(0x90, (responseApdu[ndefMessageSize].toInt() and 0xff).toLong())
-            Assert.assertEquals(0x00, (responseApdu[ndefMessageSize + 1].toInt() and 0xff).toLong())
+            Assert.assertEquals(0x9000, responseApdu.getUInt16(ndefMessageSize).toInt())
             return responseApdu.copyOf(responseApdu.size - 2)
         }
     }

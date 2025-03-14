@@ -39,6 +39,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
+import org.multipaz.util.appendByteArray
+import org.multipaz.util.appendUInt32
+import org.multipaz.util.getUInt32
 import java.io.InputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -274,10 +278,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
                                     Error("onCharacteristicRead: Expected four bytes for PSM, got ${value.size}")
                                 )
                             }
-                            _l2capPsm = ((value[0].toUInt().and(0xffU) shl 24) +
-                                    (value[1].toUInt().and(0xffU) shl 16) +
-                                    (value[2].toUInt().and(0xffU) shl 8) +
-                                    (value[3].toUInt().and(0xffU) shl 0)).toInt()
+                            _l2capPsm = value.getUInt32(0).toInt()
                             Logger.i(TAG, "L2CAP PSM is $_l2capPsm")
                             resumeWait()
                         }
@@ -698,10 +699,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
         try {
             while (true) {
                 val encodedLength = inputStream.readNOctets(4U)
-                val length = (encodedLength[0].toUInt().and(0xffU) shl 24) +
-                        (encodedLength[1].toUInt().and(0xffU) shl 16) +
-                        (encodedLength[2].toUInt().and(0xffU) shl 8) +
-                        (encodedLength[3].toUInt().and(0xffU) shl 0)
+                val length = encodedLength.getUInt32(0)
                 val message = inputStream.readNOctets(length)
                 incomingMessages.send(message)
             }
@@ -712,17 +710,12 @@ internal class BleCentralManagerAndroid : BleCentralManager {
 
     private suspend fun l2capSendMessage(message: ByteArray) {
         Logger.i(TAG, "l2capSendMessage ${message.size} length")
-        val bsb = ByteStringBuilder()
-        val length = message.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(message)
         withContext(Dispatchers.IO) {
-            l2capSocket?.outputStream?.write(bsb.toByteString().toByteArray())
+            l2capSocket?.outputStream?.write(
+                buildByteString {
+                    appendUInt32(message.size)
+                    appendByteArray(message) }.toByteArray()
+            )
             l2capSocket?.outputStream?.flush()
         }
     }

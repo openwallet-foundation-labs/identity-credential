@@ -23,6 +23,9 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import org.multipaz.util.Logger
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.buildByteString
+import org.multipaz.util.appendUInt32
+import org.multipaz.util.getUInt32
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.BlockingQueue
@@ -132,11 +135,7 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
         while (true) {
             try {
                 val length = try {
-                    val encodedLength = inputStream.readNOctets(4U)
-                    (encodedLength[0].toUInt().and(0xffU) shl 24) +
-                            (encodedLength[1].toUInt().and(0xffU) shl 16) +
-                            (encodedLength[2].toUInt().and(0xffU) shl 8) +
-                            (encodedLength[3].toUInt().and(0xffU) shl 0)
+                    inputStream.readNOctets(4U).getUInt32(0)
                 } catch (e: Throwable) {
                     reportPeerDisconnected()
                     break
@@ -151,16 +150,7 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
     }
 
     fun sendMessage(data: ByteArray) {
-        val bsb = ByteStringBuilder()
-        val length = data.size.toUInt()
-        bsb.apply {
-            append((length shr 24).and(0xffU).toByte())
-            append((length shr 16).and(0xffU).toByte())
-            append((length shr 8).and(0xffU).toByte())
-            append((length shr 0).and(0xffU).toByte())
-        }
-        bsb.append(data)
-        writerQueue.add(bsb.toByteString().toByteArray())
+        writerQueue.add(buildByteString { appendUInt32(data.size).append(data) }.toByteArray())
     }
 
     fun reportPeerConnected() {

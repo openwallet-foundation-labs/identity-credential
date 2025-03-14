@@ -1,6 +1,8 @@
 package org.multipaz.cbor
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.appendInt32
+import org.multipaz.util.getInt32
 import kotlin.experimental.or
 
 /**
@@ -11,26 +13,14 @@ import kotlin.experimental.or
 class CborFloat(val value: Float) : DataItem(MajorType.SPECIAL) {
 
     override fun encode(builder: ByteStringBuilder) {
-        builder.run {
             val majorTypeShifted = (majorType.type shl 5).toByte()
-            append(majorTypeShifted.or(26))
-
-            val raw = value.toRawBits()
-            append((raw shr 24).and(0xff).toByte())
-            append((raw shr 16).and(0xff).toByte())
-            append((raw shr  8).and(0xff).toByte())
-            append((raw shr  0).and(0xff).toByte())
-        }
-
+            builder.append(majorTypeShifted.or(26))
+            builder.appendInt32(value.toRawBits())
     }
 
     companion object {
         internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborFloat> {
-            val raw = (encodedCbor[offset + 1].toInt().and(0xff) shl 24) +
-                    (encodedCbor[offset + 2].toInt().and(0xff) shl 16) +
-                    (encodedCbor[offset + 3].toInt().and(0xff) shl 8) +
-                    encodedCbor[offset + 4].toInt().and(0xff)
-            return Pair(offset + 5, CborFloat(Float.fromBits(raw)))
+            return Pair(offset + 5, CborFloat(Float.fromBits(encodedCbor.getInt32(offset + 1))))
         }
     }
 
