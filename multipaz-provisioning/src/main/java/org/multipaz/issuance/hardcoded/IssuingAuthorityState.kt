@@ -562,7 +562,6 @@ class IssuingAuthorityState(
             }.end().build().let { digestIdMappingItem ->
                 Cbor.encode(
                     CborMap.builder()
-                        .put("docType", docType)
                         .put("issuerNameSpaces", digestIdMappingItem)
                         .put("issuerAuth", RawCbor(encodedIssuerAuth))
                         .put("readerAccess", readerAuth)
