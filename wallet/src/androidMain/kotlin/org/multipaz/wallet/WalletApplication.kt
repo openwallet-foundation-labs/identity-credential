@@ -45,7 +45,7 @@ import org.multipaz.documenttype.knowntypes.GermanPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
 import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.documenttype.knowntypes.UtopiaNaturalization
-import org.multipaz.issuance.WalletApplicationCapabilities
+import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.issuance.WalletDocumentMetadata
 import org.multipaz.issuance.remote.WalletServerProvider
 import org.multipaz.mdoc.credential.MdocCredential

@@ -9,7 +9,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.resolutionselector.ResolutionFilter
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.core.content.ContextCompat
-import org.multipaz.issuance.evidence.EvidenceRequestSelfieVideo
+import org.multipaz.provisioning.evidence.EvidenceRequestSelfieVideo
 import org.multipaz.util.Logger
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face

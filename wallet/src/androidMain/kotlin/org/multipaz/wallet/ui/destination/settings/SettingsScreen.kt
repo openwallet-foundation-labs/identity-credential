@@ -67,11 +67,14 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            for (documentId in documentStore.listDocuments()) {
-                                documentStore.deleteDocument(documentId)
+                            try {
+                                for (documentId in documentStore.listDocuments()) {
+                                    documentStore.deleteDocument(documentId)
+                                }
+                            } finally {
+                                confirmServerChange!!.onConfirm()
+                                confirmServerChange = null
                             }
-                            confirmServerChange!!.onConfirm()
-                            confirmServerChange = null
                         }
                     }) {
                     Text(stringResource(R.string.settings_screen_confirm_set_server_url_dialog_confirm))

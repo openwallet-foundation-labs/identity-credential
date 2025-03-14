@@ -1,6 +1,9 @@
 package org.multipaz.issuance
 
 import org.multipaz.document.Document
+import org.multipaz.provisioning.DocumentConfiguration
+import org.multipaz.provisioning.DocumentState
+import org.multipaz.provisioning.IssuingAuthorityConfiguration
 
 /**
  * A set of extensions on the [Document] type for working with the [IssuingAuthority]

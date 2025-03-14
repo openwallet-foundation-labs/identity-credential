@@ -1,7 +1,7 @@
 package org.multipaz_credential.wallet
 
-import org.multipaz.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
-import org.multipaz.issuance.evidence.EvidenceResponseIcaoNfcTunnel
+import org.multipaz.provisioning.evidence.EvidenceRequestIcaoNfcTunnelType
+import org.multipaz.provisioning.evidence.EvidenceResponseIcaoNfcTunnel
 import org.multipaz.mrtd.MrtdNfc
 import org.multipaz.mrtd.MrtdNfcReader
 import kotlinx.io.bytestring.ByteString

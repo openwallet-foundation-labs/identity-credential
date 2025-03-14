@@ -27,8 +27,6 @@ import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.R
 import org.multipaz_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import org.multipaz.claim.Claim
-import org.multipaz.claim.MdocClaim
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request

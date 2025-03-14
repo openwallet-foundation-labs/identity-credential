@@ -43,7 +43,7 @@ import org.multipaz.document.Document
 import org.multipaz.document.DocumentRequest
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.knowntypes.EUPersonalID
-import org.multipaz.issuance.CredentialFormat
+import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.issuance.DocumentExtensions.documentConfiguration
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.response.DeviceResponseGenerator
@@ -53,12 +53,9 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.R
 import org.multipaz_credential.wallet.WalletApplication
-import org.multipaz.claim.Claim
 import org.multipaz.request.Requester
-import org.multipaz.claim.VcClaim
 import org.multipaz.crypto.javaX509Certificate
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.claim.MdocClaim
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim

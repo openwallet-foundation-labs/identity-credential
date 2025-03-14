@@ -69,33 +69,30 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import org.multipaz.documenttype.Icon
-import org.multipaz.issuance.ApplicationSupport
-import org.multipaz.issuance.LandingUrlUnknownException
-import org.multipaz.issuance.evidence.EvidenceRequestCompletionMessage
-import org.multipaz.issuance.evidence.EvidenceRequestCreatePassphrase
-import org.multipaz.issuance.evidence.EvidenceRequestGermanEid
-import org.multipaz.issuance.evidence.EvidenceRequestIcaoNfcTunnel
-import org.multipaz.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
-import org.multipaz.issuance.evidence.EvidenceRequestMessage
-import org.multipaz.issuance.evidence.EvidenceRequestNotificationPermission
-import org.multipaz.issuance.evidence.EvidenceRequestOpenid4Vp
-import org.multipaz.issuance.evidence.EvidenceRequestQuestionMultipleChoice
-import org.multipaz.issuance.evidence.EvidenceRequestQuestionString
-import org.multipaz.issuance.evidence.EvidenceRequestSelfieVideo
-import org.multipaz.issuance.evidence.EvidenceRequestSetupCloudSecureArea
-import org.multipaz.issuance.evidence.EvidenceRequestWeb
-import org.multipaz.issuance.evidence.EvidenceResponseGermanEid
-import org.multipaz.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
-import org.multipaz.issuance.evidence.EvidenceResponseMessage
-import org.multipaz.issuance.evidence.EvidenceResponseNotificationPermission
-import org.multipaz.issuance.evidence.EvidenceResponseOpenid4Vp
-import org.multipaz.issuance.evidence.EvidenceResponseSelfieVideo
-import org.multipaz.issuance.evidence.EvidenceResponseWeb
+import org.multipaz.provisioning.ApplicationSupport
+import org.multipaz.provisioning.LandingUrlUnknownException
+import org.multipaz.provisioning.evidence.EvidenceRequestCompletionMessage
+import org.multipaz.provisioning.evidence.EvidenceRequestCreatePassphrase
+import org.multipaz.provisioning.evidence.EvidenceRequestIcaoNfcTunnel
+import org.multipaz.provisioning.evidence.EvidenceRequestIcaoPassiveAuthentication
+import org.multipaz.provisioning.evidence.EvidenceRequestMessage
+import org.multipaz.provisioning.evidence.EvidenceRequestNotificationPermission
+import org.multipaz.provisioning.evidence.EvidenceRequestOpenid4Vp
+import org.multipaz.provisioning.evidence.EvidenceRequestQuestionMultipleChoice
+import org.multipaz.provisioning.evidence.EvidenceRequestQuestionString
+import org.multipaz.provisioning.evidence.EvidenceRequestSelfieVideo
+import org.multipaz.provisioning.evidence.EvidenceRequestSetupCloudSecureArea
+import org.multipaz.provisioning.evidence.EvidenceRequestWeb
+import org.multipaz.provisioning.evidence.EvidenceResponseIcaoPassiveAuthentication
+import org.multipaz.provisioning.evidence.EvidenceResponseMessage
+import org.multipaz.provisioning.evidence.EvidenceResponseNotificationPermission
+import org.multipaz.provisioning.evidence.EvidenceResponseOpenid4Vp
+import org.multipaz.provisioning.evidence.EvidenceResponseSelfieVideo
+import org.multipaz.provisioning.evidence.EvidenceResponseWeb
 import org.multipaz.issuance.remote.WalletServerProvider
 import org.multipaz.mrtd.MrtdNfc
 import org.multipaz.mrtd.MrtdNfcDataReader
 import org.multipaz.mrtd.MrtdNfcReader
-import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.cloud.CloudSecureArea
 import org.multipaz.util.Logger
@@ -1407,229 +1404,6 @@ fun EvidenceRequestSelfieVideoView(
                         ) {
                             Text(stringResource(R.string.selfie_video_start_recording_button))
                         }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EvidenceRequestEIdView(
-    evidenceRequest: EvidenceRequestGermanEid,
-    provisioningViewModel: ProvisioningViewModel
-) {
-    AusweisView(
-        evidenceRequest.tcTokenUrl,
-        evidenceRequest.optionalComponents
-    ) { evidence ->
-        provisioningViewModel.provideEvidence(
-            evidence = evidence
-        )
-    }
-}
-
-@Composable
-fun AusweisView(
-    tcTokenUrl: String,
-    requiredComponents: List<String>,
-    onResult: (evidence: EvidenceResponseGermanEid) -> Unit
-) {
-    val navController = rememberNavController()
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val status = remember { mutableStateOf<AusweisModel.Status?>(null) }
-    val model = remember {
-        AusweisModel(
-            context,
-            status,
-            navController,
-            tcTokenUrl,
-            requiredComponents,
-            coroutineScope,
-            onResult
-        )
-    }
-    NavHost(navController = navController, startDestination = AusweisModel.Route.INITIAL.route) {
-        composable(AusweisModel.Route.INITIAL.route) {
-            Column {
-                val ready = status.value != null
-                val started = ready && status.value !is AusweisModel.Ready
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (started) {
-                                R.string.eid_status_started
-                            } else if (ready) {
-                                R.string.eid_status_ready
-                            } else {
-                                R.string.eid_status_preparing
-                            }
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(
-                        enabled = ready && !started,
-                        onClick = { model.startWorkflow(false) }
-                    ) {
-                        Text(stringResource(R.string.eid_start_workflow))
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(
-                        enabled = ready && !started,
-                        onClick = { model.startWorkflow(true) }
-                    ) {
-                        Text(stringResource(R.string.eid_start_workflow_with_simulator))
-                    }
-                }
-            }
-        }
-        composable(AusweisModel.Route.ACCESS_RIGHTS.route) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.eid_access_rights_title),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
-                val statusValue = status.value
-                if (statusValue is AusweisModel.AccessRights) {
-                    for (component in statusValue.components) {
-                        when (component) {
-                            "GivenNames" ->
-                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_first_name))
-                            "FamilyName" ->
-                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_last_name))
-                            "BirthName" ->
-                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_maiden_name))
-                            "DateOfBirth" ->
-                                AccessRightsIconAndText(Icon.TODAY, stringResource(R.string.eid_access_right_date_of_birth))
-                            "Address" ->
-                                AccessRightsIconAndText(Icon.PLACE, stringResource(R.string.eid_access_right_address))
-                            "Nationality" ->
-                                AccessRightsIconAndText(Icon.LANGUAGE, stringResource(R.string.eid_access_right_nationality))
-                            "PlaceOfBirth" ->
-                                AccessRightsIconAndText(Icon.PLACE, stringResource(R.string.eid_access_right_place_of_birth))
-                            "Pseudonym" ->
-                                AccessRightsIconAndText(Icon.PERSON, stringResource(R.string.eid_access_right_pseudonym))
-                            "AgeVerification" ->
-                                AccessRightsIconAndText(Icon.TODAY, stringResource(R.string.eid_access_right_age_verification))
-                            // TODO: all others
-                            else -> AccessRightsIconAndText(Icon.STARS, component)
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(onClick = { model.acceptAccess() }) {
-                        Text(stringResource(R.string.eid_access_right_allow))
-                    }
-                }
-            }
-        }
-        composable(AusweisModel.Route.CARD_SCAN.route) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.eid_nfc_scanning),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
-                val statusValue = status.value
-                if (statusValue is AusweisModel.Auth) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Progress: ${statusValue.progress}%",
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-        }
-        composable(AusweisModel.Route.PIN_ENTRY.route) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.eid_enter_pin),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    PassphraseEntryField(
-                        constraints = PassphraseConstraints.PIN_SIX_DIGITS,
-                    ) { passphrase, meetsRequirements, _ ->
-                        if (meetsRequirements) {
-                            model.providePin(passphrase)
-                        }
-                    }
-                }
-            }
-        }
-        composable(AusweisModel.Route.ERROR.route) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (status.value == AusweisModel.NetworkError) {
-                                R.string.eid_network_error
-                            } else if (status.value == AusweisModel.PinError) {
-                                R.string.eid_pin_error
-                            } else {
-                                R.string.eid_generic_error
-                            }),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(onClick = { model.tryAgain() }) {
-                        Text(stringResource(R.string.eid_try_again))
                     }
                 }
             }
