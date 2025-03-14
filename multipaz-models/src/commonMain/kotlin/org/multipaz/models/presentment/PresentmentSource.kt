@@ -1,6 +1,5 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
-import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
 import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository

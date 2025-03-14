@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.digitalcredentials
+package org.multipaz.models.digitalcredentials
 
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository

@@ -1,6 +1,5 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
-import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.prompt.PromptModel

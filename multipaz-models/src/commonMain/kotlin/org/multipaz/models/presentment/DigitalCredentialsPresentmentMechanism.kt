@@ -1,6 +1,6 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
-import org.multipaz.models.ui.digitalcredentials.DigitalCredentials
+import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.document.Document
 
 /**

@@ -1,4 +1,4 @@
-package org.multipaz.appsupport.ui.presentment
+package org.multipaz.models.presentment
 
 import org.multipaz.credential.Credential
 

@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.presentment
+package org.multipaz.models.presentment
 
 /**
  * Thrown when presentment was cancelled.

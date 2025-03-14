@@ -1,4 +1,4 @@
-package org.multipaz.models.ui.digitalcredentials
+package org.multipaz.models.digitalcredentials
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 import java.io.ByteArrayOutputStream
+import kotlin.collections.iterator
 
 private const val TAG = "DigitalCredentials"
 

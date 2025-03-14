@@ -2,7 +2,7 @@ package org.multipaz.testapp.ui
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.testapp.App
 import org.multipaz.testapp.TestAppPresentmentSource
 import multipazproject.samples.testapp.generated.resources.Res
