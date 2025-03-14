@@ -10,7 +10,7 @@ import org.multipaz.flow.server.Configuration
 import org.multipaz.flow.server.Resources
 import org.multipaz.flow.server.FlowEnvironment
 import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.issuance.ApplicationSupport
+import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
@@ -148,33 +148,8 @@ internal class LocalDevelopmentEnvironment(
                         R.drawable.utopia_pid_issuing_authority_logo,
                         Bitmap.CompressFormat.PNG
                     )
-                "funke/card_art_funke_generic.png"  ->
-                    bitmapData(
-                        R.drawable.card_art_funke_generic,
-                        Bitmap.CompressFormat.PNG
-                    )
-                "funke/card_art_funke_mdoc_c.png"  ->
-                    bitmapData(
-                        R.drawable.card_art_funke_mdoc_c,
-                        Bitmap.CompressFormat.PNG
-                    )
-                "funke/card_art_funke_mdoc_c1.png"  ->
-                    bitmapData(
-                        R.drawable.card_art_funke_mdoc_c1,
-                        Bitmap.CompressFormat.PNG
-                    )
-                "funke/card_art_funke_sdjwt_c.png"  ->
-                    bitmapData(
-                        R.drawable.card_art_funke_sdjwt_c,
-                        Bitmap.CompressFormat.PNG
-                    )
-                "funke/card_art_funke_sdjwt_c1.png"  ->
-                    bitmapData(
-                        R.drawable.card_art_funke_sdjwt_c1,
-                        Bitmap.CompressFormat.PNG
-                    )
-                "funke/logo.png" -> bitmapData(
-                    R.drawable.funke_logo,
+                "generic/logo.png" -> bitmapData(
+                    R.drawable.logo_generic,
                     Bitmap.CompressFormat.PNG
                 )
                 "generic/card_art.png" -> bitmapData(

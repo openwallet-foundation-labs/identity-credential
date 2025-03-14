@@ -24,10 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.multipaz.issuance.CredentialFormat
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.CredentialInfo
-import org.multipaz_credential.wallet.DocumentInfo
 import org.multipaz_credential.wallet.DocumentModel
 import org.multipaz_credential.wallet.R
 import org.multipaz_credential.wallet.navigation.WalletDestination

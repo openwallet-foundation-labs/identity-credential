@@ -80,6 +80,7 @@
     <string name="duration_weeks_and_days">%1$s and %2$s</string>
     <string name="duration_days_and_hours">%1$s and %2$s</string>
     <string name="duration_hours_and_minutes">%1$s and %2$s</string>
+    <string name="duration_never">never</string>
     <string name="duration_time_ago">%1$s ago</string>
     <string name="duration_time_from_now">%1$s from now</string>
     <!-- TODO: figure out if we have to have separate string for past and future durations -->

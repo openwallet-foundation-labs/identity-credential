@@ -44,7 +44,6 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz_credential.wallet.WalletApplication
 import org.multipaz_credential.wallet.presentation.showMdocPresentmentFlow
 import org.multipaz.request.Requester
-import org.multipaz.claim.MdocClaim
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import com.google.android.gms.identitycredentials.Credential

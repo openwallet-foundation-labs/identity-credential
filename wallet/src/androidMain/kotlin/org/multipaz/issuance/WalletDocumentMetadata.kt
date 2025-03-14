@@ -8,6 +8,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isEmpty
+import org.multipaz.provisioning.DocumentConfiguration
+import org.multipaz.provisioning.DocumentState
+import org.multipaz.provisioning.IssuingAuthorityConfiguration
 import kotlin.concurrent.Volatile
 
 /**

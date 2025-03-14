@@ -17,7 +17,7 @@ import org.multipaz.flow.server.Configuration
 import org.multipaz.flow.server.FlowEnvironment
 import org.multipaz.flow.server.Resources
 import org.multipaz.flow.server.getTable
-import org.multipaz.issuance.WalletServerSettings
+import org.multipaz.provisioning.WalletServerSettings
 import org.multipaz.securearea.cloud.CloudSecureAreaServer
 import org.multipaz.securearea.cloud.SimplePassphraseFailureEnforcer
 import org.multipaz.server.BaseHttpServlet

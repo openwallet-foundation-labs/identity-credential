@@ -1,9 +1,9 @@
 package org.multipaz_credential.wallet.credentialoffer
 
-import org.multipaz.issuance.evidence.Openid4VciCredentialOffer
-import org.multipaz.issuance.evidence.Openid4VciCredentialOfferAuthorizationCode
-import org.multipaz.issuance.evidence.Openid4VciCredentialOfferPreauthorizedCode
-import org.multipaz.issuance.evidence.Openid4VciTxCode
+import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
+import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferAuthorizationCode
+import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferPreauthorizedCode
+import org.multipaz.provisioning.evidence.Openid4VciTxCode
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.ProvisioningViewModel
 import io.ktor.client.HttpClient

@@ -10,11 +10,9 @@ import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.document.DocumentRequest
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.NameSpacedData
-import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.javaX509Certificates
 import org.multipaz.issuance.DocumentExtensions.documentConfiguration
 import org.multipaz.issuance.DocumentExtensions.issuingAuthorityIdentifier
-import org.multipaz.issuance.CredentialFormat
+import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.mso.StaticAuthDataParser
 import org.multipaz.mdoc.request.DeviceRequestParser
@@ -31,9 +29,7 @@ import org.multipaz_credential.wallet.R
 import org.multipaz_credential.wallet.SettingsModel
 import org.multipaz_credential.wallet.WalletApplication
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
 import kotlinx.datetime.Clock
 
 /**

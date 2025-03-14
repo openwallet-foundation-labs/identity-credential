@@ -18,7 +18,7 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import org.multipaz.issuance.evidence.EvidenceRequestSelfieVideo
+import org.multipaz.provisioning.evidence.EvidenceRequestSelfieVideo
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.FaceImageClassifier
 import kotlinx.coroutines.guava.await

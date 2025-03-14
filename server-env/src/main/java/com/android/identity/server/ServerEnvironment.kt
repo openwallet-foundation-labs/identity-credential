@@ -10,6 +10,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.jdbc.JdbcStorage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
@@ -61,7 +62,7 @@ private val httpClient = HttpClient(Java) {
     followRedirects = false
 }
 
-private val secureAreaProvider = SecureAreaProvider {
+private val secureAreaProvider = SecureAreaProvider(Dispatchers.Default) {
     SoftwareSecureArea.create(storage)
 }
 
