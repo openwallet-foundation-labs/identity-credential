@@ -4,7 +4,6 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
-import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cbor.toDataItemDateTimeString
@@ -13,6 +12,7 @@ import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.cose.CoseSign1
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 
@@ -92,8 +92,8 @@ data class SignedVical(
          *
          * @param encodedSignedVical the encoded CBOR with the COSE_Sign1 described above.
          * @return a `SignedVical` instance.
-         * @throws IllegalArgumentException if the passed in signed VICAL is malformed or signature
-         * verification failed.
+         * @throws IllegalArgumentException if the passed in signed VICAL is malformed
+         * @throws SignatureVerificationException if signature verification failed.
          */
         fun parse(encodedSignedVical: ByteArray): SignedVical {
             val signature = CoseSign1.fromDataItem(Cbor.decode(encodedSignedVical))
@@ -108,14 +108,12 @@ data class SignedVical(
                 ?.let { Algorithm.fromCoseAlgorithmIdentifier(it) }
                 ?: throw IllegalArgumentException("Signature Algorithm not set")
 
-            if (!Cose.coseSign1Check(
+            Cose.coseSign1Check(
                 certChain.certificates.first().ecPublicKey,
                 null,
                 signature,
                 signatureAlgorithm
-            )) {
-                throw IllegalArgumentException("Signature check failed")
-            }
+            )
 
             val vicalMap = Cbor.decode(vicalPayload)
             val version = vicalMap["version"].asTstr

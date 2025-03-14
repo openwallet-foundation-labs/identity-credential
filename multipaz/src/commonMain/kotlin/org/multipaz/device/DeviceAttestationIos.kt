@@ -24,6 +24,7 @@ import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.util.getInt16
 import org.multipaz.util.getInt32
 import org.multipaz.util.getUInt16
+import org.multipaz.crypto.SignatureVerificationException
 
 /** On iOS device attestation is the result of Apple's DeviceCheck API. */
 data class DeviceAttestationIos(
@@ -57,8 +58,10 @@ data class DeviceAttestationIos(
         } catch (e: Throwable) {
             throw DeviceAttestationException("Error validating certificate chain", e)
         }
-        if (!x5c.last().verify(APPLE_ROOT_CERTIFICATE.ecPublicKey)) {
-            throw IllegalArgumentException("Invalid certificate chain")
+        try {
+            x5c.last().verify(APPLE_ROOT_CERTIFICATE.ecPublicKey)
+        } catch (e: SignatureVerificationException) {
+            throw IllegalArgumentException("Invalid certificate chain", e)
         }
 
         // Web Authentication "Authenticator" Data defined here
@@ -159,13 +162,10 @@ data class DeviceAttestationIos(
             append(clientHash)
         }.toByteString()
         val hash = Crypto.digest(Algorithm.SHA256, composite.toByteArray())
-        val valid = try {
+        try {
             Crypto.checkSignature(publicKey, hash, Algorithm.ES256, signature)
-        } catch (err: Throwable) {
-            throw DeviceAssertionException("Error validating signature", err)
-        }
-        if (!valid) {
-            throw DeviceAssertionException("Signature is not valid")
+        } catch (e: Throwable) {
+            throw DeviceAssertionException("Error validating signature", e)
         }
     }
 

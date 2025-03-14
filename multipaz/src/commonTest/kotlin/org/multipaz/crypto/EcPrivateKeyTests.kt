@@ -2,7 +2,7 @@ package org.multipaz.crypto
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class EcPrivateKeyTests {
 
@@ -34,16 +34,27 @@ class EcPrivateKeyTests {
 
         if (signatureAlgorithm != Algorithm.UNSET) {
             val message = "Hello World".encodeToByteArray()
-            val derSignature =
-                Crypto.sign(privateKey, signatureAlgorithm, message)
-            val signatureValid = Crypto.checkSignature(
+            val signature = Crypto.sign(privateKey, signatureAlgorithm, message)
+            Crypto.checkSignature(
                 privateKey.publicKey,
                 message,
                 signatureAlgorithm,
-                derSignature
+                signature
             )
-            assertTrue(signatureValid)
+
+            // Negative test: check that checkSignature() throws SecurityException
+            val otherPrivateKey = Crypto.createEcPrivateKey(curve)
+            val signatureFromOtherKey = Crypto.sign(otherPrivateKey, signatureAlgorithm, message)
+            assertFailsWith(SignatureVerificationException::class) {
+                Crypto.checkSignature(
+                    privateKey.publicKey,
+                    message,
+                    signatureAlgorithm,
+                    signatureFromOtherKey
+                )
+            }
         }
+
         if (keyAgreement) {
             val otherKey = Crypto.createEcPrivateKey(curve)
             val Zab = Crypto.keyAgreement(privateKey, otherKey.publicKey)

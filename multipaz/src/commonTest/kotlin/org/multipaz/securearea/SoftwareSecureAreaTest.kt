@@ -83,13 +83,11 @@ class SoftwareSecureAreaTest {
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
-        assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.ES256,
-                signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey,
+            dataToSign,
+            Algorithm.ES256,
+            signature
         )
     }
 
@@ -265,13 +263,11 @@ class SoftwareSecureAreaTest {
         }
 
         // Verify the signature is correct.
-        assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.ES256,
-                signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey,
+            dataToSign,
+            Algorithm.ES256,
+            signature
         )
     }
 
@@ -302,13 +298,11 @@ class SoftwareSecureAreaTest {
         assertNotEquals(certChainOld, certChain)
 
         // Check new key is used to sign.
-        assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.ES256,
-                signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey,
+            dataToSign,
+            Algorithm.ES256,
+            signature
         )
     }
 
@@ -340,13 +334,11 @@ class SoftwareSecureAreaTest {
             } catch (e: KeyLockedException) {
                 throw AssertionError(e)
             }
-            assertTrue(
-                Crypto.checkSignature(
-                    keyInfo.publicKey,
-                    dataToSign,
-                    algorithm,
-                    derSignature
-                )
+            Crypto.checkSignature(
+                keyInfo.publicKey,
+                dataToSign,
+                algorithm,
+                derSignature
             )
         }
     }
@@ -406,13 +398,11 @@ class SoftwareSecureAreaTest {
             val keyInfo = batchCreateKeyResult.keyInfos[n]
             val dataToSign = byteArrayOf(4, 5, 6)
             val signature = sa.sign(keyInfo.alias, dataToSign, null)
-            assertTrue(
-                Crypto.checkSignature(
-                    keyInfo.publicKey,
-                    dataToSign,
-                    keyInfo.algorithm,
-                    signature
-                )
+            Crypto.checkSignature(
+                keyInfo.publicKey,
+                dataToSign,
+                keyInfo.algorithm,
+                signature
             )
         }
     }

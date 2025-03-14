@@ -65,10 +65,10 @@ import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
 import kotlinx.io.Buffer
 import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
+import org.multipaz.crypto.SignatureVerificationException
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -388,14 +388,15 @@ open class CloudSecureArea protected constructor(
                     .end()
                     .build()
             )
-            if (!Crypto.checkSignature(
+            try {
+                Crypto.checkSignature(
                     cloudBindingKey!!,
                     dataSignedByTheCloud,
                     Algorithm.ES256,
                     response1.signature
                 )
-            ) {
-                throw CloudException("Error verifying signature")
+            } catch(e: SignatureVerificationException) {
+                throw CloudException("Error verifying signature", e)
             }
 
             // Now we can derive SKDevice and SKCloud

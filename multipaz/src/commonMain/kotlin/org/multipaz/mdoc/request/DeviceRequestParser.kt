@@ -143,12 +143,17 @@ class DeviceRequestParser(
                         )
                         val readerAuthenticationBytes =
                             Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
-                        readerAuthenticated = Cose.coseSign1Check(
-                            readerKey,
-                            readerAuthenticationBytes,
-                            readerAuthCoseSign1,
-                            signatureAlgorithm
-                        )
+                        readerAuthenticated = try {
+                            Cose.coseSign1Check(
+                                readerKey,
+                                readerAuthenticationBytes,
+                                readerAuthCoseSign1,
+                                signatureAlgorithm
+                            )
+                            true
+                        } catch (_: Throwable) {
+                            false
+                        }
                     }
                     val requestInfo: MutableMap<String, ByteArray> = HashMap()
                     itemsRequest.getOrNull("requestInfo")?.let { requestInfoDataItem ->
