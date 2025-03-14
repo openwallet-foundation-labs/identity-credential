@@ -4,7 +4,6 @@ package org.multipaz.crypto
 
 import org.multipaz.SwiftBridge
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureEnclaveKeyUnlockData
 import org.multipaz.util.UUID
 import org.multipaz.util.toByteArray
@@ -272,12 +271,11 @@ actual object Crypto {
     }
 
     internal fun secureEnclaveCreateEcPrivateKey(
-        keyPurposes: Set<KeyPurpose>,
+        algorithm: Algorithm,
         accessControlCreateFlags: Long
     ): Pair<ByteArray, EcPublicKey> {
-        val purposes = KeyPurpose.encodeSet(keyPurposes)
         val ret = SwiftBridge.secureEnclaveCreateEcPrivateKey(
-            purposes,
+            algorithm.isKeyAgreement,
             accessControlCreateFlags
         )
         if (ret.isEmpty()) {

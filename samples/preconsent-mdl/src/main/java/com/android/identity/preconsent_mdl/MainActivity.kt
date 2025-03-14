@@ -79,6 +79,7 @@ import org.multipaz.util.Logger
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import kotlin.random.Random
@@ -161,12 +162,12 @@ class MainActivity : ComponentActivity() {
                 AUTH_KEY_DOMAIN,
                 transferHelper.secureAreaRepository.getImplementation(AndroidKeystoreSecureArea.IDENTIFIER)!!,
                 MDL_DOCTYPE,
-                AndroidKeystoreCreateKeySettings.Builder("".toByteArray()).build()
+                AndroidKeystoreCreateKeySettings.Builder(ByteString()).build()
             )
 
             // Generate an MSO and issuer-signed data for this credentials.
             val msoGenerator = MobileSecurityObjectGenerator(
-                "SHA-256",
+                Algorithm.SHA256,
                 MDL_DOCTYPE,
                 pendingCredential.getAttestation().publicKey
             )
@@ -195,7 +196,7 @@ class MainActivity : ComponentActivity() {
             val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
             val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+                Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
             ))
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),

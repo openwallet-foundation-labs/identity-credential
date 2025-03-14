@@ -12,10 +12,10 @@ import org.multipaz.issuance.evidence.EvidenceResponse
 import org.multipaz.issuance.evidence.EvidenceResponseCreatePassphrase
 import org.multipaz.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import org.multipaz.issuance.evidence.EvidenceResponseSetupCloudSecureArea
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.toDataItem
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Algorithm
 import java.net.URLEncoder
 import kotlin.random.Random
 
@@ -256,8 +256,7 @@ fun defaultCredentialConfiguration(
             challenge = challenge,
             keyAssertionRequired = false,
             secureAreaConfiguration = SecureAreaConfigurationAndroidKeystore(
-                purposes = KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)),
-                curve = EcCurve.P256.coseCurveIdentifier,
+                algorithm = Algorithm.ESP256.name,
                 useStrongBox = true,
                 userAuthenticationRequired = true,
                 userAuthenticationTimeoutMillis = 0,
@@ -284,42 +283,21 @@ fun defaultCredentialConfiguration(
                 "devmode_sa_android_user_auth_none" -> 0
                 else -> throw IllegalStateException()
             }
-            val (curve, purposes) = when ((collectedEvidence["devmode_sa_android_mdoc_auth"]
+            val algorithm = when ((collectedEvidence["devmode_sa_android_mdoc_auth"]
                     as EvidenceResponseQuestionMultipleChoice).answerId) {
-                "devmode_sa_android_mdoc_auth_ecdsa_p256" -> Pair(
-                    EcCurve.P256,
-                    setOf(KeyPurpose.SIGN)
-                )
-
-                "devmode_sa_android_mdoc_auth_ed25519" -> Pair(
-                    EcCurve.ED25519,
-                    setOf(KeyPurpose.SIGN)
-                )
-
-                "devmode_sa_android_mdoc_auth_ed448" -> Pair(EcCurve.ED448, setOf(KeyPurpose.SIGN))
-                "devmode_sa_android_mdoc_auth_ecdh_p256" -> Pair(
-                    EcCurve.P256,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
-                "devmode_sa_android_mdoc_auth_x25519" -> Pair(
-                    EcCurve.X25519,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
-                "devmode_sa_android_mdoc_auth_x448" -> Pair(
-                    EcCurve.X448,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
+                "devmode_sa_android_mdoc_auth_ecdsa_p256" -> Algorithm.ESP256
+                "devmode_sa_android_mdoc_auth_ed25519" -> Algorithm.ED25519
+                "devmode_sa_android_mdoc_auth_ed448" -> Algorithm.ED448
+                "devmode_sa_android_mdoc_auth_ecdh_p256" -> Algorithm.ECDH_P256
+                "devmode_sa_android_mdoc_auth_x25519" -> Algorithm.ECDH_X25519
+                "devmode_sa_android_mdoc_auth_x448" -> Algorithm.ECDH_X448
                 else -> throw IllegalStateException()
             }
             return CredentialConfiguration(
                 challenge = challenge,
                 keyAssertionRequired = false,
                 secureAreaConfiguration = SecureAreaConfigurationAndroidKeystore(
-                    curve = curve.coseCurveIdentifier,
-                    purposes = KeyPurpose.encodeSet(purposes),
+                    algorithm = algorithm.name,
                     useStrongBox = useStrongBox,
                     userAuthenticationRequired = userAuthType != 0,
                     userAuthenticationTimeoutMillis = 0,
@@ -329,102 +307,26 @@ fun defaultCredentialConfiguration(
         }
 
         "devmode_sa_software" -> {
-            val (curve, purposes) = when ((collectedEvidence["devmode_sa_software_mdoc_auth"]
+            val algorithm = when ((collectedEvidence["devmode_sa_software_mdoc_auth"]
                     as EvidenceResponseQuestionMultipleChoice).answerId) {
-                "devmode_sa_software_mdoc_auth_ecdsa_p256" -> Pair(
-                    EcCurve.P256,
-                    setOf(KeyPurpose.SIGN)
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdsa_p384" -> Pair(
-                    EcCurve.P384,
-                    setOf(KeyPurpose.SIGN)
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdsa_p521" -> Pair(
-                    EcCurve.P521,
-                    setOf(KeyPurpose.SIGN)
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp256r1" -> Pair(
-                    EcCurve.BRAINPOOLP256R1, setOf(
-                        KeyPurpose.SIGN
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp320r1" -> Pair(
-                    EcCurve.BRAINPOOLP320R1, setOf(
-                        KeyPurpose.SIGN
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp384r1" -> Pair(
-                    EcCurve.BRAINPOOLP384R1, setOf(
-                        KeyPurpose.SIGN
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp512r1" -> Pair(
-                    EcCurve.BRAINPOOLP512R1, setOf(
-                        KeyPurpose.SIGN
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ed25519" -> Pair(
-                    EcCurve.ED25519,
-                    setOf(KeyPurpose.SIGN)
-                )
-
-                "devmode_sa_software_mdoc_auth_ed448" -> Pair(EcCurve.ED448, setOf(KeyPurpose.SIGN))
-                "devmode_sa_software_mdoc_auth_ecdh_p256" -> Pair(
-                    EcCurve.P256,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdh_p384" -> Pair(
-                    EcCurve.P384,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdh_p521" -> Pair(
-                    EcCurve.P521,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp256r1" -> Pair(
-                    EcCurve.BRAINPOOLP256R1, setOf(
-                        KeyPurpose.AGREE_KEY
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp320r1" -> Pair(
-                    EcCurve.BRAINPOOLP320R1, setOf(
-                        KeyPurpose.AGREE_KEY
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp384r1" -> Pair(
-                    EcCurve.BRAINPOOLP384R1, setOf(
-                        KeyPurpose.AGREE_KEY
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp512r1" -> Pair(
-                    EcCurve.BRAINPOOLP512R1, setOf(
-                        KeyPurpose.AGREE_KEY
-                    )
-                )
-
-                "devmode_sa_software_mdoc_auth_x25519" -> Pair(
-                    EcCurve.X25519,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
-                "devmode_sa_software_mdoc_auth_x448" -> Pair(
-                    EcCurve.X448,
-                    setOf(KeyPurpose.AGREE_KEY)
-                )
-
+                "devmode_sa_software_mdoc_auth_ecdsa_p256" -> Algorithm.ESP256
+                "devmode_sa_software_mdoc_auth_ecdsa_p384" -> Algorithm.ESP384
+                "devmode_sa_software_mdoc_auth_ecdsa_p521" -> Algorithm.ESP512
+                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp256r1" -> Algorithm.ESB256
+                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp320r1" -> Algorithm.ESB320
+                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp384r1" -> Algorithm.ESB384
+                "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp512r1" -> Algorithm.ESB512
+                "devmode_sa_software_mdoc_auth_ed25519" -> Algorithm.ED25519
+                "devmode_sa_software_mdoc_auth_ed448" -> Algorithm.ED448
+                "devmode_sa_software_mdoc_auth_ecdh_p256" -> Algorithm.ECDH_P256
+                "devmode_sa_software_mdoc_auth_ecdh_p384" -> Algorithm.ECDH_P384
+                "devmode_sa_software_mdoc_auth_ecdh_p521" -> Algorithm.ECDH_P521
+                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp256r1" -> Algorithm.ECDH_BRAINPOOLP256R1
+                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp320r1" -> Algorithm.ECDH_BRAINPOOLP320R1
+                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp384r1" -> Algorithm.ECDH_BRAINPOOLP384R1
+                "devmode_sa_software_mdoc_auth_ecdh_brainpoolp512r1" -> Algorithm.ECDH_BRAINPOOLP512R1
+                "devmode_sa_software_mdoc_auth_x25519" -> Algorithm.ECDH_X25519
+                "devmode_sa_software_mdoc_auth_x448" -> Algorithm.ECDH_X448
                 else -> throw IllegalStateException()
             }
             var passphrase: String? = null
@@ -447,8 +349,7 @@ fun defaultCredentialConfiguration(
                     else -> throw IllegalStateException()
                 }
             val builder = CborMap.builder()
-                .put("curve", curve.coseCurveIdentifier)
-                .put("purposes", KeyPurpose.encodeSet(purposes))
+                .put("algorithm", algorithm.name)
             if (passphrase != null) {
                 builder.put("passphrase", passphrase)
             }
@@ -471,8 +372,6 @@ fun defaultCredentialConfiguration(
                 "devmode_sa_cloud_user_auth_none" -> 0
                 else -> throw IllegalStateException()
             }
-            // Cloud can do both ECDSA and ECDH
-            val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
             // Use cloud secure area setup when the evidence was collected! NB: settings may change
             val cloudSecureAreaId = (collectedEvidence["devmode_sa_cloud_setup_csa"] as EvidenceResponseSetupCloudSecureArea)
                 .cloudSecureAreaIdentifier
@@ -480,8 +379,7 @@ fun defaultCredentialConfiguration(
                 challenge = challenge,
                 keyAssertionRequired = false,
                 secureAreaConfiguration = SecureAreaConfigurationCloud(
-                    purposes = KeyPurpose.encodeSet(purposes),
-                    curve = EcCurve.P256.coseCurveIdentifier,
+                    algorithm = Algorithm.ESP256.name,
                     cloudSecureAreaId = cloudSecureAreaId,
                     userAuthenticationTimeoutMillis = 0,
                     useStrongBox = true,

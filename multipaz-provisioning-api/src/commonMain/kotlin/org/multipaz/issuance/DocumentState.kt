@@ -4,10 +4,12 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 
 /**
  * The state of a document, as seen from the issuer's point of view.
  */
+@CborSerializationImplemented(schemaId = "GfDtWoGQPY5MP0toosbAMeHhi9At7KgOkM-F8iWmSwA")
 data class DocumentState(
     /**
      * The point in time this state object was generated.

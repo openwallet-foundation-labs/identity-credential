@@ -1,4 +1,4 @@
-rootProject.name = "IdentityCredential"
+rootProject.name = "MultipazProject"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 // As per https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html#-o0tm8i_54

@@ -21,7 +21,7 @@ import org.multipaz.mdoc.request.DeviceRequestParser
 import org.multipaz.mdoc.util.toMdocRequest
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustPoint
-import identitycredential.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.multipaz.compose.consent.ConsentModalBottomSheet

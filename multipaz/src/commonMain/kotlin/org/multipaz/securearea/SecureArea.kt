@@ -15,6 +15,7 @@
  */
 package org.multipaz.securearea
 
+import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
 
@@ -53,6 +54,13 @@ interface SecureArea {
     val displayName: String
 
     /**
+     * The list of algorithms the Secure Area supports.
+     *
+     * The algorithms in this list are fully specified.
+     */
+    val supportedAlgorithms: List<Algorithm>
+
+    /**
      * Creates a new key.
      *
      * This creates an Elliptic Curve key-pair where the private part of the key
@@ -73,6 +81,29 @@ interface SecureArea {
      * @return a [KeyInfo] with information about the key.
      */
     suspend fun createKey(alias: String?, createKeySettings: CreateKeySettings): KeyInfo
+
+    /**
+     * Creates a batch of new keys.
+     *
+     * An [OpenID4VCI Key Attestation](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html#name-key-attestation-in-jwt-form)
+     * over all the keys may be returned. By default this doesn't happen but
+     * can be requested by specific implementations through specializations of the [CreateKeySettings] class.
+     *
+     * The default implementation just calls [createKey] in sequence without generating an OpenID4VCI attestation.
+     *
+     * @param numKeys number of keys to create.
+     * @param createKeySettings the settings for the keys to create.
+     */
+    suspend fun batchCreateKey(numKeys: Int, createKeySettings: CreateKeySettings): BatchCreateKeyResult {
+        val keyInfos = mutableListOf<KeyInfo>()
+        for (n in 1..numKeys) {
+            keyInfos.add(createKey(null, createKeySettings))
+        }
+        return BatchCreateKeyResult(
+            keyInfos = keyInfos,
+            openid4vciKeyAttestation = null
+        )
+    }
 
     /**
      * Deletes a previously created key.

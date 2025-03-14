@@ -143,7 +143,7 @@ class ByteStringBuilderExtensionsTest {
         val builder = ByteStringBuilder()
         val bArray = ByteArray(0)
         builder.appendByteArray(bArray)
-        assertEquals(emptyByteString(), builder.toByteString())
+        assertEquals(buildByteString {  }, builder.toByteString())
     }
 
     @Test
@@ -178,9 +178,9 @@ class ByteStringBuilderExtensionsTest {
     @Test
     fun appendByteString_empty() {
         val builder = ByteStringBuilder()
-        val bString = emptyByteString()
+        val bString = buildByteString {  }
         builder.appendByteString(bString)
-        assertEquals(emptyByteString(), builder.toByteString())
+        assertEquals(buildByteString {  }, builder.toByteString())
     }
 
     @Test
@@ -204,7 +204,7 @@ class ByteStringBuilderExtensionsTest {
     fun appendByteString_mixed() {
         val builder = ByteStringBuilder()
         val bString1 = ByteString(byteArrayOf(0x01, 0x02))
-        val bString2 = emptyByteString()
+        val bString2 = buildByteString {  }
         val bString3 = ByteString(byteArrayOf(0x05, 0x06))
         builder.appendByteString(bString1)
         builder.appendByteString(bString2)
@@ -726,15 +726,15 @@ class ByteStringBuilderExtensionsTest {
 
     @Test
     fun concat_emptyStrings() {
-        val bs1 = emptyByteString()
-        val bs2 = emptyByteString()
+        val bs1 = buildByteString {  }
+        val bs2 = buildByteString {  }
         val result = bs1.concat(bs2)
-        assertEquals(emptyByteString(), result)
+        assertEquals(buildByteString {  }, result)
     }
 
     @Test
     fun concat_emptyString_withNonEmpty() {
-        val bs1 = emptyByteString()
+        val bs1 = buildByteString {  }
         val bs2 = ByteString(byteArrayOf(0x01, 0x02))
         val result = bs1.concat(bs2)
         assertEquals(bs2, result)

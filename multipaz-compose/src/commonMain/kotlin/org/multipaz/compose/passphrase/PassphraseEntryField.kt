@@ -35,9 +35,9 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.multipaz.securearea.PassphraseConstraints
-import identitycredential.multipaz_compose.generated.resources.Res
-import identitycredential.multipaz_compose.generated.resources.passphrase_entry_field_passphrase_is_weak
-import identitycredential.multipaz_compose.generated.resources.passphrase_entry_field_pin_is_weak
+import multipazproject.multipaz_compose.generated.resources.Res
+import multipazproject.multipaz_compose.generated.resources.passphrase_entry_field_passphrase_is_weak
+import multipazproject.multipaz_compose.generated.resources.passphrase_entry_field_pin_is_weak
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking

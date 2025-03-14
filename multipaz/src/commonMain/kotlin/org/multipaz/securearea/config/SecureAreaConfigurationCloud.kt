@@ -1,8 +1,9 @@
 package org.multipaz.securearea.config
 
+import org.multipaz.crypto.Algorithm
+
 class SecureAreaConfigurationCloud(
-    purposes: Long,
-    curve: Int,
+    algorithm: String,
     /** Cloud secure area id */
     val cloudSecureAreaId: String,
     /** whether to require user authentication */
@@ -14,4 +15,4 @@ class SecureAreaConfigurationCloud(
     val userAuthenticationTypes: Long,
     /** whether to require passphrase authentication */
     val passphraseRequired: Boolean
-): SecureAreaConfiguration(purposes, curve)
+): SecureAreaConfiguration(algorithm)

@@ -186,8 +186,7 @@ actual object Crypto {
     /**
      * Message encryption.
      *
-     * @param algorithm must be one of [Algorithm.A128GCM], [Algorithm.A192GCM],
-     * [Algorithm.A256GCM].
+     * @param algorithm must be one of [Algorithm.A128GCM], [Algorithm.A192GCM], [Algorithm.A256GCM].
      * @param key the encryption key.
      * @param nonce the nonce/IV.
      * @param messagePlaintext the message to encrypt.
@@ -217,8 +216,7 @@ actual object Crypto {
     /**
      * Message decryption.
      *
-     * @param algorithm must be one of [Algorithm.A128GCM], [Algorithm.A192GCM],
-     * [Algorithm.A256GCM].
+     * @param algorithm must be one of [Algorithm.A128GCM], [Algorithm.A192GCM], [Algorithm.A256GCM].
      * @param key the encryption key.
      * @param nonce the nonce/IV.
      * @param messageCiphertext the message to decrypt with the tag at the end.
@@ -335,19 +333,20 @@ actual object Crypto {
     ): Boolean {
         val signatureAlgorithm = when (algorithm) {
             Algorithm.UNSET -> throw IllegalArgumentException("Algorithm not set")
-            Algorithm.ES256 -> "SHA256withECDSA"
-            Algorithm.ES384 -> "SHA384withECDSA"
-            Algorithm.ES512 -> "SHA512withECDSA"
+            Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256 -> "SHA256withECDSA"
+            Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB320, Algorithm.ESB384 -> "SHA384withECDSA"
+            Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> "SHA512withECDSA"
             Algorithm.EDDSA -> {
                 when (publicKey.curve) {
                     EcCurve.ED25519 -> "Ed25519"
                     EcCurve.ED448 -> "Ed448"
                     else -> throw IllegalArgumentException(
-                        "Algorithm $algorithm incompatible " +
-                                "with curve ${publicKey.curve}"
+                        "Algorithm $algorithm incompatible with curve ${publicKey.curve}"
                     )
                 }
             }
+            Algorithm.ED25519 -> "Ed25519"
+            Algorithm.ED448 -> "Ed448"
 
             else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
         }
@@ -468,9 +467,9 @@ actual object Crypto {
         EcCurve.BRAINPOOLP384R1,
         EcCurve.BRAINPOOLP512R1 -> {
             val signatureAlgorithmName = when (signatureAlgorithm) {
-                Algorithm.ES256 -> "SHA256withECDSA"
-                Algorithm.ES384 -> "SHA384withECDSA"
-                Algorithm.ES512 -> "SHA512withECDSA"
+                Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256 -> "SHA256withECDSA"
+                Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB320, Algorithm.ESB384 -> "SHA384withECDSA"
+                Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> "SHA512withECDSA"
                 else -> throw IllegalArgumentException(
                     "Unsupported signing algorithm $signatureAlgorithm for curve ${key.curve}"
                 )
@@ -497,6 +496,7 @@ actual object Crypto {
         }
 
         EcCurve.ED25519 -> {
+            require(signatureAlgorithm in setOf(Algorithm.EDDSA, Algorithm.ED25519))
             val privateKey = Ed25519PrivateKeyParameters(key.d, 0)
             val rawSignature = Ed25519Signer().run {
                 init(true, privateKey)
@@ -510,6 +510,7 @@ actual object Crypto {
         }
 
         EcCurve.ED448 -> {
+            require(signatureAlgorithm in setOf(Algorithm.EDDSA, Algorithm.ED448))
             val privateKey = Ed448PrivateKeyParameters(key.d, 0)
             val rawSignature = Ed448Signer(byteArrayOf()).run {
                 init(true, privateKey)
@@ -841,7 +842,7 @@ actual object Crypto {
         apv: String
     ): JsonElement {
         val responseEncryptionAlg = JWEAlgorithm.parse("ECDH-ES")
-        val responseEncryptionMethod = EncryptionMethod.parse(encAlgorithm.jwseAlgorithmIdentifier)
+        val responseEncryptionMethod = EncryptionMethod.parse(encAlgorithm.joseAlgorithmIdentifier!!)
         val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
             .agreementPartyUInfo(Base64URL(apu))
             .agreementPartyVInfo(Base64URL(apv))
@@ -858,6 +859,7 @@ actual object Crypto {
         recipientKey: EcPrivateKey
     ): JsonObject {
         val encryptedJWT = EncryptedJWT.parse(encryptedJwt.jsonPrimitive.content)
+        @Suppress("DEPRECATION") // ECKey is deprecated
         val encKey = ECKey(
             Curve.P_256,
             recipientKey.publicKey.javaPublicKey as ECPublicKey,
@@ -876,6 +878,7 @@ actual object Crypto {
         type: String?,
         x5c: X509CertChain?
     ): JsonElement {
+        @Suppress("DEPRECATION") // ECKey is deprecated
         val ecKey = ECKey(
             Curve.P_256,
             key.publicKey.javaPublicKey as ECPublicKey,

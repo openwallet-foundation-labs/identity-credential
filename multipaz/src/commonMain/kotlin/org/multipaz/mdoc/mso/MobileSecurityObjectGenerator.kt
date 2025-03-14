@@ -15,6 +15,7 @@
  */
 package org.multipaz.mdoc.mso
 
+import io.ktor.util.toUpperCasePreservingASCIIRules
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborBuilder
 import org.multipaz.cbor.CborMap
@@ -29,14 +30,15 @@ import kotlinx.datetime.Instant
  * Helper class for building `MobileSecurityObject` [CBOR](http://cbor.io/)
  * as specified ISO/IEC 18013-5:2021 section 9.1.2 Issuer data authentication
  *
- * @param digestAlgorithm The digest algorithm identifier. Must be one of {"SHA-256", "SHA-384", "SHA-512"}.
+ * @param digestAlgorithm The digest algorithm identifier. Must be one of {Algorithm.SHA256, Algorithm.SHA-384,
+ *     Algorithm.SHA-512}.
  * @param docType The document type.
  * @param deviceKey The public part of the key pair used for mdoc authentication.
  * @throws IllegalArgumentException if the `digestAlgorithm` is not one of
- * {"SHA-256", "SHA-384", "SHA-512"}.
+ *     {Algorithm.SHA256, Algorithm.SHA-384, Algorithm.SHA-512}.
  */
 class MobileSecurityObjectGenerator(
-    digestAlgorithm: String,
+    digestAlgorithm: Algorithm,
     docType: String,
     deviceKey: EcPublicKey
 ) {
@@ -44,7 +46,7 @@ class MobileSecurityObjectGenerator(
         private const val TAG = "MobileSecurityObjectGenerator"
     }
 
-    private val mDigestAlgorithm: String
+    private val mDigestAlgorithm: Algorithm
     private val mDocType: String
     private val mDeviceKey: EcPublicKey
     private var mDigestSize = 0
@@ -59,7 +61,7 @@ class MobileSecurityObjectGenerator(
     private var mExpectedUpdate: Instant? = null
 
     init {
-        val allowableDigestAlgorithms = listOf("SHA-256", "SHA-384", "SHA-512")
+        val allowableDigestAlgorithms = listOf(Algorithm.SHA256, Algorithm.SHA384, Algorithm.SHA512)
         require(allowableDigestAlgorithms.contains(digestAlgorithm)) {
             "digestAlgorithm must be one of $allowableDigestAlgorithms"
         }
@@ -67,9 +69,9 @@ class MobileSecurityObjectGenerator(
         mDocType = docType
         mDeviceKey = deviceKey
         mDigestSize = when (digestAlgorithm) {
-            "SHA-256" -> 32
-            "SHA-384" -> 48
-            "SHA-512" -> 64
+            Algorithm.SHA256 -> 32
+            Algorithm.SHA384 -> 48
+            Algorithm.SHA512 -> 64
             else -> -1
         }
     }
@@ -103,18 +105,11 @@ class MobileSecurityObjectGenerator(
         issuerNamespaces: IssuerNamespaces
     ) {
         digestEmpty = false
-        // TODO: port MobileSecurityObjectGenerator to take an [Algorithm] instead of string
-        val algorithm = when (mDigestAlgorithm) {
-            "SHA-256" -> Algorithm.SHA256
-            "SHA-384" -> Algorithm.SHA384
-            "SHA-512" -> Algorithm.SHA512
-            else -> Algorithm.UNSET
-        }
         for ((namespaceName, innerMap) in issuerNamespaces.data) {
             val valueDigestsInner = mValueDigestsOuter.putMap(namespaceName)
             for ((_, issuerSignedItem) in innerMap) {
                 val digestId = issuerSignedItem.digestId
-                val digest = issuerSignedItem.calculateDigest(algorithm)
+                val digest = issuerSignedItem.calculateDigest(mDigestAlgorithm)
                 valueDigestsInner.put(digestId, digest.toByteArray())
             }
             valueDigestsInner.end()
@@ -306,9 +301,10 @@ class MobileSecurityObjectGenerator(
         CborMap.builder().run {
             check(!digestEmpty) { "Must call addDigestIdsForNamespace before generating" }
             checkNotNull(mSigned) { "Must call setValidityInfo before generating" }
+            require(mDigestAlgorithm in listOf(Algorithm.SHA256, Algorithm.SHA384, Algorithm.SHA512))
 
             put("version", "1.0")
-            put("digestAlgorithm", mDigestAlgorithm)
+            put("digestAlgorithm", mDigestAlgorithm.hashAlgorithmName!!.toUpperCasePreservingASCIIRules())
             put("docType", mDocType)
             put("valueDigests", mValueDigestsOuter.end().build())
             put("deviceKeyInfo", generateDeviceKeyBuilder().build())

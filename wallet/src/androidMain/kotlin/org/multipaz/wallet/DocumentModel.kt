@@ -59,7 +59,6 @@ import org.multipaz.sdjwt.vc.JwtBody
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInvalidatedException
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
@@ -332,8 +331,7 @@ class DocumentModel(
         // TODO: set up translations via strings.xml
         try {
             val deviceKeyInfo = credential.secureArea.getKeyInfo(credential.alias)
-            kvPairs.put("Device Key Curve", deviceKeyInfo.publicKey.curve.humanReadableName)
-            kvPairs.put("Device Key Purposes", renderKeyPurposes(deviceKeyInfo.keyPurposes))
+            kvPairs.put("Device Key Algorithm", deviceKeyInfo.algorithm.description)
             kvPairs.put("Secure Area", credential.secureArea.displayName)
 
             if (deviceKeyInfo is AndroidKeystoreKeyInfo) {
@@ -430,7 +428,7 @@ class DocumentModel(
         val kvPairs = mutableMapOf<String, String>()
         kvPairs.put("Document Type", mso.docType)
         kvPairs.put("MSO Version", mso.version)
-        kvPairs.put("Issuer Data Digest Algorithm", mso.digestAlgorithm)
+        kvPairs.put("Issuer Data Digest Algorithm", mso.digestAlgorithm.description)
 
         if (mdocCredential is MdocCredential) {
             addSecureAreaBoundCredentialInfo(mdocCredential, kvPairs)
@@ -915,13 +913,13 @@ class DocumentModel(
                 )
                 is SecureAreaConfigurationAndroidKeystore -> Pair(
                     secureAreaRepository.getImplementation("AndroidKeystoreSecureArea"),
-                    AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge.toByteArray())
+                    AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
                         .applyConfiguration(secureAreaConfiguration)
                         .build()
                 )
                 is SecureAreaConfigurationCloud -> Pair(
                     secureAreaRepository.getImplementation(secureAreaConfiguration.cloudSecureAreaId),
-                    CloudCreateKeySettings.Builder(credConfig.challenge.toByteArray())
+                    CloudCreateKeySettings.Builder(credConfig.challenge)
                         .applyConfiguration(secureAreaConfiguration)
                         .build()
                 )
@@ -1141,37 +1139,6 @@ suspend fun signWithUnlock(
                 }
             }
         }
-    }
-}
-
-private val EcCurve.humanReadableName: String
-    get() {
-        return when (this) {
-            EcCurve.P256 -> "P-256"
-            EcCurve.P384 -> "P-384"
-            EcCurve.P521 -> "P-521"
-            EcCurve.BRAINPOOLP256R1 -> "BrainpoolP256r1"
-            EcCurve.BRAINPOOLP320R1 -> "BrainpoolP320r1"
-            EcCurve.BRAINPOOLP384R1 -> "BrainpoolP384r1"
-            EcCurve.BRAINPOOLP512R1 -> "BrainpoolP512r1"
-            EcCurve.ED25519 -> "Ed25519"
-            EcCurve.X25519 -> "X25519"
-            EcCurve.ED448 -> "Ed448"
-            EcCurve.X448 -> "X448"
-        }
-    }
-
-private fun renderKeyPurposes(purposes: Set<KeyPurpose>): String {
-    if (purposes.contains(KeyPurpose.AGREE_KEY) && purposes.contains(KeyPurpose.SIGN)) {
-        return "Signing and Key Agreement"
-    } else if (purposes.contains(KeyPurpose.AGREE_KEY)) {
-        return "Key Agreement"
-    } else if (purposes.contains(KeyPurpose.SIGN)) {
-        return "Signing"
-    } else if (purposes.isEmpty()) {
-        return "(No purposes set)"
-    } else {
-        throw IllegalStateException("Unexpected set of purposes")
     }
 }
 

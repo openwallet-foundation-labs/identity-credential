@@ -228,11 +228,11 @@ class Document internal constructor(
      * @param domain The domain to pick the credential from.
      * @param now Pass current time to ensure that the selected slot's validity period or
      * `null` to not consider validity times.
-     * @return A credential which can be used for signing or `null` if none was found.
+     * @return A credential in the domain or `null` if none was found.
      */
     suspend fun findCredential(
         domain: String,
-        now: Instant?
+        now: Instant?,
     ): Credential? {
         var candidate: Credential? = null
         getCredentials().filter {

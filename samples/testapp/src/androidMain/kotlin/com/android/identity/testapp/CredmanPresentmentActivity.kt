@@ -25,9 +25,9 @@ import org.multipaz.models.ui.presentment.PresentmentModel
 import org.multipaz.context.initializeApplication
 import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.util.Logger
-import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.app_icon
-import identitycredential.samples.testapp.generated.resources.app_name
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.app_icon
+import multipazproject.samples.testapp.generated.resources.app_name
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

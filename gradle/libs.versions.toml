@@ -154,7 +154,6 @@ jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 gretty = { id = "org.gretty", version.ref = "gretty"}
 navigation-safe-args = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation-plugin" }
-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

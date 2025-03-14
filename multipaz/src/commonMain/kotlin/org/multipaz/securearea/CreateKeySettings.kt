@@ -1,7 +1,7 @@
 package org.multipaz.securearea
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.EcCurve
 
 /**
  * Base class for key creation settings.
@@ -11,29 +11,17 @@ import org.multipaz.crypto.EcCurve
  * with additional settings to e.g. configure user authentication, passphrase
  * protections, challenges for attestations, and other things.
  *
- * @param keyPurposes the key purposes.
- * @param ecCurve the curve used.
- * @param signingAlgorithm algorithm to utilize when this key is used for signing,
- *    only meaningful when [keyPurposes] contains [KeyPurpose.SIGN].
+ * @param algorithm A fully specified [Algorithm], e.g. [Algorithm.ESP256].
+ * @param nonce a nonce, to prove freshness of the [KeyAttestation] produced by the [SecureArea] implementation.
+ *   Note that not all implementations provide key attestations in which case the nonce is ignored.
  */
 open class CreateKeySettings(
-    val keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN),
-    val ecCurve: EcCurve = EcCurve.P256,
-    val signingAlgorithm: Algorithm = defaultSigningAlgorithm(keyPurposes, ecCurve)
+    val algorithm: Algorithm = Algorithm.ESP256,
+    val nonce: ByteString = ByteString(),
 ) {
-    companion object {
-        /**
-         * Returns the most appropriate value for [signingAlgorithm] given specified
-         * [keyPurposes] and [ecCurve].
-         * 
-         * See also [EcCurve.defaultSigningAlgorithm].
-         */
-        fun defaultSigningAlgorithm(keyPurposes: Set<KeyPurpose>, ecCurve: EcCurve): Algorithm {
-            return if (keyPurposes.contains(KeyPurpose.SIGN)) {
-                ecCurve.defaultSigningAlgorithm
-            } else {
-                Algorithm.UNSET
-            }
+    init {
+        require(algorithm.fullySpecified) {
+            "Given algorithm $algorithm to use for key creation is not fully specified"
         }
     }
 }

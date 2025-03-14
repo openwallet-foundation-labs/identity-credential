@@ -66,7 +66,6 @@ import org.multipaz.mdoc.util.MdocUtil.generateIssuerNameSpaces
 import org.multipaz.mdoc.util.MdocUtil.mergeIssuerNamesSpaces
 import org.multipaz.mdoc.util.MdocUtil.stripIssuerNameSpaces
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.storage.Storage
@@ -156,15 +155,13 @@ class DeviceRetrievalHelperTest {
             CREDENTIAL_DOMAIN,
             secureArea!!,
             MDL_DOCTYPE,
-            SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
-                .build()
+            SoftwareCreateKeySettings.Builder().build()
         )
         Assert.assertFalse(mdocCredential.isCertified)
 
         // Generate an MSO and issuer-signed data for this credential.
         val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
+            Algorithm.SHA256,
             MDL_DOCTYPE,
             mdocCredential.getAttestation().publicKey
         )
@@ -208,7 +205,7 @@ class DeviceRetrievalHelperTest {
         //
         val protectedHeaders = mapOf<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_ALG) to
-                    Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+                    Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
         )
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN) to

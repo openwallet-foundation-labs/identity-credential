@@ -62,7 +62,7 @@ internal object FunkeUtil {
         val keyInfo = communicationKey(env, clientId)
         val header = buildJsonObject {
             put("typ", JsonPrimitive("dpop+jwt"))
-            put("alg", JsonPrimitive(keyInfo.publicKey.curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier))
+            put("alg", JsonPrimitive(keyInfo.publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
             put("jwk", keyInfo.publicKey.toJson(clientId))
         }.toString().toByteArray().toBase64Url()
         val bodyObj = buildJsonObject {

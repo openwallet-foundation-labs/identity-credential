@@ -17,7 +17,6 @@ import org.multipaz.crypto.X509KeyUsage
 import org.multipaz.device.DeviceAttestation
 import org.multipaz.device.DeviceAttestationIos
 import org.multipaz.device.DeviceAttestationValidationData
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.CreateKeyRequest0
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.CreateKeyResponse1
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.E2EEResponse
@@ -371,9 +370,7 @@ class CloudSecureAreaServer(
     data class CreateKeyState(
         var challenge: ByteArray? = null,
         var cloudChallenge: ByteArray? = null,
-        var purposes: Set<KeyPurpose> = emptySet(),
-        var curve: EcCurve = EcCurve.P256,
-        var signingAlgorithm: Int? = null,
+        var algorithm: Algorithm = Algorithm.ESP256,
         var validFromMillis: Long = 0,
         var validUntilMillis: Long = 0,
         var passphraseRequired: Boolean = false,
@@ -401,9 +398,7 @@ class CloudSecureAreaServer(
         val state = CreateKeyState()
         state.challenge = request0.challenge
         state.cloudChallenge = Random.Default.nextBytes(32)
-        state.purposes = request0.purposes
-        state.curve = request0.curve
-        state.signingAlgorithm = request0.signingAlgorithm
+        state.algorithm = Algorithm.fromName(request0.algorithm)
         state.validFromMillis = request0.validFromMillis
         state.validUntilMillis = request0.validUntilMillis
         state.passphraseRequired = request0.passphraseRequired
@@ -463,8 +458,7 @@ class CloudSecureAreaServer(
                 Instant.fromEpochMilliseconds(state.validFromMillis),
                 Instant.fromEpochMilliseconds(state.validUntilMillis)
             )
-            .setKeyPurposes(state.purposes)
-            .setEcCurve(state.curve)
+            .setAlgorithm(state.algorithm)
         secureArea.createKey("CloudKey", builder.build())
 
         val keyInfo = secureArea.getKeyInfo("CloudKey")
@@ -481,12 +475,13 @@ class CloudSecureAreaServer(
         )
             .includeSubjectKeyIdentifier()
             .setAuthorityKeyIdentifierToCertificate(attestationKeyCertification.certificates[0])
-            .setKeyUsage(keyInfo.keyPurposes.map { keyPurpose ->
-                when (keyPurpose) {
-                    KeyPurpose.AGREE_KEY -> X509KeyUsage.KEY_AGREEMENT
-                    KeyPurpose.SIGN -> X509KeyUsage.DIGITAL_SIGNATURE
+            .setKeyUsage(setOf(
+                if (keyInfo.algorithm.isSigning) {
+                    X509KeyUsage.DIGITAL_SIGNATURE
+                } else {
+                    X509KeyUsage.KEY_AGREEMENT
                 }
-            }.toSet())
+            ))
             .addExtension(
                 oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
                 critical = false,

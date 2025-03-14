@@ -86,8 +86,8 @@ import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
-import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.back_button
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.back_button
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -105,6 +105,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.AppTheme
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.storage.base.BaseStorageTable
 
 /**
  * Application singleton.
@@ -470,11 +471,16 @@ class App private constructor(val promptModel: PromptModel) {
             return app!!
         }
 
-        private val testDocumentTableSpec = StorageTableSpec(
+        private val testDocumentTableSpec = object: StorageTableSpec(
             name = "TestAppDocuments",
             supportExpiration = false,
-            supportPartitions = false
-        )
+            supportPartitions = false,
+            schemaVersion = 1L,           // Bump every time incompatible changes are made
+        ) {
+            override suspend fun schemaUpgrade(oldTable: BaseStorageTable) {
+                oldTable.deleteAll()
+            }
+        }
     }
 
     private lateinit var snackbarHostState: SnackbarHostState
@@ -619,7 +625,11 @@ class App private constructor(val promptModel: PromptModel) {
                         )
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {
-                        SoftwareSecureAreaScreen(promptModel, showToast = { message -> showToast(message) })
+                        SoftwareSecureAreaScreen(
+                            softwareSecureArea = app!!.softwareSecureArea,
+                            promptModel = promptModel,
+                            showToast = { message -> showToast(message) }
+                        )
                     }
                     composable(route = AndroidKeystoreSecureAreaDestination.route) {
                         AndroidKeystoreSecureAreaScreen(

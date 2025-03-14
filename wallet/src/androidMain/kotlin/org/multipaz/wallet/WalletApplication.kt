@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION") // For the deprecated PreferenceManager only.
 package org.multipaz_credential.wallet
 
 import android.Manifest

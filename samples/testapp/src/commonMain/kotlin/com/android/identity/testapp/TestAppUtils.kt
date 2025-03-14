@@ -14,7 +14,6 @@ import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
@@ -37,14 +36,13 @@ import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureArea
 import org.multipaz.util.Logger
-import identitycredential.samples.testapp.generated.resources.Res
-import identitycredential.samples.testapp.generated.resources.driving_license_card_art
-import identitycredential.samples.testapp.generated.resources.movie_ticket_cart_art
-import identitycredential.samples.testapp.generated.resources.photo_id_card_art
-import identitycredential.samples.testapp.generated.resources.pid_card_art
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.driving_license_card_art
+import multipazproject.samples.testapp.generated.resources.movie_ticket_cart_art
+import multipazproject.samples.testapp.generated.resources.photo_id_card_art
+import multipazproject.samples.testapp.generated.resources.pid_card_art
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
@@ -58,18 +56,32 @@ import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 
 object TestAppUtils {
     private const val TAG = "TestAppUtils"
 
-    const val MDOC_CREDENTIAL_DOMAIN_AUTH = "mdoc_credential_domain_auth"
-    const val MDOC_CREDENTIAL_DOMAIN_NO_AUTH = "mdoc_credential_domain_no_auth"
-    const val SDJWT_CREDENTIAL_DOMAIN_AUTH = "sdjwt_credential_domain_auth"
-    const val SDJWT_CREDENTIAL_DOMAIN_NO_AUTH = "sdjwt_credential_domain_no_auth"
-    const val SDJWT_CREDENTIAL_DOMAIN_KEYLESS = "sdjwt_credential_domain_keyless"
+    // This domain is for MdocCredential using mdoc ECDSA/EdDSA authentication and requiring user authentication.
+    const val CREDENTIAL_DOMAIN_MDOC_USER_AUTH = "mdoc_user_auth"
+
+    // This domain is for MdocCredential using mdoc ECDSA/EdDSA authentication and not requiring user authentication.
+    const val CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH = "mdoc_no_user_auth"
+
+    // This domain is for MdocCredential using mdoc MAC authentication and requiring user authentication.
+    const val CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH = "mdoc_mac_user_auth"
+
+    // This domain is for MdocCredential using mdoc MAC authentication and not requiring user authentication.
+    const val CREDENTIAL_DOMAIN_MDOC_MAC_NO_USER_AUTH = "mdoc_mac_no_user_auth"
+
+    // This domain is for KeyBoundSdJwtVcCredential and requiring user authentication.
+    const val CREDENTIAL_DOMAIN_SDJWT_USER_AUTH = "sdjwt_user_auth"
+
+    // This domain is for KeyBoundSdJwtVcCredential and not requiring user authentication.
+    const val CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH = "sdjwt_no_user_auth"
+
+    // This domain is for KeylessSdJwtVcCredential
+    const val CREDENTIAL_DOMAIN_SDJWT_KEYLESS = "sdjwt_keyless"
 
     fun generateEncodedDeviceRequest(
         request: DocumentCannedRequest,
@@ -128,30 +140,28 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
+        deviceKeyMacAlgorithm: Algorithm,
+        numCredentialsPerDomain: Int,
     ) {
-        if (documentStore.listDocuments().size >= 5) {
-            // Assume documents are provisioned
-            // TODO: do we want a more granular check
-            return
-        }
+        require(deviceKeyAlgorithm.isSigning)
+        require(deviceKeyMacAlgorithm == Algorithm.UNSET || deviceKeyMacAlgorithm.isKeyAgreement)
         provisionDocument(
             documentStore,
             secureArea,
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm,
+            numCredentialsPerDomain,
             DrivingLicense.getDocumentType(),
             "Erika",
             "Erika's Driving License",
@@ -163,8 +173,9 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm,
+            numCredentialsPerDomain,
             PhotoID.getDocumentType(),
             "Erika",
             "Erika's Photo ID",
@@ -176,8 +187,9 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm,
+            numCredentialsPerDomain,
             PhotoID.getDocumentType(),
             "Erika #2",
             "Erika's Photo ID #2",
@@ -189,8 +201,9 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm,
+            numCredentialsPerDomain,
             EUPersonalID.getDocumentType(),
             "Erika",
             "Erika's EU PID",
@@ -202,8 +215,9 @@ object TestAppUtils {
             secureAreaCreateKeySettingsFunc,
             dsKey,
             dsCert,
-            deviceKeyPurposes,
-            deviceKeyCurve,
+            deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm,
+            numCredentialsPerDomain,
             UtopiaMovieTicket.getDocumentType(),
             "Erika",
             "Erika's Movie Ticket",
@@ -218,16 +232,16 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
+        deviceKeyMacAlgorithm: Algorithm,
+        numCredentialsPerDomain: Int,
         documentType: DocumentType,
         givenNameOverride: String,
         displayName: String,
@@ -258,13 +272,14 @@ object TestAppUtils {
                 documentType = documentType,
                 secureArea = secureArea,
                 secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
-                deviceKeyCurve = deviceKeyCurve,
-                deviceKeyPurposes = deviceKeyPurposes,
+                deviceKeyAlgorithm = deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm = deviceKeyMacAlgorithm,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
                 dsKey = dsKey,
                 dsCert = dsCert,
+                numCredentialsPerDomain = numCredentialsPerDomain,
                 givenNameOverride = givenNameOverride
             )
         }
@@ -275,13 +290,13 @@ object TestAppUtils {
                 documentType = documentType,
                 secureArea = secureArea,
                 secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
-                deviceKeyCurve = deviceKeyCurve,
-                deviceKeyPurposes = deviceKeyPurposes,
+                deviceKeyAlgorithm = deviceKeyAlgorithm,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
                 dsKey = dsKey,
                 dsCert = dsCert,
+                numCredentialsPerDomain = numCredentialsPerDomain,
                 givenNameOverride = givenNameOverride
             )
         }
@@ -293,19 +308,19 @@ object TestAppUtils {
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
+        deviceKeyMacAlgorithm: Algorithm,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
+        numCredentialsPerDomain: Int,
         givenNameOverride: String
     ) {
         val issuerNamespaces = buildIssuerNamespaces {
@@ -329,100 +344,119 @@ object TestAppUtils {
         }
 
         // Create authentication keys...
-        for (domain in listOf(MDOC_CREDENTIAL_DOMAIN_AUTH, MDOC_CREDENTIAL_DOMAIN_NO_AUTH)) {
-            val userAuthenticationRequired = (domain == MDOC_CREDENTIAL_DOMAIN_AUTH)
+        for (domain in listOf(
+            CREDENTIAL_DOMAIN_MDOC_USER_AUTH,
+            CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH,
+            CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH,
+            CREDENTIAL_DOMAIN_MDOC_MAC_NO_USER_AUTH
+        )) {
+            val userAuthenticationRequired = (domain == CREDENTIAL_DOMAIN_MDOC_USER_AUTH)
+            val algorithm = when (domain) {
+                CREDENTIAL_DOMAIN_MDOC_USER_AUTH -> deviceKeyAlgorithm
+                CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH -> deviceKeyAlgorithm
+                CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH -> deviceKeyMacAlgorithm
+                CREDENTIAL_DOMAIN_MDOC_MAC_NO_USER_AUTH ->  deviceKeyMacAlgorithm
+                else -> throw IllegalStateException()
+            }
+            if (algorithm == Algorithm.UNSET) {
+                continue
+            }
 
-            val mdocCredential = MdocCredential.create(
-                document = document,
-                asReplacementForIdentifier = null,
-                domain = domain,
-                secureArea = secureArea,
-                docType = documentType.mdocDocumentType!!.docType,
-                createKeySettings = secureAreaCreateKeySettingsFunc(
-                    "Challenge".encodeToByteString(),
-                    deviceKeyCurve,
-                    deviceKeyPurposes,
-                    userAuthenticationRequired,
+            for (n in 1..numCredentialsPerDomain) {
+                val mdocCredential = MdocCredential.create(
+                    document = document,
+                    asReplacementForIdentifier = null,
+                    domain = domain,
+                    secureArea = secureArea,
+                    docType = documentType.mdocDocumentType!!.docType,
+                    createKeySettings = secureAreaCreateKeySettingsFunc(
+                        "Challenge".encodeToByteString(),
+                        algorithm,
+                        userAuthenticationRequired,
+                        validFrom,
+                        validUntil
+                    )
+                )
+
+                // Generate an MSO and issuer-signed data for this authentication key.
+                val msoGenerator = MobileSecurityObjectGenerator(
+                    Algorithm.SHA256,
+                    documentType.mdocDocumentType!!.docType,
+                    mdocCredential.getAttestation().publicKey
+                )
+                msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, null)
+                msoGenerator.addValueDigests(issuerNamespaces)
+
+                val mso = msoGenerator.generate()
+                val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
+
+                // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
+                //
+                // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+                //
+                val protectedHeaders = mapOf<CoseLabel, DataItem>(
+                    Pair(
+                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                        Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
+                    )
+                )
+                val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+                    Pair(
+                        CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                        X509CertChain(listOf(dsCert)).toDataItem()
+                    )
+                )
+                val encodedIssuerAuth = Cbor.encode(
+                    Cose.coseSign1Sign(
+                        dsKey,
+                        taggedEncodedMso,
+                        true,
+                        dsKey.publicKey.curve.defaultSigningAlgorithm,
+                        protectedHeaders,
+                        unprotectedHeaders
+                    ).toDataItem()
+                )
+                val issuerProvidedAuthenticationData = Cbor.encode(
+                    CborMap.builder()
+                        .put("nameSpaces", issuerNamespaces.toDataItem())
+                        .put("issuerAuth", RawCbor(encodedIssuerAuth))
+                        .end()
+                        .build()
+                )
+
+                // Now that we have issuer-provided authentication data we certify the authentication key.
+                mdocCredential.certify(
+                    issuerProvidedAuthenticationData,
                     validFrom,
                     validUntil
                 )
-            )
-
-            // Generate an MSO and issuer-signed data for this authentication key.
-            val msoGenerator = MobileSecurityObjectGenerator(
-                "SHA-256",
-                documentType.mdocDocumentType!!.docType,
-                mdocCredential.getAttestation().publicKey
-            )
-            msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, null)
-            msoGenerator.addValueDigests(issuerNamespaces)
-
-            val mso = msoGenerator.generate()
-            val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
-
-            // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
-            //
-            // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
-            //
-            val protectedHeaders = mapOf<CoseLabel, DataItem>(
-                Pair(
-                    CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                    Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
-                )
-            )
-            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
-                Pair(
-                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                    X509CertChain(listOf(dsCert)).toDataItem()
-                )
-            )
-            val encodedIssuerAuth = Cbor.encode(
-                Cose.coseSign1Sign(
-                    dsKey,
-                    taggedEncodedMso,
-                    true,
-                    Algorithm.ES256,
-                    protectedHeaders,
-                    unprotectedHeaders
-                ).toDataItem()
-            )
-            val issuerProvidedAuthenticationData = Cbor.encode(
-                CborMap.builder()
-                    .put("nameSpaces", issuerNamespaces.toDataItem())
-                    .put("issuerAuth", RawCbor(encodedIssuerAuth))
-                    .end()
-                    .build()
-            )
-
-            // Now that we have issuer-provided authentication data we certify the authentication key.
-            mdocCredential.certify(
-                issuerProvidedAuthenticationData,
-                validFrom,
-                validUntil
-            )
+            }
         }
 
     }
 
+    // Technically - according to RFC 7800 at least - SD-JWT could do MACing too but it would
+    // need to be specced out in e.g. SD-JWT VC profile where to get the public key from the
+    // recipient. So for now, we only support signing.
+    //
     private suspend fun addSdJwtVcCredentials(
         document: Document,
         documentType: DocumentType,
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
             challenge: ByteString,
-            curve: EcCurve,
-            keyPurposes: Set<KeyPurpose>,
+            algorithm: Algorithm,
             userAuthenticationRequired: Boolean,
             validFrom: Instant,
             validUntil: Instant
         ) -> CreateKeySettings,
-        deviceKeyPurposes: Set<KeyPurpose>,
-        deviceKeyCurve: EcCurve,
+        deviceKeyAlgorithm: Algorithm,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
+        numCredentialsPerDomain: Int,
         givenNameOverride: String
     ) {
         if (documentType.vcDocumentType == null) {
@@ -445,54 +479,60 @@ object TestAppUtils {
             }
         }
 
-        val domains = if (documentType.vcDocumentType!!.keyBound) {
-            listOf(SDJWT_CREDENTIAL_DOMAIN_AUTH, SDJWT_CREDENTIAL_DOMAIN_NO_AUTH)
+        val (domains, numCredentialsPerDomainAdj) = if (documentType.vcDocumentType!!.keyBound) {
+            Pair(listOf(CREDENTIAL_DOMAIN_SDJWT_USER_AUTH, CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH), numCredentialsPerDomain)
         } else {
-            listOf(SDJWT_CREDENTIAL_DOMAIN_KEYLESS)
+            // No point in having multiple credentials for keyless credentials..
+            Pair(listOf(CREDENTIAL_DOMAIN_SDJWT_KEYLESS), 1)
         }
         for (domain in domains) {
-            val credential = if (documentType.vcDocumentType!!.keyBound) {
-                val userAuthenticationRequired = (domain == SDJWT_CREDENTIAL_DOMAIN_AUTH)
-                KeyBoundSdJwtVcCredential.create(
-                    document = document,
-                    asReplacementForIdentifier = null,
-                    domain = domain,
-                    secureArea = secureArea,
-                    vct = documentType.vcDocumentType!!.type,
-                    createKeySettings = secureAreaCreateKeySettingsFunc(
-                        "Challenge".encodeToByteString(),
-                        deviceKeyCurve,
-                        deviceKeyPurposes,
-                        userAuthenticationRequired,
-                        validFrom,
-                        validUntil
+            for (n in 1..numCredentialsPerDomainAdj) {
+                val credential = if (documentType.vcDocumentType!!.keyBound) {
+                    val userAuthenticationRequired = (domain == CREDENTIAL_DOMAIN_SDJWT_USER_AUTH)
+                    KeyBoundSdJwtVcCredential.create(
+                        document = document,
+                        asReplacementForIdentifier = null,
+                        domain = domain,
+                        secureArea = secureArea,
+                        vct = documentType.vcDocumentType!!.type,
+                        createKeySettings = secureAreaCreateKeySettingsFunc(
+                            "Challenge".encodeToByteString(),
+                            deviceKeyAlgorithm,
+                            userAuthenticationRequired,
+                            validFrom,
+                            validUntil
+                        )
                     )
+                } else {
+                    KeylessSdJwtVcCredential.create(
+                        document = document,
+                        asReplacementForIdentifier = null,
+                        domain = domain,
+                        vct = documentType.vcDocumentType!!.type,
+                    )
+                }
+
+                val sdJwtVcGenerator = SdJwtVcGenerator(
+                    vct = credential.vct,
+                    payload = identityAttributes,
+                    issuer = Issuer(
+                        "https://example-issuer.com",
+                        dsKey.publicKey.curve.defaultSigningAlgorithmFullySpecified,
+                        "key-1" // TODO: why pass key-id?
+                    ),
                 )
-            } else {
-                KeylessSdJwtVcCredential.create(
-                    document = document,
-                    asReplacementForIdentifier = null,
-                    domain = domain,
-                    vct = documentType.vcDocumentType!!.type,
+                sdJwtVcGenerator.publicKey =
+                    (credential as? SecureAreaBoundCredential)?.let { JsonWebKey(it.getAttestation().publicKey) }
+                sdJwtVcGenerator.timeSigned = signedAt
+                sdJwtVcGenerator.timeValidityBegin = validFrom
+                sdJwtVcGenerator.timeValidityEnd = validUntil
+                val sdJwt = sdJwtVcGenerator.generateSdJwt(dsKey)
+                credential.certify(
+                    sdJwt.toString().encodeToByteArray(),
+                    validFrom,
+                    validUntil
                 )
             }
-
-            val sdJwtVcGenerator = SdJwtVcGenerator(
-                vct = credential.vct,
-                payload = identityAttributes,
-                issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1"), // TODO
-            )
-            sdJwtVcGenerator.publicKey =
-                (credential as? SecureAreaBoundCredential)?.let { JsonWebKey(it.getAttestation().publicKey) }
-            sdJwtVcGenerator.timeSigned = signedAt
-            sdJwtVcGenerator.timeValidityBegin = validFrom
-            sdJwtVcGenerator.timeValidityEnd = validUntil
-            val sdJwt = sdJwtVcGenerator.generateSdJwt(dsKey)
-            credential.certify(
-                sdJwt.toString().encodeToByteArray(),
-                validFrom,
-                validUntil
-            )
         }
     }
 

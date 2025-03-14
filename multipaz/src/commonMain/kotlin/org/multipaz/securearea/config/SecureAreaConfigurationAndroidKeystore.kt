@@ -2,8 +2,7 @@ package org.multipaz.securearea.config
 
 /** Secure area configuration for [AndroidKeystoreSecureArea] */
 class SecureAreaConfigurationAndroidKeystore(
-    purposes: Long,
-    curve: Int,
+    algorithm: String,
     /** true to use StrongBox, false otherwise */
     val useStrongBox: Boolean,
     /** whether to require user authentication */
@@ -12,4 +11,4 @@ class SecureAreaConfigurationAndroidKeystore(
     val userAuthenticationTimeoutMillis: Long,
     /** number like in [UserAuthenticationType.encodeSet] */
     val userAuthenticationTypes: Long,
-) : SecureAreaConfiguration(purposes, curve)
+) : SecureAreaConfiguration(algorithm)

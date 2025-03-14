@@ -63,12 +63,12 @@ class X509Cert(
      */
     fun verify(publicKey: EcPublicKey): Boolean {
         val ecSignature = when (signatureAlgorithm) {
-            Algorithm.ES256,
-            Algorithm.ES384,
+            Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256,
+            Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB384, Algorithm.ESB320,
             Algorithm.ES512 -> {
                 EcSignature.fromDerEncoded(publicKey.curve.bitSize, signature)
             }
-            Algorithm.EDDSA -> {
+            Algorithm.EDDSA, Algorithm.ED25519, Algorithm.ED448 -> {
                 val len = signature.size
                 val r = signature.sliceArray(IntRange(0, len/2 - 1))
                 val s = signature.sliceArray(IntRange(len/2, len - 1))
@@ -592,10 +592,10 @@ class X509Cert(
                 encodedTbsCert
             )
             val encodedSignature = when (signatureAlgorithm) {
-                Algorithm.ES256,
-                Algorithm.ES384,
-                Algorithm.ES512 -> signature.toDerEncoded()
-                Algorithm.EDDSA -> signature.r + signature.s
+                Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256,
+                Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB384, Algorithm.ESB320,
+                Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> signature.toDerEncoded()
+                Algorithm.EDDSA, Algorithm.ED25519, Algorithm.ED448 -> signature.r + signature.s
                 else -> throw IllegalArgumentException("Unsupported signature algorithm $signatureAlgorithm")
             }
             val cert = ASN1Sequence(listOf(
@@ -610,9 +610,9 @@ class X509Cert(
 
 private fun Algorithm.getSignatureAlgorithmSeq(signingKeyCurve: EcCurve): ASN1Sequence {
     val signatureAlgorithmOid = when (this) {
-        Algorithm.ES256 -> "1.2.840.10045.4.3.2"
-        Algorithm.ES384 -> "1.2.840.10045.4.3.3"
-        Algorithm.ES512 -> "1.2.840.10045.4.3.4"
+        Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256 -> "1.2.840.10045.4.3.2"
+        Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB384, Algorithm.ESB320 -> "1.2.840.10045.4.3.3"
+        Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> "1.2.840.10045.4.3.4"
         Algorithm.EDDSA -> {
             when (signingKeyCurve) {
                 EcCurve.ED25519 -> "1.3.101.112"

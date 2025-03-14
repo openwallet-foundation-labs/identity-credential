@@ -43,7 +43,6 @@ import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataParser
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -65,13 +64,14 @@ class DeviceResponseGeneratorTest {
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var credentialLoader: CredentialLoader
 
-    private lateinit  var mdocCredential: MdocCredential
-    private lateinit  var document: Document
-    private lateinit  var timeSigned: Instant
-    private lateinit  var timeValidityBegin: Instant
-    private lateinit  var timeValidityEnd: Instant
-    private lateinit  var dsKey: EcPrivateKey
-    private lateinit  var dsCert: X509Cert
+    private lateinit var mdocCredentialSign: MdocCredential
+    private lateinit var mdocCredentialMac: MdocCredential
+    private lateinit var document: Document
+    private lateinit var timeSigned: Instant
+    private lateinit var timeValidityBegin: Instant
+    private lateinit var timeValidityEnd: Instant
+    private lateinit var dsKey: EcPrivateKey
+    private lateinit var dsCert: X509Cert
 
     @BeforeTest
     fun setup() {
@@ -115,45 +115,35 @@ class DeviceResponseGeneratorTest {
         exceptions["ns1"] = mutableListOf("foo3")
         exceptions["ns2"] = mutableListOf("bar2")
 
-        // Create an authentication key... make sure the authKey used supports both
-        // mdoc ECDSA and MAC authentication.
+        // Create two authentication keys... one for mdoc ECDSA authentication and one for MAC authentication.
         val nowSeconds = Clock.System.now().epochSeconds
         timeSigned = Instant.fromEpochSeconds(nowSeconds)
         timeValidityBegin = Instant.fromEpochSeconds(nowSeconds + 3600)
         timeValidityEnd = Instant.fromEpochSeconds(nowSeconds + 10 * 86400)
-        mdocCredential = MdocCredential.create(
+        mdocCredentialSign = MdocCredential.create(
             document,
             null,
             AUTH_KEY_DOMAIN,
             secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!,
             "org.iso.18013.5.1.mDL",
             SoftwareCreateKeySettings.Builder()
-                .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
+                .setAlgorithm(Algorithm.ESP256)
                 .build()
         )
-        assertFalse(mdocCredential.isCertified)
+        assertFalse(mdocCredentialSign.isCertified)
+        mdocCredentialMac = MdocCredential.create(
+            document,
+            null,
+            AUTH_KEY_DOMAIN,
+            secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!,
+            "org.iso.18013.5.1.mDL",
+            SoftwareCreateKeySettings.Builder()
+                .setAlgorithm(Algorithm.ECDH_P256)
+                .build()
+        )
+        assertFalse(mdocCredentialMac.isCertified)
 
-        // Generate an MSO and issuer-signed data for this authentication key.
-        val msoGenerator = MobileSecurityObjectGenerator(
-            "SHA-256",
-            DOC_TYPE,
-            mdocCredential.getAttestation().publicKey
-        )
-        msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
-        val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            nameSpacedData,
-            Random,
-            16,
-            overrides
-        )
-        for (nameSpaceName in issuerNameSpaces.keys) {
-            val digests = MdocUtil.calculateDigestsForNameSpace(
-                nameSpaceName,
-                issuerNameSpaces,
-                Algorithm.SHA256
-            )
-            msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
-        }
+        // Generate an MSO and issuer-signed data for these authentication keys.
         val validFrom = Clock.System.now()
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
@@ -169,46 +159,68 @@ class DeviceResponseGeneratorTest {
             validFrom = validFrom,
             validUntil = validUntil
         ).build()
-        val mso = msoGenerator.generate()
-        val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
-
-        // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
-        //
-        // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
-        //
-        val protectedHeaders = mapOf<CoseLabel, DataItem>(
-            Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem()
+        for (mdocCredential in listOf(mdocCredentialSign, mdocCredentialMac)) {
+            val msoGenerator = MobileSecurityObjectGenerator(
+                Algorithm.SHA256,
+                DOC_TYPE,
+                mdocCredential.getAttestation().publicKey
             )
-        )
-        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
-            Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                X509CertChain(listOf(dsCert)).toDataItem()
+            msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
+            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
+                nameSpacedData,
+                Random,
+                16,
+                overrides
             )
-        )
-        val encodedIssuerAuth = Cbor.encode(
-            Cose.coseSign1Sign(
-                dsKey,
-                taggedEncodedMso,
-                true,
-                Algorithm.ES256,
-                protectedHeaders,
-                unprotectedHeaders
-            ).toDataItem()
-        )
-        val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-            MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
-            encodedIssuerAuth
-        ).generate()
+            for (nameSpaceName in issuerNameSpaces.keys) {
+                val digests = MdocUtil.calculateDigestsForNameSpace(
+                    nameSpaceName,
+                    issuerNameSpaces,
+                    Algorithm.SHA256
+                )
+                msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
+            }
+            val mso = msoGenerator.generate()
+            val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
 
-        // Now that we have issuer-provided authentication data we certify the authentication key.
-        mdocCredential.certify(
-            issuerProvidedAuthenticationData,
-            timeValidityBegin,
-            timeValidityEnd
-        )
+            // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
+            //
+            // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+            //
+            val protectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                    Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
+                )
+            )
+            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                    X509CertChain(listOf(dsCert)).toDataItem()
+                )
+            )
+            val encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                    dsKey,
+                    taggedEncodedMso,
+                    true,
+                    Algorithm.ES256,
+                    protectedHeaders,
+                    unprotectedHeaders
+                ).toDataItem()
+            )
+            val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
+                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
+                encodedIssuerAuth
+            ).generate()
+
+            // Now that we have issuer-provided authentication data we certify the authentication key.
+            mdocCredential.certify(
+                issuerProvidedAuthenticationData,
+                timeValidityBegin,
+                timeValidityEnd
+            )
+        }
     }
 
     @Test
@@ -228,7 +240,7 @@ class DeviceResponseGeneratorTest {
         val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
 
-        val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
+        val staticAuthData = StaticAuthDataParser(mdocCredentialSign.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
             MdocUtil.mergeIssuerNamesSpaces(
@@ -242,8 +254,8 @@ class DeviceResponseGeneratorTest {
                 .setIssuerNamespaces(mergedIssuerNamespaces)
                 .setDeviceNamespacesSignature(
                     NameSpacedData.Builder().build(),
-                    mdocCredential.secureArea,
-                    mdocCredential.alias,
+                    mdocCredentialSign.secureArea,
+                    mdocCredentialSign.alias,
                     null,
                 )
                 .generate()
@@ -271,7 +283,7 @@ class DeviceResponseGeneratorTest {
         // Check DeviceSigned data
         assertEquals(0, doc.deviceNamespaces.size.toLong())
         // Check the key which signed DeviceSigned was the expected one.
-        assertEquals(mdocCredential.getAttestation().publicKey, doc.deviceKey)
+        assertEquals(mdocCredentialSign.getAttestation().publicKey, doc.deviceKey)
         // Check DeviceSigned was correctly authenticated.
         assertTrue(doc.deviceSignedAuthenticated)
         assertTrue(doc.deviceSignedAuthenticatedViaSignature)
@@ -310,7 +322,7 @@ class DeviceResponseGeneratorTest {
         )
         val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
-        val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
+        val staticAuthData = StaticAuthDataParser(mdocCredentialMac.issuerProvidedData)
             .parse()
         val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
@@ -324,8 +336,8 @@ class DeviceResponseGeneratorTest {
                 .setIssuerNamespaces(mergedIssuerNamespaces)
                 .setDeviceNamespacesMac(
                     NameSpacedData.Builder().build(),
-                    mdocCredential.secureArea,
-                    mdocCredential.alias,
+                    mdocCredentialMac.secureArea,
+                    mdocCredentialMac.alias,
                     null,
                     eReaderKey.publicKey
                 )
@@ -360,7 +372,7 @@ class DeviceResponseGeneratorTest {
         val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
-        val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
+        val staticAuthData = StaticAuthDataParser(mdocCredentialSign.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
@@ -381,8 +393,8 @@ class DeviceResponseGeneratorTest {
                 .setIssuerNamespaces(mergedIssuerNamespaces)
                 .setDeviceNamespacesSignature(
                     deviceSignedData,
-                    mdocCredential.secureArea,
-                    mdocCredential.alias,
+                    mdocCredentialSign.secureArea,
+                    mdocCredentialSign.alias,
                     null
                 )
                 .generate()
@@ -428,7 +440,7 @@ class DeviceResponseGeneratorTest {
         provisionDocument()
 
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
-        val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
+        val staticAuthData = StaticAuthDataParser(mdocCredentialSign.issuerProvidedData)
             .parse()
 
         // Check that DeviceSigned works.
@@ -444,8 +456,8 @@ class DeviceResponseGeneratorTest {
             DocumentGenerator(DOC_TYPE, staticAuthData.issuerAuth, encodedSessionTranscript)
                 .setDeviceNamespacesSignature(
                     deviceSignedData,
-                    mdocCredential.secureArea,
-                    mdocCredential.alias,
+                    mdocCredentialSign.secureArea,
+                    mdocCredentialSign.alias,
                     null
                 )
                 .generate()
@@ -494,7 +506,7 @@ class DeviceResponseGeneratorTest {
         val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
 
-        val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
+        val staticAuthData = StaticAuthDataParser(mdocCredentialSign.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
             MdocUtil.mergeIssuerNamesSpaces(
@@ -508,8 +520,8 @@ class DeviceResponseGeneratorTest {
                 .setIssuerNamespaces(mergedIssuerNamespaces)
                 .setDeviceNamespacesSignature(
                     NameSpacedData.Builder().build(),
-                    mdocCredential.secureArea,
-                    mdocCredential.alias,
+                    mdocCredentialSign.secureArea,
+                    mdocCredentialSign.alias,
                     null
                 )
                 .generate()
@@ -537,7 +549,7 @@ class DeviceResponseGeneratorTest {
         // Check DeviceSigned data
         assertEquals(0, doc.deviceNamespaces.size.toLong())
         // Check the key which signed DeviceSigned was the expected one.
-        assertEquals(mdocCredential.getAttestation().publicKey, doc.deviceKey)
+        assertEquals(mdocCredentialSign.getAttestation().publicKey, doc.deviceKey)
         // Check DeviceSigned was correctly authenticated.
         assertTrue(doc.deviceSignedAuthenticated)
         assertTrue(doc.deviceSignedAuthenticatedViaSignature)

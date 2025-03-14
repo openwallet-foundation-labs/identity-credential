@@ -17,7 +17,6 @@ import org.multipaz.prompt.requestPassphrase
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.KeyLockedException
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.PassphraseConstraints
@@ -66,6 +65,7 @@ import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
 import kotlinx.io.Buffer
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
@@ -89,7 +89,7 @@ internal expect suspend fun cloudSecureAreaGetPlatformSecureArea(
  */
 internal expect fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
     challenge: ByteString,
-    keyPurposes: Set<KeyPurpose>,
+    algorithm: Algorithm,
     userAuthenticationRequired: Boolean,
     userAuthenticationTypes: Set<CloudUserAuthType>
 ): CreateKeySettings
@@ -117,6 +117,16 @@ open class CloudSecureArea protected constructor(
 
     override val displayName: String
         get() = "Cloud Secure Area"
+
+    private val supportedAlgorithms_: List<Algorithm> by lazy {
+        // TODO: get from server to support configurations where only a subset of algorithms are supported.
+        Algorithm.entries.filter {
+            it.fullySpecified
+        }
+    }
+
+    override val supportedAlgorithms: List<Algorithm>
+        get() = supportedAlgorithms_
 
     private val httpClient = HttpClient(CIO) {
         install(HttpTimeout)
@@ -199,7 +209,7 @@ open class CloudSecureArea protected constructor(
             val deviceBindingKeyInfo = platformSecureArea.createKey(deviceBindingKeyAlias,
                 cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
                     challenge = ByteString(response0.cloudChallenge),
-                    keyPurposes = setOf(KeyPurpose.SIGN),
+                    algorithm = Algorithm.ESP256,
                     userAuthenticationRequired = false,
                     userAuthenticationTypes = setOf()
                 )
@@ -487,7 +497,7 @@ open class CloudSecureArea protected constructor(
             createKeySettings
         } else {
             // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            CloudCreateKeySettings.Builder(byteArrayOf()).build()
+            CloudCreateKeySettings.Builder(createKeySettings.nonce).build()
         }
         setupE2EE(false)
         try {
@@ -500,21 +510,14 @@ open class CloudSecureArea protected constructor(
             if (cSettings.validUntil != null) {
                 validUntil = cSettings.validUntil.toEpochMilliseconds()
             }
-            val signingAlgorithmCose = if (cSettings.signingAlgorithm == Algorithm.UNSET) {
-                null
-            } else {
-                cSettings.signingAlgorithm.coseAlgorithmIdentifier
-            }
             val request0 = CreateKeyRequest0(
-                cSettings.keyPurposes,
-                cSettings.ecCurve,
-                signingAlgorithmCose,
+                cSettings.algorithm.name,
                 validFrom,
                 validUntil,
                 cSettings.passphraseRequired,
                 cSettings.userAuthenticationRequired,
                 CloudUserAuthType.encodeSet(cSettings.userAuthenticationTypes),
-                cSettings.attestationChallenge
+                cSettings.attestationChallenge.toByteArray()
             )
             val response0 = CloudSecureAreaProtocol.Command.fromCbor(communicateE2EE(request0.toCbor())) as CreateKeyResponse0
             val newKeyAlias = storageTable.insert(
@@ -526,7 +529,7 @@ open class CloudSecureArea protected constructor(
                 alias = getLocalKeyAlias(newKeyAlias),
                 createKeySettings = cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
                     challenge = ByteString(response0.cloudChallenge),
-                    keyPurposes = setOf(KeyPurpose.SIGN),
+                    algorithm = Algorithm.ESP256,
                     userAuthenticationRequired = cSettings.userAuthenticationRequired,
                     userAuthenticationTypes = cSettings.userAuthenticationTypes
                 )
@@ -797,15 +800,10 @@ open class CloudSecureArea protected constructor(
         val data = storageTable.get(key = METADATA_PREFIX + alias, partitionId = identifier)
             ?: throw IllegalArgumentException("No key with given alias")
         val map = Cbor.decode(data.toByteArray())
-        val keyPurposes = map["keyPurposes"].asNumber
+        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
         val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
         val userAuthenticationTypes = CloudUserAuthType.decodeSet(map["userAuthenticationTypes"].asNumber)
         val isPassphraseRequired = map["isPassphraseRequired"].asBoolean
-        val signatureAlgorithm = if (map.hasKey("signingAlgorithm")) {
-            Algorithm.fromInt(map["signingAlgorithm"].asNumber.toInt())
-        } else {
-            Algorithm.UNSET
-        }
         var validFrom: Instant? = null
         var validUntil: Instant? = null
         if (map.hasKey("validFrom")) {
@@ -818,8 +816,7 @@ open class CloudSecureArea protected constructor(
         return CloudKeyInfo(
             alias,
             KeyAttestation(attestationCertChain.certificates[0].ecPublicKey, attestationCertChain),
-            KeyPurpose.decodeSet(keyPurposes),
-            signatureAlgorithm,
+            algorithm,
             userAuthenticationRequired,
             userAuthenticationTypes,
             validFrom,
@@ -839,8 +836,7 @@ open class CloudSecureArea protected constructor(
     ) {
         Logger.d(TAG, "attestation len = ${attestationCertChain.certificates.size}")
         val map = CborMap.builder()
-        map.put("keyPurposes", KeyPurpose.encodeSet(settings.keyPurposes))
-        map.put("signingAlgorithm", settings.signingAlgorithm.coseAlgorithmIdentifier)
+        map.put("algorithm", settings.algorithm.name)
         map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
         map.put("userAuthenticationTypes", CloudUserAuthType.encodeSet(settings.userAuthenticationTypes))
         if (settings.validFrom != null) {
@@ -866,6 +862,8 @@ open class CloudSecureArea protected constructor(
     internal fun getLocalKeyAlias(alias: String): String {
         return "${identifier}_alias_${alias}"
     }
+
+    // TODO: override batchCreateKey and implement server-side command to avoid roundtrips.
 
     companion object {
         const val IDENTIFIER_PREFIX = "CloudSecureArea"

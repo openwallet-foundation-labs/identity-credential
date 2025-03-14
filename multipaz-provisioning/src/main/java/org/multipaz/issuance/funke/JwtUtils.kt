@@ -10,7 +10,7 @@ internal fun EcPublicKey.toJson(keyId: String?): JsonObject {
         if (keyId != null) {
             put("kid", JsonPrimitive(keyId))
         }
-        put("alg", JsonPrimitive(curve.defaultSigningAlgorithm.jwseAlgorithmIdentifier))
+        put("alg", JsonPrimitive(curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
         put("use", JsonPrimitive("sig"))
     }
 }

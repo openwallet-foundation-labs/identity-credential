@@ -5,6 +5,7 @@ import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.ASN1Sequence
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.util.toHex
 
 /**
@@ -13,6 +14,7 @@ import org.multipaz.util.toHex
  * @param r the R value.
  * @param s the S value.
  */
+@CborSerializationImplemented(schemaId = "gNUtRYauOgwxNqDcHj-yzJE-3todHsBMhT7MObK1wCs")
 data class EcSignature(
     val r: ByteArray,
     val s: ByteArray

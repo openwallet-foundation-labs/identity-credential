@@ -3,12 +3,14 @@ package org.multipaz.crypto
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 
 /**
  * A chain of certificates.
  *
  * @param certificates the certificates in the chain.
  */
+@CborSerializationImplemented(schemaId = "62socrrUk8v-bXSe8dniBNlhAT06JKs8_DpQlH53sZQ")
 data class X509CertChain(
     val certificates: List<X509Cert>
 ) {

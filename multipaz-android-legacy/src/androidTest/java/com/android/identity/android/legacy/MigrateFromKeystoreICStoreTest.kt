@@ -30,7 +30,6 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto.checkSignature
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.toEcPublicKey
-import org.multipaz.securearea.KeyPurpose
 import org.multipaz.storage.android.AndroidStorage
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
@@ -146,7 +145,7 @@ class MigrateFromKeystoreICStoreTest {
         Assert.assertNotNull(keyInfo)
         val attestation = keyInfo.attestation
         Assert.assertTrue(attestation.certChain!!.certificates.size >= 1)
-        Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
+        Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
