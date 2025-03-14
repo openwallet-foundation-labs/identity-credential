@@ -35,6 +35,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborMap
 import kotlin.random.Random
 
 /**
@@ -86,40 +87,34 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         }
         try {
             val privateKey = Crypto.createEcPrivateKey(settings.algorithm.curve!!)
-            val mapBuilder = CborMap.builder().apply {
+            val map = buildCborMap {
                 put("algorithm", settings.algorithm.name)
                 put("passphraseRequired", settings.passphraseRequired)
-            }
-
-            if (!settings.passphraseRequired) {
-                mapBuilder.put("privateKey", privateKey.toCoseKey().toDataItem())
-            } else {
-                val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem())
-                val secretKey = derivePrivateKeyEncryptionKey(
-                    encodedPublicKey,
-                    settings.passphrase!!
-                )
-                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem())
-                val iv = Random.Default.nextBytes(12)
-                val encryptedPrivateKey = Crypto.encrypt(
-                    Algorithm.A128GCM,
-                    secretKey,
-                    iv,
-                    cleartextPrivateKey
-                )
-                mapBuilder.apply {
+                if (!settings.passphraseRequired) {
+                    put("privateKey", privateKey.toCoseKey().toDataItem())
+                } else {
+                    val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem())
+                    val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, settings.passphrase!!)
+                    val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem())
+                    val iv = Random.Default.nextBytes(12)
+                    val encryptedPrivateKey = Crypto.encrypt(
+                        Algorithm.A128GCM,
+                        secretKey,
+                        iv,
+                        cleartextPrivateKey
+                    )
                     put("encodedPublicKey", encodedPublicKey)
                     put("encryptedPrivateKey", encryptedPrivateKey)
                     put("encryptedPrivateKeyIv", iv)
                 }
-            }
-            mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem())
-            if (settings.passphraseConstraints != null) {
-                mapBuilder.put("passphraseConstraints", settings.passphraseConstraints.toDataItem())
+                put("publicKey", privateKey.publicKey.toCoseKey().toDataItem())
+                if (settings.passphraseConstraints != null) {
+                    put("passphraseConstraints", settings.passphraseConstraints.toDataItem())
+                }
             }
             val newAlias = storageTable.insert(
                 key = alias,
-                data = ByteString(Cbor.encode(mapBuilder.end().build()))
+                data = ByteString(Cbor.encode(map))
             )
             return getKeyInfo(newAlias)
         } catch (e: Exception) {

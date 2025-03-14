@@ -21,6 +21,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.multipaz.cbor.buildCborArray
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.time.Duration.Companion.minutes
@@ -113,26 +114,24 @@ private fun createSessionTranscriptOpenID4VP(
     val clientIdHash = Crypto.digest(Algorithm.SHA256, clientIdToHash)
 
     val responseUriToHash = Cbor.encode(
-        CborArray.builder()
-        .add(responseUri)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
+        buildCborArray {
+            add(responseUri)
+            add(mdocGeneratedNonce)
+        }
+    )
     val responseUriHash = Crypto.digest(Algorithm.SHA256, responseUriToHash)
 
-    val oid4vpHandover = CborArray.builder()
-        .add(clientIdHash)
-        .add(responseUriHash)
-        .add(authorizationRequestNonce)
-        .end()
-        .build()
+    val oid4vpHandover = buildCborArray {
+        add(clientIdHash)
+        add(responseUriHash)
+        add(authorizationRequestNonce)
+    }
 
     return Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL)
-            .add(Simple.NULL)
-            .add(oid4vpHandover)
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL)
+            add(Simple.NULL)
+            add(oid4vpHandover)
+        }
     )
 }

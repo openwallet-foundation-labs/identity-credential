@@ -26,6 +26,7 @@ import org.multipaz.util.fromBase64Url
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
+import org.multipaz.cbor.buildCborArray
 
 /**
  * Object containing the metadata of the EU Personal ID Document Type.
@@ -283,11 +284,10 @@ object EUPersonalID {
                 true,
                 EUPID_NAMESPACE,
                 Icon.LANGUAGE,
-                CborArray.builder()
-                    .add(SampleData.NATIONALITY)
-                    .add(SampleData.SECOND_NATIONALITY)
-                    .end()
-                    .build(),
+                buildCborArray {
+                    add(SampleData.NATIONALITY)
+                    add(SampleData.SECOND_NATIONALITY)
+                },
                 buildJsonArray {
                     add(JsonPrimitive(SampleData.NATIONALITY))
                     add(JsonPrimitive(SampleData.SECOND_NATIONALITY))

@@ -23,6 +23,7 @@ import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
+import org.multipaz.cbor.buildCborMap
 
 /**
  * An storage engine implemented by storing data in a file.
@@ -80,11 +81,13 @@ open class GenericStorageEngine(
 
     private fun saveData() {
         check(data != null)
-        val builder = CborMap.builder()
-        for ((key, value) in data!!) {
-            builder.put(key, value)
-        }
-        val nonTransformedData = Cbor.encode(builder.end().build())
+        val nonTransformedData = Cbor.encode(
+            buildCborMap {
+                for ((key, value) in data!!) {
+                    put(key, value)
+                }
+            }
+        )
         val transformedData = transform(nonTransformedData, false)
         // TODO: would be better if something like mkstemp(3) was available... but it's not.
         val newPath = Path("$storageFile.tmp")

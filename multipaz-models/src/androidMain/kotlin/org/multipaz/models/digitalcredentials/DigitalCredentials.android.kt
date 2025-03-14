@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
+import org.multipaz.cbor.putCborMap
 import kotlin.time.Duration.Companion.seconds
 import java.io.ByteArrayOutputStream
 import kotlin.collections.iterator
@@ -155,41 +158,40 @@ private suspend fun exportMdocCredential(
     val cardArtResized = stream.toByteArray()
     Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
 
-    val docBuilder = CborMap.builder()
-    docBuilder.put("title", displayName)
-    docBuilder.put("subtitle", appName)
-    docBuilder.put("bitmap", cardArtResized)
-    val mdocBuilder = CborMap.builder()
-    mdocBuilder.put("id", document.identifier)
-    mdocBuilder.put("docType", credential.docType)
+    return buildCborMap {
+        put("title", displayName)
+        put("subtitle", appName)
+        put("bitmap", cardArtResized)
+        putCborMap("mdoc") {
+            put("id", document.identifier)
+            put("docType", credential.docType)
+            putCborMap("namespaces") {
+                val claims = credential.getClaims(documentTypeRepository)
+                for ((namespace, claimsInNamespace) in claims.organizeByNamespace()) {
+                    putCborMap(namespace) {
+                        for (claim in claimsInNamespace) {
+                            val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
+                                ?.get(namespace)?.dataElements?.get(claim.dataElementName)
+                            val valueString = mdocDataElement
+                                ?.renderValue(claim.value)
+                                ?: Cbor.toDiagnostics(claim.value)
 
-    val mdocNsMapBuilder = mdocBuilder.putMap("namespaces")
-
-    val claims = credential.getClaims(documentTypeRepository)
-    for ((namespace, claimsInNamespace) in claims.organizeByNamespace()) {
-        val mdocNsBuilder = mdocNsMapBuilder.putMap(namespace)
-        for (claim in claimsInNamespace) {
-            val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
-                ?.get(namespace)?.dataElements?.get(claim.dataElementName)
-            val valueString = mdocDataElement
-                ?.renderValue(claim.value)
-                ?: Cbor.toDiagnostics(claim.value)
-
-            val dataElementDisplayName = getDataElementDisplayName(
-                documentTypeRepository,
-                credential.docType,
-                claim.namespaceName,
-                claim.dataElementName
-            )
-
-            val dataElementBuilder = mdocNsBuilder.putArray(claim.dataElementName)
-            dataElementBuilder.add(dataElementDisplayName)
-            dataElementBuilder.add(valueString)
+                            val dataElementDisplayName = getDataElementDisplayName(
+                                documentTypeRepository,
+                                credential.docType,
+                                claim.namespaceName,
+                                claim.dataElementName
+                            )
+                            putCborArray(claim.dataElementName) {
+                                add(dataElementDisplayName)
+                                add(valueString)
+                            }
+                        }
+                    }
+                }
+            }
         }
-        mdocNsBuilder.end()
     }
-    docBuilder.put("mdoc", mdocBuilder.end().build())
-    return docBuilder.end().build()
 }
 
 private suspend fun exportSdJwtVcCredential(
@@ -198,8 +200,6 @@ private suspend fun exportSdJwtVcCredential(
     credential: SdJwtVcCredential,
     documentTypeRepository: DocumentTypeRepository,
 ): DataItem {
-    val credentialType = documentTypeRepository.getDocumentTypeForVc(credential.vct)
-
     val documentMetadata = document.metadata
     val cardArt = documentMetadata.cardArt!!.toByteArray()
     val displayName = documentMetadata.displayName!!
@@ -218,31 +218,31 @@ private suspend fun exportSdJwtVcCredential(
     val cardArtResized = stream.toByteArray()
     Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
 
-    val docBuilder = CborMap.builder()
-    docBuilder.put("title", displayName)
-    docBuilder.put("subtitle", appName)
-    docBuilder.put("bitmap", cardArtResized)
-    val vcBuilder = CborMap.builder()
-    vcBuilder.put("id", document.identifier)
-    vcBuilder.put("vct", credential.vct)
+    return buildCborMap {
+        put("title", displayName)
+        put("subtitle", appName)
+        put("bitmap", cardArtResized)
+        putCborMap("sdjwt") {
+            put("id", document.identifier)
+            put("vct", credential.vct)
+            putCborMap("claims") {
+                val claims = credential.getClaimsImpl(documentTypeRepository)
+                for (claim in claims) {
+                    val valueString = claim.render()
 
-    val claimsBuilder = vcBuilder.putMap("claims")
-    val claims = credential.getClaimsImpl(documentTypeRepository)
-    for (claim in claims) {
-        val valueString = claim.render()
-
-        val claimDisplayName = getClaimDisplayName(
-            documentTypeRepository,
-            credential.vct,
-            claim.claimName,
-        )
-
-        val arrayBuilder = claimsBuilder.putArray(claim.claimName)
-        arrayBuilder.add(claimDisplayName)
-        arrayBuilder.add(valueString)
+                    val claimDisplayName = getClaimDisplayName(
+                        documentTypeRepository,
+                        credential.vct,
+                        claim.claimName,
+                    )
+                    putCborArray(claim.claimName) {
+                        add(claimDisplayName)
+                        add(valueString)
+                    }
+                }
+            }
+        }
     }
-    docBuilder.put("sdjwt", vcBuilder.end().build())
-    return docBuilder.end().build()
 }
 
 private fun loadMatcher(context: Context): ByteArray {

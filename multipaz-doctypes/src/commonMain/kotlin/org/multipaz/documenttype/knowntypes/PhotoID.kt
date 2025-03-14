@@ -9,6 +9,7 @@ import org.multipaz.documenttype.Icon
 import org.multipaz.documenttype.knowntypes.EUPersonalID.EUPID_VCT
 import org.multipaz.util.fromBase64Url
 import kotlinx.datetime.LocalDate
+import org.multipaz.cbor.buildCborMap
 
 /**
  * PhotoID according to ISO/IEC TS 23220-4 (E) operational phase - Annex C Photo ID v2
@@ -69,10 +70,9 @@ object PhotoID {
                 true,
                 ISO_23220_2_NAMESPACE,
                 Icon.TODAY,
-                CborMap.builder()
-                    .put("birth_date", LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate())
-                    .end()
-                    .build()
+                buildCborMap {
+                    put("birth_date", LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate())
+                }
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,

@@ -87,6 +87,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -546,11 +548,11 @@ class IssuingAuthorityState(
         val issuerProvidedAuthenticationData = if (isDirectAccess) {
             val pemEncodedCert = resources.getStringResource("owf_identity_credential_reader_cert.pem")!!
             val trustedReaderCert = X509Cert.fromPem(pemEncodedCert)
-            val readerAuth = CborArray.builder()
-                .add((trustedReaderCert.ecPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding)
-                .end().build()
+            val readerAuth = buildCborArray {
+                add((trustedReaderCert.ecPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding)
+            }
 
-            CborMap.builder().apply {
+            val digestIdMappingItem = buildCborMap {
                 for ((namespace, bytesList) in issuerNameSpaces) {
                     putArray(namespace).let { innerBuilder ->
                         bytesList.forEach { encodedIssuerSignedItemMetadata ->
@@ -558,17 +560,15 @@ class IssuingAuthorityState(
                         }
                     }
                 }
-            }.end().build().let { digestIdMappingItem ->
-                Cbor.encode(
-                    CborMap.builder()
-                        .put("docType", docType)
-                        .put("issuerNameSpaces", digestIdMappingItem)
-                        .put("issuerAuth", RawCbor(encodedIssuerAuth))
-                        .put("readerAccess", readerAuth)
-                        .end()
-                        .build()
-                )
             }
+            Cbor.encode(
+                buildCborMap {
+                    put("docType", docType)
+                    put("issuerNameSpaces", digestIdMappingItem)
+                    put("issuerAuth", RawCbor(encodedIssuerAuth))
+                    put("readerAccess", readerAuth)
+                }
+            )
         } else {
             StaticAuthDataGenerator(
                 issuerNameSpaces,
@@ -854,8 +854,7 @@ class IssuingAuthorityState(
                 .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
                 .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(MDL_NAMESPACE, "administrative_number", "123456789")
-                .putEntry(MDL_NAMESPACE, "driving_privileges",
-                    Cbor.encode(CborArray.builder().end().build()))
+                .putEntry(MDL_NAMESPACE, "driving_privileges", Cbor.encode(buildCborArray {}))
 
                 .putEntryBoolean(MDL_NAMESPACE, "age_over_18", ageOver18)
                 .putEntryBoolean(MDL_NAMESPACE, "age_over_21", ageOver21)

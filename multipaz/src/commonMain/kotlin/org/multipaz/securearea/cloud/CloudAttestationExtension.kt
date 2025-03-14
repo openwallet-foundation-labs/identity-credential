@@ -20,6 +20,7 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.util.toHex
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborMap
 
 /**
  * X.509 Extension used by [CloudSecureArea] to convey attestations for keys.
@@ -66,12 +67,11 @@ data class CloudAttestationExtension(
      */
     fun encode() = ByteString(
         Cbor.encode(
-            CborMap.builder()
-                .put("challenge", challenge.toByteArray())
-                .put("passphrase", passphrase)
-                .put("userAuthentication", CloudUserAuthType.encodeSet(userAuthentication))
-                .end()
-                .build()
+            buildCborMap {
+                put("challenge", challenge.toByteArray())
+                put("passphrase", passphrase)
+                put("userAuthentication", CloudUserAuthType.encodeSet(userAuthentication))
+            }
         )
     )
 

@@ -6,6 +6,7 @@ import org.multipaz.asn1.ASN1Sequence
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.annotation.CborSerializationImplemented
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.util.toHex
 
 /**
@@ -22,10 +23,10 @@ data class EcSignature(
     fun toCoseEncoded() = r + s
 
     fun toDataItem(): DataItem {
-        return CborMap.builder().apply {
+        return buildCborMap {
             put("r", r)
             put("s", s)
-        }.end().build()
+        }
     }
 
     override fun equals(other: Any?): Boolean {

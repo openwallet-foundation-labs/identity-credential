@@ -36,15 +36,14 @@ class CborTests {
         assertEquals(
             "[\"tstr\", h'010203fe', false, true, 42, -42]",
             cborToString(
-                CborArray.builder()
-                    .add("tstr")
-                    .add(byteArrayOf(1, 2, 3, 254.toByte()))
-                    .add(false)
-                    .add(true)
-                    .add(42)
-                    .add(-42)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add("tstr")
+                    add(byteArrayOf(1, 2, 3, 254.toByte()))
+                    add(false)
+                    add(true)
+                    add(42)
+                    add(-42)
+                }
             )
         )
     }
@@ -107,15 +106,14 @@ class CborTests {
         assertEquals(
             "[\"tstr\", h'010203fe', false, true, 42, -42]",
             cborToString(
-                CborArray.builder()
-                    .add("tstr")
-                    .add(byteArrayOf(1, 2, 3, 254.toByte()))
-                    .add(false)
-                    .add(true)
-                    .add(42)
-                    .add(-42)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add("tstr")
+                    add(byteArrayOf(1, 2, 3, 254.toByte()))
+                    add(false)
+                    add(true)
+                    add(42)
+                    add(-42)
+                }
             )
         )
     }
@@ -136,19 +134,18 @@ class CborTests {
                     "  }\n" +
                     "]",
             cborToString(
-                CborArray.builder()
-                    .add("tstr")
-                    .add(byteArrayOf(1, 2, 3, 254.toByte()))
-                    .add(false)
-                    .add(true)
-                    .add(42)
-                    .add(-42)
-                    .addMap()
-                    .put("foo", "bar")
-                    .put("baz", "bang")
-                    .end()
-                    .end()
-                    .build()
+                buildCborArray {
+                    add("tstr")
+                    add(byteArrayOf(1, 2, 3, 254.toByte()))
+                    add(false)
+                    add(true)
+                    add(42)
+                    add(-42)
+                    addCborMap {
+                        put("foo", "bar")
+                        put("baz", "bang")
+                    }
+                }
             )
         )
     }
@@ -166,19 +163,18 @@ class CborTests {
                     "  [\"first\", \"second\"]\n" +
                     "]",
             cborToString(
-                CborArray.builder()
-                    .add("tstr")
-                    .add(byteArrayOf(1, 2, 3, 254.toByte()))
-                    .add(false)
-                    .add(true)
-                    .add(42)
-                    .add(-42)
-                    .addArray()
-                    .add("first")
-                    .add("second")
-                    .end()
-                    .end()
-                    .build()
+                buildCborArray {
+                    add("tstr")
+                    add(byteArrayOf(1, 2, 3, 254.toByte()))
+                    add(false)
+                    add(true)
+                    add(42)
+                    add(-42)
+                    addCborArray {
+                        add("first")
+                        add("second")
+                    }
+                }
             )
         )
     }
@@ -194,15 +190,14 @@ class CborTests {
                     "  \"e\": -42\n" +
                     "}",
             cborToString(
-                CborMap.builder()
-                    .put("a", "tstr")
-                    .put("a", byteArrayOf(1, 2, 3, 254.toByte()))
-                    .put("b", false)
-                    .put("c", true)
-                    .put("d", 42)
-                    .put("e", -42)
-                    .end()
-                    .build()
+                buildCborMap {
+                    put("a", "tstr")
+                    put("a", byteArrayOf(1, 2, 3, 254.toByte()))
+                    put("b", false)
+                    put("c", true)
+                    put("d", 42)
+                    put("e", -42)
+                }
             )
         )
     }
@@ -219,19 +214,18 @@ class CborTests {
                     "  \"f\": [\"first\", \"second\"]\n" +
                     "}",
             cborToString(
-                CborMap.builder()
-                    .put("a", "tstr")
-                    .put("a", byteArrayOf(1, 2, 3, 254.toByte()))
-                    .put("b", false)
-                    .put("c", true)
-                    .put("d", 42)
-                    .put("e", -42)
-                    .putArray("f")
-                    .add("first")
-                    .add("second")
-                    .end()
-                    .end()
-                    .build()
+                buildCborMap {
+                    put("a", "tstr")
+                    put("a", byteArrayOf(1, 2, 3, 254.toByte()))
+                    put("b", false)
+                    put("c", true)
+                    put("d", 42)
+                    put("e", -42)
+                    putCborArray("f") {
+                        add("first")
+                        add("second")
+                    }
+                }
             )
         )
     }
@@ -251,19 +245,18 @@ class CborTests {
                     "  }\n" +
                     "}",
             cborToString(
-                CborMap.builder()
-                    .put("a", "tstr")
-                    .put("a", byteArrayOf(1, 2, 3, 254.toByte()))
-                    .put("b", false)
-                    .put("c", true)
-                    .put("d", 42)
-                    .put("e", -42)
-                    .putMap("f")
-                    .put("aa", "foo")
-                    .put("ab", "bar")
-                    .end()
-                    .end()
-                    .build()
+                buildCborMap {
+                    put("a", "tstr")
+                    put("a", byteArrayOf(1, 2, 3, 254.toByte()))
+                    put("b", false)
+                    put("c", true)
+                    put("d", 42)
+                    put("e", -42)
+                    putCborMap("f") {
+                        put("aa", "foo")
+                        put("ab", "bar")
+                    }
+                }
             )
         )
     }
@@ -293,15 +286,14 @@ class CborTests {
                     "  }\n" +
                     "]",
             cborToString(
-                CborArray.builder()
-                    .addTagged(Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
-                    .addTagged(Tagged.DATE_TIME_STRING, Tstr("2024-02-05T20:33:01Z"))
-                    .addMap()
-                    .putTagged("a", Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
-                    .putTagged("b", Tagged.DATE_TIME_STRING, Tstr("2024-02-05T20:33:01Z"))
-                    .end()
-                    .end()
-                    .build()
+                buildCborArray {
+                    addTagged(Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
+                    addTagged(Tagged.DATE_TIME_STRING, Tstr("2024-02-05T20:33:01Z"))
+                    addCborMap {
+                        putTagged("a", Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
+                        putTagged("b", Tagged.DATE_TIME_STRING, Tstr("2024-02-05T20:33:01Z"))
+                    }
+                }
             )
         )
     }
@@ -314,21 +306,19 @@ class CborTests {
                     "  24(<< [\"first\", \"second\"] >>)\n" +
                     "]",
             cborToString(
-                CborArray.builder()
-                    .addTagged(Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
-                    .addTagged(
+                buildCborArray {
+                    addTagged(Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
+                    addTagged(
                         Tagged.ENCODED_CBOR, Bstr(
                             Cbor.encode(
-                                CborArray.builder()
-                                    .add("first")
-                                    .add("second")
-                                    .end()
-                                    .build()
+                                buildCborArray {
+                                    add("first")
+                                    add("second")
+                                }
                             )
                         )
                     )
-                    .end()
-                    .build()
+                }
             )
         )
     }
@@ -343,23 +333,19 @@ class CborTests {
                     "  42\n" +
                     "]",
             cborToString(
-                CborArray.builder()
-                    .add(
-                        RawCbor(
-                            Cbor.encode(
-                                CborArray.builder()
-                                    .add("first")
-                                    .add("second")
-                                    .end()
-                                    .build()
-                            )
+                buildCborArray {
+                    add(RawCbor(
+                        Cbor.encode(
+                            buildCborArray {
+                                add("first")
+                                add("second")
+                            }
                         )
-                    )
-                    .add(RawCbor(Cbor.encode("some tstr".toDataItem())))
-                    .add("Sprinkled in item")
-                    .add(RawCbor(Cbor.encode(42.toDataItem())))
-                    .end()
-                    .build()
+                    ))
+                    add(RawCbor(Cbor.encode("some tstr".toDataItem())))
+                    add("Sprinkled in item")
+                    add(RawCbor(Cbor.encode(42.toDataItem())))
+                }
             )
         )
     }
@@ -476,57 +462,52 @@ class CborTests {
     @Test
     fun decodeArray() {
         assertEncodeDecode(
-            CborArray.builder()
-                .add("foo")
-                .add("bar")
-                .end()
-                .build()
+            buildCborArray {
+                add("foo")
+                add("bar")
+            }
         )
     }
 
     @Test
     fun decodeMap() {
         assertEncodeDecode(
-            CborMap.builder()
-                .put("foo", "a")
-                .put("bar", "b")
-                .end()
-                .build()
+            buildCborMap {
+                put("foo", "a")
+                put("bar", "b")
+            }
         )
     }
 
     @Test
     fun decodeTags() {
         assertEncodeDecode(
-            CborArray.builder()
-                .addTagged(Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
-                .addTagged(Tagged.DATE_TIME_STRING, Tstr("2024-02-05T20:33:01Z"))
-                .end()
-                .build()
+            buildCborArray {
+                addTagged(Tagged.DATE_TIME_NUMBER, Uint(1707165181UL))
+                addTagged(Tagged.DATE_TIME_STRING, Tstr("2024-02-05T20:33:01Z"))
+            }
         )
     }
 
     @Test
     fun decodeRawCbor() {
         // This is a bit special because when we decode we never create any RawCborItem instances
-        val itemForRaw = CborArray.builder()
-            .add("first")
-            .add("second")
-            .end()
-            .build()
+        val itemForRaw = buildCborArray {
+            add("first")
+            add("second")
+        }
         val encodedData = Cbor.encode(
-            CborArray.builder()
-                .add(RawCbor(Cbor.encode(itemForRaw)))
-                .add("a string")
-                .end().build()
+            buildCborArray {
+                add(RawCbor(Cbor.encode(itemForRaw)))
+                add("a string")
+            }
         )
         val decodedItem = Cbor.decode(encodedData)
 
-        val expectedItem = CborArray.builder()
-            .add(itemForRaw)
-            .add("a string")
-            .end()
-            .build()
+        val expectedItem = buildCborArray {
+            add(itemForRaw)
+            add("a string")
+        }
         assertEquals(expectedItem, decodedItem)
     }
 
@@ -584,22 +565,18 @@ class CborTests {
         )
         assertEquals(
             "CborArray(Tstr(\"a\"), Tstr(\"b\"), Nint(5))",
-            CborArray.builder()
-                .add("a")
-                .add("b")
-                .add(-5)
-                .end()
-                .build()
-                .toString()
+            buildCborArray {
+                add("a")
+                add("b")
+                add(-5)
+            }.toString()
         )
         assertEquals(
             "CborMap(Tstr(\"a\") -> Tstr(\"foo\"), Nint(5) -> Tstr(\"baz\"))",
-            CborMap.builder()
-                .put("a", "foo")
-                .put(-5, "baz")
-                .end()
-                .build()
-                .toString()
+            buildCborMap {
+                put("a", "foo")
+                put(-5, "baz")
+            }.toString()
         )
     }
 
@@ -834,16 +811,16 @@ class CborTests {
 
     @Test
     fun parseHelperMap() {
-        val map = CborMap.builder()
-            .put("foo0", "Tstr".toDataItem())
-            .put("foo1", byteArrayOf(1, 2, 3))
-            .put("foo2", 42)
-            .put("foo3", -35)
-            .put("foo4", 42.0)
-            .put("foo5", 43.0f)
-            .put("foo6", true)
-            .put("foo7", false)
-            .end().build()
+        val map = buildCborMap {
+            put("foo0", "Tstr".toDataItem())
+            put("foo1", byteArrayOf(1, 2, 3))
+            put("foo2", 42)
+            put("foo3", -35)
+            put("foo4", 42.0)
+            put("foo5", 43.0f)
+            put("foo6", true)
+            put("foo7", false)
+        }
         assertEquals("Tstr", map["foo0"].asTstr)
         assertContentEquals(byteArrayOf(1, 2, 3), map["foo1"].asBstr)
         assertEquals(42, map["foo2"].asNumber)
@@ -902,16 +879,16 @@ class CborTests {
 
     @Test
     fun parseHelperArray() {
-        val array = CborArray.builder()
-            .add("Tstr".toDataItem())
-            .add(byteArrayOf(1, 2, 3))
-            .add(42)
-            .add(-35)
-            .add(42.0)
-            .add(43.0f)
-            .add(true)
-            .add(false)
-            .end().build()
+        val array = buildCborArray {
+            add("Tstr".toDataItem())
+            add(byteArrayOf(1, 2, 3))
+            add(42)
+            add(-35)
+            add(42.0)
+            add(43.0f)
+            add(true)
+            add(false)
+        }
 
         assertEquals("Tstr", array[0].asTstr)
         assertContentEquals(byteArrayOf(1, 2, 3), array[1].asBstr)
@@ -932,37 +909,37 @@ class CborTests {
 
     @Test
     fun mapLookupException() {
-        val map = CborMap.builder()
-            .put("foo0", "Tstr".toDataItem())
-            .end().build()
+        val map = buildCborMap {
+            put("foo0", "Tstr".toDataItem())
+        }
         assertEquals("Tstr", map["foo0"].asTstr)
         assertFailsWith(IllegalStateException::class) { map["foo1"] }
     }
 
     @Test
     fun mapGetOrDefault() {
-        val map = CborMap.builder()
-            .put("foo0", "Tstr".toDataItem())
-            .end().build()
+        val map = buildCborMap {
+            put("foo0", "Tstr".toDataItem())
+        }
         assertEquals("Tstr", map.getOrDefault("foo0", "dTstr".toDataItem()).asTstr)
         assertEquals("dTstr", map.getOrDefault("foo1", "dTstr".toDataItem()).asTstr)
     }
 
     @Test
     fun mapGetOrNull() {
-        val map = CborMap.builder()
-            .put("foo0", "Tstr".toDataItem())
-            .end().build()
+        val map = buildCborMap {
+            put("foo0", "Tstr".toDataItem())
+        }
         assertEquals("Tstr".toDataItem(), map.getOrNull("foo0"))
         assertEquals(null, map.getOrNull("foo1"))
     }
 
     @Test
     fun arrayLookupException() {
-        val array = CborArray.builder()
-            .add("Tstr".toDataItem())
-            .add("OtherTstr".toDataItem())
-            .end().build()
+        val array = buildCborArray {
+            add("Tstr".toDataItem())
+            add("OtherTstr".toDataItem())
+        }
         assertEquals("Tstr", array[0].asTstr)
         assertEquals("OtherTstr", array[1].asTstr)
         assertFailsWith(IndexOutOfBoundsException::class) { array[2] }
@@ -970,11 +947,10 @@ class CborTests {
 
     @Test
     fun parseHelperTag() {
-        val innerDataItem = CborArray.builder()
-            .add("first")
-            .add("second")
-            .end()
-            .build()
+        val innerDataItem = buildCborArray {
+            add("first")
+            add("second")
+        }
         val dataItem = Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(innerDataItem)))
         assertEquals(innerDataItem, dataItem.asTaggedEncodedCbor)
     }
@@ -993,5 +969,160 @@ class CborTests {
         assertEquals(
             "0(\"1970-01-01T00:16:40.500Z\")",
             Cbor.toDiagnostics(Instant.fromEpochSeconds(1000, 500000000).toDataItemDateTimeString()))
+    }
+
+    @Test
+    fun testBuildCborArray() {
+        assertEquals(
+            """
+                [
+                  "stuff",
+                  42,
+                  [
+                    "foo",
+                    "bar",
+                    [
+                      "baz",
+                      ["end"]
+                    ],
+                    {
+                      "a": "0",
+                      "b": "1",
+                      "c": {
+                        "a": "0",
+                        "b": "1"
+                      },
+                      0: 2,
+                      1: 3,
+                      2: {
+                        "a": "0",
+                        "b": "1"
+                      },
+                      false: {
+                        "a": "0",
+                        "b": "1",
+                        "depth": {
+                          "a": "0",
+                          "b": "1"
+                        }
+                      }
+                    }
+                  ]
+                ]
+            """.trimIndent().trim(),
+            Cbor.toDiagnostics(
+                buildCborArray {
+                    add("stuff")
+                    add(42)
+                    addCborArray {
+                        add("foo")
+                        add("bar")
+                        addCborArray {
+                            add("baz")
+                            addCborArray {
+                                add("end")
+                            }
+                        }
+                        addCborMap {
+                            put("a", "0")
+                            put("b", "1")
+                            putCborMap("c") {
+                                put("a", "0")
+                                put("b", "1")
+                            }
+                            put(0, 2)
+                            put(1, 3)
+                            putCborMap(2) {
+                                put("a", "0")
+                                put("b", "1")
+                            }
+                            putCborMap(Simple.FALSE) {
+                                put("a", "0")
+                                put("b", "1")
+                                putCborMap("depth") {
+                                    put("a", "0")
+                                    put("b", "1")
+                                }
+                            }
+                        }
+                    }
+                },
+                options = setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            ).trim()
+        )
+    }
+
+    @Test
+    fun testBuildCborMap() {
+        assertEquals(
+            """
+                {
+                  "foo": 1,
+                  "bar": "stuff",
+                  42: ["foo"],
+                  "foobar": ["bar"],
+                  true: ["baz"],
+                  "complicated": [
+                    "foo",
+                    "bar",
+                    [
+                      "baz",
+                      ["end"]
+                    ]
+                  ],
+                  "anotherMap": {
+                    "foo0": "bar0"
+                  },
+                  43: {
+                    "foo1": "bar1"
+                  },
+                  false: {
+                    "foo2": "bar2",
+                    true: {
+                      "foo3": "bar3"
+                    }
+                  }
+                }
+            """.trimIndent().trim(),
+            Cbor.toDiagnostics(
+                buildCborMap {
+                    put("foo", 1)
+                    put("bar", "stuff")
+                    put(42, "baz")
+                    putCborArray("foobar") {
+                        add("bar")
+                    }
+                    putCborArray(42) {
+                        add("foo")
+                    }
+                    putCborArray(Simple.TRUE) {
+                        add("baz")
+                    }
+                    putCborArray("complicated") {
+                        add("foo")
+                        add("bar")
+                        addCborArray {
+                            add("baz")
+                            addCborArray {
+                                add("end")
+                            }
+                        }
+                    }
+                    putCborMap("anotherMap") {
+                        put("foo0", "bar0")
+                    }
+                    putCborMap(43) {
+                        put("foo1", "bar1")
+                    }
+                    putCborMap(Simple.FALSE) {
+                        put("foo2", "bar2")
+                        putCborMap(Simple.TRUE) {
+                            put("foo3", "bar3")
+                        }
+                    }
+                },
+                options = setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            ).trim()
+        )
     }
 }

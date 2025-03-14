@@ -51,6 +51,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborMap
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
@@ -166,41 +171,43 @@ private suspend fun digitalCredentialsPreviewProtocol(
 
     val encodedSessionTranscript = if (presentmentMechanism.webOrigin == null) {
         Cbor.encode(
-            CborArray.builder()
-                .add(Simple.NULL) // DeviceEngagementBytes
-                .add(Simple.NULL) // EReaderKeyBytes
-                .addArray()
-                .add("AndroidHandoverv1")
-                .add(nonce)
-                .add(presentmentMechanism.appId.encodeToByteArray())
-                .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding))
-                .end()
-                .end()
-                .build()
+            buildCborArray {
+                add(Simple.NULL) // DeviceEngagementBytes
+                add(Simple.NULL) // EReaderKeyBytes
+                addCborArray {
+                    add("AndroidHandoverv1")
+                    add(nonce)
+                    add(presentmentMechanism.appId.encodeToByteArray())
+                    add(
+                        Crypto.digest(
+                            Algorithm.SHA256,
+                            readerPublicKey.asUncompressedPointEncoding
+                        )
+                    )
+                }
+            }
         )
     } else {
         val originInfoBytes = Cbor.encode(
-            CborMap.builder()
-                .put("cat", 1)
-                .put("type", 1)
-                .putMap("details")
-                .put("baseUrl", presentmentMechanism.webOrigin)
-                .end()
-                .end()
-                .build()
+            buildCborMap {
+                put("cat", 1)
+                put("type", 1)
+                putCborMap("details") {
+                    put("baseUrl", presentmentMechanism.webOrigin)
+                }
+            }
         )
         Cbor.encode(
-            CborArray.builder()
-                .add(Simple.NULL) // DeviceEngagementBytes
-                .add(Simple.NULL) // EReaderKeyBytes
-                .addArray()
-                .add("BrowserHandoverv1")
-                .add(nonce)
-                .add(originInfoBytes)
-                .add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding))
-                .end()
-                .end()
-                .build()
+            buildCborArray {
+                add(Simple.NULL) // DeviceEngagementBytes
+                add(Simple.NULL) // EReaderKeyBytes
+                addCborArray {
+                    add("BrowserHandoverv1")
+                    add(nonce)
+                    add(originInfoBytes)
+                    add(Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding))
+                }
+            }
         )
     }
 
@@ -240,14 +247,16 @@ private suspend fun digitalCredentialsPreviewProtocol(
     )
 
     val encodedCredentialDocument = Cbor.encode(
-        CborMap.builder()
-            .put("version", "ANDROID-HPKE-v1")
-            .putMap("encryptionParameters")
-            .put("pkEm", (encapsulatedPublicKey  as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding)
-            .end()
-            .put("cipherText", cipherText)
-            .end()
-            .build()
+        buildCborMap {
+            put("version", "ANDROID-HPKE-v1")
+            putCborMap("encryptionParameters") {
+                put(
+                    "pkEm",
+                    (encapsulatedPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
+                )
+            }
+            put("cipherText", cipherText)
+        }
     )
 
     val responseJson = buildJsonObject {
@@ -479,23 +488,21 @@ private suspend fun openID4VPMsoMdoc(
     val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
     val handoverInfo = Cbor.encode(
-        CborArray.builder()
-            .add(origin)
-            .add(clientId)
-            .add(nonce)
-            .end()
-            .build()
+        buildCborArray {
+            add(origin)
+            add(clientId)
+            add(nonce)
+        }
     )
     val encodedSessionTranscript = Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL) // DeviceEngagementBytes
-            .add(Simple.NULL) // EReaderKeyBytes
-            .addArray()
-            .add("OpenID4VPDCAPIHandover")
-            .add(Crypto.digest(Algorithm.SHA256, handoverInfo))
-            .end()
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL) // DeviceEngagementBytes
+            add(Simple.NULL) // EReaderKeyBytes
+            addCborArray {
+                add("OpenID4VPDCAPIHandover")
+                add(Crypto.digest(Algorithm.SHA256, handoverInfo))
+            }
+        }
     )
     Logger.iCbor(TAG, "handoverInfo", handoverInfo)
     Logger.iCbor(TAG, "encodedSessionTranscript", encodedSessionTranscript)
@@ -655,16 +662,15 @@ private suspend fun digitalCredentialsArfProtocol(
 
     val encodedSessionTranscript =
         Cbor.encode(
-            CborArray.builder()
-                .add(Simple.NULL) // DeviceEngagementBytes
-                .add(Simple.NULL) // EReaderKeyBytes
-                .addArray() // BrowserHandover
-                .add("ARFHandoverv2")
-                .add(encryptionInfoBase64)
-                .add(presentmentMechanism.webOrigin!!)
-                .end()
-                .end()
-                .build()
+            buildCborArray {
+                add(Simple.NULL) // DeviceEngagementBytes
+                add(Simple.NULL) // EReaderKeyBytes
+                addCborArray {
+                    add("ARFHandoverv2")
+                    add(encryptionInfoBase64)
+                    add(presentmentMechanism.webOrigin!!)
+                }
+            }
         )
 
     // TODO: For now we only consider the first document request. The standard
@@ -724,14 +730,13 @@ private suspend fun digitalCredentialsArfProtocol(
     )
     val encryptedResponse =
         Cbor.encode(
-            CborArray.builder()
-                .add("ARFencryptionv2")
-                .addMap()
-                .put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
-                .put("cipherText", cipherText)
-                .end()
-                .end()
-                .build()
+            buildCborArray {
+                add("ARFencryptionv2")
+                addCborMap {
+                    put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
+                    put("cipherText", cipherText)
+                }
+            }
         )
 
     val responseJson = buildJsonObject {
@@ -765,22 +770,20 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     val recipientPublicKey = encryptionInfo.asArray.get(1).asMap.get(Tstr
         ("recipientPublicKey"))!!.asCoseKey.ecPublicKey
 
-    val dcapiInfo = CborArray.builder()
-        .add(encryptionInfoBase64)
-        .add(presentmentMechanism.webOrigin!!)
-        .end()
-        .build()
+    val dcapiInfo = buildCborArray {
+        add(encryptionInfoBase64)
+        add(presentmentMechanism.webOrigin!!)
+    }
 
     val encodedSessionTranscript = Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL) // DeviceEngagementBytes
-            .add(Simple.NULL) // EReaderKeyBytes
-            .addArray() // BrowserHandover
-            .add("dcapi")
-            .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
-            .end()
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL) // DeviceEngagementBytes
+            add(Simple.NULL) // EReaderKeyBytes
+            addCborArray {
+                add("dcapi")
+                add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
+            }
+        }
     )
 
     // TODO: For now we only consider the first document request. The standard
@@ -841,14 +844,13 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     val enc = (encapsulatedPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
     val encryptedResponse =
         Cbor.encode(
-            CborArray.builder()
-                .add("dcapi")
-                .addMap()
-                .put("enc", enc)
-                .put("cipherText", cipherText)
-                .end()
-                .end()
-                .build()
+            buildCborArray {
+                add("dcapi")
+                addCborMap {
+                    put("enc", enc)
+                    put("cipherText", cipherText)
+                }
+            }
         )
 
     val responseJson = buildJsonObject {

@@ -24,6 +24,7 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.util.getUInt16
 
 /**
@@ -161,11 +162,10 @@ class MdocNfcEngagementHelper(
                     )
                     val hsPayload = handoverSelectMessage.encode()
 
-                    val handover = CborArray.builder()
-                        .add(hsPayload)                      // Handover Select message
-                        .add(Simple.NULL)                    // Handover Request message
-                        .end()
-                        .build()
+                    val handover = buildCborArray {
+                        add(hsPayload)                      // Handover Select message
+                        add(Simple.NULL)                    // Handover Request message
+                    }
 
                     val bsb = ByteStringBuilder()
                     bsb.append((hsPayload.size/0x100).and(0xff).toByte())
@@ -265,11 +265,10 @@ class MdocNfcEngagementHelper(
             skipUuids = skipUuids,
         )
 
-        val handover = CborArray.builder()
-            .add(handoverSelectMessage.encode())  // Handover Select message
-            .add(message.encode())                // Handover Request message
-            .end()
-            .build()
+        val handover = buildCborArray {
+            add(handoverSelectMessage.encode())  // Handover Select message
+            add(message.encode())                // Handover Request message
+        }
 
         negotiatedHandoverState = NegotiatedHandoverState.EXPECT_HANDOVER_SELECT_MESSAGE
 

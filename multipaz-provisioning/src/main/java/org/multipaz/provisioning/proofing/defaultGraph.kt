@@ -344,18 +344,14 @@ fun defaultCredentialConfiguration(
 
                     else -> throw IllegalStateException()
                 }
-            val builder = CborMap.builder()
-                .put("algorithm", algorithm.name)
-            if (passphrase != null) {
-                builder.put("passphrase", passphrase)
-            }
-            if (passphraseConstraints != null) {
-                builder.put("passphraseConstraints", passphraseConstraints.toDataItem())
-            }
             return CredentialConfiguration(
                 challenge = challenge,
                 keyAssertionRequired = false,
-                secureAreaConfiguration = SecureAreaConfigurationSoftware()
+                secureAreaConfiguration = SecureAreaConfigurationSoftware(
+                    algorithm = algorithm.name,
+                    passphrase = passphrase,
+                    passphraseConstraints = passphraseConstraints!!
+                )
             )
         }
 

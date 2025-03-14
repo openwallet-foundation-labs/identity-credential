@@ -5,6 +5,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
@@ -31,14 +32,13 @@ class CoseTests {
         val x = "65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d".fromHex()
         val y = "1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c".fromHex()
         val id = "meriadoc.brandybuck@buckland.example".encodeToByteArray()
-        val item = CborMap.builder()
-            .put(-1, 1)
-            .put(-2, x)
-            .put(-3, y)
-            .put(1, 2)
-            .put(2, id)
-            .end()
-            .build()
+        val item = buildCborMap {
+            put(-1, 1)
+            put(-2, x)
+            put(-3, y)
+            put(1, 2)
+            put(2, id)
+        }
         val coseKey = item.asCoseKey
         assertEquals(Cose.COSE_KEY_TYPE_EC2, coseKey.keyType.asNumber)
         assertContentEquals(id, coseKey.labels[Cose.COSE_KEY_KID.toCoseLabel]!!.asBstr)
@@ -85,13 +85,12 @@ class CoseTests {
         //
         val x = "bac5b11cad8f99f9c72b05cf4b9e26d244dc189f745228255a219a86d6a09eff".fromHex()
         val y = "20138bf82dc1b6d562be0fa54ab7804a3a64b6d72ccfed6b6fb6ed28bbfc117e".fromHex()
-        val coseKey = CborMap.builder()
-            .put(-1, 1)
-            .put(-2, x)
-            .put(-3, y)
-            .put(1, 2)
-            .end().build().asCoseKey
-
+        val coseKey = buildCborMap {
+            put(-1, 1)
+            put(-2, x)
+            put(-3, y)
+            put(1, 2)
+        }.asCoseKey
         val coseSign1 = CoseSign1(
             mutableMapOf(
                 Pair(1L.toCoseLabel, (-7).toDataItem())

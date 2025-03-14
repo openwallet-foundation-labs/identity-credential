@@ -5,6 +5,7 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import kotlinx.datetime.Instant
 import org.multipaz.cbor.annotation.CborSerializationImplemented
+import org.multipaz.cbor.buildCborMap
 
 /**
  * The state of a document, as seen from the issuer's point of view.
@@ -57,12 +58,11 @@ data class DocumentState(
     }
 
     fun toDataItem(): DataItem {
-        return CborMap.builder()
-            .put("timestamp", timestamp.toEpochMilliseconds())
-            .put("condition", condition.value)
-            .put("numPendingCredentials", numPendingCredentials)
-            .put("numAvailableCredentials", numAvailableCredentials)
-            .end()
-            .build()
+        return buildCborMap {
+            put("timestamp", timestamp.toEpochMilliseconds())
+            put("condition", condition.value)
+            put("numPendingCredentials", numPendingCredentials)
+            put("numAvailableCredentials", numAvailableCredentials)
+        }
     }
 }

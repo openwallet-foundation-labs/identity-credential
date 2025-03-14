@@ -25,6 +25,10 @@ import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.util.Logger
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
+import org.multipaz.cbor.putCborMap
 
 /**
  * Helper class for building `MobileSecurityObject` [CBOR](http://cbor.io/)
@@ -241,50 +245,38 @@ class MobileSecurityObjectGenerator(
         mExpectedUpdate = expectedUpdate?.let { Instant.fromEpochSeconds(it.epochSeconds, 0) }
     }
 
-    private fun generateDeviceKeyBuilder(): CborBuilder {
-        val deviceKeyMapBuilder = CborMap.builder()
-        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(mapOf()).toDataItem())
+    private fun generateDeviceKey(): DataItem = buildCborMap {
+        put("deviceKey", mDeviceKey.toCoseKey(mapOf()).toDataItem())
         if (mAuthorizedNameSpaces.isNotEmpty() or !mAuthorizedDataElements.isEmpty()) {
-            val keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations")
-            if (mAuthorizedNameSpaces.isNotEmpty()) {
-                val authNameSpacesArrayBuilder = keyAuthMapBuilder.putArray("nameSpaces")
-                for (namespace in mAuthorizedNameSpaces) {
-                    authNameSpacesArrayBuilder.add(namespace)
-                }
-                authNameSpacesArrayBuilder.end()
-            }
-            if (mAuthorizedDataElements.isNotEmpty()) {
-                val authDataElemOuter = keyAuthMapBuilder.putMap("dataElements")
-                for (namespace in mAuthorizedDataElements.keys) {
-                    val authDataElemInner = authDataElemOuter.putArray(namespace)
-                    for (dataElemIdentifier in mAuthorizedDataElements[namespace]!!) {
-                        authDataElemInner.add(dataElemIdentifier)
+            putCborMap("keyAuthorizations") {
+                if (mAuthorizedNameSpaces.isNotEmpty()) {
+                    putCborArray("nameSpaces") {
+                        for (namespace in mAuthorizedNameSpaces) {
+                            add(namespace)
+                        }
                     }
-                    authDataElemInner.end()
                 }
-                authDataElemOuter.end()
+                if (mAuthorizedDataElements.isNotEmpty()) {
+                    putCborMap("dataElements") {
+                        for (namespace in mAuthorizedDataElements.keys) {
+                            putCborArray(namespace) {
+                                for (dataElemIdentifier in mAuthorizedDataElements[namespace]!!) {
+                                    add(dataElemIdentifier)
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            keyAuthMapBuilder.end()
         }
         if (mKeyInfo.isNotEmpty()) {
-            val keyInfoMapBuilder = deviceKeyMapBuilder.putMap("keyInfo")
-            for ((label, bytes) in mKeyInfo) {
-                keyInfoMapBuilder.put(label, bytes)
+            putCborMap("keyInfo") {
+                for ((label, bytes) in mKeyInfo) {
+                    put(label, bytes)
+                }
             }
-            keyInfoMapBuilder.end()
         }
-        return deviceKeyMapBuilder.end()
     }
-
-    private fun generateValidityInfoBuilder(): CborBuilder =
-        CborMap.builder().run {
-            put("signed", mSigned!!.toEpochMilliseconds().toDataItemDateTimeString())
-            put("validFrom", mValidFrom!!.toEpochMilliseconds().toDataItemDateTimeString())
-            put("validUntil", mValidUntil!!.toEpochMilliseconds().toDataItemDateTimeString())
-            if (mExpectedUpdate != null)
-                put("expectedUpdate", mExpectedUpdate!!.toEpochMilliseconds().toDataItemDateTimeString())
-            end()
-        }
 
     /**
      * Builds the `MobileSecurityObject` CBOR.
@@ -297,19 +289,24 @@ class MobileSecurityObjectGenerator(
      * @throws IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun generate(): ByteArray =
-        CborMap.builder().run {
+    fun generate(): ByteArray = Cbor.encode(
+        buildCborMap {
             check(!digestEmpty) { "Must call addDigestIdsForNamespace before generating" }
             checkNotNull(mSigned) { "Must call setValidityInfo before generating" }
             require(mDigestAlgorithm in listOf(Algorithm.SHA256, Algorithm.SHA384, Algorithm.SHA512))
-
             put("version", "1.0")
             put("digestAlgorithm", mDigestAlgorithm.hashAlgorithmName!!.toUpperCasePreservingASCIIRules())
             put("docType", mDocType)
             put("valueDigests", mValueDigestsOuter.end().build())
-            put("deviceKeyInfo", generateDeviceKeyBuilder().build())
-            put("validityInfo", generateValidityInfoBuilder().build())
-            end()
-            Cbor.encode(end().build())
+            put("deviceKeyInfo", generateDeviceKey())
+            putCborMap("validityInfo") {
+                put("signed", mSigned!!.toEpochMilliseconds().toDataItemDateTimeString())
+                put("validFrom", mValidFrom!!.toEpochMilliseconds().toDataItemDateTimeString())
+                put("validUntil", mValidUntil!!.toEpochMilliseconds().toDataItemDateTimeString())
+                if (mExpectedUpdate != null) {
+                    put("expectedUpdate", mExpectedUpdate!!.toEpochMilliseconds().toDataItemDateTimeString())
+                }
+            }
         }
+    )
 }
