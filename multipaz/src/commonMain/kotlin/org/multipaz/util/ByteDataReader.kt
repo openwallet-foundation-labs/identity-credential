@@ -127,9 +127,23 @@ class ByteDataReader(val byteArray: ByteArray) {
     fun peekUInt16Le(): UShort = byteArray.getUInt16Le(cursor)
 
     /**
+     * Reads a UInt24 value (3 bytes) from the byte array without advancing the cursor.
+     *
+     * @return The UInt24 value at the current cursor position.
+     */
+    fun peekUInt24(): UInt = byteArray.getUInt24(cursor)
+
+    /**
+     * Reads a UInt24 value (3 bytes) in little-endian order from the byte array without advancing the cursor.
+     *
+     * @return The UInt value at the current cursor position.
+     */
+    fun peekUInt24Le(): UInt = byteArray.getUInt24Le(cursor)
+
+    /**
      * Reads a UInt32 value from the byte array without advancing the cursor.
      *
-     * @return The UInt32 value at the current cursor position.
+     * @return The UInt24 value at the current cursor position.
      */
     fun peekUInt32(): UInt = byteArray.getUInt32(cursor)
 
@@ -245,6 +259,20 @@ class ByteDataReader(val byteArray: ByteArray) {
      * @return The UInt16 value at the current cursor position.
      */
     fun getUInt16Le(): UShort = peekUInt16Le().also { cursor += UShort.SIZE_BYTES }
+
+    /**
+     * Reads a UInt24 (3 bytes) value from the byte array and advances the cursor.
+     *
+     * @return The UInt24 value at the current cursor position.
+     */
+    fun getUInt24(): UInt = peekUInt24().also { cursor += UInt.SIZE_BYTES - UByte.SIZE_BYTES }
+
+    /**
+     * Reads a UInt24 (3 bytes) in little-endian order value from the byte array and advances the cursor.
+     *
+     * @return The UInt24 value at the current cursor position.
+     */
+    fun getUInt24Le(): UInt = peekUInt24Le().also { cursor += UInt.SIZE_BYTES - UByte.SIZE_BYTES }
 
     /**
      * Reads a UInt32 value from the byte array and advances the cursor.
