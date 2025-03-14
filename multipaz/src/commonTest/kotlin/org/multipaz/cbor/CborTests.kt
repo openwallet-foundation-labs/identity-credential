@@ -994,4 +994,159 @@ class CborTests {
             "0(\"1970-01-01T00:16:40.500Z\")",
             Cbor.toDiagnostics(Instant.fromEpochSeconds(1000, 500000000).toDataItemDateTimeString()))
     }
+
+    @Test
+    fun testBuildCborArray() {
+        assertEquals(
+            """
+                [
+                  "stuff",
+                  42,
+                  [
+                    "foo",
+                    "bar",
+                    [
+                      "baz",
+                      ["end"]
+                    ],
+                    {
+                      "a": "0",
+                      "b": "1",
+                      "c": {
+                        "a": "0",
+                        "b": "1"
+                      },
+                      0: 2,
+                      1: 3,
+                      2: {
+                        "a": "0",
+                        "b": "1"
+                      },
+                      false: {
+                        "a": "0",
+                        "b": "1",
+                        "depth": {
+                          "a": "0",
+                          "b": "1"
+                        }
+                      }
+                    }
+                  ]
+                ]
+            """.trimIndent().trim(),
+            Cbor.toDiagnostics(
+                buildCborArray {
+                    add("stuff")
+                    add(42)
+                    addCborArray {
+                        add("foo")
+                        add("bar")
+                        addCborArray {
+                            add("baz")
+                            addCborArray {
+                                add("end")
+                            }
+                        }
+                        addCborMap {
+                            put("a", "0")
+                            put("b", "1")
+                            putCborMap("c") {
+                                put("a", "0")
+                                put("b", "1")
+                            }
+                            put(0, 2)
+                            put(1, 3)
+                            putCborMap(2) {
+                                put("a", "0")
+                                put("b", "1")
+                            }
+                            putCborMap(Simple.FALSE) {
+                                put("a", "0")
+                                put("b", "1")
+                                putCborMap("depth") {
+                                    put("a", "0")
+                                    put("b", "1")
+                                }
+                            }
+                        }
+                    }
+                },
+                options = setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            ).trim()
+        )
+    }
+
+    @Test
+    fun testBuildCborMap() {
+        assertEquals(
+            """
+                {
+                  "foo": 1,
+                  "bar": "stuff",
+                  42: ["foo"],
+                  "foobar": ["bar"],
+                  true: ["baz"],
+                  "complicated": [
+                    "foo",
+                    "bar",
+                    [
+                      "baz",
+                      ["end"]
+                    ]
+                  ],
+                  "anotherMap": {
+                    "foo0": "bar0"
+                  },
+                  43: {
+                    "foo1": "bar1"
+                  },
+                  false: {
+                    "foo2": "bar2",
+                    true: {
+                      "foo3": "bar3"
+                    }
+                  }
+                }
+            """.trimIndent().trim(),
+            Cbor.toDiagnostics(
+                buildCborMap {
+                    put("foo", 1)
+                    put("bar", "stuff")
+                    put(42, "baz")
+                    putCborArray("foobar") {
+                        add("bar")
+                    }
+                    putCborArray(42) {
+                        add("foo")
+                    }
+                    putCborArray(Simple.TRUE) {
+                        add("baz")
+                    }
+                    putCborArray("complicated") {
+                        add("foo")
+                        add("bar")
+                        addCborArray {
+                            add("baz")
+                            addCborArray {
+                                add("end")
+                            }
+                        }
+                    }
+                    putCborMap("anotherMap") {
+                        put("foo0", "bar0")
+                    }
+                    putCborMap(43) {
+                        put("foo1", "bar1")
+                    }
+                    putCborMap(Simple.FALSE) {
+                        put("foo2", "bar2")
+                        putCborMap(Simple.TRUE) {
+                            put("foo3", "bar3")
+                        }
+                    }
+                },
+                options = setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            ).trim()
+        )
+    }
 }
