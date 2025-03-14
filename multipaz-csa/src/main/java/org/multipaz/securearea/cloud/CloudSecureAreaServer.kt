@@ -271,12 +271,12 @@ class CloudSecureAreaServer(
                 .end()
                 .build()
         )
-        check(Crypto.checkSignature(
+        Crypto.checkSignature(
             state.context!!.deviceBindingKey!!.ecPublicKey,
             dataThatWasSigned,
             Algorithm.ES256,
             request1.signature
-        )) { "Error verifying signature" }
+        )
 
         state.context!!.deviceAttestation!!.validateAssertion(request1.deviceAssertion)
 
@@ -557,11 +557,11 @@ class CloudSecureAreaServer(
                     .end()
                     .build()
             )
-            check(Crypto.checkSignature(
+            Crypto.checkSignature(
                 state.keyContext!!.localKey!!.ecPublicKey,
                 dataThatWasSignedLocally,
                 Algorithm.ES256,
-                request1.signature)) { "Error verifying signature" }
+                request1.signature)
 
             if (state.keyContext!!.passphraseRequired) {
                 val lockedOutDuration =
@@ -699,12 +699,12 @@ class CloudSecureAreaServer(
                     .end()
                     .build()
             )
-            check(Crypto.checkSignature(
+            Crypto.checkSignature(
                 state.keyContext!!.localKey!!.ecPublicKey,
                 dataThatWasSignedLocally,
                 Algorithm.ES256,
                 request1.signature
-            )) { "Error verifying signature" }
+            )
 
             if (state.keyContext!!.passphraseRequired) {
                 val lockedOutDuration =

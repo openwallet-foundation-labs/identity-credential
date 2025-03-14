@@ -46,9 +46,7 @@ class SdJwtVerifiablePresentation(
         val toBeVerified = "$keyBindingHeader.$keyBindingBody".encodeToByteArray()
         val signature = EcSignature.fromCoseEncoded(keyBindingSignature.fromBase64Url())
 
-        if (!Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signature)) {
-            throw IllegalStateException("Signature verification failed")
-        }
+        Crypto.checkSignature(key, toBeVerified, keyBindingHeaderObj.algorithm, signature)
 
         return keyBindingBodyObj
     }

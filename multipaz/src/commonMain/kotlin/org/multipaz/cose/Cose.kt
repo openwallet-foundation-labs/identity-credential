@@ -10,6 +10,7 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
+import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
 
@@ -122,17 +123,15 @@ object Cose {
      * @param detachedData detached data, if any.
      * @param signature the COSE_Sign1 object.
      * @param signatureAlgorithm the signature algorithm to use.
-     * @throws IllegalArgumentException if not exactly one of `detachedData` and
-     * `signature.payload` are non-`null`.
-     * @return whether the signature is valid and was made with the private key corresponding to the
-     * given public key.
+     * @throws IllegalArgumentException if not exactly one of `detachedData` and `signature.payload` are non-`null`.
+     * @throws SignatureVerificationException if the signature check fails.
      */
     fun coseSign1Check(
         publicKey: EcPublicKey,
         detachedData: ByteArray?,
         signature: CoseSign1,
         signatureAlgorithm: Algorithm
-    ): Boolean {
+    ) {
         require(
             (detachedData != null && signature.payload == null) ||
                     (detachedData == null && signature.payload != null)
@@ -149,8 +148,7 @@ object Cose {
             encodedProtectedHeaders = encodedProtectedHeaders,
             dataToBeSigned = detachedData ?: signature.payload!!
         )
-
-        return Crypto.checkSignature(
+        Crypto.checkSignature(
             publicKey,
             toBeSigned,
             signatureAlgorithm,

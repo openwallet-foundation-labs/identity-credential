@@ -5,6 +5,7 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
+import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.util.fromBase64Url
 
 fun checkJwtSignature(publicKey: EcPublicKey, jwt: String) {
@@ -16,8 +17,9 @@ fun checkJwtSignature(publicKey: EcPublicKey, jwt: String) {
         EcCurve.P521 -> Algorithm.ES512
         else -> throw IllegalArgumentException("Unsupported public key")
     }
-    if (!Crypto.checkSignature(publicKey, jwt.substring(0, index).toByteArray(),
-            algorithm, signature)) {
-        throw IllegalArgumentException("Invalid JWT signature")
+    try {
+        Crypto.checkSignature(publicKey, jwt.substring(0, index).toByteArray(), algorithm, signature)
+    } catch (e: SignatureVerificationException) {
+        throw IllegalArgumentException("Invalid JWT signature", e)
     }
 }

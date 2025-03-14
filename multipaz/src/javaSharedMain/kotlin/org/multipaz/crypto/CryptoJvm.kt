@@ -44,7 +44,6 @@ import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -330,7 +329,7 @@ actual object Crypto {
         message: ByteArray,
         algorithm: Algorithm,
         signature: EcSignature
-    ): Boolean {
+    ) {
         val signatureAlgorithm = when (algorithm) {
             Algorithm.UNSET -> throw IllegalArgumentException("Algorithm not set")
             Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256 -> "SHA256withECDSA"
@@ -351,7 +350,7 @@ actual object Crypto {
             else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
         }
 
-        return try {
+        val verified = try {
             val rawSignature = when (publicKey.curve) {
                 EcCurve.ED25519, EcCurve.ED448 -> {
                     signature.r + signature.s
@@ -370,8 +369,11 @@ actual object Crypto {
                 update(message)
                 verify(rawSignature)
             }
-        } catch (e: Exception) {
-            throw IllegalStateException("Error verifying signature", e)
+        } catch (e: Throwable) {
+            throw IllegalStateException("Error occurred verifying signature", e)
+        }
+        if (!verified) {
+            throw SignatureVerificationException("Signature verification failed")
         }
     }
 

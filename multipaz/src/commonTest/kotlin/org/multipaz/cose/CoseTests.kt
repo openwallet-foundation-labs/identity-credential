@@ -65,15 +65,12 @@ class CoseTests {
             emptyMap(),
         )
 
-        assertTrue(
-            Cose.coseSign1Check(
-                key.publicKey,
-                null,
-                coseSignature,
-                Algorithm.ES256
-            )
+        Cose.coseSign1Check(
+            key.publicKey,
+            null,
+            coseSignature,
+            Algorithm.ES256
         )
-
     }
 
     @Test
@@ -108,13 +105,11 @@ class CoseTests {
             "This is the content.".encodeToByteArray()
         )
 
-        assertTrue(
-            Cose.coseSign1Check(
-                coseKey.ecPublicKey,
-                null,
-                coseSign1,
-                Algorithm.ES256
-            )
+        Cose.coseSign1Check(
+            coseKey.ecPublicKey,
+            null,
+            coseSign1,
+            Algorithm.ES256
         )
     }
 
@@ -143,13 +138,11 @@ class CoseTests {
             mapOf()
         )
 
-        assertTrue(
-            Cose.coseSign1Check(
-                privateKey.publicKey,
-                null,
-                coseSignature,
-                signatureAlgorithm
-            )
+        Cose.coseSign1Check(
+            privateKey.publicKey,
+            null,
+            coseSignature,
+            signatureAlgorithm
         )
     }
 
@@ -189,13 +182,11 @@ class CoseTests {
             unprotectedHeaders = mapOf(),
             keyUnlockData = null
         )
-        assertTrue(
-            Cose.coseSign1Check(
-                sa.getKeyInfo("testKey").publicKey,
-                null,
-                coseSignNoExplicitHeaderSet,
-                algorithm
-            )
+        Cose.coseSign1Check(
+            sa.getKeyInfo("testKey").publicKey,
+            null,
+            coseSignNoExplicitHeaderSet,
+            algorithm
         )
         assertEquals(
             algorithm.curve!!.defaultSigningAlgorithm.coseAlgorithmIdentifier!!,
@@ -215,13 +206,11 @@ class CoseTests {
             unprotectedHeaders = mapOf(),
             keyUnlockData = null
         )
-        assertTrue(
-            Cose.coseSign1Check(
-                sa.getKeyInfo("testKey").publicKey,
-                null,
-                coseSignExplicitHeaderSet,
-                algorithm
-            )
+        Cose.coseSign1Check(
+            sa.getKeyInfo("testKey").publicKey,
+            null,
+            coseSignExplicitHeaderSet,
+            algorithm
         )
         assertEquals(
             algorithm.coseAlgorithmIdentifier!!,
