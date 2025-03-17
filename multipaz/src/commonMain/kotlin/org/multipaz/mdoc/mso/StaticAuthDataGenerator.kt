@@ -18,6 +18,9 @@ package org.multipaz.mdoc.mso
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.RawCbor
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
+import org.multipaz.cbor.putCborMap
 
 /**
  * Helper class for building `StaticAuthData` [CBOR](http://cbor.io/) with
@@ -77,22 +80,18 @@ class StaticAuthDataGenerator(
      *
      * @return the bytes of `StaticAuthData` CBOR.
      */
-    fun generate(): ByteArray =
-        CborMap.builder().apply {
-            for ((namespace, bytesList) in digestIdMapping) {
-                putArray(namespace).let { innerBuilder ->
-                    bytesList.forEach { encodedIssuerSignedItemMetadata ->
-                        innerBuilder.add(RawCbor(encodedIssuerSignedItemMetadata))
+    fun generate(): ByteArray = Cbor.encode(
+        buildCborMap {
+            putCborMap("digestIdMapping") {
+                for ((namespace, bytesList) in digestIdMapping) {
+                    putCborArray(namespace) {
+                        bytesList.forEach { encodedIssuerSignedItemMetadata ->
+                            add(RawCbor(encodedIssuerSignedItemMetadata))
+                        }
                     }
                 }
             }
-        }.end().build().let { digestIdMappingItem ->
-            Cbor.encode(
-                CborMap.builder()
-                    .put("digestIdMapping", digestIdMappingItem)
-                    .put("issuerAuth", RawCbor(encodedIssuerAuth))
-                    .end()
-                    .build()
-            )
+            put("issuerAuth", RawCbor(encodedIssuerAuth))
         }
+    )
 }

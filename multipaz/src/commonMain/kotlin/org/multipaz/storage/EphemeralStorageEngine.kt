@@ -18,6 +18,7 @@ package org.multipaz.storage
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.buildCborMap
 
 /**
  * An storage engine implementing by storing data in memory.
@@ -44,11 +45,11 @@ class EphemeralStorageEngine : StorageEngine {
     override fun enumerate(): Collection<String> = data.keys
 
     fun toCbor(): ByteArray {
-        val builder = CborMap.builder()
-        data.forEach() { (key, value) ->
-            builder.put(key, Bstr(value))
-        }
-        return Cbor.encode(builder.end().build())
+        return Cbor.encode(
+            buildCborMap {
+                data.forEach { (key, value) -> put(key, Bstr(value)) }
+            }
+        )
     }
 
     companion object {

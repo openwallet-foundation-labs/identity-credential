@@ -22,6 +22,10 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
+import org.multipaz.cbor.putCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseNumberLabel
@@ -92,26 +96,25 @@ class DocumentGenerator
         useMac: Boolean,
         eReaderKey: EcPublicKey?
     ) = apply {
-        val mapBuilder = CborMap.builder()
-        for (nameSpaceName in dataElements.nameSpaceNames) {
-            val nsBuilder = mapBuilder.putMap(nameSpaceName)
-            for (dataElementName in dataElements.getDataElementNames(nameSpaceName)) {
-                nsBuilder.put(
-                    dataElementName,
-                    RawCbor(dataElements.getDataElement(nameSpaceName, dataElementName))
-                )
+        val encodedDeviceNameSpaces = Cbor.encode(
+            buildCborMap {
+                for (nameSpaceName in dataElements.nameSpaceNames) {
+                    putCborMap(nameSpaceName) {
+                        for (dataElementName in dataElements.getDataElementNames(nameSpaceName)) {
+                            put(dataElementName, RawCbor(dataElements.getDataElement(nameSpaceName, dataElementName)))
+                        }
+                    }
+                }
             }
-        }
-        mapBuilder.end()
-        val encodedDeviceNameSpaces = Cbor.encode(mapBuilder.end().build())
+        )
+
         val deviceAuthentication = Cbor.encode(
-            CborArray.builder()
-                .add("DeviceAuthentication")
-                .add(RawCbor(encodedSessionTranscript))
-                .add(docType)
-                .addTaggedEncodedCbor(encodedDeviceNameSpaces)
-                .end()
-                .build()
+            buildCborArray {
+                add("DeviceAuthentication")
+                add(RawCbor(encodedSessionTranscript))
+                add(docType)
+                addTaggedEncodedCbor(encodedDeviceNameSpaces)
+            }
         )
         val deviceAuthenticationBytes = Cbor.encode(Tagged(24, Bstr(deviceAuthentication)))
         var encodedDeviceSignature: ByteArray? = null
@@ -163,13 +166,12 @@ class DocumentGenerator
             deviceAuthType = "deviceMac"
             deviceAuthDataItem = Cbor.decode(encodedDeviceMac!!)
         }
-        deviceSigned = CborMap.builder()
-            .putTaggedEncodedCbor("nameSpaces", encodedDeviceNameSpaces)
-            .putMap("deviceAuth")
-            .put(deviceAuthType, deviceAuthDataItem)
-            .end()
-            .end()
-            .build()
+        deviceSigned = buildCborMap {
+            putTaggedEncodedCbor("nameSpaces", encodedDeviceNameSpaces)
+            putCborMap("deviceAuth") {
+                put(deviceAuthType, deviceAuthDataItem)
+            }
+        }
     }
 
     /**
@@ -245,47 +247,45 @@ class DocumentGenerator
      */
     fun generate(): ByteArray {
         checkNotNull(deviceSigned) { "DeviceSigned isn't set" }
-        val issuerSignedMapBuilder = CborMap.builder()
-        if (issuerNamespacesNew != null) {
-            val insOuter = CborMap.builder()
-            for ((namespace, innerMap) in issuerNamespacesNew!!.data) {
-                val insInner = insOuter.putArray(namespace)
-                for ((_, issuerSignedItem) in innerMap) {
-                    insInner.add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(issuerSignedItem.toDataItem()))))
-                }
-            }
-            insOuter.end()
-            issuerSignedMapBuilder.put("nameSpaces", insOuter.end().build())
-        } else if (issuerNamespaces != null) {
-            val insOuter = CborMap.builder()
-            for (ns in issuerNamespaces!!.keys) {
-                val insInner = insOuter.putArray(ns)
-                for (encodedIssuerSignedItemBytes in issuerNamespaces!![ns]!!) {
-                    insInner.add(RawCbor(encodedIssuerSignedItemBytes))
-                }
-                insInner.end()
-            }
-            insOuter.end()
-            issuerSignedMapBuilder.put("nameSpaces", insOuter.end().build())
-        }
-        issuerSignedMapBuilder.put("issuerAuth", RawCbor(encodedIssuerAuth))
-        val issuerSigned = issuerSignedMapBuilder.end().build()
-        val mapBuilder = CborMap.builder().apply {
+        return Cbor.encode(buildCborMap {
             put("docType", docType)
-            put("issuerSigned", issuerSigned)
+            putCborMap("issuerSigned") {
+                if (issuerNamespacesNew != null) {
+                    putCborMap("nameSpaces") {
+                        for ((namespace, innerMap) in issuerNamespacesNew!!.data) {
+                            putCborArray(namespace) {
+                                for ((_, issuerSignedItem) in innerMap) {
+                                    add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(issuerSignedItem.toDataItem()))))
+                                }
+                            }
+                        }
+                    }
+                } else if (issuerNamespaces != null) {
+                    putCborMap("nameSpaces") {
+                        for (ns in issuerNamespaces!!.keys) {
+                            putCborArray(ns) {
+                                for (encodedIssuerSignedItemBytes in issuerNamespaces!![ns]!!) {
+                                    add(RawCbor(encodedIssuerSignedItemBytes))
+                                }
+                            }
+                        }
+                    }
+                }
+                put("issuerAuth", RawCbor(encodedIssuerAuth))
+            }
             put("deviceSigned", deviceSigned!!)
-        }
-        errors?.let { errMap ->
-            val errorsOuterMapBuilder = CborMap.builder()
-            for ((namespaceName, innerMap) in errMap) {
-                val errorsInnerMapBuilder = errorsOuterMapBuilder.putMap(namespaceName)
-                for (dataElementName in innerMap.keys) {
-                    val value = innerMap[dataElementName]!!
-                    errorsInnerMapBuilder.put(dataElementName, value)
+            if (errors != null) {
+                putCborMap("errors") {
+                    for ((namespaceName, innerMap) in errors!!) {
+                        putCborMap(namespaceName) {
+                            for (dataElementName in innerMap.keys) {
+                                val value = innerMap[dataElementName]!!
+                                put(dataElementName, value)
+                            }
+                        }
+                    }
                 }
             }
-            mapBuilder.put("errors", errorsOuterMapBuilder.end().build())
-        }
-        return Cbor.encode(mapBuilder.end().build())
+        })
     }
 }

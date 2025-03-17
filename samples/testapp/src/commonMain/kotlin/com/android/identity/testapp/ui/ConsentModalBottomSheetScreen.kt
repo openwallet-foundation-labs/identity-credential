@@ -24,6 +24,7 @@ import multipazproject.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.compose.consent.ConsentModalBottomSheet
 
 private const val IACA_CERT_PEM =
@@ -112,7 +113,7 @@ fun ConsentModalBottomSheetScreen(
             }
             namespacesToRequest[ns.namespace] = dataElementsToRequest
         }
-        val encodedSessionTranscript = Cbor.encode(CborMap.builder().put("doesn't", "matter").end().build())
+        val encodedSessionTranscript = Cbor.encode(buildCborMap { put("doesn't", "matter") })
         val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
             .addDocumentRequest(
                 request.mdocRequest!!.docType,

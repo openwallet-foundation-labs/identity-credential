@@ -26,6 +26,7 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import org.multipaz.cbor.buildCborArray
 
 private const val TAG = "mdocPresentment"
 
@@ -75,12 +76,11 @@ internal suspend fun mdocPresentment(
                 val eReaderKey = SessionEncryption.getEReaderKey(sessionData)
                 encodedSessionTranscript =
                     Cbor.encode(
-                        CborArray.builder()
-                            .add(Tagged(24, Bstr(mechanism.encodedDeviceEngagement.toByteArray())))
-                            .add(Tagged(24, Bstr(Cbor.encode(eReaderKey.toCoseKey().toDataItem()))))
-                            .add(mechanism.handover)
-                            .end()
-                            .build()
+                        buildCborArray {
+                            add(Tagged(24, Bstr(mechanism.encodedDeviceEngagement.toByteArray())))
+                            add(Tagged(24, Bstr(Cbor.encode(eReaderKey.toCoseKey().toDataItem()))))
+                            add(mechanism.handover)
+                        }
                     )
                 sessionEncryption = SessionEncryption(
                     SessionEncryption.Role.MDOC,

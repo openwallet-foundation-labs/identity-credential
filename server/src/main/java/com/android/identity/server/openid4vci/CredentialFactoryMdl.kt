@@ -26,6 +26,8 @@ import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -101,19 +103,20 @@ internal class CredentialFactoryMdl : CredentialFactory {
         credentialData.putEntry(
             DrivingLicense.MDL_NAMESPACE,
             "driving_privileges",
-            Cbor.encode(CborArray.builder()
-                .addMap()
-                .put("vehicle_category_code", "A")
-                .put("issue_date", Tagged(1004, Tstr("2018-08-09")))
-                .put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-                .end()
-                .addMap()
-                .put("vehicle_category_code", "B")
-                .put("issue_date", Tagged(1004, Tstr("2017-02-23")))
-                .put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-                .end()
-                .end()
-                .build())
+            Cbor.encode(
+                buildCborArray {
+                    addCborMap {
+                        put("vehicle_category_code", "A")
+                        put("issue_date", Tagged(1004, Tstr("2018-08-09")))
+                        put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
+                    }
+                    addCborMap {
+                        put("vehicle_category_code", "B")
+                        put("issue_date", Tagged(1004, Tstr("2017-02-23")))
+                        put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
+                    }
+                }
+            )
         )
 
         val randomProvider = Random.Default

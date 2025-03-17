@@ -2,6 +2,7 @@ package org.multipaz.provisioning.hardcoded
 
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.provisioning.CredentialFormat
 
@@ -24,11 +25,11 @@ data class SimpleCredentialRequest(
 
     fun toCbor(): ByteArray {
         return Cbor.encode(
-            CborMap.builder()
-                .put("authenticationKey", authenticationKey.toCoseKey().toDataItem())
-                .put("format", format.name)
-                .put("data", data)
-                .end()
-                .build())
+            buildCborMap {
+                put("authenticationKey", authenticationKey.toCoseKey().toDataItem())
+                put("format", format.name)
+                put("data", data)
+            }
+        )
     }
 }

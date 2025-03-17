@@ -1,9 +1,5 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.cbor.Cbor.decode
-import org.multipaz.cbor.Cbor.encode
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.nfc.Nfc
@@ -14,6 +10,9 @@ import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
 import kotlinx.io.readByteString
 import kotlinx.io.write
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 
 /**
  * Connection method for NFC.
@@ -35,15 +34,15 @@ class ConnectionMethodNfc(
         "nfc:cmd_max_length=$commandDataFieldMaxLength:resp_max_length=$responseDataFieldMaxLength"
 
     override fun toDeviceEngagement(): ByteArray {
-        val builder = CborMap.builder()
-        builder.put(OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH, commandDataFieldMaxLength)
-        builder.put(OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH, responseDataFieldMaxLength)
-        return encode(
-            CborArray.builder()
-                .add(METHOD_TYPE)
-                .add(METHOD_MAX_VERSION)
-                .add(builder.end().build())
-                .end().build()
+        return Cbor.encode(
+            buildCborArray {
+                add(METHOD_TYPE)
+                add(METHOD_MAX_VERSION)
+                addCborMap {
+                    put(OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH, commandDataFieldMaxLength)
+                    put(OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH, responseDataFieldMaxLength)
+                }
+            }
         )
     }
 
@@ -127,7 +126,7 @@ class ConnectionMethodNfc(
         private const val OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH = 1L
 
         internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodNfc? {
-            val array = decode(encodedDeviceRetrievalMethod)
+            val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
             require(type == METHOD_TYPE)

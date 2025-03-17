@@ -12,6 +12,7 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborMap
 
 /**
  * An implementation of [SecureArea] using the Apple Secure Enclave.
@@ -109,14 +110,14 @@ class SecureEnclaveSecureArea private constructor(
         keyBlob: ByteArray,
         publicKey: EcPublicKey,
     ): String {
-        val map = CborMap.builder()
-        map.put("algorithm", settings.algorithm.name)
-        map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
-        map.put("userAuthenticationTypes",
-            SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes))
-        map.put("publicKey", publicKey.toDataItem())
-        map.put("keyBlob", keyBlob)
-        return storageTable.insert(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
+        val map = buildCborMap {
+            put("algorithm", settings.algorithm.name)
+            put("userAuthenticationRequired", settings.userAuthenticationRequired)
+            put("userAuthenticationTypes", SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes))
+            put("publicKey", publicKey.toDataItem())
+            put("keyBlob", keyBlob)
+        }
+        return storageTable.insert(alias, ByteString(Cbor.encode(map)), partitionId)
     }
 
     private suspend fun loadKey(alias: String): Pair<ByteArray, SecureEnclaveKeyInfo> {

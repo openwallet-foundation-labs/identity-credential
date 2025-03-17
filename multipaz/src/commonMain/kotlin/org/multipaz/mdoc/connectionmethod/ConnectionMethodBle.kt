@@ -1,10 +1,5 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.asn1.ASN1String
-import org.multipaz.cbor.Cbor.decode
-import org.multipaz.cbor.Cbor.encode
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.nfc.Nfc
@@ -18,6 +13,9 @@ import kotlinx.io.readByteString
 import kotlinx.io.readLongLe
 import kotlinx.io.write
 import kotlinx.io.writeULongLe
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 
 /**
  * Connection method for BLE.
@@ -89,37 +87,42 @@ class ConnectionMethodBle(
     }
 
     override fun toDeviceEngagement(): ByteArray {
-        val builder = CborMap.builder()
-        builder.put(OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, supportsPeripheralServerMode)
-        builder.put(OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, supportsCentralClientMode)
-        if (peripheralServerModeUuid != null) {
-            builder.put(
-                OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
-                peripheralServerModeUuid.toByteArray()
-            )
-        }
-        if (centralClientModeUuid != null) {
-            builder.put(
-                OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
-                centralClientModeUuid.toByteArray()
-            )
-        }
-        if (peripheralServerModePsm != null) {
-            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM, peripheralServerModePsm as Int)
-        }
-        if (peripheralServerModeMacAddress != null) {
-            builder.put(
-                OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
-                peripheralServerModeMacAddress!!
-            )
-        }
-        return encode(
-            CborArray.builder()
-                .add(METHOD_TYPE)
-                .add(METHOD_MAX_VERSION)
-                .add(builder.end().build())
-                .end()
-                .build()
+        return Cbor.encode(
+            buildCborArray {
+                add(METHOD_TYPE)
+                add(METHOD_MAX_VERSION)
+                addCborMap {
+                    put(
+                        OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE,
+                        supportsPeripheralServerMode
+                    )
+                    put(OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, supportsCentralClientMode)
+                    if (peripheralServerModeUuid != null) {
+                        put(
+                            OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
+                            peripheralServerModeUuid.toByteArray()
+                        )
+                    }
+                    if (centralClientModeUuid != null) {
+                        put(
+                            OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
+                            centralClientModeUuid.toByteArray()
+                        )
+                    }
+                    if (peripheralServerModePsm != null) {
+                        put(
+                            OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM,
+                            peripheralServerModePsm as Int
+                        )
+                    }
+                    if (peripheralServerModeMacAddress != null) {
+                        put(
+                            OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
+                            peripheralServerModeMacAddress!!
+                        )
+                    }
+                }
+            }
         )
     }
 
@@ -138,7 +141,7 @@ class ConnectionMethodBle(
         private const val OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM = 21L // NOTE: as per drafts of 18013-5 Second Edition
 
         internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodBle? {
-            val array = decode(encodedDeviceRetrievalMethod)
+            val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
             require(type == METHOD_TYPE)

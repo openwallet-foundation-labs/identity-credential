@@ -23,6 +23,8 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -30,31 +32,28 @@ import kotlin.test.assertFailsWith
 
 class StaticAuthDataTest {
     private fun createValidDigestIdMapping(): Map<String, List<ByteArray>> {
-        val issuerSignedItemMetadata = CborMap.builder()
-            .put("random", byteArrayOf(0x50, 0x51, 0x52))
-            .put("digestID", 42)
-            .put("elementIdentifier", "dataElementName")
-            .put("elementValue", Simple.NULL)
-            .end()
-            .build()
+        val issuerSignedItemMetadata = buildCborMap {
+            put("random", byteArrayOf(0x50, 0x51, 0x52))
+            put("digestID", 42)
+            put("elementIdentifier", "dataElementName")
+            put("elementValue", Simple.NULL)
+        }
         val isiMetadataBytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata)))
         val encodedIsiMetadataBytes = Cbor.encode(isiMetadataBytes)
-        val issuerSignedItemMetadata2 = CborMap.builder()
-            .put("digestID", 43)
-            .put("random", byteArrayOf(0x53, 0x54, 0x55))
-            .put("elementIdentifier", "dataElementName2")
-            .put("elementValue", Simple.NULL)
-            .end()
-            .build()
+        val issuerSignedItemMetadata2 = buildCborMap {
+            put("digestID", 43)
+            put("random", byteArrayOf(0x53, 0x54, 0x55))
+            put("elementIdentifier", "dataElementName2")
+            put("elementValue", Simple.NULL)
+        }
         val isiMetadata2Bytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata2)))
         val encodedIsiMetadata2Bytes = Cbor.encode(isiMetadata2Bytes)
-        val issuerSignedItemMetadata3 = CborMap.builder()
-            .put("digestID", 44)
-            .put("random", byteArrayOf(0x53, 0x54, 0x55))
-            .put("elementIdentifier", "portrait")
-            .put("elementValue", Cbor.encode(Bstr(byteArrayOf(0x20, 0x21, 0x22, 0x23))))
-            .end()
-            .build()
+        val issuerSignedItemMetadata3 = buildCborMap {
+            put("digestID", 44)
+            put("random", byteArrayOf(0x53, 0x54, 0x55))
+            put("elementIdentifier", "portrait")
+            put("elementValue", Cbor.encode(Bstr(byteArrayOf(0x20, 0x21, 0x22, 0x23))))
+        }
         val isiMetadata3Bytes: DataItem = Tagged(24, Bstr(Cbor.encode(issuerSignedItemMetadata3)))
         val encodedIsiMetadata3Bytes = Cbor.encode(isiMetadata3Bytes)
         val issuerSignedMapping = mutableMapOf<String, List<ByteArray>>()
@@ -68,13 +67,12 @@ class StaticAuthDataTest {
 
     private fun createValidIssuerAuth(): ByteArray {
         return Cbor.encode(
-            CborArray.builder()
-                .addArray()
-                .end()
-                .add(Simple.NULL)
-                .add(byteArrayOf(0x01, 0x02))
-                .end()
-                .build()
+            buildCborArray {
+                addArray()
+                end()
+                add(Simple.NULL)
+                add(byteArrayOf(0x01, 0x02))
+            }
         )
     }
 

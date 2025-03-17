@@ -6,6 +6,7 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.toDataItem
 import org.multipaz.flow.transport.HttpTransport
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborArray
 
 /**
  * Implements [HttpTransport] based on the given [FlowDispatcher] and [FlowPoll]. Useful
@@ -23,9 +24,11 @@ class HttpHandler(
         } else {
             dispatcher.dispatch(target, method, args)
         }
-        val builder = CborArray.builder()
-        result.forEach { builder.add(it) }
-        return ByteString(Cbor.encode(builder.end().build()))
+        return ByteString(Cbor.encode(
+            buildCborArray {
+                result.forEach { add(it) }
+            }
+        ))
     }
 
     private suspend fun handlePoll(args: List<DataItem>): List<DataItem> {

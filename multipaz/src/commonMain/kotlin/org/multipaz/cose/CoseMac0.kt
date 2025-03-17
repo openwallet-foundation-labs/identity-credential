@@ -6,6 +6,9 @@ import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Simple
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 
 /**
  * COSE MACed Message.
@@ -25,14 +28,13 @@ data class CoseMac0(
      * Encodes the COSE_Mac0 as a CBOR data item.
      */
     fun toDataItem(): DataItem {
-        val uphb = CborMap.builder()
-        unprotectedHeaders.forEach { (label, dataItem) -> uphb.put(label.toDataItem(), dataItem) }
-
         val serializedProtectedHeaders =
             if (protectedHeaders.isNotEmpty()) {
-                val phb = CborMap.builder()
-                protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
-                Cbor.encode(phb.end().build())
+                Cbor.encode(
+                    buildCborMap {
+                        protectedHeaders.forEach { (label, di) -> put(label.toDataItem(), di) }
+                    }
+                )
             } else {
                 byteArrayOf()
             }
@@ -42,12 +44,14 @@ data class CoseMac0(
             } else {
                 Simple.NULL
             }
-        return CborArray.builder()
-            .add(serializedProtectedHeaders)
-            .add(uphb.end().build())
-            .add(payloadOrNil)
-            .add(tag)
-            .end().build()
+        return buildCborArray {
+            add(serializedProtectedHeaders)
+            addCborMap {
+                unprotectedHeaders.forEach { (label, dataItem) -> put(label.toDataItem(), dataItem) }
+            }
+            add(payloadOrNil)
+            add(tag)
+        }
     }
 
     companion object {

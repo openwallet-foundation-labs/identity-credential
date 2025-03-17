@@ -121,6 +121,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 import java.util.UUID
@@ -764,34 +766,32 @@ private fun createSessionTranscript(
     authorizationRequestNonce: String,
     mdocGeneratedNonce: String
 ): ByteArray {
-    val clientIdToHash = Cbor.encode(CborArray.builder()
-        .add(clientId)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
+    val clientIdToHash = Cbor.encode(
+        buildCborArray {
+            add(clientId)
+            add(mdocGeneratedNonce)
+        }
+    )
     val clientIdHash = Crypto.digest(Algorithm.SHA256, clientIdToHash)
 
-    val responseUriToHash = Cbor.encode(CborArray.builder()
-        .add(responseUri)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
+    val responseUriToHash = Cbor.encode(
+        buildCborArray {
+            add(responseUri)
+            add(mdocGeneratedNonce)
+        }
+    )
     val responseUriHash = Crypto.digest(Algorithm.SHA256, responseUriToHash)
 
-    val oid4vpHandover = CborArray.builder()
-        .add(clientIdHash)
-        .add(responseUriHash)
-        .add(authorizationRequestNonce)
-        .end()
-        .build()
-
     return Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL)
-            .add(Simple.NULL)
-            .add(oid4vpHandover)
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL)
+            add(Simple.NULL)
+            addCborArray {
+                add(clientIdHash)
+                add(responseUriHash)
+                add(authorizationRequestNonce)
+            }
+        }
     )
 }
 

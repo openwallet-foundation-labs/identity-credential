@@ -34,6 +34,7 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.SignatureVerificationException
 
 /**
@@ -230,13 +231,12 @@ class DeviceResponseParser(
             val nameSpacesBytes = deviceSigned["nameSpaces"]
             val nameSpaces = nameSpacesBytes.asTaggedEncodedCbor
             val deviceAuth = deviceSigned["deviceAuth"]
-            val deviceAuthentication = CborArray.builder()
-                .add("DeviceAuthentication")
-                .add(RawCbor(encodedSessionTranscript))
-                .add(docType)
-                .add(nameSpacesBytes)
-                .end()
-                .build()
+            val deviceAuthentication = buildCborArray {
+                add("DeviceAuthentication")
+                add(RawCbor(encodedSessionTranscript))
+                add(docType)
+                add(nameSpacesBytes)
+            }
             val deviceAuthenticationBytes = Cbor.encode(
                 Tagged(24, Bstr(Cbor.encode(deviceAuthentication)))
             )

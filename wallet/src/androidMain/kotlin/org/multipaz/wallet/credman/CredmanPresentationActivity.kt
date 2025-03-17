@@ -57,6 +57,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.StringTokenizer
 import kotlinx.datetime.Clock
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 
@@ -205,16 +208,15 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                 val encodedSessionTranscript =
                     Cbor.encode(
-                        CborArray.builder()
-                            .add(Simple.NULL) // DeviceEngagementBytes
-                            .add(Simple.NULL) // EReaderKeyBytes
-                            .addArray() // BrowserHandover
-                            .add("ARFHandoverv2")
-                            .add(encryptionInfoBase64)
-                            .add(callingOrigin!!)
-                            .end()
-                            .end()
-                            .build()
+                        buildCborArray {
+                            add(Simple.NULL) // DeviceEngagementBytes
+                            add(Simple.NULL) // EReaderKeyBytes
+                            addCborArray {
+                                add("ARFHandoverv2")
+                                add(encryptionInfoBase64)
+                                add(callingOrigin!!)
+                            }
+                        }
                     )
 
                 // For now we only consider the first document request
@@ -272,14 +274,13 @@ class CredmanPresentationActivity : FragmentActivity() {
                     )
                     val encryptedResponse =
                         Cbor.encode(
-                            CborArray.builder()
-                                .add("ARFencryptionv2")
-                                .addMap()
-                                .put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
-                                .put("cipherText", cipherText)
-                                .end()
-                                .end()
-                                .build()
+                            buildCborArray {
+                                add("ARFencryptionv2")
+                                addCborMap {
+                                    put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
+                                    put("cipherText", cipherText)
+                                }
+                            }
                         )
 
                     // Create the preview response

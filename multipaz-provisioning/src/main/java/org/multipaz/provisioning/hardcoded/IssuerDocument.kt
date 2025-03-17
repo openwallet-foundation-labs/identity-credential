@@ -5,6 +5,8 @@ import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.provisioning.DocumentCondition
 import org.multipaz.provisioning.DocumentConfiguration
 import org.multipaz.provisioning.RegistrationResponse
@@ -60,22 +62,25 @@ data class IssuerDocument(
     }
 
     fun toDataItem(): DataItem {
-        val credentialRequestsBuilder = CborArray.builder()
-        simpleCredentialRequests.forEach() { cpoRequest ->
-            credentialRequestsBuilder.add(RawCbor(cpoRequest.toCbor()))
+        val credentialRequests = buildCborArray {
+            simpleCredentialRequests.forEach() { cpoRequest ->
+                add(RawCbor(cpoRequest.toCbor()))
+            }
         }
-        val ceMapBuilder = CborMap.builder()
-        collectedEvidence.forEach() { evidence ->
-            ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
+        val ceMap = buildCborMap {
+            collectedEvidence.forEach() { evidence ->
+                put(evidence.key, RawCbor(evidence.value.toCbor()))
+            }
         }
-        val mapBuilder = CborMap.builder()
-            .put("registrationResponse", registrationResponse.toDataItem())
-            .put("state", state.ordinal.toLong())
-            .put("collectedEvidence", ceMapBuilder.end().build())
-            .put("credentialRequests", credentialRequestsBuilder.end().build())
-        if (documentConfiguration != null) {
-            mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem())
+        val map = buildCborMap {
+            put("registrationResponse", registrationResponse.toDataItem())
+            put("state", state.ordinal.toLong())
+            put("collectedEvidence", ceMap)
+            put("credentialRequests", credentialRequests)
+            if (documentConfiguration != null) {
+                put("documentConfiguration", documentConfiguration!!.toDataItem())
+            }
         }
-        return mapBuilder.end().build()
+        return map
     }
 }

@@ -6,6 +6,7 @@ import org.multipaz.cbor.Nint
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.Uint
 import org.multipaz.cbor.annotation.CborSerializationImplemented
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 
@@ -31,11 +32,11 @@ class CoseKey(val labels: Map<CoseLabel, DataItem>) {
      * Encodes the COSE Key as a CBOR data item.
      */
     fun toDataItem(): DataItem {
-        return CborMap.builder().apply {
+        return buildCborMap {
             for ((key, value) in labels) {
                 put(key.toDataItem(), value)
             }
-        }.end().build()
+        }
     }
 
     /**

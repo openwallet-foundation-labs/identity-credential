@@ -23,6 +23,8 @@ import org.multipaz.util.UUID
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.util.getInt16
 import org.multipaz.util.getUInt16
 
@@ -85,11 +87,10 @@ suspend fun mdocReaderNfcHandover(
     if (hspr == null) {
         val (encodedDeviceEngagement, connectionMethods) = parseHandoverSelectMessage(initialNdefMessage, null)
         check(!connectionMethods.isEmpty()) { "No connection methods in Handover Select" }
-        val handover = CborArray.builder()
-            .add(initialNdefMessage.encode()) // Handover Select message
-            .add(Simple.NULL)                 // Handover Request message
-            .end()
-            .build()
+        val handover = buildCborArray {
+            add(initialNdefMessage.encode()) // Handover Select message
+            add(Simple.NULL)                 // Handover Request message
+        }
 
         return MdocReaderNfcHandoverResult(
             connectionMethods = ConnectionMethod.disambiguate(connectionMethods),
@@ -137,11 +138,10 @@ suspend fun mdocReaderNfcHandover(
     val (encodedDeviceEngagement, connectionMethods) = parseHandoverSelectMessage(hsMessage, bleUuid)
     check(connectionMethods.size >= 1) { "No Alternative Carriers in HS message" }
 
-    val handover = CborArray.builder()
-        .add(hsMessage.encode()) // Handover Select message
-        .add(hrMessage.encode()) // Handover Request message
-        .end()
-        .build()
+    val handover = buildCborArray {
+        add(hsMessage.encode()) // Handover Select message
+        add(hrMessage.encode()) // Handover Request message
+    }
 
     return MdocReaderNfcHandoverResult(
         connectionMethods = ConnectionMethod.disambiguate(connectionMethods),
@@ -173,10 +173,9 @@ private fun generateHandoverRequestMessage(
     )
     // TODO: make it possible for caller to specify readerEngagement
     val encodedReaderEngagement = Cbor.encode(
-        CborMap.builder()
-            .put(0L, "1.0")
-            .end()
-            .build()
+        buildCborMap {
+            put(0L, "1.0")
+        }
     )
     return NdefMessage(
         listOf(
