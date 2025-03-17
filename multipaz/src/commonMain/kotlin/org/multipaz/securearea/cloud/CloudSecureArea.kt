@@ -63,14 +63,15 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
-import kotlinx.io.Buffer
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.SignatureVerificationException
+import org.multipaz.util.appendUInt32
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -334,11 +335,11 @@ open class CloudSecureArea protected constructor(
             throw CloudException("Root X509Cert not authorized by app")
         }
 
-        val attestation = CloudAttestationExtension.decode(ByteString(
+        val decodedAttestation = CloudAttestationExtension.decode(ByteString(
             attestation.certificates[0]
                 .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
         ))
-        check(attestation.challenge == ByteString(expectedDeviceChallenge)) {
+        check(decodedAttestation.challenge == ByteString(expectedDeviceChallenge)) {
             "Challenge in attestation does match what's expected"
         }
     }
@@ -434,21 +435,23 @@ open class CloudSecureArea protected constructor(
 
     private fun encryptToCloud(messagePlaintext: ByteArray): ByteArray {
         // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
-        val iv = Buffer()
-        iv.writeInt(0x00000000.toInt())
-        val ivIdentifier = 0x00000001
-        iv.writeInt(ivIdentifier)
-        iv.writeInt(encryptedCounter++)
-        return Crypto.encrypt(Algorithm.A128GCM, skDevice!!, iv.readByteArray(), messagePlaintext)
+        val iv = buildByteString {
+            appendUInt32(0x00000000)
+            val ivIdentifier = 0x00000001
+            appendUInt32(ivIdentifier)
+            appendUInt32(encryptedCounter++)
+        }.toByteArray()
+        return Crypto.encrypt(Algorithm.A128GCM, skDevice!!, iv, messagePlaintext)
     }
 
     private fun decryptFromCloud(messageCiphertext: ByteArray): ByteArray {
-        val iv = Buffer()
-        iv.writeInt(0x00000000.toInt())
-        val ivIdentifier = 0x00000000
-        iv.writeInt(ivIdentifier)
-        iv.writeInt(decryptedCounter++)
-        return Crypto.decrypt(Algorithm.A128GCM, skCloud!!, iv.readByteArray(), messageCiphertext)
+        val iv = buildByteString {
+            appendUInt32(0x00000000)
+            val ivIdentifier = 0x00000000
+            appendUInt32(ivIdentifier)
+            appendUInt32(decryptedCounter++)
+        }.toByteArray()
+        return Crypto.decrypt(Algorithm.A128GCM, skCloud!!, iv, messageCiphertext)
     }
 
     // This is internal rather than private b/c it's used in testPassphraseCannotBeChanged()

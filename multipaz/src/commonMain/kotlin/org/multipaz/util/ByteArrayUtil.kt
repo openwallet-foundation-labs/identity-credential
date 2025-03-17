@@ -2,7 +2,6 @@ package org.multipaz.util
 
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
-import kotlinx.io.bytestring.toHexString
 
 /**
  * Extension functions for working with [ByteArray] in Kotlin.
