@@ -13,6 +13,7 @@ import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.util.ByteDataReader
 import org.multipaz.util.appendByteArray
+import org.multipaz.util.appendByteString
 import org.multipaz.util.appendUInt32
 import org.multipaz.util.appendUInt64Le
 import org.multipaz.util.appendUInt8
@@ -21,29 +22,24 @@ import org.multipaz.util.appendUInt8
  * Connection method for BLE.
  *
  * @param supportsPeripheralServerMode whether mdoc peripheral mode is supported.
- * @param supportsCentralClientMode    whether mdoc central client mode is supported.
- * @param peripheralServerModeUuid     the UUID to use for mdoc peripheral server mode.
- * @param centralClientModeUuid        the UUID to use for mdoc central client mode.
+ * @param supportsCentralClientMode whether mdoc central client mode is supported.
+ * @param peripheralServerModeUuid the UUID to use for mdoc peripheral server mode.
+ * @param centralClientModeUuid  the UUID to use for mdoc central client mode.
+ * @param peripheralServerModePsm the L2CAP PSM, if set. This is currently not standardized, use at your own risk.
+ * @param peripheralServerModeMacAddress the MAC address, if set.
  */
 class ConnectionMethodBle(
     val supportsPeripheralServerMode: Boolean,
     val supportsCentralClientMode: Boolean,
     val peripheralServerModeUuid: UUID?,
-    val centralClientModeUuid: UUID?
+    val centralClientModeUuid: UUID?,
+    var peripheralServerModePsm: Int? = null,
+    peripheralServerModeMacAddress: ByteString? = null
 ) : ConnectionMethod() {
-
-    /**
-     * The L2CAP PSM, if set.
-     *
-     * This is currently not standardized so use at your own risk.
-     */
-    var peripheralServerModePsm: Int? = null
-
-
     /**
      * The peripheral MAC address, if set.
      */
-    var peripheralServerModeMacAddress: ByteArray? = null
+    var peripheralServerModeMacAddress: ByteString? = peripheralServerModeMacAddress
         set(macAddress) {
             require(macAddress == null || macAddress.size == 6) {                 
                 "MAC address should be 6 bytes, got ${macAddress!!.size}"
@@ -58,7 +54,7 @@ class ConnectionMethodBle(
                 other.peripheralServerModeUuid == peripheralServerModeUuid &&
                 other.centralClientModeUuid == centralClientModeUuid &&
                 other.peripheralServerModePsm == peripheralServerModePsm &&
-                other.peripheralServerModeMacAddress.contentEquals(peripheralServerModeMacAddress)
+                other.peripheralServerModeMacAddress == peripheralServerModeMacAddress
     }
 
     override fun toString(): String {
@@ -118,7 +114,7 @@ class ConnectionMethodBle(
                     if (peripheralServerModeMacAddress != null) {
                         put(
                             OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
-                            peripheralServerModeMacAddress!!
+                            peripheralServerModeMacAddress!!.toByteArray()
                         )
                     }
                 }
@@ -172,7 +168,7 @@ class ConnectionMethodBle(
                 cm.peripheralServerModePsm = psm.asNumber.toInt()
             }
             cm.peripheralServerModeMacAddress =
-                map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr
+                map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr?.let { ByteString(it) }
             return cm
         }
 
@@ -281,7 +277,7 @@ class ConnectionMethodBle(
                 if (centralClient) uuid else null
             )
             cm.peripheralServerModePsm = psm
-            cm.peripheralServerModeMacAddress = macAddress?.toByteArray()
+            cm.peripheralServerModeMacAddress = macAddress
             return cm
         }
     }
@@ -349,7 +345,7 @@ class ConnectionMethodBle(
                 }
                 appendUInt8(0x07)
                 appendUInt8(BLE_LE_BLUETOOTH_MAC_ADDRESS)
-                appendByteArray(macAddress)
+                appendByteString(macAddress)
             }
             val psm = peripheralServerModePsm
             if (psm != null) {

@@ -1,5 +1,6 @@
 package org.multipaz.mdoc.connectionmethod
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor.decode
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
@@ -149,7 +150,7 @@ abstract class ConnectionMethod {
             var supportsPeripheralServerMode = false
             var supportsCentralClientMode = false
             var uuid: UUID? = null
-            var mac: ByteArray? = null
+            var mac: ByteString? = null
             var psm: Int? = null
             for (ble in bleMethods) {
                 if (ble.supportsPeripheralServerMode) {
@@ -197,27 +198,41 @@ abstract class ConnectionMethod {
          * server mode is set, replaces this with two connection methods so it's clear which one is
          * which.
          *
+         * The [ConnectionMethodBle.peripheralServerModePsm] and [ConnectionMethodBle.peripheralServerModeMacAddress]
+         * properties are duplicated in each of the resulting [ConnectionMethodBle] instances. The PSM
+         * and MAC address is only conveyed on one of the instances, see [role] argument for which one.
+         *
          * This is the reverse of [.combine].
          *
          * @param connectionMethods a list of connection methods.
+         * @param role If [MdocTransport.Role.MDOC] the PSM and MAC address will appear only in the resulting
+         *   [ConnectionMethodBle] objects for central client mode, otherwise they only appear in the object for
+         *   peripheral server mode.
          * @return the given list of connection methods where each instance is unambiguously refers
          * to one and only one connectable endpoint.
          */
-        fun disambiguate(connectionMethods: List<ConnectionMethod>): List<ConnectionMethod> {
+        fun disambiguate(
+            connectionMethods: List<ConnectionMethod>,
+            role: MdocTransport.Role,
+        ): List<ConnectionMethod> {
             val result = mutableListOf<ConnectionMethod>()
             for (cm in connectionMethods) {
                 // Only BLE needs disambiguation
                 if (cm is ConnectionMethodBle) {
                     val cmBle = cm
                     if (cmBle.supportsCentralClientMode && cmBle.supportsPeripheralServerMode) {
-                        result.add(
+                        val centralClientMode =
                             ConnectionMethodBle(
                                 false,
                                 true,
                                 null,
                                 cmBle.centralClientModeUuid
                             )
-                        )
+                        if (role == MdocTransport.Role.MDOC) {
+                            centralClientMode.peripheralServerModeMacAddress = cmBle.peripheralServerModeMacAddress
+                            centralClientMode.peripheralServerModePsm = cmBle.peripheralServerModePsm
+                        }
+                        result.add(centralClientMode)
                         val peripheralServerMode =
                             ConnectionMethodBle(
                                 true,
@@ -225,8 +240,10 @@ abstract class ConnectionMethod {
                                 cmBle.peripheralServerModeUuid,
                                 null
                             )
-                        peripheralServerMode.peripheralServerModeMacAddress = cmBle.peripheralServerModeMacAddress
-                        peripheralServerMode.peripheralServerModePsm = cmBle.peripheralServerModePsm
+                        if (role == MdocTransport.Role.MDOC_READER) {
+                            peripheralServerMode.peripheralServerModeMacAddress = cmBle.peripheralServerModeMacAddress
+                            peripheralServerMode.peripheralServerModePsm = cmBle.peripheralServerModePsm
+                        }
                         result.add(peripheralServerMode)
                         continue
                     }
