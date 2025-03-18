@@ -91,9 +91,12 @@ suspend fun mdocReaderNfcHandover(
             add(initialNdefMessage.encode()) // Handover Select message
             add(Simple.NULL)                 // Handover Request message
         }
-
+        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(
+            connectionMethods,
+            MdocTransport.Role.MDOC_READER
+        )
         return MdocReaderNfcHandoverResult(
-            connectionMethods = ConnectionMethod.disambiguate(connectionMethods),
+            connectionMethods = disambiguatedConnectionMethods,
             encodedDeviceEngagement = ByteString(encodedDeviceEngagement),
             handover = handover,
         )
@@ -144,7 +147,10 @@ suspend fun mdocReaderNfcHandover(
     }
 
     return MdocReaderNfcHandoverResult(
-        connectionMethods = ConnectionMethod.disambiguate(connectionMethods),
+        connectionMethods = ConnectionMethod.disambiguate(
+            connectionMethods,
+            MdocTransport.Role.MDOC_READER
+        ),
         encodedDeviceEngagement = ByteString(encodedDeviceEngagement),
         handover = handover,
     )

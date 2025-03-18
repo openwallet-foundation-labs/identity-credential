@@ -195,6 +195,9 @@ class NdefService: HostApduService() {
             }
         }
 
+        // TODO: Listen on methods _before_ starting the engagement helper so we can send the PSM
+        //   for mdoc Peripheral Server mode when using NFC Static Handover.
+        //
         engagement = MdocNfcEngagementHelper(
             eDeviceKey = eDeviceKey.publicKey,
             onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->

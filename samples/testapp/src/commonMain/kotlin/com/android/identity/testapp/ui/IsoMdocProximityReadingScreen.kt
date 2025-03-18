@@ -561,7 +561,10 @@ private suspend fun doReaderFlow(
     val transport = if (existingTransport != null) {
         existingTransport
     } else {
-        val connectionMethods = ConnectionMethod.disambiguate(deviceEngagement.connectionMethods)
+        val connectionMethods = ConnectionMethod.disambiguate(
+            deviceEngagement.connectionMethods,
+            MdocTransport.Role.MDOC_READER
+        )
         val connectionMethod = if (connectionMethods.size == 1) {
             connectionMethods[0]
         } else {

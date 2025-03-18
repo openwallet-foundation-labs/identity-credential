@@ -15,6 +15,8 @@
  */
 package org.multipaz.mdoc.connectionmethod
 
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.mdoc.transport.MdocTransport
@@ -202,34 +204,82 @@ class ConnectionMethodTest {
         )
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     @Test
-    fun testConnectionMethodDisambiguate() {
-        var ble: ConnectionMethodBle
+    fun testConnectionMethodDisambiguateMdoc() {
         val disambiguated = ConnectionMethod.disambiguate(
             listOf(
                 ConnectionMethodHttp("https://www.example.com/mdocReader"),
                 ConnectionMethodBle(
-                    true,
-                    true,
-                    UUID(0U, 1U),
-                    UUID(0U, 2U)
+                    supportsPeripheralServerMode = true,
+                    supportsCentralClientMode = true,
+                    peripheralServerModeUuid = UUID(0U, 1U),
+                    centralClientModeUuid = UUID(0U, 2U),
+                    peripheralServerModePsm = 192,
+                    peripheralServerModeMacAddress = ByteString(0x11, 0x22, 0x33, 0x44, 0x55, 0x66)
                 )
-            )
+            ),
+            MdocTransport.Role.MDOC
         )
         assertEquals(3, disambiguated.size.toLong())
         assertTrue(disambiguated[0] is ConnectionMethodHttp)
         assertTrue(disambiguated[1] is ConnectionMethodBle)
         assertTrue(disambiguated[2] is ConnectionMethodBle)
-        ble = disambiguated[1] as ConnectionMethodBle
-        assertFalse(ble.supportsPeripheralServerMode)
-        assertTrue(ble.supportsCentralClientMode)
-        assertNull(ble.peripheralServerModeUuid)
-        assertEquals(UUID(0U, 2U), ble.centralClientModeUuid)
-        ble = disambiguated[2] as ConnectionMethodBle
-        assertTrue(ble.supportsPeripheralServerMode)
-        assertFalse(ble.supportsCentralClientMode)
-        assertEquals(UUID(0U, 1U), ble.peripheralServerModeUuid)
-        assertNull(ble.centralClientModeUuid)
+
+        val bleCc = disambiguated[1] as ConnectionMethodBle
+        assertFalse(bleCc.supportsPeripheralServerMode)
+        assertTrue(bleCc.supportsCentralClientMode)
+        assertNull(bleCc.peripheralServerModeUuid)
+        assertEquals(UUID(0U, 2U), bleCc.centralClientModeUuid)
+        assertEquals(192, bleCc.peripheralServerModePsm)
+        assertEquals("112233445566", bleCc.peripheralServerModeMacAddress!!.toHexString())
+
+        val blePs = disambiguated[2] as ConnectionMethodBle
+        assertTrue(blePs.supportsPeripheralServerMode)
+        assertFalse(blePs.supportsCentralClientMode)
+        assertEquals(UUID(0U, 1U), blePs.peripheralServerModeUuid)
+        assertNull(blePs.centralClientModeUuid)
+        assertNull(blePs.peripheralServerModePsm)
+        assertNull(blePs.peripheralServerModeMacAddress)
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    @Test
+    fun testConnectionMethodDisambiguateMdocReader() {
+        val disambiguated = ConnectionMethod.disambiguate(
+            listOf(
+                ConnectionMethodHttp("https://www.example.com/mdocReader"),
+                ConnectionMethodBle(
+                    supportsPeripheralServerMode = true,
+                    supportsCentralClientMode = true,
+                    peripheralServerModeUuid = UUID(0U, 1U),
+                    centralClientModeUuid = UUID(0U, 2U),
+                    peripheralServerModePsm = 192,
+                    peripheralServerModeMacAddress = ByteString(0x11, 0x22, 0x33, 0x44, 0x55, 0x66)
+                )
+            ),
+            MdocTransport.Role.MDOC_READER
+        )
+        assertEquals(3, disambiguated.size.toLong())
+        assertTrue(disambiguated[0] is ConnectionMethodHttp)
+        assertTrue(disambiguated[1] is ConnectionMethodBle)
+        assertTrue(disambiguated[2] is ConnectionMethodBle)
+
+        val bleCc = disambiguated[1] as ConnectionMethodBle
+        assertFalse(bleCc.supportsPeripheralServerMode)
+        assertTrue(bleCc.supportsCentralClientMode)
+        assertNull(bleCc.peripheralServerModeUuid)
+        assertEquals(UUID(0U, 2U), bleCc.centralClientModeUuid)
+        assertNull(bleCc.peripheralServerModePsm)
+        assertNull(bleCc.peripheralServerModeMacAddress)
+
+        val blePs = disambiguated[2] as ConnectionMethodBle
+        assertTrue(blePs.supportsPeripheralServerMode)
+        assertFalse(blePs.supportsCentralClientMode)
+        assertEquals(UUID(0U, 1U), blePs.peripheralServerModeUuid)
+        assertNull(blePs.centralClientModeUuid)
+        assertEquals(192, blePs.peripheralServerModePsm)
+        assertEquals("112233445566", blePs.peripheralServerModeMacAddress!!.toHexString())
     }
 
     @Test

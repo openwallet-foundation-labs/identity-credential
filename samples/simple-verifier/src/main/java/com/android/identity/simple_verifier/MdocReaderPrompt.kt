@@ -92,6 +92,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.multipaz.mdoc.transport.MdocTransport
 import java.security.Security
 
 class MdocReaderPrompt(
@@ -157,7 +158,10 @@ class MdocReaderPrompt(
                 Logger.d("Listener", "device engagement received")
                 navController.navigate("ReaderReady/Connecting")
                 vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-                val availableMdocConnectionMethods = ConnectionMethod.disambiguate(connectionMethods)
+                val availableMdocConnectionMethods = ConnectionMethod.disambiguate(
+                    connectionMethods,
+                    MdocTransport.Role.MDOC_READER
+                )
                 if (availableMdocConnectionMethods.isNotEmpty()) {
                     this@MdocReaderPrompt.mdocConnectionMethod = availableMdocConnectionMethods.first()
                 }

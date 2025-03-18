@@ -45,6 +45,7 @@ import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import kotlinx.datetime.Clock
+import org.multipaz.mdoc.transport.MdocTransport
 import java.io.IOException
 import java.util.Arrays
 import java.util.Locale
@@ -173,7 +174,8 @@ class VerificationHelper internal constructor(
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
         val disambiguatedMethods = ConnectionMethod.disambiguate(
-            reverseEngagementConnectionMethods!!
+            reverseEngagementConnectionMethods!!,
+            MdocTransport.Role.MDOC_READER
         )
         for (cm in disambiguatedMethods) {
             val transport = DataTransport.fromConnectionMethod(

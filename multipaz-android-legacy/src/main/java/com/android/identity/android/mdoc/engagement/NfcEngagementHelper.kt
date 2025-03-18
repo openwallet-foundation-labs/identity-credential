@@ -19,6 +19,7 @@ import org.multipaz.mdoc.connectionmethod.ConnectionMethod
 import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.combine
 import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
 import org.multipaz.mdoc.engagement.EngagementGenerator
+import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -130,7 +131,7 @@ class NfcEngagementHelper private constructor(
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
-        val disambiguatedMethods = disambiguate(connectionMethods)
+        val disambiguatedMethods = disambiguate(connectionMethods, MdocTransport.Role.MDOC)
         for (cm in disambiguatedMethods) {
             val transport = fromConnectionMethod(
                 context, cm, DataTransport.Role.MDOC, options
@@ -612,7 +613,7 @@ class NfcEngagementHelper private constructor(
             negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
             return NfcUtil.STATUS_WORD_WRONG_PARAMETERS
         }
-        val disambiguatedCms = disambiguate(parsedCms)
+        val disambiguatedCms = disambiguate(parsedCms, MdocTransport.Role.MDOC)
         for (cm in disambiguatedCms) {
             Logger.d(TAG, "Have connectionMethod: $cm")
         }

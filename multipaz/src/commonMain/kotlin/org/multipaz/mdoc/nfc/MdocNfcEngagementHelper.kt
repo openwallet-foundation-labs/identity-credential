@@ -233,7 +233,10 @@ class MdocNfcEngagementHelper(
         if (availableConnectionMethods.isEmpty()) {
             throw Error("No supported connection methods found in Handover Request method")
         }
-        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(availableConnectionMethods)
+        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(
+            availableConnectionMethods,
+            MdocTransport.Role.MDOC
+        )
 
         val selectedMethod = negotiatedHandoverPicker!!(disambiguatedConnectionMethods)
 
