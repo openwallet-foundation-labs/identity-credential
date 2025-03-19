@@ -31,6 +31,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.app_icon
+import org.jetbrains.compose.resources.painterResource
+import org.multipaz.compose.decodeImage
 import org.multipaz.crypto.Algorithm
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -46,6 +50,10 @@ import platform.posix.INET6_ADDRSTRLEN
 import platform.posix.sa_family_t
 import platform.posix.sockaddr_in
 import platform.posix.sockaddr_in6
+
+actual val platformAppName = "Multipaz Test App"
+
+actual val platformAppIcon = Res.drawable.app_icon
 
 actual val platform = Platform.IOS
 

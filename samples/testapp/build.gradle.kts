@@ -142,6 +142,17 @@ android {
             )
         }
     }
+    flavorDimensions.addAll(listOf("standard"))
+    productFlavors {
+        create("blue") {
+            dimension = "standard"
+            isDefault = true
+        }
+        create("red") {
+            dimension = "standard"
+            applicationId = "org.multipaz.testapp.red"
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
