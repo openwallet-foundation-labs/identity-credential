@@ -9,11 +9,10 @@ import org.multipaz.flow.handler.SimpleCipher
 import org.multipaz.flow.server.FlowEnvironment
 import org.multipaz.flow.server.Resources
 import org.multipaz.flow.server.getTable
-import org.multipaz.issuance.hardcoded.IssuerDocument
-import org.multipaz.issuance.hardcoded.IssuingAuthorityState
-import org.multipaz.issuance.wallet.AuthenticationState
+import org.multipaz.provisioning.hardcoded.IssuerDocument
+import org.multipaz.provisioning.hardcoded.IssuingAuthorityState
+import org.multipaz.provisioning.wallet.AuthenticationState
 import org.multipaz.server.BaseHttpServlet
-import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.htmlEscape

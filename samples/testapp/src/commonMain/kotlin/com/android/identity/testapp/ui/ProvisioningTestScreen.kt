@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.multipaz.issuance.WalletApplicationCapabilities
+import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.testapp.platformIsEmulator
 import org.multipaz.testapp.provisioning.WalletServerProvider
 import kotlinx.coroutines.CoroutineScope

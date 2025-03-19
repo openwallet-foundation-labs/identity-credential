@@ -1,9 +1,8 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.cbor.Cbor.decode
-import org.multipaz.cbor.Cbor.encode
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.util.Logger
@@ -28,7 +27,7 @@ class ConnectionMethodWifiAware(
                 other.passphraseInfoPassphrase == passphraseInfoPassphrase &&
                 other.channelInfoChannelNumber == channelInfoChannelNumber &&
                 other.channelInfoOperatingClass == channelInfoOperatingClass &&
-                other.bandInfoSupportedBands == bandInfoSupportedBands
+                other.bandInfoSupportedBands contentEquals bandInfoSupportedBands
     }
 
     override fun toString(): String {
@@ -53,31 +52,25 @@ class ConnectionMethodWifiAware(
     }
 
     override fun toDeviceEngagement(): ByteArray {
-        val builder = CborMap.builder()
-        if (passphraseInfoPassphrase != null) {
-            builder.put(OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE, passphraseInfoPassphrase)
-        }
-        if (channelInfoChannelNumber != null) {
-            builder.put(
-                OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER,
-                channelInfoChannelNumber
-            )
-        }
-        if (channelInfoOperatingClass != null) {
-            builder.put(
-                OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS,
-                channelInfoOperatingClass
-            )
-        }
-        if (bandInfoSupportedBands != null) {
-            builder.put(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands)
-        }
-        return encode(
-            CborArray.builder()
-                .add(METHOD_TYPE)
-                .add(METHOD_MAX_VERSION)
-                .add(builder.end().build())
-                .end().build()
+        return Cbor.encode(
+            buildCborArray {
+                add(METHOD_TYPE)
+                add(METHOD_MAX_VERSION)
+                addCborMap {
+                    if (passphraseInfoPassphrase != null) {
+                        put(OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE, passphraseInfoPassphrase)
+                    }
+                    if (channelInfoChannelNumber != null) {
+                        put(OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER, channelInfoChannelNumber)
+                    }
+                    if (channelInfoOperatingClass != null) {
+                        put(OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS, channelInfoOperatingClass)
+                    }
+                    if (bandInfoSupportedBands != null) {
+                        put(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands)
+                    }
+                }
+            }
         )
     }
 
@@ -100,7 +93,7 @@ class ConnectionMethodWifiAware(
         private const val OPTION_KEY_BAND_INFO_SUPPORTED_BANDS = 3L
 
         internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodWifiAware? {
-            val array = decode(encodedDeviceRetrievalMethod)
+            val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
             require(type == METHOD_TYPE)

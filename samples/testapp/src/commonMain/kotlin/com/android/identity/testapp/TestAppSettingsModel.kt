@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborArray
 import kotlin.Boolean
 
 /**
@@ -92,9 +93,9 @@ class TestAppSettingsModel private constructor(
                         }
 
                         List::class -> {
-                            val builder = CborArray.builder()
-                            (newValue as List<*>).forEach { builder.add(Tstr(it as String)) }
-                            builder.end().build()
+                            buildCborArray {
+                                (newValue as List<*>).forEach { add(Tstr(it as String)) }
+                            }
                         }
 
                         EcCurve::class -> {

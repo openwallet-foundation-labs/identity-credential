@@ -4,6 +4,7 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.annotation.CborSerializationImplemented
+import org.multipaz.cbor.buildCborArray
 
 /**
  * A chain of certificates.
@@ -27,9 +28,8 @@ data class X509CertChain(
         if (certificates.size == 1) {
             return certificates[0].toDataItem()
         } else {
-            CborArray.builder().run {
+            return buildCborArray {
                 certificates.forEach { certificate -> add(certificate.toDataItem()) }
-                return end().build()
             }
         }
     }

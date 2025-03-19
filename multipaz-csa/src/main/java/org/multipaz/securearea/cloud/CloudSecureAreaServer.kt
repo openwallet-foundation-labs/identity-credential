@@ -41,6 +41,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborArray
 import java.nio.ByteBuffer
 import java.util.Locale
 import kotlin.random.Random
@@ -264,19 +265,18 @@ class CloudSecureAreaServer(
                                     remoteHost: String): Pair<Int, ByteArray> {
         val state = E2EEState.decrypt(request1.serverState)
         val dataThatWasSigned = Cbor.encode(
-            CborArray.builder()
-                .add(request1.eDeviceKey.toDataItem())
-                .add(state.cloudNonce!!)
-                .add(request1.deviceNonce)
-                .end()
-                .build()
+            buildCborArray {
+                add(request1.eDeviceKey.toDataItem())
+                add(state.cloudNonce!!)
+                add(request1.deviceNonce)
+            }
         )
-        check(Crypto.checkSignature(
+        Crypto.checkSignature(
             state.context!!.deviceBindingKey!!.ecPublicKey,
             dataThatWasSigned,
             Algorithm.ES256,
             request1.signature
-        )) { "Error verifying signature" }
+        )
 
         state.context!!.deviceAttestation!!.validateAssertion(request1.deviceAssertion)
 
@@ -284,12 +284,11 @@ class CloudSecureAreaServer(
         // sign over it with CloudBindingKey, and send it to the device for verification
         val eCloudKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val dataToSign = Cbor.encode(
-            CborArray.builder()
-                .add(eCloudKey.publicKey.toCoseKey().toDataItem())
-                .add(state.cloudNonce!!)
-                .add(request1.deviceNonce)
-                .end()
-                .build()
+            buildCborArray {
+                add(eCloudKey.publicKey.toCoseKey().toDataItem())
+                add(state.cloudNonce!!)
+                add(request1.deviceNonce)
+            }
         )
         val signature = Crypto.sign(
             state.context!!.cloudBindingKey!!.ecPrivateKey,
@@ -301,11 +300,10 @@ class CloudSecureAreaServer(
         val zab = Crypto.keyAgreement(eCloudKey, request1.eDeviceKey.ecPublicKey)
         val salt = Crypto.digest(Algorithm.SHA256,
             Cbor.encode(
-                CborArray.builder()
-                    .add(request1.deviceNonce)
-                    .add(state.cloudNonce!!)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add(request1.deviceNonce)
+                    add(state.cloudNonce!!)
+                }
             )
         )
         state.skDevice = Crypto.hkdf(
@@ -552,16 +550,15 @@ class CloudSecureAreaServer(
         try {
             val state = decryptSignState(request1.serverState)
             val dataThatWasSignedLocally = Cbor.encode(
-                CborArray.builder()
-                    .add(state.cloudNonce!!)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add(state.cloudNonce!!)
+                }
             )
-            check(Crypto.checkSignature(
+            Crypto.checkSignature(
                 state.keyContext!!.localKey!!.ecPublicKey,
                 dataThatWasSignedLocally,
                 Algorithm.ES256,
-                request1.signature)) { "Error verifying signature" }
+                request1.signature)
 
             if (state.keyContext!!.passphraseRequired) {
                 val lockedOutDuration =
@@ -694,17 +691,16 @@ class CloudSecureAreaServer(
         try {
             val state = KeyAgreementState.decrypt(request1.serverState)
             val dataThatWasSignedLocally = Cbor.encode(
-                CborArray.builder()
-                    .add(state.cloudNonce!!)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add(state.cloudNonce!!)
+                }
             )
-            check(Crypto.checkSignature(
+            Crypto.checkSignature(
                 state.keyContext!!.localKey!!.ecPublicKey,
                 dataThatWasSignedLocally,
                 Algorithm.ES256,
                 request1.signature
-            )) { "Error verifying signature" }
+            )
 
             if (state.keyContext!!.passphraseRequired) {
                 val lockedOutDuration =

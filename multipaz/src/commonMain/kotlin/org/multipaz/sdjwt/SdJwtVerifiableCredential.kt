@@ -103,18 +103,16 @@ class SdJwtVerifiableCredential(
      *        @param body: JwtBody the body of the JWT
      *        @param toBeVerified ByteArray the ByteArray over which the signature was generated
      *        @param signature ByteArray the signature that needs to be checked
-     *        The lambda must return true if the signature verifies, and false otherwise.
+     *        The lambda returns if the signature verifies, throws [SignatureVerificationException] otherwise.
      */
-    fun verifyIssuerSignature(verify: (JwtHeader, JwtBody, ByteArray, EcSignature) -> Boolean) {
+    fun verifyIssuerSignature(verify: (JwtHeader, JwtBody, ByteArray, EcSignature) -> Unit) {
         val headerObj = JwtHeader.fromString(header)
         val bodyObj = JwtBody.fromString(body)
 
         val toBeVerified = "$header.$body".encodeToByteArray()
         val signature = EcSignature.fromCoseEncoded(signature.fromBase64Url())
 
-        if(!verify(headerObj, bodyObj, toBeVerified, signature)) {
-            throw IllegalStateException("Signature verification failed")
-        }
+        verify(headerObj, bodyObj, toBeVerified, signature)
     }
 
     /**
@@ -122,7 +120,7 @@ class SdJwtVerifiableCredential(
      * registered crypto provider will be used to check the signature on the SD-JWT.
      * The caller passes in a public key (which presumably was obtained after inspecting
      * the SD-JWT for the 'iss' claim), and the implementation uses the 'alg' parameter
-     * in the SD-JWT header to determing the signature algorithm to use.
+     * in the SD-JWT header to determine the signature algorithm to use.
      */
     fun verifyIssuerSignature(key: EcPublicKey) {
         verifyIssuerSignature { header, _, toBeVerified, signature ->

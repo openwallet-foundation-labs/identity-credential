@@ -163,13 +163,11 @@ class MigrateFromKeystoreICStoreTest {
             null
         )
         val ecCredentialKeyPublic = credentialKeyPublic.toEcPublicKey(EcCurve.P256)
-        Assert.assertTrue(
-            checkSignature(
-                ecCredentialKeyPublic,
-                dataToSign,
-                Algorithm.ES256,
-                ecSignature
-            )
+        checkSignature(
+            ecCredentialKeyPublic,
+            dataToSign,
+            Algorithm.ES256,
+            ecSignature
         )
     }
 

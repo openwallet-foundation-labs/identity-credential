@@ -18,6 +18,7 @@ package com.android.identity.android.mdoc.transport
 import android.content.Context
 import android.nfc.NdefRecord
 import android.util.Pair
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.mdoc.connectionmethod.ConnectionMethod
 import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
 import org.multipaz.util.Logger
@@ -154,7 +155,7 @@ abstract class DataTransportBle(
                 if (centralClient) uuid else null
             )
             cm.peripheralServerModePsm = psm
-            cm.peripheralServerModeMacAddress = macAddress
+            cm.peripheralServerModeMacAddress = macAddress?.let { ByteString(it) }
             return cm
         }
 
@@ -259,7 +260,7 @@ abstract class DataTransportBle(
                 baos.write(0x07)
                 baos.write(0x1b) // MAC address
                 try {
-                    baos.write(macAddress)
+                    baos.write(macAddress.toByteArray())
                 } catch (e: IOException) {
                     throw IllegalStateException(e)
                 }

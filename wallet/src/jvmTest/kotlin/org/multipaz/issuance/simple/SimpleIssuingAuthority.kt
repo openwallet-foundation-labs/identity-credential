@@ -106,13 +106,13 @@ abstract class SimpleIssuingAuthority(
 
         fun toCbor(): ByteArray {
             return Cbor.encode(
-                CborMap.builder()
-                    .put("authenticationKey", authenticationKey.toCoseKey().toDataItem())
-                    .put("format", format.name)
-                    .put("data", data)
-                    .put("deadline", deadline.toEpochMilliseconds())
-                    .end()
-                    .build())
+                buildCborMap {
+                    put("authenticationKey", authenticationKey.toCoseKey().toDataItem())
+                    put("format", format.name)
+                    put("data", data)
+                    put("deadline", deadline.toEpochMilliseconds())
+                }
+            )
         }
     }
 
@@ -165,24 +165,26 @@ abstract class SimpleIssuingAuthority(
             }
         }
         fun toCbor(): ByteArray {
-            val credentialRequestsBuilder = CborArray.builder()
-            simpleCredentialRequests.forEach() { cpoRequest ->
-                credentialRequestsBuilder.add(RawCbor(cpoRequest.toCbor()))
-            }
-            val ceMapBuilder = CborMap.builder()
-            collectedEvidence.forEach() { evidence ->
-                ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
-            }
-            val mapBuilder = CborMap.builder()
-                .put("registrationResponse", registrationResponse.toDataItem())
-                .put("proofingDeadline", proofingDeadline.toEpochMilliseconds())
-                .put("state", state.ordinal.toLong())
-                .put("collectedEvidence", ceMapBuilder.end().build())
-                .put("credentialRequests", credentialRequestsBuilder.end().build())
-            if (documentConfiguration != null) {
-                mapBuilder.put("documentConfiguration", documentConfiguration!!.toDataItem())
-            }
-            return Cbor.encode(mapBuilder.end().build())
+            return Cbor.encode(
+                buildCborMap {
+                    put("registrationResponse", registrationResponse.toDataItem())
+                    put("proofingDeadline", proofingDeadline.toEpochMilliseconds())
+                    put("state", state.ordinal.toLong())
+                    putCborMap("collectedEvidence") {
+                        collectedEvidence.forEach() { evidence ->
+                            put(evidence.key, RawCbor(evidence.value.toCbor()))
+                        }
+                    }
+                    putCborArray("credentialRequests") {
+                        simpleCredentialRequests.forEach() { cpoRequest ->
+                            add(RawCbor(cpoRequest.toCbor()))
+                        }
+                    }
+                    if (documentConfiguration != null) {
+                        put("documentConfiguration", documentConfiguration!!.toDataItem())
+                    }
+                }
+            )
         }
     }
 

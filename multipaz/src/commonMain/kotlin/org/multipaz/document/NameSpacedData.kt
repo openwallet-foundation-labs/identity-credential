@@ -22,6 +22,8 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.annotation.CborSerializationImplemented
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborMap
 import org.multipaz.cbor.toDataItem
 
 /**
@@ -152,19 +154,19 @@ class NameSpacedData private constructor(
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asBoolean
 
     fun toDataItem(): DataItem {
-        CborMap.builder().run {
+        return buildCborMap {
             for (namespaceName in map.keys) {
-                val innerMapBuilder = putMap(namespaceName)
-                val namespace = map[namespaceName]!!
-                for ((dataElementName, dataElementValue) in namespace) {
-                    innerMapBuilder.putTagged(
-                        dataElementName,
-                        Tagged.ENCODED_CBOR,
-                        Bstr(dataElementValue)
-                    )
+                putCborMap(namespaceName) {
+                    val namespace = map[namespaceName]!!
+                    for ((dataElementName, dataElementValue) in namespace) {
+                        putTagged(
+                            dataElementName,
+                            Tagged.ENCODED_CBOR,
+                            Bstr(dataElementValue)
+                        )
+                    }
                 }
             }
-            return end().build()
         }
     }
 

@@ -20,6 +20,7 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.crypto.Algorithm
@@ -134,21 +135,25 @@ class DeviceRequestParser(
                         readerCertChain = readerCertChainDataItem!!.asX509CertChain
                         val readerKey = readerCertChain!!.certificates[0].ecPublicKey
                         val encodedReaderAuthentication = Cbor.encode(
-                            CborArray.builder()
-                                .add("ReaderAuthentication")
-                                .add(sessionTranscript)
-                                .add(itemsRequestBytesDataItem)
-                                .end()
-                                .build()
+                            buildCborArray {
+                                add("ReaderAuthentication")
+                                add(sessionTranscript)
+                                add(itemsRequestBytesDataItem)
+                            }
                         )
                         val readerAuthenticationBytes =
                             Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
-                        readerAuthenticated = Cose.coseSign1Check(
-                            readerKey,
-                            readerAuthenticationBytes,
-                            readerAuthCoseSign1,
-                            signatureAlgorithm
-                        )
+                        readerAuthenticated = try {
+                            Cose.coseSign1Check(
+                                readerKey,
+                                readerAuthenticationBytes,
+                                readerAuthCoseSign1,
+                                signatureAlgorithm
+                            )
+                            true
+                        } catch (_: Throwable) {
+                            false
+                        }
                     }
                     val requestInfo: MutableMap<String, ByteArray> = HashMap()
                     itemsRequest.getOrNull("requestInfo")?.let { requestInfoDataItem ->

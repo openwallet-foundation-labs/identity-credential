@@ -31,7 +31,10 @@ import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.char
 import kotlinx.datetime.until
+import kotlinx.io.bytestring.buildByteString
 import org.bouncycastle.asn1.ASN1UTCTime
+import org.multipaz.util.appendUInt16
+import org.multipaz.cbor.Uint
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -54,8 +57,10 @@ object DirectAccess {
     private const val CMD_MDOC_DELETE_CREDENTIAL = 0x08
     private const val CMD_MDOC_PROVISION_DATA = 0x09
     private const val CMD_MDOC_SWAP_IN = 0x06
+    private const val CMD_MDOC_GET_INFORMATION = 0x0B
     private const val APDU_RESPONSE_STATUS_OK = 0x9000
     private const val INS_ENVELOPE = 0xC3.toByte()
+    private const val OFFSET_MAX_CRED_SIZE = 2UL
 
     val transport = DirectAccessOmapiTransport
 
@@ -67,8 +72,30 @@ object DirectAccess {
      */
     val maximumCredentialSize: Long
         get() {
-            // TODO: integrate with applet
-            return 32768
+            val apdu: ByteArray?
+            val response: ByteArray?
+            try {
+                transport.closeConnection()
+                transport.openConnection()
+                val scratchpad = ByteArray(2)
+                val bos = ByteArrayOutputStream()
+                // set instruction
+                setShort(scratchpad, 0, CMD_MDOC_GET_INFORMATION.toShort())
+                bos.write(scratchpad)
+                apdu = makeCommandApdu(bos.toByteArray())
+
+                response = transport.sendData(apdu)
+                check(getAPDUResponseStatus(response) == APDU_RESPONSE_STATUS_OK)
+                val mapItem = Cbor.decode(response.copyOfRange(0, response.size-2)).asMap
+                check(mapItem.size == 5) {
+                    "Get information response size should be 5"
+                }
+                return mapItem[Uint(OFFSET_MAX_CRED_SIZE)]?.asNumber!!
+            } catch (e: IOException) {
+                throw java.lang.IllegalStateException("Failed to send Get Information APDU command")
+            } finally {
+                transport.closeConnection()
+            }
         }
 
     private var _isDirectAccessSupported: Boolean? = null
@@ -93,11 +120,6 @@ object DirectAccess {
             _isDirectAccessSupported = true
             return true
         }
-
-    private fun setShort(buf: ByteArray, offset: Int, value: Short) {
-        buf[offset] = (value.toInt() shr 8 and 0xFF).toByte()
-        buf[offset + 1] = (value.toInt() and 0xFF).toByte()
-    }
 
     private fun getAPDUResponseStatus(input: ByteArray): Int {
         // Last two bytes are the status SW0SW1
@@ -124,9 +146,7 @@ object DirectAccess {
         bos.write(0x00)
         // Extended length 3 bytes, starts with 0x00
         if (data.isNotEmpty()) {
-            bos.write(data.size shr 8)
-            bos.write(data.size and 0xFF)
-            // Data
+            bos.write(buildByteString { appendUInt16(data.size) }.toByteArray())
             bos.write(data)
         }
         bos.write(0)
@@ -148,11 +168,10 @@ object DirectAccess {
         }
         val bb = ByteBuffer.allocate(length)
         bb.put(data, offset, length)
-        val scratchpad = ByteArray(2)
+
         val bos = ByteArrayOutputStream()
         // set instruction
-        setShort(scratchpad, 0, cmd.toShort())
-        bos.write(scratchpad)
+        bos.write(buildByteString { appendUInt16(cmd) }.toByteArray())
         bos.write(slot)
         bos.write(operation.toInt())
         bos.write(Cbor.encode((Bstr(bb.array()))))
@@ -191,11 +210,9 @@ object DirectAccess {
             transport.closeConnection()
             transport.openConnection()
 
-            val scratchpad = ByteArray(2)
             val bos = ByteArrayOutputStream()
             // set instruction
-            setShort(scratchpad, 0, CMD_MDOC_CREATE.toShort())
-            bos.write(scratchpad)
+            bos.write(buildByteString {appendUInt16(CMD_MDOC_CREATE)}.toByteArray())
             apdu = makeCommandApdu(bos.toByteArray())
 
             response = transport.sendData(apdu)
@@ -227,10 +244,8 @@ object DirectAccess {
             transport.closeConnection()
             transport.openConnection()
 
-            val scratchpad = ByteArray(2)
             val bos = ByteArrayOutputStream()
-            setShort(scratchpad, 0, CMD_MDOC_DELETE_CREDENTIAL.toShort())
-            bos.write(scratchpad)
+            bos.write(buildByteString {appendUInt16(CMD_MDOC_DELETE_CREDENTIAL)}.toByteArray())
             bos.write(documentSlot)
             val apdu = makeCommandApdu(bos.toByteArray())
 
@@ -303,11 +318,9 @@ object DirectAccess {
             transport.closeConnection()
             transport.openConnection()
 
-            val scratchpad = ByteArray(2)
             val bos = ByteArrayOutputStream()
             // set instruction
-            setShort(scratchpad, 0, CMD_MDOC_CREATE_PRESENTATION_PKG.toShort())
-            bos.write(scratchpad)
+            bos.write(buildByteString { appendUInt16(CMD_MDOC_CREATE_PRESENTATION_PKG) }.toByteArray())
             bos.write(documentSlot)
 
             // TODO: @venkat the validity duration should be set during certification as opposed to creation
@@ -316,13 +329,11 @@ object DirectAccess {
             val notAfterBytes = encodeValidityTime(now + 3650.days)
 
             // Set Not Before
-            setShort(scratchpad, 0, notBeforeBytes.size.toShort())
-            bos.write(scratchpad)
+            bos.write(buildByteString { appendUInt16(notBeforeBytes.size) }.toByteArray())
             bos.write(notBeforeBytes)
 
             // Set Not After
-            setShort(scratchpad, 0, notAfterBytes.size.toShort())
-            bos.write(scratchpad)
+            bos.write(buildByteString { appendUInt16(notAfterBytes.size) }.toByteArray())
             bos.write(notAfterBytes)
             val apdu = makeCommandApdu(bos.toByteArray())
 

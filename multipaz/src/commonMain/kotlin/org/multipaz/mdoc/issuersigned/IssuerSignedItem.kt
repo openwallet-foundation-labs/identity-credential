@@ -8,6 +8,7 @@ import org.multipaz.cbor.Tagged
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborMap
 
 /**
  * A data structure representing `IssuerSignedItem` in ISO/IEC 18013-5:2021.
@@ -36,13 +37,12 @@ data class IssuerSignedItem(
      * @return a [DataItem] for `IssuerSignedItem` CBOR.
      */
     fun toDataItem(): DataItem {
-        return CborMap.builder()
-            .put("digestID", digestId)
-            .put("random", random.toByteArray())
-            .put("elementIdentifier", dataElementIdentifier)
-            .put("elementValue", dataElementValue)
-            .end()
-            .build()
+        return buildCborMap {
+            put("digestID", digestId)
+            put("random", random.toByteArray())
+            put("elementIdentifier", dataElementIdentifier)
+            put("elementValue", dataElementValue)
+        }
     }
     
     companion object {

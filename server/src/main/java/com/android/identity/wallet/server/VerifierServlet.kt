@@ -82,6 +82,11 @@ import kotlinx.serialization.json.putJsonObject
 import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
 import net.minidev.json.JSONStyle
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborMap
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.URLEncoder
@@ -229,12 +234,12 @@ class VerifierServlet : BaseHttpServlet() {
         val readerRootKeyIssuer: String,
     ) {
         fun toCbor() = Cbor.encode(
-            CborArray.builder()
-                .add(readerRootKey.toCoseKey().toDataItem())
-                .add(readerRootKeyCertificates.toDataItem())
-                .add(readerRootKeySignatureAlgorithm.coseAlgorithmIdentifier!!)
-                .add(readerRootKeyIssuer)
-                .end().build()
+            buildCborArray {
+                add(readerRootKey.toCoseKey().toDataItem())
+                add(readerRootKeyCertificates.toDataItem())
+                add(readerRootKeySignatureAlgorithm.coseAlgorithmIdentifier!!)
+                add(readerRootKeyIssuer)
+            }
         )
 
         companion object {
@@ -703,30 +708,27 @@ class VerifierServlet : BaseHttpServlet() {
         val encapsulatedPublicKey = encryptionParameters[Tstr("pkEM")]!!.asCoseKey.ecPublicKey
         val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
 
-        val arfEncryptionInfo = CborMap.builder()
-            .put("nonce", session.nonce.toByteArray())
-            .put("readerPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
-            .end()
-            .build()
-        val encryptionInfo = CborArray.builder()
-            .add("ARFEncryptionv2")
-            .add(arfEncryptionInfo)
-            .end()
-            .build()
+        val arfEncryptionInfo = buildCborMap {
+            put("nonce", session.nonce.toByteArray())
+            put("readerPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
+        }
+        val encryptionInfo = buildCborArray {
+            add("ARFEncryptionv2")
+            add(arfEncryptionInfo)
+        }
         val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
 
         session.sessionTranscript =
             Cbor.encode(
-                CborArray.builder()
-                    .add(Simple.NULL) // DeviceEngagementBytes
-                    .add(Simple.NULL) // EReaderKeyBytes
-                    .addArray() // BrowserHandover
-                    .add("ARFHandoverv2")
-                    .add(base64EncryptionInfo)
-                    .add(session.origin)
-                    .end()
-                    .end()
-                    .build()
+                buildCborArray {
+                    add(Simple.NULL) // DeviceEngagementBytes
+                    add(Simple.NULL) // EReaderKeyBytes
+                    addCborArray {
+                        add("ARFHandoverv2")
+                        add(base64EncryptionInfo)
+                        add(session.origin)
+                    }
+                }
             )
 
         session.responseWasEncrypted = true
@@ -760,34 +762,30 @@ class VerifierServlet : BaseHttpServlet() {
         )
         val cipherText = encryptionParameters[Tstr("cipherText")]!!.asBstr
 
-        val arfEncryptionInfo = CborMap.builder()
-            .put("nonce", session.nonce.toByteArray())
-            .put("recipientPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
-            .end()
-            .build()
-        val encryptionInfo = CborArray.builder()
-            .add("dcapi")
-            .add(arfEncryptionInfo)
-            .end()
-            .build()
+        val arfEncryptionInfo = buildCborMap {
+            put("nonce", session.nonce.toByteArray())
+            put("recipientPublicKey", session.encryptionKey.publicKey.toCoseKey().toDataItem())
+        }
+        val encryptionInfo = buildCborArray {
+            add("dcapi")
+            add(arfEncryptionInfo)
+        }
         val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
 
-        val dcapiInfo = CborArray.builder()
-            .add(base64EncryptionInfo)
-            .add(session.origin)
-            .end()
-            .build()
+        val dcapiInfo = buildCborArray {
+            add(base64EncryptionInfo)
+            add(session.origin)
+        }
 
         session.sessionTranscript = Cbor.encode(
-            CborArray.builder()
-                .add(Simple.NULL) // DeviceEngagementBytes
-                .add(Simple.NULL) // EReaderKeyBytes
-                .addArray() // BrowserHandover
-                .add("dcapi")
-                .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
-                .end()
-                .end()
-                .build()
+            buildCborArray {
+                add(Simple.NULL) // DeviceEngagementBytes
+                add(Simple.NULL) // EReaderKeyBytes
+                addCborArray {
+                    add("dcapi")
+                    add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
+                }
+            }
         )
 
         session.responseWasEncrypted = true
@@ -827,23 +825,21 @@ class VerifierServlet : BaseHttpServlet() {
                     "web-origin:${session.origin}"
                 }
                 val handoverInfo = Cbor.encode(
-                    CborArray.builder()
-                        .add(session.origin)
-                        .add(effectiveClientId)
-                        .add(session.nonce.toByteArray().toBase64Url())
-                        .end()
-                        .build()
+                    buildCborArray {
+                        add(session.origin)
+                        add(effectiveClientId)
+                        add(session.nonce.toByteArray().toBase64Url())
+                    }
                 )
                 session.sessionTranscript = Cbor.encode(
-                    CborArray.builder()
-                        .add(Simple.NULL) // DeviceEngagementBytes
-                        .add(Simple.NULL) // EReaderKeyBytes
-                        .addArray()
-                        .add("OpenID4VPDCAPIHandover")
-                        .add(Crypto.digest(Algorithm.SHA256, handoverInfo))
-                        .end()
-                        .end()
-                        .build()
+                    buildCborArray {
+                        add(Simple.NULL) // DeviceEngagementBytes
+                        add(Simple.NULL) // EReaderKeyBytes
+                        addCborArray {
+                            add("OpenID4VPDCAPIHandover")
+                            add(Crypto.digest(Algorithm.SHA256, handoverInfo))
+                        }
+                    }
                 )
                 Logger.iCbor(TAG, "handoverInfo", handoverInfo)
                 Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
@@ -1298,26 +1294,36 @@ private fun createSessionTranscriptOpenID4VP(
     authorizationRequestNonce: String?,
     mdocGeneratedNonce: String?
 ): ByteArray {
-    val clientIdBuilder = CborArray.builder().add(clientId)
-    mdocGeneratedNonce?.let { clientIdBuilder.add(it) }
-    val clientIdHash = Crypto.digest(Algorithm.SHA256, Cbor.encode(clientIdBuilder.end().build()))
+    val clientIdHash = Crypto.digest(
+        Algorithm.SHA256,
+        Cbor.encode(
+            buildCborArray {
+                add(clientId)
+                mdocGeneratedNonce?.let { add(it) }
+            }
+        )
+    )
 
-    val responseUriBuilder = CborArray.builder().add(responseUri)
-    mdocGeneratedNonce?.let { responseUriBuilder.add(it) }
-    val responseUriHash = Crypto.digest(Algorithm.SHA256, Cbor.encode(responseUriBuilder.end().build()))
-
-    val oid4vpHandoverBuilder = CborArray.builder()
-        .add(clientIdHash)
-        .add(responseUriHash)
-    authorizationRequestNonce?.let { oid4vpHandoverBuilder.add(it) }
+    val responseUriHash = Crypto.digest(
+        Algorithm.SHA256,
+        Cbor.encode(
+            buildCborArray {
+                add(responseUri)
+                mdocGeneratedNonce?.let { add(it) }
+            }
+        )
+    )
 
     return Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL)
-            .add(Simple.NULL)
-            .add(oid4vpHandoverBuilder.end().build())
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL)
+            add(Simple.NULL)
+            addCborArray {
+                add(clientIdHash)
+                add(responseUriHash)
+                authorizationRequestNonce?.let { add(it) }
+            }
+        }
     )
 }
 
@@ -1571,29 +1577,25 @@ private fun mdocCalcDcRequestStringArf(
     readerAuthKey: EcPrivateKey,
     readerAuthKeyCertification: X509CertChain
 ): String {
-    val arfEncryptionInfo = CborMap.builder()
-        .put("nonce", nonce.toByteArray())
-        .put("readerPublicKey", readerPublicKey.toCoseKey().toDataItem())
-        .end()
-        .build()
-    val encryptionInfo = CborArray.builder()
-        .add("ARFEncryptionv2")
-        .add(arfEncryptionInfo)
-        .end()
-        .build()
+    val encryptionInfo = buildCborArray {
+        add("ARFEncryptionv2")
+        addCborMap {
+            put("nonce", nonce.toByteArray())
+            put("readerPublicKey", readerPublicKey.toCoseKey().toDataItem())
+        }
+    }
     val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
 
     val sessionTranscript = Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL) // DeviceEngagementBytes
-            .add(Simple.NULL) // EReaderKeyBytes
-            .addArray() // BrowserHandover
-            .add("ARFHandoverv2")
-            .add(base64EncryptionInfo)
-            .add(origin)
-            .end()
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL) // DeviceEngagementBytes
+            add(Simple.NULL) // EReaderKeyBytes
+            addCborArray {
+                add("ARFHandoverv2")
+                add(base64EncryptionInfo)
+                add(origin)
+            }
+        }
     )
 
     val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
@@ -1631,34 +1633,28 @@ private fun mdocCalcDcRequestStringMdocApi(
     readerAuthKey: EcPrivateKey,
     readerAuthKeyCertification: X509CertChain
 ): String {
-    val encryptionParameters = CborMap.builder()
-        .put("nonce", nonce.toByteArray())
-        .put("recipientPublicKey", readerPublicKey.toCoseKey().toDataItem())
-        .end()
-        .build()
-    val encryptionInfo = CborArray.builder()
-        .add("dcapi")
-        .add(encryptionParameters)
-        .end()
-        .build()
+    val encryptionInfo = buildCborArray {
+        add("dcapi")
+        addCborMap {
+            put("nonce", nonce.toByteArray())
+            put("recipientPublicKey", readerPublicKey.toCoseKey().toDataItem())
+        }
+    }
     val base64EncryptionInfo = Cbor.encode(encryptionInfo).toBase64Url()
-
-    val dcapiInfo = CborArray.builder()
-        .add(base64EncryptionInfo)
-        .add(origin)
-        .end()
-        .build()
+    val dcapiInfo = buildCborArray {
+        add(base64EncryptionInfo)
+        add(origin)
+    }
 
     val sessionTranscript = Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL) // DeviceEngagementBytes
-            .add(Simple.NULL) // EReaderKeyBytes
-            .addArray() // BrowserHandover
-            .add("dcapi")
-            .add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
-            .end()
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL) // DeviceEngagementBytes
+            add(Simple.NULL) // EReaderKeyBytes
+            addCborArray {
+                add("dcapi")
+                add(Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo)))
+            }
+        }
     )
 
     val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
@@ -1867,26 +1863,24 @@ private fun generateBrowserSessionTranscript(
     //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
     //   calls for.
     val originInfoBytes = Cbor.encode(
-        CborMap.builder()
-            .put("cat", 1)
-            .put("type", 1)
-            .putMap("details")
-            .put("baseUrl", origin)
-            .end()
-            .end()
-            .build()
+        buildCborMap {
+            put("cat", 1)
+            put("type", 1)
+            putCborMap("details") {
+                put("baseUrl", origin)
+            }
+        }
     )
     return Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL) // DeviceEngagementBytes
-            .add(Simple.NULL) // EReaderKeyBytes
-            .addArray() // BrowserHandover
-            .add(BROWSER_HANDOVER_V1)
-            .add(nonce.toByteArray())
-            .add(originInfoBytes)
-            .add(requesterIdHash)
-            .end()
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL) // DeviceEngagementBytes
+            add(Simple.NULL) // EReaderKeyBytes
+            addCborArray {
+                add(BROWSER_HANDOVER_V1)
+                add(nonce.toByteArray())
+                add(originInfoBytes)
+                add(requesterIdHash)
+            }
+        }
     )
 }

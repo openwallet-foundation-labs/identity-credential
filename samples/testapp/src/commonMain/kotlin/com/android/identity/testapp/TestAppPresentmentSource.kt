@@ -1,6 +1,6 @@
 package org.multipaz.testapp
 
-import org.multipaz.models.ui.presentment.PresentmentSource
+import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -13,7 +13,7 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustPoint
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.multipaz.appsupport.ui.presentment.CredentialForPresentment
+import org.multipaz.models.presentment.CredentialForPresentment
 
 class TestAppPresentmentSource(
     val app: App

@@ -4,12 +4,15 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
+import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
 
@@ -97,22 +100,21 @@ object Cose {
         encodedProtectedHeaders: ByteArray,
         dataToBeSigned: ByteArray,
     ): ByteArray {
-        val arrayBuilder = CborArray.builder().apply {
-            add("Signature1")
-            add(encodedProtectedHeaders)
+        return Cbor.encode(
+            buildCborArray {
+                add("Signature1")
+                add(encodedProtectedHeaders)
 
-            // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
-            // so external_aad is the empty bstr
-            val emptyExternalAad = ByteArray(0)
-            add(emptyExternalAad)
+                // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
+                // so external_aad is the empty bstr
+                val emptyExternalAad = ByteArray(0)
+                add(emptyExternalAad)
 
-            // Next field is the payload, independently of how it's transported (RFC
-            // 8152 section 4.4).
-            add(dataToBeSigned)
-            end()
-        }
-
-        return Cbor.encode(arrayBuilder.end().build())
+                // Next field is the payload, independently of how it's transported (RFC
+                // 8152 section 4.4).
+                add(dataToBeSigned)
+            }
+        )
     }
 
     /**
@@ -122,26 +124,26 @@ object Cose {
      * @param detachedData detached data, if any.
      * @param signature the COSE_Sign1 object.
      * @param signatureAlgorithm the signature algorithm to use.
-     * @throws IllegalArgumentException if not exactly one of `detachedData` and
-     * `signature.payload` are non-`null`.
-     * @return whether the signature is valid and was made with the private key corresponding to the
-     * given public key.
+     * @throws IllegalArgumentException if not exactly one of `detachedData` and `signature.payload` are non-`null`.
+     * @throws SignatureVerificationException if the signature check fails.
      */
     fun coseSign1Check(
         publicKey: EcPublicKey,
         detachedData: ByteArray?,
         signature: CoseSign1,
         signatureAlgorithm: Algorithm
-    ): Boolean {
+    ) {
         require(
             (detachedData != null && signature.payload == null) ||
                     (detachedData == null && signature.payload != null)
         )
         val encodedProtectedHeaders =
             if (signature.protectedHeaders.isNotEmpty()) {
-                val phb = CborMap.builder()
-                signature.protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
-                Cbor.encode(phb.end().build())
+                Cbor.encode(
+                    buildCborMap {
+                        signature.protectedHeaders.forEach { (label, di) -> put(label.toDataItem(), di) }
+                    }
+                )
             } else {
                 byteArrayOf()
             }
@@ -149,8 +151,7 @@ object Cose {
             encodedProtectedHeaders = encodedProtectedHeaders,
             dataToBeSigned = detachedData ?: signature.payload!!
         )
-
-        return Crypto.checkSignature(
+        Crypto.checkSignature(
             publicKey,
             toBeSigned,
             signatureAlgorithm,
@@ -206,9 +207,11 @@ object Cose {
                 signingAlgorithmToConvey.coseAlgorithmIdentifier.toDataItem()
         }
 
-        val phb = CborMap.builder()
-        adjustedProtectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
-        val encodedProtectedHeaders = Cbor.encode(phb.end().build())
+        val encodedProtectedHeaders = Cbor.encode(
+            buildCborMap {
+                adjustedProtectedHeaders.forEach { (label, di) -> put(label.toDataItem(), di) }
+            }
+        )
         val toBeSigned = coseBuildToBeSigned(encodedProtectedHeaders, message)
         val signature = secureArea.sign(alias, toBeSigned, keyUnlockData)
 
@@ -247,9 +250,11 @@ object Cose {
         unprotectedHeaders: Map<CoseLabel, DataItem>
     ): CoseSign1 {
         val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
-            val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
-            Cbor.encode(phb.end().build())
+            Cbor.encode(
+                buildCborMap {
+                    protectedHeaders.forEach { (label, di) -> put(label.toDataItem(), di) }
+                }
+            )
         } else {
             byteArrayOf()
         }
@@ -286,9 +291,11 @@ object Cose {
         unprotectedHeaders: Map<CoseLabel, DataItem>,
     ): CoseMac0 {
         val encodedProtectedHeaders = if (protectedHeaders.size > 0) {
-            val phb = CborMap.builder()
-            protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem(), di) }
-            Cbor.encode(phb.end().build())
+            Cbor.encode(
+                buildCborMap {
+                    protectedHeaders.forEach { (label, di) -> put(label.toDataItem(), di) }
+                }
+            )
         } else {
             byteArrayOf()
         }
@@ -306,16 +313,16 @@ object Cose {
         encodedProtectedHeaders: ByteArray,
         data: ByteArray,
     ): ByteArray {
-        val arrayBuilder = CborArray.builder().apply {
-            add("MAC0")
-            add(encodedProtectedHeaders)
-            // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
-            // so external_aad is the empty bstr
-            val emptyExternalAad = ByteArray(0)
-            add(emptyExternalAad)
-            add(data)
-        }
-
-        return Cbor.encode(arrayBuilder.end().build())
+        return Cbor.encode(
+            buildCborArray {
+                add("MAC0")
+                add(encodedProtectedHeaders)
+                // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
+                // so external_aad is the empty bstr
+                val emptyExternalAad = ByteArray(0)
+                add(emptyExternalAad)
+                add(data)
+            }
+        )
     }
 }

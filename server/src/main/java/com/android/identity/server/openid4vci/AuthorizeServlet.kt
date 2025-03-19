@@ -22,6 +22,10 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborMap
 import java.net.URI
 import kotlin.time.Duration.Companion.minutes
 
@@ -182,26 +186,24 @@ private fun generateBrowserSessionTranscript(
     //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
     //   calls for.
     val originInfoBytes = Cbor.encode(
-        CborMap.builder()
-            .put("cat", 1)
-            .put("type", 1)
-            .putMap("details")
-            .put("baseUrl", origin)
-            .end()
-            .end()
-            .build()
+        buildCborMap {
+            put("cat", 1)
+            put("type", 1)
+            putCborMap("details") {
+                put("baseUrl", origin)
+            }
+        }
     )
     return Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL) // DeviceEngagementBytes
-            .add(Simple.NULL) // EReaderKeyBytes
-            .addArray() // BrowserHandover
-            .add(BROWSER_HANDOVER_V1)
-            .add(nonce)
-            .add(originInfoBytes)
-            .add(requesterIdHash)
-            .end()
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL) // DeviceEngagementBytes
+            add(Simple.NULL) // EReaderKeyBytes
+            addCborArray {
+                add(BROWSER_HANDOVER_V1)
+                add(nonce)
+                add(originInfoBytes)
+                add(requesterIdHash)
+            }
+        }
     )
 }

@@ -28,10 +28,7 @@ data class UUID(
     companion object {
         fun fromByteArray(encodedUuid: ByteArray): UUID {
             check(encodedUuid.size == 16)
-            return UUID(
-                encodedUuid.sliceArray(IntRange(0, 7)).parseULong(), 
-                encodedUuid.sliceArray(IntRange(8, 15)).parseULong()
-            )
+            return UUID(encodedUuid.getUInt64(0), encodedUuid.getUInt64(8))
         }
 
         fun fromString(str: String): UUID {
@@ -73,16 +70,4 @@ internal fun ByteStringBuilder.append(value: ULong) = apply {
     append((value shr 16).and(0xffUL).toByte())
     append((value shr 8).and(0xffUL).toByte())
     append((value shr 0).and(0xffUL).toByte())
-}
-
-internal fun ByteArray.parseULong(): ULong {
-    check(size == 8)
-    return (this[0].toULong().and(0xffUL) shl 56) +
-            (this[1].toULong().and(0xffUL) shl 48) +
-            (this[2].toULong().and(0xffUL) shl 40) +
-            (this[3].toULong().and(0xffUL) shl 32) +
-            (this[4].toULong().and(0xffUL) shl 24) +
-            (this[5].toULong().and(0xffUL) shl 16) +
-            (this[6].toULong().and(0xffUL) shl 8) +
-            this[7].toULong().and(0xffUL)
 }

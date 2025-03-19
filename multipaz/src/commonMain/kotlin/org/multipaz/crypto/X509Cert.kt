@@ -59,9 +59,9 @@ class X509Cert(
      * Checks if the certificate was signed with a given key.
      *
      * @param publicKey the key to check the signature with.
-     * @return `true` if the certificate was signed with the given key, `false` otherwise.
+     * @throws SignatureVerificationException if the signature check fails.
      */
-    fun verify(publicKey: EcPublicKey): Boolean {
+    fun verify(publicKey: EcPublicKey) {
         val ecSignature = when (signatureAlgorithm) {
             Algorithm.ES256, Algorithm.ESP256, Algorithm.ESB256,
             Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB384, Algorithm.ESB320,
@@ -76,7 +76,7 @@ class X509Cert(
             }
             else -> throw IllegalArgumentException("Unsupported algorithm $signatureAlgorithm")
         }
-        return Crypto.checkSignature(
+        Crypto.checkSignature(
             publicKey,
             tbsCertificate,
             signatureAlgorithm,

@@ -34,6 +34,8 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.crypto.SignatureVerificationException
 
 /**
  * Helper class for parsing the bytes of `DeviceResponse`
@@ -134,12 +136,17 @@ class DeviceResponseParser(
                 ]!!.asNumber.toInt()
             )
             val documentSigningKey = issuerAuthorityCertChain.certificates[0].ecPublicKey
-            val issuerSignedAuthenticated = Cose.coseSign1Check(
-                documentSigningKey,
-                null,
-                issuerAuth,
-                signatureAlgorithm
-            )
+            val issuerSignedAuthenticated = try {
+                Cose.coseSign1Check(
+                    documentSigningKey,
+                    null,
+                    issuerAuth,
+                    signatureAlgorithm
+                )
+                true
+            } catch (_: Throwable) {
+                false
+            }
             val encodedMobileSecurityObject = Cbor.decode(issuerAuth.payload!!).asTagged.asBstr
             val parsedMso = MobileSecurityObjectParser(encodedMobileSecurityObject).parse()
 
@@ -224,13 +231,12 @@ class DeviceResponseParser(
             val nameSpacesBytes = deviceSigned["nameSpaces"]
             val nameSpaces = nameSpacesBytes.asTaggedEncodedCbor
             val deviceAuth = deviceSigned["deviceAuth"]
-            val deviceAuthentication = CborArray.builder()
-                .add("DeviceAuthentication")
-                .add(RawCbor(encodedSessionTranscript))
-                .add(docType)
-                .add(nameSpacesBytes)
-                .end()
-                .build()
+            val deviceAuthentication = buildCborArray {
+                add("DeviceAuthentication")
+                add(RawCbor(encodedSessionTranscript))
+                add(docType)
+                add(nameSpacesBytes)
+            }
             val deviceAuthenticationBytes = Cbor.encode(
                 Tagged(24, Bstr(Cbor.encode(deviceAuthentication)))
             )
@@ -247,12 +253,17 @@ class DeviceResponseParser(
                         CoseNumberLabel(Cose.COSE_LABEL_ALG)
                     ]!!.asNumber.toInt()
                 )
-                deviceSignedAuthenticated = Cose.coseSign1Check(
-                    deviceKey,
-                    deviceAuthenticationBytes,
-                    deviceSignatureCoseSign1,
-                    signatureAlgorithm
-                )
+                deviceSignedAuthenticated = try {
+                    Cose.coseSign1Check(
+                        deviceKey,
+                        deviceAuthenticationBytes,
+                        deviceSignatureCoseSign1,
+                        signatureAlgorithm
+                    )
+                    true
+                } catch (_: SignatureVerificationException) {
+                    false
+                }
                 builder.setDeviceSignedAuthenticatedViaSignature(true)
             } else {
                 val deviceMacDataItem = deviceAuth.getOrNull("deviceMac")

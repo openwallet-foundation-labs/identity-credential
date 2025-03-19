@@ -49,6 +49,7 @@ import kotlinx.io.bytestring.encodeToByteString
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.Crypto
 import java.io.ByteArrayInputStream
 import java.io.IOException
@@ -669,16 +670,17 @@ class AndroidKeystoreSecureArea private constructor(
         settings: AndroidKeystoreCreateKeySettings,
         attestation: X509CertChain
     ) {
-        val map = CborMap.builder()
-        map.put("algorithm", settings.algorithm.name)
-        if (settings.attestKeyAlias != null) {
-            map.put("attestKeyAlias", settings.attestKeyAlias)
+        val value = buildCborMap {
+            put("algorithm", settings.algorithm.name)
+            if (settings.attestKeyAlias != null) {
+                put("attestKeyAlias", settings.attestKeyAlias)
+            }
+            put("userAuthenticationRequired", settings.userAuthenticationRequired)
+            put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
+            put("useStrongBox", settings.useStrongBox)
+            put("attestation", attestation.toDataItem())
         }
-        map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
-        map.put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
-        map.put("useStrongBox", settings.useStrongBox)
-        map.put("attestation", attestation.toDataItem())
-        storageTable.update(alias, ByteString(Cbor.encode(map.end().build())), partitionId)
+        storageTable.update(alias, ByteString(Cbor.encode(value)), partitionId)
     }
 
     /**

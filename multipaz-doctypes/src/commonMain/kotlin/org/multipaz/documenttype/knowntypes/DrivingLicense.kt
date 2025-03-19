@@ -29,6 +29,8 @@ import org.multipaz.documenttype.StringOption
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.fromHex
 import kotlinx.datetime.LocalDate
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 
 /**
  * Object containing the metadata of the Driving License
@@ -146,19 +148,18 @@ object DrivingLicense {
                 true,
                 MDL_NAMESPACE,
                 Icon.DIRECTIONS_CAR,
-                CborArray.builder()
-                    .addMap()
-                    .put("vehicle_category_code", "A")
-                    .put("issue_date", Tagged(1004, Tstr("2018-08-09")))
-                    .put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-                    .end()
-                    .addMap()
-                    .put("vehicle_category_code", "B")
-                    .put("issue_date", Tagged(1004, Tstr("2017-02-23")))
-                    .put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-                    .end()
-                    .end()
-                    .build()
+                buildCborArray {
+                    addCborMap {
+                        put("vehicle_category_code", "A")
+                        put("issue_date", Tagged(1004, Tstr("2018-08-09")))
+                        put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
+                    }
+                    addCborMap {
+                        put("vehicle_category_code", "B")
+                        put("issue_date", Tagged(1004, Tstr("2017-02-23")))
+                        put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
+                    }
+                }
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.DISTINGUISHING_SIGN_ISO_IEC_18013_1_ANNEX_F),

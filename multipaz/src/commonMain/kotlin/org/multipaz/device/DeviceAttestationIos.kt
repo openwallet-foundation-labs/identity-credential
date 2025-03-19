@@ -18,11 +18,13 @@ import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.crypto.EcSignature
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.util.readInt16
-import org.multipaz.util.readInt32
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.util.getInt16
+import org.multipaz.util.getInt32
+import org.multipaz.util.getUInt16
+import org.multipaz.crypto.SignatureVerificationException
 
 /** On iOS device attestation is the result of Apple's DeviceCheck API. */
 data class DeviceAttestationIos(
@@ -56,8 +58,10 @@ data class DeviceAttestationIos(
         } catch (e: Throwable) {
             throw DeviceAttestationException("Error validating certificate chain", e)
         }
-        if (!x5c.last().verify(APPLE_ROOT_CERTIFICATE.ecPublicKey)) {
-            throw IllegalArgumentException("Invalid certificate chain")
+        try {
+            x5c.last().verify(APPLE_ROOT_CERTIFICATE.ecPublicKey)
+        } catch (e: SignatureVerificationException) {
+            throw IllegalArgumentException("Invalid certificate chain", e)
         }
 
         // Web Authentication "Authenticator" Data defined here
@@ -141,7 +145,7 @@ data class DeviceAttestationIos(
 
         val attestationDict = Cbor.decode(blob.toByteArray())
         val attestationData = attestationDict["authData"].asBstr
-        val credentialIdLength = attestationData.readInt16(CREDENTIAL_ID_LENGTH_OFFSET)
+        val credentialIdLength = attestationData.getInt16(CREDENTIAL_ID_LENGTH_OFFSET)
         val credentialPublicKeyOffset = CREDENTIAL_ID_OFFSET + credentialIdLength
         val (_, publicKeyItem) = Cbor.decode(attestationData, credentialPublicKeyOffset)
         val publicKey = CoseKey.fromDataItem(publicKeyItem).ecPublicKey
@@ -158,13 +162,10 @@ data class DeviceAttestationIos(
             append(clientHash)
         }.toByteString()
         val hash = Crypto.digest(Algorithm.SHA256, composite.toByteArray())
-        val valid = try {
+        try {
             Crypto.checkSignature(publicKey, hash, Algorithm.ES256, signature)
-        } catch (err: Throwable) {
-            throw DeviceAssertionException("Error validating signature", err)
-        }
-        if (!valid) {
-            throw DeviceAssertionException("Signature is not valid")
+        } catch (e: Throwable) {
+            throw DeviceAssertionException("Error validating signature", e)
         }
     }
 
@@ -219,7 +220,7 @@ data class DeviceAttestationIos(
         private fun parseAuthData(authData: ByteArray): ParsedAuthData {
             val rpIdHash = ByteString(authData.sliceArray(0..<RP_ID_HASH_SIZE))
             val flags = authData[FLAGS_OFFSET].toInt() and 0xFF
-            val signCount = authData.readInt32(SIGN_COUNT_OFFSET)
+            val signCount = authData.getInt32(SIGN_COUNT_OFFSET)
             if (signCount != 0) {
                 throw DeviceAttestationException("Not a freshly-created attestation")
             }
@@ -228,7 +229,7 @@ data class DeviceAttestationIos(
             }
             val aaguid = ByteString(authData.sliceArray(
                 AAGUID_OFFSET ..< AAGUID_OFFSET + AAGUID_SIZE))
-            val credentialIdLength = authData.readInt16(CREDENTIAL_ID_LENGTH_OFFSET)
+            val credentialIdLength = authData.getInt16(CREDENTIAL_ID_LENGTH_OFFSET)
             val credentialPublicKeyOffset = CREDENTIAL_ID_OFFSET + credentialIdLength
             val credentialId = ByteString(authData.sliceArray(
                 CREDENTIAL_ID_OFFSET..<credentialPublicKeyOffset))
@@ -254,4 +255,3 @@ data class DeviceAttestationIos(
         }
     }
 }
-

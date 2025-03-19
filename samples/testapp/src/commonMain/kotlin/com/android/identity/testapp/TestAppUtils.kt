@@ -53,6 +53,8 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -118,12 +120,11 @@ object TestAppUtils {
     ): ByteArray {
         val encodedEReaderKey = Cbor.encode(eReaderKey.toCoseKey().toDataItem())
         return Cbor.encode(
-            CborArray.builder()
-                .add(Tagged(24, Bstr(encodedDeviceEngagement)))
-                .add(Tagged(24, Bstr(encodedEReaderKey)))
-                .add(handover)
-                .end()
-                .build()
+            buildCborArray {
+                add(Tagged(24, Bstr(encodedDeviceEngagement)))
+                add(Tagged(24, Bstr(encodedEReaderKey)))
+                add(handover)
+            }
         )
     }
 
@@ -350,7 +351,10 @@ object TestAppUtils {
             CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH,
             CREDENTIAL_DOMAIN_MDOC_MAC_NO_USER_AUTH
         )) {
-            val userAuthenticationRequired = (domain == CREDENTIAL_DOMAIN_MDOC_USER_AUTH)
+            val userAuthenticationRequired = when (domain) {
+                CREDENTIAL_DOMAIN_MDOC_USER_AUTH, CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH -> true
+                else -> false
+            }
             val algorithm = when (domain) {
                 CREDENTIAL_DOMAIN_MDOC_USER_AUTH -> deviceKeyAlgorithm
                 CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH -> deviceKeyAlgorithm
@@ -417,11 +421,10 @@ object TestAppUtils {
                     ).toDataItem()
                 )
                 val issuerProvidedAuthenticationData = Cbor.encode(
-                    CborMap.builder()
-                        .put("nameSpaces", issuerNamespaces.toDataItem())
-                        .put("issuerAuth", RawCbor(encodedIssuerAuth))
-                        .end()
-                        .build()
+                    buildCborMap {
+                        put("nameSpaces", issuerNamespaces.toDataItem())
+                        put("issuerAuth", RawCbor(encodedIssuerAuth))
+                    }
                 )
 
                 // Now that we have issuer-provided authentication data we certify the authentication key.

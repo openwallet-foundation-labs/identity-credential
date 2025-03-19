@@ -9,7 +9,6 @@ import org.multipaz.util.UUID
 import org.multipaz.util.toByteArray
 import org.multipaz.util.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import platform.Foundation.NSData
@@ -108,17 +107,19 @@ actual object Crypto {
         message: ByteArray,
         algorithm: Algorithm,
         signature: EcSignature
-    ): Boolean {
+    ) {
         val raw = when (publicKey) {
             is EcPublicKeyDoubleCoordinate -> publicKey.x + publicKey.y
             is EcPublicKeyOkp -> publicKey.x
         }
-        return SwiftBridge.ecVerifySignature(
+        if (!SwiftBridge.ecVerifySignature(
             publicKey.curve.coseCurveIdentifier.toLong(),
             raw.toNSData(),
             message.toNSData(),
             (signature.r + signature.s).toNSData()
-        )
+        )) {
+            throw SignatureVerificationException("Signature verification failed")
+        }
     }
 
     actual fun createEcPrivateKey(curve: EcCurve): EcPrivateKey {

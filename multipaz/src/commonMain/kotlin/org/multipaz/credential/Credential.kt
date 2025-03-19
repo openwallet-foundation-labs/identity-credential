@@ -32,6 +32,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.buildCborMap
 import kotlin.concurrent.Volatile
 
 /**
@@ -304,23 +305,20 @@ abstract class Credential {
      * @return a [DataItem] with all of the credential information.
      */
     private fun toDataItem(): DataItem {
-        val builder = CborMap.builder()
-            .put("credentialType", this::class.simpleName!!)  // used by CredentialFactory
-            .put("domain", domain)
-            .put("usageCount", usageCount.toLong())
-
-        if (replacementForIdentifier != null) {
-            builder.put("replacementForAlias", replacementForIdentifier!!)
+        return buildCborMap {
+            put("credentialType", this@Credential::class.simpleName!!)  // used by CredentialFactory
+            put("domain", domain)
+            put("usageCount", usageCount.toLong())
+            if (replacementForIdentifier != null) {
+                put("replacementForAlias", replacementForIdentifier!!)
+            }
+            if (isCertified) {
+                put("data", issuerProvidedData)
+                put("validFrom", validFrom.toEpochMilliseconds())
+                put("validUntil", validUntil.toEpochMilliseconds())
+            }
+            addSerializedData(this)
         }
-
-        if (isCertified) {
-            builder.put("data", issuerProvidedData)
-                .put("validFrom", validFrom.toEpochMilliseconds())
-                .put("validUntil", validUntil.toEpochMilliseconds())
-        }
-
-        addSerializedData(builder)
-        return builder.end().build()
     }
 
     private suspend fun save() {
