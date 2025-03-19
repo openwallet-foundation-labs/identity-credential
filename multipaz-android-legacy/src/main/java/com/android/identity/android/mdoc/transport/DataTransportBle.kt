@@ -19,8 +19,8 @@ import android.content.Context
 import android.nfc.NdefRecord
 import android.util.Pair
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import java.io.ByteArrayOutputStream
@@ -28,7 +28,6 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Locale
-import java.util.OptionalInt
 
 /**
  * BLE data transport
@@ -36,11 +35,11 @@ import java.util.OptionalInt
 abstract class DataTransportBle(
     context: Context,
     role: Role,
-    @JvmField protected var connectionMethod: ConnectionMethodBle,
+    @JvmField protected var connectionMethod: MdocConnectionMethodBle,
     options: DataTransportOptions
 ) : DataTransport(context, role, options) {
     protected var serviceUuid: UUID? = null
-    protected var connectionMethodToReturn: ConnectionMethodBle
+    protected var connectionMethodToReturn: MdocConnectionMethodBle
 
     /**
      * Gets the amount of time spent scanning for the other device.
@@ -51,18 +50,18 @@ abstract class DataTransportBle(
         protected set
 
     init {
-        // May be modified during start() to e.g. add the PSM...
-        connectionMethodToReturn = ConnectionMethodBle(
-            connectionMethod.supportsPeripheralServerMode,
-            connectionMethod.supportsCentralClientMode,
-            connectionMethod.peripheralServerModeUuid,
-            connectionMethod.centralClientModeUuid
+        // May be modified in subclasses to e.g. add the PSM...
+        connectionMethodToReturn = MdocConnectionMethodBle(
+            supportsPeripheralServerMode = connectionMethod.supportsPeripheralServerMode,
+            supportsCentralClientMode = connectionMethod.supportsCentralClientMode,
+            peripheralServerModeUuid = connectionMethod.peripheralServerModeUuid,
+            centralClientModeUuid = connectionMethod.centralClientModeUuid,
+            peripheralServerModePsm = connectionMethod.peripheralServerModePsm,
+            peripheralServerModeMacAddress = connectionMethod.peripheralServerModeMacAddress
         )
-        connectionMethodToReturn.peripheralServerModePsm = connectionMethod.peripheralServerModePsm
-        connectionMethodToReturn.peripheralServerModeMacAddress = connectionMethod.peripheralServerModeMacAddress
     }
 
-    override val connectionMethodForTransport: ConnectionMethod
+    override val connectionMethodForTransport: MdocConnectionMethod
         get() = connectionMethodToReturn
 
     companion object {
@@ -75,7 +74,7 @@ abstract class DataTransportBle(
         fun fromNdefRecord(
             record: NdefRecord,
             isForHandoverSelect: Boolean
-        ): ConnectionMethodBle? {
+        ): MdocConnectionMethodBle? {
             var centralClient = false
             var peripheral = false
             var uuid: UUID? = null
@@ -148,20 +147,20 @@ abstract class DataTransportBle(
 
             // Note that the UUID for both modes is the same if both peripheral and
             // central client mode is used!
-            val cm = ConnectionMethodBle(
-                peripheral,
-                centralClient,
-                if (peripheral) uuid else null,
-                if (centralClient) uuid else null
+            val cm = MdocConnectionMethodBle(
+                supportsPeripheralServerMode = peripheral,
+                supportsCentralClientMode = centralClient,
+                peripheralServerModeUuid = if (peripheral) uuid else null,
+                centralClientModeUuid = if (centralClient) uuid else null,
+                peripheralServerModePsm = psm,
+                peripheralServerModeMacAddress = macAddress?.let { ByteString(it) }
             )
-            cm.peripheralServerModePsm = psm
-            cm.peripheralServerModeMacAddress = macAddress?.let { ByteString(it) }
             return cm
         }
 
         fun fromConnectionMethod(
             context: Context,
-            cm: ConnectionMethodBle,
+            cm: MdocConnectionMethodBle,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
@@ -184,7 +183,7 @@ abstract class DataTransportBle(
         }
 
         fun toNdefRecord(
-            cm: ConnectionMethodBle,
+            cm: MdocConnectionMethodBle,
             auxiliaryReferences: List<String>,
             isForHandoverSelect: Boolean
         ): Pair<NdefRecord, ByteArray>? {

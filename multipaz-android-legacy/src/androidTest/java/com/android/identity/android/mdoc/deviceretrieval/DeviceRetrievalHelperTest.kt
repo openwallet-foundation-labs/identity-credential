@@ -79,6 +79,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.mdoc.role.MdocRole
 import java.security.Security
 import java.util.Calendar
 import java.util.concurrent.Executor
@@ -287,7 +288,7 @@ class DeviceRetrievalHelperTest {
                 .build()
         )
         val seReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             eReaderKey,
             eDeviceKey.publicKey,
             encodedSessionTranscript
@@ -503,7 +504,7 @@ class DeviceRetrievalHelperTest {
                 .build()
         )
         val seReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             eReaderKey,
             eDeviceKey.publicKey,
             encodedSessionTranscript

@@ -19,10 +19,9 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.toHexString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.UUID
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -30,11 +29,11 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class ConnectionMethodTest {
+class MdocConnectionMethodTest {
     @Test
     fun testConnectionMethodNfc() {
-        val cm = ConnectionMethodNfc(4096, 32768)
-        val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodNfc?
+        val cm = MdocConnectionMethodNfc(4096, 32768)
+        val decoded = MdocConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodNfc?
         assertNotNull(decoded)
         assertEquals(decoded.commandDataFieldMaxLength, decoded.commandDataFieldMaxLength)
         assertEquals(decoded.responseDataFieldMaxLength, decoded.responseDataFieldMaxLength)
@@ -48,8 +47,8 @@ class ConnectionMethodTest {
   }
 ]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
-        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false)!!.first
-        val decodedNfc = ConnectionMethodNfc.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC)!!
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocRole.MDOC, false)!!.first
+        val decodedNfc = MdocConnectionMethodNfc.fromNdefRecord(ndefRecord, MdocRole.MDOC)!!
         assertEquals(cm, decodedNfc)
     }
 
@@ -57,13 +56,13 @@ class ConnectionMethodTest {
     fun testConnectionMethodBle() {
         val uuidPeripheral = UUID(0U, 1U)
         val uuidCentral = UUID(123456789U, 987654321U)
-        var cm = ConnectionMethodBle(
+        var cm = MdocConnectionMethodBle(
             true,
             true,
             uuidPeripheral,
             uuidCentral
         )
-        val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
+        val decoded = MdocConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodBle?
         assertNotNull(decoded)
         assertTrue(decoded.supportsPeripheralServerMode)
         assertTrue(decoded.supportsCentralClientMode)
@@ -84,27 +83,27 @@ class ConnectionMethodTest {
 
         // For use in NFC, the UUIDs have to be the same
         val uuidBoth = UUID(0U, 2U)
-        cm = ConnectionMethodBle(
+        cm = MdocConnectionMethodBle(
             true,
             true,
             uuidBoth,
             uuidBoth
         )
-        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false).first
-        val decodedNfc = ConnectionMethodBle.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC, null)!!
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocRole.MDOC, false).first
+        val decodedNfc = MdocConnectionMethodBle.fromNdefRecord(ndefRecord, MdocRole.MDOC, null)!!
         assertEquals(cm, decodedNfc)
     }
 
     @Test
     fun testConnectionMethodBleOnlyCentralClient() {
         val uuid = UUID(123456789U, 987654321U)
-        val cm = ConnectionMethodBle(
+        val cm = MdocConnectionMethodBle(
             false,
             true,
             null,
             uuid
         )
-        val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
+        val decoded = MdocConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodBle?
         assertNotNull(decoded)
         assertFalse(decoded.supportsPeripheralServerMode)
         assertTrue(decoded.supportsCentralClientMode)
@@ -122,21 +121,21 @@ class ConnectionMethodTest {
 ]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
 
-        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false).first
-        val decodedNfc = ConnectionMethodBle.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC, null)!!
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocRole.MDOC, false).first
+        val decodedNfc = MdocConnectionMethodBle.fromNdefRecord(ndefRecord, MdocRole.MDOC, null)!!
         assertEquals(cm, decodedNfc)
     }
 
     @Test
     fun testConnectionMethodBleOnlyPeripheralServer() {
         val uuid = UUID(0U, 1U)
-        val cm = ConnectionMethodBle(
+        val cm = MdocConnectionMethodBle(
             true,
             false,
             uuid,
             null
         )
-        val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
+        val decoded = MdocConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodBle?
         assertNotNull(decoded)
         assertTrue(decoded.supportsPeripheralServerMode)
         assertFalse(decoded.supportsCentralClientMode)
@@ -154,25 +153,25 @@ class ConnectionMethodTest {
 ]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
         )
 
-        val ndefRecord = cm.toNdefRecord(listOf(), MdocTransport.Role.MDOC, false).first
-        val decodedNfc = ConnectionMethodBle.fromNdefRecord(ndefRecord, MdocTransport.Role.MDOC, null)!!
+        val ndefRecord = cm.toNdefRecord(listOf(), MdocRole.MDOC, false).first
+        val decodedNfc = MdocConnectionMethodBle.fromNdefRecord(ndefRecord, MdocRole.MDOC, null)!!
         assertEquals(cm, decodedNfc)
     }
 
     @Test
     fun testConnectionMethodWifiAware() {
-        val cm = ConnectionMethodWifiAware(
+        val cm = MdocConnectionMethodWifiAware(
             "foobar",
             42,
             43,
-            byteArrayOf(1, 2)
+            ByteString(1, 2)
         )
-        val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodWifiAware?
+        val decoded = MdocConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodWifiAware?
         assertNotNull(decoded)
         assertEquals("foobar", decoded!!.passphraseInfoPassphrase)
         assertEquals(42, decoded.channelInfoChannelNumber)
         assertEquals(43, decoded.channelInfoOperatingClass)
-        assertContentEquals(byteArrayOf(1, 2), decoded.bandInfoSupportedBands)
+        assertEquals(ByteString(1, 2), decoded.bandInfoSupportedBands)
         assertEquals(
             """[
   3,
@@ -187,30 +186,13 @@ class ConnectionMethodTest {
         )
     }
 
-    @Test
-    fun testConnectionMethodRestApi() {
-        val cm = ConnectionMethodHttp("https://www.example.com/mdocReader")
-        val decoded = ConnectionMethod.fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodHttp?
-        assertNotNull(decoded)
-        assertEquals(decoded.uri, cm.uri)
-        assertEquals(
-            """[
-  4,
-  1,
-  {
-    0: "https://www.example.com/mdocReader"
-  }
-]""", Cbor.toDiagnostics(cm.toDeviceEngagement(), setOf(DiagnosticOption.PRETTY_PRINT))
-        )
-    }
-
     @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun testConnectionMethodDisambiguateMdoc() {
-        val disambiguated = ConnectionMethod.disambiguate(
+        val disambiguated = MdocConnectionMethod.disambiguate(
             listOf(
-                ConnectionMethodHttp("https://www.example.com/mdocReader"),
-                ConnectionMethodBle(
+                MdocConnectionMethodNfc(4096, 4096),
+                MdocConnectionMethodBle(
                     supportsPeripheralServerMode = true,
                     supportsCentralClientMode = true,
                     peripheralServerModeUuid = UUID(0U, 1U),
@@ -219,14 +201,14 @@ class ConnectionMethodTest {
                     peripheralServerModeMacAddress = ByteString(0x11, 0x22, 0x33, 0x44, 0x55, 0x66)
                 )
             ),
-            MdocTransport.Role.MDOC
+            MdocRole.MDOC
         )
         assertEquals(3, disambiguated.size.toLong())
-        assertTrue(disambiguated[0] is ConnectionMethodHttp)
-        assertTrue(disambiguated[1] is ConnectionMethodBle)
-        assertTrue(disambiguated[2] is ConnectionMethodBle)
+        assertTrue(disambiguated[0] is MdocConnectionMethodNfc)
+        assertTrue(disambiguated[1] is MdocConnectionMethodBle)
+        assertTrue(disambiguated[2] is MdocConnectionMethodBle)
 
-        val bleCc = disambiguated[1] as ConnectionMethodBle
+        val bleCc = disambiguated[1] as MdocConnectionMethodBle
         assertFalse(bleCc.supportsPeripheralServerMode)
         assertTrue(bleCc.supportsCentralClientMode)
         assertNull(bleCc.peripheralServerModeUuid)
@@ -234,7 +216,7 @@ class ConnectionMethodTest {
         assertEquals(192, bleCc.peripheralServerModePsm)
         assertEquals("112233445566", bleCc.peripheralServerModeMacAddress!!.toHexString())
 
-        val blePs = disambiguated[2] as ConnectionMethodBle
+        val blePs = disambiguated[2] as MdocConnectionMethodBle
         assertTrue(blePs.supportsPeripheralServerMode)
         assertFalse(blePs.supportsCentralClientMode)
         assertEquals(UUID(0U, 1U), blePs.peripheralServerModeUuid)
@@ -246,10 +228,10 @@ class ConnectionMethodTest {
     @OptIn(ExperimentalStdlibApi::class)
     @Test
     fun testConnectionMethodDisambiguateMdocReader() {
-        val disambiguated = ConnectionMethod.disambiguate(
+        val disambiguated = MdocConnectionMethod.disambiguate(
             listOf(
-                ConnectionMethodHttp("https://www.example.com/mdocReader"),
-                ConnectionMethodBle(
+                MdocConnectionMethodNfc(4096, 4096),
+                MdocConnectionMethodBle(
                     supportsPeripheralServerMode = true,
                     supportsCentralClientMode = true,
                     peripheralServerModeUuid = UUID(0U, 1U),
@@ -258,14 +240,14 @@ class ConnectionMethodTest {
                     peripheralServerModeMacAddress = ByteString(0x11, 0x22, 0x33, 0x44, 0x55, 0x66)
                 )
             ),
-            MdocTransport.Role.MDOC_READER
+            MdocRole.MDOC_READER
         )
         assertEquals(3, disambiguated.size.toLong())
-        assertTrue(disambiguated[0] is ConnectionMethodHttp)
-        assertTrue(disambiguated[1] is ConnectionMethodBle)
-        assertTrue(disambiguated[2] is ConnectionMethodBle)
+        assertTrue(disambiguated[0] is MdocConnectionMethodNfc)
+        assertTrue(disambiguated[1] is MdocConnectionMethodBle)
+        assertTrue(disambiguated[2] is MdocConnectionMethodBle)
 
-        val bleCc = disambiguated[1] as ConnectionMethodBle
+        val bleCc = disambiguated[1] as MdocConnectionMethodBle
         assertFalse(bleCc.supportsPeripheralServerMode)
         assertTrue(bleCc.supportsCentralClientMode)
         assertNull(bleCc.peripheralServerModeUuid)
@@ -273,7 +255,7 @@ class ConnectionMethodTest {
         assertNull(bleCc.peripheralServerModePsm)
         assertNull(bleCc.peripheralServerModeMacAddress)
 
-        val blePs = disambiguated[2] as ConnectionMethodBle
+        val blePs = disambiguated[2] as MdocConnectionMethodBle
         assertTrue(blePs.supportsPeripheralServerMode)
         assertFalse(blePs.supportsCentralClientMode)
         assertEquals(UUID(0U, 1U), blePs.peripheralServerModeUuid)
@@ -285,14 +267,14 @@ class ConnectionMethodTest {
     @Test
     fun testConnectionMethodCombineUuidNotSame() {
         val disambiguated = listOf(
-            ConnectionMethodHttp("https://www.example.com/mdocReader"),
-            ConnectionMethodBle(
+            MdocConnectionMethodNfc(4096, 4096),
+            MdocConnectionMethodBle(
                 true,
                 false,
                 UUID(0U, 1U),
                 null
             ),
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 false,
                 true,
                 null,
@@ -300,7 +282,7 @@ class ConnectionMethodTest {
             )
         )
         assertFailsWith<IllegalArgumentException> {
-            val combined = ConnectionMethod.combine(disambiguated)
+            val combined = MdocConnectionMethod.combine(disambiguated)
         }
     }
 
@@ -308,23 +290,23 @@ class ConnectionMethodTest {
     fun testConnectionMethodCombineUuid() {
         val uuid = UUID(0U, 3U)
         val disambiguated = listOf(
-            ConnectionMethodHttp("https://www.example.com/mdocReader"),
-            ConnectionMethodBle(
+            MdocConnectionMethodNfc(4096, 4096),
+            MdocConnectionMethodBle(
                 true,
                 false,
                 uuid,
                 null
             ),
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 false,
                 true,
                 null,
                 uuid
             )
         )
-        val combined = ConnectionMethod.combine(disambiguated)
+        val combined = MdocConnectionMethod.combine(disambiguated)
         assertEquals(2, combined.size.toLong())
-        val ble = combined[0] as ConnectionMethodBle
+        val ble = combined[0] as MdocConnectionMethodBle
         assertTrue(ble.supportsPeripheralServerMode)
         assertTrue(ble.supportsCentralClientMode)
         assertEquals(uuid, ble.peripheralServerModeUuid)

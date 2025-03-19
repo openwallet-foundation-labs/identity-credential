@@ -3,12 +3,12 @@ package com.android.identity.android.mdoc.transport
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.util.Logger
 
-class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() {
+class MdocConnectionMethodUdp(val host: String, val port: Int) : MdocConnectionMethod() {
 
     override fun toDeviceEngagement(): ByteArray {
         val mapBuilder = CborMap.builder()
@@ -26,7 +26,7 @@ class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() 
 
     override fun toNdefRecord(
         auxiliaryReferences: List<String>,
-        role: MdocTransport.Role,
+        role: MdocRole,
         skipUuids: Boolean
     ): Pair<NdefRecord, NdefRecord>? {
         Logger.w(TAG, "toNdefRecord() not yet implemented")
@@ -34,25 +34,25 @@ class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() 
     }
 
     override fun equals(other: Any?): Boolean {
-        return other is ConnectionMethodTcp && other.host == host && other.port == port
+        return other is MdocConnectionMethodUdp && other.host == host && other.port == port
     }
 
     override fun toString(): String {
-        return "tcp:host=$host:port=$port"
+        return "udp:host=$host:port=$port"
     }
 
     companion object {
-        private const val TAG = "ConnectionMethodTcp"
+        private const val TAG = "ConnectionMethodUdp"
 
         // NOTE: 18013-5 only allows positive integers, but our codebase also supports negative
         // ones and this way we won't clash with types defined in the standard.
-        const val METHOD_TYPE = -10L
+        const val METHOD_TYPE = -11L
         const val METHOD_MAX_VERSION = 1L
 
         private const val OPTION_KEY_HOST = 0L
         private const val OPTION_KEY_PORT = 1L
         @JvmStatic
-        fun fromDeviceEngagementTcp(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodTcp? {
+        fun fromDeviceEngagementUdp(encodedDeviceRetrievalMethod: ByteArray): MdocConnectionMethodUdp? {
             val array = Cbor.decode(encodedDeviceRetrievalMethod).asArray
             val type = array[0].asNumber
             val version = array[1].asNumber
@@ -63,7 +63,7 @@ class ConnectionMethodTcp(val host: String, val port: Int) : ConnectionMethod() 
             val map = array[2]
             val host = map[OPTION_KEY_HOST].asTstr
             val port = map[OPTION_KEY_PORT].asNumber
-            return ConnectionMethodTcp(host, port.toInt())
+            return MdocConnectionMethodUdp(host, port.toInt())
         }
     }
 }

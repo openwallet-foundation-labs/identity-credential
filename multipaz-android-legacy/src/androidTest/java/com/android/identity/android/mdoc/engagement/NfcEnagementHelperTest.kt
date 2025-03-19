@@ -27,10 +27,10 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.util.UUID
 import org.multipaz.util.toHex
@@ -78,10 +78,10 @@ class NfcEnagementHelperTest {
         )
 
         // Include all ConnectionMethods that can exist in OOB data
-        val connectionMethods: MutableList<ConnectionMethod> = ArrayList()
+        val connectionMethods: MutableList<MdocConnectionMethod> = ArrayList()
         val bleUuid = UUID.randomUUID()
         connectionMethods.add(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 true,
                 true,
                 bleUuid,
@@ -89,13 +89,13 @@ class NfcEnagementHelperTest {
             )
         )
         connectionMethods.add(
-            ConnectionMethodNfc(
+            MdocConnectionMethodNfc(
                 0xffff,
                 0xffff
             )
         )
         connectionMethods.add(
-            ConnectionMethodWifiAware(
+            MdocConnectionMethodWifiAware(
                 null,
                 null,
                 null,
@@ -214,10 +214,10 @@ class NfcEnagementHelperTest {
         )
 
         // Include all ConnectionMethods that can exist in OOB data
-        val connectionMethods: MutableList<ConnectionMethod> = ArrayList()
+        val connectionMethods: MutableList<MdocConnectionMethod> = ArrayList()
         val bleUuid = UUID.randomUUID()
         connectionMethods.add(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 true,
                 true,
                 bleUuid,
@@ -225,13 +225,13 @@ class NfcEnagementHelperTest {
             )
         )
         connectionMethods.add(
-            ConnectionMethodNfc(
+            MdocConnectionMethodNfc(
                 0xffff,
                 0xffff
             )
         )
         connectionMethods.add(
-            ConnectionMethodWifiAware(
+            MdocConnectionMethodWifiAware(
                 null,
                 null,
                 null,
@@ -360,7 +360,7 @@ class NfcEnagementHelperTest {
         // only one to be returned and we expect it to be the BLE one and only the Central
         // Client mode.
         Assert.assertEquals(1, hs.connectionMethods.size.toLong())
-        val cm = hs.connectionMethods[0] as ConnectionMethodBle
+        val cm = hs.connectionMethods[0] as MdocConnectionMethodBle
         Assert.assertFalse(cm.supportsPeripheralServerMode)
         Assert.assertTrue(cm.supportsCentralClientMode)
         Assert.assertNull(cm.peripheralServerModeUuid)

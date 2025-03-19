@@ -76,8 +76,8 @@ import androidx.navigation.compose.rememberNavController
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import org.multipaz.crypto.Algorithm
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.util.Logger
@@ -92,7 +92,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import java.security.Security
 
 class MdocReaderPrompt(
@@ -107,7 +107,7 @@ class MdocReaderPrompt(
     private lateinit var vibrator: Vibrator
     var readerEngagement: ByteArray? = null
     var responseBytes: ByteArray? = null
-    private var mdocConnectionMethod: ConnectionMethod? = null
+    private var mdocConnectionMethod: MdocConnectionMethod? = null
 
     private lateinit var responseListener: VerificationHelper.Listener
     private lateinit var verification: VerificationHelper
@@ -152,15 +152,15 @@ class MdocReaderPrompt(
                 this@MdocReaderPrompt.readerEngagement = readerEngagement
             }
 
-            override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+            override fun onDeviceEngagementReceived(connectionMethods: List<MdocConnectionMethod>) {
                 // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
                 // if both BLE modes are available at the same time.
                 Logger.d("Listener", "device engagement received")
                 navController.navigate("ReaderReady/Connecting")
                 vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-                val availableMdocConnectionMethods = ConnectionMethod.disambiguate(
+                val availableMdocConnectionMethods = MdocConnectionMethod.disambiguate(
                     connectionMethods,
-                    MdocTransport.Role.MDOC_READER
+                    MdocRole.MDOC_READER
                 )
                 if (availableMdocConnectionMethods.isNotEmpty()) {
                     this@MdocReaderPrompt.mdocConnectionMethod = availableMdocConnectionMethods.first()
@@ -211,10 +211,10 @@ class MdocReaderPrompt(
             }
         }
 
-        val connectionMethods = mutableListOf<ConnectionMethod>()
+        val connectionMethods = mutableListOf<MdocConnectionMethod>()
         val bleUuid = UUID.randomUUID()
         connectionMethods.add(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 false,
                 true,
                 null,

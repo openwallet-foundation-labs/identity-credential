@@ -24,11 +24,10 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.EngagementGenerator
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.advertiseAndWait
@@ -42,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.qrcode.ShowQrCodeDialog
+import org.multipaz.mdoc.role.MdocRole
 
 private const val TAG = "IsoMdocProximitySharingScreen"
 
@@ -103,11 +103,11 @@ fun IsoMdocProximitySharingScreen(
                             presentmentModel.reset()
                             presentmentModel.setConnecting()
                             presentmentModel.presentmentScope.launch() {
-                                val connectionMethods = mutableListOf<ConnectionMethod>()
+                                val connectionMethods = mutableListOf<MdocConnectionMethod>()
                                 val bleUuid = UUID.randomUUID()
                                 if (settingsModel.presentmentBleCentralClientModeEnabled.value) {
                                     connectionMethods.add(
-                                        ConnectionMethodBle(
+                                        MdocConnectionMethodBle(
                                             supportsPeripheralServerMode = false,
                                             supportsCentralClientMode = true,
                                             peripheralServerModeUuid = null,
@@ -117,7 +117,7 @@ fun IsoMdocProximitySharingScreen(
                                 }
                                 if (settingsModel.presentmentBlePeripheralServerModeEnabled.value) {
                                     connectionMethods.add(
-                                        ConnectionMethodBle(
+                                        MdocConnectionMethodBle(
                                             supportsPeripheralServerMode = true,
                                             supportsCentralClientMode = false,
                                             peripheralServerModeUuid = bleUuid,
@@ -127,7 +127,7 @@ fun IsoMdocProximitySharingScreen(
                                 }
                                 if (settingsModel.presentmentNfcDataTransferEnabled.value) {
                                     connectionMethods.add(
-                                        ConnectionMethodNfc(
+                                        MdocConnectionMethodNfc(
                                             commandDataFieldMaxLength = 0xffff,
                                             responseDataFieldMaxLength = 0x10000
                                         )
@@ -168,7 +168,7 @@ fun IsoMdocProximitySharingScreen(
 }
 
 private suspend fun doHolderFlow(
-    connectionMethods: List<ConnectionMethod>,
+    connectionMethods: List<MdocConnectionMethod>,
     handover: DataItem,
     options: MdocTransportOptions,
     sessionEncryptionCurve: EcCurve,
@@ -181,7 +181,7 @@ private suspend fun doHolderFlow(
     val eDeviceKey = Crypto.createEcPrivateKey(sessionEncryptionCurve)
     lateinit var encodedDeviceEngagement: ByteString
     val transport = connectionMethods.advertiseAndWait(
-        role = MdocTransport.Role.MDOC,
+        role = MdocRole.MDOC,
         transportFactory = MdocTransportFactory.Default,
         options = options,
         eSenderKey = eDeviceKey.publicKey,

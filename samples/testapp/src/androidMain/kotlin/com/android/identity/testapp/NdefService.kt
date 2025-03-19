@@ -9,11 +9,10 @@ import androidx.core.content.ContextCompat
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
 import org.multipaz.models.presentment.MdocPresentmentMechanism
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.nfc.CommandApdu
@@ -21,7 +20,7 @@ import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.models.presentment.PresentmentTimeout
 import org.multipaz.context.initializeApplication
 import org.multipaz.mdoc.transport.advertiseAndWait
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
@@ -33,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -140,7 +140,7 @@ class NdefService: HostApduService() {
         )
         applicationContext.startActivity(intent)
 
-        fun negotiatedHandoverPicker(connectionMethods: List<ConnectionMethod>): ConnectionMethod {
+        fun negotiatedHandoverPicker(connectionMethods: List<MdocConnectionMethod>): MdocConnectionMethod {
             Logger.i(TAG, "Negotiated Handover available methods: $connectionMethods")
             for (prefix in settingsModel.presentmentNegotiatedHandoverPreferredOrder.value) {
                 for (connectionMethod in connectionMethods) {
@@ -154,20 +154,20 @@ class NdefService: HostApduService() {
             return connectionMethods.first()
         }
 
-        val negotiatedHandoverPicker: ((connectionMethods: List<ConnectionMethod>) -> ConnectionMethod)? =
+        val negotiatedHandoverPicker: ((connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod)? =
             if (settingsModel.presentmentUseNegotiatedHandover.value) {
                 { connectionMethods -> negotiatedHandoverPicker(connectionMethods) }
             } else {
                 null
             }
 
-        var staticHandoverConnectionMethods: List<ConnectionMethod>? = null
+        var staticHandoverConnectionMethods: List<MdocConnectionMethod>? = null
         if (!settingsModel.presentmentUseNegotiatedHandover.value) {
-            staticHandoverConnectionMethods = mutableListOf<ConnectionMethod>()
+            staticHandoverConnectionMethods = mutableListOf<MdocConnectionMethod>()
             val bleUuid = UUID.randomUUID()
             if (settingsModel.presentmentBleCentralClientModeEnabled.value) {
                 staticHandoverConnectionMethods.add(
-                    ConnectionMethodBle(
+                    MdocConnectionMethodBle(
                         supportsPeripheralServerMode = false,
                         supportsCentralClientMode = true,
                         peripheralServerModeUuid = null,
@@ -177,7 +177,7 @@ class NdefService: HostApduService() {
             }
             if (settingsModel.presentmentBlePeripheralServerModeEnabled.value) {
                 staticHandoverConnectionMethods.add(
-                    ConnectionMethodBle(
+                    MdocConnectionMethodBle(
                         supportsPeripheralServerMode = true,
                         supportsCentralClientMode = false,
                         peripheralServerModeUuid = bleUuid,
@@ -187,7 +187,7 @@ class NdefService: HostApduService() {
             }
             if (settingsModel.presentmentNfcDataTransferEnabled.value) {
                 staticHandoverConnectionMethods.add(
-                    ConnectionMethodNfc(
+                    MdocConnectionMethodNfc(
                         commandDataFieldMaxLength = 0xffff,
                         responseDataFieldMaxLength = 0x10000
                     )
@@ -224,7 +224,7 @@ class NdefService: HostApduService() {
     }
 
     private fun listenOnMethods(
-        connectionMethods: List<ConnectionMethod>,
+        connectionMethods: List<MdocConnectionMethod>,
         settingsModel: TestAppSettingsModel,
         encodedDeviceEngagement: ByteString,
         handover: DataItem,
@@ -233,7 +233,7 @@ class NdefService: HostApduService() {
     ) {
         presentmentModel.presentmentScope.launch {
             val transport = connectionMethods.advertiseAndWait(
-                role = MdocTransport.Role.MDOC,
+                role = MdocRole.MDOC,
                 transportFactory = MdocTransportFactory.Default,
                 options = MdocTransportOptions(
                     bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value

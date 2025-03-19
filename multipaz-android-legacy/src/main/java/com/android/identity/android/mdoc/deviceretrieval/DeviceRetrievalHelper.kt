@@ -35,6 +35,7 @@ import org.multipaz.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import org.multipaz.mdoc.role.MdocRole
 import java.util.concurrent.Executor
 
 /**
@@ -282,7 +283,7 @@ class DeviceRetrievalHelper internal constructor(
                 .build()
         )
         sessionEncryption = SessionEncryption(
-            SessionEncryption.Role.MDOC,
+            MdocRole.MDOC,
             eDeviceKey,
             _eReaderKey!!,
             encodedSessionTranscript!!

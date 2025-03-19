@@ -42,13 +42,13 @@ import android.util.Base64
 import android.util.Pair
 import androidx.annotation.DoNotInline
 import androidx.annotation.RequiresApi
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import org.multipaz.util.HexUtil
 import org.multipaz.util.Logger
-import org.multipaz.util.toHex
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.IOException
@@ -73,7 +73,7 @@ import java.util.concurrent.TimeUnit
 class DataTransportWifiAware(
     context: Context,
     role: Role,
-    private val connectionMethod: ConnectionMethodWifiAware,
+    private val connectionMethod: MdocConnectionMethodWifiAware,
     options: DataTransportOptions
 ) : DataTransport(context, role, options) {
 
@@ -588,7 +588,7 @@ Content-Type: application/CBOR
         }
     }
 
-    override val connectionMethodForTransport: ConnectionMethod
+    override val connectionMethodForTransport: MdocConnectionMethod
         get() = connectionMethod
 
     companion object {
@@ -597,7 +597,7 @@ Content-Type: application/CBOR
         fun fromNdefRecord(
             record: NdefRecord,
             isForHandoverSelect: Boolean
-        ): ConnectionMethodWifiAware? {
+        ): MdocConnectionMethodWifiAware? {
             var passphraseInfoPassphrase: String? = null
             var bandInfoSupportedBands: ByteArray? = null
             val channelInfoChannelNumber: Long? = null
@@ -621,17 +621,17 @@ Content-Type: application/CBOR
                 }
                 payload.position(offset + len - 1)
             }
-            return ConnectionMethodWifiAware(
+            return MdocConnectionMethodWifiAware(
                 passphraseInfoPassphrase,
                 channelInfoChannelNumber,
                 channelInfoOperatingClass,
-                bandInfoSupportedBands
+                bandInfoSupportedBands?.let { ByteString(it) }
             )
         }
 
         fun fromConnectionMethod(
             context: Context,
-            cm: ConnectionMethodWifiAware,
+            cm: MdocConnectionMethodWifiAware,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
@@ -644,7 +644,7 @@ Content-Type: application/CBOR
         }
 
         fun toNdefRecord(
-            cm: ConnectionMethodWifiAware,
+            cm: MdocConnectionMethodWifiAware,
             auxiliaryReferences: List<String>,
             isForHandoverSelect: Boolean
         ): Pair<NdefRecord, ByteArray>? {
@@ -700,7 +700,7 @@ Content-Type: application/CBOR
                 if (cm.bandInfoSupportedBands != null) {
                     baos.write(1 + cm.bandInfoSupportedBands!!.size)
                     baos.write(0x04) // Data Type 0x04 - Band Info
-                    baos.write(cm.bandInfoSupportedBands)
+                    baos.write(cm.bandInfoSupportedBands!!.toByteArray())
                 }
 
                 // Spec says: "The Channel Info field serves as a placeholder for future

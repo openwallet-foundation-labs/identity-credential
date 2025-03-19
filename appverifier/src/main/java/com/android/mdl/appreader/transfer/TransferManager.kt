@@ -9,18 +9,18 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodHttp
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
+import com.android.identity.android.mdoc.connectionmethod.MdocConnectionMethodHttp
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.Crypto
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.util.UUID
@@ -40,7 +40,7 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.Signature
@@ -64,13 +64,13 @@ class TransferManager private constructor(private val context: Context) {
     var usingReverseEngagement: Boolean = false
     var readerEngagement: ByteArray? = null
 
-    var mdocConnectionMethod: ConnectionMethod? = null
+    var mdocConnectionMethod: MdocConnectionMethod? = null
         private set
     private var hasStarted = false
     var responseBytes: ByteArray? = null
         private set
     private var verification: VerificationHelper? = null
-    var availableMdocConnectionMethods: Collection<ConnectionMethod>? = null
+    var availableMdocConnectionMethods: Collection<MdocConnectionMethod>? = null
         private set
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
@@ -94,10 +94,10 @@ class TransferManager private constructor(private val context: Context) {
         // TODO: read from settings - for now, just hardcode BLE central client mode
         //  as the only connection-method we over for Negotiated Handover...
         //
-        val negotiatedHandoverConnectionMethods = mutableListOf<ConnectionMethod>()
+        val negotiatedHandoverConnectionMethods = mutableListOf<MdocConnectionMethod>()
         val bleUuid = UUID.randomUUID()
         negotiatedHandoverConnectionMethods.add(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 false,
                 true,
                 null,
@@ -122,12 +122,12 @@ class TransferManager private constructor(private val context: Context) {
             .setBleClearCache(userPreferences.isBleClearCacheEnabled())
             .build()
         builder.setDataTransportOptions(options)
-        val methods = ArrayList<ConnectionMethod>()
+        val methods = ArrayList<MdocConnectionMethod>()
         // Passing the empty URI in means that DataTransportHttp will use local IP as host
         // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
         // which will be included in ReaderEngagement CBOR will contain an URI of the
         // form http://192.168.1.2:18013/mdocreader
-        methods.add(ConnectionMethodHttp(""))
+        methods.add(MdocConnectionMethodHttp(""))
         builder.setUseReverseEngagement(methods)
         verification = builder.build()
         usingReverseEngagement = true
@@ -148,7 +148,7 @@ class TransferManager private constructor(private val context: Context) {
         verification?.nfcProcessOnTagDiscovered(tag)
     }
 
-    fun setAvailableTransferMethods(availableMdocConnectionMethods: Collection<ConnectionMethod>) {
+    fun setAvailableTransferMethods(availableMdocConnectionMethods: Collection<MdocConnectionMethod>) {
         this.availableMdocConnectionMethods = availableMdocConnectionMethods
         // Select the first method as default, let the user select other transfer method
         // if there are more than one
@@ -217,14 +217,14 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.READER_ENGAGEMENT_READY
         }
 
-        override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+        override fun onDeviceEngagementReceived(connectionMethods: List<MdocConnectionMethod>) {
             // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
             // if both BLE modes are available at the same time.
             mediaPlayer = mediaPlayer ?: MediaPlayer.create(context, R.raw.nfc_connected)
             mediaPlayer?.start()
-            setAvailableTransferMethods(ConnectionMethod.disambiguate(
+            setAvailableTransferMethods(MdocConnectionMethod.disambiguate(
                 connectionMethods,
-                MdocTransport.Role.MDOC_READER
+                MdocRole.MDOC_READER
             ))
             transferStatusLd.value = TransferStatus.ENGAGED
         }
@@ -348,7 +348,7 @@ class TransferManager private constructor(private val context: Context) {
         sendRequest(requestDocumentList)
     }
 
-    fun setMdocConnectionMethod(connectionMethod: ConnectionMethod) {
+    fun setMdocConnectionMethod(connectionMethod: MdocConnectionMethod) {
         this.mdocConnectionMethod = connectionMethod
     }
 

@@ -1,23 +1,15 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.nfc.Nfc
 import org.multipaz.util.Logger
 import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.encodeToByteString
-import kotlinx.io.Buffer
 import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.readByteArray
-import kotlinx.io.readByteString
-import kotlinx.io.write
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
-import org.multipaz.cbor.Cbor.decode
-import org.multipaz.cbor.Cbor.encode
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.ByteDataReader
 import org.multipaz.util.appendByteString
 import org.multipaz.util.appendUInt16
@@ -28,16 +20,10 @@ import org.multipaz.util.appendUInt8
  * @param commandDataFieldMaxLength  the maximum length for the command data field.
  * @param responseDataFieldMaxLength the maximum length of the response data field.
  */
-class ConnectionMethodNfc(
+data class MdocConnectionMethodNfc(
     val commandDataFieldMaxLength: Long,
     val responseDataFieldMaxLength: Long
-): ConnectionMethod() {
-    override fun equals(other: Any?): Boolean {
-        return other is ConnectionMethodNfc &&
-                other.commandDataFieldMaxLength == commandDataFieldMaxLength &&
-                other.responseDataFieldMaxLength == responseDataFieldMaxLength
-    }
-
+): MdocConnectionMethod() {
     override fun toString(): String =
         "nfc:cmd_max_length=$commandDataFieldMaxLength:resp_max_length=$responseDataFieldMaxLength"
 
@@ -73,7 +59,7 @@ class ConnectionMethodNfc(
 
     override fun toNdefRecord(
         auxiliaryReferences: List<String>,
-        role: MdocTransport.Role,
+        role: MdocRole,
         skipUuids: Boolean
     ): Pair<NdefRecord, NdefRecord>? {
         val carrierDataReference = "nfc".encodeToByteString()
@@ -117,19 +103,27 @@ class ConnectionMethodNfc(
     }
 
     companion object {
-        private const val TAG = "ConnectionMethodNfc"
+        private const val TAG = "MdocConnectionMethodNfc"
 
         // Defined in ISO 18013-5 8.2.2.2 Alternative Carrier Record for device retrieval using NFC
         //
         private const val DATA_TYPE_MAXIMUM_COMMAND_DATA_LENGTH: UByte = 0x01u
         private const val DATA_TYPE_MAXIMUM_RESPONSE_DATA_LENGTH: UByte = 0x02u
 
+        /**
+         * The device retrieval method type for NFC according to ISO/IEC 18013-5:2021 clause 8.2.1.1.
+         */
         const val METHOD_TYPE = 1L
+
+        /**
+         * The supported version of the device retrieval method type for NFC.
+         */
         const val METHOD_MAX_VERSION = 1L
+
         private const val OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH = 0L
         private const val OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH = 1L
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodNfc? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): MdocConnectionMethodNfc? {
             val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
@@ -138,7 +132,7 @@ class ConnectionMethodNfc(
                 return null
             }
             val map = array[2]
-            return ConnectionMethodNfc(
+            return MdocConnectionMethodNfc(
                 map[OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH].asNumber,
                 map[OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH].asNumber
             )
@@ -146,8 +140,8 @@ class ConnectionMethodNfc(
 
         internal fun fromNdefRecord(
             record: NdefRecord,
-            role: MdocTransport.Role,
-        ): ConnectionMethodNfc? {
+            role: MdocRole,
+        ): MdocConnectionMethodNfc? {
             with (ByteDataReader(record.payload)) {
                 val version = getUInt8().toInt()
                 if (version != 0x01) {
@@ -184,7 +178,7 @@ class ConnectionMethodNfc(
                     responseDataFieldMaxLength *= 256u
                     responseDataFieldMaxLength += getUInt8()
                 }
-                return ConnectionMethodNfc(
+                return MdocConnectionMethodNfc(
                     commandDataFieldMaxLength.toLong(),
                     responseDataFieldMaxLength.toLong()
                 )

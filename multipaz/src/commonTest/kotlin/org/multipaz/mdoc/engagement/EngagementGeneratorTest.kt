@@ -17,9 +17,8 @@ package org.multipaz.mdoc.engagement
 
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodHttp
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.origininfo.OriginInfo
 import org.multipaz.mdoc.origininfo.OriginInfoDomain
 import org.multipaz.util.UUID
@@ -48,33 +47,6 @@ class EngagementGeneratorTest {
 
     @Test
     @Throws(Exception::class)
-    fun testWebsiteEngagement() {
-        val eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val eg = EngagementGenerator(
-            eSenderKey.publicKey,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_1
-        )
-        val connectionMethods = mutableListOf<ConnectionMethod>()
-        connectionMethods.add(ConnectionMethodHttp("http://www.example.com/verifier/123"))
-        eg.addConnectionMethods(connectionMethods)
-        val originInfos = mutableListOf<OriginInfo>()
-        originInfos.add(OriginInfoDomain("http://www.example.com/verifier"))
-        eg.addOriginInfos(originInfos)
-        val encodedEngagement = eg.generate()
-        val parser = EngagementParser(encodedEngagement)
-        val engagement = parser.parse()
-        assertEquals(engagement.eSenderKey, eSenderKey.publicKey)
-        assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_1, engagement.version)
-        assertEquals(1, engagement.connectionMethods.size.toLong())
-        val cm = engagement.connectionMethods[0] as ConnectionMethodHttp
-        assertEquals("http://www.example.com/verifier/123", cm.uri)
-        assertEquals(1, engagement.originInfos.size.toLong())
-        val oi = engagement.originInfos[0] as OriginInfoDomain
-        assertEquals("http://www.example.com/verifier", oi.url)
-    }
-
-    @Test
-    @Throws(Exception::class)
     fun testDeviceEngagementQrBleCentralClientMode() {
         val eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val uuid = UUID.randomUUID()
@@ -82,9 +54,9 @@ class EngagementGeneratorTest {
             eSenderKey.publicKey,
             EngagementGenerator.ENGAGEMENT_VERSION_1_0
         )
-        val connectionMethods = mutableListOf<ConnectionMethod>()
+        val connectionMethods = mutableListOf<MdocConnectionMethod>()
         connectionMethods.add(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 false,
                 true,
                 null,
@@ -98,7 +70,7 @@ class EngagementGeneratorTest {
         assertEquals(engagement.eSenderKey, eSenderKey.publicKey)
         assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, engagement.version)
         assertEquals(1, engagement.connectionMethods.size.toLong())
-        val cm = engagement.connectionMethods[0] as ConnectionMethodBle
+        val cm = engagement.connectionMethods[0] as MdocConnectionMethodBle
         assertFalse(cm.supportsPeripheralServerMode)
         assertTrue(cm.supportsCentralClientMode)
         assertNull(cm.peripheralServerModeUuid)

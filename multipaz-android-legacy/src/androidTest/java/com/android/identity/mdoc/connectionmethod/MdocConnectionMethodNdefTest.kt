@@ -24,7 +24,7 @@ import com.android.identity.android.mdoc.transport.DataTransportBle.Companion.fr
 import com.android.identity.android.util.NfcUtil
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.fromDeviceEngagement
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod.Companion.fromDeviceEngagement
 import org.multipaz.util.UUID
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
@@ -37,12 +37,12 @@ import org.junit.Test
 //  include it in the non-Android specific library and combine this test with
 //  ConnectionMethod
 //
-class ConnectionMethodNdefTest {
+class MdocConnectionMethodNdefTest {
     @Test
     @SmallTest
     fun testConnectionMethodNfc() {
-        val cm = ConnectionMethodNfc(4096, 32768)
-        val decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodNfc?
+        val cm = MdocConnectionMethodNfc(4096, 32768)
+        val decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodNfc?
         Assert.assertNotNull(decoded)
         Assert.assertEquals(decoded!!.commandDataFieldMaxLength, decoded.commandDataFieldMaxLength)
         Assert.assertEquals(decoded.responseDataFieldMaxLength, decoded.responseDataFieldMaxLength)
@@ -64,13 +64,13 @@ class ConnectionMethodNdefTest {
     fun testConnectionMethodBle() {
         val uuidPeripheral = UUID(0UL, 1UL)
         val uuidCentral = UUID(123456789UL, 987654321UL)
-        var cm = ConnectionMethodBle(
+        var cm = MdocConnectionMethodBle(
             true,
             true,
             uuidPeripheral,
             uuidCentral
         )
-        var decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
+        var decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodBle?
         Assert.assertNotNull(decoded)
         Assert.assertTrue(decoded!!.supportsPeripheralServerMode)
         Assert.assertTrue(decoded.supportsCentralClientMode)
@@ -91,7 +91,7 @@ class ConnectionMethodNdefTest {
 
         // For use in NFC, the UUIDs have to be the same
         val uuidBoth = UUID(0UL, 2UL)
-        cm = ConnectionMethodBle(
+        cm = MdocConnectionMethodBle(
             true,
             true,
             uuidBoth,
@@ -123,13 +123,13 @@ class ConnectionMethodNdefTest {
     @SmallTest
     fun testConnectionMethodBleOnlyCentralClient() {
         val uuid = UUID(123456789UL, 987654321UL)
-        val cm = ConnectionMethodBle(
+        val cm = MdocConnectionMethodBle(
             false,
             true,
             null,
             uuid
         )
-        var decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
+        var decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodBle?
         Assert.assertNotNull(decoded)
         Assert.assertFalse(decoded!!.supportsPeripheralServerMode)
         Assert.assertTrue(decoded.supportsCentralClientMode)
@@ -185,13 +185,13 @@ class ConnectionMethodNdefTest {
     @SmallTest
     fun testConnectionMethodBleOnlyPeripheralServer() {
         val uuid = UUID(0UL, 1UL)
-        val cm = ConnectionMethodBle(
+        val cm = MdocConnectionMethodBle(
             true,
             false,
             uuid,
             null
         )
-        var decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as ConnectionMethodBle?
+        var decoded = fromDeviceEngagement(cm.toDeviceEngagement()) as MdocConnectionMethodBle?
         Assert.assertNotNull(decoded)
         Assert.assertTrue(decoded!!.supportsPeripheralServerMode)
         Assert.assertFalse(decoded.supportsCentralClientMode)
@@ -251,7 +251,7 @@ class ConnectionMethodNdefTest {
         // the requester specified in Handover Request and there's no need to repeat it in Handover
         // Select.
         //
-        val cm = ConnectionMethodBle(
+        val cm = MdocConnectionMethodBle(
             false,
             true,
             null,
@@ -275,7 +275,7 @@ class ConnectionMethodNdefTest {
         val ndefHsMessage =
             NdefMessage("91020f487315d10209616301013001046d646f631a2003016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f6230021c015c1e580469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a20063312e30018201d818584ba401022001215820e778fcb1513fad715c755462cb4d3ee3c1de2f618d10e07788a35eda2da58b982258205e6ee59512414cdb11ee330db2590ab6d1b5a78ede4a0ecac02e3af65cafbcd9".fromHex())
         Assert.assertNotNull(ndefHsMessage)
-        var cm: ConnectionMethodBle? = null
+        var cm: MdocConnectionMethodBle? = null
         for (r in ndefHsMessage.records) {
             if (r.tnf == NdefRecord.TNF_MIME_MEDIA) {
                 cm = fromNdefRecord(r, true)

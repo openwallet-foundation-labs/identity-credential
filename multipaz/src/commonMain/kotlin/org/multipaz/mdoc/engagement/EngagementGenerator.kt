@@ -19,11 +19,10 @@ import org.multipaz.cbor.ArrayBuilder
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborBuilder
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborArray
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.origininfo.OriginInfo
 
 /**
@@ -43,10 +42,10 @@ class EngagementGenerator(
     /**
      * Adds connection methods to the engagement.
      *
-     * @param connectionMethods A list with instances derived from [ConnectionMethod].
+     * @param connectionMethods A list with instances derived from [MdocConnectionMethod].
      * @return the generator.
      */
-    fun addConnectionMethods(connectionMethods: List<ConnectionMethod>): EngagementGenerator {
+    fun addConnectionMethods(connectionMethods: List<MdocConnectionMethod>): EngagementGenerator {
         for (connectionMethod in connectionMethods) {
             deviceRetrievalMethodsArrayBuilder.add(
                 Cbor.decode(connectionMethod.toDeviceEngagement()))

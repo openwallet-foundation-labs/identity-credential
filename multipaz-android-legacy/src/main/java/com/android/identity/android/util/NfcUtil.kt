@@ -5,8 +5,8 @@ import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.os.Build
 import android.util.Pair
-import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
-import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
+import com.android.identity.android.mdoc.transport.MdocConnectionMethodTcp
+import com.android.identity.android.mdoc.transport.MdocConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransportBle
 import com.android.identity.android.mdoc.transport.DataTransportNfc
 import com.android.identity.android.mdoc.transport.DataTransportOptions
@@ -14,10 +14,10 @@ import com.android.identity.android.mdoc.transport.DataTransportTcp
 import com.android.identity.android.mdoc.transport.DataTransportUdp
 import com.android.identity.android.mdoc.transport.DataTransportWifiAware
 import org.multipaz.cbor.Cbor
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import org.multipaz.util.Logger
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
@@ -191,7 +191,7 @@ object NfcUtil {
     }
 
     private fun createNdefMessageHandoverSelectOrRequest(
-        methods: List<ConnectionMethod>,
+        methods: List<MdocConnectionMethod>,
         encodedDeviceEngagement: ByteArray?,
         encodedReaderEngagement: ByteArray?,
         options: DataTransportOptions?
@@ -265,7 +265,7 @@ object NfcUtil {
 
     @JvmStatic
     fun createNdefMessageHandoverSelect(
-        methods: List<ConnectionMethod>,
+        methods: List<MdocConnectionMethod>,
         encodedDeviceEngagement: ByteArray,
         options: DataTransportOptions?
     ): ByteArray {
@@ -279,7 +279,7 @@ object NfcUtil {
 
     @JvmStatic
     fun createNdefMessageHandoverRequest(
-        methods: List<ConnectionMethod>,
+        methods: List<MdocConnectionMethod>,
         encodedReaderEngagement: ByteArray?,
         options: DataTransportOptions?
     ): ByteArray {
@@ -303,7 +303,7 @@ object NfcUtil {
         var validHandoverSelectMessage = false
 
         var phsmEncodedDeviceEngagement: ByteArray? = null
-        var phsmConnectionMethods = mutableListOf<ConnectionMethod>()
+        var phsmConnectionMethods = mutableListOf<MdocConnectionMethod>()
         for (r in m!!.getRecords()) {
             // Handle Handover Select record for NFC Forum Connection Handover specification
             // version 1.5 (encoded as 0x15 below).
@@ -447,15 +447,15 @@ object NfcUtil {
         return null
     }
 
-    private fun getConnectionMethodFromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethod? {
+    private fun getConnectionMethodFromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): MdocConnectionMethod? {
         val items = Cbor.decode(encodedDeviceRetrievalMethod)
         val type = items[0].asNumber
         when (type) {
-            ConnectionMethodTcp.METHOD_TYPE -> return ConnectionMethodTcp.fromDeviceEngagementTcp(
+            MdocConnectionMethodTcp.METHOD_TYPE -> return MdocConnectionMethodTcp.fromDeviceEngagementTcp(
                 encodedDeviceRetrievalMethod
             )
 
-            ConnectionMethodUdp.METHOD_TYPE -> return ConnectionMethodUdp.fromDeviceEngagementUdp(
+            MdocConnectionMethodUdp.METHOD_TYPE -> return MdocConnectionMethodUdp.fromDeviceEngagementUdp(
                 encodedDeviceRetrievalMethod
             )
         }
@@ -464,7 +464,7 @@ object NfcUtil {
     }
 
     @JvmStatic
-    fun fromNdefRecord(record: NdefRecord, isForHandoverSelect: Boolean): ConnectionMethod? {
+    fun fromNdefRecord(record: NdefRecord, isForHandoverSelect: Boolean): MdocConnectionMethod? {
         // BLE Carrier Configuration record
         //
         if (record.tnf == NdefRecord.TNF_MIME_MEDIA && Arrays.equals(
@@ -536,23 +536,23 @@ object NfcUtil {
      */
     @JvmStatic
     fun toNdefRecord(
-        connectionMethod: ConnectionMethod,
+        connectionMethod: MdocConnectionMethod,
         auxiliaryReferences: List<String>,
         isForHandoverSelect: Boolean
     ): Pair<NdefRecord, ByteArray>? {
-        if (connectionMethod is ConnectionMethodBle) {
+        if (connectionMethod is MdocConnectionMethodBle) {
             return DataTransportBle.toNdefRecord(
                 connectionMethod,
                 auxiliaryReferences,
                 isForHandoverSelect
             )
-        } else if (connectionMethod is ConnectionMethodNfc) {
+        } else if (connectionMethod is MdocConnectionMethodNfc) {
             return DataTransportNfc.toNdefRecord(
                 connectionMethod,
                 auxiliaryReferences,
                 isForHandoverSelect
             )
-        } else if (connectionMethod is ConnectionMethodWifiAware) {
+        } else if (connectionMethod is MdocConnectionMethodWifiAware) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 return DataTransportWifiAware.toNdefRecord(
                     connectionMethod,
@@ -560,13 +560,13 @@ object NfcUtil {
                     isForHandoverSelect
                 )
             }
-        } else if (connectionMethod is ConnectionMethodTcp) {
+        } else if (connectionMethod is MdocConnectionMethodTcp) {
             return DataTransportTcp.toNdefRecord(
                 connectionMethod,
                 auxiliaryReferences,
                 isForHandoverSelect
             )
-        } else if (connectionMethod is ConnectionMethodUdp) {
+        } else if (connectionMethod is MdocConnectionMethodUdp) {
             return DataTransportUdp.toNdefRecord(
                 connectionMethod,
                 auxiliaryReferences,
@@ -581,7 +581,7 @@ object NfcUtil {
         @JvmField
         val encodedDeviceEngagement: ByteArray,
         @JvmField
-        val connectionMethods: List<ConnectionMethod>
+        val connectionMethods: List<MdocConnectionMethod>
     )
 
     data class ParsedServiceParameterRecord(

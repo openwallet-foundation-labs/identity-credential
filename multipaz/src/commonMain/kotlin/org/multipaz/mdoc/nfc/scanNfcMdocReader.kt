@@ -1,8 +1,7 @@
 package org.multipaz.mdoc.nfc
 
 import org.multipaz.cbor.DataItem
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
@@ -10,13 +9,8 @@ import org.multipaz.mdoc.transport.NfcTransportMdocReader
 import org.multipaz.nfc.scanNfcTag
 import org.multipaz.prompt.PromptDismissedException
 import org.multipaz.util.Logger
-import org.multipaz.util.UUID
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
-import kotlin.time.Duration.Companion.seconds
+import org.multipaz.mdoc.role.MdocRole
 
 const private val TAG = "scanNfcMdocReader"
 
@@ -34,7 +28,7 @@ private data class ScanNfcMdocReaderResult(
  * When a connection has been established, [onHandover] is called with the created transport as well as
  * the device engagement and handover structures used.
  *
- * If the given transport is for [org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc] the
+ * If the given transport is for [org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc] the
  * [onHandover] callback is called in the same coroutine used for interacting with the tag to ensure
  * continued communications with the remote NFC tag reader and the `updateMessage` parameter to [onHandover]
  * will be non-`null` which the application can use to update the message in the NFC scanning dialog.
@@ -55,8 +49,8 @@ suspend fun scanNfcMdocReader(
     message: String,
     options: MdocTransportOptions,
     transportFactory: MdocTransportFactory = MdocTransportFactory.Default,
-    selectConnectionMethod: suspend (connectionMethods: List<ConnectionMethod>) -> ConnectionMethod?,
-    negotiatedHandoverConnectionMethods: List<ConnectionMethod>,
+    selectConnectionMethod: suspend (connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod?,
+    negotiatedHandoverConnectionMethods: List<MdocConnectionMethod>,
     onHandover: suspend (
         transport: MdocTransport,
         encodedDeviceEngagement: ByteString,
@@ -72,7 +66,7 @@ suspend fun scanNfcMdocReader(
     val negotiatedHandoverTransports = negotiatedHandoverConnectionMethods.map {
         val transport = transportFactory.createTransport(
             it,
-            MdocTransport.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             options
         )
         transport.advertise()
@@ -117,7 +111,7 @@ suspend fun scanNfcMdocReader(
                 if (transport == null) {
                     transport = transportFactory.createTransport(
                         connectionMethod,
-                        MdocTransport.Role.MDOC_READER,
+                        MdocRole.MDOC_READER,
                         options
                     )
                 }

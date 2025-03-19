@@ -21,7 +21,7 @@ import android.nfc.NdefRecord
 import android.text.format.Formatter
 import android.util.Log
 import android.util.Pair
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -253,8 +253,8 @@ class DataTransportTcp(
         return false
     }
 
-    override val connectionMethodForTransport: ConnectionMethod
-        get() = ConnectionMethodTcp(host!!, port)
+    override val connectionMethodForTransport: MdocConnectionMethod
+        get() = MdocConnectionMethodTcp(host!!, port)
 
     // Function to rewrite incoming messages, used only for testing to inject errors
     // which will cause decryption to fail.
@@ -282,7 +282,7 @@ class DataTransportTcp(
 
         fun fromConnectionMethod(
             context: Context,
-            cm: ConnectionMethodTcp,
+            cm: MdocConnectionMethodTcp,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
@@ -292,11 +292,11 @@ class DataTransportTcp(
         }
 
         fun toNdefRecord(
-            cm: ConnectionMethodTcp,
+            cm: MdocConnectionMethodTcp,
             auxiliaryReferences: List<String?>,
             isForHandoverSelect: Boolean
         ): Pair<NdefRecord, ByteArray> {
-            val reference = "${ConnectionMethodTcp.METHOD_TYPE}".toByteArray()
+            val reference = "${MdocConnectionMethodTcp.METHOD_TYPE}".toByteArray()
             val record = NdefRecord(
                 0x02.toShort(),  // type = RFC 2046 (MIME)
                 "application/vnd.android.ic.dmr".toByteArray(),

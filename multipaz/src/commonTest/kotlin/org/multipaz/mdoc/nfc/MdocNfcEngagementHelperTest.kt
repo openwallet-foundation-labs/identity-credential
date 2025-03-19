@@ -4,9 +4,9 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.NfcCommandFailedException
@@ -45,24 +45,24 @@ class MdocNfcEngagementHelperTest {
         }
     }
 
-    private fun getConnectionMethods(): List<ConnectionMethod> {
+    private fun getConnectionMethods(): List<MdocConnectionMethod> {
         // Include all ConnectionMethods that can exist in OOB data. Use static identifiers
         // to ensure we get the same transcripts every time.
         val bleUuid = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
         return listOf(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 supportsPeripheralServerMode = false,
                 supportsCentralClientMode = true,
                 peripheralServerModeUuid = null,
                 centralClientModeUuid = bleUuid
             ),
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 supportsPeripheralServerMode = true,
                 supportsCentralClientMode = false,
                 peripheralServerModeUuid = bleUuid,
                 centralClientModeUuid = null
             ),
-            ConnectionMethodNfc(
+            MdocConnectionMethodNfc(
                 commandDataFieldMaxLength = 0xffff,
                 responseDataFieldMaxLength = 0x10000
             )
@@ -185,13 +185,13 @@ class MdocNfcEngagementHelperTest {
         val bleUuid1 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
         val bleUuid2 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb7")
         val staticHandoverConnectionMethods = listOf(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 supportsPeripheralServerMode = false,
                 supportsCentralClientMode = true,
                 peripheralServerModeUuid = null,
                 centralClientModeUuid = bleUuid1
             ),
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 supportsPeripheralServerMode = true,
                 supportsCentralClientMode = false,
                 peripheralServerModeUuid = bleUuid2,
@@ -230,13 +230,13 @@ class MdocNfcEngagementHelperTest {
         val bleUuid1 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
         val bleUuid2 = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb7")
         val connectionMethods = listOf(
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 supportsPeripheralServerMode = false,
                 supportsCentralClientMode = true,
                 peripheralServerModeUuid = null,
                 centralClientModeUuid = bleUuid1
             ),
-            ConnectionMethodBle(
+            MdocConnectionMethodBle(
                 supportsPeripheralServerMode = true,
                 supportsCentralClientMode = false,
                 peripheralServerModeUuid = bleUuid2,
@@ -274,13 +274,13 @@ class MdocNfcEngagementHelperTest {
     fun testStaticHandoverBlePsm() = runTest {
         val bleUuid = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
 
-        val bleCc =  ConnectionMethodBle(
+        val bleCc =  MdocConnectionMethodBle(
             supportsPeripheralServerMode = false,
             supportsCentralClientMode = true,
             peripheralServerModeUuid = null,
             centralClientModeUuid = bleUuid
         )
-        val blePs = ConnectionMethodBle(
+        val blePs = MdocConnectionMethodBle(
             supportsPeripheralServerMode = true,
             supportsCentralClientMode = false,
             peripheralServerModeUuid = bleUuid,
@@ -316,14 +316,14 @@ class MdocNfcEngagementHelperTest {
     fun testNegotiatedHandoverBlePsm() = runTest {
         val bleUuid = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
 
-        val bleCc =  ConnectionMethodBle(
+        val bleCc =  MdocConnectionMethodBle(
             supportsPeripheralServerMode = false,
             supportsCentralClientMode = true,
             peripheralServerModeUuid = null,
             centralClientModeUuid = bleUuid,
             peripheralServerModePsm = 192,
         )
-        val blePs = ConnectionMethodBle(
+        val blePs = MdocConnectionMethodBle(
             supportsPeripheralServerMode = true,
             supportsCentralClientMode = false,
             peripheralServerModeUuid = bleUuid,

@@ -10,8 +10,8 @@ import androidx.core.content.edit
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.android.util.AndroidLogPrinter
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
 import org.multipaz.mrtd.mrtdSetLogger
 import org.multipaz.util.UUID
@@ -210,17 +210,17 @@ class SettingsModel(
         return sharingIntent
     }
 
-    fun createConnectionMethodsAndOptions(): Pair<List<ConnectionMethod>, DataTransportOptions> {
-        val connectionMethods = mutableListOf<ConnectionMethod>()
+    fun createConnectionMethodsAndOptions(): Pair<List<MdocConnectionMethod>, DataTransportOptions> {
+        val connectionMethods = mutableListOf<MdocConnectionMethod>()
         if (bleCentralClientMode.value == true && blePeripheralServerMode.value == true) {
             val bleUuid = UUID.randomUUID()
-            connectionMethods.add(ConnectionMethodBle(true, true, bleUuid, bleUuid))
+            connectionMethods.add(MdocConnectionMethodBle(true, true, bleUuid, bleUuid))
         } else if (bleCentralClientMode.value == true) {
             val bleUuid = UUID.randomUUID()
-            connectionMethods.add(ConnectionMethodBle(false, true, null, bleUuid))
+            connectionMethods.add(MdocConnectionMethodBle(false, true, null, bleUuid))
         } else if (blePeripheralServerMode.value == true) {
             val bleUuid = UUID.randomUUID()
-            connectionMethods.add(ConnectionMethodBle(true, false, bleUuid, null))
+            connectionMethods.add(MdocConnectionMethodBle(true, false, bleUuid, null))
         }
 
         val optionsBuilder = DataTransportOptions.Builder()

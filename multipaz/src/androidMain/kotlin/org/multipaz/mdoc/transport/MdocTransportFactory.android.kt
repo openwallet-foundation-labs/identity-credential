@@ -1,16 +1,17 @@
 package org.multipaz.mdoc.transport
 
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.role.MdocRole
 
 internal actual fun defaultMdocTransportFactoryCreateTransport(
-    connectionMethod: ConnectionMethod,
-    role: MdocTransport.Role,
+    connectionMethod: MdocConnectionMethod,
+    role: MdocRole,
     options: MdocTransportOptions
 ): MdocTransport {
     when (connectionMethod) {
-        is ConnectionMethodBle -> {
+        is MdocConnectionMethodBle -> {
             if (connectionMethod.supportsCentralClientMode &&
                 connectionMethod.supportsPeripheralServerMode) {
                 throw IllegalArgumentException(
@@ -18,7 +19,7 @@ internal actual fun defaultMdocTransportFactoryCreateTransport(
                 )
             } else if (connectionMethod.supportsCentralClientMode) {
                 return when (role) {
-                    MdocTransport.Role.MDOC -> {
+                    MdocRole.MDOC -> {
                         BleTransportCentralMdoc(
                             role,
                             options,
@@ -27,7 +28,7 @@ internal actual fun defaultMdocTransportFactoryCreateTransport(
                             connectionMethod.peripheralServerModePsm
                         )
                     }
-                    MdocTransport.Role.MDOC_READER -> {
+                    MdocRole.MDOC_READER -> {
                         BleTransportCentralMdocReader(
                             role,
                             options,
@@ -38,7 +39,7 @@ internal actual fun defaultMdocTransportFactoryCreateTransport(
                 }
             } else {
                 return when (role) {
-                    MdocTransport.Role.MDOC -> {
+                    MdocRole.MDOC -> {
                         BleTransportPeripheralMdoc(
                             role,
                             options,
@@ -46,7 +47,7 @@ internal actual fun defaultMdocTransportFactoryCreateTransport(
                             connectionMethod.peripheralServerModeUuid!!
                         )
                     }
-                    MdocTransport.Role.MDOC_READER -> {
+                    MdocRole.MDOC_READER -> {
                         BleTransportPeripheralMdocReader(
                             role,
                             options,
@@ -58,16 +59,16 @@ internal actual fun defaultMdocTransportFactoryCreateTransport(
                 }
             }
         }
-        is ConnectionMethodNfc -> {
+        is MdocConnectionMethodNfc -> {
             return when (role) {
-                MdocTransport.Role.MDOC -> {
+                MdocRole.MDOC -> {
                     NfcTransportMdoc(
                         role,
                         options,
                         connectionMethod
                     )
                 }
-                MdocTransport.Role.MDOC_READER -> {
+                MdocRole.MDOC_READER -> {
                     NfcTransportMdocReader(
                         role,
                         options,
