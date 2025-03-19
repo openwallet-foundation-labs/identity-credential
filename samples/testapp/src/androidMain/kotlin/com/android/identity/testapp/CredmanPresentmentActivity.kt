@@ -15,21 +15,17 @@ import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
-import org.multipaz.compose.AppTheme
+import com.android.identity.testapp.ui.AppTheme
 import org.multipaz.models.digitalcredentials.lookupForCredmanId
 import org.multipaz.models.presentment.DigitalCredentialsPresentmentMechanism
 import org.multipaz.compose.presentment.Presentment
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.context.initializeApplication
 import org.multipaz.util.Logger
-import multipazproject.samples.testapp.generated.resources.Res
-import multipazproject.samples.testapp.generated.resources.app_icon
-import multipazproject.samples.testapp.generated.resources.app_name
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
 import org.json.JSONObject
 import org.multipaz.compose.prompt.PromptDialogs
 
@@ -118,8 +114,8 @@ class CredmanPresentmentActivity: FragmentActivity() {
                         documentTypeRepository = app.documentTypeRepository,
                         source = TestAppPresentmentSource(app),
                         onPresentmentComplete = { finish() },
-                        appName = stringResource(Res.string.app_name),
-                        appIconPainter = painterResource(Res.drawable.app_icon),
+                        appName = platformAppName,
+                        appIconPainter = painterResource(platformAppIcon),
                         modifier = Modifier.consumeWindowInsets(innerPadding),
                     )
                 }

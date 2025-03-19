@@ -5,12 +5,10 @@ import androidx.compose.runtime.Composable
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.testapp.App
 import org.multipaz.testapp.TestAppPresentmentSource
-import multipazproject.samples.testapp.generated.resources.Res
-import multipazproject.samples.testapp.generated.resources.app_icon
-import multipazproject.samples.testapp.generated.resources.app_name
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.presentment.Presentment
+import org.multipaz.testapp.platformAppIcon
+import org.multipaz.testapp.platformAppName
 
 private const val TAG = "PresentmentScreen"
 
@@ -27,7 +25,7 @@ fun PresentmentScreen(
         documentTypeRepository = app.documentTypeRepository,
         source = TestAppPresentmentSource(app),
         onPresentmentComplete = onPresentationComplete,
-        appName = stringResource(Res.string.app_name),
-        appIconPainter = painterResource(Res.drawable.app_icon),
+        appName = platformAppName,
+        appIconPainter = painterResource(platformAppIcon),
     )
 }

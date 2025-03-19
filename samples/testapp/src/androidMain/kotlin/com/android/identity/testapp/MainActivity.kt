@@ -11,6 +11,7 @@ import org.multipaz.context.initializeApplication
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.multipaz.util.Logger
 
 class MainActivity : FragmentActivity() {
 
@@ -21,14 +22,23 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         NfcAdapter.getDefaultAdapter(this)?.let {
-            CardEmulation.getInstance(it)?.setPreferredService(this, ComponentName(this, NdefService::class::class.java))
+            val cardEmulation = CardEmulation.getInstance(it)
+            val result = cardEmulation.setPreferredService(
+                this,
+                ComponentName(this, NdefService::class::class.java)
+            )
+            Logger.i(TAG, "CardEmulation.setPreferredService() -> $result")
+            val prefResult = cardEmulation.categoryAllowsForegroundPreference(CardEmulation.CATEGORY_PAYMENT)
+            Logger.i(TAG, "CardEmulation.categoryAllowsForegroundPreference(CATEGORY_PAYMENT) -> $prefResult")
         }
     }
 
     override fun onPause() {
         super.onPause()
         NfcAdapter.getDefaultAdapter(this)?.let {
-            CardEmulation.getInstance(it)?.unsetPreferredService(this)
+            val cardEmulation = CardEmulation.getInstance(it)
+            val result = cardEmulation.unsetPreferredService(this)
+            Logger.i(TAG, "CardEmulation.unsetPreferredService() -> $result")
         }
     }
 

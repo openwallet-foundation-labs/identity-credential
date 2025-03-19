@@ -15,12 +15,24 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.app_icon
+import multipazproject.samples.testapp.generated.resources.app_icon_red
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.notifications.NotificationManagerAndroid
 import org.multipaz.crypto.Algorithm
 import java.io.File
 import java.net.NetworkInterface
 import java.security.Security
+
+actual val platformAppName = applicationContext.getString(R.string.app_name)
+
+actual val platformAppIcon = if (platformAppName.endsWith("(Red)")) {
+    Res.drawable.app_icon_red
+} else {
+    Res.drawable.app_icon
+}
 
 actual val platform = Platform.ANDROID
 
