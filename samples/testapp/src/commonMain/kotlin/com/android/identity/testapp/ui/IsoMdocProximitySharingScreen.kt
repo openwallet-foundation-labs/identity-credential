@@ -18,8 +18,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.multipaz.models.ui.presentment.MdocPresentmentMechanism
-import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.models.presentment.MdocPresentmentMechanism
+import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Crypto

@@ -23,7 +23,6 @@ import androidx.activity.compose.setContent
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Simple
@@ -45,7 +44,6 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz_credential.wallet.WalletApplication
 import org.multipaz_credential.wallet.presentation.showMdocPresentmentFlow
 import org.multipaz.request.Requester
-import org.multipaz.claim.MdocClaim
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import com.google.android.gms.identitycredentials.Credential
@@ -59,7 +57,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.StringTokenizer
 import kotlinx.datetime.Clock
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 
 
 /**
@@ -206,16 +208,15 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                 val encodedSessionTranscript =
                     Cbor.encode(
-                        CborArray.builder()
-                            .add(Simple.NULL) // DeviceEngagementBytes
-                            .add(Simple.NULL) // EReaderKeyBytes
-                            .addArray() // BrowserHandover
-                            .add("ARFHandoverv2")
-                            .add(encryptionInfoBase64)
-                            .add(callingOrigin!!)
-                            .end()
-                            .end()
-                            .build()
+                        buildCborArray {
+                            add(Simple.NULL) // DeviceEngagementBytes
+                            add(Simple.NULL) // EReaderKeyBytes
+                            addCborArray {
+                                add("ARFHandoverv2")
+                                add(encryptionInfoBase64)
+                                add(callingOrigin!!)
+                            }
+                        }
                     )
 
                 // For now we only consider the first document request
@@ -273,14 +274,13 @@ class CredmanPresentationActivity : FragmentActivity() {
                     )
                     val encryptedResponse =
                         Cbor.encode(
-                            CborArray.builder()
-                                .add("ARFencryptionv2")
-                                .addMap()
-                                .put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
-                                .put("cipherText", cipherText)
-                                .end()
-                                .end()
-                                .build()
+                            buildCborArray {
+                                add("ARFencryptionv2")
+                                addCborMap {
+                                    put("pkEM", encapsulatedPublicKey.toCoseKey().toDataItem())
+                                    put("cipherText", cipherText)
+                                }
+                            }
                         )
 
                     // Create the preview response

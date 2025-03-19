@@ -24,6 +24,8 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.util.getUInt16
 
 /**
  * Helper used for NFC engagement on the mdoc side.
@@ -101,7 +103,7 @@ class MdocNfcEngagementHelper(
 
     private suspend fun processSelectFile(command: CommandApdu): ResponseApdu {
         check(ndefApplicationSelected) { "NDEF application not yet selected" }
-        selectedFileId = decodeShort(command.payload.toByteArray())
+        selectedFileId = command.payload.getUInt16(0).toInt()
         when (selectedFileId) {
             Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID -> {
                 val fileWriteAccessCondition = if (negotiatedHandoverPicker != null) 0x00 else 0xff.toByte()
@@ -160,11 +162,10 @@ class MdocNfcEngagementHelper(
                     )
                     val hsPayload = handoverSelectMessage.encode()
 
-                    val handover = CborArray.builder()
-                        .add(hsPayload)                      // Handover Select message
-                        .add(Simple.NULL)                    // Handover Request message
-                        .end()
-                        .build()
+                    val handover = buildCborArray {
+                        add(hsPayload)                      // Handover Select message
+                        add(Simple.NULL)                    // Handover Request message
+                    }
 
                     val bsb = ByteStringBuilder()
                     bsb.append((hsPayload.size/0x100).and(0xff).toByte())
@@ -232,7 +233,10 @@ class MdocNfcEngagementHelper(
         if (availableConnectionMethods.isEmpty()) {
             throw Error("No supported connection methods found in Handover Request method")
         }
-        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(availableConnectionMethods)
+        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(
+            availableConnectionMethods,
+            MdocTransport.Role.MDOC
+        )
 
         val selectedMethod = negotiatedHandoverPicker!!(disambiguatedConnectionMethods)
 
@@ -264,11 +268,10 @@ class MdocNfcEngagementHelper(
             skipUuids = skipUuids,
         )
 
-        val handover = CborArray.builder()
-            .add(handoverSelectMessage.encode())  // Handover Select message
-            .add(message.encode())                // Handover Request message
-            .end()
-            .build()
+        val handover = buildCborArray {
+            add(handoverSelectMessage.encode())  // Handover Select message
+            add(message.encode())                // Handover Request message
+        }
 
         negotiatedHandoverState = NegotiatedHandoverState.EXPECT_HANDOVER_SELECT_MESSAGE
 
@@ -350,7 +353,7 @@ class MdocNfcEngagementHelper(
         val data = command.payload
         if (offset == 0) {
             if (data.size == 2) {
-                val lenInData = decodeShort(data.toByteArray())
+                val lenInData = data.getUInt16(0).toInt()
                 if (lenInData == 0) {
                     if (updateBinaryData != null) {
                         raiseError("Got reset but is already active")
@@ -430,5 +433,3 @@ class MdocNfcEngagementHelper(
     }
 }
 
-private fun decodeShort(encoded: ByteArray) =
-    encoded[0].toInt().and(0xff).shl(8) + encoded[1].toInt().and(0xff)

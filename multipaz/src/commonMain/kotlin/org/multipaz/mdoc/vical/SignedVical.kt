@@ -4,8 +4,10 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
-import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cbor.toDataItemDateTimeString
 import org.multipaz.cose.Cose
@@ -13,6 +15,7 @@ import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.cose.CoseSign1
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 
@@ -38,29 +41,31 @@ data class SignedVical(
         signingKey: EcPrivateKey,
         signingAlgorithm: Algorithm
     ): ByteArray {
-        val certInfosBuilder = CborArray.builder()
-        for (certInfo in vical.certificateInfos) {
-            val docTypesBuilder = CborArray.builder()
-            certInfo.docType.forEach { docTypesBuilder.add(it) }
-
-            certInfosBuilder.addMap()
-                .put("certificate", certInfo.certificate.encodedCertificate)
-                .put("serialNumber", Tagged(Tagged.UNSIGNED_BIGNUM, Bstr(certInfo.certificate.serialNumber.value)))
-                .put("ski", certInfo.certificate.subjectKeyIdentifier!!)
-                .put("docType", docTypesBuilder.end().build())
-                .end()
-        }
-
-        val vicalBuilder = CborMap.builder()
-            .put("version", vical.version)
-            .put("vicalProvider", vical.vicalProvider)
-            .put("date", vical.date.toDataItemDateTimeString())
-        vical.nextUpdate?.let { vicalBuilder.put("nextUpdate", it.toDataItemDateTimeString())}
-        vical.vicalIssueID?.let { vicalBuilder.put("vicalIssueID", it.toDataItem()) }
-        vicalBuilder.put("certificateInfos", certInfosBuilder.end().build())
-
-        val encodedVical = Cbor.encode(vicalBuilder.end().build())
-
+        val encodedVical = Cbor.encode(
+            buildCborMap {
+                put("version", vical.version)
+                put("vicalProvider", vical.vicalProvider)
+                put("date", vical.date.toDataItemDateTimeString())
+                vical.nextUpdate?.let { put("nextUpdate", it.toDataItemDateTimeString())}
+                vical.vicalIssueID?.let { put("vicalIssueID", it.toDataItem()) }
+                putCborArray("certificateInfos") {
+                    for (certInfo in vical.certificateInfos) {
+                        addCborMap {
+                            put("certificate", certInfo.certificate.encodedCertificate)
+                            put("serialNumber", Tagged(
+                                Tagged.UNSIGNED_BIGNUM,
+                                Bstr(certInfo.certificate.serialNumber.value)
+                            ))
+                            put("ski", certInfo.certificate.subjectKeyIdentifier!!)
+                            putCborArray("docType") {
+                                certInfo.docType.forEach { add(it) }
+                            }
+                            end()
+                        }
+                    }
+                }
+            }
+        )
         val signature = Cose.coseSign1Sign(
             key = signingKey,
             dataToSign = encodedVical,
@@ -73,7 +78,6 @@ data class SignedVical(
                 Pair(CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN), vicalProviderCertificateChain.toDataItem())
             )
         )
-
         return Cbor.encode(signature.toDataItem())
     }
 
@@ -92,8 +96,8 @@ data class SignedVical(
          *
          * @param encodedSignedVical the encoded CBOR with the COSE_Sign1 described above.
          * @return a `SignedVical` instance.
-         * @throws IllegalArgumentException if the passed in signed VICAL is malformed or signature
-         * verification failed.
+         * @throws IllegalArgumentException if the passed in signed VICAL is malformed
+         * @throws SignatureVerificationException if signature verification failed.
          */
         fun parse(encodedSignedVical: ByteArray): SignedVical {
             val signature = CoseSign1.fromDataItem(Cbor.decode(encodedSignedVical))
@@ -108,14 +112,12 @@ data class SignedVical(
                 ?.let { Algorithm.fromCoseAlgorithmIdentifier(it) }
                 ?: throw IllegalArgumentException("Signature Algorithm not set")
 
-            if (!Cose.coseSign1Check(
+            Cose.coseSign1Check(
                 certChain.certificates.first().ecPublicKey,
                 null,
                 signature,
                 signatureAlgorithm
-            )) {
-                throw IllegalArgumentException("Signature check failed")
-            }
+            )
 
             val vicalMap = Cbor.decode(vicalPayload)
             val version = vicalMap["version"].asTstr

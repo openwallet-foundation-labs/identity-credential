@@ -13,6 +13,9 @@ import org.multipaz.documenttype.knowntypes.DrivingLicense
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -139,9 +142,12 @@ class TestDocumentTypeRepository {
                 DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                 false
             ).renderValue(
-                CborMap.builder()
-                    .put("birth_date", Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString())
-                    .end().build(),
+                buildCborMap {
+                    put(
+                        "birth_date",
+                        Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString()
+                    )
+                },
                 timeZone = TimeZone.of("Europe/Copenhagen")
             )
         )
@@ -164,9 +170,9 @@ class TestDocumentTypeRepository {
                     DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                     false
                 ).renderValue(
-                    CborMap.builder()
-                        .put("birth_date", LocalDate.parse("1976-02-03").toDataItemFullDate())
-                        .end().build(),
+                    buildCborMap {
+                        put("birth_date", LocalDate.parse("1976-02-03").toDataItemFullDate())
+                    },
                     timeZone = TimeZone.of(zoneId)
                 )
             )
@@ -205,35 +211,38 @@ class TestDocumentTypeRepository {
         assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
-                CborMap.builder()
-                    .put("birth_date", Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString())
-                    .end().build(),
+                buildCborMap {
+                    put(
+                        "birth_date",
+                        Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString()
+                    )
+                },
                 timeZone = TimeZone.of("America/New_York")
             )
         )
         assertEquals(
             "1976-02-03",
             mdlNs.dataElements["birth_date"]?.renderValue(
-                CborMap.builder()
-                    .put("birth_date", LocalDate.parse("1976-02-03").toDataItemFullDate())
-                    .end().build(),
+                buildCborMap {
+                    put("birth_date", LocalDate.parse("1976-02-03").toDataItemFullDate())
+                },
                 timeZone = TimeZone.of("America/New_York")
             )
         )
 
         // CredentialAttributeType.ComplexType
-        val drivingPrivileges = CborArray.builder()
-            .addMap()
-            .put("vehicle_category_code", "A")
-            .put("issue_date", Tagged(1004, Tstr("2018-08-09")))
-            .put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
-            .end()
-            .addMap()
-            .put("vehicle_category_code", "B")
-            .put("issue_date", Tagged(1004, Tstr("2017-02-23")))
-            .put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
-            .end()
-            .end().build()
+        val drivingPrivileges = buildCborArray {
+            addCborMap {
+                put("vehicle_category_code", "A")
+                put("issue_date", Tagged(1004, Tstr("2018-08-09")))
+                put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
+            }
+            addCborMap {
+                put("vehicle_category_code", "B")
+                put("issue_date", Tagged(1004, Tstr("2017-02-23")))
+                put("expiry_date", Tagged(1004, Tstr("2024-10-20")))
+            }
+        }
         // Note, this isn't very nice but it's not clear we can do any better at this point,
         // fitting complex stuff like this into a string is going to be a mess no matter how
         // you slice or dice it.

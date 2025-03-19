@@ -2,11 +2,12 @@ package com.android.mdl.app.credman
 
 import android.content.Context
 import com.google.android.gms.identitycredentials.RegistrationRequest
+import kotlinx.io.bytestring.buildByteString
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import org.json.JSONArray
 import org.json.JSONObject
+import org.multipaz.util.appendByteArray
+import org.multipaz.util.appendUInt32Le
 
 class IdentityCredentialRegistry(
   val entries: List<IdentityCredentialEntry>,
@@ -43,22 +44,19 @@ class IdentityCredentialRegistry(
     }
     json.put("credentials", credListJson)
     val credsBytes = json.toString(0).toByteArray()
-    val result = ByteArrayOutputStream()
-    // header_size
-    result.write(intBytes((3 + iconSizeList.size) * Int.SIZE_BYTES))
-    // creds_size
-    result.write(intBytes(credsBytes.size))
-    // icon_size_array_size
-    result.write(intBytes(iconSizeList.size))
-    // icon offsets
-    iconSizeList.forEach { result.write(intBytes(it)) }
-    result.write(credsBytes)
-    icons.writeTo(result)
-    return result.toByteArray()
-  }
 
-  companion object {
-    fun intBytes(num: Int): ByteArray =
-      ByteBuffer.allocate(Int.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN).putInt(num).array()
+    return buildByteString {
+      // header_size
+      appendUInt32Le((3 + iconSizeList.size) * Int.SIZE_BYTES)
+      // creds_size
+      appendUInt32Le(credsBytes.size)
+      // icon_size_array_size
+      appendUInt32Le(iconSizeList.size)
+      // icon offsets
+      iconSizeList.forEach(::appendUInt32Le)
+
+      appendByteArray(credsBytes)
+      appendByteArray(icons.toByteArray())
+    }.toByteArray()
   }
 }

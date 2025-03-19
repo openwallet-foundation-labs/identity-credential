@@ -3,7 +3,6 @@
 package org.multipaz.crypto
 
 import org.multipaz.util.UUID
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -113,13 +112,15 @@ expect object Crypto {
      * @param message the data that was signed.
      * @param algorithm the signature algorithm to use.
      * @param signature the signature.
+     * @throws SignatureVerificationException if the signature check fails.
+     * @throws IllegalStateException if an error occurred during the check, for example if data is malformed.
      */
     fun checkSignature(
         publicKey: EcPublicKey,
         message: ByteArray,
         algorithm: Algorithm,
         signature: EcSignature
-    ): Boolean
+    )
 
     /**
      * Creates an EC private key.

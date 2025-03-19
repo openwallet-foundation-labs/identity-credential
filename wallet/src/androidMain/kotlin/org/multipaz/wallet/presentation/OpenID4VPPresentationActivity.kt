@@ -32,7 +32,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Simple
@@ -44,7 +43,7 @@ import org.multipaz.document.Document
 import org.multipaz.document.DocumentRequest
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.knowntypes.EUPersonalID
-import org.multipaz.issuance.CredentialFormat
+import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.issuance.DocumentExtensions.documentConfiguration
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.response.DeviceResponseGenerator
@@ -54,12 +53,9 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.R
 import org.multipaz_credential.wallet.WalletApplication
-import org.multipaz.claim.Claim
 import org.multipaz.request.Requester
-import org.multipaz.claim.VcClaim
 import org.multipaz.crypto.javaX509Certificate
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.claim.MdocClaim
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim
@@ -125,7 +121,10 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.multipaz.cbor.addCborArray
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -767,34 +766,32 @@ private fun createSessionTranscript(
     authorizationRequestNonce: String,
     mdocGeneratedNonce: String
 ): ByteArray {
-    val clientIdToHash = Cbor.encode(CborArray.builder()
-        .add(clientId)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
+    val clientIdToHash = Cbor.encode(
+        buildCborArray {
+            add(clientId)
+            add(mdocGeneratedNonce)
+        }
+    )
     val clientIdHash = Crypto.digest(Algorithm.SHA256, clientIdToHash)
 
-    val responseUriToHash = Cbor.encode(CborArray.builder()
-        .add(responseUri)
-        .add(mdocGeneratedNonce)
-        .end()
-        .build())
+    val responseUriToHash = Cbor.encode(
+        buildCborArray {
+            add(responseUri)
+            add(mdocGeneratedNonce)
+        }
+    )
     val responseUriHash = Crypto.digest(Algorithm.SHA256, responseUriToHash)
 
-    val oid4vpHandover = CborArray.builder()
-        .add(clientIdHash)
-        .add(responseUriHash)
-        .add(authorizationRequestNonce)
-        .end()
-        .build()
-
     return Cbor.encode(
-        CborArray.builder()
-            .add(Simple.NULL)
-            .add(Simple.NULL)
-            .add(oid4vpHandover)
-            .end()
-            .build()
+        buildCborArray {
+            add(Simple.NULL)
+            add(Simple.NULL)
+            addCborArray {
+                add(clientIdHash)
+                add(responseUriHash)
+                add(authorizationRequestNonce)
+            }
+        }
     )
 }
 

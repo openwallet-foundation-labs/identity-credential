@@ -141,7 +141,7 @@ class X509CertTests {
             .includeAuthorityKeyIdentifierAsSubjectKeyIdentifier()
             .build()
 
-        assertTrue(cert.verify(key.publicKey))
+        cert.verify(key.publicKey)
 
         // Also check that the fields are as expected.
         assertEquals(curve.defaultSigningAlgorithm, cert.signatureAlgorithm)

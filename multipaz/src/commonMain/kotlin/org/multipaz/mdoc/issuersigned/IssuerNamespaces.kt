@@ -6,6 +6,8 @@ import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
 import org.multipaz.request.MdocRequestedClaim
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -29,15 +31,18 @@ data class IssuerNamespaces(
      * @return a [DataItem] for `IssuerNameSpaces` CBOR.
      */
     fun toDataItem(): DataItem {
-        val builder = CborMap.builder()
-        for ((namespaceName, innerMap) in data) {
-            val array = CborArray.builder()
-            for ((_, issuerSignedItem) in innerMap) {
-                array.add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(issuerSignedItem.toDataItem()))))
+        return buildCborMap {
+            for ((namespaceName, innerMap) in data) {
+                putCborArray(namespaceName) {
+                    for ((_, issuerSignedItem) in innerMap) {
+                        add(Tagged(
+                            Tagged.ENCODED_CBOR,
+                            Bstr(Cbor.encode(issuerSignedItem.toDataItem()))
+                        ))
+                    }
+                }
             }
-            builder.put(namespaceName, array.end().build())
         }
-        return builder.end().build()
     }
 
     /**

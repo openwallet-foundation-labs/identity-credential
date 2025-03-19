@@ -1,6 +1,8 @@
 package org.multipaz.asn1
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.appendByteArray
+import org.multipaz.util.appendUInt8
 
 class ASN1BitString(
     val numUnusedBits: Int,
@@ -15,8 +17,8 @@ class ASN1BitString(
 
     override fun encode(builder: ByteStringBuilder) {
         ASN1.appendUniversalTagEncodingLength(builder, tag, enc, value.size + 1)
-        builder.append(numUnusedBits.toByte())
-        builder.append(value)
+        builder.appendUInt8(numUnusedBits)
+        builder.appendByteArray(value)
     }
 
     override fun equals(other: Any?): Boolean = other is ASN1BitString && other.value contentEquals value

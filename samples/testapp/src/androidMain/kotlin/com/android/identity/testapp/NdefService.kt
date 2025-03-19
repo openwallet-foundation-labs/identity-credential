@@ -8,18 +8,17 @@ import android.os.Vibrator
 import androidx.core.content.ContextCompat
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.mdoc.connectionmethod.ConnectionMethod
 import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
 import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
-import org.multipaz.models.ui.presentment.MdocPresentmentMechanism
+import org.multipaz.models.presentment.MdocPresentmentMechanism
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.nfc.CommandApdu
-import org.multipaz.models.ui.presentment.PresentmentModel
-import org.multipaz.models.ui.presentment.PresentmentTimeout
+import org.multipaz.models.presentment.PresentmentModel
+import org.multipaz.models.presentment.PresentmentTimeout
 import org.multipaz.context.initializeApplication
 import org.multipaz.mdoc.transport.advertiseAndWait
 import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
@@ -196,6 +195,9 @@ class NdefService: HostApduService() {
             }
         }
 
+        // TODO: Listen on methods _before_ starting the engagement helper so we can send the PSM
+        //   for mdoc Peripheral Server mode when using NFC Static Handover.
+        //
         engagement = MdocNfcEngagementHelper(
             eDeviceKey = eDeviceKey.publicKey,
             onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->

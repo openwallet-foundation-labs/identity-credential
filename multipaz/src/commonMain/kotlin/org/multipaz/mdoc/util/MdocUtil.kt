@@ -49,6 +49,7 @@ import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.util.Logger
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.buildCborMap
 import kotlin.random.Random
 
 /**
@@ -139,13 +140,12 @@ object MdocUtil {
                         encodedValue = overriddenValue
                     }
                 }
-                val issuerSignedItem = CborMap.builder()
-                    .put("digestID", digestId)
-                    .put("random", random)
-                    .put("elementIdentifier", elemName)
-                    .put("elementValue", RawCbor(encodedValue!!))
-                    .end()
-                    .build()
+                val issuerSignedItem = buildCborMap {
+                    put("digestID", digestId)
+                    put("random", random)
+                    put("elementIdentifier", elemName)
+                    put("elementValue", RawCbor(encodedValue!!))
+                }
                 val encodedIssuerSignedItem = Cbor.encode(issuerSignedItem)
                 val encodedIssuerSignedItemBytes = Cbor.encode(Tagged(24, Bstr(encodedIssuerSignedItem)))
                 list.add(encodedIssuerSignedItemBytes)
@@ -404,15 +404,17 @@ object MdocUtil {
         encodedElementValue: ByteArray
     ): ByteArray {
         val map = Cbor.decode(encodedIssuerSignedItem)
-        val builder = CborMap.builder()
-        for (key in map.asMap.keys) {
-            if (key.asTstr == "elementValue") {
-                builder.put(key, RawCbor(encodedElementValue))
-            } else {
-                builder.put(key, map[key])
+        return Cbor.encode(
+            buildCborMap {
+                for (key in map.asMap.keys) {
+                    if (key.asTstr == "elementValue") {
+                        put(key, RawCbor(encodedElementValue))
+                    } else {
+                        put(key, map[key])
+                    }
+                }
             }
-        }
-        return Cbor.encode(builder.end().build())
+        )
     }
 
     /**

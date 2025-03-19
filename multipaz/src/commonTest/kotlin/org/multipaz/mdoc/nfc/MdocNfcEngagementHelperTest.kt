@@ -267,6 +267,118 @@ class MdocNfcEngagementHelperTest {
         assertEquals("UUIDs for both BLE modes are not the same", e.message)
     }
 
+    // Checks that PSM is correctly conveyed when using Static Handover
+    // and the mdoc is offering mdoc BLE Peripheral Server Mode with a PSM
+    // that it's listening on.
+    @Test
+    fun testStaticHandoverBlePsm() = runTest {
+        val bleUuid = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
+
+        val bleCc =  ConnectionMethodBle(
+            supportsPeripheralServerMode = false,
+            supportsCentralClientMode = true,
+            peripheralServerModeUuid = null,
+            centralClientModeUuid = bleUuid
+        )
+        val blePs = ConnectionMethodBle(
+            supportsPeripheralServerMode = true,
+            supportsCentralClientMode = false,
+            peripheralServerModeUuid = bleUuid,
+            centralClientModeUuid = null,
+            peripheralServerModePsm = 192,
+        )
+
+        val eDeviceKeyPub = getEDeviceKeyPub()
+        val engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKeyPub,
+            onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                assertEquals(listOf(bleCc, blePs), connectionMethods)
+            },
+            onError = { error ->
+                fail("onError should not be called with $error")
+            },
+            staticHandoverMethods = listOf(bleCc, blePs),
+        )
+
+        val tag = LoopbackIsoTag(engagementHelper)
+        val handoverResult = mdocReaderNfcHandover(
+            tag = tag,
+            negotiatedHandoverConnectionMethods = getConnectionMethods(),
+        )
+        assertNotNull(handoverResult)
+        assertEquals(listOf(bleCc, blePs), handoverResult.connectionMethods)
+    }
+
+    // Checks that PSM is correctly conveyed when using Negotiated Handover
+    // and the reader is offering mdoc BLE Central Client Mode with a PSM
+    // that it's listening on.
+    @Test
+    fun testNegotiatedHandoverBlePsm() = runTest {
+        val bleUuid = UUID.fromString("b3d52ac4-a1b6-4b51-a22e-78ee55ef6eb6")
+
+        val bleCc =  ConnectionMethodBle(
+            supportsPeripheralServerMode = false,
+            supportsCentralClientMode = true,
+            peripheralServerModeUuid = null,
+            centralClientModeUuid = bleUuid,
+            peripheralServerModePsm = 192,
+        )
+        val blePs = ConnectionMethodBle(
+            supportsPeripheralServerMode = true,
+            supportsCentralClientMode = false,
+            peripheralServerModeUuid = bleUuid,
+            centralClientModeUuid = null
+        )
+
+        val eDeviceKeyPub = getEDeviceKeyPub()
+        val engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKeyPub,
+            onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                assertEquals(1, connectionMethods.size)
+            },
+            onError = { error ->
+                fail("onError should not be called with $error")
+            },
+            negotiatedHandoverPicker = { methods -> methods.first() }
+        )
+
+        val tag = LoopbackIsoTag(engagementHelper)
+        val handoverResult = mdocReaderNfcHandover(
+            tag = tag,
+            negotiatedHandoverConnectionMethods = listOf(bleCc, blePs),
+        )
+        assertNotNull(handoverResult)
+        assertEquals(1, handoverResult.connectionMethods.size)
+        assertEquals(
+            bleCc,
+            handoverResult.connectionMethods.first()
+        )
+
+        // Check that there's no PSM if we select the second method
+        val engagementHelper2 = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKeyPub,
+            onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                assertEquals(1, connectionMethods.size)
+            },
+            onError = { error ->
+                fail("onError should not be called with $error")
+            },
+            negotiatedHandoverPicker = { methods -> methods[1] }
+        )
+
+        val tag2 = LoopbackIsoTag(engagementHelper2)
+        val handoverResult2 = mdocReaderNfcHandover(
+            tag = tag2,
+            negotiatedHandoverConnectionMethods = listOf(bleCc, blePs),
+        )
+        assertNotNull(handoverResult2)
+        assertEquals(1, handoverResult2.connectionMethods.size)
+        assertEquals(
+            blePs,
+            handoverResult2.connectionMethods.first()
+        )
+    }
+
     private fun testNfcEngagementHelper(
         testBlock: suspend (tag: NfcIsoTag) -> Unit
     ): Pair<Boolean, Throwable?> {

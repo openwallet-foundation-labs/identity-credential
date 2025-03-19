@@ -1,9 +1,8 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.cbor.Cbor.decode
-import org.multipaz.cbor.Cbor.encode
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.util.Logger
@@ -21,14 +20,14 @@ class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
     override fun toString(): String = "http:uri=$uri"
 
     override fun toDeviceEngagement(): ByteArray {
-        val builder = CborMap.builder()
-        builder.put(OPTION_KEY_URI, uri)
-        return encode(
-            CborArray.builder()
-                .add(METHOD_TYPE)
-                .add(METHOD_MAX_VERSION)
-                .add(builder.end().build())
-                .end().build()
+        return Cbor.encode(
+            buildCborArray {
+                add(METHOD_TYPE)
+                add(METHOD_MAX_VERSION)
+                addCborMap {
+                    put(OPTION_KEY_URI, uri)
+                }
+            }
         )
     }
 
@@ -48,7 +47,7 @@ class ConnectionMethodHttp(val uri: String): ConnectionMethod() {
         private const val OPTION_KEY_URI = 0L
 
         internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodHttp? {
-            val array = decode(encodedDeviceRetrievalMethod)
+            val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
             require(type == METHOD_TYPE)

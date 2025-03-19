@@ -133,13 +133,11 @@ class AndroidKeystoreSecureAreaTest {
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
-        Assert.assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.ES256,
-                signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey,
+            dataToSign,
+            Algorithm.ES256,
+            signature
         )
     }
 
@@ -309,13 +307,11 @@ class AndroidKeystoreSecureAreaTest {
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
-        Assert.assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.EDDSA,
-                signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey,
+            dataToSign,
+            Algorithm.EDDSA,
+            signature
         )
     }
 
@@ -512,13 +508,11 @@ class AndroidKeystoreSecureAreaTest {
         )
 
         // Check new key is used to sign.
-        Assert.assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey,
-                dataToSign,
-                Algorithm.ES256,
-                signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey,
+            dataToSign,
+            Algorithm.ES256,
+            signature
         )
     }
 

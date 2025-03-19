@@ -1,7 +1,6 @@
 package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
 import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
@@ -9,7 +8,6 @@ import org.multipaz.nfc.NfcCommandFailedException
 import org.multipaz.nfc.NfcIsoTag
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.util.Logger
-import org.multipaz.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -23,6 +21,11 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
+import kotlinx.io.bytestring.buildByteString
+import org.multipaz.util.ByteDataReader
+import org.multipaz.util.appendByteString
+import org.multipaz.util.appendUInt16
+import org.multipaz.util.appendUInt8
 import kotlin.math.min
 import kotlin.time.Duration
 
@@ -201,8 +204,8 @@ class NfcTransportMdocReader(
             }
         }
         val encapsulatedMessage = encapsulatedMessageBuilder.toByteString()
-        val message = extractFromDo53(encapsulatedMessage)
-        return message
+        val extractedMessage = extractFromDo53(encapsulatedMessage)
+        return extractedMessage
     }
 
     override suspend fun waitForMessage(): ByteArray {
@@ -260,59 +263,50 @@ internal fun extractFromDo53(encapsulatedData: ByteString): ByteString {
     check(encapsulatedData.size >= 2) {
         "DO53 length ${encapsulatedData.size}, expected at least 2"
     }
-    val tag = encapsulatedData[0].toInt().and(0xff)
-    check(tag == 0x53) {
-        "DO53 first byte is $tag, expected 0x53"
-    }
-    var length = encapsulatedData[1].toInt().and(0xff)
-    check(length <= 0x83) {
-        "DO53 first byte of length is $length"
-    }
-    var offset = 2
-    when (length) {
-        0x80 -> throw IllegalStateException("DO53 first byte of length is 0x80")
-        0x81 -> {
-            length = encapsulatedData[2].toInt().and(0xff)
-            offset = 3
+    with (ByteDataReader(encapsulatedData)) {
+        val tag = getUInt8()
+        check(tag == 0x53.toUByte()) { "DO53 first byte is $tag, expected 0x53" }
+
+        val length = getUInt8()
+        check(length <= 0x83u) {
+            "DO53 first byte of length is $length"
         }
-        0x82 -> {
-            length = (encapsulatedData[2].toInt().and(0xff)) * 0x100
-            length += encapsulatedData[3].toInt().and(0xff)
-            offset = 4
+        val newLength: Int = when (length.toUInt()) {
+            0x80u -> throw IllegalStateException("DO53 first byte of length is 0x80")
+            0x81u -> getUInt8().toInt()
+            0x82u -> getUInt16().toInt()
+            0x83u -> (getUInt8() * 0x10000u + getUInt16()).toInt()
+            else -> length.toInt()
         }
-        0x83 -> {
-            length = (encapsulatedData[2].toInt().and(0xff)) * 0x10000
-            length += (encapsulatedData[3].toInt().and(0xff)) * 0x100
-            length += encapsulatedData[4].toInt().and(0xff)
-            offset = 5
+        if (newLength == 0) {
+            return ByteString()
         }
+        if (newLength != numBytesRemaining()) {
+            throw IllegalStateException("Malformed BER-TLV encoding. " +
+                    "Data length expected: $newLength, actual: ${numBytesRemaining()}")
+        }
+        return getByteString(newLength)
     }
-    if (encapsulatedData.size != offset + length) {
-        throw IllegalStateException("Malformed BER-TLV encoding, ${encapsulatedData.size} $offset $length")
-    }
-    return encapsulatedData.substring(offset, offset + length)
 }
 
 internal fun encapsulateInDo53(data: ByteString): ByteString {
-    val bsb = ByteStringBuilder()
-    bsb.append(0x53)
-    if (data.size < 0x80) {
-        bsb.append(data.size.and(0xff).toByte())
-    } else if (data.size < 0x100) {
-        bsb.append(0x81.and(0xff).toByte())
-        bsb.append(data.size.and(0xff).toByte())
-    } else if (data.size < 0x10000) {
-        bsb.append(0x82.and(0xff).toByte())
-        bsb.append((data.size / 0x100).and(0xff).toByte())
-        bsb.append((data.size.and(0xff)).and(0xff).toByte())
-    } else if (data.size < 0x1000000) {
-        bsb.append(0x83.and(0xff).toByte())
-        bsb.append((data.size / 0x10000).and(0xff).toByte())
-        bsb.append((data.size / 0x100).and(0xff).toByte())
-        bsb.append(data.size.and(0xff).toByte())
-    } else {
-        throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+    return buildByteString {
+        appendUInt8(0x53)
+        if (data.size < 0x80) {
+            appendUInt8(data.size)
+        } else if (data.size < 0x100) {
+            appendUInt8(0x81)
+            appendUInt8(data.size)
+        } else if (data.size < 0x10000) {
+            appendUInt8(0x82)
+            appendUInt16(data.size)
+        } else if (data.size < 0x1000000) {
+            appendUInt8(0x83)
+            appendUInt8(data.size / 0x10000)
+            appendUInt16(data.size.and(0xFFFF))
+        } else {
+            throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+        }
+        appendByteString(data)
     }
-    bsb.append(data)
-    return bsb.toByteString()
 }

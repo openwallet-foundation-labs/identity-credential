@@ -1,51 +1,45 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.asn1.ASN1String
-import org.multipaz.cbor.Cbor.decode
-import org.multipaz.cbor.Cbor.encode
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.nfc.Nfc
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
-import kotlinx.io.Buffer
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.encodeToByteString
-import kotlinx.io.readByteArray
-import kotlinx.io.readByteString
-import kotlinx.io.readLongLe
-import kotlinx.io.write
-import kotlinx.io.writeULongLe
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.util.ByteDataReader
+import org.multipaz.util.appendByteArray
+import org.multipaz.util.appendByteString
+import org.multipaz.util.appendUInt32
+import org.multipaz.util.appendUInt64Le
+import org.multipaz.util.appendUInt8
 
 /**
  * Connection method for BLE.
  *
  * @param supportsPeripheralServerMode whether mdoc peripheral mode is supported.
- * @param supportsCentralClientMode    whether mdoc central client mode is supported.
- * @param peripheralServerModeUuid     the UUID to use for mdoc peripheral server mode.
- * @param centralClientModeUuid        the UUID to use for mdoc central client mode.
+ * @param supportsCentralClientMode whether mdoc central client mode is supported.
+ * @param peripheralServerModeUuid the UUID to use for mdoc peripheral server mode.
+ * @param centralClientModeUuid  the UUID to use for mdoc central client mode.
+ * @param peripheralServerModePsm the L2CAP PSM, if set. This is currently not standardized, use at your own risk.
+ * @param peripheralServerModeMacAddress the MAC address, if set.
  */
 class ConnectionMethodBle(
     val supportsPeripheralServerMode: Boolean,
     val supportsCentralClientMode: Boolean,
     val peripheralServerModeUuid: UUID?,
-    val centralClientModeUuid: UUID?
+    val centralClientModeUuid: UUID?,
+    var peripheralServerModePsm: Int? = null,
+    peripheralServerModeMacAddress: ByteString? = null
 ) : ConnectionMethod() {
-
-    /**
-     * The L2CAP PSM, if set.
-     *
-     * This is currently not standardized so use at your own risk.
-     */
-    var peripheralServerModePsm: Int? = null
-
-
     /**
      * The peripheral MAC address, if set.
      */
-    var peripheralServerModeMacAddress: ByteArray? = null
+    var peripheralServerModeMacAddress: ByteString? = peripheralServerModeMacAddress
         set(macAddress) {
             require(macAddress == null || macAddress.size == 6) {                 
                 "MAC address should be 6 bytes, got ${macAddress!!.size}"
@@ -89,37 +83,42 @@ class ConnectionMethodBle(
     }
 
     override fun toDeviceEngagement(): ByteArray {
-        val builder = CborMap.builder()
-        builder.put(OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, supportsPeripheralServerMode)
-        builder.put(OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, supportsCentralClientMode)
-        if (peripheralServerModeUuid != null) {
-            builder.put(
-                OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
-                peripheralServerModeUuid.toByteArray()
-            )
-        }
-        if (centralClientModeUuid != null) {
-            builder.put(
-                OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
-                centralClientModeUuid.toByteArray()
-            )
-        }
-        if (peripheralServerModePsm != null) {
-            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM, peripheralServerModePsm as Int)
-        }
-        if (peripheralServerModeMacAddress != null) {
-            builder.put(
-                OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
-                peripheralServerModeMacAddress!!
-            )
-        }
-        return encode(
-            CborArray.builder()
-                .add(METHOD_TYPE)
-                .add(METHOD_MAX_VERSION)
-                .add(builder.end().build())
-                .end()
-                .build()
+        return Cbor.encode(
+            buildCborArray {
+                add(METHOD_TYPE)
+                add(METHOD_MAX_VERSION)
+                addCborMap {
+                    put(
+                        OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE,
+                        supportsPeripheralServerMode
+                    )
+                    put(OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, supportsCentralClientMode)
+                    if (peripheralServerModeUuid != null) {
+                        put(
+                            OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
+                            peripheralServerModeUuid.toByteArray()
+                        )
+                    }
+                    if (centralClientModeUuid != null) {
+                        put(
+                            OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
+                            centralClientModeUuid.toByteArray()
+                        )
+                    }
+                    if (peripheralServerModePsm != null) {
+                        put(
+                            OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM,
+                            peripheralServerModePsm as Int
+                        )
+                    }
+                    if (peripheralServerModeMacAddress != null) {
+                        put(
+                            OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
+                            peripheralServerModeMacAddress!!.toByteArray()
+                        )
+                    }
+                }
+            }
         )
     }
 
@@ -138,7 +137,7 @@ class ConnectionMethodBle(
         private const val OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM = 21L // NOTE: as per drafts of 18013-5 Second Edition
 
         internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodBle? {
-            val array = decode(encodedDeviceRetrievalMethod)
+            val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
             require(type == METHOD_TYPE)
@@ -169,7 +168,7 @@ class ConnectionMethodBle(
                 cm.peripheralServerModePsm = psm.asNumber.toInt()
             }
             cm.peripheralServerModeMacAddress =
-                map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr
+                map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr?.let { ByteString(it) }
             return cm
         }
 
@@ -177,10 +176,10 @@ class ConnectionMethodBle(
         //
         // Reference: https://www.bluetooth.com/specifications/assigned-numbers/
         //
-        private const val BLE_LE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS = 0x07
-        private const val BLE_LE_BLUETOOTH_MAC_ADDRESS = 0x1b
-        private const val BLE_LE_ROLE = 0x1c
-        private const val BLE_PSM_NOT_YET_ALLOCATED = 0x77  // TODO: allocated this number (0x77) with Bluetooth SIG
+        private const val BLE_LE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS: UByte = 0x07u
+        private const val BLE_LE_BLUETOOTH_MAC_ADDRESS: UByte = 0x1Bu
+        private const val BLE_LE_ROLE: UByte = 0x1Cu
+        private const val BLE_PSM_NOT_YET_ALLOCATED: UByte = 0x77u  // TODO: allocated this number (0x77) with Bluetooth SIG
 
         // Bluetooth LE role constants
         //
@@ -188,10 +187,10 @@ class ConnectionMethodBle(
         //
         // See section 1.17.2 for values.
         //
-        private const val BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY = 0x00
-        private const val BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY = 0x01
-        private const val BLE_LE_ROLE_PERIPHERAL_CENTRAL_ROLES_PERIPHERAL_PREFERRED = 0x02
-        private const val BLE_LE_ROLE_PERIPHERAL_CENTRAL_ROLES_CENTRAL_PREFERRED = 0x03
+        private const val BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY: UByte = 0x00u
+        private const val BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY: UByte = 0x01u
+        private const val BLE_LE_ROLE_PERIPHERAL_CENTRAL_ROLES_PERIPHERAL_PREFERRED: UByte = 0x02u
+        private const val BLE_LE_ROLE_PERIPHERAL_CENTRAL_ROLES_CENTRAL_PREFERRED: UByte = 0x03u
 
         internal fun fromNdefRecord(
             record: NdefRecord,
@@ -203,19 +202,17 @@ class ConnectionMethodBle(
             var uuid: UUID? = uuidToReplace
             var gotLeRole = false
             var psm : Int? = null
-            var macAddress: ByteArray? = null
+            var macAddress: ByteString? = null
 
             // See createNdefRecords() method for how this data is encoded.
             //
-            val payload = Buffer()
-            payload.write(record.payload)
-            while (!payload.exhausted()) {
-                val len = payload.readByte().toInt()
-                val type = payload.readByte().toInt()
-                if (type == BLE_LE_ROLE && len == 2) {
+            val reader = ByteDataReader(record.payload)
+            while (!reader.exhausted()) {
+                val len = reader.getUInt8()
+                val type = reader.getUInt8()
+                if (type == BLE_LE_ROLE && len == 2.toUByte()) {
                     gotLeRole = true
-                    val value = payload.readByte().toInt()
-                    when (value) {
+                    when (val value = reader.getUInt8()) {
                         BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY -> {
                             if (role == MdocTransport.Role.MDOC) {
                                 peripheral = true
@@ -241,27 +238,27 @@ class ConnectionMethodBle(
                         }
                     }
                 } else if (type == BLE_LE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS) {
-                    val uuidLen = len - 1
-                    if (uuidLen % 16 != 0) {
+                    val uuidLen = len - 1u
+                    if (uuidLen % 16u != 0u) {
                         Logger.w(TAG, "UUID len $uuidLen is not divisible by 16")
                         return null
                     }
                     // We only use the last UUID...
-                    if (uuidLen > 16) {
-                        payload.skip(16*(uuidLen/16 - 1).toLong())
+                    if (uuidLen > 16u) {
+                        reader.skip((16u * (uuidLen / 16u - 1u)).toInt())
                     }
-                    val lsb = payload.readLongLe().toULong()
-                    val msb = payload.readLongLe().toULong()
+                    val lsb = reader.getUInt64Le()
+                    val msb = reader.getUInt64Le()
                     uuid = UUID(msb, lsb)
-                } else if (type == BLE_LE_BLUETOOTH_MAC_ADDRESS && len == 0x07) {
+                } else if (type == BLE_LE_BLUETOOTH_MAC_ADDRESS && len == 0x07.toUByte()) {
                     // MAC address
-                    macAddress = payload.readByteArray(6)
-                } else if (type == BLE_PSM_NOT_YET_ALLOCATED && len == 0x05) {
+                    macAddress = reader.getByteString(6)
+                } else if (type == BLE_PSM_NOT_YET_ALLOCATED && len == 0x05.toUByte()) {
                     // PSM
-                    psm = payload.readInt()
+                    psm = reader.getInt32()
                 } else {
                     Logger.d(TAG, "Skipping unknown type $type of length $len")
-                    payload.skip(len.toLong() - 1L)
+                    reader.skip((len - 1u).toInt())
                 }
             }
             if (!gotLeRole) {
@@ -294,29 +291,31 @@ class ConnectionMethodBle(
         //
         // See section 1.17.2 for values
         //
-        val uuid: UUID?
-        val leRole: Int
-        if (supportsCentralClientMode && supportsPeripheralServerMode) {
-            leRole = BLE_LE_ROLE_PERIPHERAL_CENTRAL_ROLES_CENTRAL_PREFERRED
-            check(centralClientModeUuid == peripheralServerModeUuid) {
-                "UUIDs for both BLE modes must be the same"
+        val (uuid, leRole) =
+            if (supportsCentralClientMode && supportsPeripheralServerMode) {
+                check(centralClientModeUuid == peripheralServerModeUuid) {
+                    "UUIDs for both BLE modes must be the same"
+                }
+                Pair(centralClientModeUuid, BLE_LE_ROLE_PERIPHERAL_CENTRAL_ROLES_CENTRAL_PREFERRED)
+            } else if (supportsCentralClientMode) {
+                Pair(
+                    centralClientModeUuid,
+                    when (role) {
+                        MdocTransport.Role.MDOC -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
+                        MdocTransport.Role.MDOC_READER -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
+                    }
+                )
+            } else if (supportsPeripheralServerMode) {
+                Pair(
+                    peripheralServerModeUuid,
+                    when (role) {
+                        MdocTransport.Role.MDOC -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
+                        MdocTransport.Role.MDOC_READER -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
+                    }
+                )
+            } else {
+                throw IllegalStateException("At least one of the BLE modes must be set")
             }
-            uuid = centralClientModeUuid
-        } else if (supportsCentralClientMode) {
-            leRole = when (role) {
-                MdocTransport.Role.MDOC -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
-                MdocTransport.Role.MDOC_READER -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
-            }
-            uuid = centralClientModeUuid
-        } else if (supportsPeripheralServerMode) {
-            leRole = when (role) {
-                MdocTransport.Role.MDOC -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
-                MdocTransport.Role.MDOC_READER -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
-            }
-            uuid = peripheralServerModeUuid
-        } else {
-            throw IllegalStateException("At least one of the BLE modes must be set")
-        }
 
         // See "3 Handover to a Bluetooth Carrier" of "Bluetooth® Secure Simple Pairing Using
         // NFC Application Document" Version 1.2. This says:
@@ -329,32 +328,33 @@ class ConnectionMethodBle(
         // Looking that up it says it's just a sequence of {length, AD type, AD data} where each
         // AD is defined in the "Bluetooth Supplement to the Core Specification" document.
         //
-        val buf = Buffer()
-        buf.writeByte(0x02)  // Length
-        buf.writeByte(BLE_LE_ROLE.toByte())
-        buf.writeByte(leRole.toByte())
-        if (uuid != null && !skipUuids) {
-            buf.writeByte(0x11) // Length
-            buf.writeByte(BLE_LE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS.toByte())
-            buf.writeULongLe(uuid.leastSignificantBits)
-            buf.writeULongLe(uuid.mostSignificantBits)
-        }
-        val macAddress = peripheralServerModeMacAddress
-        if (macAddress != null) {
-            require(macAddress.size == 6) {
-                "MAC address should be six bytes, found ${macAddress.size}"
+        val oobData = buildByteString {
+            appendUInt8(0x02)  // Length
+            appendUInt8(BLE_LE_ROLE)
+            appendUInt8(leRole)
+            if (uuid != null && !skipUuids) {
+                appendUInt8(0x11) // Length
+                appendUInt8(BLE_LE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS)
+                appendUInt64Le(uuid.leastSignificantBits)
+                appendUInt64Le(uuid.mostSignificantBits)
             }
-            buf.writeByte(0x07)
-            buf.writeByte(BLE_LE_BLUETOOTH_MAC_ADDRESS.toByte())
-            buf.write(macAddress)
+            val macAddress = peripheralServerModeMacAddress
+            if (macAddress != null) {
+                require(macAddress.size == 6) {
+                    "MAC address should be six bytes, found ${macAddress.size}"
+                }
+                appendUInt8(0x07)
+                appendUInt8(BLE_LE_BLUETOOTH_MAC_ADDRESS)
+                appendByteString(macAddress)
+            }
+            val psm = peripheralServerModePsm
+            if (psm != null) {
+                appendUInt8(0x05) // Length
+                appendUInt8(BLE_PSM_NOT_YET_ALLOCATED)
+                appendUInt32(psm)
+            }
         }
-        val psm = peripheralServerModePsm
-        if (psm != null) {
-            buf.writeByte(0x05) // Length
-            buf.writeByte(BLE_PSM_NOT_YET_ALLOCATED.toByte())
-            buf.writeInt(psm)
-        }
-        val oobData = buf.readByteString()
+
         val record = NdefRecord(
             NdefRecord.Tnf.MIME_MEDIA,
             Nfc.MIME_TYPE_CONNECTION_HANDOVER_BLE.encodeToByteString(),
@@ -365,24 +365,24 @@ class ConnectionMethodBle(
         // From NFC Forum Connection Handover Technical Specification section 7.1 Alternative Carrier Record
         //
         check(auxiliaryReferences.size < 0x100)
-        val acrBuf = Buffer()
-        acrBuf.writeByte(0x01) // CPS: active
-        acrBuf.writeByte(0x01) // Length of carrier data reference ("0")
-        acrBuf.writeByte('0'.code.and(0xff).toByte()) // Carrier data reference
-        acrBuf.writeByte(auxiliaryReferences.size.and(0xff).toByte()) // Number of auxiliary references
-        for (auxRef in auxiliaryReferences) {
-            // Each auxiliary reference consists of a single byte for the length and then as
-            // many bytes for the reference itself.
-            val auxRefUtf8 = auxRef.encodeToByteArray()
-            check(auxRefUtf8.size < 0x100)
-            acrBuf.writeByte(auxRefUtf8.size.and(0xff).toByte())
-            acrBuf.write(auxRefUtf8, 0, auxRefUtf8.size)
+        val acRecordPayload = buildByteString {
+            appendUInt8(0x01) // CPS: active
+            appendUInt8(0x01) // Length of carrier data reference ("0")
+            appendUInt8('0'.code) // Carrier data reference
+            appendUInt8(auxiliaryReferences.size) // Number of auxiliary references
+            for (auxRef in auxiliaryReferences) {
+                // Each auxiliary reference consists of a single byte for the length and then as
+                // many bytes for the reference itself.
+                val auxRefUtf8 = auxRef.encodeToByteArray()
+                check(auxRefUtf8.size < 0x100)
+                appendUInt8(auxRefUtf8.size)
+                appendByteArray(auxRefUtf8)
+            }
         }
-        val acRecordPayload = acrBuf.readByteArray()
         val acRecord = NdefRecord(
             tnf = NdefRecord.Tnf.WELL_KNOWN,
             type = Nfc.RTD_ALTERNATIVE_CARRIER,
-            payload = ByteString(acRecordPayload)
+            payload = acRecordPayload
         )
         return Pair(record, acRecord)
     }

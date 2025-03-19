@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.compose.getOutlinedImageVector
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
@@ -75,7 +75,9 @@ import kotlin.math.min
  *
  * @param sheetState a [SheetState] for state.
  * @param request the request.
- * @param document details about the document being presented.
+ * @param documentName the name of the document.
+ * @param documentDescription a description of the document.
+ * @param documentCardArt cart art for the document.
  * @param trustPoint if the requester is in a trust-list, the [TrustPoint] indicating this
  * @param onConfirm called when the sheet is dismissed.
  * @param onCancel called when the user presses the "Share" button.
@@ -85,7 +87,9 @@ import kotlin.math.min
 fun ConsentModalBottomSheet(
     sheetState: SheetState,
     request: Request,
-    document: ConsentDocument,
+    documentName: String,
+    documentDescription: String,
+    documentCardArt: ImageBitmap,
     trustPoint: TrustPoint?,
     onConfirm: () -> Unit = {},
     onCancel: () -> Unit = {}
@@ -107,7 +111,7 @@ fun ConsentModalBottomSheet(
                 trustPoint = trustPoint
             )
 
-            DocumentSection(document)
+            DocumentSection(documentName, documentDescription, documentCardArt)
 
             Column(
                 modifier = Modifier
@@ -234,7 +238,11 @@ private fun RelyingPartySection(
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun DocumentSection(document: ConsentDocument) {
+private fun DocumentSection(
+    documentName: String,
+    documentDescription: String,
+    documentCardArt: ImageBitmap,
+) {
     Column(
         modifier = Modifier
             .padding(vertical = 2.dp)
@@ -250,12 +258,9 @@ private fun DocumentSection(document: ConsentDocument) {
             Row(
                 modifier = Modifier.padding(16.dp)
             ) {
-                val cartArtBitmap = remember {
-                    document.cardArt.decodeToImageBitmap()
-                }
                 Icon(
                     modifier = Modifier.size(50.dp),
-                    bitmap = cartArtBitmap,
+                    bitmap = documentCardArt,
                     contentDescription = stringResource(Res.string.consent_modal_bottom_sheet_card_art_description),
                     tint = Color.Unspecified
                 )
@@ -263,12 +268,12 @@ private fun DocumentSection(document: ConsentDocument) {
                     modifier = Modifier.padding(start = 16.dp)
                 ) {
                     Text(
-                        text = document.name,
+                        text = documentName,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = document.description,
+                        text = documentDescription,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary
                     )

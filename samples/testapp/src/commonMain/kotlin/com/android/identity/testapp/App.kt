@@ -26,8 +26,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import org.multipaz.models.ui.digitalcredentials.DigitalCredentials
-import org.multipaz.models.ui.presentment.PresentmentModel
+import org.multipaz.models.digitalcredentials.DigitalCredentials
+import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.credential.CredentialLoader
@@ -85,7 +85,6 @@ import org.multipaz.testapp.ui.VerifierType
 import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Logger
-import org.multipaz.util.toHex
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.back_button
 import io.ktor.http.decodeURLPart

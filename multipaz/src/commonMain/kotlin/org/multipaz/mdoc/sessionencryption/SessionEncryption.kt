@@ -25,6 +25,7 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.sessionencryption.SessionEncryption.Role
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.cbor.buildCborMap
 
 /**
  * Helper class for implementing session encryption according to ISO/IEC 18013-5:2021
@@ -140,23 +141,20 @@ class SessionEncryption(
             )
             encryptedCounter += 1
         }
-        val mapBuilder = CborMap.builder()
-        if (!sessionEstablishmentSent && sendSessionEstablishment && role == Role.MDOC_READER) {
-            var eReaderKey = eSelfKey.publicKey
-            mapBuilder.putTaggedEncodedCbor(
-                "eReaderKey",
-                Cbor.encode(eReaderKey.toCoseKey().toDataItem())
-            )
-            checkNotNull(messageCiphertext) { "Data cannot be empty in initial message" }
-        }
-        if (messageCiphertext != null) {
-            mapBuilder.put("data", messageCiphertext)
-        }
-        if (statusCode != null) {
-            mapBuilder.put("status", statusCode)
-        }
-        mapBuilder.end()
-        val messageData = Cbor.encode(mapBuilder.end().build())
+
+        val messageData = Cbor.encode(buildCborMap {
+            if (!sessionEstablishmentSent && sendSessionEstablishment && role == Role.MDOC_READER) {
+                var eReaderKey = eSelfKey.publicKey
+                putTaggedEncodedCbor("eReaderKey", Cbor.encode(eReaderKey.toCoseKey().toDataItem()))
+                checkNotNull(messageCiphertext) { "Data cannot be empty in initial message" }
+            }
+            if (messageCiphertext != null) {
+                put("data", messageCiphertext)
+            }
+            if (statusCode != null) {
+                put("status", statusCode)
+            }
+        })
         sessionEstablishmentSent = true
         return messageData
     }
@@ -222,12 +220,11 @@ class SessionEncryption(
          * @param statusCode the intended status code, with value as defined in ISO/IEC 18013-5 Table 20.
          * @return a byte array with the encoded CBOR message
          */
-        fun encodeStatus(statusCode: Long): ByteArray =
-            CborMap.builder().run {
+        fun encodeStatus(statusCode: Long): ByteArray = Cbor.encode(
+            buildCborMap {
                 put("status", statusCode)
-                end()
-                Cbor.encode(end().build())
             }
+        )
 
         /**
          * Gets the ephemeral reader key in a `SessionEstablishment` message.

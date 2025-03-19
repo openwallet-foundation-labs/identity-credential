@@ -63,12 +63,15 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
-import kotlinx.io.Buffer
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.crypto.SignatureVerificationException
+import org.multipaz.util.appendUInt32
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -332,11 +335,11 @@ open class CloudSecureArea protected constructor(
             throw CloudException("Root X509Cert not authorized by app")
         }
 
-        val attestation = CloudAttestationExtension.decode(ByteString(
+        val decodedAttestation = CloudAttestationExtension.decode(ByteString(
             attestation.certificates[0]
                 .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
         ))
-        check(attestation.challenge == ByteString(expectedDeviceChallenge)) {
+        check(decodedAttestation.challenge == ByteString(expectedDeviceChallenge)) {
             "Challenge in attestation does match what's expected"
         }
     }
@@ -354,12 +357,11 @@ open class CloudSecureArea protected constructor(
             val deviceNonce = Random.Default.nextBytes(32)
             val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
             val dataToSign = Cbor.encode(
-                CborArray.builder()
-                    .add(eDeviceKey.publicKey.toCoseKey().toDataItem())
-                    .add(response0.cloudNonce)
-                    .add(deviceNonce)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add(eDeviceKey.publicKey.toCoseKey().toDataItem())
+                    add(response0.cloudNonce)
+                    add(deviceNonce)
+                }
             )
             val signature = platformSecureArea.sign(
                 "DeviceBindingKey",
@@ -381,21 +383,21 @@ open class CloudSecureArea protected constructor(
             response = communicate(serverUrl, request1.toCbor())
             val response1 = CloudSecureAreaProtocol.Command.fromCbor(response) as E2EESetupResponse1
             val dataSignedByTheCloud = Cbor.encode(
-                CborArray.builder()
-                    .add(response1.eCloudKey.toDataItem())
-                    .add(response0.cloudNonce)
-                    .add(deviceNonce)
-                    .end()
-                    .build()
+                buildCborArray {
+                    add(response1.eCloudKey.toDataItem())
+                    add(response0.cloudNonce)
+                    add(deviceNonce)
+                }
             )
-            if (!Crypto.checkSignature(
+            try {
+                Crypto.checkSignature(
                     cloudBindingKey!!,
                     dataSignedByTheCloud,
                     Algorithm.ES256,
                     response1.signature
                 )
-            ) {
-                throw CloudException("Error verifying signature")
+            } catch(e: SignatureVerificationException) {
+                throw CloudException("Error verifying signature", e)
             }
 
             // Now we can derive SKDevice and SKCloud
@@ -403,11 +405,10 @@ open class CloudSecureArea protected constructor(
             val salt = Crypto.digest(
                 Algorithm.SHA256,
                 Cbor.encode(
-                    CborArray.builder()
-                        .add(deviceNonce)
-                        .add(response0.cloudNonce)
-                        .end()
-                        .build()
+                    buildCborArray {
+                        add(deviceNonce)
+                        add(response0.cloudNonce)
+                    }
                 )
             )
             skDevice = Crypto.hkdf(
@@ -434,21 +435,23 @@ open class CloudSecureArea protected constructor(
 
     private fun encryptToCloud(messagePlaintext: ByteArray): ByteArray {
         // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
-        val iv = Buffer()
-        iv.writeInt(0x00000000.toInt())
-        val ivIdentifier = 0x00000001
-        iv.writeInt(ivIdentifier)
-        iv.writeInt(encryptedCounter++)
-        return Crypto.encrypt(Algorithm.A128GCM, skDevice!!, iv.readByteArray(), messagePlaintext)
+        val iv = buildByteString {
+            appendUInt32(0x00000000)
+            val ivIdentifier = 0x00000001
+            appendUInt32(ivIdentifier)
+            appendUInt32(encryptedCounter++)
+        }.toByteArray()
+        return Crypto.encrypt(Algorithm.A128GCM, skDevice!!, iv, messagePlaintext)
     }
 
     private fun decryptFromCloud(messageCiphertext: ByteArray): ByteArray {
-        val iv = Buffer()
-        iv.writeInt(0x00000000.toInt())
-        val ivIdentifier = 0x00000000
-        iv.writeInt(ivIdentifier)
-        iv.writeInt(decryptedCounter++)
-        return Crypto.decrypt(Algorithm.A128GCM, skCloud!!, iv.readByteArray(), messageCiphertext)
+        val iv = buildByteString {
+            appendUInt32(0x00000000)
+            val ivIdentifier = 0x00000000
+            appendUInt32(ivIdentifier)
+            appendUInt32(decryptedCounter++)
+        }.toByteArray()
+        return Crypto.decrypt(Algorithm.A128GCM, skCloud!!, iv, messageCiphertext)
     }
 
     // This is internal rather than private b/c it's used in testPassphraseCannotBeChanged()
@@ -665,10 +668,9 @@ open class CloudSecureArea protected constructor(
         response = communicateE2EE(request0.toCbor())
         val response0 = CloudSecureAreaProtocol.Command.fromCbor(response) as SignResponse0
         val dataToSignLocally = Cbor.encode(
-            CborArray.builder()
-                .add(response0.cloudNonce)
-                .end()
-                .build()
+            buildCborArray {
+                add(response0.cloudNonce)
+            }
         )
         val signatureLocal = platformSecureArea.sign(
             alias = getLocalKeyAlias(alias),
@@ -744,10 +746,9 @@ open class CloudSecureArea protected constructor(
         response = communicateE2EE(request0.toCbor())
         val response0 = CloudSecureAreaProtocol.Command.fromCbor(response) as KeyAgreementResponse0
         val dataToSignLocally = Cbor.encode(
-            CborArray.builder()
-                .add(response0.cloudNonce)
-                .end()
-                .build()
+            buildCborArray {
+                add(response0.cloudNonce)
+            }
         )
         val signatureLocal = platformSecureArea.sign(
             alias = getLocalKeyAlias(alias),
@@ -835,18 +836,19 @@ open class CloudSecureArea protected constructor(
         attestationCertChain: X509CertChain
     ) {
         Logger.d(TAG, "attestation len = ${attestationCertChain.certificates.size}")
-        val map = CborMap.builder()
-        map.put("algorithm", settings.algorithm.name)
-        map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
-        map.put("userAuthenticationTypes", CloudUserAuthType.encodeSet(settings.userAuthenticationTypes))
-        if (settings.validFrom != null) {
-            map.put("validFrom", settings.validFrom.toEpochMilliseconds())
+        val map = buildCborMap {
+            put("algorithm", settings.algorithm.name)
+            put("userAuthenticationRequired", settings.userAuthenticationRequired)
+            put("userAuthenticationTypes", CloudUserAuthType.encodeSet(settings.userAuthenticationTypes))
+            if (settings.validFrom != null) {
+                put("validFrom", settings.validFrom.toEpochMilliseconds())
+            }
+            if (settings.validUntil != null) {
+                put("validUntil", settings.validUntil.toEpochMilliseconds())
+            }
+            put("isPassphraseRequired", settings.passphraseRequired)
+            put("attestationCertChain", attestationCertChain.toDataItem())
         }
-        if (settings.validUntil != null) {
-            map.put("validUntil", settings.validUntil.toEpochMilliseconds())
-        }
-        map.put("isPassphraseRequired", settings.passphraseRequired)
-        map.put("attestationCertChain", attestationCertChain.toDataItem())
         // If the key with the given alias exists, it is silently overwritten.
         storageTable.delete(
             key = METADATA_PREFIX + alias,
@@ -855,7 +857,7 @@ open class CloudSecureArea protected constructor(
         storageTable.insert(
             key = METADATA_PREFIX + alias,
             partitionId = identifier,
-            data = ByteString(Cbor.encode(map.end().build()))
+            data = ByteString(Cbor.encode(map))
         )
     }
 

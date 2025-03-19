@@ -1,6 +1,10 @@
 package org.multipaz.cbor
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.getUInt8
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 /**
  * Map (major type 5).
@@ -49,7 +53,7 @@ class CborMap(
                 var cursor = offset + 1
                 val items = mutableMapOf<DataItem, DataItem>()
                 while (true) {
-                    if (encodedCbor[cursor].toInt().and(0xff) == 0xff) {
+                    if (encodedCbor.getUInt8(cursor) == Cbor.BREAK) {
                         // BREAK code, we're done
                         cursor += 1
                         break
@@ -120,4 +124,139 @@ class CborMap(
         return sb.toString()
     }
 
+}
+
+/**
+ * Builds a [DataItem] for a CBOR map with the given builder action.
+ *
+ * Example usage:
+ * ```
+ * val dataItem = buildCborMap {
+ *     put("foo", 1)
+ *     put(42, "baz")
+ *     putCborArray("foobar") {
+ *         add("bar")
+ *     }
+ *     putCborMap(Simple.FALSE) {
+ *         put("foo2", "bar2")
+ *         putCborArray(Simple.TRUE) {
+ *             add("baz", "bazbaz")
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @param builderAction the builder action.
+ * @return the resulting [DataItem].
+ */
+@OptIn(ExperimentalContracts::class)
+fun buildCborMap(
+    builderAction: MapBuilder<CborBuilder>.() -> Unit
+): DataItem {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val builder = CborMap.builder()
+    builder.builderAction()
+    return builder.end().build()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR array produced by the given builder action to a CBOR map.
+ *
+ * @param key the key to for item to add.
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> MapBuilder<T>.putCborArray(
+    key: DataItem,
+    builderAction: ArrayBuilder<MapBuilder<T>>.() -> Unit
+) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = putArray(key)
+    innerBuilder.builderAction()
+    innerBuilder.end()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR array produced by the given builder action to a CBOR map.
+ *
+ * @param key the key to for item to add.
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> MapBuilder<T>.putCborArray(
+    key: Long,
+    builderAction: ArrayBuilder<MapBuilder<T>>.() -> Unit
+) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = putArray(key)
+    innerBuilder.builderAction()
+    innerBuilder.end()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR array produced by the given builder action to a CBOR map.
+ *
+ * @param key the key to for item to add.
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> MapBuilder<T>.putCborArray(
+    key: String,
+    builderAction: ArrayBuilder<MapBuilder<T>>.() -> Unit
+) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = putArray(key)
+    innerBuilder.builderAction()
+    innerBuilder.end()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR map produced by the given builder action to a CBOR map.
+ *
+ * @param key the key to for item to add.
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> MapBuilder<T>.putCborMap(
+    key: DataItem,
+    builderAction: MapBuilder<MapBuilder<T>>.() -> Unit
+) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = putMap(key)
+    innerBuilder.builderAction()
+    innerBuilder.end()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR map produced by the given builder action to a CBOR map.
+ *
+ * @param key the key to for item to add.
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> MapBuilder<T>.putCborMap(
+    key: Long,
+    builderAction: MapBuilder<MapBuilder<T>>.() -> Unit
+) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = putMap(key)
+    innerBuilder.builderAction()
+    innerBuilder.end()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR map produced by the given builder action to a CBOR map.
+ *
+ * @param key the key to for item to add.
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> MapBuilder<T>.putCborMap(
+    key: String,
+    builderAction: MapBuilder<MapBuilder<T>>.() -> Unit
+) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = putMap(key)
+    innerBuilder.builderAction()
+    innerBuilder.end()
 }

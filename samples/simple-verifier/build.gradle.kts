@@ -58,6 +58,7 @@ dependencies {
     implementation(project(":multipaz-android-legacy"))
 
     implementation(libs.kotlinx.datetime)
+    implementation(libs.kotlinx.io.core)
 
     implementation(compose.runtime)
     implementation(compose.foundation)
@@ -78,7 +79,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.code.scanner)
     implementation(libs.androidx.material)
-
     implementation(libs.bouncy.castle.bcprov)
 
     testImplementation(libs.kotlin.test)

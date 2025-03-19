@@ -31,6 +31,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.monthsUntil
 import kotlinx.datetime.plus
 import kotlinx.datetime.yearsUntil
+import multipazproject.multipaz_compose.generated.resources.duration_never
 import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -87,6 +88,9 @@ internal fun durationFromNowTextCore(instant: Instant, now: Instant): Pair<Strin
  */
 @Composable
 private fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String, Instant> {
+    if (past == Instant.DISTANT_PAST) {
+        return Pair(stringResource(Res.string.duration_never), Instant.DISTANT_FUTURE)
+    }
     val (majorUnit, majorCount) = selectMajorUnit(past, now)
     if (majorUnit == null) {
         // Less than a minute: special case

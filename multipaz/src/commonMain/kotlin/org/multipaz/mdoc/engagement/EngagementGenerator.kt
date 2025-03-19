@@ -20,6 +20,8 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborBuilder
 import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.connectionmethod.ConnectionMethod
 import org.multipaz.mdoc.origininfo.OriginInfo
@@ -71,24 +73,24 @@ class EngagementGenerator(
      * @return the bytes of the `Engagement` structure.
      */
     fun generate(): ByteArray {
-        val encodedCoseKey = Cbor.encode(eSenderKey.toCoseKey(emptyMap()).toDataItem())
-        val security = CborArray.builder()
-            .add(1) // cipher suite
-            .addTaggedEncodedCbor(encodedCoseKey)
-            .end().build()
-        val mapBuilder = CborMap.builder()
-        mapBuilder
-            .put(0, version)
-            .put(1, security)
-        val deviceRetrievalMethodsArray = deviceRetrievalMethodsArrayBuilder.end().build()
-        if (!deviceRetrievalMethodsArray.asArray.isEmpty()) {
-            mapBuilder.put(2, deviceRetrievalMethodsArray)
-        }
-        val originInfoArray = originInfoArrayBuilder.end().build()
-        if (!originInfoArray.asArray.isEmpty()) {
-            mapBuilder.put(5, originInfoArray)
-        }
-        return Cbor.encode(mapBuilder.end().build())
+        return Cbor.encode(
+            buildCborMap {
+                put(0, version)
+                putCborArray(1) {
+                    add(1) // cipher suite
+                    val encodedCoseKey = Cbor.encode(eSenderKey.toCoseKey(emptyMap()).toDataItem())
+                    addTaggedEncodedCbor(encodedCoseKey)
+                }
+                val deviceRetrievalMethodsArray = deviceRetrievalMethodsArrayBuilder.end().build()
+                if (!deviceRetrievalMethodsArray.asArray.isEmpty()) {
+                    put(2, deviceRetrievalMethodsArray)
+                }
+                val originInfoArray = originInfoArrayBuilder.end().build()
+                if (!originInfoArray.asArray.isEmpty()) {
+                    put(5, originInfoArray)
+                }
+            }
+        )
     }
 
     companion object {

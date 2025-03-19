@@ -7,7 +7,6 @@ import org.multipaz.securearea.UserAuthenticationType
 import org.multipaz.securearea.cloud.CloudKeyLockedException
 import org.multipaz.securearea.cloud.CloudKeyUnlockData
 import org.multipaz.securearea.cloud.CloudSecureArea
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.cbor.Cbor
 import org.multipaz.credential.Credential
 import org.multipaz.credential.SecureAreaBoundCredential
@@ -28,14 +27,13 @@ import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.util.Logger
 import org.multipaz_credential.wallet.R
 import org.multipaz_credential.wallet.ui.prompt.biometric.showBiometricPrompt
-import org.multipaz.claim.Claim
-import org.multipaz.claim.MdocClaim
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
 import org.multipaz.request.RequestedClaim
 import org.multipaz.request.VcRequest
 import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 import org.multipaz_credential.wallet.ui.prompt.consent.showConsentPrompt
 import org.multipaz_credential.wallet.ui.prompt.passphrase.showPassphrasePrompt
 

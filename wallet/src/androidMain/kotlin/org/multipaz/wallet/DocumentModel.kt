@@ -21,8 +21,6 @@ import org.multipaz.securearea.cloud.CloudKeyUnlockData
 import org.multipaz.cbor.Cbor
 import org.multipaz.credential.Credential
 import org.multipaz.credential.SecureAreaBoundCredential
-import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.EcCurve
 import org.multipaz.device.AssertionBindingKeys
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.document.Document
@@ -32,19 +30,19 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.document.DocumentUpdated
 import org.multipaz.document.DocumentUtil
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.issuance.DocumentCondition
+import org.multipaz.provisioning.DocumentCondition
 import org.multipaz.issuance.DocumentExtensions.documentConfiguration
 import org.multipaz.issuance.DocumentExtensions.documentIdentifier
 import org.multipaz.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import org.multipaz.issuance.DocumentExtensions.numDocumentConfigurationsDownloaded
 import org.multipaz.issuance.DocumentExtensions.state
-import org.multipaz.issuance.CredentialFormat
-import org.multipaz.issuance.CredentialRequest
+import org.multipaz.provisioning.CredentialFormat
+import org.multipaz.provisioning.CredentialRequest
 import org.multipaz.issuance.DocumentExtensions.issuingAuthorityConfiguration
 import org.multipaz.issuance.DocumentExtensions.walletDocumentMetadata
-import org.multipaz.issuance.IssuingAuthority
-import org.multipaz.issuance.IssuingAuthorityException
-import org.multipaz.issuance.KeyPossessionProof
+import org.multipaz.provisioning.IssuingAuthority
+import org.multipaz.provisioning.IssuingAuthorityException
+import org.multipaz.provisioning.KeyPossessionProof
 import org.multipaz.securearea.config.SecureAreaConfigurationAndroidKeystore
 import org.multipaz.securearea.config.SecureAreaConfigurationCloud
 import org.multipaz.securearea.config.SecureAreaConfigurationSoftware
@@ -86,6 +84,7 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -279,7 +278,7 @@ class DocumentModel(
         }
 
         var attentionNeeded = false
-        val statusString = when (document.state!!.condition) {
+        val statusString = when (document.state?.condition ?: DocumentCondition.NO_SUCH_DOCUMENT) {
             DocumentCondition.NO_SUCH_DOCUMENT -> getStr(R.string.document_model_status_no_such_document)
             DocumentCondition.PROOFING_REQUIRED -> getStr(R.string.document_model_status_proofing_required)
             DocumentCondition.PROOFING_PROCESSING -> getStr(R.string.document_model_status_proofing_processing)
@@ -317,7 +316,7 @@ class DocumentModel(
             typeName = documentConfiguration.typeDisplayName,
             issuerLogo = issuerLogo,
             documentArtwork = documentBitmap,
-            lastRefresh = document.state!!.timestamp,
+            lastRefresh = document.state?.timestamp ?: Instant.DISTANT_PAST,
             status = statusString,
             attributes = data.attributes,
             credentialInfos = keyInfos,

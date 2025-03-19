@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.multipaz.models.ui.certificateviewer.CertificateViewData
+import org.multipaz.compose.certificateviewer.CertificateViewData
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.OID
 import org.multipaz.crypto.Crypto

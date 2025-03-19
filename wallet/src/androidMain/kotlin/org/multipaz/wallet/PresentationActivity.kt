@@ -52,7 +52,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import org.multipaz.models.ui.consent.ConsentDocument
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.document.Document
@@ -77,6 +76,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 
 class NoMatchingDocumentException(message: String): Exception(message) {}
 

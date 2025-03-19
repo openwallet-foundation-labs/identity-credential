@@ -324,10 +324,8 @@ class CloudSecureAreaTest {
         } catch (e: KeyLockedException) {
             throw AssertionError(e)
         }
-        Assert.assertTrue(
-            Crypto.checkSignature(
-                keyInfo.publicKey, dataToSign, Algorithm.ES256, signature
-            )
+        Crypto.checkSignature(
+            keyInfo.publicKey, dataToSign, Algorithm.ES256, signature
         )
     }
 

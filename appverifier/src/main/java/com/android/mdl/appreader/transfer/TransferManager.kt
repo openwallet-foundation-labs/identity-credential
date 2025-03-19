@@ -40,6 +40,7 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
+import org.multipaz.mdoc.transport.MdocTransport
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.Signature
@@ -221,7 +222,10 @@ class TransferManager private constructor(private val context: Context) {
             // if both BLE modes are available at the same time.
             mediaPlayer = mediaPlayer ?: MediaPlayer.create(context, R.raw.nfc_connected)
             mediaPlayer?.start()
-            setAvailableTransferMethods(ConnectionMethod.disambiguate(connectionMethods))
+            setAvailableTransferMethods(ConnectionMethod.disambiguate(
+                connectionMethods,
+                MdocTransport.Role.MDOC_READER
+            ))
             transferStatusLd.value = TransferStatus.ENGAGED
         }
 

@@ -1,6 +1,10 @@
 package org.multipaz.cbor
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.util.getUInt8
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 /**
  * Array (major type 4).
@@ -43,7 +47,7 @@ class CborArray(
                 var cursor = offset + 1
                 val items = mutableListOf<DataItem>()
                 while (true) {
-                    if (encodedCbor[cursor].toInt().and(0xff) == 0xff) {
+                    if (encodedCbor.getUInt8(cursor) == Cbor.BREAK) {
                         // BREAK code, we're done
                         cursor += 1
                         break
@@ -110,4 +114,62 @@ class CborArray(
         sb.append(")")
         return sb.toString()
     }
+}
+
+/**
+ * Builds a [DataItem] for a CBOR array with the given builder action.
+ *
+ * Example usage:
+ * ```
+ * val dataItem = buildCborArray {
+ *     add("stuff")
+ *     add(42)
+ *     addCborArray {
+ *         add("foo")
+ *         add("bar")
+ *     }
+ *     addCborMap {
+ *         put("a", "foo")
+ *         put("b", "bar")
+ *     }
+ * }
+ * ```
+ *
+ * @param builderAction the builder action.
+ * @return the resulting [DataItem].
+ */
+@OptIn(ExperimentalContracts::class)
+fun buildCborArray(
+    builderAction: ArrayBuilder<CborBuilder>.() -> Unit
+): DataItem {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val builder = CborArray.builder()
+    builder.builderAction()
+    return builder.end().build()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR array produced by the given builder action to a CBOR array.
+ *
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> ArrayBuilder<T>.addCborArray(builderAction: ArrayBuilder<ArrayBuilder<T>>.() -> Unit) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = addArray()
+    innerBuilder.builderAction()
+    innerBuilder.end()
+}
+
+/**
+ * Adds the [DataItem] for a CBOR map produced by the given builder action to a CBOR array.
+ *
+ * @param builderAction the builder action.
+ */
+@OptIn(ExperimentalContracts::class)
+fun<T> ArrayBuilder<T>.addCborMap(builderAction: MapBuilder<ArrayBuilder<T>>.() -> Unit) {
+    contract { callsInPlace(builderAction, InvocationKind.EXACTLY_ONCE) }
+    val innerBuilder = addMap()
+    innerBuilder.builderAction()
+    innerBuilder.end()
 }

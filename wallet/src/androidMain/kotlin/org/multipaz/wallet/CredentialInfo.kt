@@ -1,7 +1,7 @@
 package org.multipaz_credential.wallet
 
 import androidx.compose.runtime.Immutable
-import org.multipaz.issuance.CredentialFormat
+import org.multipaz.provisioning.CredentialFormat
 import kotlinx.datetime.Instant
 
 @Immutable

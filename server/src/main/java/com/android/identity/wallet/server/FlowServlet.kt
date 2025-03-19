@@ -2,7 +2,7 @@ package org.multipaz.wallet.server
 
 import org.multipaz.flow.handler.FlowDispatcherLocal
 import org.multipaz.flow.handler.FlowExceptionMap
-import org.multipaz.issuance.wallet.WalletServerState
+import org.multipaz.provisioning.wallet.WalletServerState
 import org.multipaz.server.BaseFlowHttpServlet
 
 // To run this servlet for development, use this command:

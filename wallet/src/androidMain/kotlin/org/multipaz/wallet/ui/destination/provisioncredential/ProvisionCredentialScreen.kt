@@ -22,37 +22,33 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
-import org.multipaz.models.ui.consent.ConsentDocument
-import org.multipaz.claim.Claim
 import org.multipaz.request.Requester
 import org.multipaz.credential.Credential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.issuance.DocumentExtensions.documentConfiguration
-import org.multipaz.issuance.IssuingAuthorityException
-import org.multipaz.issuance.evidence.EvidenceRequestCompletionMessage
-import org.multipaz.issuance.evidence.EvidenceRequestCreatePassphrase
-import org.multipaz.issuance.evidence.EvidenceRequestGermanEid
-import org.multipaz.issuance.evidence.EvidenceRequestIcaoNfcTunnel
-import org.multipaz.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
-import org.multipaz.issuance.evidence.EvidenceRequestMessage
-import org.multipaz.issuance.evidence.EvidenceRequestNotificationPermission
-import org.multipaz.issuance.evidence.EvidenceRequestOpenid4Vp
-import org.multipaz.issuance.evidence.EvidenceRequestCredentialOffer
-import org.multipaz.issuance.evidence.EvidenceRequestQuestionMultipleChoice
-import org.multipaz.issuance.evidence.EvidenceRequestQuestionString
-import org.multipaz.issuance.evidence.EvidenceRequestSelfieVideo
-import org.multipaz.issuance.evidence.EvidenceRequestSetupCloudSecureArea
-import org.multipaz.issuance.evidence.EvidenceRequestWeb
-import org.multipaz.issuance.evidence.EvidenceResponseCreatePassphrase
-import org.multipaz.issuance.evidence.EvidenceResponseQuestionMultipleChoice
-import org.multipaz.issuance.evidence.EvidenceResponseQuestionString
-import org.multipaz.issuance.evidence.EvidenceResponseSetupCloudSecureArea
+import org.multipaz.provisioning.IssuingAuthorityException
+import org.multipaz.provisioning.evidence.EvidenceRequestCompletionMessage
+import org.multipaz.provisioning.evidence.EvidenceRequestCreatePassphrase
+import org.multipaz.provisioning.evidence.EvidenceRequestIcaoNfcTunnel
+import org.multipaz.provisioning.evidence.EvidenceRequestIcaoPassiveAuthentication
+import org.multipaz.provisioning.evidence.EvidenceRequestMessage
+import org.multipaz.provisioning.evidence.EvidenceRequestNotificationPermission
+import org.multipaz.provisioning.evidence.EvidenceRequestOpenid4Vp
+import org.multipaz.provisioning.evidence.EvidenceRequestCredentialOffer
+import org.multipaz.provisioning.evidence.EvidenceRequestQuestionMultipleChoice
+import org.multipaz.provisioning.evidence.EvidenceRequestQuestionString
+import org.multipaz.provisioning.evidence.EvidenceRequestSelfieVideo
+import org.multipaz.provisioning.evidence.EvidenceRequestSetupCloudSecureArea
+import org.multipaz.provisioning.evidence.EvidenceRequestWeb
+import org.multipaz.provisioning.evidence.EvidenceResponseCreatePassphrase
+import org.multipaz.provisioning.evidence.EvidenceResponseQuestionMultipleChoice
+import org.multipaz.provisioning.evidence.EvidenceResponseQuestionString
+import org.multipaz.provisioning.evidence.EvidenceResponseSetupCloudSecureArea
 import org.multipaz.issuance.remote.WalletServerProvider
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.claim.MdocClaim
 import org.multipaz.prompt.PromptModel
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
@@ -85,6 +81,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.json.JSONObject
+import org.multipaz_credential.wallet.ui.prompt.consent.ConsentDocument
 import java.util.StringTokenizer
 import kotlin.random.Random
 
@@ -248,13 +245,6 @@ fun ProvisionDocumentScreen(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             permissionTracker = permissionTracker
-                        )
-                    }
-
-                    is EvidenceRequestGermanEid -> {
-                        EvidenceRequestEIdView(
-                            evidenceRequest = evidenceRequest,
-                            provisioningViewModel = provisioningViewModel
                         )
                     }
 
