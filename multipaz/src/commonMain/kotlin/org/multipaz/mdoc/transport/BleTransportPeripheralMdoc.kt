@@ -1,8 +1,8 @@
 package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -17,10 +17,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.time.Duration
 
 internal class BleTransportPeripheralMdoc(
-    override val role: Role,
+    override val role: MdocRole,
     private val options: MdocTransportOptions,
     private val peripheralManager: BlePeripheralManager,
     private val uuid: UUID
@@ -35,11 +36,16 @@ internal class BleTransportPeripheralMdoc(
     private val _state = MutableStateFlow<State>(State.IDLE)
     override val state: StateFlow<State> = _state.asStateFlow()
 
-    override val connectionMethod: ConnectionMethod
+    override val connectionMethod: MdocConnectionMethod
         get() {
-            val cm = ConnectionMethodBle(true, false, uuid, null)
-            peripheralManager.l2capPsm?.let { cm.peripheralServerModePsm = it }
-            return cm
+            return MdocConnectionMethodBle(
+                supportsPeripheralServerMode = true,
+                supportsCentralClientMode = false,
+                peripheralServerModeUuid = uuid,
+                centralClientModeUuid = null,
+                peripheralServerModePsm = peripheralManager.l2capPsm,
+                peripheralServerModeMacAddress = null
+            )
         }
 
     init {

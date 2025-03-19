@@ -15,11 +15,11 @@ import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tagged
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.combine
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod.Companion.combine
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod.Companion.disambiguate
 import org.multipaz.mdoc.engagement.EngagementGenerator
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -59,7 +59,7 @@ class NfcEngagementHelper private constructor(
     private val listener: Listener?,
     private val executor: Executor?
 ) {
-    private var staticHandoverConnectionMethods: List<ConnectionMethod>? = null
+    private var staticHandoverConnectionMethods: List<MdocConnectionMethod>? = null
     private var inhibitCallbacks = false
 
     // Dynamically created when a NFC tag reader is in the field
@@ -118,12 +118,12 @@ class NfcEngagementHelper private constructor(
     }
 
     // Used by both static and negotiated handover... safe to be called multiple times.
-    private fun setupTransports(connectionMethods: List<ConnectionMethod>): List<ConnectionMethod> {
+    private fun setupTransports(connectionMethods: List<MdocConnectionMethod>): List<MdocConnectionMethod> {
         if (testingDoNotStartTransports) {
             Logger.d(TAG, "Test mode, not setting up transports")
             return connectionMethods
         }
-        val setupConnectionMethods = mutableListOf<ConnectionMethod>()
+        val setupConnectionMethods = mutableListOf<MdocConnectionMethod>()
         Logger.d(TAG, "Setting up transports")
         val timeStartedSettingUpTransports = System.currentTimeMillis()
         val encodedEDeviceKeyBytes = Cbor.encode(
@@ -131,7 +131,7 @@ class NfcEngagementHelper private constructor(
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
-        val disambiguatedMethods = disambiguate(connectionMethods, MdocTransport.Role.MDOC)
+        val disambiguatedMethods = disambiguate(connectionMethods, MdocRole.MDOC)
         for (cm in disambiguatedMethods) {
             val transport = fromConnectionMethod(
                 context, cm, DataTransport.Role.MDOC, options
@@ -574,7 +574,7 @@ class NfcEngagementHelper private constructor(
             negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
             return NfcUtil.STATUS_WORD_WRONG_PARAMETERS
         }
-        val parsedCms = mutableListOf<ConnectionMethod>()
+        val parsedCms = mutableListOf<MdocConnectionMethod>()
         for (r in records) {
             // Handle Handover Request record for NFC Forum Connection Handover specification
             // version 1.5 (encoded as 0x15 below).
@@ -613,7 +613,7 @@ class NfcEngagementHelper private constructor(
             negotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED
             return NfcUtil.STATUS_WORD_WRONG_PARAMETERS
         }
-        val disambiguatedCms = disambiguate(parsedCms, MdocTransport.Role.MDOC)
+        val disambiguatedCms = disambiguate(parsedCms, MdocRole.MDOC)
         for (cm in disambiguatedCms) {
             Logger.d(TAG, "Have connectionMethod: $cm")
         }
@@ -621,7 +621,7 @@ class NfcEngagementHelper private constructor(
         // TODO: add a method to the Listener so the application can select which one to use.
         //  For now we just pick the first method.
         val method = disambiguatedCms[0]
-        val listWithSelectedConnectionMethod = mutableListOf<ConnectionMethod>()
+        val listWithSelectedConnectionMethod = mutableListOf<MdocConnectionMethod>()
         listWithSelectedConnectionMethod.add(method)
         val hsMessage = NfcUtil.createNdefMessageHandoverSelect(
             listWithSelectedConnectionMethod,
@@ -832,7 +832,7 @@ class NfcEngagementHelper private constructor(
          * @param connectionMethods a list of connection methods to use.
          * @return the builder.
          */
-        fun useStaticHandover(connectionMethods: List<ConnectionMethod>) = apply {
+        fun useStaticHandover(connectionMethods: List<MdocConnectionMethod>) = apply {
             helper.staticHandoverConnectionMethods = combine(connectionMethods)
         }
 

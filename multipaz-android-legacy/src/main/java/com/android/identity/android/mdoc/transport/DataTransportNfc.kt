@@ -21,8 +21,8 @@ import android.nfc.cardemulation.HostApduService
 import android.nfc.tech.IsoDep
 import android.util.Pair
 import com.android.identity.android.util.NfcUtil
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit
 class DataTransportNfc(
     context: Context,
     role: Role,
-    private val connectionMethod: ConnectionMethodNfc,
+    private val connectionMethod: MdocConnectionMethodNfc,
     options: DataTransportOptions
 ) : DataTransport(context, role, options) {
     var _isoDep: IsoDep? = null
@@ -717,7 +717,7 @@ class DataTransportNfc(
         return false
     }
 
-    override val connectionMethodForTransport: ConnectionMethod
+    override val connectionMethodForTransport: MdocConnectionMethod
         get() = connectionMethod
 
     companion object {
@@ -727,7 +727,7 @@ class DataTransportNfc(
         fun fromNdefRecord(
             record: NdefRecord,
             isForHandoverSelect: Boolean
-        ): ConnectionMethodNfc? {
+        ): MdocConnectionMethodNfc? {
             val payload = ByteBuffer.wrap(record.payload).order(ByteOrder.LITTLE_ENDIAN)
             val version = payload.get().toInt()
             if (version != 0x01) {
@@ -764,7 +764,7 @@ class DataTransportNfc(
                 responseDataFieldMaxLength *= 256
                 responseDataFieldMaxLength += payload.get().toInt() and 0xff
             }
-            return ConnectionMethodNfc(
+            return MdocConnectionMethodNfc(
                 commandDataFieldMaxLength.toLong(),
                 responseDataFieldMaxLength.toLong()
             )
@@ -823,7 +823,7 @@ class DataTransportNfc(
 
         fun fromConnectionMethod(
             context: Context,
-            cm: ConnectionMethodNfc,
+            cm: MdocConnectionMethodNfc,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
@@ -851,7 +851,7 @@ class DataTransportNfc(
         }
 
         fun toNdefRecord(
-            cm: ConnectionMethodNfc,
+            cm: MdocConnectionMethodNfc,
             auxiliaryReferences: List<String>,
             isForHandoverSelect: Boolean
         ): Pair<NdefRecord, ByteArray> {

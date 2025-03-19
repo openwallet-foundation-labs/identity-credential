@@ -2,7 +2,7 @@ package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.NfcIsoTag
 import org.multipaz.nfc.ResponseApdu
@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.test.runTest
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -54,14 +55,14 @@ class NfcTransportTests {
     @Test
     fun testHappyPath() = runTest {
         val mdoc = NfcTransportMdoc(
-            role = MdocTransport.Role.MDOC,
+            role = MdocRole.MDOC,
             options = MdocTransportOptions(),
-            connectionMethod = ConnectionMethodNfc(0xffff, 0x10000)
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
         )
         val mdocReader = NfcTransportMdocReader(
-            role = MdocTransport.Role.MDOC_READER,
+            role = MdocRole.MDOC_READER,
             options = MdocTransportOptions(),
-            connectionMethod = ConnectionMethodNfc(0xffff, 0x10000)
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
         )
         val tag = LoopbackIsoTag(mdoc)
         mdocReader.setTag(tag)
@@ -115,14 +116,14 @@ ResponseApdu(status=36864, payload=ByteString(size=8989 hex=00000000000000000000
     @Test
     fun testLowTransceiveLength() = runTest {
         val mdoc = NfcTransportMdoc(
-            role = MdocTransport.Role.MDOC,
+            role = MdocRole.MDOC,
             options = MdocTransportOptions(),
-            connectionMethod = ConnectionMethodNfc(0xffff, 0x10000)
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
         )
         val mdocReader = NfcTransportMdocReader(
-            role = MdocTransport.Role.MDOC_READER,
+            role = MdocRole.MDOC_READER,
             options = MdocTransportOptions(),
-            connectionMethod = ConnectionMethodNfc(0xffff, 0x10000)
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
         )
         val tag = LoopbackIsoTag(mdoc)
         tag.maxTransceiveLength = 4096

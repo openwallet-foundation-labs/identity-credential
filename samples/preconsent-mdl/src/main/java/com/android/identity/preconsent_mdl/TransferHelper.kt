@@ -30,7 +30,7 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.credential.CredentialLoader
 import org.multipaz.document.DocumentStore
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
@@ -81,7 +81,7 @@ class TransferHelper private constructor(private val context: Context) {
     private var sharedPreferences: SharedPreferences
     private var storage: Storage
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-    private var connectionMethod: ConnectionMethod? = null
+    private var connectionMethod: MdocConnectionMethod? = null
     private var deviceRequest: ByteArray? = null
 
     private var timestampTap: Long = 0
@@ -310,7 +310,7 @@ class TransferHelper private constructor(private val context: Context) {
         state.value = State.RESPONSE_SENT
     }
 
-    fun getConnectionMethod(): ConnectionMethod {
+    fun getConnectionMethod(): MdocConnectionMethod {
         return connectionMethod!!
     }
 

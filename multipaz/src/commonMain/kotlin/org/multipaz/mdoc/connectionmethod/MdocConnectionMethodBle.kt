@@ -1,6 +1,5 @@
 package org.multipaz.mdoc.connectionmethod
 
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.nfc.Nfc
 import org.multipaz.util.Logger
@@ -11,6 +10,7 @@ import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.ByteDataReader
 import org.multipaz.util.appendByteArray
 import org.multipaz.util.appendByteString
@@ -28,33 +28,18 @@ import org.multipaz.util.appendUInt8
  * @param peripheralServerModePsm the L2CAP PSM, if set. This is currently not standardized, use at your own risk.
  * @param peripheralServerModeMacAddress the MAC address, if set.
  */
-class ConnectionMethodBle(
+data class MdocConnectionMethodBle(
     val supportsPeripheralServerMode: Boolean,
     val supportsCentralClientMode: Boolean,
     val peripheralServerModeUuid: UUID?,
     val centralClientModeUuid: UUID?,
-    var peripheralServerModePsm: Int? = null,
-    peripheralServerModeMacAddress: ByteString? = null
-) : ConnectionMethod() {
-    /**
-     * The peripheral MAC address, if set.
-     */
-    var peripheralServerModeMacAddress: ByteString? = peripheralServerModeMacAddress
-        set(macAddress) {
-            require(macAddress == null || macAddress.size == 6) {                 
-                "MAC address should be 6 bytes, got ${macAddress!!.size}"
-            }
-            field = macAddress
+    val peripheralServerModePsm: Int? = null,
+    val peripheralServerModeMacAddress: ByteString? = null
+): MdocConnectionMethod() {
+    init {
+        require(peripheralServerModeMacAddress == null || peripheralServerModeMacAddress.size == 6) {
+            "MAC address should be 6 bytes, got ${peripheralServerModeMacAddress!!.size}"
         }
-
-    override fun equals(other: Any?): Boolean {
-        return other is ConnectionMethodBle &&
-                other.supportsPeripheralServerMode == supportsPeripheralServerMode &&
-                other.supportsCentralClientMode == supportsCentralClientMode &&
-                other.peripheralServerModeUuid == peripheralServerModeUuid &&
-                other.centralClientModeUuid == centralClientModeUuid &&
-                other.peripheralServerModePsm == peripheralServerModePsm &&
-                other.peripheralServerModeMacAddress == peripheralServerModeMacAddress
     }
 
     override fun toString(): String {
@@ -123,10 +108,17 @@ class ConnectionMethodBle(
     }
 
     companion object {
-        private const val TAG = "ConnectionOptionsBle"
+        private const val TAG = "MdocConnectionMethodBle"
         private val HEX_DIGITS = "0123456789abcdef".toCharArray()
 
+        /**
+         * The device retrieval method type for BLE according to ISO/IEC 18013-5:2021 clause 8.2.1.1.
+         */
         const val METHOD_TYPE = 2L
+
+        /**
+         * The supported version of the device retrieval method type for BLE.
+         */
         const val METHOD_MAX_VERSION = 1L
 
         private const val OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE = 0L
@@ -136,7 +128,7 @@ class ConnectionMethodBle(
         private const val OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS = 20L
         private const val OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM = 21L // NOTE: as per drafts of 18013-5 Second Edition
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodBle? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): MdocConnectionMethodBle? {
             val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
@@ -145,30 +137,19 @@ class ConnectionMethodBle(
                 return null
             }
             val map = array[2]
-            val supportsPeripheralServerMode = map[OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE].asBoolean
-            val supportsCentralClientMode = map[OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE].asBoolean
-            val peripheralServerModeUuidDi = map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID)
-            val centralClientModeUuidDi = map.getOrNull(OPTION_KEY_CENTRAL_CLIENT_MODE_UUID)
-            var peripheralServerModeUuid: UUID? = null
-            if (peripheralServerModeUuidDi != null) {
-                peripheralServerModeUuid = UUID.fromByteArray(peripheralServerModeUuidDi.asBstr)
-            }
-            var centralClientModeUuid: UUID? = null
-            if (centralClientModeUuidDi != null) {
-                centralClientModeUuid = UUID.fromByteArray(centralClientModeUuidDi.asBstr)
-            }
-            val cm = ConnectionMethodBle(
-                supportsPeripheralServerMode,
-                supportsCentralClientMode,
-                peripheralServerModeUuid,
-                centralClientModeUuid
+            val cm = MdocConnectionMethodBle(
+                supportsPeripheralServerMode = map[OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE].asBoolean,
+                supportsCentralClientMode = map[OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE].asBoolean,
+                peripheralServerModeUuid = map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID)?.let {
+                    UUID.fromByteArray(it.asBstr)
+                },
+                centralClientModeUuid = map.getOrNull(OPTION_KEY_CENTRAL_CLIENT_MODE_UUID)?.let {
+                    UUID.fromByteArray(it.asBstr)
+                },
+                peripheralServerModePsm = map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM)?.asNumber?.toInt(),
+                peripheralServerModeMacAddress =
+                    map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr?.let { ByteString(it) }
             )
-            val psm = map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM)
-            if (psm != null) {
-                cm.peripheralServerModePsm = psm.asNumber.toInt()
-            }
-            cm.peripheralServerModeMacAddress =
-                map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr?.let { ByteString(it) }
             return cm
         }
 
@@ -194,9 +175,9 @@ class ConnectionMethodBle(
 
         internal fun fromNdefRecord(
             record: NdefRecord,
-            role: MdocTransport.Role,
+            role: MdocRole,
             uuidToReplace: UUID?
-        ): ConnectionMethodBle? {
+        ): MdocConnectionMethodBle? {
             var centralClient = false
             var peripheral = false
             var uuid: UUID? = uuidToReplace
@@ -214,14 +195,14 @@ class ConnectionMethodBle(
                     gotLeRole = true
                     when (val value = reader.getUInt8()) {
                         BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY -> {
-                            if (role == MdocTransport.Role.MDOC) {
+                            if (role == MdocRole.MDOC) {
                                 peripheral = true
                             } else {
                                 centralClient = true
                             }
                         }
                         BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY -> {
-                            if (role == MdocTransport.Role.MDOC) {
+                            if (role == MdocRole.MDOC) {
                                 centralClient = true
                             } else {
                                 peripheral = true
@@ -270,21 +251,21 @@ class ConnectionMethodBle(
 
             // Note that the UUID for both modes is the same if both peripheral and
             // central client mode is used!
-            val cm = ConnectionMethodBle(
-                peripheral,
-                centralClient,
-                if (peripheral) uuid else null,
-                if (centralClient) uuid else null
+            val cm = MdocConnectionMethodBle(
+                supportsPeripheralServerMode = peripheral,
+                supportsCentralClientMode = centralClient,
+                peripheralServerModeUuid = if (peripheral) uuid else null,
+                centralClientModeUuid = if (centralClient) uuid else null,
+                peripheralServerModePsm = psm,
+                peripheralServerModeMacAddress = macAddress,
             )
-            cm.peripheralServerModePsm = psm
-            cm.peripheralServerModeMacAddress = macAddress
             return cm
         }
     }
 
     override fun toNdefRecord(
         auxiliaryReferences: List<String>,
-        role: MdocTransport.Role,
+        role: MdocRole,
         skipUuids: Boolean
     ): Pair<NdefRecord, NdefRecord> {
         // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
@@ -301,16 +282,16 @@ class ConnectionMethodBle(
                 Pair(
                     centralClientModeUuid,
                     when (role) {
-                        MdocTransport.Role.MDOC -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
-                        MdocTransport.Role.MDOC_READER -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
+                        MdocRole.MDOC -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
+                        MdocRole.MDOC_READER -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
                     }
                 )
             } else if (supportsPeripheralServerMode) {
                 Pair(
                     peripheralServerModeUuid,
                     when (role) {
-                        MdocTransport.Role.MDOC -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
-                        MdocTransport.Role.MDOC_READER -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
+                        MdocRole.MDOC -> BLE_LE_ROLE_CENTRAL_CLIENT_ROLE_ONLY
+                        MdocRole.MDOC_READER -> BLE_LE_ROLE_PERIPHERAL_ROLE_ONLY
                     }
                 )
             } else {

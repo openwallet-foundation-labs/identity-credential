@@ -1,13 +1,10 @@
 package org.multipaz.mdoc.nfc
 
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Simple
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.nfc.HandoverRequestRecord
 import org.multipaz.nfc.HandoverSelectRecord
 import org.multipaz.nfc.NdefMessage
@@ -25,7 +22,7 @@ import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
-import org.multipaz.util.getInt16
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.getUInt16
 
 const private val TAG = "mdocReaderNfcHandover"
@@ -38,7 +35,7 @@ const private val TAG = "mdocReaderNfcHandover"
  * @property handover the handover value.
  */
 data class MdocReaderNfcHandoverResult(
-    val connectionMethods: List<ConnectionMethod>,
+    val connectionMethods: List<MdocConnectionMethod>,
     val encodedDeviceEngagement: ByteString,
     val handover: DataItem,
 )
@@ -54,7 +51,7 @@ data class MdocReaderNfcHandoverResult(
  */
 suspend fun mdocReaderNfcHandover(
     tag: NfcIsoTag,
-    negotiatedHandoverConnectionMethods: List<ConnectionMethod>,
+    negotiatedHandoverConnectionMethods: List<MdocConnectionMethod>,
 ): MdocReaderNfcHandoverResult? {
     try {
         tag.selectApplication(Nfc.NDEF_APPLICATION_ID)
@@ -91,9 +88,9 @@ suspend fun mdocReaderNfcHandover(
             add(initialNdefMessage.encode()) // Handover Select message
             add(Simple.NULL)                 // Handover Request message
         }
-        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(
+        val disambiguatedConnectionMethods = MdocConnectionMethod.disambiguate(
             connectionMethods,
-            MdocTransport.Role.MDOC_READER
+            MdocRole.MDOC_READER
         )
         return MdocReaderNfcHandoverResult(
             connectionMethods = disambiguatedConnectionMethods,
@@ -120,13 +117,13 @@ suspend fun mdocReaderNfcHandover(
 
     // Now send Handover Request message, the resulting NDEF message is Handover Response..
     //
-    val combinedNegotiatedHandoverConnectionMethods = ConnectionMethod.combine(negotiatedHandoverConnectionMethods)
+    val combinedNegotiatedHandoverConnectionMethods = MdocConnectionMethod.combine(negotiatedHandoverConnectionMethods)
     val hrMessage = generateHandoverRequestMessage(combinedNegotiatedHandoverConnectionMethods)
     val hsMessage = tag.ndefTransact(hrMessage, hspr.wtInt, hspr.nWait)
 
     var bleUuid: UUID? = null
     for (cm in negotiatedHandoverConnectionMethods) {
-        if (cm is ConnectionMethodBle) {
+        if (cm is MdocConnectionMethodBle) {
             if (cm.peripheralServerModeUuid != null) {
                 bleUuid = cm.peripheralServerModeUuid
                 break
@@ -147,9 +144,9 @@ suspend fun mdocReaderNfcHandover(
     }
 
     return MdocReaderNfcHandoverResult(
-        connectionMethods = ConnectionMethod.disambiguate(
+        connectionMethods = MdocConnectionMethod.disambiguate(
             connectionMethods,
-            MdocTransport.Role.MDOC_READER
+            MdocRole.MDOC_READER
         ),
         encodedDeviceEngagement = ByteString(encodedDeviceEngagement),
         handover = handover,
@@ -157,7 +154,7 @@ suspend fun mdocReaderNfcHandover(
 }
 
 private fun generateHandoverRequestMessage(
-    methods: List<ConnectionMethod>,
+    methods: List<MdocConnectionMethod>,
 ): NdefMessage {
     val auxiliaryReferences = listOf<String>()
     val carrierConfigurationRecords = mutableListOf<NdefRecord>()
@@ -165,7 +162,7 @@ private fun generateHandoverRequestMessage(
     for (method in methods) {
         val ndefRecordAndAlternativeCarrier = method.toNdefRecord(
             auxiliaryReferences = auxiliaryReferences,
-            role = MdocTransport.Role.MDOC_READER,
+            role = MdocRole.MDOC_READER,
             skipUuids = false
         )
         if (ndefRecordAndAlternativeCarrier != null) {
@@ -200,11 +197,11 @@ private fun generateHandoverRequestMessage(
 private fun parseHandoverSelectMessage(
     message: NdefMessage,
     uuid: UUID?,
-): Pair<ByteArray, List<ConnectionMethod>> {
+): Pair<ByteArray, List<MdocConnectionMethod>> {
     var hasHandoverSelectRecord = false
 
     var encodedDeviceEngagement: ByteString? = null
-    val connectionMethods = mutableListOf<ConnectionMethod>()
+    val connectionMethods = mutableListOf<MdocConnectionMethod>()
     for (r in message.records) {
         // Handle Handover Select record for NFC Forum Connection Handover specification
         // version 1.5 (encoded as 0x15 below).
@@ -220,7 +217,7 @@ private fun parseHandoverSelectMessage(
         }
 
         if (r.tnf == NdefRecord.Tnf.MIME_MEDIA || r.tnf == NdefRecord.Tnf.EXTERNAL_TYPE) {
-            val cm = ConnectionMethod.fromNdefRecord(r, MdocTransport.Role.MDOC, uuid)
+            val cm = MdocConnectionMethod.fromNdefRecord(r, MdocRole.MDOC, uuid)
             if (cm != null) {
                 connectionMethods.add(cm)
             }

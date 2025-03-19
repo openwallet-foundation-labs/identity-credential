@@ -12,10 +12,10 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tagged
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod.Companion.disambiguate
 import org.multipaz.mdoc.engagement.EngagementGenerator
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.Logger
 import java.util.concurrent.Executor
 
@@ -36,7 +36,7 @@ import java.util.concurrent.Executor
 class QrEngagementHelper internal constructor(
     context: Context,
     eDeviceKey: EcPublicKey,
-    connectionMethods: List<ConnectionMethod>?,
+    connectionMethods: List<MdocConnectionMethod>?,
     transports: List<DataTransport>?,
     options: DataTransportOptions,
     private val listener: Listener?,
@@ -79,7 +79,7 @@ class QrEngagementHelper internal constructor(
         if (connectionMethods != null) {
             // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
             // if both BLE modes are available at the same time.
-            val disambiguatedMethods = disambiguate(connectionMethods, MdocTransport.Role.MDOC)
+            val disambiguatedMethods = disambiguate(connectionMethods, MdocRole.MDOC)
             for (cm in disambiguatedMethods) {
                 val transport = fromConnectionMethod(
                     context, cm, DataTransport.Role.MDOC, options
@@ -129,7 +129,7 @@ class QrEngagementHelper internal constructor(
             transport.connect()
         }
         Logger.d(TAG, "All transports are now set up")
-        val connectionMethodsSetup = ArrayList<ConnectionMethod>()
+        val connectionMethodsSetup = ArrayList<MdocConnectionMethod>()
         for (transport in this.transports) {
             connectionMethodsSetup.add(transport.connectionMethodForTransport)
         }
@@ -295,7 +295,7 @@ class QrEngagementHelper internal constructor(
         private val listener: Listener,
         private val executor: Executor
     ) {
-        private var connectionMethods: List<ConnectionMethod>? = null
+        private var connectionMethods: List<MdocConnectionMethod>? = null
         private var transports: List<DataTransport>? = null
 
         /**
@@ -303,10 +303,10 @@ class QrEngagementHelper internal constructor(
          *
          * This is used to indicate which connection methods should be used for QR engagement.
          *
-         * @param connectionMethods a list of [ConnectionMethod] instances.
+         * @param connectionMethods a list of [MdocConnectionMethod] instances.
          * @return the builder.
          */
-        fun setConnectionMethods(connectionMethods: List<ConnectionMethod>) = apply {
+        fun setConnectionMethods(connectionMethods: List<MdocConnectionMethod>) = apply {
             this.connectionMethods = connectionMethods
         }
 

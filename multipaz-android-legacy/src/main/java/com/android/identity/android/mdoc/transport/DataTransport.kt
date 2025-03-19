@@ -17,12 +17,11 @@ package com.android.identity.android.mdoc.transport
 
 import android.content.Context
 import android.os.Build
-import com.android.identity.android.mdoc.transport.DataTransport.Listener
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodHttp
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import com.android.identity.android.mdoc.connectionmethod.MdocConnectionMethodHttp
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import java.util.ArrayDeque
 import java.util.Queue
 import java.util.concurrent.Executor
@@ -70,9 +69,9 @@ abstract class DataTransport(
     private val messageReceivedQueue: Queue<ByteArray> = ArrayDeque()
 
     /**
-     * A [ConnectionMethod] instance that can be used to connect to this transport.
+     * A [MdocConnectionMethod] instance that can be used to connect to this transport.
      *
-     * For most data transports this will return the same [ConnectionMethod] instance
+     * For most data transports this will return the same [MdocConnectionMethod] instance
      * that was passed at construction time. However for some transports where the address to
      * listen on is not known until the connection have been set up (for example dynamic TCP
      * listening port assignments or when a cloud relay is in use) it will differ.
@@ -81,7 +80,7 @@ abstract class DataTransport(
      *
      * This cannot be read until [connect] has been called.
      */
-    abstract val connectionMethodForTransport: ConnectionMethod
+    abstract val connectionMethodForTransport: MdocConnectionMethod
 
     /**
      * Sets the bytes of `EDeviceKeyBytes`.
@@ -315,10 +314,10 @@ abstract class DataTransport(
     companion object {
         /**
          * Creates a new [DataTransport]-derived instance for the given type
-         * of [ConnectionMethod].
+         * of [MdocConnectionMethod].
          *
          * @param context application context.
-         * @param connectionMethod the [ConnectionMethod] to use.
+         * @param connectionMethod the [MdocConnectionMethod] to use.
          * @param role whether the transport will be used by the mdoc or mdoc reader.
          * @param options options for configuring the created instance.
          * @return A [DataTransport]-derived instance configured with the given options.
@@ -327,26 +326,26 @@ abstract class DataTransport(
         @JvmStatic
         fun fromConnectionMethod(
             context: Context,
-            connectionMethod: ConnectionMethod,
+            connectionMethod: MdocConnectionMethod,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
             // TODO: move this to DataTransportFactory
-            return if (connectionMethod is ConnectionMethodBle) {
+            return if (connectionMethod is MdocConnectionMethodBle) {
                 DataTransportBle.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
                     options
                 )
-            } else if (connectionMethod is ConnectionMethodNfc) {
+            } else if (connectionMethod is MdocConnectionMethodNfc) {
                 DataTransportNfc.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
                     options
                 )
-            } else if (connectionMethod is ConnectionMethodWifiAware) {
+            } else if (connectionMethod is MdocConnectionMethodWifiAware) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     DataTransportWifiAware.fromConnectionMethod(
                         context,
@@ -357,21 +356,21 @@ abstract class DataTransport(
                 } else {
                     throw IllegalStateException("Wifi Aware is not supported")
                 }
-            } else if (connectionMethod is ConnectionMethodHttp) {
+            } else if (connectionMethod is MdocConnectionMethodHttp) {
                 DataTransportHttp.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
                     options
                 )
-            } else if (connectionMethod is ConnectionMethodTcp) {
+            } else if (connectionMethod is MdocConnectionMethodTcp) {
                 DataTransportTcp.fromConnectionMethod(
                     context,
                     connectionMethod,
                     role,
                     options
                 )
-            } else if (connectionMethod is ConnectionMethodUdp) {
+            } else if (connectionMethod is MdocConnectionMethodUdp) {
                 DataTransportUdp.fromConnectionMethod(
                     context,
                     connectionMethod,

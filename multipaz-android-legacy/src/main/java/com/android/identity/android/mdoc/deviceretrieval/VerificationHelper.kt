@@ -38,14 +38,14 @@ import org.multipaz.cbor.Tagged
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import kotlinx.datetime.Clock
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import java.io.IOException
 import java.util.Arrays
 import java.util.Locale
@@ -68,7 +68,7 @@ class VerificationHelper internal constructor(
     private val listener: Listener,
     private val listenerExecutor: Executor
 ) {
-    private var negotiatedHandoverConnectionMethods: List<ConnectionMethod>? = null
+    private var negotiatedHandoverConnectionMethods: List<MdocConnectionMethod>? = null
     private var negotiatedHandoverListeningTransports = mutableListOf<DataTransport>()
 
     private var dataTransport: DataTransport? = null
@@ -86,9 +86,9 @@ class VerificationHelper internal constructor(
 
     // If this is non-null it means we're using Reverse Engagement
     //
-    private var reverseEngagementConnectionMethods: List<ConnectionMethod>? = null
+    private var reverseEngagementConnectionMethods: List<MdocConnectionMethod>? = null
     private var reverseEngagementListeningTransports: MutableList<DataTransport>? = null
-    private var connectionMethodsForReaderEngagement: MutableList<ConnectionMethod>? = null
+    private var connectionMethodsForReaderEngagement: MutableList<MdocConnectionMethod>? = null
     private var readerEngagementGenerator: EngagementGenerator? = null
     private var readerEngagement: ByteArray? = null
 
@@ -173,9 +173,9 @@ class VerificationHelper internal constructor(
         reverseEngagementListeningTransports = mutableListOf()
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
-        val disambiguatedMethods = ConnectionMethod.disambiguate(
+        val disambiguatedMethods = MdocConnectionMethod.disambiguate(
             reverseEngagementConnectionMethods!!,
-            MdocTransport.Role.MDOC_READER
+            MdocRole.MDOC_READER
         )
         for (cm in disambiguatedMethods) {
             val transport = DataTransport.fromConnectionMethod(
@@ -344,7 +344,7 @@ class VerificationHelper internal constructor(
                 setDeviceEngagement(encodedDeviceEngagement, handover, EngagementMethod.QR_CODE)
                 val engagementParser = EngagementParser(encodedDeviceEngagement)
                 val engagement = engagementParser.parse()
-                val connectionMethods: List<ConnectionMethod> = engagement.connectionMethods
+                val connectionMethods: List<MdocConnectionMethod> = engagement.connectionMethods
                 if (!connectionMethods.isEmpty()) {
                     reportDeviceEngagementReceived(connectionMethods)
                     return
@@ -625,7 +625,7 @@ class VerificationHelper internal constructor(
 
                     // Now send Handover Request, the resulting NDEF message is Handover Response..
                     //
-                    val hrConnectionMethods = mutableListOf<ConnectionMethod>()
+                    val hrConnectionMethods = mutableListOf<MdocConnectionMethod>()
                     for (t in negotiatedHandoverListeningTransports) {
                         hrConnectionMethods.add(t.connectionMethodForTransport)
                     }
@@ -641,7 +641,7 @@ class VerificationHelper internal constructor(
                     val elapsedTime = System.currentTimeMillis() - timeMillisBegin
                     Logger.i(TAG, "Time spent in NFC negotiated handover: $elapsedTime ms")
                     var encodedDeviceEngagement: ByteArray? = null
-                    var parsedCms = mutableListOf<ConnectionMethod>()
+                    var parsedCms = mutableListOf<MdocConnectionMethod>()
                     val ndefHsMessage = NdefMessage(hsMessage)
                     for (r in ndefHsMessage.records) {
                         // DeviceEngagement record
@@ -729,7 +729,7 @@ class VerificationHelper internal constructor(
         )
         Logger.dCbor(TAG, "SessionTranscript", encodedSessionTranscript!!)
         sessionEncryptionReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             ephemeralKey!!,
             eDeviceKey,
             encodedSessionTranscript!!
@@ -741,7 +741,7 @@ class VerificationHelper internal constructor(
     }
 
     /**
-     * Establishes connection to remote mdoc using the given [ConnectionMethod].
+     * Establishes connection to remote mdoc using the given [MdocConnectionMethod].
      *
      * This method should be called after receiving the
      * [Listener.onDeviceEngagementReceived] callback with one of the addresses from
@@ -749,7 +749,7 @@ class VerificationHelper internal constructor(
      *
      * @param connectionMethod the address/method to connect to.
      */
-    fun connect(connectionMethod: ConnectionMethod) {
+    fun connect(connectionMethod: MdocConnectionMethod) {
         // First see if it's a warmed up transport...
         for (warmedUpTransport in negotiatedHandoverListeningTransports) {
             if (warmedUpTransport.connectionMethodForTransport.toString() == connectionMethod.toString()) {
@@ -980,7 +980,7 @@ class VerificationHelper internal constructor(
         listenerExecutor.execute { listener.onReaderEngagementReady(readerEngagement) }
     }
 
-    fun reportDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+    fun reportDeviceEngagementReceived(connectionMethods: List<MdocConnectionMethod>) {
         if (Logger.isDebugEnabled) {
             Logger.d(TAG, "reportDeviceEngagementReceived")
             for (cm in connectionMethods) {
@@ -1166,7 +1166,7 @@ class VerificationHelper internal constructor(
          * @param connectionMethods a list of connection methods that can be used to establish
          * a connection to the mdoc.
          */
-        fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>)
+        fun onDeviceEngagementReceived(connectionMethods: List<MdocConnectionMethod>)
 
         /**
          * Called when NFC data transfer has been selected but the mdoc reader device isn't yet
@@ -1263,12 +1263,12 @@ class VerificationHelper internal constructor(
          * @param connectionMethods a list of connection methods to offer via reverse engagement
          * @return the builder.
          */
-        fun setUseReverseEngagement(connectionMethods: List<ConnectionMethod>): Builder {
+        fun setUseReverseEngagement(connectionMethods: List<MdocConnectionMethod>): Builder {
             mHelper.reverseEngagementConnectionMethods = connectionMethods
             return this
         }
 
-        fun setNegotiatedHandoverConnectionMethods(connectionMethods: List<ConnectionMethod>): Builder {
+        fun setNegotiatedHandoverConnectionMethods(connectionMethods: List<MdocConnectionMethod>): Builder {
             mHelper.negotiatedHandoverConnectionMethods = connectionMethods
             return this
         }

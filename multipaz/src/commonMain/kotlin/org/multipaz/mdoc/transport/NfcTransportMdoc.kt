@@ -1,7 +1,7 @@
 package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
@@ -17,13 +17,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.math.min
 import kotlin.time.Duration
 
 class NfcTransportMdoc(
-    override val role: Role,
+    override val role: MdocRole,
     private val options: MdocTransportOptions,
-    override val connectionMethod: ConnectionMethod
+    override val connectionMethod: MdocConnectionMethod
 ) : MdocTransport() {
     companion object {
         private const val TAG = "NfcTransportMdoc"

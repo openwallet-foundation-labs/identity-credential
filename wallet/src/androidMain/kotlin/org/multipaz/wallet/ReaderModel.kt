@@ -16,7 +16,7 @@ import org.multipaz.crypto.javaX509Certificate
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.DocumentCannedRequest
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.trustmanagement.TrustManager
@@ -139,7 +139,7 @@ class ReaderModel(
             override fun onReaderEngagementReady(readerEngagement: ByteArray) {
             }
 
-            override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+            override fun onDeviceEngagementReceived(connectionMethods: List<MdocConnectionMethod>) {
                 Logger.i(TAG, "onDeviceEngagementReceived")
                 vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
                 if (connectionMethods.isEmpty()) {

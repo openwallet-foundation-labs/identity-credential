@@ -17,7 +17,7 @@ package com.android.identity.android.mdoc.transport
 
 import android.os.ConditionVariable
 import androidx.test.platform.app.InstrumentationRegistry
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.android.mdoc.connectionmethod.MdocConnectionMethodHttp
 import org.multipaz.util.fromHex
 import org.junit.Assert
 import org.junit.Test
@@ -31,7 +31,7 @@ class DataTransportHttpTest {
     fun uriParsing() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         val options = DataTransportOptions.Builder().build()
-        var cm = ConnectionMethodHttp("http://www.example.com/mdlReader/session123")
+        var cm = MdocConnectionMethodHttp("http://www.example.com/mdlReader/session123")
         var transport = DataTransport.fromConnectionMethod(
             appContext, cm, DataTransport.Role.MDOC, options
         ) as DataTransportHttp
@@ -39,7 +39,7 @@ class DataTransportHttpTest {
         Assert.assertEquals("/mdlReader/session123", transport.path)
         Assert.assertEquals(80, transport.port.toLong())
         Assert.assertFalse(transport.useTls)
-        cm = ConnectionMethodHttp("http://www.example2.com:1234/mdlVerifier/session456")
+        cm = MdocConnectionMethodHttp("http://www.example2.com:1234/mdlVerifier/session456")
         transport = DataTransport.fromConnectionMethod(
             appContext, cm, DataTransport.Role.MDOC, options
         ) as DataTransportHttp
@@ -47,7 +47,7 @@ class DataTransportHttpTest {
         Assert.assertEquals("/mdlVerifier/session456", transport.path)
         Assert.assertEquals(1234, transport.port.toLong())
         Assert.assertFalse(transport.useTls)
-        cm = ConnectionMethodHttp("https://www.example3.net/mdocreader/s42")
+        cm = MdocConnectionMethodHttp("https://www.example3.net/mdocreader/s42")
         transport = DataTransport.fromConnectionMethod(
             appContext, cm, DataTransport.Role.MDOC, options
         ) as DataTransportHttp
@@ -55,7 +55,7 @@ class DataTransportHttpTest {
         Assert.assertEquals("/mdocreader/s42", transport.path)
         Assert.assertEquals(443, transport.port.toLong())
         Assert.assertTrue(transport.useTls)
-        cm = ConnectionMethodHttp("https://www.example.com:8080/mdocreader/s43")
+        cm = MdocConnectionMethodHttp("https://www.example.com:8080/mdocreader/s43")
         transport = DataTransport.fromConnectionMethod(
             appContext, cm, DataTransport.Role.MDOC, options
         ) as DataTransportHttp
@@ -63,7 +63,7 @@ class DataTransportHttpTest {
         Assert.assertEquals("/mdocreader/s43", transport.path)
         Assert.assertEquals(8080, transport.port.toLong())
         Assert.assertTrue(transport.useTls)
-        cm = ConnectionMethodHttp("unsupported://www.example.com/mdocreader/s43")
+        cm = MdocConnectionMethodHttp("unsupported://www.example.com/mdocreader/s43")
         try {
             DataTransport.fromConnectionMethod(
                 appContext, cm, DataTransport.Role.MDOC, options
@@ -121,7 +121,7 @@ class DataTransportHttpTest {
             }
         }, executor)
         verifier.connect()
-        val verifierConnectionMethod = verifier.connectionMethodForTransport as ConnectionMethodHttp
+        val verifierConnectionMethod = verifier.connectionMethodForTransport as MdocConnectionMethodHttp
         val prover = DataTransportHttp(
             appContext,
             DataTransport.Role.MDOC,

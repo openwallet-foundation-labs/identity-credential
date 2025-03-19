@@ -1,8 +1,9 @@
 package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import kotlinx.coroutines.flow.StateFlow
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.time.Duration
 
 /**
@@ -17,12 +18,12 @@ import kotlin.time.Duration
  * and [waitForMessage] to exchange messages with the remote peer.
  *
  * Each [MdocTransport] has a role, indicating whether the application is acting as
- * the _mdoc_ or _mdoc reader_. For forward engagement, if acting in the role [Role.MDOC]
- * the application should create one or more [ConnectionMethod] instances, call [open] on
- * each of them, share the [ConnectionMethod]s (through QR or NFC in _Device Engagement_
+ * the _mdoc_ or _mdoc reader_. For forward engagement, if acting in the role [MdocRole.MDOC]
+ * the application should create one or more [MdocConnectionMethod] instances, call [open] on
+ * each of them, share the [MdocConnectionMethod]s (through QR or NFC in _Device Engagement_
  * according to ISO/EC 18013-5:2021). Similarly, the other peer - acting in the role
- * [Role.MDOC_READER] - should obtain the _Device Engagement_, get one or more
- * [ConnectionMethod] objects and call [open] on one of them. For reverse engagement,
+ * [MdocRole.MDOC_READER] - should obtain the _Device Engagement_, get one or more
+ * [MdocConnectionMethod] objects and call [open] on one of them. For reverse engagement,
  * the process is the same but with the roles reversed.
  *
  * The transport can fail at any time, for example if the other peer sends invalid data
@@ -36,16 +37,6 @@ import kotlin.time.Duration
  * any thread or coroutine.
  */
 abstract class MdocTransport {
-    /**
-     * The role of the transport
-     */
-    enum class Role {
-        /** The transport is being used by an _mdoc_. */
-        MDOC,
-
-        /** The transport is being used by an _mdoc reader_. */
-        MDOC_READER
-    }
 
     /**
      * Possible states for a transport.
@@ -81,19 +72,19 @@ abstract class MdocTransport {
     /**
      * The role which the transport is for.
      */
-    abstract val role: Role
+    abstract val role: MdocRole
 
     /**
-     * A [ConnectionMethod] which can be sent to the other peer to connect to.
+     * A [MdocConnectionMethod] which can be sent to the other peer to connect to.
      */
-    abstract val connectionMethod: ConnectionMethod
+    abstract val connectionMethod: MdocConnectionMethod
 
     /**
      * The time spent scanning for the other peer.
      *
      * This is always `null` until [open] completes and it's only set for transports that actually perform active
-     * scanning for the other peer. This includes _BLE mdoc central client mode_ for [Role.MDOC] and
-     * _BLE mdoc peripheral server mode_ for [Role.MDOC_READER].
+     * scanning for the other peer. This includes _BLE mdoc central client mode_ for [MdocRole.MDOC] and
+     * _BLE mdoc peripheral server mode_ for [MdocRole.MDOC_READER].
      */
     abstract val scanningTime: Duration?
 

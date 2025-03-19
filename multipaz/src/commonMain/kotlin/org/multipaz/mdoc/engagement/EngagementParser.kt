@@ -19,8 +19,8 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod.Companion.fromDeviceEngagement
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod.Companion.fromDeviceEngagement
 import org.multipaz.mdoc.origininfo.OriginInfo
 import org.multipaz.util.Logger
 
@@ -70,7 +70,7 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
         /**
          * The connection methods in the engagement.
          */
-        lateinit var connectionMethods: List<ConnectionMethod>
+        lateinit var connectionMethods: List<MdocConnectionMethod>
 
         /**
          * The origin infos in the engagement.
@@ -86,7 +86,7 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
             eSenderKey = security[1].asTaggedEncodedCbor.asCoseKey.ecPublicKey
             this.eSenderKeyBytes = Cbor.encode(security[1])
             val connectionMethodsArray = map.getOrNull(2)
-            val cms = mutableListOf<ConnectionMethod>()
+            val cms = mutableListOf<MdocConnectionMethod>()
             if (connectionMethodsArray != null) {
                 for (cmDataItem in (connectionMethodsArray as CborArray).items) {
                     val connectionMethod = fromDeviceEngagement(

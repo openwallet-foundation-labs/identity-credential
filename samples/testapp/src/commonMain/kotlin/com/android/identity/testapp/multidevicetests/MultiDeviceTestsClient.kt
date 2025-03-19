@@ -2,10 +2,9 @@ package org.multipaz.testapp.multidevicetests
 
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.util.Constants
@@ -19,6 +18,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -64,7 +64,7 @@ class MultiDeviceTestsClient(
                 val eDeviceKey = deviceEngagement.eSenderKey
                 val transport = MdocTransportFactory.Default.createTransport(
                     connectionMethod,
-                    MdocTransport.Role.MDOC_READER,
+                    MdocRole.MDOC_READER,
                     options
                 )
                 Logger.i(TAG, "usePrewarming: $usePrewarming")
@@ -72,7 +72,7 @@ class MultiDeviceTestsClient(
                     transport.advertise()
                 }
                 if (getPsmFromReader) {
-                    val cm = transport.connectionMethod as ConnectionMethodBle
+                    val cm = transport.connectionMethod as MdocConnectionMethodBle
                     sendChannel.writeStringUtf8("${cm.peripheralServerModePsm!!}\n")
                 }
                 val nextCmd = receiveChannel.readUTF8Line(LINE_LIMIT)
@@ -88,7 +88,7 @@ class MultiDeviceTestsClient(
                         val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
                         val encodedSessionTranscript = byteArrayOf(0x01, 0x02)
                         val sessionEncryption = SessionEncryption(
-                            role = SessionEncryption.Role.MDOC_READER,
+                            role = MdocRole.MDOC_READER,
                             eSelfKey = eReaderKey,
                             remotePublicKey = eDeviceKey,
                             encodedSessionTranscript = encodedSessionTranscript
