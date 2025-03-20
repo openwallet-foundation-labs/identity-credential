@@ -51,7 +51,6 @@ import kotlinx.datetime.Instant
  * the following CDDL:
  *  ```
  *   issuerProvidedAuthenticationData = {
- *     "docType": tstr, // TODO: remove once applet is updated
  *     "issuerNameSpaces": IssuerNameSpaces,
  *     "issuerAuth" : IssuerAuth,
  *     "readerAccess" : ReaderAccess // TODO: update applet for name change to "authorizedReaderRoots"
@@ -84,6 +83,22 @@ import kotlinx.datetime.Instant
 class DirectAccessCredential: Credential {
     companion object {
         private const val TAG = "DirectAccessCredential"
+
+        suspend fun create(
+            document: Document,
+            asReplacementForIdentifier: String?,
+            domain: String,
+            docType: String
+        ): DirectAccessCredential {
+            return DirectAccessCredential(
+                document,
+                asReplacementForIdentifier,
+                domain,
+                docType
+            ).apply {
+                addToDocument()
+            }
+        }
     }
 
     /**
@@ -97,7 +112,7 @@ class DirectAccessCredential: Credential {
      * @param documentSlot the slot in the Direct Access applet that the document
      *      associated with this credential is stored in
      */
-    constructor(
+    private constructor(
         document: Document,
         asReplacementForIdentifier: String?,
         domain: String,

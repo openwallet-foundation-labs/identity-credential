@@ -546,7 +546,8 @@ class IssuingAuthorityState(
         )
 
         val issuerProvidedAuthenticationData = if (isDirectAccess) {
-            val pemEncodedCert = resources.getStringResource("owf_identity_credential_reader_cert.pem")!!
+            val pemEncodedCert =
+                resources.getStringResource("owf_identity_credential_reader_cert.pem")!!
             val trustedReaderCert = X509Cert.fromPem(pemEncodedCert)
             val readerAuth = buildCborArray {
                 add((trustedReaderCert.ecPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding)
@@ -563,7 +564,6 @@ class IssuingAuthorityState(
             }
             Cbor.encode(
                 buildCborMap {
-                    put("docType", docType)
                     put("issuerNameSpaces", digestIdMappingItem)
                     put("issuerAuth", RawCbor(encodedIssuerAuth))
                     put("readerAccess", readerAuth)
