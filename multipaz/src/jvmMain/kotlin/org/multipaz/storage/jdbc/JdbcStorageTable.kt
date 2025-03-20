@@ -182,6 +182,15 @@ class JdbcStorageTable(
         }
     }
 
+    override suspend fun deletePartition(partitionId: String) {
+        checkPartition(partitionId)
+        return storage.withConnection { connection ->
+            val statement = connection.prepareStatement(sql.deleteAllInPartitionStatement)
+            statement.setString(1, partitionId)
+            statement.executeUpdate()
+        }
+    }
+
     override suspend fun enumerate(
         partitionId: String?,
         afterKey: String?,

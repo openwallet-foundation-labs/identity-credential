@@ -192,6 +192,17 @@ class SqliteStorageTable(
         }
     }
 
+    override suspend fun deletePartition(partitionId: String) {
+        return storage.withConnection { connection ->
+            checkPartition(partitionId)
+            connection.prepare(sql.deleteAllInPartitionStatement).use { statement ->
+                statement.bindText(1, partitionId)
+                statement.step()
+            }
+        }
+    }
+
+
     override suspend fun enumerate(
         partitionId: String?,
         afterKey: String?,
