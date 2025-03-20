@@ -1,4 +1,4 @@
-package org.multipaz_credential.wallet
+package org.multipaz.wallet
 
 /**
  * Configuration for the Wallet Application.
