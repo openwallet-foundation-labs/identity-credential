@@ -131,6 +131,21 @@ internal class EphemeralStorageTable(
         }
     }
 
+    override suspend fun deletePartition(partitionId: String) {
+        checkPartition(partitionId)
+        lock.withLock {
+            var index = storedData.binarySearch(EphemeralStorageItem(partitionId, ""))
+            if (index < 0) {
+                index = -(index + 1)
+            }
+            val start = index
+            while (index < storedData.size && storedData[index].partitionId == partitionId) {
+                index++
+            }
+            storedData.subList(start, index).clear()
+        }
+    }
+
     override suspend fun enumerate(
         partitionId: String?,
         afterKey: String?,

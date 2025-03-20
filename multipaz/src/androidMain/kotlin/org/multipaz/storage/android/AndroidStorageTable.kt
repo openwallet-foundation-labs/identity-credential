@@ -163,6 +163,17 @@ internal class AndroidStorageTable(
         }
     }
 
+    override suspend fun deletePartition(partitionId: String) {
+        checkPartition(partitionId)
+        storage.withDatabase { database ->
+            database.delete(
+                sql.tableName,
+                "partitionId = ?",
+                arrayOf(partitionId)
+            )
+        }
+    }
+
     override suspend fun enumerate(
         partitionId: String?,
         afterKey: String?,

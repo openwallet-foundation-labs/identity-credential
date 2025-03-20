@@ -497,6 +497,26 @@ class StorageTest {
         }
     }
 
+    @Test
+    fun testDeletePartition() {
+        withTable(supportExpiration = false, supportPartitions = true) { table ->
+            val data = "data".encodeToByteString()
+            val key0 = table.insert(key = null, partitionId = "A", data = data)
+            val key1 = table.insert(key = null, partitionId = "B", data = data)
+            val key2 = table.insert(key = null, partitionId = "B", data = data)
+            val key3 = table.insert(key = null, partitionId = "C", data = data)
+            assertEquals(setOf(key0), table.enumerate(partitionId = "A").toSet())
+            assertEquals(setOf(key1, key2), table.enumerate(partitionId = "B").toSet())
+            assertEquals(setOf(key3), table.enumerate(partitionId = "C").toSet())
+            table.deletePartition(partitionId = "B")
+            assertEquals(setOf(key0), table.enumerate(partitionId = "A").toSet())
+            assertEquals(setOf(), table.enumerate(partitionId = "B").toSet())
+            assertEquals(setOf(key3), table.enumerate(partitionId = "C").toSet())
+            assertNull(table.get(key = key1, partitionId = "B"))
+            assertNull(table.get(key = key2, partitionId = "B"))
+        }
+    }
+
     private fun withStorage(block: suspend CoroutineScope.(storage: Storage) -> Unit) {
         for (storage in transientStorageList) {
             runBlocking {

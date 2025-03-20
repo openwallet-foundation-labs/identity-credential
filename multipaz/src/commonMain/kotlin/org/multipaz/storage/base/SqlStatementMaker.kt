@@ -184,6 +184,12 @@ class SqlStatementMaker(
             DELETE FROM $tableName
         """.trimIndent()
 
+    val deleteAllInPartitionStatement =
+        """
+            DELETE FROM $tableName
+            WHERE (partitionId = ?)
+        """.trimIndent()
+
     val purgeExpiredStatement =
         """
             DELETE

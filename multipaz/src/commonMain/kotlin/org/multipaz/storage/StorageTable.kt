@@ -111,6 +111,14 @@ interface StorageTable {
     suspend fun deleteAll()
 
     /**
+     * Deletes all data previously stored in this the given partition.
+     *
+     * Partitioning must be supported in [StorageTableSpec] for this table. All records in the
+     * given partition are erased.
+     */
+    suspend fun deletePartition(partitionId: String)
+
+    /**
      * Enumerate keys of the records with given table and partitionId in key lexicographic order.
      *
      * - [partitionId] secondary key. If partitioning is supported
