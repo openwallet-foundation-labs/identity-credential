@@ -15,8 +15,6 @@
  */
 package org.multipaz.securearea.software
 
-import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborMap
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
@@ -29,13 +27,12 @@ import org.multipaz.securearea.KeyLockedException
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureArea
-import org.multipaz.securearea.fromDataItem
-import org.multipaz.securearea.toDataItem
 import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.annotation.CborSerializable
 import kotlin.random.Random
 
 /**
@@ -87,34 +84,40 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         }
         try {
             val privateKey = Crypto.createEcPrivateKey(settings.algorithm.curve!!)
-            val map = buildCborMap {
-                put("algorithm", settings.algorithm.name)
-                put("passphraseRequired", settings.passphraseRequired)
-                if (!settings.passphraseRequired) {
-                    put("privateKey", privateKey.toCoseKey().toDataItem())
-                } else {
-                    val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem())
-                    val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, settings.passphrase!!)
-                    val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem())
-                    val iv = Random.Default.nextBytes(12)
-                    val encryptedPrivateKey = Crypto.encrypt(
-                        Algorithm.A128GCM,
-                        secretKey,
-                        iv,
-                        cleartextPrivateKey
-                    )
-                    put("encodedPublicKey", encodedPublicKey)
-                    put("encryptedPrivateKey", encryptedPrivateKey)
-                    put("encryptedPrivateKeyIv", iv)
-                }
-                put("publicKey", privateKey.publicKey.toCoseKey().toDataItem())
-                if (settings.passphraseConstraints != null) {
-                    put("passphraseConstraints", settings.passphraseConstraints.toDataItem())
-                }
+            val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem())
+            val keyMetadata = if (settings.passphraseRequired) {
+                val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, settings.passphrase!!)
+                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem())
+                val iv = Random.Default.nextBytes(12)
+                val encryptedPrivateKey = Crypto.encrypt(
+                    Algorithm.A128GCM,
+                    secretKey,
+                    iv,
+                    cleartextPrivateKey
+                )
+                KeyMetadata(
+                    algorithm = settings.algorithm,
+                    passphraseRequired = true,
+                    privateKey = null,
+                    encryptedPrivateKey = ByteString(encryptedPrivateKey),
+                    encryptedPrivateKeyIv = ByteString(iv),
+                    encodedPublicKey = ByteString(encodedPublicKey),
+                    passphraseConstraints = settings.passphraseConstraints
+                )
+            } else {
+                KeyMetadata(
+                    algorithm = settings.algorithm,
+                    passphraseRequired = false,
+                    privateKey = privateKey,
+                    encryptedPrivateKey = null,
+                    encryptedPrivateKeyIv = null,
+                    encodedPublicKey = ByteString(encodedPublicKey),
+                    passphraseConstraints = null
+                )
             }
             val newAlias = storageTable.insert(
                 key = alias,
-                data = ByteString(Cbor.encode(map))
+                data = ByteString(keyMetadata.toCbor())
             )
             return getKeyInfo(newAlias)
         } catch (e: Exception) {
@@ -157,27 +160,25 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         }
         val data = storageTable.get(alias)
             ?: throw IllegalArgumentException("No key with given alias")
-        val map = Cbor.decode(data.toByteArray())
-        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
-        val passphraseRequired = map["passphraseRequired"].asBoolean
-        val privateKeyCoseKey = if (passphraseRequired) {
+        val keyMetadata = KeyMetadata.fromCbor(data.toByteArray())
+        val privateKey = if (keyMetadata.passphraseRequired) {
             if (passphrase == null) {
                 throw KeyLockedException("No passphrase provided")
             }
-            val encodedPublicKey = map["encodedPublicKey"].asBstr
-            val encryptedPrivateKey = map["encryptedPrivateKey"].asBstr
-            val iv = map["encryptedPrivateKeyIv"].asBstr
+            val encodedPublicKey = keyMetadata.encodedPublicKey.toByteArray()
+            val encryptedPrivateKey = keyMetadata.encryptedPrivateKey!!.toByteArray()
+            val iv = keyMetadata.encryptedPrivateKeyIv!!.toByteArray()
             val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, passphrase)
             val encodedPrivateKey = try {
                 Crypto.decrypt(Algorithm.A128GCM, secretKey, iv, encryptedPrivateKey)
             } catch (e: Exception) {
                 throw KeyLockedException("Error decrypting private key - wrong passphrase?", e)
             }
-            Cbor.decode(encodedPrivateKey).asCoseKey
+            EcPrivateKey.fromDataItem(Cbor.decode(encodedPrivateKey))
         } else {
-            map["privateKey"].asCoseKey
+            keyMetadata.privateKey!!
         }
-        return KeyData(algorithm, privateKeyCoseKey.ecPrivateKey)
+        return KeyData(keyMetadata.algorithm, privateKey)
     }
 
     /**
@@ -287,26 +288,34 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
     override suspend fun getKeyInfo(alias: String): SoftwareKeyInfo {
         val data = storageTable.get(alias)
             ?: throw IllegalArgumentException("No key with the given alias '$alias'")
-        val map = Cbor.decode(data.toByteArray())
-        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
-        val passphraseRequired = map["passphraseRequired"].asBoolean
-        val publicKey = map["publicKey"].asCoseKey.ecPublicKey
-        val passphraseConstraints = map.getOrNull("passphraseConstraints")?.let {
-            PassphraseConstraints.fromDataItem(it)
-        }
+        val keyMetadata = KeyMetadata.fromCbor(data.toByteArray())
+        val publicKey = EcPublicKey.fromDataItem(Cbor.decode(keyMetadata.encodedPublicKey.toByteArray()))
         return SoftwareKeyInfo(
             alias,
             publicKey,
             KeyAttestation(publicKey, null),
-            algorithm,
-            passphraseRequired,
-            passphraseConstraints
+            keyMetadata.algorithm,
+            keyMetadata.passphraseRequired,
+            keyMetadata.passphraseConstraints
         )
     }
 
     override suspend fun getKeyInvalidated(alias: String): Boolean {
         // Software keys are never invalidated.
         return false
+    }
+
+    @CborSerializable(schemaHash = "I6I1Ub2BmkxnPNYJn0fBnDevVB3CJQh_dOKj0tRZjlk")
+    internal data class KeyMetadata(
+        val algorithm: Algorithm,
+        val passphraseRequired: Boolean,
+        val privateKey: EcPrivateKey?,
+        val encryptedPrivateKey: ByteString?,
+        val encryptedPrivateKeyIv: ByteString?,
+        val encodedPublicKey: ByteString,  // store as encoded CoseKey
+        val passphraseConstraints: PassphraseConstraints?
+    ) {
+        companion object
     }
 
     companion object {

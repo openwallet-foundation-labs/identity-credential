@@ -25,8 +25,6 @@ import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
 import org.multipaz.R
 import org.multipaz.securearea.AndroidKeystoreSecureArea.Capabilities
-import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborMap
 import org.multipaz.context.applicationContext
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcCurve
@@ -45,15 +43,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
-import kotlinx.io.bytestring.encodeToByteString
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
-import org.multipaz.cbor.buildCborMap
-import org.multipaz.crypto.Crypto
 import java.io.ByteArrayInputStream
 import java.io.IOException
-import java.nio.charset.StandardCharsets
 import java.security.InvalidAlgorithmParameterException
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -462,8 +456,8 @@ class AndroidKeystoreSecureArea private constructor(
         keyUnlockData: KeyUnlockData?,
     ): EcSignature {
         val (entry, data) = loadKey(alias)
-        val decodedData = Cbor.decode(data)
-        val algorithm = Algorithm.fromName(decodedData["algorithm"].asTstr)
+        val decodedData = AndroidSecureAreaKeyMetadata.fromCbor(data)
+        val algorithm = decodedData.algorithm
         if (keyUnlockData != null) {
             val unlockData = keyUnlockData as AndroidKeystoreKeyUnlockData
             require(unlockData.alias == alias) {
@@ -613,12 +607,7 @@ class AndroidKeystoreSecureArea private constructor(
             } else {
                 null
             }
-            val map = Cbor.decode(data)
-            val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
-            val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
-            val userAuthenticationTimeoutMillis = map["userAuthenticationTimeoutMillis"].asNumber
-            val isStrongBoxBacked = map["useStrongBox"].asBoolean
-            val attestKeyAlias = map.getOrNull("attestKeyAlias")?.asTstr
+            val keyMetadata = AndroidSecureAreaKeyMetadata.fromCbor(data)
             var validFrom: Instant? = null
             var validUntil: Instant? = null
             if (keyInfo?.keyValidityStart != null) {
@@ -631,7 +620,7 @@ class AndroidKeystoreSecureArea private constructor(
                     keyInfo.keyValidityForOriginationEnd!!.time
                 )
             }
-            val attestationCertChain = map["attestation"].asX509CertChain
+            val attestationCertChain = keyMetadata.attestation
             val publicKey = attestationCertChain.certificates.first().ecPublicKey
 
             val userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
@@ -649,14 +638,14 @@ class AndroidKeystoreSecureArea private constructor(
             }
             AndroidKeystoreKeyInfo(
                 alias,
-                algorithm,
+                keyMetadata.algorithm,
                 publicKey,
                 KeyAttestation(publicKey, attestationCertChain),
-                attestKeyAlias,
-                userAuthenticationRequired,
-                userAuthenticationTimeoutMillis,
+                keyMetadata.attestKeyAlias,
+                keyMetadata.userAuthenticationRequired,
+                keyMetadata.userAuthenticationTimeoutMillis,
                 userAuthenticationTypes,
-                isStrongBoxBacked,
+                keyMetadata.useStrongBox,
                 validFrom,
                 validUntil
             )
@@ -670,17 +659,15 @@ class AndroidKeystoreSecureArea private constructor(
         settings: AndroidKeystoreCreateKeySettings,
         attestation: X509CertChain
     ) {
-        val value = buildCborMap {
-            put("algorithm", settings.algorithm.name)
-            if (settings.attestKeyAlias != null) {
-                put("attestKeyAlias", settings.attestKeyAlias)
-            }
-            put("userAuthenticationRequired", settings.userAuthenticationRequired)
-            put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
-            put("useStrongBox", settings.useStrongBox)
-            put("attestation", attestation.toDataItem())
-        }
-        storageTable.update(alias, ByteString(Cbor.encode(value)), partitionId)
+        val keyMetadata = AndroidSecureAreaKeyMetadata(
+            algorithm = settings.algorithm,
+            attestKeyAlias = settings.attestKeyAlias,
+            userAuthenticationRequired = settings.userAuthenticationRequired,
+            userAuthenticationTimeoutMillis = settings.userAuthenticationTimeoutMillis,
+            useStrongBox = settings.useStrongBox,
+            attestation = attestation
+        )
+        storageTable.update(alias, ByteString(keyMetadata.toCbor()), partitionId)
     }
 
     /**

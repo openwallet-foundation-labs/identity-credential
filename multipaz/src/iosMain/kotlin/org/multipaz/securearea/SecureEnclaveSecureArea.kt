@@ -1,7 +1,5 @@
 package org.multipaz.securearea
 
-import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborMap
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -12,7 +10,6 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.cbor.buildCborMap
 
 /**
  * An implementation of [SecureArea] using the Apple Secure Enclave.
@@ -110,36 +107,32 @@ class SecureEnclaveSecureArea private constructor(
         keyBlob: ByteArray,
         publicKey: EcPublicKey,
     ): String {
-        val map = buildCborMap {
-            put("algorithm", settings.algorithm.name)
-            put("userAuthenticationRequired", settings.userAuthenticationRequired)
-            put("userAuthenticationTypes", SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes))
-            put("publicKey", publicKey.toDataItem())
-            put("keyBlob", keyBlob)
-        }
-        return storageTable.insert(alias, ByteString(Cbor.encode(map)), partitionId)
+        val keyMetadata = SecureEnclaveAreaKeyMetadata(
+            algorithm = settings.algorithm,
+            userAuthenticationRequired = settings.userAuthenticationRequired,
+            userAuthenticationTypes = SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes),
+            publicKey = publicKey,
+            keyBlob = ByteString(keyBlob)
+        )
+        return storageTable.insert(alias, ByteString(keyMetadata.toCbor()), partitionId)
     }
 
     private suspend fun loadKey(alias: String): Pair<ByteArray, SecureEnclaveKeyInfo> {
         val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
-        val map = Cbor.decode(data.toByteArray())
-        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
-        val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
+        val keyMetadata = SecureEnclaveAreaKeyMetadata.fromCbor(data.toByteArray())
         val userAuthenticationTypes =
-            SecureEnclaveUserAuthType.decodeSet(map["userAuthenticationTypes"].asNumber)
-        val publicKey = map["publicKey"].asCoseKey.ecPublicKey
-        val keyBlob = map["keyBlob"].asBstr
+            SecureEnclaveUserAuthType.decodeSet(keyMetadata.userAuthenticationTypes)
 
         val keyInfo = SecureEnclaveKeyInfo(
             alias,
-            algorithm,
-            publicKey,
-            userAuthenticationRequired,
+            keyMetadata.algorithm,
+            keyMetadata.publicKey,
+            keyMetadata.userAuthenticationRequired,
             userAuthenticationTypes)
 
-        return Pair(keyBlob, keyInfo)
+        return Pair(keyMetadata.keyBlob.toByteArray(), keyInfo)
     }
 
     override suspend fun deleteKey(alias: String) {
