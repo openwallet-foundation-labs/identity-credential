@@ -2,8 +2,6 @@ package org.multipaz.securearea.cloud
 
 import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
@@ -68,8 +66,8 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
+import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.cbor.buildCborArray
-import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.SignatureVerificationException
 import kotlin.random.Random
 import kotlin.time.Duration
@@ -797,29 +795,20 @@ open class CloudSecureArea protected constructor(
     override suspend fun getKeyInfo(alias: String): CloudKeyInfo {
         val data = storageTable.get(key = METADATA_PREFIX + alias, partitionId = identifier)
             ?: throw IllegalArgumentException("No key with given alias")
-        val map = Cbor.decode(data.toByteArray())
-        val algorithm = Algorithm.fromName(map["algorithm"].asTstr)
-        val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
-        val userAuthenticationTypes = CloudUserAuthType.decodeSet(map["userAuthenticationTypes"].asNumber)
-        val isPassphraseRequired = map["isPassphraseRequired"].asBoolean
-        var validFrom: Instant? = null
-        var validUntil: Instant? = null
-        if (map.hasKey("validFrom")) {
-            validFrom = Instant.fromEpochMilliseconds(map["validFrom"].asNumber)
-        }
-        if (map.hasKey("validUntil")) {
-            validUntil = Instant.fromEpochMilliseconds(map["validUntil"].asNumber)
-        }
-        val attestationCertChain = map["attestationCertChain"].asX509CertChain
+        val keyMetadata = KeyMetadata.fromCbor(data.toByteArray())
+        val userAuthenticationTypes = CloudUserAuthType.decodeSet(keyMetadata.userAuthenticationTypes)
         return CloudKeyInfo(
             alias,
-            KeyAttestation(attestationCertChain.certificates[0].ecPublicKey, attestationCertChain),
-            algorithm,
-            userAuthenticationRequired,
+            KeyAttestation(
+                keyMetadata.attestationCertChain.certificates[0].ecPublicKey,
+                keyMetadata.attestationCertChain
+            ),
+            keyMetadata.algorithm,
+            keyMetadata.userAuthenticationRequired,
             userAuthenticationTypes,
-            validFrom,
-            validUntil,
-            isPassphraseRequired,
+            keyMetadata.validFrom?.let { Instant.fromEpochMilliseconds(it) },
+            keyMetadata.validUntil?.let { Instant.fromEpochMilliseconds(it) },
+            keyMetadata.isPassphraseRequired,
         )
     }
 
@@ -833,19 +822,15 @@ open class CloudSecureArea protected constructor(
         attestationCertChain: X509CertChain
     ) {
         Logger.d(TAG, "attestation len = ${attestationCertChain.certificates.size}")
-        val map = buildCborMap {
-            put("algorithm", settings.algorithm.name)
-            put("userAuthenticationRequired", settings.userAuthenticationRequired)
-            put("userAuthenticationTypes", CloudUserAuthType.encodeSet(settings.userAuthenticationTypes))
-            if (settings.validFrom != null) {
-                put("validFrom", settings.validFrom.toEpochMilliseconds())
-            }
-            if (settings.validUntil != null) {
-                put("validUntil", settings.validUntil.toEpochMilliseconds())
-            }
-            put("isPassphraseRequired", settings.passphraseRequired)
-            put("attestationCertChain", attestationCertChain.toDataItem())
-        }
+        val keyMetadata = KeyMetadata(
+            algorithm = settings.algorithm,
+            userAuthenticationRequired = settings.userAuthenticationRequired,
+            userAuthenticationTypes = CloudUserAuthType.encodeSet(settings.userAuthenticationTypes),
+            validFrom = settings.validFrom?.toEpochMilliseconds(),
+            validUntil = settings.validUntil?.toEpochMilliseconds(),
+            isPassphraseRequired = settings.passphraseRequired,
+            attestationCertChain = attestationCertChain
+        )
         // If the key with the given alias exists, it is silently overwritten.
         storageTable.delete(
             key = METADATA_PREFIX + alias,
@@ -854,12 +839,27 @@ open class CloudSecureArea protected constructor(
         storageTable.insert(
             key = METADATA_PREFIX + alias,
             partitionId = identifier,
-            data = ByteString(Cbor.encode(map))
+            data = ByteString(keyMetadata.toCbor())
         )
     }
 
     internal fun getLocalKeyAlias(alias: String): String {
         return "${identifier}_alias_${alias}"
+    }
+
+    @CborSerializable(
+        schemaHash = "e5QGYoSzCKpW0SQLZYu6wxtVXu5da-t6VYzJQ18vSTQ"
+    )
+    internal data class KeyMetadata(
+        val algorithm: Algorithm,
+        val userAuthenticationRequired: Boolean,
+        val userAuthenticationTypes: Long,
+        val validFrom: Long?,
+        val validUntil: Long?,
+        val isPassphraseRequired: Boolean,
+        val attestationCertChain: X509CertChain
+    ) {
+        companion object
     }
 
     // TODO: override batchCreateKey and implement server-side command to avoid roundtrips.

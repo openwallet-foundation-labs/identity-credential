@@ -1,0 +1,21 @@
+package org.multipaz.securearea
+
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.annotation.CborSerializable
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.EcPublicKey
+
+// TODO: move this class to iOS source tree once annotation processors can work across
+// multiple source trees
+@CborSerializable(
+    schemaHash = "K4-CiPFYjFPIWUDCMmWqVxjHY7eB4LDbg4f1MKHUpwk"
+)
+internal data class SecureEnclaveAreaKeyMetadata(
+    val algorithm: Algorithm,
+    val userAuthenticationRequired: Boolean,
+    val userAuthenticationTypes: Long,
+    val publicKey: EcPublicKey,
+    val keyBlob: ByteString
+) {
+    companion object
+}

@@ -6,8 +6,6 @@ import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.CoseMac0
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.securearea.KeyAttestation
-import org.multipaz.securearea.fromDataItem
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteStringBuilder
