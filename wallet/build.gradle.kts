@@ -1,22 +1,18 @@
-import org.gradle.kotlin.dsl.credentials
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
+    id("kotlin-android")
 }
 
 val projectVersionCode: Int by rootProject.extra
 val projectVersionName: String by rootProject.extra
 
 buildConfig {
-    packageName("org.multipaz_credential.wallet")
+    packageName("org.multipaz.wallet")
     buildConfigField("VERSION", projectVersionName)
     useKotlinOutput { internalVisibility = false }
 }
@@ -27,29 +23,14 @@ kotlin {
     compilerOptions {
         allWarningsAsErrors = true
     }
-
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-
-    sourceSets {
-        val androidMain by getting {
-            dependencies {
-                implementation(project(":multipaz"))
-            }
-        }
-    }
 }
 
 android {
-    namespace = "org.multipaz_credential.wallet"
+    namespace = "org.multipaz.wallet"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "org.multipaz_credential.wallet"
+        applicationId = "org.multipaz.androidwallet"
         minSdk = 29
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = projectVersionCode
