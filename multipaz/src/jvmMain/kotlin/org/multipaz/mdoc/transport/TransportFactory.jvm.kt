@@ -1,10 +1,11 @@
 package org.multipaz.mdoc.transport
 
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.role.MdocRole
 
 actual fun defaultMdocTransportFactoryCreateTransport(
-    connectionMethod: ConnectionMethod,
-    role: MdocTransport.Role,
+    connectionMethod: MdocConnectionMethod,
+    role: MdocRole,
     options: MdocTransportOptions
 ): MdocTransport {
     throw NotImplementedError("MdocTransportFactory is not available for JVM")

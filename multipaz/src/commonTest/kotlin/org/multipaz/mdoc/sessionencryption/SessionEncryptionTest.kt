@@ -22,6 +22,7 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPrivateKeyDoubleCoordinate
 import org.multipaz.mdoc.TestVectors
 import org.multipaz.mdoc.engagement.EngagementParser
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.Constants
 import org.multipaz.util.fromHex
 import kotlin.test.Test
@@ -49,7 +50,7 @@ class SessionEncryptionTest {
         val engagement = engagementParser.parse()
         val eDeviceKey = engagement.eSenderKey
         val sessionEncryption = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             eReaderKey,
             eDeviceKey,
             Cbor.encode(sessionTranscript)
@@ -108,7 +109,7 @@ class SessionEncryptionTest {
         val eReaderKey = Cbor.decode(sessionEstablishment)["eReaderKey"]
             .asTaggedEncodedCbor.asCoseKey.ecPublicKey
         val sessionEncryptionDevice = SessionEncryption(
-            SessionEncryption.Role.MDOC,
+            MdocRole.MDOC,
             eDeviceKey,
             eReaderKey,
             Cbor.encode(sessionTranscript)
@@ -161,14 +162,14 @@ class SessionEncryptionTest {
         val eDeviceKey = Crypto.createEcPrivateKey(curve)
         val encodedSessionTranscript = byteArrayOf(1, 2, 3)
         val sessionEncryptionReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             eReaderKey,
             eDeviceKey.publicKey,
             encodedSessionTranscript
         )
         sessionEncryptionReader.setSendSessionEstablishment(false)
         val sessionEncryptionHolder = SessionEncryption(
-            SessionEncryption.Role.MDOC,
+            MdocRole.MDOC,
             eDeviceKey,
             eReaderKey.publicKey,
             encodedSessionTranscript

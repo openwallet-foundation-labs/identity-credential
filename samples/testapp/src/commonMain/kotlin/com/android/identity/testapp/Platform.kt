@@ -1,17 +1,23 @@
 package org.multipaz.testapp
 
+import androidx.compose.ui.graphics.painter.Painter
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import org.jetbrains.compose.resources.DrawableResource
 import org.multipaz.crypto.Algorithm
 
 enum class Platform(val displayName: String) {
     ANDROID("Android"),
     IOS("iOS")
 }
+
+expect val platformAppName: String
+
+expect val platformAppIcon: DrawableResource
 
 expect val platform: Platform
 

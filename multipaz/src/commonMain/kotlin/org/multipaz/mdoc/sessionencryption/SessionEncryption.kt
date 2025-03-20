@@ -17,15 +17,14 @@ package org.multipaz.mdoc.sessionencryption
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tagged
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.sessionencryption.SessionEncryption.Role
 import kotlinx.io.bytestring.ByteStringBuilder
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.mdoc.role.MdocRole
 
 /**
  * Helper class for implementing session encryption according to ISO/IEC 18013-5:2021
@@ -35,33 +34,22 @@ import org.multipaz.cbor.buildCborMap
  * parameters below must conform to the CDDL in ISO 18013-5.
  *
  * All references to a "remote" device refer to a device with the opposite role. For example,
- * [SessionEncryption] objects with the [Role.MDOC] role will encrypt messages
+ * [SessionEncryption] objects with the [MdocRole.MDOC] role will encrypt messages
  * with the remote mdoc reader as the intended receiver, so the reader is the remote device.
  *
  * @param role the role that the object should act as.
- * @param eSelfKey The ephemeral private key e.g. in the [Role.MDOC_READER] role,
- * it's the ephemeral private key for the mdoc reader, and in the [Role.MDOC] role
+ * @param eSelfKey The ephemeral private key e.g. in the [MdocRole.MDOC_READER] role,
+ * it's the ephemeral private key for the mdoc reader, and in the [MdocRole.MDOC] role
  * it's the for the mdoc.
  * @param remotePublicKey The public ephemeral key of the other end.
  * @param encodedSessionTranscript The bytes of the `SessionTranscript` CBOR.
  */
 class SessionEncryption(
-    val role: Role,
+    val role: MdocRole,
     private val eSelfKey: EcPrivateKey,
     remotePublicKey: EcPublicKey,
     encodedSessionTranscript: ByteArray
 ) {
-    /**
-     * Enumeration for the two different sides of an encrypted channel.
-     */
-    enum class Role {
-        /** The role of acting as an mdoc. */
-        MDOC,
-
-        /** The role of acting as a mdoc reader. */
-        MDOC_READER
-    }
-
     private var sessionEstablishmentSent = false
     private val skRemote: ByteArray
     private val skSelf: ByteArray
@@ -77,7 +65,7 @@ class SessionEncryption(
         val deviceSK = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
         info = "SKReader".encodeToByteArray()
         val readerSK = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32)
-        if (role == Role.MDOC) {
+        if (role == MdocRole.MDOC) {
             skSelf = deviceSK
             skRemote = readerSK
         } else {
@@ -88,7 +76,7 @@ class SessionEncryption(
 
     /**
      * Configure whether to send `SessionEstablishment` as the first message. Only an
-     * object with the role [Role.MDOC_READER] will want to do this.
+     * object with the role [MdocRole.MDOC_READER] will want to do this.
      *
      * If set to false the first message to the mdoc will *not* contain `eReaderKey`. This is
      * useful for situations where this key has already been conveyed out-of-band, for example
@@ -97,10 +85,10 @@ class SessionEncryption(
      * The default value for this is `true`.
      *
      * @param sendSessionEstablishment whether to send `SessionEstablishment` as the first message.
-     * @throws IllegalStateException if role is [Role.MDOC_READER]
+     * @throws IllegalStateException if role is [MdocRole.MDOC_READER]
      */
     fun setSendSessionEstablishment(sendSessionEstablishment: Boolean) {
-        check(role != Role.MDOC) {
+        check(role != MdocRole.MDOC) {
             "Only mdoc readers should be sending sessionEstablishment messages " +
                     " but this object was constructed with role MDOC"
         }
@@ -130,7 +118,7 @@ class SessionEncryption(
             // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
             val iv = ByteStringBuilder(12)
             iv.append(0x00000000U)
-            val ivIdentifier = if (role == Role.MDOC) 0x00000001U else 0x00000000U
+            val ivIdentifier = if (role == MdocRole.MDOC) 0x00000001U else 0x00000000U
             iv.append(ivIdentifier)
             iv.append(encryptedCounter.toUInt())
             messageCiphertext = Crypto.encrypt(
@@ -143,7 +131,7 @@ class SessionEncryption(
         }
 
         val messageData = Cbor.encode(buildCborMap {
-            if (!sessionEstablishmentSent && sendSessionEstablishment && role == Role.MDOC_READER) {
+            if (!sessionEstablishmentSent && sendSessionEstablishment && role == MdocRole.MDOC_READER) {
                 var eReaderKey = eSelfKey.publicKey
                 putTaggedEncodedCbor("eReaderKey", Cbor.encode(eReaderKey.toCoseKey().toDataItem()))
                 checkNotNull(messageCiphertext) { "Data cannot be empty in initial message" }
@@ -186,7 +174,7 @@ class SessionEncryption(
         if (messageCiphertext != null) {
             val iv = ByteStringBuilder(12)
             iv.append(0x00000000U)
-            val ivIdentifier = if (role == Role.MDOC) 0x00000000U else 0x00000001U
+            val ivIdentifier = if (role == MdocRole.MDOC) 0x00000000U else 0x00000001U
             iv.append(ivIdentifier)
             iv.append(decryptedCounter.toUInt())
             plainText = Crypto.decrypt(

@@ -1,6 +1,7 @@
 package org.multipaz.mdoc.transport
 
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.role.MdocRole
 
 /**
  * An interface used to create [MdocTransport] instances.
@@ -15,8 +16,8 @@ interface MdocTransportFactory {
      * @return A [MdocTransport] instance, ready to be used.
      */
     fun createTransport(
-        connectionMethod: ConnectionMethod,
-        role: MdocTransport.Role,
+        connectionMethod: MdocConnectionMethod,
+        role: MdocRole,
         options: MdocTransportOptions = MdocTransportOptions()
     ): MdocTransport
 
@@ -25,15 +26,15 @@ interface MdocTransportFactory {
      */
     object Default : MdocTransportFactory {
         override fun createTransport(
-            connectionMethod: ConnectionMethod,
-            role: MdocTransport.Role,
+            connectionMethod: MdocConnectionMethod,
+            role: MdocRole,
             options: MdocTransportOptions
         ): MdocTransport = defaultMdocTransportFactoryCreateTransport(connectionMethod, role, options)
     }
 }
 
 internal expect fun defaultMdocTransportFactoryCreateTransport(
-    connectionMethod: ConnectionMethod,
-    role: MdocTransport.Role,
+    connectionMethod: MdocConnectionMethod,
+    role: MdocRole,
     options: MdocTransportOptions
 ): MdocTransport

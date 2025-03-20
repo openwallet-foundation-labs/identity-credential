@@ -3,10 +3,9 @@ package org.multipaz.testapp.multidevicetests
 import androidx.compose.runtime.MutableState
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.util.Constants
@@ -21,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
@@ -79,7 +79,7 @@ class MultiDeviceTestsServer(
             Test.MDOC_CENTRAL_CLIENT_MODE_L2CAP_HOLDER_TERMINATION_MSG,
             Test.MDOC_CENTRAL_CLIENT_MODE_L2CAP_READER_TERMINATION_MSG,
             Test.MDOC_CENTRAL_CLIENT_MODE_L2CAP_PSM_IN_TWO_WAY_ENGAGEMENT -> {
-                ConnectionMethodBle(
+                MdocConnectionMethodBle(
                     supportsPeripheralServerMode = false,
                     supportsCentralClientMode = true,
                     peripheralServerModeUuid = null,
@@ -95,7 +95,7 @@ class MultiDeviceTestsServer(
             Test.MDOC_PERIPHERAL_SERVER_MODE_L2CAP_HOLDER_TERMINATION_MSG,
             Test.MDOC_PERIPHERAL_SERVER_MODE_L2CAP_READER_TERMINATION_MSG,
             Test.MDOC_PERIPHERAL_SERVER_MODE_L2CAP_PSM_IN_DEVICE_ENGAGEMENT -> {
-                ConnectionMethodBle(
+                MdocConnectionMethodBle(
                     supportsPeripheralServerMode = true,
                     supportsCentralClientMode = false,
                     peripheralServerModeUuid = UUID.randomUUID(),
@@ -140,7 +140,7 @@ class MultiDeviceTestsServer(
 
         var transport = MdocTransportFactory.Default.createTransport(
             connectionMethod = connectionMethod,
-            role = MdocTransport.Role.MDOC,
+            role = MdocRole.MDOC,
             options = options
         )
         try {
@@ -163,11 +163,17 @@ class MultiDeviceTestsServer(
             if (getPsmFromReader) {
                 val psmFromReader = receiveChannel.readUTF8Line(LINE_LIMIT)!!.toInt()
                 Logger.i(TAG, "psmFromReader: $psmFromReader")
-                val connectionMethodWithPsm = connectionMethod
-                connectionMethodWithPsm.peripheralServerModePsm = psmFromReader
+                val connectionMethodWithPsm = MdocConnectionMethodBle(
+                    supportsPeripheralServerMode = connectionMethod.supportsPeripheralServerMode,
+                    supportsCentralClientMode = connectionMethod.supportsCentralClientMode,
+                    peripheralServerModeUuid = connectionMethod.peripheralServerModeUuid,
+                    centralClientModeUuid = connectionMethod.centralClientModeUuid,
+                    peripheralServerModePsm = psmFromReader,
+                    peripheralServerModeMacAddress = null
+                )
                 transport = MdocTransportFactory.Default.createTransport(
-                    connectionMethod = connectionMethod,
-                    role = MdocTransport.Role.MDOC,
+                    connectionMethod = connectionMethodWithPsm,
+                    role = MdocRole.MDOC,
                     options = options
                 )
             }
@@ -180,7 +186,7 @@ class MultiDeviceTestsServer(
                 val eReaderKey = SessionEncryption.getEReaderKey(sessionEstablishmentMessage)
                 val encodedSessionTranscript = byteArrayOf(0x01, 0x02)
                 val sessionEncryption = SessionEncryption(
-                    role = SessionEncryption.Role.MDOC,
+                    role = MdocRole.MDOC,
                     eSelfKey = eDeviceKey,
                     remotePublicKey = eReaderKey,
                     encodedSessionTranscript = encodedSessionTranscript

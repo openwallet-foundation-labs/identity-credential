@@ -1,12 +1,13 @@
 package org.multipaz.mdoc.connectionmethod
 
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.toHexString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
-import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.util.Logger
-import org.multipaz.util.toHex
 
 /**
  * Connection method for Wifi Aware.
@@ -16,20 +17,13 @@ import org.multipaz.util.toHex
  * @param channelInfoOperatingClass the operating class or unset.
  * @param bandInfoSupportedBands    the supported bands or `null`.
  */
-class ConnectionMethodWifiAware(
+data class MdocConnectionMethodWifiAware(
     val passphraseInfoPassphrase: String?,
     val channelInfoChannelNumber: Long?,
     val channelInfoOperatingClass: Long?,
-    val bandInfoSupportedBands: ByteArray?
-): ConnectionMethod() {
-    override fun equals(other: Any?): Boolean {
-        return other is ConnectionMethodWifiAware &&
-                other.passphraseInfoPassphrase == passphraseInfoPassphrase &&
-                other.channelInfoChannelNumber == channelInfoChannelNumber &&
-                other.channelInfoOperatingClass == channelInfoOperatingClass &&
-                other.bandInfoSupportedBands contentEquals bandInfoSupportedBands
-    }
-
+    val bandInfoSupportedBands: ByteString?
+): MdocConnectionMethod() {
+    @OptIn(ExperimentalStdlibApi::class)
     override fun toString(): String {
         val builder = StringBuilder("wifi_aware")
         if (passphraseInfoPassphrase != null) {
@@ -46,7 +40,7 @@ class ConnectionMethodWifiAware(
         }
         if (bandInfoSupportedBands != null) {
             builder.append(":base_info_supported_bands=")
-            builder.append(bandInfoSupportedBands.toHex())
+            builder.append(bandInfoSupportedBands.toHexString())
         }
         return builder.toString()
     }
@@ -67,7 +61,7 @@ class ConnectionMethodWifiAware(
                         put(OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS, channelInfoOperatingClass)
                     }
                     if (bandInfoSupportedBands != null) {
-                        put(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands)
+                        put(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands.toByteArray())
                     }
                 }
             }
@@ -76,7 +70,7 @@ class ConnectionMethodWifiAware(
 
     override fun toNdefRecord(
         auxiliaryReferences: List<String>,
-        role: MdocTransport.Role,
+        role: MdocRole,
         skipUuids: Boolean
     ): Pair<NdefRecord, NdefRecord>? {
         Logger.w(TAG, "toNdefRecord() not yet implemented")
@@ -84,15 +78,24 @@ class ConnectionMethodWifiAware(
     }
 
     companion object {
-        private const val TAG = "ConnectionMethodWifiAware"
+        private const val TAG = "MdocConnectionMethodWifiAware"
+
+        /**
+         * The device retrieval method type for Wifi Aware according to ISO/IEC 18013-5:2021 clause 8.2.1.1.
+         */
         const val METHOD_TYPE = 3L
+
+        /**
+         * The supported version of the device retrieval method type for Wifi Aware.
+         */
         const val METHOD_MAX_VERSION = 1L
+
         private const val OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE = 0L
         private const val OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS = 1L
         private const val OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER = 2L
         private const val OPTION_KEY_BAND_INFO_SUPPORTED_BANDS = 3L
 
-        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodWifiAware? {
+        internal fun fromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): MdocConnectionMethodWifiAware? {
             val array = Cbor.decode(encodedDeviceRetrievalMethod)
             val type = array[0].asNumber
             val version = array[1].asNumber
@@ -117,11 +120,11 @@ class ConnectionMethodWifiAware(
             }
             val bandInfoSupportedBands =
                     map.getOrNull(OPTION_KEY_BAND_INFO_SUPPORTED_BANDS)?.asBstr
-            return ConnectionMethodWifiAware(
+            return MdocConnectionMethodWifiAware(
                 passphraseInfoPassphrase,
                 channelInfoChannelNumber,
                 channelInfoOperatingClass,
-                bandInfoSupportedBands
+                bandInfoSupportedBands?.let { ByteString(it) }
             )
         }
     }

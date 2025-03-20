@@ -54,9 +54,9 @@ import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentCannedRequest
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.nfc.scanNfcMdocReader
 import org.multipaz.mdoc.response.DeviceResponseParser
@@ -91,19 +91,20 @@ import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.qrcode.ScanQrCodeDialog
+import org.multipaz.mdoc.role.MdocRole
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
 private data class ConnectionMethodPickerData(
     val showPicker: Boolean,
-    val connectionMethods: List<ConnectionMethod>,
-    val continuation:  CancellableContinuation<ConnectionMethod?>,
+    val connectionMethods: List<MdocConnectionMethod>,
+    val continuation:  CancellableContinuation<MdocConnectionMethod?>,
 )
 
 private suspend fun selectConnectionMethod(
-    connectionMethods: List<ConnectionMethod>,
+    connectionMethods: List<MdocConnectionMethod>,
     connectionMethodPickerData: MutableState<ConnectionMethodPickerData?>
-): ConnectionMethod? {
+): MdocConnectionMethod? {
     return suspendCancellableCoroutine { continuation ->
         connectionMethodPickerData.value = ConnectionMethodPickerData(
             showPicker = true,
@@ -443,11 +444,11 @@ fun IsoMdocProximityReadingScreen(
 
                             coroutineScope.launch {
                                 try {
-                                    val negotiatedHandoverConnectionMethods = mutableListOf<ConnectionMethod>()
+                                    val negotiatedHandoverConnectionMethods = mutableListOf<MdocConnectionMethod>()
                                     val bleUuid = UUID.randomUUID()
                                     if (app.settingsModel.readerBleCentralClientModeEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
-                                            ConnectionMethodBle(
+                                            MdocConnectionMethodBle(
                                                 supportsPeripheralServerMode = false,
                                                 supportsCentralClientMode = true,
                                                 peripheralServerModeUuid = null,
@@ -457,7 +458,7 @@ fun IsoMdocProximityReadingScreen(
                                     }
                                     if (app.settingsModel.readerBlePeripheralServerModeEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
-                                            ConnectionMethodBle(
+                                            MdocConnectionMethodBle(
                                                 supportsPeripheralServerMode = true,
                                                 supportsCentralClientMode = false,
                                                 peripheralServerModeUuid = bleUuid,
@@ -467,7 +468,7 @@ fun IsoMdocProximityReadingScreen(
                                     }
                                     if (app.settingsModel.readerNfcDataTransferEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
-                                            ConnectionMethodNfc(
+                                            MdocConnectionMethodNfc(
                                                 commandDataFieldMaxLength = 0xffff,
                                                 responseDataFieldMaxLength = 0x10000
                                             )
@@ -551,7 +552,7 @@ private suspend fun doReaderFlow(
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
     eReaderKey: MutableState<EcPrivateKey?>,
     selectedRequest: MutableState<RequestPickerEntry>,
-    selectConnectionMethod: suspend (connectionMethods: List<ConnectionMethod>) -> ConnectionMethod?
+    selectConnectionMethod: suspend (connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod?
 ) {
     val deviceEngagement = EngagementParser(encodedDeviceEngagement.toByteArray()).parse()
     val eDeviceKey = deviceEngagement.eSenderKey
@@ -561,9 +562,9 @@ private suspend fun doReaderFlow(
     val transport = if (existingTransport != null) {
         existingTransport
     } else {
-        val connectionMethods = ConnectionMethod.disambiguate(
+        val connectionMethods = MdocConnectionMethod.disambiguate(
             deviceEngagement.connectionMethods,
-            MdocTransport.Role.MDOC_READER
+            MdocRole.MDOC_READER
         )
         val connectionMethod = if (connectionMethods.size == 1) {
             connectionMethods[0]
@@ -576,7 +577,7 @@ private suspend fun doReaderFlow(
         }
         val transport = MdocTransportFactory.Default.createTransport(
             connectionMethod,
-            MdocTransport.Role.MDOC_READER,
+            MdocRole.MDOC_READER,
             MdocTransportOptions(bleUseL2CAP = bleUseL2CAP)
         )
         if (transport is NfcTransportMdocReader) {
@@ -653,7 +654,7 @@ private suspend fun doReaderFlowWithTransport(
         eReaderKey.publicKey
     )
     val sessionEncryption = SessionEncryption(
-        SessionEncryption.Role.MDOC_READER,
+        MdocRole.MDOC_READER,
         eReaderKey,
         eDeviceKey,
         encodedSessionTranscript,

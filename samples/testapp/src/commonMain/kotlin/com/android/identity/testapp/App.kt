@@ -26,6 +26,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.android.identity.testapp.ui.AppTheme
 import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
@@ -102,7 +103,6 @@ import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import org.multipaz.compose.AppTheme
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.storage.base.BaseStorageTable
 
@@ -791,8 +791,9 @@ fun AppBar(
     includeSettingsIcon: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val title = currentDestination.title?.let { stringResource(it) } ?: platformAppName
     TopAppBar(
-        title = { Text(stringResource(currentDestination.title)) },
+        title = { Text(text = title) },
         colors = TopAppBarDefaults.mediumTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),

@@ -21,7 +21,7 @@ import android.nfc.NdefRecord
 import android.text.format.Formatter
 import android.util.Log
 import android.util.Pair
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -237,8 +237,8 @@ class DataTransportUdp(
         return false
     }
 
-    override val connectionMethodForTransport: ConnectionMethod
-        get() = ConnectionMethodUdp(host!!, port)
+    override val connectionMethodForTransport: MdocConnectionMethod
+        get() = MdocConnectionMethodUdp(host!!, port)
 
     companion object {
         private const val TAG = "DataTransportUdp"
@@ -255,7 +255,7 @@ class DataTransportUdp(
 
         fun fromConnectionMethod(
             context: Context,
-            cm: ConnectionMethodUdp,
+            cm: MdocConnectionMethodUdp,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {
@@ -265,11 +265,11 @@ class DataTransportUdp(
         }
 
         fun toNdefRecord(
-            cm: ConnectionMethodUdp,
+            cm: MdocConnectionMethodUdp,
             auxiliaryReferences: List<String?>,
             isForHandoverSelect: Boolean
         ): Pair<NdefRecord, ByteArray> {
-            val reference = "${ConnectionMethodUdp.METHOD_TYPE}".toByteArray()
+            val reference = "${MdocConnectionMethodUdp.METHOD_TYPE}".toByteArray()
             val record = NdefRecord(
                 0x02.toShort(),  // type = RFC 2046 (MIME)
                 "application/vnd.android.ic.dmr".toByteArray(),

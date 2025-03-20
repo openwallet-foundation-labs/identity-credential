@@ -2,7 +2,6 @@ package org.multipaz.models.presentment
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Tagged
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.document.Document
@@ -27,6 +26,7 @@ import org.multipaz.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.mdoc.role.MdocRole
 
 private const val TAG = "mdocPresentment"
 
@@ -83,7 +83,7 @@ internal suspend fun mdocPresentment(
                         }
                     )
                 sessionEncryption = SessionEncryption(
-                    SessionEncryption.Role.MDOC,
+                    MdocRole.MDOC,
                     mechanism.eDeviceKey,
                     eReaderKey,
                     encodedSessionTranscript,

@@ -25,15 +25,15 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.ContextCompat
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
-import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
-import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
+import com.android.identity.android.mdoc.transport.MdocConnectionMethodTcp
+import com.android.identity.android.mdoc.transport.MdocConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import org.multipaz.crypto.Crypto
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import org.multipaz.crypto.EcCurve
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
@@ -111,33 +111,33 @@ class NfcEngagementHandler : HostApduService() {
             .setBleUseL2CAP(transferHelper.getL2CapEnabled())
             .setExperimentalBleL2CAPPsmInEngagement(transferHelper.getExperimentalPsmEnabled())
             .build()
-        val connectionMethods = mutableListOf<ConnectionMethod>()
+        val connectionMethods = mutableListOf<MdocConnectionMethod>()
         val bleUuid = UUID.randomUUID()
         if (transferHelper.getBleCentralClientDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
+            connectionMethods.add(MdocConnectionMethodBle(
                 false,
                 true,
                 null,
                 bleUuid))
         }
         if (transferHelper.getBlePeripheralServerDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
+            connectionMethods.add(MdocConnectionMethodBle(
                 true,
                 false,
                 bleUuid,
                 null))
         }
         if (transferHelper.getWifiAwareDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodWifiAware(null, null, null, null))
+            connectionMethods.add(MdocConnectionMethodWifiAware(null, null, null, null))
         }
         if (transferHelper.getNfcDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodNfc(4096, 32768))
+            connectionMethods.add(MdocConnectionMethodNfc(4096, 32768))
         }
         if (transferHelper.getTcpDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodTcp("", 0))
+            connectionMethods.add(MdocConnectionMethodTcp("", 0))
         }
         if (transferHelper.getUdpDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodUdp("", 0))
+            connectionMethods.add(MdocConnectionMethodUdp("", 0))
         }
         val builder = NfcEngagementHelper.Builder(
             applicationContext,
@@ -149,7 +149,7 @@ class NfcEngagementHandler : HostApduService() {
         if (transferHelper.getNfcNegotiatedHandoverEnabled()) {
             builder.useNegotiatedHandover()
         } else {
-            builder.useStaticHandover(ConnectionMethod.combine(connectionMethods))
+            builder.useStaticHandover(MdocConnectionMethod.combine(connectionMethods))
         }
         engagementHelper = builder.build()
     }

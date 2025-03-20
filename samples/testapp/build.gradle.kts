@@ -73,7 +73,6 @@ kotlin {
                 implementation(libs.play.services.identity.credentials)
                 implementation(libs.androidx.credentials)
                 implementation(libs.androidx.credentials.registry.provider)
-                implementation(project(":multipaz-android-legacy"))
             }
         }
 
@@ -141,6 +140,17 @@ android {
                     "proguard-rules.pro"
                 )
             )
+        }
+    }
+    flavorDimensions.addAll(listOf("standard"))
+    productFlavors {
+        create("blue") {
+            dimension = "standard"
+            isDefault = true
+        }
+        create("red") {
+            dimension = "standard"
+            applicationId = "org.multipaz.testapp.red"
         }
     }
     compileOptions {

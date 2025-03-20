@@ -1,7 +1,7 @@
 package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.util.Logger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
@@ -10,13 +10,14 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.mdoc.role.MdocRole
 
 private const val TAG = "connectionHelper"
 
 /**
  * A helper for advertising a number of connections to a remote peer.
  *
- * For each [ConnectionMethod] this creates a [MdocTransport] which is advertised and opened.
+ * For each [MdocConnectionMethod] this creates a [MdocTransport] which is advertised and opened.
  * The first connection which a remote peer connects to is returned and the other ones are closed.
  *
  * @param role the role to use when creating connections.
@@ -29,12 +30,12 @@ private const val TAG = "connectionHelper"
  * or [MdocTransport.State.CONNECTED] state.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-suspend fun List<ConnectionMethod>.advertiseAndWait(
-    role: MdocTransport.Role,
+suspend fun List<MdocConnectionMethod>.advertiseAndWait(
+    role: MdocRole,
     transportFactory: MdocTransportFactory,
     options: MdocTransportOptions,
     eSenderKey: EcPublicKey,
-    onConnectionMethodsReady: suspend (advertisedConnectionMethods: List<ConnectionMethod>) -> Unit,
+    onConnectionMethodsReady: suspend (advertisedConnectionMethods: List<MdocConnectionMethod>) -> Unit,
 ): MdocTransport {
     val transports = mutableListOf<MdocTransport>()
     for (connectionMethod in this) {
@@ -46,7 +47,7 @@ suspend fun List<ConnectionMethod>.advertiseAndWait(
         transport.advertise()
         transports.add(transport)
     }
-    onConnectionMethodsReady(ConnectionMethod.combine(transports.map { it.connectionMethod }))
+    onConnectionMethodsReady(MdocConnectionMethod.combine(transports.map { it.connectionMethod }))
 
     lateinit var continuation: CancellableContinuation<MdocTransport>
     for (transport in transports) {

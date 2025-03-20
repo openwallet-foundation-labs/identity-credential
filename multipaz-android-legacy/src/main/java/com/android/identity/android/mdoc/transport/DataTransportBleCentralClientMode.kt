@@ -30,7 +30,7 @@ import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
 import org.multipaz.util.toJavaUuid
 import java.util.UUID
@@ -42,7 +42,7 @@ import java.util.UUID
 class DataTransportBleCentralClientMode(
     context: Context,
     role: Role,
-    connectionMethod: ConnectionMethodBle,
+    connectionMethod: MdocConnectionMethodBle,
     options: DataTransportOptions
 ) : DataTransportBle(context, role, connectionMethod, options) {
     private var characteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6")
@@ -289,7 +289,15 @@ class DataTransportBleCentralClientMode(
             return
         }
         if (options.experimentalBleL2CAPPsmInEngagement) {
-            connectionMethodToReturn.peripheralServerModePsm = gattServer!!.psm
+            connectionMethodToReturn =
+                MdocConnectionMethodBle(
+                    supportsPeripheralServerMode = connectionMethodToReturn.supportsPeripheralServerMode,
+                    supportsCentralClientMode = connectionMethodToReturn.supportsCentralClientMode,
+                    peripheralServerModeUuid = connectionMethodToReturn.peripheralServerModeUuid,
+                    centralClientModeUuid = connectionMethodToReturn.centralClientModeUuid,
+                    peripheralServerModePsm = gattServer!!.psm,
+                    peripheralServerModeMacAddress = null
+                )
         }
         val bluetoothAdapter = bluetoothManager.adapter
         bluetoothLeAdvertiser = bluetoothAdapter.bluetoothLeAdvertiser

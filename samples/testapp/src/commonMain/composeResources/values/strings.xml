@@ -1,9 +1,6 @@
 <resources>
-    <string name="app_name">Test App</string>
-
     <string name="back_button">Back</string>
 
-    <string name="start_screen_title">Test App</string>
     <string name="settings_screen_title">Settings</string>
     <string name="about_screen_title">About</string>
     <string name="document_store_screen_title">Document Store</string>

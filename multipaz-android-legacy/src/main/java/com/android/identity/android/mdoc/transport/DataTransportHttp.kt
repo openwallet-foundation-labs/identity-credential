@@ -18,8 +18,8 @@ package com.android.identity.android.mdoc.transport
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.text.format.Formatter
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.android.mdoc.connectionmethod.MdocConnectionMethodHttp
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.util.Logger
 import com.android.volley.DefaultRetryPolicy
 import com.android.volley.NetworkResponse
@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit
 class DataTransportHttp(
     context: Context,
     role: Role,
-    private var connectionMethod: ConnectionMethodHttp?,
+    private var connectionMethod: MdocConnectionMethodHttp?,
     options: DataTransportOptions
 ) : DataTransport(context, role, options) {
     var socket: Socket? = null
@@ -150,7 +150,7 @@ class DataTransportHttp(
         _host = getWifiIpAddress(context)
         this.port = port
         Logger.d(TAG, "Listening with host=$_host port=$port useTls=$useTls")
-        connectionMethod = ConnectionMethodHttp("http://$_host:$port/mdocreader")
+        connectionMethod = MdocConnectionMethodHttp("http://$_host:$port/mdocreader")
     }
 
     var host: String
@@ -321,7 +321,7 @@ Content-Type: application/cbor
         return false
     }
 
-    override val connectionMethodForTransport: ConnectionMethod
+    override val connectionMethodForTransport: MdocConnectionMethod
         get() = connectionMethod!!
 
     /**
@@ -379,7 +379,7 @@ Content-Type: application/cbor
 
         fun fromConnectionMethod(
             context: Context,
-            cm: ConnectionMethodHttp,
+            cm: MdocConnectionMethodHttp,
             role: Role,
             options: DataTransportOptions
         ): DataTransport {

@@ -16,7 +16,7 @@
 package org.multipaz.mdoc.engagement
 
 import org.multipaz.mdoc.TestVectors
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
 import kotlin.test.Test
@@ -34,8 +34,8 @@ class EngagementParserTest {
         assertEquals("1.0", engagement.version)
         val connectionMethods = engagement.connectionMethods
         assertEquals(1, connectionMethods.size.toLong())
-        assertTrue(connectionMethods[0] is ConnectionMethodBle)
-        val cmBle = connectionMethods[0] as ConnectionMethodBle
+        assertTrue(connectionMethods[0] is MdocConnectionMethodBle)
+        val cmBle = connectionMethods[0] as MdocConnectionMethodBle
         assertFalse(cmBle.supportsPeripheralServerMode)
         assertTrue(cmBle.supportsCentralClientMode)
         assertNull(cmBle.peripheralServerModeUuid)

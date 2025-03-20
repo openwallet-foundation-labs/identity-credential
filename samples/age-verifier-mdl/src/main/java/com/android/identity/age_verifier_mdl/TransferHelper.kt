@@ -11,14 +11,14 @@ import androidx.core.content.edit
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
-import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
-import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
+import com.android.identity.android.mdoc.transport.MdocConnectionMethodTcp
+import com.android.identity.android.mdoc.transport.MdocConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import org.multipaz.securearea.AndroidKeystoreSecureArea
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodNfc
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodWifiAware
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
@@ -65,7 +65,7 @@ class TransferHelper private constructor(
     private var verificationHelper: VerificationHelper? = null
     var deviceResponseBytes: ByteArray? = null
     var error: Throwable? = null
-    private var connectionMethodUsed: ConnectionMethod? = null
+    private var connectionMethodUsed: MdocConnectionMethod? = null
 
     private var state = MutableLiveData<State>()
 
@@ -83,7 +83,7 @@ class TransferHelper private constructor(
             Logger.d(TAG, "onReaderEngagementReady")
         }
 
-        override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
+        override fun onDeviceEngagementReceived(connectionMethods: List<MdocConnectionMethod>) {
             Logger.d(TAG, "onDeviceEngagementReceived")
             connectionMethodUsed = connectionMethods.first()
             verificationHelper!!.connect(connectionMethods.first())
@@ -130,33 +130,33 @@ class TransferHelper private constructor(
             .build()
         builder.setDataTransportOptions(options)
 
-        val connectionMethods = mutableListOf<ConnectionMethod>()
+        val connectionMethods = mutableListOf<MdocConnectionMethod>()
         val bleUuid = UUID.randomUUID()
         if (getBleCentralClientDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
+            connectionMethods.add(MdocConnectionMethodBle(
                 false,
                 true,
                 null,
                 bleUuid))
         }
         if (getBlePeripheralServerDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
+            connectionMethods.add(MdocConnectionMethodBle(
                 true,
                 false,
                 bleUuid,
                 null))
         }
         if (getWifiAwareDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodWifiAware(null, null, null, null))
+            connectionMethods.add(MdocConnectionMethodWifiAware(null, null, null, null))
         }
         if (getNfcDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodNfc(4096, 32768))
+            connectionMethods.add(MdocConnectionMethodNfc(4096, 32768))
         }
         if (getTcpDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodTcp("", 0))
+            connectionMethods.add(MdocConnectionMethodTcp("", 0))
         }
         if (getUdpDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodUdp("", 0))
+            connectionMethods.add(MdocConnectionMethodUdp("", 0))
         }
         builder.setNegotiatedHandoverConnectionMethods(connectionMethods)
 

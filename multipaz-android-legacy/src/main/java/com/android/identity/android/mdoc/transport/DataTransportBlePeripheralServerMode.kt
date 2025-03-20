@@ -30,7 +30,7 @@ import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
 import androidx.annotation.RequiresApi
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
 import org.multipaz.util.toJavaUuid
 import java.util.UUID
@@ -42,7 +42,7 @@ import java.util.UUID
 class DataTransportBlePeripheralServerMode(
     context: Context,
     role: Role,
-    connectionMethod: ConnectionMethodBle,
+    connectionMethod: MdocConnectionMethodBle,
     options: DataTransportOptions
 ) : DataTransportBle(context, role, connectionMethod, options) {
     private var characteristicStateUuid = UUID.fromString("00000001-a123-48ce-896b-4c76973373e6")
@@ -268,7 +268,15 @@ class DataTransportBlePeripheralServerMode(
             gattServer = null
             return
         }
-        connectionMethodToReturn.peripheralServerModePsm = gattServer!!.psm
+        connectionMethodToReturn =
+            MdocConnectionMethodBle(
+                supportsPeripheralServerMode = connectionMethodToReturn.supportsPeripheralServerMode,
+                supportsCentralClientMode = connectionMethodToReturn.supportsCentralClientMode,
+                peripheralServerModeUuid = connectionMethodToReturn.peripheralServerModeUuid,
+                centralClientModeUuid = connectionMethodToReturn.centralClientModeUuid,
+                peripheralServerModePsm = gattServer!!.psm,
+                peripheralServerModeMacAddress = null
+            )
         bluetoothLeAdvertiser = bluetoothAdapter.bluetoothLeAdvertiser
         if (bluetoothLeAdvertiser == null) {
             reportError(Error("Failed to create BLE advertiser"))

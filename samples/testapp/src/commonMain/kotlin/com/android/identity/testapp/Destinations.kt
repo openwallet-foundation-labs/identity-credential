@@ -19,7 +19,6 @@ import multipazproject.samples.testapp.generated.resources.nfc_screen_title
 import multipazproject.samples.testapp.generated.resources.presentment_title
 import multipazproject.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
-import multipazproject.samples.testapp.generated.resources.start_screen_title
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_title
 import multipazproject.samples.testapp.generated.resources.credential_claims_viewer_title
 import multipazproject.samples.testapp.generated.resources.credential_viewer_title
@@ -34,12 +33,12 @@ import org.jetbrains.compose.resources.StringResource
 
 sealed interface Destination {
     val route: String
-    val title: StringResource
+    val title: StringResource?
 }
 
 data object StartDestination : Destination {
     override val route = "start"
-    override val title = Res.string.start_screen_title
+    override val title = null
 }
 
 data object SettingsDestination : Destination {

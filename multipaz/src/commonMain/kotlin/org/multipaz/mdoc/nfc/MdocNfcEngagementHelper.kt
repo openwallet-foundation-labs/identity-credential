@@ -1,13 +1,11 @@
 package org.multipaz.mdoc.nfc
 
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementGenerator
-import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.HandoverRequestRecord
 import org.multipaz.nfc.HandoverSelectRecord
@@ -25,6 +23,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.getUInt16
 
 /**
@@ -45,12 +44,12 @@ import org.multipaz.util.getUInt16
 class MdocNfcEngagementHelper(
     val eDeviceKey: EcPublicKey,
     val onHandoverComplete: (
-        connectionMethods: List<ConnectionMethod>,
+        connectionMethods: List<MdocConnectionMethod>,
         encodedDeviceEngagement: ByteString,
         handover: DataItem) -> Unit,
     val onError: (error: Throwable) -> Unit,
-    val staticHandoverMethods: List<ConnectionMethod>? = null,
-    val negotiatedHandoverPicker: ((connectionMethods: List<ConnectionMethod>) -> ConnectionMethod)? = null,
+    val staticHandoverMethods: List<MdocConnectionMethod>? = null,
+    val negotiatedHandoverPicker: ((connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod)? = null,
 ) {
     companion object {
         private const val TAG = "MdocNfcEngagementHelper"
@@ -154,7 +153,7 @@ class MdocNfcEngagementHelper(
                         EngagementGenerator.ENGAGEMENT_VERSION_1_0
                     ).generate()
 
-                    val combinedStaticHandoverMethods = ConnectionMethod.combine(staticHandoverMethods!!)
+                    val combinedStaticHandoverMethods = MdocConnectionMethod.combine(staticHandoverMethods!!)
                     val handoverSelectMessage = generateHandoverSelectMessage(
                         methods = combinedStaticHandoverMethods,
                         encodedDeviceEngagement = encodedDeviceEngagement,
@@ -224,18 +223,18 @@ class MdocNfcEngagementHelper(
             "Expected Connection Handover version 1.5, got ${byteArrayOf(hrRecord.version.toByte()).toHex()}"
         }
 
-        val availableConnectionMethods = mutableListOf<ConnectionMethod>()
+        val availableConnectionMethods = mutableListOf<MdocConnectionMethod>()
         for (record in message.records.subList(1, message.records.size)) {
-            ConnectionMethod.fromNdefRecord(record, MdocTransport.Role.MDOC_READER, null)?.let {
+            MdocConnectionMethod.fromNdefRecord(record, MdocRole.MDOC_READER, null)?.let {
                 availableConnectionMethods.add(it)
             }
         }
         if (availableConnectionMethods.isEmpty()) {
             throw Error("No supported connection methods found in Handover Request method")
         }
-        val disambiguatedConnectionMethods = ConnectionMethod.disambiguate(
+        val disambiguatedConnectionMethods = MdocConnectionMethod.disambiguate(
             availableConnectionMethods,
-            MdocTransport.Role.MDOC
+            MdocRole.MDOC
         )
 
         val selectedMethod = negotiatedHandoverPicker!!(disambiguatedConnectionMethods)
@@ -261,7 +260,7 @@ class MdocNfcEngagementHelper(
         //
         // Reference: ISO/IEC 18013-5:2021 clause 8.3.3.1.1.2 Device engagement contents
         //
-        val skipUuids = selectedMethod is ConnectionMethodBle && selectedMethod.supportsCentralClientMode == true
+        val skipUuids = selectedMethod is MdocConnectionMethodBle && selectedMethod.supportsCentralClientMode == true
         val handoverSelectMessage = generateHandoverSelectMessage(
             methods = listOf(selectedMethod),
             encodedDeviceEngagement = encodedDeviceEngagement,
@@ -285,7 +284,7 @@ class MdocNfcEngagementHelper(
     }
 
     private fun generateHandoverSelectMessage(
-        methods: List<ConnectionMethod>,
+        methods: List<MdocConnectionMethod>,
         encodedDeviceEngagement: ByteArray,
         skipUuids: Boolean,
     ): NdefMessage {
@@ -295,7 +294,7 @@ class MdocNfcEngagementHelper(
         for (method in methods) {
             val ndefRecordAndAlternativeCarrier = method.toNdefRecord(
                 auxiliaryReferences = auxiliaryReferences,
-                role = MdocTransport.Role.MDOC,
+                role = MdocRole.MDOC,
                 skipUuids = skipUuids
             )!!
             carrierConfigurationRecords.add(ndefRecordAndAlternativeCarrier.first)

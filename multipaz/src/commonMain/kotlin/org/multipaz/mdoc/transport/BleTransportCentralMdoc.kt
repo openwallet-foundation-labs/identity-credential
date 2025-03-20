@@ -1,13 +1,11 @@
 package org.multipaz.mdoc.transport
 
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.ConnectionMethod
-import org.multipaz.mdoc.connectionmethod.ConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -21,10 +19,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.mdoc.role.MdocRole
 import kotlin.time.Duration
 
 internal class BleTransportCentralMdoc(
-    override val role: Role,
+    override val role: MdocRole,
     private val options: MdocTransportOptions,
     private val centralManager: BleCentralManager,
     private val uuid: UUID,
@@ -40,8 +39,8 @@ internal class BleTransportCentralMdoc(
     private val _state = MutableStateFlow<State>(State.IDLE)
     override val state: StateFlow<State> = _state.asStateFlow()
 
-    override val connectionMethod: ConnectionMethod
-        get() = ConnectionMethodBle(false, true, null, uuid)
+    override val connectionMethod: MdocConnectionMethod
+        get() = MdocConnectionMethodBle(false, true, null, uuid)
 
     init {
         centralManager.setUuids(
