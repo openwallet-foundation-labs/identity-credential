@@ -23,13 +23,12 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         NfcAdapter.getDefaultAdapter(this)?.let {
             val cardEmulation = CardEmulation.getInstance(it)
-            val result = cardEmulation.setPreferredService(
-                this,
-                ComponentName(this, NdefService::class::class.java)
-            )
-            Logger.i(TAG, "CardEmulation.setPreferredService() -> $result")
-            val prefResult = cardEmulation.categoryAllowsForegroundPreference(CardEmulation.CATEGORY_PAYMENT)
-            Logger.i(TAG, "CardEmulation.categoryAllowsForegroundPreference(CATEGORY_PAYMENT) -> $prefResult")
+            if (!cardEmulation.setPreferredService(this, ComponentName(this, NdefService::class.java))) {
+                Logger.w(TAG, "CardEmulation.setPreferredService() returned false")
+            }
+            if (!cardEmulation.categoryAllowsForegroundPreference(CardEmulation.CATEGORY_OTHER)) {
+                Logger.w(TAG, "CardEmulation.categoryAllowsForegroundPreference(CATEGORY_OTHER) returned false")
+            }
         }
     }
 
@@ -37,8 +36,9 @@ class MainActivity : FragmentActivity() {
         super.onPause()
         NfcAdapter.getDefaultAdapter(this)?.let {
             val cardEmulation = CardEmulation.getInstance(it)
-            val result = cardEmulation.unsetPreferredService(this)
-            Logger.i(TAG, "CardEmulation.unsetPreferredService() -> $result")
+            if (!cardEmulation.unsetPreferredService(this)) {
+                Logger.w(TAG, "CardEmulation.unsetPreferredService() return false")
+            }
         }
     }
 

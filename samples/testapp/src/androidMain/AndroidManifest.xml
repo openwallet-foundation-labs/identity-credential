@@ -99,6 +99,24 @@
         </service>
 
         <service
+            android:name=".TestAppQuickAccessWalletService"
+            android:label="@string/app_name"
+            android:icon="@drawable/ic_stat_name"
+            android:logo="@drawable/ic_launcher_foreground"
+            android:permission="android.permission.BIND_QUICK_ACCESS_WALLET_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quickaccesswallet.QuickAccessWalletService" />
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <meta-data android:name="android.quickaccesswallet"
+                android:resource="@xml/quickaccesswallet_configuration" />
+            <meta-data
+                android:name="android.quickaccesswallet.tile"
+                android:resource="@drawable/ic_stat_name"/>
+        </service>
+
+        <service
             android:name=".MdocNfcDataTransferService"
             android:exported="true"
             android:label="@string/nfc_ndef_service_description"
