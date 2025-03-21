@@ -27,5 +27,6 @@
     <string name="rich_text_title">Rich text</string>
     <string name="notifications_title">Notifications</string>
     <string name="screen_lock_title">Screen Lock</string>
+    <string name="camera_title">Camera</string>
 
 </resources>
