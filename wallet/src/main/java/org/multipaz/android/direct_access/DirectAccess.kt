@@ -34,6 +34,7 @@ import kotlinx.datetime.until
 import kotlinx.io.bytestring.buildByteString
 import org.bouncycastle.asn1.ASN1UTCTime
 import org.multipaz.util.appendUInt16
+import org.multipaz.cbor.Uint
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -56,8 +57,10 @@ object DirectAccess {
     private const val CMD_MDOC_DELETE_CREDENTIAL = 0x08
     private const val CMD_MDOC_PROVISION_DATA = 0x09
     private const val CMD_MDOC_SWAP_IN = 0x06
+    private const val CMD_MDOC_GET_INFORMATION = 0x0B
     private const val APDU_RESPONSE_STATUS_OK = 0x9000
     private const val INS_ENVELOPE = 0xC3.toByte()
+    private const val OFFSET_MAX_CRED_SIZE = 2UL
 
     val transport = DirectAccessOmapiTransport
 
@@ -69,8 +72,28 @@ object DirectAccess {
      */
     val maximumCredentialSize: Long
         get() {
-            // TODO: integrate with applet
-            return 32768
+            val apdu: ByteArray?
+            val response: ByteArray?
+            try {
+                transport.closeConnection()
+                transport.openConnection()
+                val bos = ByteArrayOutputStream()
+                // set instruction
+                bos.write(buildByteString {appendUInt16(CMD_MDOC_GET_INFORMATION)}.toByteArray())
+                apdu = makeCommandApdu(bos.toByteArray())
+
+                response = transport.sendData(apdu)
+                check(getAPDUResponseStatus(response) == APDU_RESPONSE_STATUS_OK)
+                val mapItem = Cbor.decode(response.copyOfRange(0, response.size-2)).asMap
+                check(mapItem.size == 5) {
+                    "Get information response size should be 5"
+                }
+                return mapItem[Uint(OFFSET_MAX_CRED_SIZE)]?.asNumber!!
+            } catch (e: IOException) {
+                throw java.lang.IllegalStateException("Failed to send Get Information APDU command")
+            } finally {
+                transport.closeConnection()
+            }
         }
 
     private var _isDirectAccessSupported: Boolean? = null
