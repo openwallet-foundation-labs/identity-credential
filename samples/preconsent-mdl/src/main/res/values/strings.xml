@@ -1,7 +1,0 @@
-<resources>
-    <string name="app_name">Preconsent mDL</string>
-    <string name="nfc_engagement_service_desc">Preconsent mDL</string>
-    <string name="engagement_aid_group_desc">mDL AID Group</string>
-    <string name="app_name_presentation">Preconsent mDL Presentation</string>
-    <string name="nfc_data_transfer_service_desc">mdoc NFC data transfer</string>
-</resources>
