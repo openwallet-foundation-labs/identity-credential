@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<quickaccesswallet-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.example.android.SettingsActivity"
+    android:shortcutLongLabel="@string/quick_access_wallet_empty_state_text"
+    android:shortcutShortLabel="@string/quick_access_wallet_button_text"
+    android:targetActivity="com.example.android.WalletActivity"
+/>
