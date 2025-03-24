@@ -91,6 +91,15 @@ android {
 }
 
 dependencies {
+    implementation(project(":mdlAapplet"))
+    implementation(project(":JCardSim"))
+    implementation(project(":smartcardio"))
+    implementation(libs.androidx.monitor)
+    implementation(libs.androidx.junit.ktx)
+    testImplementation(project(":mdlAapplet"))
+    testImplementation(project(":JCardSim"))
+    testImplementation(project(":smartcardio"))
+    testImplementation(libs.testng)
     ksp(project(":multipaz-cbor-rpc"))
     implementation(project(":multipaz-cbor-rpc-annotations"))
     implementation(project(":multipaz"))
@@ -146,6 +155,7 @@ dependencies {
     implementation(libs.play.services.identity.credentials)
 
     implementation(libs.bouncy.castle.bcprov)
+    implementation(libs.bouncy.castle.bcpkix)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -155,4 +165,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.compose.junit4)
     debugImplementation(libs.compose.test.manifest)
+
+    testImplementation(libs.junit)
 }

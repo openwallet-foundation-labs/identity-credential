@@ -20,6 +20,7 @@ import android.nfc.NdefRecord
 import android.nfc.cardemulation.HostApduService
 import android.nfc.tech.IsoDep
 import android.util.Pair
+import com.android.identity.android.mdoc.deviceretrieval.IsoDepWrapper
 import com.android.identity.android.util.NfcUtil
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
@@ -43,7 +44,7 @@ class DataTransportNfc(
     private val connectionMethod: MdocConnectionMethodNfc,
     options: DataTransportOptions
 ) : DataTransport(context, role, options) {
-    var _isoDep: IsoDep? = null
+    var _isoDep: IsoDepWrapper? = null
 
     var listenerRemainingChunks: ArrayList<ByteArray>? = null
     var listenerTotalChunks = 0
@@ -140,7 +141,7 @@ class DataTransportNfc(
      *
      * @param isoDep the tag with [IsoDep] technology.
      */
-    fun setIsoDep(isoDep: IsoDep) {
+    fun setIsoDep(isoDep: IsoDepWrapper) {
         this._isoDep = isoDep
     }
 
@@ -387,18 +388,18 @@ class DataTransportNfc(
         baos.write(ins)
         baos.write(p1)
         baos.write(p2)
-        var hasExtendedLc = false
-        if (data == null) {
-            baos.write(0)
-        } else if (data.size < 256) {
-            baos.write(data.size)
-        } else {
-            hasExtendedLc = true
+        var isExtended = true
+        if (le > 256 || (data != null && data.size > 256)) {
+            isExtended = true
             baos.write(0x00)
-            baos.write(data.size / 0x100)
-            baos.write(data.size and 0xff)
         }
         if (data != null && data.size > 0) {
+            if (isExtended && le > 256 && data.size < 256 || data.size > 256) {
+                baos.write(data.size / 0x100)
+                baos.write(data.size and 0xff)
+            } else {
+                baos.write(data.size)
+            }
             try {
                 baos.write(data)
             } catch (e: IOException) {
@@ -411,9 +412,6 @@ class DataTransportNfc(
             } else if (le < 256) {
                 baos.write(le)
             } else {
-                if (!hasExtendedLc) {
-                    baos.write(0x00)
-                }
                 if (le == 65536) {
                     baos.write(0x00)
                     baos.write(0x00)
@@ -523,7 +521,9 @@ class DataTransportNfc(
                     )
                     Logger.dHex(TAG, "selectCommand", selectCommand)
                     val selectResponse = _isoDep!!.transceive(selectCommand)
-                    Logger.dHex(TAG, "selectResponse", selectResponse)
+                    if (selectResponse != null) {
+                        Logger.dHex(TAG, "selectResponse", selectResponse)
+                    }
                     if (!Arrays.equals(selectResponse, NfcUtil.STATUS_WORD_OK)) {
                         reportError(Error("Unexpected response to AID SELECT"))
                         return
@@ -581,11 +581,15 @@ class DataTransportNfc(
                                     bitsPerSec
                                 )
                             )
-                            Logger.dHex(TAG, "Received", envelopeResponse)
+                            if (envelopeResponse != null) {
+                                Logger.dHex(TAG, "Received", envelopeResponse)
+                            }
                             offset += size
                             if (moreChunksComing) {
                                 // Don't care about response.
-                                Logger.dHex(TAG, "envResponse (more chunks coming)", envelopeResponse)
+                                if (envelopeResponse != null) {
+                                    Logger.dHex(TAG, "envResponse (more chunks coming)", envelopeResponse)
+                                }
                             } else {
                                 lastEnvelopeResponse = envelopeResponse
                             }

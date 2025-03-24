@@ -76,7 +76,7 @@ class VerificationHelper internal constructor(
     private var sessionEncryptionReader: SessionEncryption? = null
     private var deviceEngagement: ByteArray? = null
     private var encodedSessionTranscript: ByteArray? = null
-    private var nfcIsoDep: IsoDep? = null
+    private var mIsoDepWrapper: IsoDepWrapper? = null
 
     // The handover used
     //
@@ -261,6 +261,45 @@ class VerificationHelper internal constructor(
         // know this until we've received the first message with DeviceEngagement CBOR...
     }
 
+    // This is used for only testing purpose.
+    fun mockTagDiscovered(wrapper: IsoDepWrapper) {
+        processTagDiscovered(null, wrapper)
+    }
+
+    private fun processTagDiscovered(tag: Tag?, wrapper: IsoDepWrapper?) {
+        timestampNfcTap = Clock.System.now().toEpochMilliseconds()
+        check(!(tag == null && wrapper == null)) { "Both tag and IsoDepWrapper are null." }
+        if (tag == null) {
+            mIsoDepWrapper = wrapper
+        } else {
+            // Ignore mIsoDepWrapper if not null
+            mIsoDepWrapper = null
+            // Find IsoDep since we're skipping NDEF checks and doing everything ourselves via APDUs
+            for (tech in tag.techList) {
+                Logger.d(TAG, "tech: $tech")
+                if (tech == IsoDep::class.java.name) {
+                    mIsoDepWrapper = IsoDepWrapperImpl(tag)
+                    // If we're doing QR code engagement _and_ NFC data transfer
+                    // it's possible that we're now in a state where we're
+                    // waiting for the reader to be in the NFC field... see
+                    // also comment in connect() for this case...
+                    if (dataTransport is DataTransportNfc) {
+                        Logger.d(TAG, "NFC data transfer + QR engagement, reader is now in field")
+                        startNfcDataTransport()
+
+                        // At this point we're done, don't start NFC handover.
+                        return
+                    }
+                }
+            }
+            if (mIsoDepWrapper == null) {
+                Logger.d(TAG, "no IsoDep technology found")
+                return
+            }
+        }
+        startNfcHandover()
+    }
+
     /**
      * Processes a [Tag] received when in NFC reader mode.
      *
@@ -271,31 +310,7 @@ class VerificationHelper internal constructor(
      * @throws IllegalStateException if called while not listening.
      */
     fun nfcProcessOnTagDiscovered(tag: Tag) {
-        Logger.d(TAG, "Tag discovered!")
-        timestampNfcTap = Clock.System.now().toEpochMilliseconds()
-
-        // Find IsoDep since we're skipping NDEF checks and doing everything ourselves via APDUs
-        for (tech in tag.techList) {
-            if (tech == IsoDep::class.java.name) {
-                nfcIsoDep = IsoDep.get(tag)
-                // If we're doing QR code engagement _and_ NFC data transfer
-                // it's possible that we're now in a state where we're
-                // waiting for the reader to be in the NFC field... see
-                // also comment in connect() for this case...
-                if (dataTransport is DataTransportNfc) {
-                    Logger.d(TAG, "NFC data transfer + QR engagement, reader is now in field")
-                    startNfcDataTransport()
-
-                    // At this point we're done, don't start NFC handover.
-                    return
-                }
-            }
-        }
-        if (nfcIsoDep == null) {
-            Logger.d(TAG, "no IsoDep technology found")
-            return
-        }
-        startNfcHandover()
+        processTagDiscovered(tag, null)
     }
 
     private fun startNfcDataTransport() {
@@ -303,8 +318,8 @@ class VerificationHelper internal constructor(
         val connectThread: Thread = object : Thread() {
             override fun run() {
                 try {
-                    nfcIsoDep!!.connect()
-                    nfcIsoDep!!.timeout = 20 * 1000 // 20 seconds
+                    mIsoDepWrapper!!.connect()
+                    mIsoDepWrapper!!.setTimeout(20 * 1000) // 20 seconds
                 } catch (e: IOException) {
                     reportError(e)
                     return
@@ -358,14 +373,16 @@ class VerificationHelper internal constructor(
         )
     }
 
-    private fun transceive(isoDep: IsoDep, apdu: ByteArray): ByteArray {
+    private fun transceive(isoDep: IsoDepWrapper, apdu: ByteArray): ByteArray {
         Logger.dHex(TAG, "transceive: Sending APDU", apdu)
         val ret = isoDep.transceive(apdu)
-        Logger.dHex(TAG, "transceive: Received APDU", ret)
-        return ret
+        if (ret != null) {
+            Logger.dHex(TAG, "transceive: Received APDU", ret)
+        }
+        return ret!!
     }
 
-    private fun readBinary(isoDep: IsoDep, offset: Int, size: Int): ByteArray? {
+    private fun readBinary(isoDep: IsoDepWrapper, offset: Int, size: Int): ByteArray? {
         val apdu: ByteArray
         val ret: ByteArray
         apdu = NfcUtil.createApduReadBinary(offset, size)
@@ -377,7 +394,7 @@ class VerificationHelper internal constructor(
         return Arrays.copyOfRange(ret, 0, ret.size - 2)
     }
 
-    private fun ndefReadMessage(isoDep: IsoDep, tWaitMillis: Double, _nWait: Int): ByteArray? {
+    private fun ndefReadMessage(isoDep: IsoDepWrapper, tWaitMillis: Double, _nWait: Int): ByteArray? {
         var nWait = _nWait
         var apdu: ByteArray
         var ret: ByteArray
@@ -423,7 +440,7 @@ class VerificationHelper internal constructor(
 
     @Throws(IOException::class)
     private fun ndefTransact(
-        isoDep: IsoDep, ndefMessage: ByteArray,
+        isoDep: IsoDepWrapper, ndefMessage: ByteArray,
         tWaitMillis: Double, nWait: Int
     ): ByteArray? {
         var apdu: ByteArray
@@ -517,14 +534,14 @@ class VerificationHelper internal constructor(
         if (negotiatedHandoverListeningTransports.size == 0) {
             Logger.w(TAG, "Negotiated Handover will not work - no listening connections configured")
         }
-        val isoDep = nfcIsoDep
+        val isoDep = mIsoDepWrapper
         val transceiverThread: Thread = object : Thread() {
             override fun run() {
                 var ret: ByteArray?
                 var apdu: ByteArray
                 try {
                     isoDep!!.connect()
-                    isoDep.timeout = 20 * 1000 // 20 seconds
+                    isoDep.setTimeout(40 * 1000) // 40 seconds
                     apdu =
                         NfcUtil.createApduApplicationSelect(NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)
                     ret = transceive(isoDep, apdu)
@@ -787,7 +804,7 @@ class VerificationHelper internal constructor(
     ) {
         dataTransport = transport
         if (dataTransport is DataTransportNfc) {
-            if (nfcIsoDep == null) {
+            if (mIsoDepWrapper == null) {
                 // This can happen if using NFC data transfer with QR code engagement
                 // which is allowed by ISO 18013-5:2021 (even though it's really
                 // weird). In this case we just sit and wait until the tag (reader)
@@ -799,7 +816,7 @@ class VerificationHelper internal constructor(
                 reportMoveIntoNfcField()
                 return
             }
-            (dataTransport as DataTransportNfc).setIsoDep(nfcIsoDep!!)
+            (dataTransport as DataTransportNfc).setIsoDep(mIsoDepWrapper!!)
         } else if (dataTransport is DataTransportBle) {
             // Helpful warning
             if (options!!.bleClearCache && dataTransport is DataTransportBleCentralClientMode) {

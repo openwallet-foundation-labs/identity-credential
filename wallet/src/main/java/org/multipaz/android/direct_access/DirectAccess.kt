@@ -63,7 +63,8 @@ object DirectAccess {
     private const val INS_ENVELOPE = 0xC3.toByte()
     private const val OFFSET_MAX_CRED_SIZE = 2UL
 
-    val transport = DirectAccessOmapiTransport
+    //val transport = DirectAccessOmapiTransport
+    val transport = org.multipaz.android.direct_access.DirectAccessSmartCardTransport
 
     /**
      * Returns the maximum size, in bytes, of `credentialData` which can be used
@@ -193,7 +194,8 @@ object DirectAccess {
      * connecting to the applet in the background.
      */
     fun warmupTransport() {
-        DirectAccessOmapiTransport
+        //DirectAccessOmapiTransport
+        org.multipaz.android.direct_access.DirectAccessSmartCardTransport
     }
 
     /**
