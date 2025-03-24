@@ -61,7 +61,6 @@ enum class CredentialFormat {
      * StaticAuthData, which contains CBOR conforming to the following CDDL:
      * ```
      * StaticAuthData = {
-     *    "docType": tstr,
      *    "issuerNameSpaces": IssuerNameSpaces,
      *    "issuerAuth" : IssuerAuth,
      *    "readerAccess" : ReaderAccess  // todo update applet for name change to "authorizedReaderRoots"
