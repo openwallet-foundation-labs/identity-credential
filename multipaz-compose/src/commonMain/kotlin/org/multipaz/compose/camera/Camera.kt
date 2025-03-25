@@ -4,16 +4,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /**
- * Custom composable taking care of the camera operations initialization and camera preview composition.
- * Should be considered a placeholder for the future Camera component used throughout the application for a variety
- * of the hardware camera tasks like QR code scanning and face recognition.
+ * Cross-platform composable function to display the camera preview.
  *
- * @param cameraSelector The initial camera selection to use.
- * @param showPreview Whether to show the camera preview or process the data silently.
- * @param modifier The external modifier to apply to the composable.
+ * @param modifier Modifier to be applied to the camera preview.
+ * @param cameraConfiguration Lambda to configure the [CameraEngine] with needed components.
+ * @param onCameraReady Callback invoked with the fully initialized [CameraEngine] object.
  */
 @Composable
-expect fun Camera(
-    cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
+fun Camera(
     modifier: Modifier = Modifier,
+    cameraConfiguration: CameraBuilder.() -> Unit,
+    onCameraReady: (CameraEngine) -> Unit
+) {
+    PlatformCamera(modifier, cameraConfiguration, onCameraReady)
+}
+
+/** Platform dependent implementations of the Preview. */
+@Composable
+expect fun PlatformCamera(
+    modifier: Modifier = Modifier,
+    cameraConfiguration: CameraBuilder.() -> Unit,
+    onCameraReady: (CameraEngine) -> Unit
 )

@@ -26,10 +26,12 @@ import multipazproject.samples.testapp.generated.resources.credential_viewer_tit
 import multipazproject.samples.testapp.generated.resources.document_store_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.document_viewer_title
+import multipazproject.samples.testapp.generated.resources.face_matching_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.settings_screen_title
+import multipazproject.samples.testapp.generated.resources.face_matching_title
 import org.jetbrains.compose.resources.StringResource
 
 sealed interface Destination {
@@ -204,8 +206,13 @@ data object ScreenLockDestination : Destination {
 }
 
 data object CameraDestination : Destination {
-    override val route = "Camera"
+    override val route = "CameraEngine"
     override val title = Res.string.camera_title
+}
+
+data object FaceMatchingDestination : Destination {
+    override val route = "face_matching"
+    override val title = Res.string.face_matching_title
 }
 
 val appDestinations = listOf(
@@ -237,4 +244,5 @@ val appDestinations = listOf(
     NotificationsDestination,
     ScreenLockDestination,
     CameraDestination,
+    FaceMatchingDestination,
 )
