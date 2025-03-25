@@ -30,7 +30,6 @@ import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_sh
 import multipazproject.samples.testapp.generated.resources.nfc_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
-import multipazproject.samples.testapp.generated.resources.provisioning_test_title
 import multipazproject.samples.testapp.generated.resources.qr_codes_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
@@ -53,7 +52,7 @@ fun StartScreen(
     onClickSecureEnclaveSecureArea: () -> Unit = {},
     onClickPassphraseEntryField: () -> Unit = {},
     onClickPassphrasePrompt: () -> Unit = {},
-    onClickIssuanceTestField: () -> Unit = {},
+    onClickProvisioningTestField: () -> Unit = {},
     onClickConsentSheetList: () -> Unit = {},
     onClickQrCodes: () -> Unit = {},
     onClickNfc: () -> Unit = {},
@@ -160,11 +159,14 @@ fun StartScreen(
                     }
                 }
 
+                /*
+                // Not useful yet
                 item {
-                    TextButton(onClick = onClickIssuanceTestField) {
+                    TextButton(onClick = onClickProvisioningTestField) {
                         Text(stringResource(Res.string.provisioning_test_title))
                     }
                 }
+                 */
 
                 item {
                     TextButton(onClick = onClickConsentSheetList) {

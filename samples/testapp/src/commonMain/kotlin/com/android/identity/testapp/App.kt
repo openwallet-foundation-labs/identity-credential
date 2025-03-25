@@ -533,7 +533,7 @@ class App private constructor(val promptModel: PromptModel) {
                             onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
                             onClickPassphrasePrompt = { navController.navigate(PassphrasePromptDestination.route) },
-                            onClickIssuanceTestField = { navController.navigate(ProvisioningTestDestination.route) },
+                            onClickProvisioningTestField = { navController.navigate(ProvisioningTestDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
                             onClickNfc = { navController.navigate(NfcDestination.route) },
