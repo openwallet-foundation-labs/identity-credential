@@ -35,6 +35,7 @@ import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
+import multipazproject.samples.testapp.generated.resources.face_matching_title
 import kotlinx.coroutines.launch
 import multipazproject.samples.testapp.generated.resources.camera_title
 import org.jetbrains.compose.resources.stringResource
@@ -65,6 +66,7 @@ fun StartScreen(
     onClickNotifications: () -> Unit = {},
     onClickScreenLock: () -> Unit = {},
     onClickCamera: () -> Unit = {},
+    onClickFaceMatching: () -> Unit = {},
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
@@ -230,6 +232,12 @@ fun StartScreen(
                 item {
                     TextButton(onClick = onClickCamera) {
                         Text(stringResource(Res.string.camera_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickFaceMatching) {
+                        Text(stringResource(Res.string.face_matching_title))
                     }
                 }
             }
