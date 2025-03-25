@@ -26,7 +26,6 @@ kotlin {
         val commonMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
             dependencies {
-                implementation(projects.multipazCborRpcAnnotations)
                 implementation(projects.multipaz)
                 implementation(libs.kotlinx.io.bytestring)
                 implementation(libs.kotlinx.io.core)
