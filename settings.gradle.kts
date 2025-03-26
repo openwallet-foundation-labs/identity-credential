@@ -53,7 +53,6 @@ plugins {
 }
 
 include(":multipaz-cbor-rpc")
-include(":multipaz-cbor-rpc-annotations")
 include(":multipaz")
 include(":multipaz:SwiftBridge")
 include(":multipaz-doctypes")

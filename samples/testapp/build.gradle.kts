@@ -91,7 +91,6 @@ kotlin {
                 implementation(libs.jetbrains.lifecycle.viewmodel.compose)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.network)
-                implementation(projects.multipazCborRpcAnnotations)
 
                 implementation(project(":multipaz"))
                 implementation(project(":multipaz-models"))

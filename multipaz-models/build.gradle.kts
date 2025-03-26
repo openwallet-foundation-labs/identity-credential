@@ -5,7 +5,11 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    id("maven-publish")
 }
+
+val projectVersionCode: Int by rootProject.extra
+val projectVersionName: String by rootProject.extra
 
 kotlin {
     jvmToolchain(17)
@@ -15,6 +19,8 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
+
+        publishLibraryVariants("release")
     }
 
     listOf(
@@ -82,6 +88,33 @@ android {
         resources {
             excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        }
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+group = "org.multipaz"
+version = projectVersionName
+
+publishing {
+    repositories {
+        maven {
+            url = uri("${rootProject.rootDir}/repo")
+        }
+    }
+    publications.withType(MavenPublication::class) {
+        pom {
+            licenses {
+                license {
+                    name = "Apache 2.0"
+                    url = "https://opensource.org/licenses/Apache-2.0"
+                }
+            }
         }
     }
 }

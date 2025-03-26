@@ -15,7 +15,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import org.multipaz.util.Logger
-import multipazproject.multipaz_compose.generated.resources.Res
+import org.multipaz.multipaz_compose.generated.resources.Res
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride

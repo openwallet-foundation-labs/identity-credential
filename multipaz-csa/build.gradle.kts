@@ -19,7 +19,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.io.bytestring)
 
-    implementation(project(":multipaz-cbor-rpc-annotations"))
     ksp(project(":multipaz-cbor-rpc"))
 
     testImplementation(libs.kotlin.test)

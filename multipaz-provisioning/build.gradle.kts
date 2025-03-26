@@ -15,7 +15,6 @@ java {
 
 dependencies {
     ksp(project(":multipaz-cbor-rpc"))
-    implementation(project(":multipaz-cbor-rpc-annotations"))
     implementation(project(":multipaz"))
     implementation(project(":multipaz-doctypes"))
     implementation(project(":multipaz-provisioning-api"))
