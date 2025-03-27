@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.CancellationException
 import org.multipaz.util.Logger
 import multipazproject.multipaz_compose.generated.resources.Res
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +55,7 @@ internal actual fun WebViewRender(
 ) {
     // Initial height is arbitrary, it will get updated from the content height.
     val contentHeight = remember { mutableIntStateOf(100) }
+    val coroutineScopeIO = rememberCoroutineScope { Dispatchers.IO }
     Box(modifier = modifier) {
         val bootstrapHtml = renderingContext.getBootstrapHtml(
             renderingContext.createStyle(
@@ -75,7 +78,7 @@ internal actual fun WebViewRender(
 
                     settings.javaScriptEnabled = true
 
-                    webViewClient = ClientImpl(bootstrapHtml, assets)
+                    webViewClient = ClientImpl(bootstrapHtml, assets, coroutineScopeIO)
                 }
 
                 val mainHandler = android.os.Handler(context.mainLooper)
@@ -127,7 +130,8 @@ internal actual fun WebViewRender(
 
 internal class ClientImpl(
     private val bootstrapHtml: String,
-    var assets: Map<String, ByteString>
+    var assets: Map<String, ByteString>,
+    private val coroutineScopeIO: CoroutineScope
 ) : WebViewClient() {
 
     var loaded = false
@@ -166,12 +170,14 @@ internal class ClientImpl(
                 val stream = if (path.startsWith("/res/")) {
                     PipedInputStream().also {
                         val output = PipedOutputStream(it)
-                        CoroutineScope(Dispatchers.IO).launch {
+                        coroutineScopeIO.launch {
                             try {
                                 val bytes = Res.readBytes("files/webview/" + path.substring(5))
                                 output.write(bytes)
+                            } catch (err: CancellationException) {
+                                throw err
                             } catch (err: Throwable) {
-                                Logger.e(TAG,"Error loading resource '$path'", err)
+                                Logger.e(TAG, "Error loading resource '$path'", err)
                             } finally {
                                 output.close()
                             }

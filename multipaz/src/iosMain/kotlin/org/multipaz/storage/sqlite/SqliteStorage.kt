@@ -5,10 +5,9 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.base.BaseStorage
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.StorageTableSpec
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlin.coroutines.CoroutineContext
 
@@ -41,10 +40,10 @@ class SqliteStorage(
     }
 
     internal suspend fun<T> withConnection(
-        block: suspend CoroutineScope.(connection: SQLiteConnection) -> T
+        block: suspend (connection: SQLiteConnection) -> T
     ): T {
-        return CoroutineScope(coroutineContext).async {
+        return withContext(coroutineContext) {
             block(connection)
-        }.await()
+        }
     }
 }
