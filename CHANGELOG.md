@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.91] - Not yet released, expected end of May 2025
+- TODO: add items as needed
+
 ## [0.90] - 2025-03-26
 This is the first release with the CHANGELOG.md file and also the first release using the new
 Multipaz name. Main changes since the Identity Credential version 202411.1 include:
