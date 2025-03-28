@@ -7,9 +7,8 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.coroutineScope
 import org.multipaz.context.initializeApplication
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.multipaz.util.Logger
 
@@ -47,7 +46,7 @@ class MainActivity : FragmentActivity() {
         initializeApplication(this.applicationContext)
         enableEdgeToEdge()
 
-        CoroutineScope(Dispatchers.Main).launch {
+        lifecycle.coroutineScope.launch {
             val app = App.getInstance(NdefService.promptModel)
             app.startExportDocumentsToDigitalCredentials()
             setContent {
