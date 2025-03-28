@@ -82,6 +82,10 @@ kotlin {
                 implementation(libs.accompanist.permissions)
                 implementation(libs.androidx.material)
                 implementation(libs.androidx.biometrics)
+                implementation(libs.androidx.camera.camera2)
+                implementation(libs.androidx.camera.lifecycle)
+                implementation(libs.androidx.camera.view)
+                implementation(libs.androidx.lifecycle.extensions)
             }
         }
     }

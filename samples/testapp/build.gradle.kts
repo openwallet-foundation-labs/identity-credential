@@ -37,6 +37,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "TestApp"
             isStatic = true
+            linkerOpts.add("-framework CoreVideo")
         }
     }
 
