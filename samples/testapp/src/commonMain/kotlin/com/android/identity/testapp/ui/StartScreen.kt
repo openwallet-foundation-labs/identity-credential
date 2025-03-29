@@ -30,13 +30,13 @@ import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_sh
 import multipazproject.samples.testapp.generated.resources.nfc_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
-import multipazproject.samples.testapp.generated.resources.provisioning_test_title
 import multipazproject.samples.testapp.generated.resources.qr_codes_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
 import kotlinx.coroutines.launch
+import multipazproject.samples.testapp.generated.resources.camera_title
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
@@ -53,7 +53,7 @@ fun StartScreen(
     onClickSecureEnclaveSecureArea: () -> Unit = {},
     onClickPassphraseEntryField: () -> Unit = {},
     onClickPassphrasePrompt: () -> Unit = {},
-    onClickIssuanceTestField: () -> Unit = {},
+    onClickProvisioningTestField: () -> Unit = {},
     onClickConsentSheetList: () -> Unit = {},
     onClickQrCodes: () -> Unit = {},
     onClickNfc: () -> Unit = {},
@@ -64,6 +64,7 @@ fun StartScreen(
     onClickRichText: () -> Unit = {},
     onClickNotifications: () -> Unit = {},
     onClickScreenLock: () -> Unit = {},
+    onClickCamera: () -> Unit = {},
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
@@ -160,11 +161,14 @@ fun StartScreen(
                     }
                 }
 
+                /*
+                // Not useful yet
                 item {
-                    TextButton(onClick = onClickIssuanceTestField) {
+                    TextButton(onClick = onClickProvisioningTestField) {
                         Text(stringResource(Res.string.provisioning_test_title))
                     }
                 }
+                 */
 
                 item {
                     TextButton(onClick = onClickConsentSheetList) {
@@ -220,6 +224,12 @@ fun StartScreen(
                 item {
                     TextButton(onClick = onClickScreenLock) {
                         Text(stringResource(Res.string.screen_lock_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickCamera) {
+                        Text(stringResource(Res.string.camera_title))
                     }
                 }
             }

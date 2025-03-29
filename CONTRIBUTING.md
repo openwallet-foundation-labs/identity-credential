@@ -17,9 +17,10 @@ here are some pointers about what we're looking for:
 - The commit message should be short, to the point, and explain exactly what the change is
   doing. Not too short, not too long. See the git history for inspiration and what the
   project is generally doing.
-- The code in the change should follow the style in CODING-STYLE.md.
-- The code must be tested, either with unit tests or manual tests. See TESTING.md for details.
+- The code in the change should follow the style in [CODING-STYLE.md](CODING-STYLE.md).
+- The code must be tested, either with unit tests or manual tests. See [TESTING.md](TESTING.md) for details.
 - We generally use a single commit per PR, to keep the git history sane.
+- For notable features / bug-fixes the PR should include additions to CHANGELOG.md
 
 Before uploading a PR, it's generally a good idea to manually review the commit (using
 e.g. `git show`) and check that it meets all the requirements above.

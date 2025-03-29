@@ -4,4 +4,6 @@
     <string name="nfc_ndef_service_description">@string/app_name</string>
     <string name="nfc_ndef_service_aid_group_description">ISO/IEC 18013-5:2021 NFC engagement</string>
     <string name="mdoc_nfc_data_transfer_service_aid_group_description">ISO/IEC 18013-5:2021 NFC data transfer</string>
+    <string name="quick_access_wallet_empty_state_text">No Cards</string>
+    <string name="quick_access_wallet_button_text">@string/app_name</string>
 </resources>

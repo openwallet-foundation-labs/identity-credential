@@ -27,12 +27,13 @@ import org.multipaz.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.nfc.ResponseApdu
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -67,31 +68,37 @@ class NdefService: HostApduService() {
     override fun onDestroy() {
         Logger.i(TAG, "onDestroy")
         super.onDestroy()
+        commandApduListenJob?.cancel()
     }
 
     private lateinit var settingsModel: TestAppSettingsModel
 
+    private var commandApduListenJob: Job? = null
+    private val commandApduChannel = Channel<CommandApdu>(Channel.UNLIMITED)
+
     override fun onCreate() {
         Logger.i(TAG, "onCreate")
         super.onCreate()
+
         initializeApplication(applicationContext)
 
-        // Note: Every millisecond literally counts here because we're handling a
-        // NFC tap and users tend to remove their phone from the reader really fast.
-        //
-        // So we don't really have time to call App.getInstance() which will initialize
-        // all the dependencies, like the DocumentStore, trusts lists, and so on. We
-        // just initialize the absolute minimum amount of things to get a NFC engagement
-        // done with for now and defer the work in App.getInstance() until
-        // CredmanPresentmentActivity is started in earnest.
-        //
-        // Since this is samples/testapp we do load the settings so it's possible to
-        // experiment with various settings, e.g. whether to use static or negotiated
-        // handover. Even loading settings slow and can take between 10-100ms.
-        // Production-apps will want to just hardcode their settings here and
-        // avoid this extra delay.
-        //
-        runBlocking {
+        // Essentially, start a coroutine on an I/O thread for handling incoming APDUs
+        commandApduListenJob = CoroutineScope(Dispatchers.IO).launch {
+            // Note: Every millisecond literally counts here because we're handling a
+            // NFC tap and users tend to remove their phone from the reader really fast.
+            //
+            // So we don't really have time to call App.getInstance() which will initialize
+            // all the dependencies, like the DocumentStore, trusts lists, and so on. We
+            // just initialize the absolute minimum amount of things to get a NFC engagement
+            // done with for now and defer the work in App.getInstance() until
+            // CredmanPresentmentActivity is started in earnest.
+            //
+            // Since this is samples/testapp we do load the settings so it's possible to
+            // experiment with various settings, e.g. whether to use static or negotiated
+            // handover. Even loading settings slow and can take between 10-100ms.
+            // Production-apps will want to just hardcode their settings here and
+            // avoid this extra delay.
+            //
             val t0 = Clock.System.now()
             settingsModel = TestAppSettingsModel.create(
                 storage = platformStorage(),
@@ -99,6 +106,14 @@ class NdefService: HostApduService() {
             )
             val t1 = Clock.System.now()
             Logger.i(TAG, "Settings loaded in ${(t1 - t0).inWholeMilliseconds} ms")
+
+            while (true) {
+                val commandApdu = commandApduChannel.receive()
+                val responseApdu = processCommandApdu(commandApdu)
+                if (responseApdu != null) {
+                    sendResponseApdu(responseApdu.encode())
+                }
+            }
         }
     }
 
@@ -258,9 +273,8 @@ class NdefService: HostApduService() {
         }
     }
 
-    override fun processCommandApdu(encodedCommandApdu: ByteArray, extras: Bundle?): ByteArray? {
-        Logger.i(TAG, "processCommandApdu")
-
+    // Called by coroutine running in I/O thread, see onCreate() for details
+    private suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu? {
         if (!started) {
             started = true
             startEngagement()
@@ -268,14 +282,20 @@ class NdefService: HostApduService() {
 
         try {
             engagement?.let {
-                val commandApdu = CommandApdu.decode(encodedCommandApdu)
-                val responseApdu = runBlocking { it.processApdu(commandApdu) }
-                return responseApdu.encode()
+                val responseApdu = it.processApdu(commandApdu)
+                return responseApdu
             }
         } catch (e: Throwable) {
-            Logger.e(TAG, "processCommandApdu", e)
+            Logger.e(TAG, "Error processing APDU in MdocNfcEngagementHandler", e)
             e.printStackTrace()
         }
+        return null
+    }
+
+    // Called by OS when an APDU arrives
+    override fun processCommandApdu(encodedCommandApdu: ByteArray, extras: Bundle?): ByteArray? {
+        // Bounce the APDU to processCommandApdu() above via the coroutine in I/O thread set up in onCreate()
+        commandApduChannel.trySend(CommandApdu.decode(encodedCommandApdu))
         return null
     }
 

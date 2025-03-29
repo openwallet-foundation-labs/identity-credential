@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,13 +16,14 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import org.multipaz.util.Logger
-import multipazproject.multipaz_compose.generated.resources.Res
+import org.multipaz.multipaz_compose.generated.resources.Res
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.allocArrayOf
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.readValue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -72,7 +74,8 @@ internal actual fun WebViewRender(
     appInfo: Map<String, String>
 ) {
     val client = remember { WebViewClient() }
-    val urlHandler = remember { URLHandler(assets) }
+    val coroutineScopeIO = rememberCoroutineScope { Dispatchers.IO }
+    val urlHandler = remember { URLHandler(assets, coroutineScopeIO) }
     // Initial height is arbitrary, it will get updated from the content height.
     val contentHeight = remember { mutableIntStateOf(100) }
     Box(modifier = modifier) {
@@ -169,7 +172,8 @@ internal fun injectContent(
 
 class URLHandler(
     @Volatile
-    internal var assets: Map<String, ByteString>
+    internal var assets: Map<String, ByteString>,
+    private val coroutineScopeIO: CoroutineScope
 ): NSObject(), WKURLSchemeHandlerProtocol {
     @OptIn(ExperimentalResourceApi::class)
     @ObjCSignatureOverride
@@ -180,12 +184,14 @@ class URLHandler(
             val path = urlString.substring(BASE_URL.length)
             val mediaType = WebViewRenderingContext.mediaTypeFromName(path)
             if (path.startsWith("res/")) {
-                CoroutineScope(Dispatchers.IO).launch {
+                coroutineScopeIO.launch {
                     try {
                         val bytes = Res.readBytes("files/webview/" + path.substring(4))
                         val response = NSURLResponse(url, mediaType, bytes.size.toLong(), null)
                         startURLSchemeTask.didReceiveResponse(response)
                         startURLSchemeTask.didReceiveData(bytes.toNSData())
+                    } catch (err: CancellationException) {
+                        throw err
                     } catch (err: Throwable) {
                         Logger.e(TAG, "Error loading resource '$path'", err)
                     }

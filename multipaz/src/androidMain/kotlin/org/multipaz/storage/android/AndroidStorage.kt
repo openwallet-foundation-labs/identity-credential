@@ -5,9 +5,8 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.base.BaseStorage
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.StorageTableSpec
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlin.coroutines.CoroutineContext
 
@@ -55,10 +54,10 @@ class AndroidStorage: BaseStorage {
     }
 
     internal suspend fun<T> withDatabase(
-        block: suspend CoroutineScope.(database: SQLiteDatabase) -> T
+        block: suspend (database: SQLiteDatabase) -> T
     ): T {
-        return CoroutineScope(coroutineContext).async {
+        return withContext(coroutineContext) {
             block(database!!)
-        }.await()
+        }
     }
 }

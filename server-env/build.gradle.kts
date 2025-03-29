@@ -17,7 +17,6 @@ java {
 
 dependencies {
     ksp(project(":multipaz-cbor-rpc"))
-    implementation(project(":multipaz-cbor-rpc-annotations"))
     implementation(project(":multipaz"))
 
     implementation(libs.kotlinx.datetime)

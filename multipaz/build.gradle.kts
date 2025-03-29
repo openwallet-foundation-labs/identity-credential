@@ -27,6 +27,8 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
+
+        publishLibraryVariants("release")
     }
 
     listOf(
@@ -75,7 +77,6 @@ kotlin {
         val commonMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
             dependencies {
-                implementation(projects.multipazCborRpcAnnotations)
                 implementation(libs.kotlinx.io.bytestring)
                 implementation(libs.kotlinx.io.core)
                 implementation(libs.kotlinx.datetime)
@@ -187,8 +188,11 @@ dependencies {
     add("kspJvmTest", project(":multipaz-cbor-rpc"))
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
-    if (name != "kspCommonMainKotlinMetadata") {
+tasks.all {
+    if (name == "compileDebugKotlinAndroid" || name == "compileReleaseKotlinAndroid" ||
+        name == "androidReleaseSourcesJar" || name == "iosArm64SourcesJar" ||
+        name == "iosSimulatorArm64SourcesJar" || name == "iosX64SourcesJar" ||
+        name == "jvmSourcesJar" || name == "sourcesJar") {
         dependsOn("kspCommonMainKotlinMetadata")
     }
 }
@@ -196,12 +200,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
 tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
-
-tasks["iosX64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
-tasks["iosArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
-tasks["iosSimulatorArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
-tasks["jvmSourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
-tasks["sourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+tasks["compileKotlinJvm"].dependsOn("kspCommonMainKotlinMetadata")
 
 android {
     namespace = "org.multipaz"
@@ -232,8 +231,13 @@ android {
     dependencies {
         debugImplementation(compose.uiTooling)
     }
-}
 
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
 
 group = "org.multipaz"
 version = projectVersionName

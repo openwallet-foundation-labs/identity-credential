@@ -1,5 +1,6 @@
 package org.multipaz.flow.handler
 
+import kotlinx.coroutines.CancellationException
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
@@ -129,6 +130,8 @@ class FlowDispatcherLocal private constructor(
                 val result = handler(owner, state, args.subList(1, args.size))
                 val newStateBlob = stateDataItem(cipher, args[0], decryptedState, state)
                 return listOf(newStateBlob, FlowReturnCode.RESULT.ordinal.toDataItem(), result)
+            } catch (err: CancellationException) {
+                throw err
             } catch (err: Throwable) {
                 val newStateBlob = stateDataItem(cipher, args[0], decryptedState, state)
                 return owner.exceptionMap.exceptionReturn(newStateBlob, err)
