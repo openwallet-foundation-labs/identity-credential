@@ -57,7 +57,7 @@ dependencies {
     androidTestImplementation(libs.kotlinx.coroutines.core)
 }
 
-group = "com.android.identity"
+group = "org.multipaz"
 version = projectVersionName
 
 publishing {

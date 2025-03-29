@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.testapp.ui.AppTheme
+import com.android.identity.testapp.ui.CameraScreen
 import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
@@ -533,7 +534,7 @@ class App private constructor(val promptModel: PromptModel) {
                             onClickSecureEnclaveSecureArea = { navController.navigate(SecureEnclaveSecureAreaDestination.route) },
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
                             onClickPassphrasePrompt = { navController.navigate(PassphrasePromptDestination.route) },
-                            onClickIssuanceTestField = { navController.navigate(ProvisioningTestDestination.route) },
+                            onClickProvisioningTestField = { navController.navigate(ProvisioningTestDestination.route) },
                             onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
                             onClickNfc = { navController.navigate(NfcDestination.route) },
@@ -543,7 +544,8 @@ class App private constructor(val promptModel: PromptModel) {
                             onClickCertificatesViewerExamples = { navController.navigate(CertificatesViewerExamplesDestination.route) },
                             onClickRichText = { navController.navigate(RichTextDestination.route) },
                             onClickNotifications = { navController.navigate(NotificationsDestination.route) },
-                            onClickScreenLock = { navController.navigate(ScreenLockDestination.route) }
+                            onClickScreenLock = { navController.navigate(ScreenLockDestination.route) },
+                            onClickCamera = { navController.navigate(CameraDestination.route) }
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -753,6 +755,11 @@ class App private constructor(val promptModel: PromptModel) {
                     }
                     composable(route = ScreenLockDestination.route) {
                         ScreenLockScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = CameraDestination.route) {
+                        CameraScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }
