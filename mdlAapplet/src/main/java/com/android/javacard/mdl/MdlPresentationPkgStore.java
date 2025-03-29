@@ -31,6 +31,8 @@ public interface MdlPresentationPkgStore extends Shareable {
 
   short getUsageCount(short slotId);
 
+  void clearUsageCount(short slotId);
+
   void createPackage(short slotId, short size, byte[] docStr,
                      short docStrStart, short docStrLen);
 

@@ -80,6 +80,11 @@ public class MDoc {
     pkgStore.write(mSlotId, buf, start, len);
   }
 
+  public void clearUsageCount() {
+    MdlPresentationPkgStore pkgStore = getPkgStore();
+    pkgStore.clearUsageCount(mSlotId);
+  }
+
   public short getUsageCount() {
     MdlPresentationPkgStore pkgStore = getPkgStore();
     return pkgStore.getUsageCount(mSlotId);

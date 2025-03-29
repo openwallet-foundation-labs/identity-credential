@@ -479,15 +479,12 @@ class DirectAccessTest {
     }
 
 
-    @Ignore("need to implement getCredentialUsageCount + clearCredentialUsageCount")
     @Test
     fun testGetAndClearCredentialUsageCount() {
         runTest {
             val document = documentStore.createDocument()
             val slot = DirectAccess.allocateDocumentSlot(MDL_DOC_TYPE)
             val metadata = document.metadata as WalletDocumentMetadata
-            metadata.setDocumentSlot(slot)
-
             metadata.setDocumentSlot(slot)
 
             // Create and certify a credential, and set it as active

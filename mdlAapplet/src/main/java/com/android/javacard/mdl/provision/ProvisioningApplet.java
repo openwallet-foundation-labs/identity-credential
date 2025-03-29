@@ -78,6 +78,7 @@ public class ProvisioningApplet extends Applet implements ExtendedLength {
   public static final byte CMD_MDOC_PROVISION_DATA = 9;
   public static final byte CMD_MDOC_SELECT = 10;
   public static final byte CMD_MDOC_GET_INFORMATION = 11;
+  public static final byte CMD_MDOC_CLEAR_USAGE_COUNT = 12;
   public static final byte BEGIN = 0;
   public static final byte UPDATE = 1;
   public static final byte FINISH = 2;
@@ -471,6 +472,15 @@ public class ProvisioningApplet extends Applet implements ExtendedLength {
           handleGetInformation(apdu, slot);
           break;
         }
+      case CMD_MDOC_CLEAR_USAGE_COUNT:
+      {
+        MDoc doc = findDocument(buf[start]);
+        if (doc == null) {
+          ISOException.throwIt(ISO7816.SW_RECORD_NOT_FOUND);
+        }
+        doc.clearUsageCount();
+        break;
+      }
       case CMD_MDOC_PROVISION_DATA:
         {
           // [byte slot, byte op, short provDataLen, byte[] provDataLen]

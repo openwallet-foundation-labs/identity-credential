@@ -77,6 +77,11 @@ public class PresentationPkgStore implements MdlPresentationPkgStore {
   }
 
   @Override
+  public void clearUsageCount(short slotId) {
+    mPackages[slotId].resetUsageCount();
+  }
+
+  @Override
   public void createPackage(short slotId, short size, byte[] docStr, short docStrStart, short docStrLen) {
     mPackages[slotId].create(size, docStr, docStrStart, docStrLen);
   }

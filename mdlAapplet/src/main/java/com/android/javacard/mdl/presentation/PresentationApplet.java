@@ -466,6 +466,14 @@ public class PresentationApplet extends Applet implements ExtendedLength, MdlSer
     if (mContext.mDocumentsCount[0] <= 0) {
       sendSuccessResponseWithoutDocs(apdu);
     } else {
+      // Increment the usage count of the requested document
+      short numDocRequests = (short) mContext.mDocumentRequests.length;
+      for (short i = 0; i < numDocRequests; i++) {
+        DocumentRequest docReq = (DocumentRequest) mContext.mDocumentRequests[i];
+        if (docReq.getDocument() != null && !docReq.isError()) {
+          docReq.getDocument().incrementUsageCount();
+        }
+      }
       // Send the response.
       processGetResponse(apdu, true);
     }
