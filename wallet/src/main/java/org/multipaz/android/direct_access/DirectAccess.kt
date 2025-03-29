@@ -35,6 +35,7 @@ import kotlinx.io.bytestring.buildByteString
 import org.bouncycastle.asn1.ASN1UTCTime
 import org.multipaz.util.appendUInt16
 import org.multipaz.cbor.Uint
+import org.multipaz.util.getInt16
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -59,6 +60,7 @@ object DirectAccess {
     private const val CMD_MDOC_PROVISION_DATA = 0x09
     private const val CMD_MDOC_SWAP_IN = 0x06
     private const val CMD_MDOC_GET_INFORMATION = 0x0B
+    private const val CMD_MDOC_CLEAR_USAGE_COUNT = 0x0C;
     private const val APDU_RESPONSE_STATUS_OK = 0x9000
     private const val INS_ENVELOPE = 0xC3.toByte()
     private const val OFFSET_MAX_CRED_SIZE = 2UL
@@ -472,7 +474,29 @@ object DirectAccess {
     fun getCredentialUsageCount(
         documentSlot: Int,
     ): Int {
-        TODO("Not yet implemented")
+        val apdu: ByteArray?
+        val response: ByteArray?
+        try {
+            transport.closeConnection()
+            transport.openConnection()
+            val bos = ByteArrayOutputStream()
+            // set instruction
+            bos.write(buildByteString { appendUInt16(CMD_MDOC_GET_INFORMATION) }.toByteArray())
+            bos.write(documentSlot)
+            apdu = makeCommandApdu(bos.toByteArray())
+
+
+            response = transport.sendData(apdu)
+            check(getAPDUResponseStatus(response) == APDU_RESPONSE_STATUS_OK)
+            check(response.size == 4) {
+                "getCredentialUsageCount response should be equal to 4"
+            }
+            return response.getInt16(0).toInt()
+        } catch (e: IOException) {
+            throw java.lang.IllegalStateException("Failed to send getCredentialUsageCount")
+        } finally {
+            transport.closeConnection()
+        }
     }
 
     /**
@@ -485,8 +509,26 @@ object DirectAccess {
      */
     fun clearCredentialUsageCount(
         documentSlot: Int,
-    ): Int {
-        TODO("Not yet implemented")
+    ) {
+        val apdu: ByteArray?
+        val response: ByteArray?
+        try {
+            transport.closeConnection()
+            transport.openConnection()
+            val bos = ByteArrayOutputStream()
+            // set instruction
+            bos.write(buildByteString { appendUInt16(CMD_MDOC_CLEAR_USAGE_COUNT) }.toByteArray())
+            bos.write(documentSlot)
+            apdu = makeCommandApdu(bos.toByteArray())
+
+
+            response = transport.sendData(apdu)
+            check(getAPDUResponseStatus(response) == APDU_RESPONSE_STATUS_OK)
+        } catch (e: IOException) {
+            throw java.lang.IllegalStateException("Failed to send clearCredentialUsageCount")
+        } finally {
+            transport.closeConnection()
+        }
     }
 
     /**
