@@ -2,6 +2,10 @@ package org.multipaz.securearea.cloud
 
 import android.content.pm.PackageManager
 import androidx.test.platform.app.InstrumentationRegistry
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockEngineConfig
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.OID
@@ -52,10 +56,16 @@ class CloudSecureAreaTest {
 
     var serverTime = Instant.fromEpochMilliseconds(0)
 
+    val mockEngineFactory =  object : HttpClientEngineFactory<MockEngineConfig> {
+        override fun create(block: MockEngineConfig.() -> Unit): HttpClientEngine = MockEngine {
+            error("Mock engine should not receive any requests")
+        }
+    }
+
     internal inner class LoopbackCloudSecureArea(
         storageTable: StorageTable,
         private val packageToAllow: String?,
-    ) : CloudSecureArea(storageTable, "CloudSecureArea", "uri-not-used") {
+    ) : CloudSecureArea(storageTable, "CloudSecureArea", "uri-not-used", mockEngineFactory) {
         val context = applicationContext
         private lateinit var server: CloudSecureAreaServer
 

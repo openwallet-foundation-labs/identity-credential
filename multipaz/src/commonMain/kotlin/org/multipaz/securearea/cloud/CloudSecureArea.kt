@@ -1,14 +1,34 @@
 package org.multipaz.securearea.cloud
 
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.accept
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import kotlinx.coroutines.delay
+import kotlinx.datetime.Instant
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.decodeToString
+import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.annotation.CborSerializable
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.X509Cert
-import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
+import org.multipaz.crypto.SignatureVerificationException
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.device.AssertionNonce
 import org.multipaz.device.DeviceCheck
 import org.multipaz.prompt.requestPassphrase
@@ -48,27 +68,6 @@ import org.multipaz.storage.StorageEngine
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.timeout
-import io.ktor.client.request.accept
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
-import kotlinx.coroutines.delay
-import kotlinx.datetime.Instant
-import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.buildByteString
-import kotlinx.io.bytestring.decodeToString
-import kotlinx.io.bytestring.encodeToByteString
-import kotlinx.io.readByteArray
-import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.cbor.buildCborArray
-import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.util.appendUInt32
 import kotlin.random.Random
 import kotlin.time.Duration
@@ -103,6 +102,7 @@ open class CloudSecureArea protected constructor(
     private val storageTable: StorageTable,
     final override val identifier: String,
     val serverUrl: String,
+    httpClientEngineFactory: HttpClientEngineFactory<*>
 ) : SecureArea {
     private var skDevice: ByteArray? = null
     private var skCloud: ByteArray? = null
@@ -129,7 +129,7 @@ open class CloudSecureArea protected constructor(
     override val supportedAlgorithms: List<Algorithm>
         get() = supportedAlgorithms_
 
-    private val httpClient = HttpClient(CIO) {
+    private val httpClient = HttpClient(httpClientEngineFactory) {
         install(HttpTimeout)
     }
 
@@ -903,16 +903,19 @@ open class CloudSecureArea protected constructor(
          * @param storage the storage engine to use for storing key material.
          * @param identifier an identifier for the Cloud Secure Area.
          * @param serverUrl the URL the Cloud Secure Area is using.
+         * @param httpClientEngineFactory the factory for creating the Ktor HTTP client engine (e.g. CIO)
          */
         suspend fun create(
             storage: Storage,
             identifier: String,
-            serverUrl: String
+            serverUrl: String,
+            httpClientEngineFactory: HttpClientEngineFactory<*>
         ): CloudSecureArea {
             val secureArea = CloudSecureArea(
                 storage.getTable(tableSpec),
                 identifier,
-                serverUrl
+                serverUrl,
+                httpClientEngineFactory
             )
             secureArea.initialize()
             return secureArea
