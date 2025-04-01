@@ -21,6 +21,7 @@ import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.EcPublicKey
 import kotlinx.datetime.Instant
+import kotlinx.datetime.Clock
 import org.multipaz.crypto.Algorithm
 
 /**
@@ -193,6 +194,7 @@ class MobileSecurityObjectParser(
         }
 
         private fun parseValidityInfo(validityInfo: DataItem) {
+            val currentTime = Clock.System.now()
             signed = Instant.fromEpochMilliseconds(
                 validityInfo["signed"].asDateTimeString
                     .toEpochMilliseconds()
@@ -215,6 +217,9 @@ class MobileSecurityObjectParser(
             }
             require(validUntil > validFrom) {
                 "The validUntil timestamp should be later than the validFrom timestamp"
+            }
+            require(currentTime <= validUntil) {
+                "The MSO has expired and cannot be cryptographically authenticated. validUntil: $validUntil, current time: $currentTime"
             }
         }
 
