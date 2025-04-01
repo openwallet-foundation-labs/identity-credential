@@ -124,16 +124,8 @@ kotlin {
         val androidMain by getting {
             dependsOn(javaSharedMain)
             dependencies {
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
-                implementation(libs.tink)
-                implementation(libs.volley)
                 implementation(libs.androidx.biometrics)
                 implementation(libs.androidx.lifecycle.viewmodel)
-
-                implementation(compose.foundation)
-                implementation(compose.material3)
-                implementation(libs.androidx.material)
             }
         }
 
