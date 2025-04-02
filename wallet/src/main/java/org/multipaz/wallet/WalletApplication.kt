@@ -28,6 +28,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import io.ktor.client.engine.android.Android
 import org.multipaz.android.direct_access.DirectAccess
 import org.multipaz.android.direct_access.DirectAccessCredential
 import org.multipaz.context.initializeApplication
@@ -195,7 +196,8 @@ class WalletApplication : Application() {
                 CloudSecureArea.create(
                     storage,
                     identifier,
-                    cloudSecureAreaUrl
+                    cloudSecureAreaUrl,
+                    Android
                 )
             }
         }
