@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import io.ktor.client.engine.cio.CIO
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -105,7 +106,8 @@ fun DocumentStoreScreen(
                     val cloudSecureArea = CloudSecureArea.create(
                         platformStorage(),
                         "CloudSecureArea?url=${url.encodeURLParameter()}",
-                        url
+                        url,
+                        CIO
                     )
                     try {
                         cloudSecureArea.register(

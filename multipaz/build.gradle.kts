@@ -83,7 +83,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.client.core)
-                implementation(libs.ktor.client.cio)
 
                 // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
                 implementation(libs.nimbus.oauth2.oidc.sdk)
@@ -161,6 +160,7 @@ kotlin {
                 implementation(libs.androidx.test.junit)
                 implementation(libs.androidx.espresso.core)
                 implementation(libs.kotlinx.coroutines.android)
+                implementation(libs.ktor.client.mock)
                 implementation(project(":multipaz-csa"))
             }
         }

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import io.ktor.client.engine.cio.CIO
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -101,7 +102,8 @@ fun CloudSecureAreaScreen(
                     cloudSecureArea = CloudSecureArea.create(
                         EphemeralStorage(),
                         "CloudSecureArea",
-                        url
+                        url,
+                        CIO
                     )
                     try {
                         cloudSecureArea!!.register(
