@@ -48,7 +48,7 @@ abstract class PresentmentSource(
 
 private const val TAG = "PresentmentSource"
 
-internal fun PresentmentSource.findTrustPoint(request: Request): TrustPoint? {
+internal suspend fun PresentmentSource.findTrustPoint(request: Request): TrustPoint? {
     return request.requester.certChain?.let {
         val trustResult = readerTrustManager.verify(it.certificates)
         if (trustResult.isTrusted) {
@@ -142,7 +142,7 @@ interface PresentmentSource {
      * @param request The request.
      * @return a [TrustPoint] or `null` if none could be found.
      */
-    fun findTrustPoint(
+    suspend fun findTrustPoint(
         request: Request
     ): TrustPoint?
 

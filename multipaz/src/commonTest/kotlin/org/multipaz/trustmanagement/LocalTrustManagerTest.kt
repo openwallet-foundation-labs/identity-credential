@@ -1,5 +1,6 @@
 package org.multipaz.trustmanagement
 
+import kotlinx.coroutines.test.runTest
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -7,15 +8,18 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
 import kotlinx.datetime.Clock
+import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.toHex
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
 
 
-class TrustManagerTest {
+class LocalTrustManagerTest {
 
     val caCertificate: X509Cert
     val intermediateCertificate: X509Cert
@@ -144,8 +148,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerHappyFlow() {
-        val trustManager = TrustManager()
+    fun happyFlow() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
         trustManager.addTrustPoint(TrustPoint(caCertificate))
@@ -159,8 +163,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerValidInThePast() {
-        val trustManager = TrustManager()
+    fun validInThePast() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
         trustManager.addTrustPoint(TrustPoint(caCertificate))
@@ -174,8 +178,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerValidInTheFuture() {
-        val trustManager = TrustManager()
+    fun validInTheFuture() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
         trustManager.addTrustPoint(TrustPoint(caCertificate))
@@ -189,8 +193,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerHappyFlowWithOnlyIntermediateCertifcate() {
-        val trustManager = TrustManager()
+    fun happyFlowWithOnlyIntermediateCertifcate() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
 
@@ -203,8 +207,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerHappyFlowWithChainOfTwo() {
-        val trustManager = TrustManager()
+    fun happyFlowWithChainOfTwo() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(caCertificate))
 
@@ -217,8 +221,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerTrustPointNotCaCert() {
-        val trustManager = TrustManager()
+    fun trustPointNotCaCert() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(dsCertificate))
 
@@ -231,8 +235,8 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerHappyFlowMultipleCerts() {
-        val trustManager = TrustManager()
+    fun happyFlowMultipleCerts() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
         trustManager.addTrustPoint(TrustPoint(caCertificate))
@@ -254,13 +258,80 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerNoTrustPoints() {
-        val trustManager = TrustManager()
+    fun noTrustPoints() = runTest {
+        val trustManager = LocalTrustManager.create(EphemeralStorage())
 
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals("No trusted root certificate could not be found", it.error?.message)
             assertFalse(it.isTrusted)
             assertNull(it.trustChain)
         }
+    }
+
+    @Test
+    fun skiAlreadyExists() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = LocalTrustManager.create(storage)
+        val intermediateTrustPoint = TrustPoint(intermediateCertificate)
+        val caTrustPoint = TrustPoint(caCertificate)
+        trustManager.addTrustPoint(intermediateTrustPoint)
+        trustManager.addTrustPoint(caTrustPoint)
+
+        val e = assertFailsWith(TrustPointAlreadyExistsException::class) {
+            trustManager.addTrustPoint(caTrustPoint)
+        }
+        assertEquals("TrustPoint with given SubjectKeyIdentifier already exists", e.message)
+    }
+
+    @Test
+    fun persistence() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = LocalTrustManager.create(storage)
+
+        val intermediateTrustPoint = TrustPoint(intermediateCertificate)
+        val caTrustPoint = TrustPoint(caCertificate)
+        val ca2TrustPoint = TrustPoint(ca2Certificate)
+        trustManager.addTrustPoint(intermediateTrustPoint)
+        trustManager.addTrustPoint(caTrustPoint)
+        trustManager.addTrustPoint(ca2TrustPoint)
+        assertEquals(setOf(
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            ca2Certificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPointSkis())
+        assertTrue(trustManager.deleteTrustPoint(ca2Certificate.subjectKeyIdentifier!!.toHex()))
+        assertFalse(trustManager.deleteTrustPoint("nonExistent"))
+        assertEquals(setOf(
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPointSkis())
+
+        val otherTrustManager = LocalTrustManager.create(storage)
+        assertEquals(setOf(
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), otherTrustManager.getTrustPointSkis())
+        assertEquals(intermediateTrustPoint, otherTrustManager.getTrustPoint(
+            intermediateCertificate.subjectKeyIdentifier!!.toHex()
+        ))
+        assertEquals(caTrustPoint, otherTrustManager.getTrustPoint(
+            caCertificate.subjectKeyIdentifier!!.toHex()
+        ))
+        assertEquals(null, otherTrustManager.getTrustPoint(
+            ca2Certificate.subjectKeyIdentifier!!.toHex()
+        ))
+
+        val otherStorage = EphemeralStorage()
+        val yetAnotherTrustManager = LocalTrustManager.create(otherStorage)
+        assertEquals(emptySet(), yetAnotherTrustManager.getTrustPointSkis())
+        assertEquals(null, yetAnotherTrustManager.getTrustPoint(
+            intermediateCertificate.subjectKeyIdentifier!!.toHex()
+        ))
+        assertEquals(null, yetAnotherTrustManager.getTrustPoint(
+            caCertificate.subjectKeyIdentifier!!.toHex()
+        ))
+        assertEquals(null, yetAnotherTrustManager.getTrustPoint(
+            ca2Certificate.subjectKeyIdentifier!!.toHex()
+        ))
     }
 }

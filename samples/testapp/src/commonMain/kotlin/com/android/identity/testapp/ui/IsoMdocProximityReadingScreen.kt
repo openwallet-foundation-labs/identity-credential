@@ -912,6 +912,7 @@ private data class DocumentData(
             val kvPairs = mutableListOf<DocumentKeyValuePair>()
 
             if (document.issuerSignedAuthenticated) {
+                /*
                 val trustResult = issuerTrustManager.verify(document.issuerCertificateChain.certificates)
                 if (trustResult.isTrusted) {
                     if (trustResult.trustPoints[0].displayName != null) {
@@ -923,6 +924,8 @@ private data class DocumentData(
                 } else {
                     warnings.add("Issuer is not in trust list")
                 }
+                 */
+                warnings.add("TODO: trustlist")
             }
             if (!document.deviceSignedAuthenticated) {
                 warnings.add("Device Authentication failed")

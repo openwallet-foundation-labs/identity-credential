@@ -194,7 +194,7 @@ private fun RelyingPartySection(
         if (trustPoint != null) {
             if (trustPoint.displayIcon != null) {
                 val rpBitmap = remember {
-                    trustPoint.displayIcon!!.decodeToImageBitmap()
+                    trustPoint.displayIcon!!.toByteArray().decodeToImageBitmap()
                 }
                 Icon(
                     modifier = Modifier.size(80.dp).padding(bottom = 16.dp),

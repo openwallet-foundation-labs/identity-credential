@@ -22,6 +22,7 @@ import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustPoint
 import multipazproject.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
+import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.multipaz.cbor.buildCborMap
@@ -67,11 +68,11 @@ fun ConsentModalBottomSheetScreen(
         mutableStateOf(ByteArray(0))
     }
     var relyingPartyDisplayIcon by remember {
-        mutableStateOf(ByteArray(0))
+        mutableStateOf(ByteString())
     }
     LaunchedEffect(Unit) {
         cardArt = Res.readBytes("files/utopia_driving_license_card_art.png")
-        relyingPartyDisplayIcon = Res.readBytes("files/utopia-brewery.png")
+        relyingPartyDisplayIcon = ByteString(Res.readBytes("files/utopia-brewery.png"))
         sheetState.show()
     }
 

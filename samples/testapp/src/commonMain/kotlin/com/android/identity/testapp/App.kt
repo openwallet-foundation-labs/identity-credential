@@ -124,6 +124,9 @@ import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
+import org.multipaz.trustmanagement.LocalTrustManager
+import org.multipaz.trustmanagement.TrustPointAlreadyExistsException
+import org.multipaz.util.toHex
 
 /**
  * Application singleton.
@@ -435,26 +438,45 @@ class App private constructor (val promptModel: PromptModel) {
 
     @OptIn(ExperimentalResourceApi::class)
     private suspend fun generateTrustManagers() {
-        issuerTrustManager = TrustManager()
-        val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
-        for (certInfo in signedVical.vical.certificateInfos) {
-            issuerTrustManager.addTrustPoint(
-                TrustPoint(
-                    certInfo.certificate,
-                    null,
-                    null
-                )
-            )
-        }
-        issuerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = iacaCert,
-                displayName = "OWF Multipaz TestApp",
-                displayIcon = null
-            )
+        val builtInIssuerTrustManager = LocalTrustManager.create(
+            storage = platformStorage(),
+            partitionId = "BuiltInTrustedIssuers"
         )
+        issuerTrustManager = builtInIssuerTrustManager
+        if (builtInIssuerTrustManager.getTrustPointSkis().isEmpty()) {
+            val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
+            for (certInfo in signedVical.vical.certificateInfos) {
+                try {
+                    builtInIssuerTrustManager.addTrustPoint(
+                        TrustPoint(
+                            certificate = certInfo.certificate,
+                            displayName = null,
+                            displayIcon = null
+                        )
+                    )
+                } catch (e: TrustPointAlreadyExistsException) {
+                    val existingTrustPoint = builtInIssuerTrustManager.getTrustPoint(
+                        certInfo.certificate.subjectKeyIdentifier!!.toHex()
+                    )
+                    Logger.w(TAG, "builtInIssuerTrustManager: Error adding certificate with subject " +
+                            "${certInfo.certificate.subject.name} - already contains a certificate with " +
+                            "subject ${existingTrustPoint!!.certificate.subject.name} with the same " +
+                            "Subject Key Identifier", e)
+                }
+            }
+            try {
+                builtInIssuerTrustManager.addTrustPoint(
+                    TrustPoint(
+                        certificate = iacaCert,
+                        displayName = "OWF IC TestApp Issuer",
+                        displayIcon = null
+                    )
+                )
+            } catch (e: TrustPointAlreadyExistsException) {
+                // Do nothing, it's possible our own IACA cert is in the VICAL above.
+            }
+        }
 
-        readerTrustManager = TrustManager()
         val readerCertFileNames = listOf(
             "Animo Reader CA.cer",
             "Bundesdruckerei Reader CA.cer",
@@ -479,24 +501,46 @@ class App private constructor (val promptModel: PromptModel) {
             "Toppan Reader CA.cer",
             "Zetes Reader CA.cer"
         )
-        for (readerCertFileName in readerCertFileNames) {
-            val certData = Res.readBytes("files/20250225 Reader CA Certificates/" + readerCertFileName)
-            val x509Cert = X509Cert.fromPem(certData.decodeToString())
-            readerTrustManager.addTrustPoint(
-                TrustPoint(
-                    certificate = x509Cert,
-                    displayName = readerCertFileName.substringBeforeLast("."),
-                    displayIcon = null
-                )
-            )
-        }
-        readerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = readerRootCert,
-                displayName = "OWF Multipaz TestApp",
-                displayIcon = Res.readBytes("files/utopia-brewery.png")
-            )
+
+        val builtInReaderTrustManager = LocalTrustManager.create(
+            storage = platformStorage(),
+            partitionId = "BuiltInTrustedReaders"
         )
+        readerTrustManager = builtInReaderTrustManager
+        if (builtInReaderTrustManager.getTrustPointSkis().isEmpty()) {
+            for (readerCertFileName in readerCertFileNames) {
+                val certData = Res.readBytes("files/20250225 Reader CA Certificates/" + readerCertFileName)
+                val readerCert = X509Cert.fromPem(certData.decodeToString())
+                try {
+                    builtInReaderTrustManager.addTrustPoint(
+                        TrustPoint(
+                            certificate = readerCert,
+                            displayName = readerCertFileName.substringBeforeLast("."),
+                            displayIcon = null
+                        )
+                    )
+                } catch (e: TrustPointAlreadyExistsException) {
+                    val existingTrustPoint = builtInIssuerTrustManager.getTrustPoint(
+                        readerCert.subjectKeyIdentifier!!.toHex()
+                    )
+                    Logger.w(TAG, "builtInReaderTrustManager: Error adding certificate with subject " +
+                            "${readerCert.subject.name} - already contains a certificate with " +
+                            "subject ${existingTrustPoint!!.certificate.subject.name} with the same " +
+                            "Subject Key Identifier", e)
+                }
+            }
+            try {
+                builtInReaderTrustManager.addTrustPoint(
+                    TrustPoint(
+                        certificate = readerRootCert,
+                        displayName = "OWF IC TestApp",
+                        displayIcon = ByteString(Res.readBytes("files/utopia-brewery.png"))
+                    )
+                )
+            } catch (e: TrustPointAlreadyExistsException) {
+                // Do nothing, it's possible our certificate is in the list above.
+            }
+        }
     }
 
     /**
