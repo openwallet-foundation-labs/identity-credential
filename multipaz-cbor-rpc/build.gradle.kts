@@ -14,6 +14,7 @@ kotlin {
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
 }
 
 dependencies {
@@ -30,6 +31,13 @@ publishing {
     repositories {
         maven {
             url = uri("${rootProject.rootDir}/repo")
+        }
+    }
+    publications {
+        create<MavenPublication>("library") {
+            afterEvaluate {
+                from(components["java"])
+            }
         }
     }
     publications.withType(MavenPublication::class) {
