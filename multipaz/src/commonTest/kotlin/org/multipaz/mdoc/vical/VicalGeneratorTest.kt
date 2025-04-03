@@ -8,6 +8,7 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -62,18 +63,15 @@ class VicalGeneratorTest {
                 listOf(
                     VicalCertificateInfo(
                         certificate = issuer1Cert,
-                        docType = listOf("org.iso.18013.5.1.mDL"),
-                        certificateProfiles = listOf("")
+                        docTypes = listOf("org.iso.18013.5.1.mDL"),
                     ),
                     VicalCertificateInfo(
                         certificate = issuer2Cert,
-                        docType = listOf("org.iso.18013.5.1.mDL"),
-                        certificateProfiles = null
+                        docTypes = listOf("org.iso.18013.5.1.mDL"),
                     ),
                     VicalCertificateInfo(
                         certificate = issuer3Cert,
-                        docType = listOf("org.iso.18013.5.1.mDL", "eu.europa.ec.eudi.pid.1"),
-                        certificateProfiles = null
+                        docTypes = listOf("org.iso.18013.5.1.mDL", "eu.europa.ec.eudi.pid.1"),
                     ),
                 )
             ),
@@ -102,7 +100,7 @@ class VicalGeneratorTest {
         )
         assertContentEquals(
             listOf("org.iso.18013.5.1.mDL"),
-            decodedSignedVical.vical.certificateInfos[0].docType
+            decodedSignedVical.vical.certificateInfos[0].docTypes
         )
         assertEquals(null, decodedSignedVical.vical.certificateInfos[0].certificateProfiles)
 
@@ -112,7 +110,7 @@ class VicalGeneratorTest {
         )
         assertContentEquals(
             listOf("org.iso.18013.5.1.mDL"),
-            decodedSignedVical.vical.certificateInfos[1].docType
+            decodedSignedVical.vical.certificateInfos[1].docTypes
         )
         assertEquals(null, decodedSignedVical.vical.certificateInfos[1].certificateProfiles)
 
@@ -122,7 +120,7 @@ class VicalGeneratorTest {
         )
         assertContentEquals(
             listOf("org.iso.18013.5.1.mDL", "eu.europa.ec.eudi.pid.1"),
-            decodedSignedVical.vical.certificateInfos[2].docType
+            decodedSignedVical.vical.certificateInfos[2].docTypes
         )
         assertEquals(null, decodedSignedVical.vical.certificateInfos[2].certificateProfiles)
     }

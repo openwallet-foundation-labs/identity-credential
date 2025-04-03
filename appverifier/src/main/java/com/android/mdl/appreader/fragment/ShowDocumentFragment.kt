@@ -32,6 +32,7 @@ import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
+import kotlinx.coroutines.runBlocking
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
 
@@ -215,10 +216,12 @@ class ShowDocumentFragment : Fragment() {
             val cc = doc.issuerCertificateChain.certificates
             var certChain: List<X509Cert> = cc
             val customValidators = CustomValidators.getByDocType(doc.docType)
-            val result = VerifierApp.trustManagerInstance.verify(
-                chain = certChain,
-                //customValidators = customValidators
-            )
+            val result = runBlocking {
+                VerifierApp.trustManagerInstance.verify(
+                    chain = certChain,
+                    //customValidators = customValidators
+                )
+            }
             if (result.trustChain != null) {
                 certChain = result.trustChain!!.certificates
             }

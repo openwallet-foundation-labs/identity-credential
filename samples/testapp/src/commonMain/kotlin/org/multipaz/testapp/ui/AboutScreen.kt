@@ -18,7 +18,7 @@ fun AboutScreen() {
 
         item {
             Text("This is an interactive test application for elements of " +
-                    "the Identity Credential project which are not easy to write unit " +
+                    "the Multipaz project which are not easy to write unit " +
                     "tests for.")
         }
         item {

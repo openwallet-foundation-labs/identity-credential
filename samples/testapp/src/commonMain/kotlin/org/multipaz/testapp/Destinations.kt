@@ -33,6 +33,9 @@ import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.selfie_check_title
 import multipazproject.samples.testapp.generated.resources.settings_screen_title
+import multipazproject.samples.testapp.generated.resources.trust_point_viewer_screen_title
+import multipazproject.samples.testapp.generated.resources.trusted_issuers_screen_title
+import multipazproject.samples.testapp.generated.resources.trusted_verifiers_screen_title
 import org.jetbrains.compose.resources.StringResource
 
 sealed interface Destination {
@@ -91,6 +94,28 @@ data object CredentialClaimsViewerDestination : Destination {
     val arguments = listOf(
         navArgument(DOCUMENT_ID) { type = NavType.StringType },
         navArgument(CREDENTIAL_ID) { type = NavType.StringType },
+    )
+}
+
+data object TrustedIssuersDestination : Destination {
+    override val route = "trusted_issuers"
+    override val title = Res.string.trusted_issuers_screen_title
+}
+
+data object TrustedVerifiersDestination : Destination {
+    override val route = "trusted_verifiers"
+    override val title = Res.string.trusted_verifiers_screen_title
+}
+
+data object TrustPointViewerDestination : Destination {
+    override val route = "trust_point_viewer"
+    override val title = Res.string.trust_point_viewer_screen_title
+    const val TRUST_MANAGER_ID = "trust_manager_id_arg"
+    const val TRUST_POINT_ID = "trust_point_id_arg"
+    val routeWithArgs = "$route/{$TRUST_MANAGER_ID}/{$TRUST_POINT_ID}"
+    val arguments = listOf(
+        navArgument(TRUST_MANAGER_ID) { type = NavType.StringType },
+        navArgument(TRUST_POINT_ID) { type = NavType.StringType },
     )
 }
 
@@ -234,6 +259,9 @@ val appDestinations = listOf(
     DocumentViewerDestination,
     CredentialViewerDestination,
     CredentialClaimsViewerDestination,
+    TrustedIssuersDestination,
+    TrustedVerifiersDestination,
+    TrustPointViewerDestination,
     SoftwareSecureAreaDestination,
     AndroidKeystoreSecureAreaDestination,
     SecureEnclaveSecureAreaDestination,

@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.runBlocking
+import org.multipaz.trustmanagement.X509CertTrustPoint
 
 class CaCertificatesViewModel() : ViewModel() {
 
@@ -20,8 +22,9 @@ class CaCertificatesViewModel() : ViewModel() {
     private val _currentCertificateItem = MutableStateFlow<CertificateItem?>(null)
     val currentCertificateItem = _currentCertificateItem.asStateFlow()
     fun loadCertificates() {
-        val certificates =
-            VerifierApp.trustManagerInstance.getAllTrustPoints().map { it.toCertificateItem() }
+        val certificates = runBlocking {
+            VerifierApp.trustManagerInstance.getTrustPoints().map { (it as X509CertTrustPoint).toCertificateItem() }
+        }
         _screenState.update { it.copy(certificates = certificates) }
     }
 
@@ -31,7 +34,8 @@ class CaCertificatesViewModel() : ViewModel() {
 
     fun deleteCertificate() {
         _currentCertificateItem.value?.trustPoint?.let {
-            VerifierApp.trustManagerInstance.removeTrustPoint(it)
+            it as X509CertTrustPoint
+            runBlocking { VerifierApp.trustManagerInstance.deleteTrustPoint(it) }
             VerifierApp.certificateStorageEngineInstance.delete(it.certificate.javaX509Certificate.getSubjectKeyIdentifier())
         }
     }

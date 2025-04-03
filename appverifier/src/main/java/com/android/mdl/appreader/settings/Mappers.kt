@@ -7,10 +7,11 @@ import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.trustmanagement.getOrganisation
 import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import com.android.mdl.appreader.trustmanagement.organisationalUnit
+import org.multipaz.trustmanagement.X509CertTrustPoint
 import java.lang.StringBuilder
 import java.security.MessageDigest
 
-fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): CertificateItem {
+fun X509CertTrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): CertificateItem {
     val subject = this.certificate.javaX509Certificate.subjectX500Principal
     val issuer = this.certificate.javaX509Certificate.issuerX500Principal
     val sha255Fingerprint = hexWithSpaces(

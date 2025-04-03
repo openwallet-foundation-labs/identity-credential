@@ -102,12 +102,16 @@ internal data class CertificateViewData(
                             cert.keyUsage.joinToString(", ") { it.description }
 
                         OID.X509_EXTENSION_BASIC_CONSTRAINTS.oid -> {
-                            val seq = ASN1.decode(ext.data.toByteArray()) as ASN1Sequence
-                            val sb = StringBuilder("CA: ${(seq.elements[0] as ASN1Boolean).value}\n")
-                            if (seq.elements.size > 1) {
-                                sb.append("pathLenConstraint: ${(seq.elements[1] as ASN1Integer).toLong()}\n")
+                            try {
+                                val seq = ASN1.decode(ext.data.toByteArray()) as ASN1Sequence
+                                val sb = StringBuilder("CA: ${(seq.elements[0] as ASN1Boolean).value}\n")
+                                if (seq.elements.size > 1) {
+                                    sb.append("pathLenConstraint: ${(seq.elements[1] as ASN1Integer).toLong()}\n")
+                                }
+                                sb.toString()
+                            } catch (e: Throwable) {
+                                "Error decoding: $e"
                             }
-                            sb.toString()
                         }
 
                         OID.X509_EXTENSION_AUTHORITY_KEY_IDENTIFIER.oid ->

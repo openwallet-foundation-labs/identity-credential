@@ -41,6 +41,8 @@ import multipazproject.samples.testapp.generated.resources.selfie_check_title
 import kotlinx.coroutines.launch
 import multipazproject.samples.testapp.generated.resources.barcode_scanning_title
 import multipazproject.samples.testapp.generated.resources.camera_title
+import multipazproject.samples.testapp.generated.resources.trusted_issuers_screen_title
+import multipazproject.samples.testapp.generated.resources.trusted_verifiers_screen_title
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
@@ -51,6 +53,8 @@ fun StartScreen(
     documentModel: DocumentModel,
     onClickAbout: () -> Unit = {},
     onClickDocumentStore: () -> Unit = {},
+    onClickTrustedIssuers: () -> Unit = {},
+    onClickTrustedVerifiers: () -> Unit = {},
     onClickSoftwareSecureArea: () -> Unit = {},
     onClickAndroidKeystoreSecureArea: () -> Unit = {},
     onClickCloudSecureArea: () -> Unit = {},
@@ -126,6 +130,18 @@ fun StartScreen(
                 item {
                     TextButton(onClick = onClickDocumentStore) {
                         Text(stringResource(Res.string.document_store_screen_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickTrustedIssuers) {
+                        Text(stringResource(Res.string.trusted_issuers_screen_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickTrustedVerifiers) {
+                        Text(stringResource(Res.string.trusted_verifiers_screen_title))
                     }
                 }
 

@@ -18,6 +18,10 @@ package org.multipaz.trustmanagement
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
 import kotlinx.datetime.Instant
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.util.toHex
+import kotlin.collections.containsKey
+import kotlin.collections.get
 
 /**
  * Object with utility functions for the TrustManager.
@@ -89,4 +93,120 @@ internal object TrustManagerUtil {
                 "Certificate '${certificate.subject}' could not be verified with the public key of CA certificate '${caCertificate.subject}'"
             )
         }
+
+    internal fun verifyX509TrustChain(
+        chain: List<X509Cert>,
+        atTime: Instant,
+        skiToTrustPoint: Map<String, X509CertTrustPoint>
+    ): TrustResult {
+        // TODO: add support for customValidators similar to PKIXCertPathChecker
+        try {
+            val trustPoints = getAllTrustPointsForX509Cert(chain, skiToTrustPoint)
+            val completeChain = chain.plus(trustPoints.map { it.certificate })
+            try {
+                validateCertificationTrustPath(completeChain, atTime)
+                return TrustResult(
+                    isTrusted = true,
+                    trustPoints = trustPoints,
+                    trustChain = X509CertChain(completeChain)
+                )
+            } catch (e: Throwable) {
+                // there are validation errors, but the trust chain could be built.
+                return TrustResult(
+                    isTrusted = false,
+                    trustPoints = trustPoints,
+                    trustChain = X509CertChain(completeChain),
+                    error = e
+                )
+            }
+        } catch (e: Throwable) {
+            // No CA certificate found for the passed in chain.
+            //
+            // However, handle the case where the passed in chain _is_ a trust point. This won't
+            // happen for mdoc issuer auth (the IACA cert is never part of the chain) but can happen
+            // with mdoc reader auth, especially at mDL test events where each participant
+            // just submits a certificate for the key that their reader will be using.
+            //
+            if (chain.size == 1) {
+                val trustPoint = skiToTrustPoint[chain[0].subjectKeyIdentifier!!.toHex()]
+                if (trustPoint != null) {
+                    return TrustResult(
+                        isTrusted = true,
+                        trustChain = X509CertChain(chain),
+                        listOf(trustPoint),
+                        error = null
+                    )
+                }
+            }
+            // no CA certificate could be found.
+            return TrustResult(
+                isTrusted = false,
+                error = e
+            )
+        }
+    }
+
+    private fun getAllTrustPointsForX509Cert(
+        chain: List<X509Cert>,
+        skiToTrustPoint: Map<String, X509CertTrustPoint>
+    ): List<X509CertTrustPoint> {
+        val result = mutableListOf<X509CertTrustPoint>()
+
+        // only an exception if not a single CA certificate is found
+        var caCertificate: X509CertTrustPoint? = findCaCertificate(chain, skiToTrustPoint)
+            ?: throw IllegalStateException("No trusted root certificate could not be found")
+        result.add(caCertificate!!)
+        while (caCertificate != null && !isSelfSigned(caCertificate.certificate)) {
+            caCertificate = findCaCertificate(listOf(caCertificate.certificate), skiToTrustPoint)
+            if (caCertificate != null) {
+                result.add(caCertificate)
+            }
+        }
+        return result
+    }
+
+    /**
+     * Find a CA Certificate for a certificate chain.
+     */
+    private fun findCaCertificate(
+        chain: List<X509Cert>,
+        skiToTrustPoint: Map<String, X509CertTrustPoint>
+    ): X509CertTrustPoint? {
+        chain.forEach { cert ->
+            cert.authorityKeyIdentifier?.toHex().let {
+                if (skiToTrustPoint.containsKey(it)) {
+                    return skiToTrustPoint[it]
+                }
+            }
+        }
+        return null
+    }
+
+    /**
+     * Validate the certificate trust path.
+     */
+    private fun validateCertificationTrustPath(
+        certificationTrustPath: List<X509Cert>,
+        atTime: Instant
+    ) {
+        val certIterator = certificationTrustPath.iterator()
+        val leafCertificate = certIterator.next()
+        checkKeyUsageDocumentSigner(leafCertificate)
+        checkValidity(leafCertificate, atTime)
+
+        var previousCertificate = leafCertificate
+        var caCertificate: X509Cert? = null
+        while (certIterator.hasNext()) {
+            caCertificate = certIterator.next()
+            checkKeyUsageCaCertificate(caCertificate)
+            checkCaIsIssuer(previousCertificate, caCertificate)
+            verifySignature(previousCertificate, caCertificate)
+            previousCertificate = caCertificate
+        }
+        if (caCertificate != null && isSelfSigned(caCertificate)) {
+            // check the signature of the self signed root certificate
+            verifySignature(caCertificate, caCertificate)
+        }
+    }
+
 }
