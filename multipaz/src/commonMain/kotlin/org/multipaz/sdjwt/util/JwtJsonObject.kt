@@ -71,3 +71,7 @@ internal fun JsonObject.getJsonObjectOrNull(key: String): JsonObject? {
 internal fun JsonObject.getJsonArray(key: String): JsonArray {
     return getJsonElement(key).jsonArray
 }
+
+internal fun JsonObject.getJsonArrayOrNull(key: String): JsonArray? {
+    return this[key]?.jsonArray
+}
