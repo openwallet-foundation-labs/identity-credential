@@ -16,6 +16,7 @@
 
 package com.android.identity.android.legacy;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -113,6 +114,9 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
             @NonNull String credentialName,
             @Ciphersuite int cipherSuite) throws CipherSuiteNotSupportedException {
         try {
+            // Suppressing WrongConstant warning: cipherSuite is guaranteed to be a valid constant in the call below
+            // because the incoming parameter was already checked at the call site by the @Ciphersuite annotation.
+            @SuppressLint("WrongConstant")
             android.security.identity.IdentityCredential credential =
                     mStore.getCredentialByName(credentialName, cipherSuite);
             if (credential == null) {
@@ -180,7 +184,11 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
         callCreatePresentationSession(@NonNull android.security.identity.IdentityCredentialStore store,
                                       @Ciphersuite int cipherSuite)
                 throws android.security.identity.CipherSuiteNotSupportedException {
-            return store.createPresentationSession(cipherSuite);
+            // Suppressing WrongConstant warning: cipherSuite is guaranteed to be a valid constant in the call below
+            // because the incoming parameter was already checked at the call site by the @Ciphersuite annotation.
+            @SuppressLint("WrongConstant")
+            android.security.identity.PresentationSession ret = store.createPresentationSession(cipherSuite);
+            return ret;
         }
     }
 }
