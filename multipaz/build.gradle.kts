@@ -9,8 +9,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.jetbrainsCompose)
-    alias(libs.plugins.compose.compiler)
     id("maven-publish")
 }
 
@@ -83,12 +81,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.client.core)
-
-                // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
-                implementation(libs.nimbus.oauth2.oidc.sdk)
-                // TODO: Strictly speaking this should be moved to androidMain deps but it's here right
-                // now to make the build work.
-                implementation(compose.runtime)
             }
         }
 
@@ -108,6 +100,8 @@ kotlin {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
+                // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
+                implementation(libs.nimbus.oauth2.oidc.sdk)
             }
         }
 
@@ -137,7 +131,6 @@ kotlin {
                 // dependency can be moved into commonMain.
                 implementation(libs.androidx.sqlite)
                 implementation(libs.androidx.sqlite.framework)
-                implementation(libs.ktor.client.darwin)
             }
         }
 
@@ -216,13 +209,6 @@ android {
             excludes += listOf("/META-INF/{AL2.0,LGPL2.1}")
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
-    }
-
-    buildFeatures {
-        compose = true
-    }
-    dependencies {
-        debugImplementation(compose.uiTooling)
     }
 
     publishing {
