@@ -68,6 +68,8 @@ import org.multipaz.wallet.logging.EventLogger
 import org.multipaz.wallet.util.toByteArray
 import kotlinx.datetime.Clock
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.trustmanagement.LocalTrustManager
 import java.io.File
 import java.net.URLDecoder
 import java.security.Security
@@ -109,8 +111,8 @@ class WalletApplication : Application() {
 
 
     // immediate instantiations
-    val readerTrustManager = TrustManager()
-    val issuerTrustManager = TrustManager()
+    val readerTrustManager = LocalTrustManager(EphemeralStorage())
+    val issuerTrustManager = LocalTrustManager(EphemeralStorage())
 
     // lazy instantiations
     private val sharedPreferences: SharedPreferences by lazy {
@@ -219,6 +221,7 @@ class WalletApplication : Application() {
             getWalletApplicationInformation()
         }
 
+        /*
         // init TrustManager for readers (used in consent dialog)
         //
         readerTrustManager.addTrustPoint(
@@ -253,7 +256,9 @@ class WalletApplication : Application() {
                 )
             )
         }
+         */
 
+        /*
         // init TrustManager for issuers (used in reader)
         //
         val signedVical = SignedVical.parse(
@@ -273,7 +278,7 @@ class WalletApplication : Application() {
             certificateResourceId = R.raw.iaca_certificate,
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
-
+         */
 
         documentModel = DocumentModel(
             applicationContext,
@@ -373,6 +378,7 @@ class WalletApplication : Application() {
      *
      * This extension function belongs to WalletApplication so it can use context.resources.
      */
+    /*
     fun TrustManager.addTrustPoint(
         displayName: String,
         certificateResourceId: Int,
@@ -390,6 +396,7 @@ class WalletApplication : Application() {
             }
         )
     )
+     */
 
     fun postNotificationForMissingMdocProximityPermissions() {
         // Go to main page, the user can request the permission there

@@ -36,6 +36,7 @@ import com.android.mdl.appreader.trustmanagement.CustomValidators
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.logDebug
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.interfaces.ECPublicKey
@@ -166,10 +167,12 @@ class ShowDeviceResponseFragment : Fragment() {
 
             var certChain = doc.issuerCertificateChain
             val customValidators = CustomValidators.getByDocType(doc.docType)
-            val result = VerifierApp.trustManagerInstance.verify(
-                chain = certChain.certificates,
-                //customValidators = customValidators
-            )
+            val result = runBlocking {
+                VerifierApp.trustManagerInstance.verify(
+                    chain = certChain.certificates,
+                    //customValidators = customValidators
+                )
+            }
             if (result.trustChain != null) {
                 certChain = result.trustChain!!
             }
