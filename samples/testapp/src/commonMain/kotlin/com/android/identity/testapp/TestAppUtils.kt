@@ -521,7 +521,8 @@ object TestAppUtils {
                     issuer = Issuer(
                         "https://example-issuer.com",
                         dsKey.publicKey.curve.defaultSigningAlgorithmFullySpecified,
-                        "key-1" // TODO: why pass key-id?
+                        null,
+                        X509CertChain(listOf(dsCert))
                     ),
                 )
                 sdJwtVcGenerator.publicKey =

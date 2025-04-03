@@ -69,7 +69,7 @@ class SdJwtVcGenerator(
     fun generateSdJwt(
         sign: (toBeSigned:ByteArray, issuer: Issuer) -> EcSignature
     ): SdJwtVerifiableCredential {
-        val header = JwtHeader(issuer.alg, issuer.kid)
+        val header = JwtHeader(issuer.alg, issuer.kid, issuer.x5c)
         val headerStr = header.toString()
 
         val body = JwtBody(

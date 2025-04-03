@@ -1,6 +1,7 @@
 package org.multipaz.sdjwt
 
 import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.X509CertChain
 
 /**
  * Information about an issuer.
@@ -13,11 +14,14 @@ import org.multipaz.crypto.Algorithm
  * @param kid a parameter further identifying the key, if necessary (e.g., when the
  *        iss URL points to a file with multiple keys. This parameter will be copied
  *        into the header of the JWT.
+ * @param x5c a certificate chain, from the signer of the JWT up to some authority that
+ *        the verifier of the JWT will likely trust. Optional.
  */
 data class Issuer(
     val iss: String,
     val alg: Algorithm,
-    val kid: String? = null /* optional */
+    val kid: String? = null,
+    val x5c: X509CertChain? = null
 ) {
     init {
         require(alg.fullySpecified) { "Signing key for issuer must be fully specified" }

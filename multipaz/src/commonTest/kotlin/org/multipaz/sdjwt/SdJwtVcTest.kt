@@ -18,7 +18,6 @@ import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
-import org.multipaz.storage.EphemeralStorageEngine
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
@@ -27,6 +26,8 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.sdjwt.vc.JwtHeader
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
@@ -120,7 +121,12 @@ class SdJwtVcTest {
         val sdJwtVcGenerator = SdJwtVcGenerator(
             random = Random(42),
             payload = identityAttributes,
-            issuer = Issuer("https://example-issuer.com", Algorithm.ESP256, "key-1")
+            issuer = Issuer(
+                "https://example-issuer.com",
+                Algorithm.ESP256,
+                "key-1",
+                X509CertChain(listOf(issuerCert))
+            )
         )
 
         sdJwtVcGenerator.publicKey = JsonWebKey(credential.getAttestation().publicKey)
@@ -208,6 +214,10 @@ class SdJwtVcTest {
 
         // also on the verifier, check the signature over the SD-JWT from the issuer
         presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
+
+        // let's check that the x5c element is parseable, in case that's where the verifier gets it from
+        val jwtHeader = JwtHeader.fromString(presentation.sdJwtVc.header)
+        assertEquals(issuerCert, jwtHeader.x5c?.certificates?.get(0))
 
         // at this point, the verifier could read out the attributes they were
         // interested in:
