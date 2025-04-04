@@ -1,5 +1,6 @@
 package org.multipaz.mdoc.transport
 
+import kotlinx.coroutines.CancellationException
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
@@ -131,6 +132,8 @@ internal class BleTransportPeripheralMdocReader(
         }
         try {
             return centralManager.incomingMessages.receive()
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             if (_state.value == State.CLOSED) {
                 throw MdocTransportClosedException("Transport was closed while waiting for message")
