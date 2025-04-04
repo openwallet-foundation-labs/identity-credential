@@ -172,10 +172,8 @@ actual fun AndroidKeystoreSecureAreaScreen(
             for (algorithm in listOf(
                 Algorithm.ESP256,
                 Algorithm.ED25519,
-                Algorithm.ED448,
                 Algorithm.ECDH_P256,
                 Algorithm.ECDH_X25519,
-                Algorithm.ECDH_X448,
             )) {
                 val AUTH_NONE = setOf<UserAuthenticationType>()
                 val AUTH_LSKF_OR_BIOMETRIC = setOf(
