@@ -361,7 +361,8 @@ private suspend fun provisionTestDocuments(
         showToast("Secure Area doesn't support algorithm $deviceKeyAlgorithm for DeviceKey")
         return
     }
-    if (secureArea.supportedAlgorithms.find { it == deviceKeyMacAlgorithm } == null) {
+    if (deviceKeyMacAlgorithm != Algorithm.UNSET &&
+        secureArea.supportedAlgorithms.find { it == deviceKeyMacAlgorithm } == null) {
         showToast("Secure Area doesn't support algorithm $deviceKeyMacAlgorithm for DeviceKey for MAC")
         return
     }
