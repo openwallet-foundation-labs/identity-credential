@@ -800,7 +800,6 @@ class AndroidKeystoreSecureArea private constructor(
                 Algorithm.ES384, Algorithm.ESP384, Algorithm.ESB384, Algorithm.ESB320 -> "SHA384withECDSA"
                 Algorithm.ES512, Algorithm.ESP512, Algorithm.ESB512 -> "SHA512withECDSA"
                 Algorithm.ED25519 -> "Ed25519"
-                Algorithm.ED448 -> "Ed448"
                 Algorithm.EDDSA -> "Ed25519"
                 else -> throw IllegalArgumentException(
                     "Unsupported signing algorithm with id $signatureAlgorithm"
