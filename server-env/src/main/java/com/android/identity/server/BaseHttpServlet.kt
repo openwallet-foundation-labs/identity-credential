@@ -1,8 +1,8 @@
 package org.multipaz.server
 
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.util.Logger
 import jakarta.servlet.ServletConfig
 import jakarta.servlet.http.HttpServlet
@@ -15,7 +15,7 @@ import java.security.Security
 import kotlin.reflect.KClass
 
 open class BaseHttpServlet : HttpServlet() {
-    private lateinit var flowEnvironment: FlowEnvironment
+    private lateinit var backendEnvironment: BackendEnvironment
 
     companion object {
         private val environmentMap = mutableMapOf<KClass<*>, ServerEnvironment>()
@@ -26,7 +26,7 @@ open class BaseHttpServlet : HttpServlet() {
         private fun initializeEnvironment(
             clazz: KClass<*>,
             servletConfig: ServletConfig,
-            notificationsFactory: (env: FlowEnvironment) -> FlowNotifications?
+            notificationsFactory: (env: BackendEnvironment) -> RpcNotifications?
         ): ServerEnvironment {
             val existingEnvironment = environmentMap[clazz]
             if (existingEnvironment != null) {
@@ -40,18 +40,18 @@ open class BaseHttpServlet : HttpServlet() {
             return environment
         }
 
-        fun environmentFor(clazz: KClass<*>): FlowEnvironment? = environmentMap[clazz]
+        fun environmentFor(clazz: KClass<*>): BackendEnvironment? = environmentMap[clazz]
 
         init {
             Security.addProvider(BouncyCastleProvider())
         }
     }
 
-    val environment get() = flowEnvironment
+    val environment get() = backendEnvironment
 
     override fun init() {
         super.init()
-        flowEnvironment = initializeEnvironment(
+        backendEnvironment = initializeEnvironment(
             this::class, servletConfig, this::initializeEnvironment
         )
     }
@@ -69,9 +69,9 @@ open class BaseHttpServlet : HttpServlet() {
      * Initializes FlowEnvironment, potentially registering exceptions and flow method handlers
      * as well as potentially creating FlowNotifications.
      *
-     * Called once per BaseHttpServlet subclass (FlowEnvironment is shared across all instances).
+     * Called once per BaseHttpServlet subclass (BackendEnvironment is shared across all instances).
      */
-    open fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+    open fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {
         return null
     }
 

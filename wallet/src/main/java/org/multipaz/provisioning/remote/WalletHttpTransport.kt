@@ -1,6 +1,6 @@
 package org.multipaz.wallet.provisioning.remote
 
-import org.multipaz.flow.transport.HttpTransport
+import org.multipaz.rpc.transport.HttpTransport
 import org.multipaz.util.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
@@ -34,7 +34,7 @@ class WalletHttpTransport(private val baseUrl: String): HttpTransport {
         data: ByteString
     ): ByteString {
         val response = try {
-            client.post("$baseUrl/flow/$url") {
+            client.post("$baseUrl/rpc/$url") {
                 timeout {
                     requestTimeoutMillis = REQUEST_TIMEOUT_SECONDS.toLong()*1000
                 }

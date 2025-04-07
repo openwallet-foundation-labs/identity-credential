@@ -6,10 +6,10 @@ import android.graphics.BitmapFactory
 import android.os.Handler
 import androidx.annotation.RawRes
 import org.multipaz.device.DeviceAssertionMaker
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.handler.FlowNotifications
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.handler.RpcNotifications
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
@@ -21,6 +21,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -29,7 +31,7 @@ import kotlin.reflect.cast
 
 
 /**
- * This implementation of [FlowEnvironment] can be used to run wallet server locally in the app,
+ * This implementation of [BackendEnvironment] can be used to run wallet server locally in the app,
  * which is useful for development, but should never be done in production.
  */
 internal class LocalDevelopmentEnvironment(
@@ -37,9 +39,9 @@ internal class LocalDevelopmentEnvironment(
     settingsModel: SettingsModel,
     private val assertionMaker: DeviceAssertionMaker,
     private val secureAreaProvider: SecureAreaProvider<SecureArea>,
-    private val notifications: FlowNotifications,
+    private val notifications: RpcNotifications,
     private val applicationSupportSupplier: WalletServerProvider.ApplicationSupportSupplier
-) : FlowEnvironment {
+) : BackendEnvironment {
     private var configuration = ConfigurationImpl(context, settingsModel)
     private val storage = AndroidStorage(
         File(context.dataDir, "local_dev.db").absolutePath
@@ -63,7 +65,7 @@ internal class LocalDevelopmentEnvironment(
             Configuration::class -> configuration
             Resources::class -> resources
             Storage::class -> storage
-            FlowNotifications::class -> notifications
+            RpcNotifications::class -> notifications
             HttpClient::class -> httpClient
             SecureAreaProvider::class -> secureAreaProvider
             DeviceAssertionMaker::class -> assertionMaker
@@ -74,6 +76,7 @@ internal class LocalDevelopmentEnvironment(
                 // "dev:" Wallet Server.
                 applicationSupportSupplier.getApplicationSupport().applicationSupport
             }
+            RpcAuthInspector::class -> RpcAuthInspectorAssertion.Default
             else -> return null
         })
     }

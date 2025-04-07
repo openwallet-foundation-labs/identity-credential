@@ -1,14 +1,12 @@
 package org.multipaz.provisioning.hardcoded
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.provisioning.ProofingFlow
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.WalletServerSettings
-import org.multipaz.flow.cache
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.cache
 import org.multipaz.provisioning.evidence.EvidenceRequest
 import org.multipaz.provisioning.evidence.EvidenceResponse
 import org.multipaz.provisioning.evidence.EvidenceResponseIcaoNfcTunnel
@@ -18,19 +16,20 @@ import org.multipaz.provisioning.fromCbor
 import org.multipaz.provisioning.proofing.ProofingGraph
 import org.multipaz.provisioning.proofing.defaultGraph
 import org.multipaz.provisioning.tunnel.inProcessMrtdNfcTunnelFactory
-import org.multipaz.provisioning.wallet.AuthenticationState
 import org.multipaz.mrtd.MrtdAccessDataCan
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.readBytes
+import kotlinx.coroutines.currentCoroutineContext
+import org.multipaz.provisioning.wallet.AuthenticationState
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.storage.Storage
 
 /**
- * State of [ProofingFlow] RPC implementation.
+ * State of [Proofing] RPC implementation.
  */
-@FlowState(flowInterface = ProofingFlow::class)
+@RpcState(endpoint= "hardcoded.proofing")
 @CborSerializable
 class ProofingState(
-    val clientId: String,
     val documentId: String = "",
     val issuingAuthorityId: String = "",
     val developerModeEnabled: Boolean = false,
@@ -39,13 +38,12 @@ class ProofingState(
     var nfcTunnelToken: String? = null,
     var pendingTunnelRequest: EvidenceRequest? = null,
     val evidence: MutableMap<String, EvidenceResponse> = mutableMapOf()
-) {
+): Proofing, RpcAuthInspector by RpcAuthBackendDelegate {
     companion object {
         val tunnelProvider = inProcessMrtdNfcTunnelFactory
     }
 
-    @FlowMethod
-    suspend fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
+    override suspend fun getEvidenceRequests(): List<EvidenceRequest> {
         if (done) {
             return listOf()
         }
@@ -54,16 +52,15 @@ class ProofingState(
             pendingTunnelRequest = null
             return listOf(request)
         }
-        val graph = getGraph(env)
+        val graph = getGraph()
         if (state == null) {
             state = graph.root.nodeId
         }
         return graph.map[state]!!.requests
     }
 
-    @FlowMethod
-    suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
-        val graph = getGraph(env)
+    override suspend fun sendEvidence(evidenceResponse: EvidenceResponse) {
+        val graph = getGraph()
         val node = graph.map[state]
         // Certain evidence types require special processing
         val newEvidence = when (evidenceResponse) {
@@ -107,8 +104,11 @@ class ProofingState(
         }
     }
 
-    private suspend fun getGraph(env: FlowEnvironment): ProofingGraph {
-        val storage = env.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
+    private suspend fun getGraph(): ProofingGraph {
+        val clientId = RpcAuthContext.getClientId()
+        val env = BackendEnvironment.get(currentCoroutineContext())
+        val storage = env.getInterface(Storage::class)!!.getTable(
+            AuthenticationState.walletAppCapabilitiesTableSpec)
         val walletApplicationCapabilities = storage.get(clientId)?.let {
             WalletApplicationCapabilities.fromCbor(it.toByteArray())
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")

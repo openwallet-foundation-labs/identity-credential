@@ -3,7 +3,6 @@ package org.multipaz.wallet.server
 import org.multipaz.asn1.ASN1
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -12,11 +11,11 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.WalletServerSettings
 import org.multipaz.securearea.cloud.CloudSecureAreaServer
 import org.multipaz.securearea.cloud.SimplePassphraseFailureEnforcer
@@ -84,7 +83,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
                 )
             }
 
-            fun createKeyMaterial(serverEnvironment: FlowEnvironment): KeyMaterial {
+            fun createKeyMaterial(serverEnvironment: BackendEnvironment): KeyMaterial {
                 val serverSecureAreaBoundKey = Random.Default.nextBytes(32)
 
                 val now = Clock.System.now()
@@ -172,7 +171,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
             supportPartitions = false
         )
 
-        private fun createKeyMaterial(serverEnvironment: FlowEnvironment): KeyMaterial {
+        private fun createKeyMaterial(serverEnvironment: BackendEnvironment): KeyMaterial {
             val keyMaterialBlob = runBlocking {
                 val storage = serverEnvironment.getTable(cloudRootStateTableSpec)
                 storage.get("cloudSecureAreaKeyMaterial")?.toByteArray()
@@ -185,7 +184,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
             return KeyMaterial.fromCbor(keyMaterialBlob)
         }
 
-        private fun createCloudSecureArea(serverEnvironment: FlowEnvironment): CloudSecureAreaServer {
+        private fun createCloudSecureArea(serverEnvironment: BackendEnvironment): CloudSecureAreaServer {
             Security.addProvider(BouncyCastleProvider())
             val settings = WalletServerSettings(serverEnvironment.getInterface(Configuration::class)!!)
             return CloudSecureAreaServer(
@@ -212,7 +211,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
         }
     }
 
-    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+    override fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {
         keyMaterial = createKeyMaterial(env)
         cloudSecureArea = createCloudSecureArea(env)
         return null

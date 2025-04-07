@@ -1,9 +1,9 @@
 package org.multipaz.provisioning
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.flow.annotation.FlowException
+import org.multipaz.rpc.annotation.RpcException
 
-@FlowException
+@RpcException
 @CborSerializable
 class LandingUrlUnknownException(override val message: String) : Exception(message) {
     companion object

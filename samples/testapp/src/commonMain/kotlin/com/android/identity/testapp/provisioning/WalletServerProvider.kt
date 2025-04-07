@@ -1,23 +1,21 @@
 package org.multipaz.testapp.provisioning
 
-import org.multipaz.cbor.Bstr
 import org.multipaz.device.DeviceCheck
 import org.multipaz.device.AssertionNonce
 import org.multipaz.device.DeviceAttestation
-import org.multipaz.flow.handler.FlowDispatcher
-import org.multipaz.flow.handler.FlowDispatcherHttp
-import org.multipaz.flow.handler.FlowExceptionMap
-import org.multipaz.flow.handler.FlowNotifier
-import org.multipaz.flow.handler.FlowNotifierPoll
-import org.multipaz.flow.handler.FlowPollHttp
-import org.multipaz.flow.transport.HttpTransport
+import org.multipaz.rpc.handler.RpcDispatcher
+import org.multipaz.rpc.handler.RpcDispatcherHttp
+import org.multipaz.rpc.handler.RpcExceptionMap
+import org.multipaz.rpc.handler.RpcNotifier
+import org.multipaz.rpc.handler.RpcNotifierPoll
+import org.multipaz.rpc.handler.RpcPollHttp
+import org.multipaz.rpc.transport.HttpTransport
 import org.multipaz.provisioning.ClientAuthentication
 import org.multipaz.provisioning.IssuingAuthority
 import org.multipaz.provisioning.IssuingAuthorityException
 import org.multipaz.provisioning.LandingUrlUnknownException
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.WalletServer
-import org.multipaz.provisioning.WalletServerImpl
 import org.multipaz.provisioning.register
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.testapp.platformSecureAreaProvider
@@ -32,6 +30,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.provisioning.AuthenticationStub
+import org.multipaz.provisioning.WalletServerStub
+import org.multipaz.rpc.handler.RpcAuthIssuerAssertion
+import org.multipaz.rpc.handler.RpcDispatcherAuth
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -148,27 +150,18 @@ class WalletServerProvider(
     }
 
     private suspend fun getWalletServerUnlocked(baseUrl: String): WalletServer {
-        val dispatcher: FlowDispatcher
-        val notifier: FlowNotifier
-        val exceptionMapBuilder = FlowExceptionMap.Builder()
+        val dispatcher: RpcDispatcher
+        val notifier: RpcNotifier
+        val exceptionMapBuilder = RpcExceptionMap.Builder()
         IssuingAuthorityException.register(exceptionMapBuilder)
         LandingUrlUnknownException.register(exceptionMapBuilder)
         val httpClient = WalletHttpTransport(baseUrl)
-        val poll = FlowPollHttp(httpClient)
-        notifier = FlowNotifierPoll(poll)
+        val poll = RpcPollHttp(httpClient)
+        notifier = RpcNotifierPoll(poll)
         notificationsJob = CoroutineScope(Dispatchers.Main).launch {
             notifier.loop()
         }
-        dispatcher = FlowDispatcherHttp(httpClient, exceptionMapBuilder.build())
-
-        // "root" is the entry point for the server, see FlowState annotation on
-        // org.multipaz.issuance.wallet.WalletServerState
-        val walletServer = WalletServerImpl(
-            flowPath = "root",
-            flowState = Bstr(byteArrayOf()),
-            flowDispatcher = dispatcher,
-            flowNotifier = notifier
-        )
+        dispatcher = RpcDispatcherHttp(httpClient, exceptionMapBuilder.build())
 
         val serverTable = platformStorage().getTable(serverTableSpec)
         var serverData = serverTable.get(key = baseUrl)?.let {
@@ -176,40 +169,70 @@ class WalletServerProvider(
         }
 
         val secureAreaProvider = platformSecureAreaProvider()
-        val authentication = walletServer.authenticate()
+
+        // RPC entry point that does not require authorization, it is used to set up
+        // authorization parameters with the server (so these parameters can be used for subsequent
+        // RPC communication).
+        val authentication = AuthenticationStub(
+            endpoint = "auth",
+            dispatcher = dispatcher,
+            notifier = notifier
+        )
+
         val challenge = authentication.requestChallenge(serverData?.clientId ?: "")
         val deviceAttestation: DeviceAttestation?
         if (serverData?.clientId != challenge.clientId) {
-            // new client for this host
+            // new client
             val result = DeviceCheck.generateAttestation(
-                secureArea = secureAreaProvider.get(),
-                challenge = challenge.clientId.encodeToByteString()
+                secureAreaProvider.get(),
+                challenge.clientId.encodeToByteString()
             )
             deviceAttestation = result.deviceAttestation
-            // TODO: save clientId and deviceAttestationId in storage
-            val newServerData = ServerData(challenge.clientId, result.deviceAttestationId)
+            val newServerData = ServerData(
+                clientId = challenge.clientId,
+                deviceAttestationId = result.deviceAttestationId
+            )
             if (serverData == null) {
-                serverTable.insert(baseUrl, ByteString(newServerData.toCbor()))
+                serverTable.insert(
+                    data = ByteString(newServerData.toCbor()),
+                    key = baseUrl
+                )
             } else {
-                serverTable.update(baseUrl, ByteString(newServerData.toCbor()))
+                serverTable.update(
+                    data = ByteString(newServerData.toCbor()),
+                    key = baseUrl
+                )
             }
             serverData = newServerData
         } else {
-            // existing client for this host
             deviceAttestation = null
         }
+
         authentication.authenticate(ClientAuthentication(
             deviceAttestation,
             DeviceCheck.generateAssertion(
-                secureArea = secureAreaProvider.get(),
-                deviceAttestationId = serverData.deviceAttestationId,
-                assertion = AssertionNonce(challenge.nonce)
+                secureAreaProvider.get(),
+                serverData.deviceAttestationId,
+                AssertionNonce(challenge.nonce)
             ),
             getWalletApplicationCapabilities()
         ))
 
-        authentication.complete()
+        val authorizedDispatcher = RpcDispatcherAuth(
+            base = dispatcher,
+            rpcAuthIssuer = RpcAuthIssuerAssertion(
+                clientId = serverData.clientId,
+                secureArea = secureAreaProvider.get(),
+                deviceAttestationId = serverData.deviceAttestationId
+            )
+        )
 
-        return walletServer
+        // "root" is the entry point for the server, see FlowState annotation on
+        // org.multipaz.issuance.wallet.WalletServerState
+        return WalletServerStub(
+            endpoint = "root",
+            dispatcher = dispatcher,
+            notifier = notifier
+        )
     }
 }

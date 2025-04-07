@@ -2,7 +2,6 @@ package org.multipaz.server.openid4vci
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Tstr
@@ -18,8 +17,8 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.NameSpacedData
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.util.MdocUtil
@@ -57,7 +56,7 @@ internal class CredentialFactoryMdl : CredentialFactory {
         get() = "card-mdl.png"
 
     override suspend fun makeCredential(
-        environment: FlowEnvironment,
+        environment: BackendEnvironment,
         state: IssuanceState,
         authenticationKey: EcPublicKey?
     ): String {

@@ -1,7 +1,6 @@
 package org.multipaz.provisioning.proofing
 
-import org.multipaz.cbor.CborMap
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.backend.Resources
 import org.multipaz.provisioning.CredentialConfiguration
 import org.multipaz.securearea.config.SecureAreaConfigurationAndroidKeystore
 import org.multipaz.securearea.config.SecureAreaConfigurationCloud
@@ -12,7 +11,6 @@ import org.multipaz.provisioning.evidence.EvidenceResponseCreatePassphrase
 import org.multipaz.provisioning.evidence.EvidenceResponseQuestionMultipleChoice
 import org.multipaz.provisioning.evidence.EvidenceResponseSetupCloudSecureArea
 import org.multipaz.securearea.PassphraseConstraints
-import org.multipaz.securearea.toDataItem
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
 import java.net.URLEncoder

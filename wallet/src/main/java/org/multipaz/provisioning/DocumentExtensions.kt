@@ -16,7 +16,7 @@ object DocumentExtensions {
         get() = metadata as WalletDocumentMetadata
 
     /** The identifier for the [IssuingAuthority] the credential belongs to */
-    val Document.issuingAuthorityIdentifier: String
+    val Document.issuingAuthorityIdentifier: String?
         get() = walletDocumentMetadata.issuingAuthorityIdentifier
 
     /**

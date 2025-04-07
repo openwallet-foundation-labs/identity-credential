@@ -7,7 +7,7 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.symbol.KSAnnotated
 
 /**
- * Processor that multiplexes [CborSymbolProcessor] and [FlowSymbolProcessor].
+ * Processor that multiplexes [CborSymbolProcessor] and [RpcSymbolProcessor].
  */
 class MainProcessor(
     private val options: Map<String, String>,
@@ -15,12 +15,12 @@ class MainProcessor(
     private val codeGenerator: CodeGenerator,
 ) : SymbolProcessor {
     val cborSymbolProcessor = CborSymbolProcessor(options, logger, codeGenerator)
-    val flowSymbolProcessor = FlowSymbolProcessor(options, logger, codeGenerator)
+    val rpcSymbolProcessor = RpcSymbolProcessor(options, logger, codeGenerator)
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val list = mutableListOf<KSAnnotated>()
         list.addAll(cborSymbolProcessor.process(resolver))
-        list.addAll(flowSymbolProcessor.process(resolver))
+        list.addAll(rpcSymbolProcessor.process(resolver))
         return list
     }
 

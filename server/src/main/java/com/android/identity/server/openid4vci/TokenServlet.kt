@@ -2,8 +2,8 @@ package org.multipaz.server.openid4vci
 
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

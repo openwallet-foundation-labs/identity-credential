@@ -3,7 +3,7 @@ package org.multipaz.wallet.provisioning.simple
 import org.multipaz.cbor.DataItem
 import org.multipaz.provisioning.evidence.EvidenceRequest
 import org.multipaz.provisioning.evidence.EvidenceResponse
-import org.multipaz.provisioning.ProofingFlow
+import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.evidence.EvidenceRequestIcaoNfcTunnel
 import org.multipaz.provisioning.evidence.EvidenceResponseIcaoNfcTunnel
 import org.multipaz.util.Logger
@@ -11,9 +11,9 @@ import java.lang.IllegalStateException
 
 class SimpleIssuingAuthorityProofingFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
-    private val documentId: String,
+    internal val documentId: String,
     private var currentNode: SimpleIssuingAuthorityProofingGraph.Node?
-) : ProofingFlow {
+) : Proofing {
     private var pendingTunnelRequest: EvidenceRequestIcaoNfcTunnel? = null
 
     companion object {
@@ -41,20 +41,4 @@ class SimpleIssuingAuthorityProofingFlow(
         issuingAuthority.addCollectedEvidence(documentId, currentNode.nodeId, evidence)
         this.currentNode = currentNode.selectFollowUp(evidence)
     }
-
-    override suspend fun complete() {
-        issuingAuthority.setProofingProcessing(documentId)
-    }
-
-    // Unused in client implementations
-    override val flowPath: String
-        get() {
-            throw UnsupportedOperationException("Unexpected call")
-        }
-
-    // Unused in client implementations
-    override val flowState: DataItem
-        get() {
-            throw UnsupportedOperationException("Unexpected call")
-        }
 }

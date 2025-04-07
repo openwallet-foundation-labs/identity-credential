@@ -5,14 +5,13 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.device.AssertionDPoPKey
 import org.multipaz.device.DeviceAssertionMaker
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.IssuingAuthorityException
-import org.multipaz.provisioning.ProofingFlow
+import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.WalletServerSettings
 import org.multipaz.provisioning.evidence.EvidenceRequest
@@ -54,13 +53,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
 import java.net.URI
 import java.net.URLEncoder
 import kotlin.random.Random
 
-@FlowState(
-    flowInterface = ProofingFlow::class
-)
+@RpcState(endpoint = "openid4vci.proofing")
 @CborSerializable
 class Openid4VciProofingState(
     val credentialIssuerUri: String,
@@ -78,14 +78,14 @@ class Openid4VciProofingState(
     var openid4VpRequest: String? = null,
     var txCode: String? = null,
     var credentialOffer: Openid4VciCredentialOffer? = null
-) {
+): Proofing, RpcAuthInspector by RpcAuthBackendDelegate {
     companion object {
         private const val TAG = "Openid4VciProofingState"
     }
 
-    @FlowMethod
-    suspend fun getEvidenceRequests(env: FlowEnvironment): List<EvidenceRequest> {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+    override suspend fun getEvidenceRequests(): List<EvidenceRequest> {
+        checkClientId()
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val configuration = metadata.credentialConfigurations[credentialConfigurationId]!!
         val credentialOffer = this.credentialOffer
         return if (access == null) {
@@ -95,7 +95,7 @@ class Openid4VciProofingState(
             } else if (!tosAcknowleged) {
                 val issuingAuthorityName = metadata.display[0].text
                 val documentName = configuration.display[0].text
-                val message = env.getInterface(Resources::class)!!
+                val message = BackendEnvironment.getInterface(Resources::class)!!
                     .getStringResource("generic/tos.html")!!
                     .replace("\$ISSUER_NAME", issuingAuthorityName)
                     .replace("\$ID_NAME", documentName)
@@ -192,22 +192,22 @@ class Openid4VciProofingState(
         }
     }
 
-    @FlowMethod
-    suspend fun sendEvidence(env: FlowEnvironment, evidenceResponse: EvidenceResponse) {
+    override suspend fun sendEvidence(evidenceResponse: EvidenceResponse) {
+        checkClientId()
         when (evidenceResponse) {
             is EvidenceResponseCredentialOffer -> {
                 val credentialOffer = evidenceResponse.credentialOffer
                 this.credentialOffer = credentialOffer
-                initializeProofing(env)
+                initializeProofing()
                 if (credentialOffer is Openid4VciCredentialOfferPreauthorizedCode) {
                     if (credentialOffer.txCode == null) {
-                        obtainTokenUsingPreauthorizedCode(env)
+                        obtainTokenUsingPreauthorizedCode()
                     }
                 }
             }
             is EvidenceResponseQuestionString -> {
                 txCode = evidenceResponse.answer
-                obtainTokenUsingPreauthorizedCode(env)
+                obtainTokenUsingPreauthorizedCode()
             }
             is EvidenceResponseWeb -> {
                 val index = evidenceResponse.response.indexOf("code=")
@@ -215,21 +215,21 @@ class Openid4VciProofingState(
                     throw IllegalStateException("No code after web authorization")
                 }
                 val authCode = evidenceResponse.response.substring(index + 5)
-                obtainTokenUsingCode(env, authCode, null)
+                obtainTokenUsingCode(authCode, null)
             }
             is EvidenceResponseMessage -> {
                 if (!evidenceResponse.acknowledged) {
                     throw IssuingAuthorityException("Issuance rejected")
                 }
                 if (tosAcknowleged) {
-                    secureAreaIdentifier = getCloudSecureAreaId(env)
+                    secureAreaIdentifier = getCloudSecureAreaId()
                 } else {
                     tosAcknowleged = true
                 }
             }
             is EvidenceResponseQuestionMultipleChoice -> {
                 secureAreaIdentifier = if (evidenceResponse.answerId == "cloud") {
-                    getCloudSecureAreaId(env)
+                    getCloudSecureAreaId()
                 } else {
                     "AndroidKeystoreSecureArea"
                 }
@@ -241,22 +241,22 @@ class Openid4VciProofingState(
                 notificationPermissonRequested = true
             }
             is EvidenceResponseOpenid4Vp -> {
-                processOpenid4VpResponse(env, evidenceResponse.response)
+                processOpenid4VpResponse(evidenceResponse.response)
             }
             else -> throw IllegalArgumentException("Unexpected evidence type")
         }
     }
 
-    private fun getCloudSecureAreaId(env: FlowEnvironment): String {
+    private suspend fun getCloudSecureAreaId(): String {
         val cloudSecureAreaUrl = URLEncoder.encode(
-            WalletServerSettings(env.getInterface(Configuration::class)!!)
+            WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
                 .cloudSecureAreaUrl, "UTF-8"
         )
         return "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
     }
 
     private suspend fun processRedirectUrl(
-        env: FlowEnvironment,
+        env: BackendEnvironment,
         url: String
     ) {
         val httpClient = env.getInterface(HttpClient::class)!!
@@ -273,17 +273,15 @@ class Openid4VciProofingState(
         }
         val location = response.headers["Location"]!!
         val code = location.substring(location.indexOf("code=") + 5)
-        obtainTokenUsingCode(env, code, dpopNonce)
+        obtainTokenUsingCode(code, dpopNonce)
     }
 
     private suspend fun obtainTokenUsingCode(
-        env: FlowEnvironment,
         authCode: String,
         dpopNonce: String?
     ) {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         this.access = OpenidUtil.obtainToken(
-            env = env,
             tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
@@ -294,10 +292,9 @@ class Openid4VciProofingState(
         Logger.i(TAG, "Token request: success")
     }
 
-    private suspend fun obtainTokenUsingPreauthorizedCode(env: FlowEnvironment) {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+    private suspend fun obtainTokenUsingPreauthorizedCode() {
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         this.access = OpenidUtil.obtainToken(
-            env = env,
             tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
@@ -309,11 +306,11 @@ class Openid4VciProofingState(
         Logger.i(TAG, "Token request: success")
     }
 
-    private suspend fun processOpenid4VpResponse(env: FlowEnvironment, response: String) {
+    private suspend fun processOpenid4VpResponse(response: String) {
         val body = String(openid4VpRequest!!.split('.')[1].fromBase64Url())
         val url = Json.parseToJsonElement(body).jsonObject["response_uri"]!!.jsonPrimitive.content
         val state = Json.parseToJsonElement(body).jsonObject["state"]!!.jsonPrimitive.content
-        val httpClient = env.getInterface(HttpClient::class)!!
+        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         val resp = httpClient.post(url) {
             headers {
                 append("Content-Type", "application/x-www-form-urlencoded")
@@ -326,9 +323,9 @@ class Openid4VciProofingState(
         val parsedResponse = Json.parseToJsonElement(String(resp.readBytes())).jsonObject
         val presentationCode =
             parsedResponse["presentation_during_issuance_session"]!!.jsonPrimitive.content
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val authorizationMetadata = selectAuthorizationServer(metadata)
-        val dpop = OpenidUtil.generateDPoP(env, clientId,
+        val dpop = OpenidUtil.generateDPoP(clientId,
             authorizationMetadata.authorizationChallengeEndpoint!!, null, null)
         val challengeRequest = FormUrlEncoder {
             add("auth_session", proofingInfo!!.authSession!!)
@@ -348,7 +345,7 @@ class Openid4VciProofingState(
         val parsedChallengeResponse =
             Json.parseToJsonElement(String(challengeResponse.readBytes())).jsonObject
         val authCode = parsedChallengeResponse["authorization_code"]!!.jsonPrimitive.content
-        obtainTokenUsingCode(env, authCode, null)
+        obtainTokenUsingCode(authCode, null)
     }
 
     private fun selectAuthorizationServer(
@@ -364,11 +361,11 @@ class Openid4VciProofingState(
         }
     }
 
-    private suspend fun initializeProofing(env: FlowEnvironment) {
-        performPushedAuthorizationRequest(env)
+    private suspend fun initializeProofing() {
+        performPushedAuthorizationRequest()
         val proofingInfo = this.proofingInfo
         if (proofingInfo?.authSession != null && proofingInfo.openid4VpPresentation != null) {
-            val httpClient = env.getInterface(HttpClient::class)!!
+            val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
             val presentationResponse = httpClient.get(proofingInfo.openid4VpPresentation) {}
             if (presentationResponse.status == HttpStatusCode.OK) {
                 openid4VpRequest = String(presentationResponse.readBytes())
@@ -376,11 +373,11 @@ class Openid4VciProofingState(
         }
     }
 
-    private suspend fun performPushedAuthorizationRequest(env: FlowEnvironment) {
+    private suspend fun performPushedAuthorizationRequest() {
         if (credentialOffer is Openid4VciCredentialOfferPreauthorizedCode) {
             return
         }
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val config = metadata.credentialConfigurations[credentialConfigurationId]!!
         val authorizationMetadata = selectAuthorizationServer(metadata)
         // Use authorization challenge if available, as we want to try it first before falling
@@ -404,14 +401,14 @@ class Openid4VciProofingState(
 
         // NB: applicationSupport will only be non-null when running this code locally in the
         // Android Wallet app.
-        val applicationSupport = env.getInterface(ApplicationSupport::class)
+        val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)
         val landingUrl = applicationSupport?.createLandingUrl() ?:
-                    ApplicationSupportState(clientId).createLandingUrl(env)
+                    ApplicationSupportState(clientId).createLandingUrl()
 
-        val clientKeyInfo = OpenidUtil.communicationKey(env, clientId)
+        val clientKeyInfo = OpenidUtil.communicationKey(clientId)
         val clientAssertion = if (applicationSupport != null) {
             // Required when applicationSupport is exposed
-            val assertionMaker = env.getInterface(DeviceAssertionMaker::class)!!
+            val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
             applicationSupport.createJwtClientAssertion(
                 clientKeyInfo.attestation,
                 assertionMaker.makeDeviceAssertion {
@@ -423,7 +420,6 @@ class Openid4VciProofingState(
             )
         } else {
             ApplicationSupportState(clientId).createJwtClientAssertion(
-                env,
                 clientKeyInfo.publicKey,
                 credentialIssuerUri
             )
@@ -448,7 +444,7 @@ class Openid4VciProofingState(
             add("code_challenge", codeChallenge)
             add("client_id", issuanceClientId)
         }
-        val httpClient = env.getInterface(HttpClient::class)!!
+        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         val response = httpClient.post(endpoint) {
             headers {
                 append("Content-Type", "application/x-www-form-urlencoded")
@@ -478,5 +474,9 @@ class Openid4VciProofingState(
             landingUrl = landingUrl,
             openid4VpPresentation = presentation?.jsonPrimitive?.content
         )
+    }
+
+    private suspend fun checkClientId() {
+        check(clientId == RpcAuthContext.getClientId())
     }
 }

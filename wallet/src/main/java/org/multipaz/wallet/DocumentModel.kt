@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableStateListOf
 import androidx.fragment.app.FragmentActivity
+import kotlinx.coroutines.CancellationException
 import org.multipaz.android.direct_access.DirectAccess
 import org.multipaz.android.direct_access.DirectAccessCredential
 import org.multipaz.securearea.SecureArea
@@ -73,8 +74,10 @@ import org.multipaz.wallet.ui.prompt.biometric.showBiometricPrompt
 import org.multipaz.wallet.ui.prompt.passphrase.showPassphrasePrompt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -108,6 +111,12 @@ class DocumentModel(
     var activity: FragmentActivity? = null
     private var updateJob: Job? = null
 
+    private val documentsToUpdate = Channel<String>(capacity = 5)
+
+    init {
+        startSync()
+    }
+
     fun getDocumentInfo(cardId: String): DocumentInfo? {
         for (card in documentInfos) {
             if (card.documentId == cardId) {
@@ -137,12 +146,7 @@ class DocumentModel(
      * @throws Exception if an error occurs
      */
     suspend fun refreshCard(documentInfo: DocumentInfo) {
-        val document = documentStore.lookupDocument(documentInfo.documentId)
-        if (document == null) {
-            Logger.w(TAG, "No document with id ${documentInfo.documentId}")
-            return
-        }
-        syncDocumentWithIssuer(document)
+        documentsToUpdate.send(documentInfo.documentId)
     }
 
     suspend fun developerModeRequestUpdate(
@@ -155,7 +159,8 @@ class DocumentModel(
             Logger.w(TAG, "No document with id ${documentInfo.documentId}")
             return
         }
-        val issuer = walletServerProvider.getIssuingAuthority(document.issuingAuthorityIdentifier)
+        val issuingAuthorityId = document.issuingAuthorityIdentifier ?: return
+        val issuer = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
         issuer.developerModeRequestUpdate(
             document.documentIdentifier,
             requestRemoteDeletion,
@@ -230,12 +235,10 @@ class DocumentModel(
     }
 
     private suspend fun createCardForDocument(document: Document): DocumentInfo? {
-        /*
-        // TODO: we may want to do this in future:
-        if (!document.walletDocumentMetadata.provisioned) {
+        if (document.issuingAuthorityIdentifier == null) {
+            // Not yet initialized
             return null
         }
-        */
         val documentConfiguration = document.documentConfiguration
         val options = BitmapFactory.Options()
         options.inMutable = true
@@ -556,9 +559,9 @@ class DocumentModel(
                             } else {
                                 addDocument(document)
                                 val metadata = document.walletDocumentMetadata
-                                val issuingAuthorityIdentifier =
-                                    metadata.issuingAuthorityIdentifier
-                                if (!issuingAuthorityIdSet.contains(issuingAuthorityIdentifier)) {
+                                val issuingAuthorityIdentifier = metadata.issuingAuthorityIdentifier
+                                if (issuingAuthorityIdentifier != null &&
+                                    !issuingAuthorityIdSet.contains(issuingAuthorityIdentifier)) {
                                     issuingAuthorityIdSet.add(issuingAuthorityIdentifier)
                                     startListeningForNotifications(issuingAuthorityIdentifier)
                                 }
@@ -630,33 +633,26 @@ class DocumentModel(
         CoroutineScope(Dispatchers.IO).launch {
             val issuingAuthority = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
             Logger.i(TAG, "collecting notifications for $issuingAuthorityId...")
-            issuingAuthority.notifications.collect { notification ->
+            issuingAuthority.collect { notification ->
                 Logger.i(
                     TAG,
                     "received notification $issuingAuthorityId.${notification.documentId}"
                 )
                 // Find the local [Document] instance, if any
-                for (id in documentStore.listDocuments()) {
-                    val document = documentStore.lookupDocument(id)
-                    if (document?.issuingAuthorityIdentifier == issuingAuthorityId &&
-                        document.documentIdentifier == notification.documentId
-                    ) {
-                        Logger.i(TAG, "Handling issuer update on ${notification.documentId}")
-                        try {
-                            syncDocumentWithIssuer(document)
-                        } catch (e: Throwable) {
-                            Logger.e(TAG, "Error when syncing with issuer", e)
-                            // For example, this can happen if the user removed the LSKF and the
-                            // issuer wants auth-bound keys when using Android Keystore. In this
-                            // case [ScreenLockRequiredException] is thrown... it can also happen
-                            // if e.g. there's intermittent network connectivity.
-                            //
-                            // There's no point in bubbling this up to the user and since we have
-                            // a background service running [syncDocumentWithIssuer] _anyway_
-                            // we'll recover at some point.
-                            //
+                try {
+                    for (id in documentStore.listDocuments()) {
+                        val document = documentStore.lookupDocument(id)
+                        if (document?.issuingAuthorityIdentifier == issuingAuthorityId &&
+                            document.documentIdentifier == notification.documentId
+                        ) {
+                            Logger.i(TAG, "Handling issuer update on ${notification.documentId}")
+                            documentsToUpdate.send(id)
                         }
                     }
+                } catch (err: CancellationException) {
+                    throw err
+                } catch (err: Throwable) {
+                    Logger.e(TAG, "Error processing notification", err)
                 }
             }
         }
@@ -668,13 +664,41 @@ class DocumentModel(
     fun periodicSyncForAllDocuments() {
         CoroutineScope(Dispatchers.IO).launch {
             for (documentId in documentStore.listDocuments()) {
-                documentStore.lookupDocument(documentId)?.let { document ->
-                    Logger.i(TAG, "Periodic sync for ${document.identifier}")
-                    try {
-                        syncDocumentWithIssuer(document)
-                    } catch (e: Throwable) {
-                        Logger.e(TAG, "Error when syncing with issuer", e)
+                Logger.i(TAG, "Periodic sync for $documentId")
+                documentsToUpdate.send(documentId)
+            }
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun startSync() {
+        // Run document updates in a single thread, it is unsafe to run several updates
+        // to the same document concurrently
+        CoroutineScope(Dispatchers.Default.limitedParallelism(1)).launch {
+            while (true) {
+                val documentId = documentsToUpdate.receive()
+                try {
+                    val document = documentStore.lookupDocument(documentId)
+                    if (document == null) {
+                        Logger.w(TAG, "Cannot sync, document not found: $documentId")
+                        continue
                     }
+                    Logger.i(TAG, "Start syncing with issuer: $documentId")
+                    syncDocumentWithIssuer(document)
+                    Logger.i(TAG, "Success syncing with issuer: $documentId")
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    Logger.e(TAG, "Error when syncing with issuer: $documentId", e)
+                    // For example, this can happen if the user removed the LSKF and the
+                    // issuer wants auth-bound keys when using Android Keystore. In this
+                    // case [ScreenLockRequiredException] is thrown... it can also happen
+                    // if e.g. there's intermittent network connectivity.
+                    //
+                    // There's no point in bubbling this up to the user and since we have
+                    // a background service running [syncDocumentWithIssuer] _anyway_
+                    // we'll recover at some point.
+                    //
                 }
             }
         }
@@ -709,7 +733,12 @@ class DocumentModel(
     private suspend fun syncDocumentWithIssuerCore(document: Document) {
         Logger.i(TAG, "syncDocumentWithIssuer: Refreshing ${document.identifier}")
         val metadata = document.walletDocumentMetadata
-        val issuer = walletServerProvider.getIssuingAuthority(document.issuingAuthorityIdentifier)
+        val issuingAuthorityId = document.issuingAuthorityIdentifier
+        if (issuingAuthorityId == null) {
+            Logger.i(TAG, "syncDocumentWithIssuer: issuing authority is not initialized")
+            return
+        }
+        val issuer = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
 
         // Download latest issuer configuration.
         metadata.setIssuingAuthorityConfiguration(issuer.getConfiguration())
@@ -996,7 +1025,7 @@ class DocumentModel(
                 }
                 requestCredentialsFlow.sendPossessionProofs(possessionProofs)
             }
-            requestCredentialsFlow.complete()  // noop for local, but important for server-side IA
+            issuer.completeRequestCredentials(requestCredentialsFlow)
         }
     }
 }

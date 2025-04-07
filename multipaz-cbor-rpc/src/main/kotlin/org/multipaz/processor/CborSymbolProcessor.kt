@@ -47,11 +47,13 @@ class CborSymbolProcessor(
         const val ANNOTATION_SERIALIZABLE_GENERATED = "CborSerializableGenerated"
         const val ANNOTATION_SERIALIZATION_IMPLEMENTED = "CborSerializationImplemented"
         const val ANNOTATION_MERGE = "CborMerge"
+        const val CBOR_TYPE = "org.multipaz.cbor.Cbor"
         const val BSTR_TYPE = "org.multipaz.cbor.Bstr"
         const val TSTR_TYPE = "org.multipaz.cbor.Tstr"
         const val SIMPLE_TYPE = "org.multipaz.cbor.Simple"
         const val CBOR_MAP_TYPE = "org.multipaz.cbor.CborMap"
         const val CBOR_ARRAY_TYPE = "org.multipaz.cbor.CborArray"
+        const val BUILD_CBOR_ARRAY = "org.multipaz.cbor.buildCborArray"
         const val DATA_ITEM_CLASS = "org.multipaz.cbor.DataItem"
         const val BYTESTRING_TYPE = "kotlinx.io.bytestring.ByteString"
         const val TO_DATAITEM_DATETIMESTRING_FUN = "org.multipaz.cbor.toDataItemDateTimeString"
@@ -712,7 +714,7 @@ class CborSymbolProcessor(
         classDeclaration: KSClassDeclaration,
         schemaId: ByteString?
     ) = with(codeBuilder) {
-        importQualifiedName("org.multipaz.cbor.Cbor")
+        importQualifiedName(CBOR_TYPE)
         val baseName = classDeclaration.simpleName.asString()
         val modifier = getModifier(classDeclaration)
 

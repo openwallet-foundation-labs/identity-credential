@@ -2,7 +2,7 @@ package org.multipaz.provisioning.openid4vci
 
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.IssuingAuthorityException
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInfo
@@ -27,8 +27,8 @@ internal object OpenidUtil {
 
     private val keyCreationMutex = Mutex()
 
-    suspend fun communicationKey(env: FlowEnvironment, clientId: String): KeyInfo {
-        val secureArea = env.getInterface(SecureAreaProvider::class)!!.get()
+    suspend fun communicationKey(clientId: String): KeyInfo {
+        val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
         val alias = "OpenidComm_" + clientId
         return try {
             secureArea.getKeyInfo(alias)
@@ -44,21 +44,20 @@ internal object OpenidUtil {
         }
     }
 
-    suspend fun communicationSign(env: FlowEnvironment, clientId: String, message: ByteArray): ByteArray {
-        val secureArea = env.getInterface(SecureAreaProvider::class)!!.get()
+    suspend fun communicationSign(clientId: String, message: ByteArray): ByteArray {
+        val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
         val alias = "OpenidComm_" + clientId
         val sig = secureArea.sign(alias, message, null)
         return sig.toCoseEncoded()
     }
 
     suspend fun generateDPoP(
-        env: FlowEnvironment,
         clientId: String,
         requestUrl: String,
         dpopNonce: String?,
         accessToken: String? = null
     ): String {
-        val keyInfo = communicationKey(env, clientId)
+        val keyInfo = communicationKey(clientId)
         val header = buildJsonObject {
             put("typ", JsonPrimitive("dpop+jwt"))
             put("alg", JsonPrimitive(keyInfo.publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
@@ -78,12 +77,11 @@ internal object OpenidUtil {
         }
         val body = bodyObj.toString().toByteArray().toBase64Url()
         val message = "$header.$body"
-        val signature = communicationSign(env, clientId, message.toByteArray()).toBase64Url()
+        val signature = communicationSign(clientId, message.toByteArray()).toBase64Url()
         return "$message.$signature"
     }
 
     suspend fun obtainToken(
-        env: FlowEnvironment,
         tokenUrl: String,
         clientId: String,
         issuanceClientId: String,
@@ -98,12 +96,12 @@ internal object OpenidUtil {
         if (refreshToken == null && authorizationCode == null && preauthorizedCode == null) {
             throw IllegalArgumentException("No authorizations provided")
         }
-        val httpClient = env.getInterface(HttpClient::class)!!
+        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         var currentDpopNonce = dpopNonce
         // When dpop nonce is null, this loop will run twice, first request will return with error,
         // but will provide fresh, dpop nonce and the second request will get fresh access data.
         while (true) {
-            val dpop = generateDPoP(env, clientId, tokenUrl, currentDpopNonce, null)
+            val dpop = generateDPoP(clientId, tokenUrl, currentDpopNonce, null)
             val tokenRequest = FormUrlEncoder {
                 if (refreshToken != null) {
                     add("grant_type", "refresh_token")

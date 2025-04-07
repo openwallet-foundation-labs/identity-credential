@@ -3,15 +3,14 @@ package org.multipaz.wallet.server
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.flow.handler.AesGcmCipher
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.handler.SimpleCipher
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.AesGcmCipher
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.handler.SimpleCipher
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.hardcoded.IssuerDocument
 import org.multipaz.provisioning.hardcoded.IssuingAuthorityState
-import org.multipaz.provisioning.wallet.AuthenticationState
 import org.multipaz.server.BaseHttpServlet
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
@@ -21,9 +20,11 @@ import jakarta.servlet.http.Cookie
 import kotlinx.coroutines.runBlocking
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.util.encoders.Base64
+import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import kotlin.random.Random
@@ -61,7 +62,7 @@ class AdminServlet : BaseHttpServlet() {
         )
     }
 
-    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+    override fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {
         runBlocking {
             val storage = env.getTable(rootStateTableSpec)
             val key = storage.get("adminStateEncryptionKey")
@@ -82,7 +83,7 @@ class AdminServlet : BaseHttpServlet() {
                     ?: saltedHash(servletConfig.getInitParameter("initialAdminPassword"))
         }
         // Use notifications from FlowServlet (it must be initialized before AdminServlet)
-        return environmentFor(FlowServlet::class)!!.getInterface(FlowNotifications::class)
+        return environmentFor(RpcServlet::class)!!.getInterface(RpcNotifications::class)
     }
 
     private fun getAuthCookie(req: HttpServletRequest): Cookie? {
@@ -134,11 +135,12 @@ class AdminServlet : BaseHttpServlet() {
                 val newNumber = parameters["administrativeNumber"]!![0]
                 val issuingAuthority = IssuingAuthorityState(clientId, issuingAuthorityId)
                 runBlocking {
-                    issuingAuthority.administrativeActionUpdateAdministrativeNumber(
-                        env = environment,
-                        documentId = documentId,
-                        administrativeNumber = newNumber
-                    )
+                    withContext(environment) {
+                        issuingAuthority.administrativeActionUpdateAdministrativeNumber(
+                            documentId = documentId,
+                            administrativeNumber = newNumber
+                        )
+                    }
                 }
                 resp.contentType = "text/plain"
                 resp.writer.println("Success")
@@ -238,7 +240,7 @@ class AdminServlet : BaseHttpServlet() {
                 val writer = resp.outputStream.writer(Charset.forName("utf-8"))
                 writer.write(LIST_HEAD)
                 runBlocking {
-                    val storage = environment.getTable(AuthenticationState.clientTableSpec)
+                    val storage = environment.getTable(RpcAuthInspectorAssertion.rpcClientTableSpec)
                     val clients = storage.enumerate()
                     for (client in clients) {
                         val escaped = client.htmlEscape()

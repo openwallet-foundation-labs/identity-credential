@@ -1,10 +1,10 @@
 package org.multipaz.server.openid4vci
 
 import org.multipaz.crypto.X509Cert
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.cache
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.cache
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.util.fromBase64Url
 import jakarta.servlet.http.HttpServletRequest
@@ -12,7 +12,7 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
-suspend fun createSession(environment: FlowEnvironment, req: HttpServletRequest): String {
+suspend fun createSession(environment: BackendEnvironment, req: HttpServletRequest): String {
     // Read all parameters
     if (req.getParameter("client_assertion_type") != ParServlet.ASSERTION_TYPE) {
         throw InvalidRequestException("invalid parameter 'client_assertion_type'")

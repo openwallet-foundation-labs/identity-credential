@@ -2,8 +2,6 @@ package org.multipaz.wallet.server
 
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tstr
@@ -29,10 +27,10 @@ import org.multipaz.documenttype.knowntypes.GermanPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
 import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.documenttype.knowntypes.UtopiaNaturalization
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.mdoc.util.MdocUtil
@@ -305,7 +303,7 @@ class VerifierServlet : BaseHttpServlet() {
         private lateinit var verifierSessionTable: StorageTable
         private lateinit var verifierRootStateTable: StorageTable
 
-        private fun createKeyMaterial(serverEnvironment: FlowEnvironment): KeyMaterial {
+        private fun createKeyMaterial(serverEnvironment: BackendEnvironment): KeyMaterial {
             val keyMaterialBlob = runBlocking {
                 verifierRootStateTable = serverEnvironment.getTable(verifierRootStateTableSpec)
                 verifierSessionTable = serverEnvironment.getTable(verifierSessionTableSpec)
@@ -335,7 +333,7 @@ class VerifierServlet : BaseHttpServlet() {
         }
     }
 
-    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+    override fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {
         configuration = env.getInterface(Configuration::class)!!
         keyMaterial = createKeyMaterial(env)
         return null

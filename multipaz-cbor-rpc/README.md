@@ -19,6 +19,7 @@ Following field data types are supported at this point:
  - `Long`
  - `String`
  - `Boolean`
+ - `ByteString`
  - enums
  - CBOR `DataItem`
  - classes which are `@CborSerializable`
@@ -28,8 +29,8 @@ Objects are serialized as CBOR Maps with field names as keys. Control
 of the key names and serializing objects area arrays are planned for
 the future.
 
-Annotation processor generates `toCborDataItem()` extension for the
-class and `fromCborDataItem(dataItem: DataItem)` extension for the
+Annotation processor generates `toCbor` and `toDataItem` extension for the
+class and `fromCbor` and `fromDataItem` extension for the
 companion object.
 
 ### Serializing sealed class hierarchies
@@ -37,7 +38,7 @@ companion object.
 Sealed classes and their subclasses provide an excellent way to
 model variant data types. To create serializer and deserializer
 for the sealed class hierarchy, name your classes so that the
-root class name is the prefix for leaf class names, i.e.
+root class name is the prefix or suffix for leaf class names, i.e.
 `Request` for the root and `RequestSimple` for the leaf (or
 alternatively `typeId` parameter must be given; see below).
 Then simply add `@CborSerializable` annotation to the root
@@ -51,7 +52,7 @@ supported.
 It is possible to change the name of the type key by specifying
 `typeKey` parameter in `@CborSerializable` on the root class.
 Specific type id can also be specified as `typeId` parameter in
-`@CborSerializable` on a left class (and must be specified if 
+`@CborSerializable` on a leaf class (and must be specified if 
 root class name is not a prefix of a leaf class name).
 
 ### Merging additional keys in CBOR map that represents an object

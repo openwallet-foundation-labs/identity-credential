@@ -2,22 +2,22 @@ package org.multipaz.provisioning
 
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.AssertionDPoPKey
-import org.multipaz.flow.annotation.FlowInterface
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.client.FlowNotifiable
+import org.multipaz.rpc.annotation.RpcInterface
+import org.multipaz.rpc.annotation.RpcMethod
+import org.multipaz.rpc.client.RpcNotifiable
 import org.multipaz.securearea.KeyAttestation
 
 /**
  * Server-side support functionality for the wallet mobile app. This is needed even if the
  * full-blown wallet server is not used.
  */
-@FlowInterface
-interface ApplicationSupport : FlowNotifiable<LandingUrlNotification> {
+@RpcInterface
+interface ApplicationSupport : RpcNotifiable<LandingUrlNotification> {
     /**
      * Creates a "landing" absolute URL suitable for web redirects. When a landing URL is
      * navigated to, [LandingUrlNotification] is sent to the client.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun createLandingUrl(): String
 
     /**
@@ -26,7 +26,7 @@ interface ApplicationSupport : FlowNotifiable<LandingUrlNotification> {
      *
      * [landingUrl] URL of the landing page as returned by [createLandingUrl].
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getLandingUrlStatus(landingUrl: String): String?
 
     /**
@@ -35,14 +35,14 @@ interface ApplicationSupport : FlowNotifiable<LandingUrlNotification> {
      * This is the same client id that would be used in client assertion created using
      * [createJwtClientAssertion].
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getClientAssertionId(targetIssuanceUrl: String): String
 
     /**
      * Creates OAuth JWT client assertion based on the mobile-platform-specific [KeyAttestation]
      * for the given OpenId4VCI issuance server specified in [AssertionDPoPKey.targetUrl].
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun createJwtClientAssertion(
         keyAttestation: KeyAttestation,
         deviceAssertion: DeviceAssertion  // holds AssertionDPoPKey
@@ -52,7 +52,7 @@ interface ApplicationSupport : FlowNotifiable<LandingUrlNotification> {
      * Creates OAuth JWT key attestation based on the given list of mobile-platform-specific
      * [KeyAttestation]s.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun createJwtKeyAttestation(
         keyAttestations: List<KeyAttestation>,
         keysAssertion: DeviceAssertion // holds AssertionBindingKeys

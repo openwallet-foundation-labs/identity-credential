@@ -2,44 +2,39 @@ package org.multipaz.provisioning.openid4vci
 
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.device.DeviceAssertion
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.provisioning.CredentialConfiguration
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialRequest
 import org.multipaz.provisioning.KeyPossessionChallenge
 import org.multipaz.provisioning.KeyPossessionProof
-import org.multipaz.provisioning.RequestCredentialsFlow
+import org.multipaz.provisioning.RequestCredentials
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
 
-@FlowState(
-    flowInterface = RequestCredentialsFlow::class
-)
+@RpcState(endpoint = "openid4vci.cred.keyatt")
 @CborSerializable
 class RequestCredentialsUsingKeyAttestation(
     val clientId: String,
-    documentId: String,
-    credentialConfiguration: CredentialConfiguration,
-    format: CredentialFormat? = null,
+    override val documentId: String,
+    override val credentialConfiguration: CredentialConfiguration,
+    override var format: CredentialFormat? = null,
     val credentialRequestSets: MutableList<CredentialRequestSet> = mutableListOf()
-) : AbstractRequestCredentials(documentId, credentialConfiguration, format) {
-    companion object
-
-    @FlowMethod
-    fun getCredentialConfiguration(
-        env: FlowEnvironment,
+) : AbstractRequestCredentials, RequestCredentials, RpcAuthInspector by RpcAuthBackendDelegate {
+    override suspend fun getCredentialConfiguration(
         format: CredentialFormat
     ): CredentialConfiguration {
+        checkClientId()
         this.format = format
         return credentialConfiguration
     }
 
-    @FlowMethod
-    fun sendCredentials(
-        env: FlowEnvironment,
+    override suspend fun sendCredentials(
         credentialRequests: List<CredentialRequest>,
         keysAssertion: DeviceAssertion? // holds AssertionBingingKeys
     ): List<KeyPossessionChallenge> {
+        checkClientId()
         credentialRequestSets.add(CredentialRequestSet(
             format = format!!,
             keyAttestations = credentialRequests.map { it.secureAreaBoundKeyAttestation },
@@ -48,8 +43,13 @@ class RequestCredentialsUsingKeyAttestation(
         return emptyList()
     }
 
-    @FlowMethod
-    fun sendPossessionProofs(env: FlowEnvironment, keyPossessionProofs: List<KeyPossessionProof>) {
+    override suspend fun sendPossessionProofs(keyPossessionProofs: List<KeyPossessionProof>) {
         throw UnsupportedOperationException("Should not be called")
     }
+
+    private suspend fun checkClientId() {
+        check(clientId == RpcAuthContext.getClientId())
+    }
+
+    companion object
 }

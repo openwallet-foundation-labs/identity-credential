@@ -1,8 +1,6 @@
 package org.multipaz.server.openid4vci
 
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
@@ -10,9 +8,9 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.document.NameSpacedData
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.util.fromBase64Url
 import jakarta.servlet.http.HttpServletRequest

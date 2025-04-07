@@ -2,9 +2,7 @@ package org.multipaz.provisioning.hardcoded
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborInt
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.RawCbor
@@ -31,12 +29,10 @@ import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.GermanPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
-import org.multipaz.flow.annotation.FlowJoin
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.CredentialData
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.DocumentCondition
@@ -50,9 +46,8 @@ import org.multipaz.provisioning.IssuingAuthorityNotification
 import org.multipaz.provisioning.SdJwtVcDocumentConfiguration
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.WalletServerSettings
-import org.multipaz.provisioning.common.AbstractIssuingAuthorityState
-import org.multipaz.flow.cache
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.cache
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.evidence.DirectAccessDocumentConfiguration
 import org.multipaz.provisioning.evidence.EvidenceResponse
 import org.multipaz.provisioning.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -60,7 +55,6 @@ import org.multipaz.provisioning.evidence.EvidenceResponseIcaoPassiveAuthenticat
 import org.multipaz.provisioning.evidence.EvidenceResponseQuestionMultipleChoice
 import org.multipaz.provisioning.fromCbor
 import org.multipaz.provisioning.proofing.defaultCredentialConfiguration
-import org.multipaz.provisioning.wallet.AuthenticationState
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.util.MdocUtil
@@ -81,14 +75,18 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearsUntil
 import kotlinx.io.bytestring.ByteString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.provisioning.Proofing
+import org.multipaz.provisioning.Registration
+import org.multipaz.provisioning.RequestCredentials
+import org.multipaz.provisioning.wallet.AuthenticationState
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
+import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -106,14 +104,16 @@ private const val ISO_23220_2_NAMESPACE = PhotoID.ISO_23220_2_NAMESPACE
 /**
  * State of [IssuingAuthority] RPC implementation.
  */
-@FlowState(
-    flowInterface = IssuingAuthority::class
-)
+@RpcState(endpoint = "hardcoded")
 @CborSerializable
 class IssuingAuthorityState(
-    val clientId: String = "",
+    // NB: since this object is used to emit notifications, it cannot change, as its state
+    // serves as notification key. So it generally should not have var members, only val.
+    // This is also the reason we keep clientId here (so there is no conflict between different
+    // clients)
+    val clientId: String,
     val authorityId: String = ""
-) : AbstractIssuingAuthorityState() {
+) : IssuingAuthority, RpcAuthInspector by RpcAuthBackendDelegate {
     companion object {
         private const val TAG = "IssuingAuthorityState"
         
@@ -121,8 +121,11 @@ class IssuingAuthorityState(
         private const val TYPE_DRIVING_LICENSE = "DrivingLicense"
         private const val TYPE_PHOTO_ID = "PhotoId"
 
-        suspend fun getConfiguration(env: FlowEnvironment, id: String): IssuingAuthorityConfiguration {
-            return env.cache(IssuingAuthorityConfiguration::class, id) { configuration, resources ->
+        suspend fun getConfiguration(id: String): IssuingAuthorityConfiguration {
+            return BackendEnvironment.cache(
+                IssuingAuthorityConfiguration::class,
+                id
+            ) { configuration, resources ->
                 val settings = WalletServerSettings(configuration)
                 val prefix = "issuingAuthority.$id"
                 val logoPath = settings.getString("${prefix}.logo") ?: "default/logo.png"
@@ -178,9 +181,9 @@ class IssuingAuthorityState(
         )
     }
 
-    @FlowMethod
-    suspend fun register(env: FlowEnvironment): RegistrationState {
-        val documentId = createIssuerDocument(env,
+    override suspend fun register(): Registration {
+        checkClientId()
+        val documentId = createIssuerDocument(
             IssuerDocument(
                 RegistrationResponse(false),
                 DocumentCondition.PROOFING_REQUIRED,
@@ -192,15 +195,15 @@ class IssuingAuthorityState(
         return RegistrationState(documentId)
     }
 
-    @FlowMethod
-    suspend fun getConfiguration(env: FlowEnvironment): IssuingAuthorityConfiguration {
-        return getConfiguration(env, authorityId)
+    override suspend fun getConfiguration(): IssuingAuthorityConfiguration {
+        checkClientId()
+        return getConfiguration(authorityId)
     }
 
-    @FlowJoin
-    suspend fun completeRegistration(env: FlowEnvironment, registrationState: RegistrationState) {
+    override suspend fun completeRegistration(registration: Registration) {
+        checkClientId()
+        val registrationState = registration as RegistrationState
         updateIssuerDocument(
-            env,
             registrationState.documentId,
             IssuerDocument(
                 registrationState.response!!,
@@ -211,11 +214,11 @@ class IssuingAuthorityState(
             ))
     }
 
-    @FlowMethod
-    suspend fun getState(env: FlowEnvironment, documentId: String): DocumentState {
+    override suspend fun getState(documentId: String): DocumentState {
+        checkClientId()
         val now = Clock.System.now()
 
-        if (!issuerDocumentExists(env, documentId)) {
+        if (!issuerDocumentExists(documentId)) {
             return DocumentState(
                 now,
                 DocumentCondition.NO_SUCH_DOCUMENT,
@@ -224,7 +227,7 @@ class IssuingAuthorityState(
             )
         }
 
-        val issuerDocument = loadIssuerDocument(env, documentId)
+        val issuerDocument = loadIssuerDocument(documentId)
 
         if (issuerDocument.state == DocumentCondition.PROOFING_PROCESSING) {
             issuerDocument.state =
@@ -233,7 +236,7 @@ class IssuingAuthorityState(
                 } else {
                     DocumentCondition.PROOFING_FAILED
                 }
-            updateIssuerDocument(env, documentId, issuerDocument)
+            updateIssuerDocument(documentId, issuerDocument)
         }
 
         // This information is helpful for when using the admin web interface.
@@ -250,43 +253,49 @@ class IssuingAuthorityState(
         )
     }
 
-    @FlowMethod
-    suspend fun proof(env: FlowEnvironment, documentId: String): ProofingState {
-        val issuerDocument = loadIssuerDocument(env, documentId)
+    override suspend fun proof(documentId: String): Proofing {
+        checkClientId()
+        val issuerDocument = loadIssuerDocument(documentId)
         issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
         issuerDocument.collectedEvidence.clear()
         // TODO: propagate developer mode
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
-        return ProofingState(clientId, documentId, authorityId, settings.developerMode)
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
+        return ProofingState(documentId, authorityId, settings.developerMode)
     }
 
-    @FlowJoin
-    suspend fun completeProof(env: FlowEnvironment, state: ProofingState) {
-        val issuerDocument = loadIssuerDocument(env, state.documentId)
+    override suspend fun completeProof(proofing: Proofing) {
+        checkClientId()
+        val state = proofing as ProofingState
+        val issuerDocument = loadIssuerDocument(state.documentId)
         issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
         issuerDocument.collectedEvidence.putAll(state.evidence)
-        updateIssuerDocument(env, state.documentId, issuerDocument)
+        updateIssuerDocument(state.documentId, issuerDocument)
     }
 
-    @FlowMethod
-    suspend fun getDocumentConfiguration(env: FlowEnvironment, documentId: String): DocumentConfiguration {
-        val issuerDocument = loadIssuerDocument(env, documentId)
-        check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
-        issuerDocument.state = DocumentCondition.READY
-        if (issuerDocument.documentConfiguration == null) {
-            issuerDocument.documentConfiguration =
-                generateDocumentConfiguration(env, issuerDocument.collectedEvidence)
+    override suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration {
+        checkClientId()
+        try {
+            val issuerDocument = loadIssuerDocument(documentId)
+            check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
+            issuerDocument.state = DocumentCondition.READY
+            if (issuerDocument.documentConfiguration == null) {
+                issuerDocument.documentConfiguration =
+                    generateDocumentConfiguration(issuerDocument.collectedEvidence)
+            }
+            updateIssuerDocument(documentId, issuerDocument)
+            return issuerDocument.documentConfiguration!!
+        } catch (err: Throwable) {
+            err.printStackTrace()
+            throw err
         }
-        updateIssuerDocument(env, documentId, issuerDocument)
-        return issuerDocument.documentConfiguration!!
     }
 
-    @FlowMethod
-    suspend fun requestCredentials(env: FlowEnvironment, documentId: String): RequestCredentialsState {
-        val issuerDocument = loadIssuerDocument(env, documentId)
+    override suspend fun requestCredentials(documentId: String): RequestCredentials {
+        checkClientId()
+        val issuerDocument = loadIssuerDocument(documentId)
         check(issuerDocument.state == DocumentCondition.READY)
 
-        val storage = env.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
+        val storage = BackendEnvironment.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
         val walletApplicationCapabilities = storage.get(clientId)?.let {
                 WalletApplicationCapabilities.fromCbor(it.toByteArray())
             } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
@@ -299,9 +308,10 @@ class IssuingAuthorityState(
         return RequestCredentialsState(documentId, credentialConfiguration)
     }
 
-    @FlowJoin
-    suspend fun completeRequestCredentials(env: FlowEnvironment, state: RequestCredentialsState) {
-        val issuerDocument = loadIssuerDocument(env, state.documentId)
+    override suspend fun completeRequestCredentials(requestCredentials: RequestCredentials) {
+        checkClientId()
+        val state = requestCredentials as RequestCredentialsState
+        val issuerDocument = loadIssuerDocument(state.documentId)
         for (request in state.credentialRequests) {
             // Skip if we already have a request for the authentication key
             if (hasCpoRequestForAuthenticationKey(issuerDocument,
@@ -310,7 +320,7 @@ class IssuingAuthorityState(
             }
             val authenticationKey = request.secureAreaBoundKeyAttestation.publicKey
             val presentationData = createPresentationData(
-                env,
+                BackendEnvironment.get(coroutineContext),
                 state.format!!,
                 issuerDocument.documentConfiguration!!,
                 authenticationKey
@@ -322,15 +332,15 @@ class IssuingAuthorityState(
             )
             issuerDocument.simpleCredentialRequests.add(simpleCredentialRequest)
         }
-        updateIssuerDocument(env, state.documentId, issuerDocument)
+        updateIssuerDocument(state.documentId, issuerDocument)
     }
 
-    @FlowMethod
-    suspend fun getCredentials(env: FlowEnvironment, documentId: String): List<CredentialData> {
+    override suspend fun getCredentials(documentId: String): List<CredentialData> {
+        checkClientId()
         val now = Clock.System.now()
         val validFrom = now
         val validUntil = now + 30.days
-        val issuerDocument = loadIssuerDocument(env, documentId)
+        val issuerDocument = loadIssuerDocument(documentId)
         val availableCPOs = mutableListOf<CredentialData>()
         for (cpoRequest in issuerDocument.simpleCredentialRequests) {
             availableCPOs.add(
@@ -344,18 +354,17 @@ class IssuingAuthorityState(
             )
         }
         issuerDocument.simpleCredentialRequests.clear()
-        updateIssuerDocument(env, documentId, issuerDocument)
+        updateIssuerDocument(documentId, issuerDocument)
         return availableCPOs
     }
 
-    @FlowMethod
-    suspend fun developerModeRequestUpdate(
-        env: FlowEnvironment,
+    override suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean
     ) {
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        checkClientId()
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val prefix = "issuingAuthority.$authorityId"
         val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
 
@@ -364,9 +373,9 @@ class IssuingAuthorityState(
         }
 
         if (requestRemoteDeletion) {
-            deleteIssuerDocument(env, documentId, notifyApplicationOfUpdate)
+            deleteIssuerDocument(documentId, notifyApplicationOfUpdate)
         } else {
-            val issuerDocument = loadIssuerDocument(env, documentId)
+            val issuerDocument = loadIssuerDocument(documentId)
             issuerDocument.state = DocumentCondition.CONFIGURATION_AVAILABLE
 
             // The update consists of just slapping an extra 0 at the end of `administrative_number`
@@ -404,20 +413,19 @@ class IssuingAuthorityState(
                 issuerDocument.documentConfiguration!!.sdJwtVcDocumentConfiguration,
                 issuerDocument.documentConfiguration!!.directAccessConfiguration
             )
-            updateIssuerDocument(env, documentId, issuerDocument, notifyApplicationOfUpdate)
+            updateIssuerDocument(documentId, issuerDocument, notifyApplicationOfUpdate)
         }
     }
 
     suspend fun administrativeActionUpdateAdministrativeNumber(
-        env: FlowEnvironment,
         documentId: String,
         administrativeNumber: String
     ) {
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val prefix = "issuingAuthority.$authorityId"
         val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
 
-        val issuerDocument = loadIssuerDocument(env, documentId)
+        val issuerDocument = loadIssuerDocument(documentId)
         issuerDocument.state = DocumentCondition.CONFIGURATION_AVAILABLE
 
         val builder = NameSpacedData.Builder(
@@ -446,22 +454,24 @@ class IssuingAuthorityState(
             issuerDocument.documentConfiguration!!.sdJwtVcDocumentConfiguration,
             issuerDocument.documentConfiguration!!.directAccessConfiguration
         )
-        updateIssuerDocument(env, documentId, issuerDocument, true)
+        updateIssuerDocument(documentId, issuerDocument, true)
     }
 
     private fun createPresentationData(
-        env: FlowEnvironment,
+        env: BackendEnvironment,
         format: CredentialFormat,
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
-    ): ByteArray = when (format) {
-        CredentialFormat.MDOC_MSO -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, false)
-        CredentialFormat.SD_JWT_VC -> createPresentationDataSdJwt(env, documentConfiguration, authenticationKey)
-        CredentialFormat.DirectAccess -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, true)
+    ): ByteArray {
+        return when (format) {
+            CredentialFormat.MDOC_MSO -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, false)
+            CredentialFormat.SD_JWT_VC -> createPresentationDataSdJwt(env, documentConfiguration, authenticationKey)
+            CredentialFormat.DirectAccess -> createPresentationDataMdoc(env, documentConfiguration, authenticationKey, true)
+        }
     }
 
     private fun createPresentationDataMdoc(
-        env: FlowEnvironment,
+        env: BackendEnvironment,
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey,
         isDirectAccess: Boolean
@@ -580,7 +590,7 @@ class IssuingAuthorityState(
     }
 
     private fun createPresentationDataSdJwt(
-        env: FlowEnvironment,
+        env: BackendEnvironment,
         documentConfiguration: DocumentConfiguration,
         authenticationKey: EcPublicKey
     ): ByteArray {
@@ -656,28 +666,26 @@ class IssuingAuthorityState(
     }
 
     private suspend fun generateDocumentConfiguration(
-        env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val prefix = "issuingAuthority.$authorityId"
         val type = settings.getString("$prefix.type") ?: TYPE_DRIVING_LICENSE
         return when (type) {
-            TYPE_DRIVING_LICENSE -> generateMdlDocumentConfiguration(env, collectedEvidence)
-            TYPE_EU_PID -> generateEuPidDocumentConfiguration(env, collectedEvidence)
-            TYPE_PHOTO_ID -> generatePhotoIdDocumentConfiguration(env, collectedEvidence)
+            TYPE_DRIVING_LICENSE -> generateMdlDocumentConfiguration(collectedEvidence)
+            TYPE_EU_PID -> generateEuPidDocumentConfiguration(collectedEvidence)
+            TYPE_PHOTO_ID -> generatePhotoIdDocumentConfiguration(collectedEvidence)
             else -> throw IllegalArgumentException("Unknown type $type")
         }
     }
 
     private suspend fun generateEuPidDocumentConfiguration(
-        env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
         val now = Clock.System.now()
         val issueDate = now
-        val resources = env.getInterface(Resources::class)!!
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val resources = BackendEnvironment.getInterface(Resources::class)!!
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val expiryDate = now + 365.days * 5
 
         val prefix = "issuingAuthority.$authorityId"
@@ -774,13 +782,12 @@ class IssuingAuthorityState(
     }
 
     private suspend fun generateMdlDocumentConfiguration(
-        env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
         val now = Clock.System.now()
         val issueDate = now
-        val resources = env.getInterface(Resources::class)!!
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val resources = BackendEnvironment.getInterface(Resources::class)!!
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val expiryDate = now + 365.days * 5
 
         val prefix = "issuingAuthority.$authorityId"
@@ -900,13 +907,12 @@ class IssuingAuthorityState(
     }
 
     private suspend fun generatePhotoIdDocumentConfiguration(
-        env: FlowEnvironment,
         collectedEvidence: Map<String, EvidenceResponse>
     ): DocumentConfiguration {
         val now = Clock.System.now()
         val issueDate = now
-        val resources = env.getInterface(Resources::class)!!
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        val resources = BackendEnvironment.getInterface(Resources::class)!!
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val expiryDate = now + 365.days * 5
 
         val prefix = "issuingAuthority.$authorityId"
@@ -1031,9 +1037,9 @@ class IssuingAuthorityState(
 
         if (documentType == documentTypeRepository.getDocumentTypeForMdoc(MDL_DOCTYPE)!!) {
             val portrait = resources.getRawResource(if (jpeg2k) {
-                "img_erika_portrait_compressed.jpf"
+                "img_erika_portrait.jpf"
             } else {
-                "img_erika_portrait_compressed.jpg"
+                "img_erika_portrait.jpg"
             })!!.toByteArray()
             val signatureOrUsualMark = resources.getRawResource(if (jpeg2k) {
                 "img_erika_signature.jpf"
@@ -1073,20 +1079,14 @@ class IssuingAuthorityState(
         return false
     }
 
-    private suspend fun issuerDocumentExists(env: FlowEnvironment, documentId: String): Boolean {
-        if (clientId.isEmpty()) {
-            throw IllegalStateException("Client not authenticated")
-        }
-        val storage = env.getTable(documentTableSpec)
+    private suspend fun issuerDocumentExists(documentId: String): Boolean {
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val encodedCbor = storage.get(partitionId = clientId, key = documentId)
         return encodedCbor != null
     }
 
-    private suspend fun loadIssuerDocument(env: FlowEnvironment, documentId: String): IssuerDocument {
-        if (clientId.isEmpty()) {
-            throw IllegalStateException("Client not authenticated")
-        }
-        val storage = env.getTable(documentTableSpec)
+    private suspend fun loadIssuerDocument(documentId: String): IssuerDocument {
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val encodedCbor = storage.get(partitionId = clientId, key = documentId)
         if (encodedCbor == null) {
             // TODO: replace with (new) UnknownDocumentException
@@ -1095,43 +1095,38 @@ class IssuingAuthorityState(
         return IssuerDocument.fromDataItem(Cbor.decode(encodedCbor.toByteArray()))
     }
 
-    private suspend fun createIssuerDocument(env: FlowEnvironment, document: IssuerDocument): String {
-        if (clientId.isEmpty()) {
-            throw IllegalStateException("Client not authenticated")
-        }
-        val storage = env.getTable(documentTableSpec)
+    private suspend fun createIssuerDocument(document: IssuerDocument): String {
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val bytes = Cbor.encode(document.toDataItem())
         return storage.insert(partitionId = clientId, key = null, data = ByteString(bytes))
     }
 
-    private suspend fun deleteIssuerDocument(env: FlowEnvironment,
-                                             documentId: String,
-                                             emitNotification: Boolean = true) {
-        if (clientId.isEmpty()) {
-            throw IllegalStateException("Client not authenticated")
-        }
-        val storage = env.getTable(documentTableSpec)
+    private suspend fun deleteIssuerDocument(
+        documentId: String,
+        emitNotification: Boolean = true
+    ) {
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         storage.delete(partitionId = clientId, key = documentId)
         if (emitNotification) {
-            emit(env, IssuingAuthorityNotification(documentId))
+            emit(IssuingAuthorityNotification(documentId))
         }
     }
 
     private suspend fun updateIssuerDocument(
-        env: FlowEnvironment,
         documentId: String,
         document: IssuerDocument,
         emitNotification: Boolean = true,
     ) {
-        if (clientId.isEmpty()) {
-            throw IllegalStateException("Client not authenticated")
-        }
-        val storage = env.getTable(documentTableSpec)
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val bytes = Cbor.encode(document.toDataItem())
         storage.update(partitionId = clientId, key = documentId, data = ByteString(bytes))
         if (emitNotification) {
-            emit(env, IssuingAuthorityNotification(documentId))
+            emit(IssuingAuthorityNotification(documentId))
         }
+    }
+
+    private suspend fun checkClientId() {
+        check(clientId == RpcAuthContext.getClientId())
     }
 
     private fun parseDateOfBirth(date: String): LocalDate {

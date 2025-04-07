@@ -14,12 +14,12 @@ import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.documenttype.knowntypes.EUPersonalID
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.cache
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.cache
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.util.MdocUtil
@@ -333,7 +333,7 @@ class CredentialServlet : BaseServlet() {
          * NB: Proof of possession **with** key attestation, if implemented, could be just enabled
          * unconditionally, as it does not have this issue (as long as key attestation is required).
          */
-        internal fun isStandaloneProofOfPossessionAccepted(environment: FlowEnvironment): Boolean {
+        internal fun isStandaloneProofOfPossessionAccepted(environment: BackendEnvironment): Boolean {
             val allowProofOfPossession = environment.getInterface(Configuration::class)
                 ?.getValue("openid4vci.allow-proof-of-possession")
             return allowProofOfPossession == "true"
