@@ -2,6 +2,9 @@ package org.multipaz.testapp
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.NativeSQLiteDriver
+import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.darwin.Darwin
 import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.PassphraseConstraints
@@ -132,6 +135,8 @@ private val secureEnclaveSecureAreaProvider = SecureAreaProvider {
 actual fun platformStorage(): Storage {
     return iosStorage
 }
+
+actual fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*> = Darwin
 
 actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
     return secureEnclaveSecureAreaProvider

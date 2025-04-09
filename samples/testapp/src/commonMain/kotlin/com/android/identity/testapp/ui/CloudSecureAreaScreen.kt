@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import io.ktor.client.engine.cio.CIO
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -59,6 +58,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.crypto.Algorithm
+import org.multipaz.testapp.platformHttpClientEngineFactory
 import kotlin.time.Duration.Companion.days
 
 private val TAG = "CloudSecureAreaScreen"
@@ -103,7 +103,7 @@ fun CloudSecureAreaScreen(
                         EphemeralStorage(),
                         "CloudSecureArea",
                         url,
-                        CIO
+                        platformHttpClientEngineFactory()
                     )
                     try {
                         cloudSecureArea!!.register(

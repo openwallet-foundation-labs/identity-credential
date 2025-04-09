@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import io.ktor.client.engine.cio.CIO
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -55,6 +54,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
+import org.multipaz.testapp.platformHttpClientEngineFactory
 
 private const val TAG = "DocumentStoreScreen"
 
@@ -107,7 +107,7 @@ fun DocumentStoreScreen(
                         platformStorage(),
                         "CloudSecureArea?url=${url.encodeURLParameter()}",
                         url,
-                        CIO
+                        platformHttpClientEngineFactory()
                     )
                     try {
                         cloudSecureArea.register(
