@@ -28,7 +28,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.testapp.ui.AppTheme
 import com.android.identity.testapp.ui.CameraScreen
-import io.ktor.client.engine.cio.CIO
 import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
@@ -189,7 +188,7 @@ class App private constructor(val promptModel: PromptModel) {
                     platformStorage(),
                     identifier,
                     cloudSecureAreaUrl,
-                    CIO
+                    platformHttpClientEngineFactory()
                 )
             }
         }

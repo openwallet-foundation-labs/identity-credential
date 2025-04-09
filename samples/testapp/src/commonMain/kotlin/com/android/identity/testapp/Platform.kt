@@ -1,6 +1,7 @@
 package org.multipaz.testapp
 
 import androidx.compose.ui.graphics.painter.Painter
+import io.ktor.client.engine.HttpClientEngineFactory
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
@@ -28,6 +29,8 @@ expect fun getLocalIpAddress(): String
 expect val platformIsEmulator: Boolean
 
 expect fun platformStorage(): Storage
+
+expect fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*>
 
 /**
  * Gets a provider for the preferred [SecureArea] implementation for the platform.

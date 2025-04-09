@@ -1,6 +1,8 @@
 package org.multipaz.testapp
 
 import android.os.Build
+import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.engine.android.Android
 import org.multipaz.crypto.EcCurve
 import org.multipaz.context.applicationContext
 import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
@@ -79,6 +81,8 @@ private val androidStorage: AndroidStorage by lazy {
 actual fun platformStorage(): Storage {
     return androidStorage
 }
+
+actual fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*> = Android
 
 private val androidKeystoreSecureAreaProvider = SecureAreaProvider {
     AndroidKeystoreSecureArea.create(androidStorage)
