@@ -267,6 +267,10 @@ async function requestDocument(format, docType, requestId) {
 }
 
 async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
+    if (!navigator.identity || !navigator.identity.get) {
+        alert("Digital Credentials API is not available. Please enable it via chrome://flags#web-identity-digital-credentials.");
+        return;
+    }
     try {
         const credentialResponse = await navigator.identity.get({
             digital: {
