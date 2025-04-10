@@ -1,14 +1,6 @@
 package org.multipaz.mdoc.transport
 
 import kotlinx.coroutines.CancellationException
-import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
-import org.multipaz.nfc.CommandApdu
-import org.multipaz.nfc.Nfc
-import org.multipaz.nfc.NfcCommandFailedException
-import org.multipaz.nfc.NfcIsoTag
-import org.multipaz.nfc.ResponseApdu
-import org.multipaz.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -23,8 +15,16 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
 import kotlinx.io.bytestring.buildByteString
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.nfc.CommandApdu
+import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.NfcCommandFailedException
+import org.multipaz.nfc.NfcIsoTag
+import org.multipaz.nfc.ResponseApdu
 import org.multipaz.util.ByteDataReader
+import org.multipaz.util.Logger
 import org.multipaz.util.appendByteString
 import org.multipaz.util.appendUInt16
 import org.multipaz.util.appendUInt8
@@ -84,7 +84,7 @@ class NfcTransportMdocReader(
                 _state.value = State.CONNECTED
             } catch (error: Throwable) {
                 failTransport(error)
-                throw MdocTransportException("Failed while opening transport", error)
+                throw error.wrapUnlessCancellationException("Failed while opening transport")
             }
         }
 
