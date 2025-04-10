@@ -4,12 +4,11 @@ import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.device.AssertionNonce
 import org.multipaz.device.DeviceAttestation
 import org.multipaz.device.DeviceAttestationValidationData
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.getTable
-import org.multipaz.provisioning.AuthenticationFlow
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.getTable
+import org.multipaz.provisioning.Authentication
 import org.multipaz.provisioning.ClientAuthentication
 import org.multipaz.provisioning.ClientChallenge
 import org.multipaz.provisioning.WalletServerCapabilities
@@ -19,24 +18,25 @@ import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.device.fromCbor
+import org.multipaz.device.toCbor
+import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import kotlin.random.Random
 
-@FlowState(flowInterface = AuthenticationFlow::class)
+@RpcState(
+    endpoint = "auth",
+    creatable = true
+)
 @CborSerializable
 class AuthenticationState(
-    var nonce: ByteString? = null,
+    var nonce: ByteString? = buildByteString { Random.nextBytes(16) },
     var clientId: String = "",
     var deviceAttestation: DeviceAttestation? = null,
     var authenticated: Boolean = false
-) {
+): Authentication {
     companion object {
-        val clientTableSpec = StorageTableSpec(
-            name = "Clients",
-            supportPartitions = false,
-            supportExpiration = false
-        )
-
         val walletAppCapabilitiesTableSpec = StorageTableSpec(
             name = "WalletAppCapabilities",
             supportPartitions = false,
@@ -44,15 +44,13 @@ class AuthenticationState(
         )
     }
 
-    @FlowMethod
-    suspend fun requestChallenge(env: FlowEnvironment, clientId: String): ClientChallenge {
+    override suspend fun requestChallenge(clientId: String): ClientChallenge {
         check(this.clientId.isEmpty())
         check(nonce != null)
-        val clientTable = env.getTable(clientTableSpec)
+        val clientTable = BackendEnvironment.getTable(RpcAuthInspectorAssertion.rpcClientTableSpec)
         val clientData = clientTable.get(clientId)
         if (clientData != null) {
-            this.deviceAttestation =
-                ClientRecord.fromCbor(clientData.toByteArray()).deviceAttestation
+            this.deviceAttestation = DeviceAttestation.fromCbor(clientData.toByteArray())
             this.clientId = clientId
             println("Existing client id: ${this.clientId}")
         }
@@ -65,10 +63,9 @@ class AuthenticationState(
         return ClientChallenge(nonce!!, this.clientId)
     }
 
-    @FlowMethod
-    suspend fun authenticate(env: FlowEnvironment, auth: ClientAuthentication): WalletServerCapabilities {
-        val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
-        val clientTable = env.getTable(clientTableSpec)
+    override suspend fun authenticate(auth: ClientAuthentication): WalletServerCapabilities {
+        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
+        val clientTable = BackendEnvironment.getTable(RpcAuthInspectorAssertion.rpcClientTableSpec)
 
         val attestation = auth.attestation
         if (attestation != null) {
@@ -86,7 +83,7 @@ class AuthenticationState(
                 androidVerifiedBootGreen = settings.androidRequireVerifiedBootGreen,
                 androidAppSignatureCertificateDigests = listOf()
             ))
-            val clientData = ByteString(ClientRecord(attestation).toCbor())
+            val clientData = ByteString(attestation.toCbor())
             this.deviceAttestation = attestation
             clientTable.insert(data = clientData, key = clientId)
         }
@@ -101,7 +98,7 @@ class AuthenticationState(
             throw IllegalArgumentException("nonce mismatch")
         }
         authenticated = true
-        val walletAppCapabilitiesTable = env.getTable(walletAppCapabilitiesTableSpec)
+        val walletAppCapabilitiesTable = BackendEnvironment.getTable(walletAppCapabilitiesTableSpec)
         if (walletAppCapabilitiesTable.get(clientId) == null) {
             walletAppCapabilitiesTable.insert(
                 key = clientId,

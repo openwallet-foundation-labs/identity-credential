@@ -7,8 +7,8 @@ import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.UtopiaNaturalization
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
 import org.multipaz.sdjwt.Issuer
 import org.multipaz.sdjwt.SdJwtVcGenerator
 import kotlinx.datetime.Clock
@@ -43,7 +43,7 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
         get() = "naturalization.png"
 
     override suspend fun makeCredential(
-        environment: FlowEnvironment,
+        environment: BackendEnvironment,
         state: IssuanceState,
         authenticationKey: EcPublicKey?
     ): String {

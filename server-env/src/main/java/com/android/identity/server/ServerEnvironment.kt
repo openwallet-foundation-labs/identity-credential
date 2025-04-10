@@ -1,9 +1,9 @@
 package org.multipaz.server
 
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
@@ -11,29 +11,32 @@ import org.multipaz.storage.jdbc.JdbcStorage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
 import kotlinx.coroutines.Dispatchers
+import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
 internal class ServerEnvironment(
     servletConfiguration: Configuration,
-    environmentInitializer: (env: FlowEnvironment) -> FlowNotifications? = { null }
-) : FlowEnvironment {
+    environmentInitializer: (env: BackendEnvironment) -> RpcNotifications? = { null }
+) : BackendEnvironment {
     private val configuration: Configuration = object : Configuration {
         override fun getValue(key: String): String? {
             return servletConfiguration.getValue(key) ?: CommonConfiguration.getValue(key)
         }
     }
-    private var notifications: FlowNotifications? = environmentInitializer(this)
+    private var notifications: RpcNotifications? = environmentInitializer(this)
 
     override fun <T : Any> getInterface(clazz: KClass<T>): T? {
         return clazz.cast(when(clazz) {
             Configuration::class -> configuration
             Resources::class -> ServerResources
             Storage::class -> storage
-            FlowNotifications::class -> notifications
+            RpcNotifications::class -> notifications
             HttpClient::class -> httpClient
             SecureAreaProvider::class -> secureAreaProvider
+            RpcAuthInspector::class -> RpcAuthInspectorAssertion.Default
             else -> return null
         })
     }

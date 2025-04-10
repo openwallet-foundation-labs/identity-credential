@@ -7,13 +7,13 @@ import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialRequest
 import org.multipaz.provisioning.KeyPossessionChallenge
 import org.multipaz.provisioning.KeyPossessionProof
-import org.multipaz.provisioning.RequestCredentialsFlow
+import org.multipaz.provisioning.RequestCredentials
 
 class SimpleIssuingAuthorityRequestCredentialsFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
     private val documentId: String,
     private val credentialConfiguration: CredentialConfiguration
-) : RequestCredentialsFlow {
+) : RequestCredentials {
     lateinit var format: CredentialFormat
 
     override suspend fun getCredentialConfiguration(format: CredentialFormat): CredentialConfiguration {
@@ -33,20 +33,4 @@ class SimpleIssuingAuthorityRequestCredentialsFlow(
     override suspend fun sendPossessionProofs(keyPossessionProofs: List<KeyPossessionProof>) {
         throw UnsupportedOperationException()
     }
-
-    override suspend fun complete() {
-        // noop
-    }
-
-    // Unused in client implementations
-    override val flowPath: String
-        get() {
-            throw UnsupportedOperationException("Unexpected call")
-        }
-
-    // Unused in client implementations
-    override val flowState: DataItem
-        get() {
-            throw UnsupportedOperationException("Unexpected call")
-        }
 }

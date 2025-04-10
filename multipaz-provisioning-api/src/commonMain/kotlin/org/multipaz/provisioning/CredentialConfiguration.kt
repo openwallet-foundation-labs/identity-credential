@@ -15,7 +15,7 @@ data class CredentialConfiguration(
     val challenge: ByteString,
 
     /**
-     * Key assertion parameter to [RequestCredentialsFlow.sendCredentials] is required.
+     * Key assertion parameter to [RequestCredentials.sendCredentials] is required.
      */
     val keyAssertionRequired: Boolean,
 

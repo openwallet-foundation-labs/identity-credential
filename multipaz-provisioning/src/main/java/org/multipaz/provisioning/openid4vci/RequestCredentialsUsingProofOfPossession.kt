@@ -2,70 +2,62 @@ package org.multipaz.provisioning.openid4vci
 
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.device.DeviceAssertion
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.CredentialConfiguration
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialRequest
 import org.multipaz.provisioning.KeyPossessionChallenge
 import org.multipaz.provisioning.KeyPossessionProof
-import org.multipaz.provisioning.RequestCredentialsFlow
+import org.multipaz.provisioning.RequestCredentials
 import org.multipaz.provisioning.validateDeviceAssertionBindingKeys
-import org.multipaz.provisioning.wallet.AuthenticationState
-import org.multipaz.provisioning.wallet.ClientRecord
-import org.multipaz.provisioning.wallet.fromCbor
 import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 
-@FlowState(
-    flowInterface = RequestCredentialsFlow::class
-)
+@RpcState(endpoint = "openid4vci.cred.pofp")
 @CborSerializable
 class RequestCredentialsUsingProofOfPossession(
     val clientId: String,
     val issuanceClientId: String,
-    documentId: String,
-    credentialConfiguration: CredentialConfiguration,
+    override val documentId: String,
+    override val credentialConfiguration: CredentialConfiguration,
     val credentialIssuerUri: String,
-    format: CredentialFormat? = null,
+    override var format: CredentialFormat? = null,
     var credentialRequests: List<ProofOfPossessionCredentialRequest>? = null,
-) : AbstractRequestCredentials(documentId, credentialConfiguration, format) {
-    companion object
-
-    @FlowMethod
-    fun getCredentialConfiguration(
-        env: FlowEnvironment,
+) : AbstractRequestCredentials, RequestCredentials, RpcAuthInspector by RpcAuthBackendDelegate {
+    override suspend fun getCredentialConfiguration(
         format: CredentialFormat
     ): CredentialConfiguration {
+        checkClientId()
         this.format = format
         return credentialConfiguration
     }
 
-    @FlowMethod
-    suspend fun sendCredentials(
-        env: FlowEnvironment,
-        newCredentialRequests: List<CredentialRequest>,
+    override suspend fun sendCredentials(
+        credentialRequests: List<CredentialRequest>,
         keysAssertion: DeviceAssertion?
     ): List<KeyPossessionChallenge> {
-        if (credentialRequests != null) {
+        checkClientId()
+        if (this.credentialRequests != null) {
             throw IllegalStateException("Credentials were already sent")
         }
-        val storage = env.getTable(AuthenticationState.clientTableSpec)
-        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!.toByteArray())
+        val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
         validateDeviceAssertionBindingKeys(
-            env = env,
-            deviceAttestation = clientRecord.deviceAttestation,
-            keyAttestations = newCredentialRequests.map { it.secureAreaBoundKeyAttestation },
+            deviceAttestation = deviceAttestation,
+            keyAttestations = credentialRequests.map { it.secureAreaBoundKeyAttestation },
             deviceAssertion = keysAssertion!!,
             nonce = credentialConfiguration.challenge
         )
         val nonce = JsonPrimitive(String(credentialConfiguration.challenge.toByteArray()))
-        val requests = newCredentialRequests.map { request ->
+        val requests = credentialRequests.map { request ->
             val header = JsonObject(mapOf(
                 "typ" to JsonPrimitive("openid4vci-proof+jwt"),
                 "alg" to JsonPrimitive("ES256"),
@@ -79,14 +71,14 @@ class RequestCredentialsUsingProofOfPossession(
             )).toString().toByteArray().toBase64Url()
             ProofOfPossessionCredentialRequest(request, format!!, "$header.$body")
         }
-        credentialRequests = requests
+        this.credentialRequests = requests
         return requests.map {
             KeyPossessionChallenge(ByteString(it.proofOfPossessionJwtHeaderAndBody.toByteArray()))
         }
     }
 
-    @FlowMethod
-    fun sendPossessionProofs(env: FlowEnvironment, keyPossessionProofs: List<KeyPossessionProof>) {
+    override suspend fun sendPossessionProofs(keyPossessionProofs: List<KeyPossessionProof>) {
+        checkClientId()
         if (keyPossessionProofs.size != credentialRequests?.size) {
             throw IllegalStateException("wrong number of key possession proofs: ${keyPossessionProofs.size}")
         }
@@ -94,4 +86,10 @@ class RequestCredentialsUsingProofOfPossession(
             it.first.proofOfPossessionJwtSignature = it.second.signature.toByteArray().toBase64Url()
         }
     }
+
+    private suspend fun checkClientId() {
+        check(clientId == RpcAuthContext.getClientId())
+    }
+
+    companion object
 }

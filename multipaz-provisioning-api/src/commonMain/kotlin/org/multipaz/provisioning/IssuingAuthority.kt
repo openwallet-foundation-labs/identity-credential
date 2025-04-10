@@ -1,8 +1,8 @@
 package org.multipaz.provisioning
 
-import org.multipaz.flow.annotation.FlowInterface
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.client.FlowNotifiable
+import org.multipaz.rpc.annotation.RpcInterface
+import org.multipaz.rpc.annotation.RpcMethod
+import org.multipaz.rpc.client.RpcNotifiable
 
 /**
  * An interface representing an Issuing Authority.
@@ -14,8 +14,8 @@ import org.multipaz.flow.client.FlowNotifiable
  * Documents are identifier by an identifier - `documentId` - and each document may have
  * multiple credentials associated with it.
  */
-@FlowInterface
-interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
+@RpcInterface
+interface IssuingAuthority : RpcNotifiable<IssuingAuthorityNotification> {
     /**
      * Calls the issuer to start creating a document.
      *
@@ -23,15 +23,18 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      * and used in all subsequent communications with the issuer. If this completes successfully,
      * [getState] can be used to check the state of the document.
      *
-     * @return a [RegistrationFlow] instance.
+     * @return a [Registration] instance.
      */
-    @FlowMethod
-    suspend fun register(): RegistrationFlow
+    @RpcMethod
+    suspend fun register(): Registration
+
+    @RpcMethod
+    suspend fun completeRegistration(registration: Registration)
 
     /**
      * Performs a network call to get configuration for the Issuing Authority.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getConfiguration(): IssuingAuthorityConfiguration
 
     /**
@@ -40,7 +43,7 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      * If the document was recently deleted the condition will be set to
      * [DocumentCondition.NO_SUCH_DOCUMENT].
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getState(documentId: String): DocumentState
 
     /**
@@ -53,12 +56,15 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      * [DocumentCondition.PROOFING_PROCESSING]
      *
      * @param documentId the document to perform proofing for.
-     * @return a [ProofingFlow] instance.
+     * @return a [Proofing] instance.
      * @throws IllegalStateException if not in state [DocumentCondition.PROOFING_REQUIRED].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    @FlowMethod
-    suspend fun proof(documentId: String): ProofingFlow
+    @RpcMethod
+    suspend fun proof(documentId: String): Proofing
+
+    @RpcMethod
+    suspend fun completeProof(proofing: Proofing)
 
     /**
      * Calls the issuer to get configuration for the configured document.
@@ -69,7 +75,7 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      * @throws IllegalStateException if not in condition [DocumentCondition.CONFIGURATION_AVAILABLE].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration
 
     /**
@@ -87,8 +93,11 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    @FlowMethod
-    suspend fun requestCredentials(documentId: String): RequestCredentialsFlow
+    @RpcMethod
+    suspend fun requestCredentials(documentId: String): RequestCredentials
+
+    @RpcMethod
+    suspend fun completeRequestCredentials(requestCredentials: RequestCredentials)
 
     /**
      * Calls the IA to get available credentials.
@@ -100,7 +109,7 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      *
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getCredentials(documentId: String): List<CredentialData>
 
     /**
@@ -129,7 +138,7 @@ interface IssuingAuthority : FlowNotifiable<IssuingAuthorityNotification> {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,

@@ -63,7 +63,7 @@ class SelfSignedMdlTest {
         val documentId = registrationConfiguration.documentId
         val registrationResponse = org.multipaz.provisioning.RegistrationResponse(true)
         registerdocumentFlow.sendDocumentRegistrationResponse(registrationResponse)
-        registerdocumentFlow.complete()
+        ia.completeRegistration(registerdocumentFlow)
 
         // Check we're now in the proofing state.
         Assert.assertEquals(
@@ -132,7 +132,7 @@ class SelfSignedMdlTest {
         // after we signal that proofing is complete
         evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(0, evidenceToGet.size)
-        proofingFlow.complete()
+        ia.completeProof(proofingFlow)
 
         Assert.assertEquals(
             org.multipaz.provisioning.DocumentCondition.PROOFING_PROCESSING,
@@ -170,7 +170,7 @@ class SelfSignedMdlTest {
             credentialRequests,
             DeviceAssertion(ByteString(), ByteString())
         )
-        requestCpoFlow.complete()
+        ia.completeRequestCredentials(requestCpoFlow)
 
         // documentInformation should now reflect that the CPOs are pending and not
         // yet available..

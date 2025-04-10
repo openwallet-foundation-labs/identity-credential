@@ -1,7 +1,7 @@
 package org.multipaz.provisioning.openid4vci
 
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.cache
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.cache
 import org.multipaz.util.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -28,9 +28,9 @@ internal data class Openid4VciIssuerMetadata(
     companion object {
         const val TAG = "Openid4VciIssuerMetadata"
 
-        suspend fun get(env: FlowEnvironment, issuerUrl: String): Openid4VciIssuerMetadata {
-            return env.cache(Openid4VciIssuerMetadata::class, issuerUrl) { _, _ ->
-                val httpClient = env.getInterface(HttpClient::class)!!
+        suspend fun get(issuerUrl: String): Openid4VciIssuerMetadata {
+            return BackendEnvironment.cache(Openid4VciIssuerMetadata::class, issuerUrl) { _, _ ->
+                val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
 
                 // Fetch issuer metadata
                 val issuerMetadataUrl = "$issuerUrl/.well-known/openid-credential-issuer"

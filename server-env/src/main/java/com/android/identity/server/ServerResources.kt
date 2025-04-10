@@ -1,6 +1,6 @@
 package org.multipaz.server
 
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.backend.Resources
 import kotlinx.io.bytestring.ByteString
 
 internal object ServerResources: Resources {

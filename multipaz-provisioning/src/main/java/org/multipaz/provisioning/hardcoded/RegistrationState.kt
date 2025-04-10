@@ -1,31 +1,29 @@
 package org.multipaz.provisioning.hardcoded
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.provisioning.RegistrationConfiguration
-import org.multipaz.provisioning.RegistrationFlow
+import org.multipaz.provisioning.Registration
 import org.multipaz.provisioning.RegistrationResponse
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthInspector
 
 /**
- * State of [RegistrationFlow] RPC implementation.
+ * State of [Registration] RPC implementation.
  */
-@FlowState(flowInterface = RegistrationFlow::class)
+@RpcState(endpoint= "hardcoded.registration")
 @CborSerializable
 class RegistrationState(
     val documentId: String = "",
     var response: RegistrationResponse? = null
-) {
-    companion object
-
-    @FlowMethod
-    fun getDocumentRegistrationConfiguration(env: FlowEnvironment): RegistrationConfiguration {
+): Registration, RpcAuthInspector by RpcAuthBackendDelegate {
+    override suspend fun getDocumentRegistrationConfiguration(): RegistrationConfiguration {
         return RegistrationConfiguration(documentId)
     }
 
-    @FlowMethod
-    fun sendDocumentRegistrationResponse(env: FlowEnvironment, response: RegistrationResponse) {
+    override suspend fun sendDocumentRegistrationResponse(response: RegistrationResponse) {
         this.response = response
     }
+
+    companion object
 }

@@ -13,9 +13,9 @@ import org.multipaz.provisioning.CredentialData
 import org.multipaz.provisioning.CredentialRequest
 import org.multipaz.provisioning.DocumentState
 import org.multipaz.provisioning.IssuingAuthority
-import org.multipaz.provisioning.ProofingFlow
-import org.multipaz.provisioning.RegistrationFlow
-import org.multipaz.provisioning.RequestCredentialsFlow
+import org.multipaz.provisioning.Proofing
+import org.multipaz.provisioning.Registration
+import org.multipaz.provisioning.RequestCredentials
 import org.multipaz.provisioning.evidence.EvidenceResponse
 import org.multipaz.provisioning.evidence.fromCbor
 import org.multipaz.provisioning.evidence.toCbor
@@ -30,12 +30,14 @@ import org.multipaz.util.Logger
 import org.multipaz.mrtd.MrtdAccessData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.provisioning.IssuingAuthorityConfiguration
 import java.lang.UnsupportedOperationException
 import kotlin.random.Random
 import kotlin.time.Duration
@@ -58,8 +60,9 @@ abstract class SimpleIssuingAuthority(
 
     private val internalNotifications = MutableSharedFlow<IssuingAuthorityNotification>()
 
-    override val notifications: SharedFlow<IssuingAuthorityNotification>
-        get() = internalNotifications.asSharedFlow()
+    override suspend fun collect(collector: FlowCollector<IssuingAuthorityNotification>) {
+        internalNotifications.collect(collector)
+    }
 
     // This can be changed to simulate proofing and requesting CPOs being slow.
     protected var delayForProofingAndIssuance: Duration = 1.seconds
@@ -256,19 +259,27 @@ abstract class SimpleIssuingAuthority(
     }
 
 
-    override suspend fun register(): RegistrationFlow {
+    override suspend fun register(): Registration {
         val now = Clock.System.now()
         val documentId = "Document_${now}_${Random.nextInt()}"
         return SimpleIssuingAuthorityRegistrationFlow(this, documentId)
     }
 
-    override suspend fun proof(documentId: String): ProofingFlow {
+    override suspend fun completeRegistration(registration: Registration) {
+    }
+
+    override suspend fun proof(documentId: String): Proofing {
         val issuerDocument = loadIssuerDocument(documentId)
         return SimpleIssuingAuthorityProofingFlow(
             this,
             documentId,
             getProofingGraphRoot(issuerDocument.registrationResponse)
         )
+    }
+
+    override suspend fun completeProof(proofing: Proofing) {
+        proofing as SimpleIssuingAuthorityProofingFlow
+        setProofingProcessing(proofing.documentId)
     }
 
     override suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration {
@@ -283,7 +294,7 @@ abstract class SimpleIssuingAuthority(
         return issuerDocument.documentConfiguration!!
     }
 
-    override suspend fun requestCredentials(documentId: String): RequestCredentialsFlow {
+    override suspend fun requestCredentials(documentId: String): RequestCredentials {
         val issuerDocument = loadIssuerDocument(documentId)
         check(issuerDocument.state == DocumentCondition.READY)
 
@@ -292,6 +303,9 @@ abstract class SimpleIssuingAuthority(
             this,
             documentId,
             credentialConfiguration)
+    }
+
+    override suspend fun completeRequestCredentials(requestCredentials: RequestCredentials) {
     }
 
     override suspend fun getCredentials(documentId: String): List<CredentialData> {
@@ -433,20 +447,4 @@ abstract class SimpleIssuingAuthority(
             emitOnStateChanged(documentId)
         }
     }
-
-    override suspend fun complete() {
-       // noop
-    }
-
-    // Unused in client implementations
-    override val flowPath: String
-        get() {
-            throw UnsupportedOperationException("Unexpected call")
-        }
-
-    // Unused in client implementations
-    override val flowState: DataItem
-        get() {
-            throw UnsupportedOperationException("Unexpected call")
-        }
 }

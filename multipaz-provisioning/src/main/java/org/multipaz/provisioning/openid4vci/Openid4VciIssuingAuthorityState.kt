@@ -12,11 +12,8 @@ import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
 import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.documenttype.knowntypes.UtopiaNaturalization
-import org.multipaz.flow.annotation.FlowJoin
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.CredentialConfiguration
 import org.multipaz.provisioning.CredentialData
@@ -34,12 +31,10 @@ import org.multipaz.provisioning.SdJwtVcDocumentConfiguration
 import org.multipaz.securearea.config.SecureAreaConfigurationAndroidKeystore
 import org.multipaz.securearea.config.SecureAreaConfigurationCloud
 import org.multipaz.provisioning.WalletApplicationCapabilities
-import org.multipaz.provisioning.common.AbstractIssuingAuthorityState
-import org.multipaz.flow.cache
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.cache
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.fromCbor
 import org.multipaz.provisioning.wallet.ApplicationSupportState
-import org.multipaz.provisioning.wallet.AuthenticationState
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.mso.StaticAuthDataParser
 import org.multipaz.sdjwt.SdJwtVerifiableCredential
@@ -65,20 +60,26 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
+import org.multipaz.provisioning.Proofing
+import org.multipaz.provisioning.Registration
+import org.multipaz.provisioning.RequestCredentials
+import org.multipaz.provisioning.wallet.AuthenticationState
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
 import kotlin.time.Duration.Companion.seconds
 
-@FlowState(
-    flowInterface = IssuingAuthority::class
-)
+@RpcState(endpoint = "openid4vci")
 @CborSerializable
 class Openid4VciIssuingAuthorityState(
     // NB: since this object is used to emit notifications, it cannot change, as its state
     // serves as notification key. So it generally should not have var members, only val.
+    // This is also a reason to keep clientId here (so that different clients get different keys)
     val clientId: String,
     val credentialIssuerUri: String, // credential offer issuing authority path
     val credentialConfigurationId: String,
     val issuanceClientId: String // client id in OpenID4VCI protocol
-) : AbstractIssuingAuthorityState() {
+) : IssuingAuthority, RpcAuthInspector by RpcAuthBackendDelegate {
 
     init {
         // It should not be possible, but double-check.
@@ -96,19 +97,18 @@ class Openid4VciIssuingAuthorityState(
         )
 
         suspend fun getConfiguration(
-            env: FlowEnvironment,
             issuerUrl: String,
             credentialConfigurationId: String
         ): IssuingAuthorityConfiguration {
             val id = "openid4vci#$issuerUrl#$credentialConfigurationId"
-            return env.cache(IssuingAuthorityConfiguration::class, id) { _, resources ->
-                val metadata = Openid4VciIssuerMetadata.get(env, issuerUrl)
+            return BackendEnvironment.cache(IssuingAuthorityConfiguration::class, id) { _, resources ->
+                val metadata = Openid4VciIssuerMetadata.get(issuerUrl)
                 val config = metadata.credentialConfigurations[credentialConfigurationId]
                     ?: throw IllegalArgumentException("Unknown configuration '$credentialConfigurationId' at '$issuerUrl'")
                 if (!config.isSupported) {
                     throw IllegalArgumentException("Unsupported configuration '$credentialConfigurationId' at '$issuerUrl'")
                 }
-                val httpClient = env.getInterface(HttpClient::class)!!
+                val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
                 val display = if (metadata.display.isEmpty()) null else metadata.display[0]
                 val configDisplay = if (config.display.isEmpty()) null else config.display[0]
                 var logo: ByteArray? = null
@@ -195,32 +195,32 @@ class Openid4VciIssuingAuthorityState(
         }
     }
 
-    @FlowMethod
-    suspend fun getConfiguration(env: FlowEnvironment): IssuingAuthorityConfiguration {
-        return getConfiguration(env, credentialIssuerUri, credentialConfigurationId)
+    override suspend fun getConfiguration(): IssuingAuthorityConfiguration {
+        checkClientId()
+        return getConfiguration(credentialIssuerUri, credentialConfigurationId)
     }
 
-    @FlowMethod
-    suspend fun register(env: FlowEnvironment): Openid4VciRegistrationState {
-        val documentId = createIssuerDocument(env,
+    override suspend fun register(): Registration {
+        checkClientId()
+        val documentId = createIssuerDocument(
             Openid4VciIssuerDocument(RegistrationResponse(false))
         )
         return Openid4VciRegistrationState(documentId)
     }
 
-    @FlowJoin
-    suspend fun completeRegistration(env: FlowEnvironment, registrationState: Openid4VciRegistrationState) {
+    override suspend fun completeRegistration(registration: Registration) {
+        checkClientId()
+        val registrationState = registration as Openid4VciRegistrationState
         updateIssuerDocument(
-            env,
             registrationState.documentId,
             Openid4VciIssuerDocument(registrationState.response!!))
     }
 
-    @FlowMethod
-    suspend fun getState(env: FlowEnvironment, documentId: String): DocumentState {
+    override suspend fun getState(documentId: String): DocumentState {
+        checkClientId()
         val now = Clock.System.now()
 
-        if (!issuerDocumentExists(env, documentId)) {
+        if (!issuerDocumentExists(documentId)) {
             return DocumentState(
                 now,
                 DocumentCondition.NO_SUCH_DOCUMENT,
@@ -229,7 +229,7 @@ class Openid4VciIssuingAuthorityState(
             )
         }
 
-        val issuerDocument = loadIssuerDocument(env, documentId)
+        val issuerDocument = loadIssuerDocument(documentId)
 
         if (issuerDocument.state == DocumentCondition.PROOFING_PROCESSING) {
             issuerDocument.state = if (issuerDocument.access != null) {
@@ -237,7 +237,7 @@ class Openid4VciIssuingAuthorityState(
             } else {
                 DocumentCondition.PROOFING_FAILED
             }
-            updateIssuerDocument(env, documentId, issuerDocument)
+            updateIssuerDocument(documentId, issuerDocument)
         }
 
         // This information is helpful for when using the admin web interface.
@@ -254,9 +254,9 @@ class Openid4VciIssuingAuthorityState(
         )
     }
 
-    @FlowMethod
-    suspend fun proof(env: FlowEnvironment, documentId: String): Openid4VciProofingState {
-        val storage = env.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
+    override suspend fun proof(documentId: String): Openid4VciProofingState {
+        checkClientId()
+        val storage = BackendEnvironment.getTable(AuthenticationState.walletAppCapabilitiesTableSpec)
         val applicationCapabilities = storage.get(clientId)?.let {
             WalletApplicationCapabilities.fromCbor(it.toByteArray())
         } ?: throw IllegalStateException("WalletApplicationCapabilities not found")
@@ -270,48 +270,47 @@ class Openid4VciIssuingAuthorityState(
         )
     }
 
-    @FlowJoin
-    suspend fun completeProof(env: FlowEnvironment, state: Openid4VciProofingState) {
-        val issuerDocument = loadIssuerDocument(env, state.documentId)
+    override suspend fun completeProof(proofing: Proofing) {
+        checkClientId()
+        val state = proofing as Openid4VciProofingState
+        val issuerDocument = loadIssuerDocument(state.documentId)
         issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
         issuerDocument.access = state.access
         issuerDocument.secureAreaIdentifier = state.secureAreaIdentifier
-        updateIssuerDocument(env, state.documentId, issuerDocument)
+        updateIssuerDocument(state.documentId, issuerDocument)
     }
 
-    @FlowMethod
-    suspend fun getDocumentConfiguration(
-        env: FlowEnvironment,
+    override suspend fun getDocumentConfiguration(
         documentId: String
     ): DocumentConfiguration {
-        val issuerDocument = loadIssuerDocument(env, documentId)
+        checkClientId()
+        val issuerDocument = loadIssuerDocument(documentId)
         check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
         issuerDocument.state = DocumentCondition.READY
         if (issuerDocument.documentConfiguration == null) {
-            issuerDocument.documentConfiguration = generateGenericDocumentConfiguration(env)
-            val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+            issuerDocument.documentConfiguration = generateGenericDocumentConfiguration()
+            val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
             val credentialConfiguration =
                 metadata.credentialConfigurations[credentialConfigurationId]!!
             // For keyless credentials, just obtain them right away
             if (credentialConfiguration.proofType == Openid4VciNoProof &&
                 issuerDocument.credentials.isEmpty()) {
-                obtainCredentialsKeyless(env, documentId, issuerDocument)
+                obtainCredentialsKeyless(documentId, issuerDocument)
             }
         }
-        updateIssuerDocument(env, documentId, issuerDocument)
+        updateIssuerDocument(documentId, issuerDocument)
         return issuerDocument.documentConfiguration!!
     }
 
-    @FlowMethod
-    suspend fun requestCredentials(
-        env: FlowEnvironment,
+    override suspend fun requestCredentials(
         documentId: String
-    ): AbstractRequestCredentials {
-        val document = loadIssuerDocument(env, documentId)
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+    ): RequestCredentials {
+        checkClientId()
+        val document = loadIssuerDocument(documentId)
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
 
-        refreshAccessIfNeeded(env, documentId, document)
+        refreshAccessIfNeeded(documentId, document)
 
         val cNonce = document.access!!.cNonce!!
         val configuration = if (document.secureAreaIdentifier!!.startsWith("CloudSecureArea?")) {
@@ -358,25 +357,26 @@ class Openid4VciIssuingAuthorityState(
         }
     }
 
-    @FlowJoin
-    suspend fun completeRequestCredentials(env: FlowEnvironment, state: AbstractRequestCredentials) {
+    override suspend fun completeRequestCredentials(requestCredentials: RequestCredentials) {
+        checkClientId()
+        val state = requestCredentials as AbstractRequestCredentials
         // Create appropriate request to OpenID4VCI issuer to issue credential(s)
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
 
         val credentialTasks = when (state) {
             is RequestCredentialsUsingProofOfPossession ->
                 listOf(createRequestUsingProofOfPossession(state, credentialConfiguration))
             is RequestCredentialsUsingKeyAttestation ->
-                createRequestUsingKeyAttestation(env, state, credentialConfiguration)
+                createRequestUsingKeyAttestation(state, credentialConfiguration)
             else -> throw IllegalStateException("Unsupported RequestCredential type")
         }
 
-        val document = loadIssuerDocument(env, state.documentId)
+        val document = loadIssuerDocument(state.documentId)
 
         for ((request, publicKeys) in credentialTasks) {
             // Send the request
-            val credentials = obtainCredentials(env, metadata, request, state.documentId, document)
+            val credentials = obtainCredentials(metadata, request, state.documentId, document)
 
             check(credentials.size == publicKeys.size)
             document.credentials.addAll(credentials.zip(publicKeys).map {
@@ -416,21 +416,19 @@ class Openid4VciIssuingAuthorityState(
             })
         }
 
-        updateIssuerDocument(env, state.documentId, document, true)
+        updateIssuerDocument(state.documentId, document, true)
     }
 
     private suspend fun obtainCredentialsKeyless(
-        env: FlowEnvironment,
         documentId: String,
         issuerDocument: Openid4VciIssuerDocument,
     ) {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
         val request = buildJsonObject {
             putFormat(credentialConfiguration.format!!)
         }
         val credentials = obtainCredentials(
-            env,
             metadata,
             request,
             documentId,
@@ -452,7 +450,6 @@ class Openid4VciIssuingAuthorityState(
     }
 
     private suspend fun obtainCredentials(
-        env: FlowEnvironment,
         metadata: Openid4VciIssuerMetadata,
         request: JsonObject,
         documentId: String,
@@ -460,7 +457,6 @@ class Openid4VciIssuingAuthorityState(
     ): JsonArray {
         val access = document.access!!
         val dpop = OpenidUtil.generateDPoP(
-            env,
             clientId,
             metadata.credentialEndpoint,
             access.dpopNonce,
@@ -468,7 +464,7 @@ class Openid4VciIssuingAuthorityState(
         )
         Logger.e(TAG,"Credential request: $request")
 
-        val httpClient = env.getInterface(HttpClient::class)!!
+        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         val credentialResponse = httpClient.post(metadata.credentialEndpoint) {
             headers {
                 append("Authorization", "DPoP ${access.accessToken}")
@@ -490,7 +486,7 @@ class Openid4VciIssuingAuthorityState(
             // In some issuers this gets document in permanent bad state, notification
             // is not needed as an exception will generate notification on the client side.
             document.state = DocumentCondition.DELETION_REQUESTED
-            updateIssuerDocument(env, documentId, document, false)
+            updateIssuerDocument(documentId, document, false)
 
             throw IssuingAuthorityException("Error getting a credential issued")
         }
@@ -534,13 +530,12 @@ class Openid4VciIssuingAuthorityState(
     }
 
     private suspend fun createRequestUsingKeyAttestation(
-        env: FlowEnvironment,
         state: RequestCredentialsUsingKeyAttestation,
         configuration: Openid4VciCredentialConfiguration
     ): List<Pair<JsonObject, List<EcPublicKey>>> {
         // NB: applicationSupport will only be non-null in the environment when running this code
         // locally in the Android Wallet app.
-        val applicationSupport = env.getInterface(ApplicationSupport::class)
+        val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)
         return state.credentialRequestSets.map { credentialRequestSet ->
             val jwtKeyAttestation = if (applicationSupport != null) {
                 applicationSupport.createJwtKeyAttestation(
@@ -549,7 +544,6 @@ class Openid4VciIssuingAuthorityState(
                 )
             } else {
                 ApplicationSupportState(clientId).createJwtKeyAttestation(
-                    env = env,
                     keyAttestations = credentialRequestSet.keyAttestations,
                     keysAssertion = credentialRequestSet.keysAssertion
                 )
@@ -565,68 +559,67 @@ class Openid4VciIssuingAuthorityState(
         }
     }
 
-    @FlowMethod
-    suspend fun getCredentials(env: FlowEnvironment, documentId: String): List<CredentialData> {
-        val document = loadIssuerDocument(env, documentId)
+    override suspend fun getCredentials(documentId: String): List<CredentialData> {
+        checkClientId()
+        val document = loadIssuerDocument(documentId)
         val credentials = mutableListOf<CredentialData>()
         credentials.addAll(document.credentials)
         document.credentials.clear()
-        updateIssuerDocument(env, documentId, document, false)
+        updateIssuerDocument(documentId, document, false)
         return credentials
     }
 
-    @FlowMethod
-    suspend fun developerModeRequestUpdate(
-        env: FlowEnvironment,
+    override suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean
     ) {
+        checkClientId()
     }
 
-    private suspend fun issuerDocumentExists(env: FlowEnvironment, documentId: String): Boolean {
+    private suspend fun issuerDocumentExists(documentId: String): Boolean {
         if (clientId.isEmpty()) {
             throw IllegalStateException("Client not authenticated")
         }
-        val storage = env.getTable(documentTableSpec)
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val encodedCbor = storage.get(partitionId = clientId, key = documentId)
         return encodedCbor != null
     }
 
-    private suspend fun loadIssuerDocument(env: FlowEnvironment, documentId: String): Openid4VciIssuerDocument {
+    private suspend fun loadIssuerDocument(documentId: String): Openid4VciIssuerDocument {
         if (clientId.isEmpty()) {
             throw IllegalStateException("Client not authenticated")
         }
-        val storage = env.getTable(documentTableSpec)
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val encodedCbor = storage.get(partitionId = clientId, key = documentId)
             ?: throw Error("No such document")
         return Openid4VciIssuerDocument.fromCbor(encodedCbor.toByteArray())
     }
 
-    private suspend fun createIssuerDocument(env: FlowEnvironment, document: Openid4VciIssuerDocument): String {
+    private suspend fun createIssuerDocument(document: Openid4VciIssuerDocument): String {
         if (clientId.isEmpty()) {
             throw IllegalStateException("Client not authenticated")
         }
-        val storage = env.getTable(documentTableSpec)
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val bytes = document.toCbor()
         return storage.insert(key = null, partitionId = clientId, data = ByteString(bytes))
     }
 
-    private suspend fun deleteIssuerDocument(env: FlowEnvironment,
-                                             documentId: String,
-                                             emitNotification: Boolean = true) {
+    private suspend fun deleteIssuerDocument(
+        documentId: String,
+        emitNotification: Boolean = true
+    ) {
         if (clientId.isEmpty()) {
             throw IllegalStateException("Client not authenticated")
         }
-        val storage = env.getTable(documentTableSpec)
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         storage.delete(partitionId = clientId, key = documentId)
         if (emitNotification) {
-            emit(env, IssuingAuthorityNotification(documentId))
+            emit(IssuingAuthorityNotification(documentId))
         }
     }
 
     private suspend fun updateIssuerDocument(
-        env: FlowEnvironment,
         documentId: String,
         document: Openid4VciIssuerDocument,
         emitNotification: Boolean = true,
@@ -634,21 +627,19 @@ class Openid4VciIssuingAuthorityState(
         if (clientId.isEmpty()) {
             throw IllegalStateException("Client not authenticated")
         }
-        val storage = env.getTable(documentTableSpec)
+        val storage = BackendEnvironment.getTable(documentTableSpec)
         val bytes = document.toCbor()
         storage.update(partitionId = clientId, key = documentId, data = ByteString(bytes))
         if (emitNotification) {
             Logger.i(TAG, "Emitting notification for $documentId")
-            emit(env, IssuingAuthorityNotification(documentId))
+            emit(IssuingAuthorityNotification(documentId))
         }
     }
 
-    private suspend fun generateGenericDocumentConfiguration(
-        env: FlowEnvironment
-    ): DocumentConfiguration {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
+    private suspend fun generateGenericDocumentConfiguration(): DocumentConfiguration {
+        val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val config = metadata.credentialConfigurations[credentialConfigurationId]!!
-        val base = getConfiguration(env).pendingDocumentInformation
+        val base = getConfiguration().pendingDocumentInformation
         return when (config.format) {
             is Openid4VciFormatSdJwt -> {
                 DocumentConfiguration(
@@ -705,11 +696,9 @@ class Openid4VciIssuingAuthorityState(
     }
 
     private suspend fun refreshAccessIfNeeded(
-        env: FlowEnvironment,
         documentId: String,
         document: Openid4VciIssuerDocument
     ) {
-        val metadata = Openid4VciIssuerMetadata.get(env, credentialIssuerUri)
         var access = document.access!!
         val nowPlusSlack = Clock.System.now() + 30.seconds
         if (access.cNonce != null && nowPlusSlack < access.accessTokenExpiration) {
@@ -719,7 +708,6 @@ class Openid4VciIssuingAuthorityState(
 
         val refreshToken = access.refreshToken
         access = OpenidUtil.obtainToken(
-            env = env,
             clientId = clientId,
             issuanceClientId = issuanceClientId,
             tokenUrl = access.tokenEndpoint,
@@ -733,6 +721,10 @@ class Openid4VciIssuingAuthorityState(
             Logger.w(TAG, "Kept original refresh token (no updated refresh token received)")
             access.refreshToken = refreshToken
         }
-        updateIssuerDocument(env, documentId, document, false)
+        updateIssuerDocument(documentId, document, false)
+    }
+
+    private suspend fun checkClientId() {
+        check(clientId == RpcAuthContext.getClientId())
     }
 }

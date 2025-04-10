@@ -3,13 +3,13 @@ package org.multipaz.server.openid4vci
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Uint
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.flow.handler.AesGcmCipher
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.handler.SimpleCipher
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.AesGcmCipher
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.handler.SimpleCipher
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.server.BaseHttpServlet
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.fromBase64Url
@@ -37,7 +37,7 @@ abstract class BaseServlet: BaseHttpServlet() {
         )
     }
 
-    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+    override fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {
         val encryptionKey = runBlocking {
             val storage = env.getTable(rootTableSpec)
             val key = storage.get("issuanceStateEncryptionKey")

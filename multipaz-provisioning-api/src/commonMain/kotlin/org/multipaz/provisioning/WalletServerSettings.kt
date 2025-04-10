@@ -1,6 +1,6 @@
 package org.multipaz.provisioning
 
-import org.multipaz.flow.server.Configuration
+import org.multipaz.rpc.backend.Configuration
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import kotlinx.io.bytestring.ByteString

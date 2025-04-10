@@ -2,26 +2,25 @@ package org.multipaz.wallet.provisioning.remote
 
 import android.content.Context
 import org.multipaz.securearea.AndroidKeystoreSecureArea
-import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.DataItem
 import org.multipaz.device.AssertionNonce
 import org.multipaz.device.DeviceAssertionMaker
-import org.multipaz.flow.handler.FlowDispatcher
-import org.multipaz.flow.handler.FlowDispatcherHttp
-import org.multipaz.flow.handler.FlowDispatcherLocal
-import org.multipaz.flow.handler.FlowExceptionMap
-import org.multipaz.flow.handler.FlowNotificationsLocal
-import org.multipaz.flow.handler.FlowNotifier
-import org.multipaz.flow.handler.FlowNotifierPoll
-import org.multipaz.flow.handler.FlowPollHttp
-import org.multipaz.flow.handler.SimpleCipher
-import org.multipaz.flow.transport.HttpTransport
+import org.multipaz.rpc.handler.RpcDispatcher
+import org.multipaz.rpc.handler.RpcDispatcherHttp
+import org.multipaz.rpc.handler.RpcDispatcherLocal
+import org.multipaz.rpc.handler.RpcExceptionMap
+import org.multipaz.rpc.handler.RpcNotificationsLocal
+import org.multipaz.rpc.handler.RpcNotifier
+import org.multipaz.rpc.handler.RpcNotifierPoll
+import org.multipaz.rpc.handler.RpcPollHttp
+import org.multipaz.rpc.handler.SimpleCipher
+import org.multipaz.rpc.transport.HttpTransport
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.ClientAuthentication
 import org.multipaz.provisioning.IssuingAuthority
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.WalletServer
-import org.multipaz.provisioning.WalletServerImpl
+import org.multipaz.provisioning.WalletServerStub
 import org.multipaz.provisioning.wallet.WalletServerState
 import org.multipaz.device.DeviceCheck
 import org.multipaz.device.DeviceAttestation
@@ -41,6 +40,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.provisioning.AuthenticationStub
+import org.multipaz.rpc.handler.RpcAuthIssuerAssertion
+import org.multipaz.rpc.handler.RpcDispatcherAuth
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -133,10 +135,9 @@ class WalletServerProvider(
                 Logger.i(TAG, "Resetting wallet server...")
                 try {
                     for (issuingAuthority in issuingAuthorityMap.values) {
-                        issuingAuthority.complete()
+                        issuingAuthority.dispose()
                     }
                     applicationSupportSupplier?.release()
-                    instance?.complete()
                 } catch (err: Exception) {
                     Logger.e(TAG, "Error shutting down Wallet Server connection", err)
                 }
@@ -254,15 +255,15 @@ class WalletServerProvider(
     }
 
     private suspend fun estableshWalletServerConnection(baseUrl: String): WalletServerConnection {
-        val dispatcher: FlowDispatcher
-        val notifier: FlowNotifier
-        val exceptionMapBuilder = FlowExceptionMap.Builder()
+        val dispatcher: RpcDispatcher
+        val notifier: RpcNotifier
+        val exceptionMapBuilder = RpcExceptionMap.Builder()
         var applicationSupportSupplier: ApplicationSupportSupplier? = null
         WalletServerState.registerExceptions(exceptionMapBuilder)
         if (baseUrl == "dev:") {
-            val builder = FlowDispatcherLocal.Builder()
+            val builder = RpcDispatcherLocal.Builder()
             WalletServerState.registerAll(builder)
-            notifier = FlowNotificationsLocal(CoroutineScope(Dispatchers.IO), noopCipher)
+            notifier = RpcNotificationsLocal(noopCipher)
             applicationSupportSupplier = ApplicationSupportSupplier() {
                 val minServer = estableshWalletServerConnection(settingsModel.minServerUrl.value!!)
                 minServer.applicationSupportSupplier.getApplicationSupport()
@@ -270,29 +271,20 @@ class WalletServerProvider(
             val environment = LocalDevelopmentEnvironment(
                 context, settingsModel, assertionMaker,
                 secureAreaProvider, notifier, applicationSupportSupplier)
-            dispatcher = WrapperFlowDispatcher(builder.build(
+            dispatcher = WrapperRpcDispatcher(builder.build(
                 environment,
                 noopCipher,
                 exceptionMapBuilder.build()
             ))
         } else {
             val httpClient = WalletHttpTransport(baseUrl)
-            val poll = FlowPollHttp(httpClient)
-            notifier = FlowNotifierPoll(poll)
+            val poll = RpcPollHttp(httpClient)
+            notifier = RpcNotifierPoll(poll)
             notificationsJob = CoroutineScope(Dispatchers.IO).launch {
                 notifier.loop()
             }
-            dispatcher = FlowDispatcherHttp(httpClient, exceptionMapBuilder.build())
+            dispatcher = RpcDispatcherHttp(httpClient, exceptionMapBuilder.build())
         }
-
-        // "root" is the entry point for the server, see FlowState annotation on
-        // org.multipaz.provisioning.wallet.WalletServerState
-        val walletServer = WalletServerImpl(
-            flowPath = "root",
-            flowState = Bstr(byteArrayOf()),
-            flowDispatcher = dispatcher,
-            flowNotifier = notifier
-        )
 
         val hostsTable = storage.getTable(hostsTableSpec)
         val connectionDataBytes = hostsTable.get(key = baseUrl)
@@ -301,7 +293,16 @@ class WalletServerProvider(
         } else {
             WalletServerConnectionData.fromCbor(connectionDataBytes.toByteArray())
         }
-        val authentication = walletServer.authenticate()
+
+        // RPC entry point that does not require authorization, it is used to set up
+        // authorization parameters with the server (so these parameters can be used for subsequent
+        // RPC communication).
+        val authentication = AuthenticationStub(
+            endpoint = "auth",
+            dispatcher = dispatcher,
+            notifier = notifier
+        )
+
         val challenge = authentication.requestChallenge(connectionData?.clientId ?: "")
         val deviceAttestation: DeviceAttestation?
         if (connectionData?.clientId != challenge.clientId) {
@@ -338,7 +339,23 @@ class WalletServerProvider(
             ),
             getWalletApplicationCapabilities()
         ))
-        authentication.complete()
+
+        val authorizedDispatcher = RpcDispatcherAuth(
+            base = dispatcher,
+            rpcAuthIssuer = RpcAuthIssuerAssertion(
+                clientId = connectionData.clientId,
+                secureArea = secureAreaProvider.get(),
+                deviceAttestationId = connectionData.deviceAttestationId
+            )
+        )
+
+        // "root" is the entry point for the server, see RpcState annotation on
+        // org.multipaz.provisioning.wallet.WalletServerState
+        val walletServer = WalletServerStub(
+            endpoint = "root",
+            dispatcher = authorizedDispatcher,
+            notifier = notifier
+        )
 
         if (applicationSupportSupplier == null) {
             applicationSupportSupplier = ApplicationSupportSupplier {
@@ -357,15 +374,15 @@ class WalletServerProvider(
      * Flow handler that delegates to a base, ensuring that the work is done in IO dispatchers
      * and logging the calls.
      */
-    internal class WrapperFlowDispatcher(private val base: FlowDispatcher): FlowDispatcher {
+    internal class WrapperRpcDispatcher(private val base: RpcDispatcher): RpcDispatcher {
         companion object {
-            const val TAG = "FlowRpc"
+            const val TAG = "MultipazRpc"
         }
 
-        override val exceptionMap: FlowExceptionMap
+        override val exceptionMap: RpcExceptionMap
             get() = base.exceptionMap
 
-        override suspend fun dispatch(flow: String, method: String, args: List<DataItem>): List<DataItem> {
+        override suspend fun dispatch(flow: String, method: String, args: DataItem): List<DataItem> {
             Logger.i(TAG, "POST [${Thread.currentThread().name}] $flow/$method")
             val start = System.nanoTime()
             try {
@@ -396,7 +413,7 @@ class WalletServerProvider(
         }
 
         suspend fun release() {
-            connection?.applicationSupport?.complete()
+            connection?.applicationSupport?.dispose()
         }
     }
 

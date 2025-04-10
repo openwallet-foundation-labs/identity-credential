@@ -1442,7 +1442,7 @@ fun EvidenceRequestWebView(
         val appSupport = walletServerProvider.getApplicationSupportConnection().applicationSupport
         scope.launch {
             // Wait for notifications
-            appSupport.notifications.collectLatest { notification ->
+            appSupport.collect { notification ->
                 if (notification.baseUrl == redirectUri) {
                     handleLanding(appSupport, redirectUri, provisioningViewModel)
                 }

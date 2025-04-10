@@ -8,7 +8,7 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.javaPrivateKey
 import org.multipaz.crypto.javaPublicKey
 import org.multipaz.document.NameSpacedData
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.util.fromBase64Url
 import com.nimbusds.jose.crypto.ECDHDecrypter

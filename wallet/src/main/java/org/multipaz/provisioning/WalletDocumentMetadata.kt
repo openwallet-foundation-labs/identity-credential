@@ -40,7 +40,7 @@ class WalletDocumentMetadata private constructor(
     override val issuerLogo get() = ByteString(data.issuingAuthorityConfiguration!!.issuingAuthorityLogo)
 
     /** The identifier for the [IssuingAuthority] the credential belongs to */
-    val issuingAuthorityIdentifier: String get() = data.issuingAuthorityIdentifier!!
+    val issuingAuthorityIdentifier: String? get() = data.issuingAuthorityIdentifier
 
     /**
      * The identifier for the document, as assigned by the issuer
@@ -101,7 +101,8 @@ class WalletDocumentMetadata private constructor(
      * @param walletServerProvider the wallet server provider.
      */
     suspend fun refreshState(walletServerProvider: WalletServerProvider) {
-        val issuer = walletServerProvider.getIssuingAuthority(issuingAuthorityIdentifier)
+        val issuerId = issuingAuthorityIdentifier ?: return
+        val issuer = walletServerProvider.getIssuingAuthority(issuerId)
         val newState = issuer.getState(documentIdentifier)
         lock.withLock {
             data.state = newState

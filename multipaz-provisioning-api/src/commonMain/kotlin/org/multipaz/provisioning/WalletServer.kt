@@ -1,24 +1,16 @@
 package org.multipaz.provisioning
 
-import org.multipaz.flow.client.FlowBase
-import org.multipaz.flow.annotation.FlowInterface
-import org.multipaz.flow.annotation.FlowMethod
+import org.multipaz.rpc.annotation.RpcInterface
+import org.multipaz.rpc.annotation.RpcMethod
 
-@FlowInterface
-interface WalletServer: FlowBase {
-    /**
-     * No need to call on client-side if using a [WalletServer] obtained from a
-     * [WalletServerProvider].
-     */
-    @FlowMethod
-    suspend fun authenticate(): AuthenticationFlow
-
+@RpcInterface
+interface WalletServer {
     /**
      * General-purpose server-side application support.
      *
      * This is the only interface supported by the minimal wallet server.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun applicationSupport(): ApplicationSupport
 
     /**
@@ -26,7 +18,7 @@ interface WalletServer: FlowBase {
      *
      * Queried from all issuing authorities at initialization time.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getIssuingAuthorityConfigurations(): List<IssuingAuthorityConfiguration>
 
     /**
@@ -36,6 +28,6 @@ interface WalletServer: FlowBase {
      * authority instances, to avoid creating unneeded instances (that can interfere with
      * notifications), go through WalletServerProvider.
      */
-    @FlowMethod
+    @RpcMethod
     suspend fun getIssuingAuthority(identifier: String): IssuingAuthority
 }

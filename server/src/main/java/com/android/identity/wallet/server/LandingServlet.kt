@@ -1,10 +1,10 @@
 package org.multipaz.wallet.server
 
-import org.multipaz.flow.handler.FlowNotifications
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
-import org.multipaz.flow.server.Resources
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.RpcNotifications
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.Resources
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.LandingUrlNotification
 import org.multipaz.provisioning.wallet.ApplicationSupportState
 import org.multipaz.provisioning.wallet.LandingRecord
@@ -16,6 +16,7 @@ import org.multipaz.util.Logger
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 
 /**
@@ -29,9 +30,9 @@ class LandingServlet: BaseHttpServlet() {
         private const val TAG = "LandingServlet"
     }
 
-    override fun initializeEnvironment(env: FlowEnvironment): FlowNotifications? {
+    override fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {
         // Use notifications from FlowServlet (it must be initialized before LandingServlet)
-        return environmentFor(FlowServlet::class)!!.getInterface(FlowNotifications::class)
+        return environmentFor(RpcServlet::class)!!.getInterface(RpcNotifications::class)
     }
 
     override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {
@@ -57,8 +58,10 @@ class LandingServlet: BaseHttpServlet() {
                 val configuration = environment.getInterface(Configuration::class)!!
                 val baseUrl = configuration.getValue("base_url")
                 val landingUrl = "$baseUrl/${ApplicationSupportState.URL_PREFIX}$id"
-                ApplicationSupportState(record.clientId).emit(environment,
-                    LandingUrlNotification(landingUrl))
+                withContext(environment) {
+                    ApplicationSupportState(record.clientId)
+                        .emit(LandingUrlNotification(landingUrl))
+                }
                 resp.contentType = "text/html"
                 val resources = environment.getInterface(Resources::class)!!
                 resp.outputStream.write(

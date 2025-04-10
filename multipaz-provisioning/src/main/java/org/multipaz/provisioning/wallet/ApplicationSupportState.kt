@@ -8,15 +8,14 @@ import org.multipaz.crypto.X509Cert
 import org.multipaz.device.AssertionDPoPKey
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.DeviceAttestationAndroid
-import org.multipaz.flow.annotation.FlowMethod
-import org.multipaz.flow.annotation.FlowState
-import org.multipaz.flow.server.Configuration
-import org.multipaz.flow.server.FlowEnvironment
+import org.multipaz.rpc.annotation.RpcState
+import org.multipaz.rpc.backend.Configuration
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.LandingUrlUnknownException
 import org.multipaz.provisioning.WalletServerSettings
-import org.multipaz.flow.cache
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.cache
+import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.openid4vci.toJson
 import org.multipaz.provisioning.validateDeviceAssertionBindingKeys
 import org.multipaz.securearea.KeyAttestation
@@ -31,15 +30,23 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.multipaz.rpc.backend.RpcAuthBackendDelegate
+import org.multipaz.rpc.handler.RpcAuthContext
+import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-@FlowState(flowInterface = ApplicationSupport::class)
+@RpcState(endpoint = "appsupport")
 @CborSerializable
 class ApplicationSupportState(
-    var clientId: String
-) {
+    // NB: since this object is used to emit notifications, it cannot change, as its state
+    // serves as notification key. So it generally should not have var members, only val.
+    // This is also the reason we keep clientId here (so there is no conflict between different
+    // clients)
+    val clientId: String
+): ApplicationSupport, RpcAuthInspector by RpcAuthBackendDelegate {
     companion object {
         const val URL_PREFIX = "landing/"
         const val TAG = "ApplicationSupportState"
@@ -58,30 +65,30 @@ class ApplicationSupportState(
         private val EXPIRATION = 1.days
     }
 
-    @FlowMethod
-    suspend fun createLandingUrl(env: FlowEnvironment): String {
-        val storage = env.getTable(landingTableSpec)
+    override suspend fun createLandingUrl(): String {
+        checkClientId()
+        val storage = BackendEnvironment.getTable(landingTableSpec)
         val id = storage.insert(
             key = null,
             data = ByteString(LandingRecord(clientId).toCbor()),
             expiration = Clock.System.now() + EXPIRATION
         )
         Logger.i(TAG, "Created landing URL '$id'")
-        val configuration = env.getInterface(Configuration::class)!!
+        val configuration = BackendEnvironment.getInterface(Configuration::class)!!
         val baseUrl = configuration.getValue("base_url")!!
         return "$baseUrl/$URL_PREFIX$id"
     }
 
-    @FlowMethod
-    suspend fun getLandingUrlStatus(env: FlowEnvironment, landingUrl: String): String? {
-        val configuration = env.getInterface(Configuration::class)!!
+    override suspend fun getLandingUrlStatus(landingUrl: String): String? {
+        checkClientId()
+        val configuration = BackendEnvironment.getInterface(Configuration::class)!!
         val baseUrl = configuration.getValue("base_url")!!
         val prefix = "$baseUrl/$URL_PREFIX"
         if (!landingUrl.startsWith(prefix)) {
             Logger.e(TAG, "baseUrl must start with $prefix, actual '$landingUrl'")
             throw IllegalStateException("baseUrl must start with $prefix")
         }
-        val storage = env.getTable(landingTableSpec)
+        val storage = BackendEnvironment.getTable(landingTableSpec)
         val id = landingUrl.substring(prefix.length)
         Logger.i(TAG, "Querying landing URL '$id'")
         val recordData = storage.get(id)
@@ -94,21 +101,18 @@ class ApplicationSupportState(
         return record.resolved
     }
 
-    @FlowMethod
-    suspend fun createJwtClientAssertion(
-        env: FlowEnvironment,
+    override suspend fun createJwtClientAssertion(
         keyAttestation: KeyAttestation,
         keyAssertion: DeviceAssertion
     ): String {
-        val storage = env.getTable(AuthenticationState.clientTableSpec)
-        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!.toByteArray())
-
-        clientRecord.deviceAttestation.validateAssertion(keyAssertion)
+        checkClientId()
+        val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
+        deviceAttestation.validateAssertion(keyAssertion)
 
         val assertion = keyAssertion.assertion as AssertionDPoPKey
 
-        if (clientRecord.deviceAttestation is DeviceAttestationAndroid) {
-            val settings = WalletServerSettings(env.getInterface(Configuration::class)!!)
+        if (deviceAttestation is DeviceAttestationAndroid) {
+            val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
             val certChain = keyAttestation.certChain!!
             check(assertion.publicKey == certChain.certificates.first().ecPublicKey)
             validateAndroidKeyAttestation(
@@ -121,25 +125,22 @@ class ApplicationSupportState(
         }
 
         check(keyAttestation.certChain!!.certificates[0].ecPublicKey == keyAttestation.publicKey)
-        return createJwtClientAssertion(env, keyAttestation.publicKey, assertion.targetUrl)
+        return createJwtClientAssertion(keyAttestation.publicKey, assertion.targetUrl)
     }
 
-    @FlowMethod
-    fun getClientAssertionId(env: FlowEnvironment, targetIssuanceUrl: String): String {
+    override suspend fun getClientAssertionId(targetIssuanceUrl: String): String {
+        checkClientId()
         return MULTIPAZ_CLIENT_ID
     }
 
-    @FlowMethod
-    suspend fun createJwtKeyAttestation(
-        env: FlowEnvironment,
+    override suspend fun createJwtKeyAttestation(
         keyAttestations: List<KeyAttestation>,
         keysAssertion: DeviceAssertion // holds AssertionBindingKeys
     ): String {
-        val storage = env.getTable(AuthenticationState.clientTableSpec)
-        val clientRecord = ClientRecord.fromCbor(storage.get(clientId)!!.toByteArray())
+        checkClientId()
+        val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
         val assertion = validateDeviceAssertionBindingKeys(
-            env = env,
-            deviceAttestation = clientRecord.deviceAttestation,
+            deviceAttestation = deviceAttestation,
             keyAttestations = keyAttestations,
             deviceAssertion = keysAssertion,
             nonce = null,  // no check
@@ -148,7 +149,7 @@ class ApplicationSupportState(
         val nonce = String(assertion.nonce.toByteArray())
         val keyList = assertion.publicKeys
 
-        val attestationData = env.cache(AttestationData::class) { configuration, resources ->
+        val attestationData = BackendEnvironment.cache(AttestationData::class) { configuration, resources ->
             // The key that we use here is unique for a particular Wallet ecosystem.
             // Use client attestation key as default for development (default is NOT suitable
             // for production, as private key CANNOT be in the source repository).
@@ -208,11 +209,10 @@ class ApplicationSupportState(
 
     // Not exposed as RPC!
     suspend fun createJwtClientAssertion(
-        env: FlowEnvironment,
         clientPublicKey: EcPublicKey,
         targetIssuanceUrl: String
     ): String {
-        val attestationData = env.cache(
+        val attestationData = BackendEnvironment.cache(
             AttestationData::class,
             targetIssuanceUrl
         ) { configuration, resources ->
@@ -276,6 +276,10 @@ class ApplicationSupportState(
         val signature = sig.toCoseEncoded().toBase64Url()
 
         return "$message.$signature"
+    }
+
+    private suspend fun checkClientId() {
+        check(clientId == RpcAuthContext.getClientId())
     }
 
     internal data class AttestationData(

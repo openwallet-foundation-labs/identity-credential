@@ -10,7 +10,7 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.wallet.provisioning.DocumentExtensions.documentConfiguration
 import org.multipaz.wallet.provisioning.DocumentExtensions.walletDocumentMetadata
-import org.multipaz.provisioning.ProofingFlow
+import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.RegistrationResponse
 import org.multipaz.wallet.provisioning.WalletDocumentMetadata
 import org.multipaz.provisioning.evidence.EvidenceRequest
@@ -32,6 +32,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.buildByteString
 import org.json.JSONObject
+import org.multipaz.provisioning.IssuingAuthority
 import kotlin.coroutines.cancellation.CancellationException
 
 class ProvisioningViewModel : ViewModel() {
@@ -73,14 +74,16 @@ class ProvisioningViewModel : ViewModel() {
         state.value = State.IDLE
         error = null
         document = null
-        proofingFlow = null
+        proofing = null
+        issuingAuthority = null
         evidenceRequests = null
         currentEvidenceRequestIndex = 0
         nextEvidenceRequest.value = null
         selectedOpenid4VpCredential.value = null
     }
 
-    private var proofingFlow: ProofingFlow? = null
+    private var issuingAuthority: IssuingAuthority? = null
+    private var proofing: Proofing? = null
 
     var document: Document? = null
     private var evidenceRequests: List<EvidenceRequest>? = null
@@ -125,10 +128,8 @@ class ProvisioningViewModel : ViewModel() {
                     settingsModel.developerModeEnabled.value!!
                 )
                 createDocumentKeyFlow.sendDocumentRegistrationResponse(response)
-                createDocumentKeyFlow.complete()
+                issuer.completeRegistration(createDocumentKeyFlow)
 
-                val documentIdentifier =
-                    issuerConfiguration.identifier + "_" + issuerDocumentIdentifier
                 val pendingDocumentConfiguration = issuerConfiguration.pendingDocumentInformation
                 document = documentStore.createDocument { metadata ->
                     val walletMetadata = metadata as WalletDocumentMetadata
@@ -141,16 +142,17 @@ class ProvisioningViewModel : ViewModel() {
                     walletMetadata.refreshState(walletServerProvider)
                 }
 
-                proofingFlow = issuer.proof(issuerDocumentIdentifier)
-                evidenceRequests = proofingFlow!!.getEvidenceRequests()
+                proofing = issuer.proof(issuerDocumentIdentifier)
+                issuingAuthority = issuer
+                evidenceRequests = proofing!!.getEvidenceRequests()
                 // EvidenceRequestCredentialOffer (if requested at all) is always the first request.
                 if (evidenceRequests!!.isNotEmpty() &&
                         evidenceRequests!![0] is EvidenceRequestCredentialOffer) {
-                    proofingFlow!!.sendEvidence(
+                    proofing!!.sendEvidence(
                         EvidenceResponseCredentialOffer(openid4VciCredentialOffer ?:
                                 createDefaultCredentialOffer(issuerIdentifier!!))
                     )
-                    evidenceRequests = proofingFlow!!.getEvidenceRequests()
+                    evidenceRequests = proofing!!.getEvidenceRequests()
                 }
 
                 currentEvidenceRequestIndex = 0
@@ -161,7 +163,7 @@ class ProvisioningViewModel : ViewModel() {
                     val metadata = document!!.walletDocumentMetadata
                     metadata.refreshState(walletServerProvider)
                     metadata.markAsProvisioned()
-                    proofingFlow!!.complete()
+                    issuer.completeProof(proofing!!)
                 } else {
                     selectViableEvidenceRequest()
                     state.value = State.EVIDENCE_REQUESTS_READY
@@ -202,9 +204,9 @@ class ProvisioningViewModel : ViewModel() {
             try {
                 state.value = State.SUBMITTING_EVIDENCE
 
-                proofingFlow!!.sendEvidence(evidence)
+                proofing!!.sendEvidence(evidence)
 
-                evidenceRequests = proofingFlow!!.getEvidenceRequests()
+                evidenceRequests = proofing!!.getEvidenceRequests()
                 currentEvidenceRequestIndex = 0
 
                 Logger.d(TAG, "ers1 ${evidenceRequests!!.size}")
@@ -213,7 +215,7 @@ class ProvisioningViewModel : ViewModel() {
                     val metadata = document!!.walletDocumentMetadata
                     metadata.refreshState(walletServerProvider)
                     metadata.markAsProvisioned()
-                    proofingFlow!!.complete()
+                    issuingAuthority!!.completeProof(proofing!!)
                     metadata.refreshState(walletServerProvider)
                 } else {
                     selectViableEvidenceRequest()
@@ -250,10 +252,10 @@ class ProvisioningViewModel : ViewModel() {
 
         runBlocking {
             // handshake
-            proofingFlow!!.sendEvidence(EvidenceResponseIcaoNfcTunnel(buildByteString {}))
+            proofing!!.sendEvidence(EvidenceResponseIcaoNfcTunnel(buildByteString {}))
 
             while (true) {
-                val requests = proofingFlow!!.getEvidenceRequests()
+                val requests = proofing!!.getEvidenceRequests()
                 if (requests.size != 1) {
                     break
                 }
@@ -263,7 +265,7 @@ class ProvisioningViewModel : ViewModel() {
                 }
 
                 val response = handler(request)
-                proofingFlow!!.sendEvidence(response)
+                proofing!!.sendEvidence(response)
             }
         }
     }
@@ -274,7 +276,7 @@ class ProvisioningViewModel : ViewModel() {
             // TODO: remove this once evidenceRequests becomes state
             state.value = State.SUBMITTING_EVIDENCE
             state.value = State.EVIDENCE_REQUESTS_READY
-            evidenceRequests = proofingFlow!!.getEvidenceRequests()
+            evidenceRequests = proofing!!.getEvidenceRequests()
             currentEvidenceRequestIndex = 0
             selectViableEvidenceRequest()
         }

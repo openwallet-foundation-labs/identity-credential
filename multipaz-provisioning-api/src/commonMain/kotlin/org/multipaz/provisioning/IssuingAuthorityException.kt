@@ -1,12 +1,12 @@
 package org.multipaz.provisioning
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.flow.annotation.FlowException
+import org.multipaz.rpc.annotation.RpcException
 
 /**
  * Represents a generic error in issuer with the human-readable message.
  */
-@FlowException
+@RpcException
 @CborSerializable
 class IssuingAuthorityException(override val message: String) : Exception(message) {
     companion object

@@ -1,6 +1,5 @@
 package org.multipaz.server.openid4vci
 
-import org.multipaz.flow.server.Configuration
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.JsonPrimitive

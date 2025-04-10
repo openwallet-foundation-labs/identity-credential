@@ -1,7 +1,7 @@
 package org.multipaz.server.openid4vci
 
-import org.multipaz.flow.handler.InvalidRequestException
-import org.multipaz.flow.server.getTable
+import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.rpc.backend.getTable
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking

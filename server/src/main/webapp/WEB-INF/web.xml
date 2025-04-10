@@ -5,9 +5,9 @@
          http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
     version="3.1">
     <servlet>
-        <display-name>FlowServlet</display-name>
-        <servlet-name>FlowServlet</servlet-name>
-        <servlet-class>org.multipaz.wallet.server.FlowServlet</servlet-class>
+        <display-name>RpcServlet</display-name>
+        <servlet-name>RpcServlet</servlet-name>
+        <servlet-class>org.multipaz.wallet.server.RpcServlet</servlet-class>
         <load-on-startup>0</load-on-startup>
 
         <init-param>
@@ -161,8 +161,8 @@
     </servlet>
 
     <servlet-mapping>
-        <servlet-name>FlowServlet</servlet-name>
-        <url-pattern>/flow/*</url-pattern>
+        <servlet-name>RpcServlet</servlet-name>
+        <url-pattern>/rpc/*</url-pattern>
     </servlet-mapping>
 
 
@@ -171,7 +171,7 @@
         <servlet-name>AdminServlet</servlet-name>
         <servlet-class>org.multipaz.wallet.server.AdminServlet</servlet-class>
 
-        <!-- must be loaded after FlowServlet in order to use FlowNotifications! -->
+        <!-- must be loaded after RpcServlet in order to use RpcNotifications! -->
         <load-on-startup>1</load-on-startup>
 
         <init-param>
