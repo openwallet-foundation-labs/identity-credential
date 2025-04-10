@@ -1,16 +1,10 @@
 package org.multipaz.mdoc.transport
 
+import io.ktor.client.utils.unwrapCancellationException
 import kotlinx.coroutines.CancellationException
-import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
-import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
-import org.multipaz.util.Logger
-import org.multipaz.util.UUID
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +12,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.util.Logger
+import org.multipaz.util.UUID
 import kotlin.time.Duration
 
 internal class BleTransportCentralMdocReader(
@@ -64,7 +63,7 @@ internal class BleTransportCentralMdocReader(
         peripheralManager.setCallbacks(
             onError = { error ->
                 runBlocking {
-                    currentJob?.cancel("onError was called")
+                    currentJob?.cancel("onError was called", error)
                     mutex.withLock {
                         failTransport(error)
                     }
@@ -80,23 +79,22 @@ internal class BleTransportCentralMdocReader(
         )
     }
 
-    @OptIn(InternalCoroutinesApi::class)
     override suspend fun advertise() {
         mutex.withLock {
             check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
             try {
-                currentJob = CoroutineScope(currentCoroutineContext()).launch {
-                    peripheralManager.waitForPowerOn()
-                    peripheralManager.advertiseService(uuid)
-                    _state.value = State.ADVERTISING
-                }
-                currentJob!!.join()
-                if (currentJob!!.isCancelled) {
-                    throw currentJob!!.getCancellationException()
+                coroutineScope {
+                    currentJob = launch {
+                        peripheralManager.waitForPowerOn()
+                        peripheralManager.advertiseService(uuid)
+                        _state.value = State.ADVERTISING
+                    }
                 }
             } catch (error: Throwable) {
-                failTransport(error)
-                throw MdocTransportException("Failed while advertising", error)
+                throw error.unwrapCancellationException().let {
+                    failTransport(it)
+                    it.wrapUnlessCancellationException("Failed while advertising")
+                }
             } finally {
                 currentJob = null
             }
@@ -106,34 +104,33 @@ internal class BleTransportCentralMdocReader(
     override val scanningTime: Duration?
         get() = null
 
-    @OptIn(InternalCoroutinesApi::class)
     override suspend fun open(eSenderKey: EcPublicKey) {
         mutex.withLock {
             check(_state.value == State.IDLE || _state.value == State.ADVERTISING) {
                 "Expected state IDLE or ADVERTISING, got ${_state.value}"
             }
             try {
-                currentJob = CoroutineScope(currentCoroutineContext()).launch {
-                    if (_state.value != State.ADVERTISING) {
-                        // Start advertising if we aren't already...
-                        _state.value = State.ADVERTISING
-                        peripheralManager.waitForPowerOn()
-                        peripheralManager.advertiseService(uuid)
+                coroutineScope {
+                    currentJob = launch {
+                        if (_state.value != State.ADVERTISING) {
+                            // Start advertising if we aren't already...
+                            _state.value = State.ADVERTISING
+                            peripheralManager.waitForPowerOn()
+                            peripheralManager.advertiseService(uuid)
+                        }
+                        peripheralManager.setESenderKey(eSenderKey)
+                        // Note: It's not really possible to know someone is connecting to use until they're _actually_
+                        // connected. I mean, for all we know, someone could be BLE scanning us. So not really possible
+                        // to go into State.CONNECTING...
+                        peripheralManager.waitForStateCharacteristicWriteOrL2CAPClient()
+                        _state.value = State.CONNECTED
                     }
-                    peripheralManager.setESenderKey(eSenderKey)
-                    // Note: It's not really possible to know someone is connecting to use until they're _actually_
-                    // connected. I mean, for all we know, someone could be BLE scanning us. So not really possible
-                    // to go into State.CONNECTING...
-                    peripheralManager.waitForStateCharacteristicWriteOrL2CAPClient()
-                    _state.value = State.CONNECTED
-                }
-                currentJob!!.join()
-                if (currentJob!!.isCancelled) {
-                    throw currentJob!!.getCancellationException()
                 }
             } catch (error: Throwable) {
-                failTransport(error)
-                throw MdocTransportException("Failed while opening transport", error)
+                throw error.unwrapCancellationException().let {
+                    failTransport(it)
+                    it.wrapUnlessCancellationException("Failed while opening transport")
+                }
             } finally {
                 currentJob = null
             }
@@ -160,7 +157,6 @@ internal class BleTransportCentralMdocReader(
         }
     }
 
-    @OptIn(InternalCoroutinesApi::class)
     override suspend fun sendMessage(message: ByteArray) {
         mutex.withLock {
             check(_state.value == State.CONNECTED) { "Expected state CONNECTED, got ${_state.value}" }
@@ -168,20 +164,20 @@ internal class BleTransportCentralMdocReader(
                 throw MdocTransportTerminationException("Transport-specific termination not available with L2CAP")
             }
             try {
-                currentJob = CoroutineScope(currentCoroutineContext()).launch {
-                    if (message.isEmpty()) {
-                        peripheralManager.writeToStateCharacteristic(BleTransportConstants.STATE_CHARACTERISTIC_END)
-                    } else {
-                        peripheralManager.sendMessage(message)
+                coroutineScope {
+                    currentJob = launch {
+                        if (message.isEmpty()) {
+                            peripheralManager.writeToStateCharacteristic(BleTransportConstants.STATE_CHARACTERISTIC_END)
+                        } else {
+                            peripheralManager.sendMessage(message)
+                        }
                     }
                 }
-                currentJob!!.join()
-                if (currentJob!!.isCancelled) {
-                    throw currentJob!!.getCancellationException()
-                }
             } catch (error: Throwable) {
-                failTransport(error)
-                throw MdocTransportException("Failed while sending message", error)
+                throw error.unwrapCancellationException().let {
+                    failTransport(it)
+                    it.wrapUnlessCancellationException("Failed while sending message")
+                }
             } finally {
                 currentJob = null
             }

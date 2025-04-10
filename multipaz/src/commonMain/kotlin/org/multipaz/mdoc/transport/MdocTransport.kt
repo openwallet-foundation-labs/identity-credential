@@ -1,5 +1,6 @@
 package org.multipaz.mdoc.transport
 
+import kotlinx.coroutines.CancellationException
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import kotlinx.coroutines.flow.StateFlow
@@ -139,4 +140,11 @@ abstract class MdocTransport {
      * This is idempotent and can be called from any thread.
      */
     abstract suspend fun close()
+
+    /**
+     * Wraps this [Throwable] as an [MdocTransportException] unless it's a [CancellationException].
+     */
+    protected fun Throwable.wrapUnlessCancellationException(message: String): Throwable =
+        if (this is CancellationException) this
+        else MdocTransportException(message, this)
 }
