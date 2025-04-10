@@ -51,6 +51,8 @@ possible approaches to do this. One of the simpler ones, if you're planning on r
 1. Forward the test device's port 8080 to the dev machine's port 8080: `adb reverse tcp:8080 tcp:8080`
 1. Start the server: `./gradlew server:tomcatRun`
 1. For verification (sharing a document), on the test device, navigate to: `http://localhost:8080/server/verifier.html`
+1. Enable support for Web Identity Digital Credentials: In your Chrome browser, go to `chrome://flags#web-identity-digital-credentials`, enable the feature, and restart your browser.
+   This is required to avoid errors like `TypeError: cannot read properties of undefined (reading 'get')`
 
 #### Test Matrix
 This is a more detailed checklist that needs to be tested before each release. This can serve as a guide for an
