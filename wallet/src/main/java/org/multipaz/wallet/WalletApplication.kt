@@ -29,6 +29,9 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import io.ktor.client.engine.android.Android
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.multipaz.android.direct_access.DirectAccess
 import org.multipaz.android.direct_access.DirectAccessCredential
 import org.multipaz.context.initializeApplication
@@ -68,6 +71,9 @@ import org.multipaz.wallet.logging.EventLogger
 import org.multipaz.wallet.util.toByteArray
 import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.multipaz.android.direct_access.DirectAccessDocumentMetadata
+import org.multipaz.wallet.provisioning.DocumentExtensions.documentConfiguration
+import org.multipaz.wallet.provisioning.DocumentExtensions.walletDocumentMetadata
 import java.io.File
 import java.net.URLDecoder
 import java.security.Security
@@ -332,6 +338,27 @@ class WalletApplication : Application() {
                 ExistingPeriodicWorkPolicy.KEEP,
                 workRequest
             )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val allocatedSlots = DirectAccess.enumerateAllocatedSlots();
+            if (allocatedSlots.isNotEmpty()) {
+                for (documentId in documentStore.listDocuments()) {
+                    documentStore.lookupDocument(documentId)?.let { document ->
+                        if (document.documentConfiguration.directAccessConfiguration != null) {
+                            val expectedSlot =
+                                document.walletDocumentMetadata.directAccessDocumentSlot
+                            // Only one document slot is currently supported. The list returned by
+                            // enumerateAllocatedSlots will always contain a single element.
+                            for (slot in allocatedSlots) {
+                                if (expectedSlot != slot) {
+                                    DirectAccess.clearDocumentSlot(slot);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         powerOffReceiver = PowerOffReceiver()
         registerReceiver(powerOffReceiver, IntentFilter(Intent.ACTION_SHUTDOWN))
