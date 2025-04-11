@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">App Verifier</string>
+    <string name="app_name">ACME Proximity Verifier</string>
     <!-- Buttons -->
     <string name="next">Next</string>
     <string name="previous">Previous</string>

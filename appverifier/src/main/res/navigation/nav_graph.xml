@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/requestOptions"
         android:name="com.android.mdl.appreader.fragment.RequestOptionsFragment"
-        android:label="Mdoc Verifier"
+        android:label="ACME Mdoc Verifier"
         tools:layout="@layout/fragment_request_options">
         <argument
             android:name="keepConnection"
