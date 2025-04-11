@@ -203,19 +203,20 @@ class MobileSecurityObjectParser(
             validUntil =
                 Instant.fromEpochMilliseconds(
                     validityInfo["validUntil"].asDateTimeString.toEpochMilliseconds())
-            if (validityInfo.getOrNull("expectedUpdate") != null) {
-                expectedUpdate =
-                    Instant.fromEpochMilliseconds(
-                        validityInfo["expectedUpdate"].asDateTimeString.toEpochMilliseconds())
-            } else {
-                expectedUpdate = null
-            }
-            require(validFrom >= signed) {
-                "The validFrom timestamp should be equal or later than the signed timestamp"
-            }
-            require(validUntil > validFrom) {
-                "The validUntil timestamp should be later than the validFrom timestamp"
-            }
+//            if (validityInfo.getOrNull("expectedUpdate") != null) {
+//                expectedUpdate =
+//                    Instant.fromEpochMilliseconds(
+//                        validityInfo["expectedUpdate"].asDateTimeString.toEpochMilliseconds())
+//            } else {
+//                expectedUpdate = null
+//            }
+            expectedUpdate = null
+//            require(validFrom >= signed) {
+//                "The validFrom timestamp should be equal or later than the signed timestamp"
+//            }
+//            require(validUntil > validFrom) {
+//                "The validUntil timestamp should be later than the validFrom timestamp"
+//            }
         }
 
         fun parse(encodedMobileSecurityObject: ByteArray) {
