@@ -68,8 +68,14 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(64.dp))
             Text(
-                text = "Documents to request",
+                text = "Acme Proximity Verifier",
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Documents to request",
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
