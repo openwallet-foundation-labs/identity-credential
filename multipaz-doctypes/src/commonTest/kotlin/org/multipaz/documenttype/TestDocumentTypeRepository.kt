@@ -129,7 +129,7 @@ class TestDocumentTypeRepository {
         assertEquals(
             "1976-02-03T06:30:00",
             MdocDataElement(
-                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
+                DocumentDocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
                 false
             ).renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),

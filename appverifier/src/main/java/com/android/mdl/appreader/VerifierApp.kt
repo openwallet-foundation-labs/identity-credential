@@ -79,9 +79,9 @@ class VerifierApp : Application() {
 
 
         documentTypeRepositoryInstance = documentTypeRepository
-        documentTypeRepositoryInstance.addDocumentType(DrivingLicense.getDocumentType())
-        documentTypeRepositoryInstance.addDocumentType(VehicleRegistration.getDocumentType())
-        documentTypeRepositoryInstance.addDocumentType(VaccinationDocument.getDocumentType())
+//        documentTypeRepositoryInstance.addDocumentType(DrivingLicense.getDocumentType())
+//        documentTypeRepositoryInstance.addDocumentType(VehicleRegistration.getDocumentType())
+//        documentTypeRepositoryInstance.addDocumentType(VaccinationDocument.getDocumentType())
         documentTypeRepositoryInstance.addDocumentType(EUPersonalID.getDocumentType())
     }
 

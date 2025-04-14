@@ -37,13 +37,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.common.CreateRequestDropDown
+import com.android.mdl.appreader.common.ToggleableFieldList
 import com.android.mdl.appreader.theme.ReaderAppTheme
+import androidx.compose.runtime.mutableStateListOf
+import org.multipaz.documenttype.knowntypes.EUPersonalID
+
 
 @Composable
 fun HomeScreen(
@@ -55,12 +61,19 @@ fun HomeScreen(
     onRequestPreviewProtocol: (request: RequestingDocumentState) -> Unit,
     onRequestOpenId4VPProtocol: (request: RequestingDocumentState) -> Unit,
 ) {
+    // Sample list of field names
+    val fieldNames = EUPersonalID.getAvailableAttributes()
+
+    // State to track which fields are enabled
+    val fieldStates = remember { mutableStateListOf(*Array(fieldNames.size) { false }) }
+
+
     Box(modifier = modifier) {
-        NfcLabel(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center),
-        )
+//        NfcLabel(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .align(Alignment.Center),
+//        )
         var dropDownOpened by remember { mutableStateOf(false) }
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -73,80 +86,110 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(12.dp))
+//            Text(
+//                text = "Documents to request",
+//                style = MaterialTheme.typography.titleSmall,
+//                color = MaterialTheme.colorScheme.onBackground
+//            )
             Text(
-                text = "Documents to request",
-                style = MaterialTheme.typography.titleSmall,
+                text = "European PID",
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(42.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { dropDownOpened = !dropDownOpened },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val text = state.currentRequestSelection.ifBlank { "Tap to create request" }
-                MarqueeText(
-                    modifier = Modifier
-                        .padding(start = 12.dp)
-                        .weight(1f),
-                    value = text
-                )
-                Icon(
-                    modifier = Modifier.padding(end = 12.dp),
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
+//            Text(
+//                text = "Attributes to request",
+//                style = MaterialTheme.typography.titleSmall,
+//                color = MaterialTheme.colorScheme.onBackground
+//            )
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 16.dp)
+//                    .height(42.dp)
+//                    .clip(RoundedCornerShape(24.dp))
+//                    .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(24.dp))
+//                    .background(MaterialTheme.colorScheme.surfaceVariant)
+//                    .clickable { dropDownOpened = !dropDownOpened },
+//                verticalAlignment = Alignment.CenterVertically,
+//            ) {
+//                val text = state.currentRequestSelection.ifBlank { "Tap to create request" }
+//                MarqueeText(
+//                    modifier = Modifier
+//                        .padding(start = 12.dp)
+//                        .weight(1f),
+//                    value = text
+//                )
+//                Icon(
+//                    modifier = Modifier.padding(end = 12.dp),
+//                    imageVector = Icons.Default.ArrowDropDown,
+//                    contentDescription = null,
+//                    tint = MaterialTheme.colorScheme.onBackground
+//                )
+//            }
         }
-        CreateRequestDropDown(
-            modifier = Modifier
-                .padding(top = 100.dp, start = 16.dp, end = 16.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp)),
-            selectionState = state,
-            dropDownOpened = dropDownOpened,
-            onSelectionUpdated = onSelectionUpdated,
-            onConfirm = {
-                onRequestConfirm(it)
-                dropDownOpened = false
-            }
-        )
+//        CreateRequestDropDown(
+//            modifier = Modifier
+//                .padding(top = 100.dp, start = 16.dp, end = 16.dp)
+//                .fillMaxWidth()
+//                .clip(RoundedCornerShape(16.dp)),
+//            selectionState = state,
+//            dropDownOpened = dropDownOpened,
+//            onSelectionUpdated = onSelectionUpdated,
+//            onConfirm = {
+//                onRequestConfirm(it)
+//                dropDownOpened = false
+//            }
+//        )
         Column(
             modifier = Modifier.align(Alignment.BottomCenter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(
                 modifier = Modifier
-                    .padding(8.dp),
-                onClick = { onRequestQRCodePreview(state) }
+                    .padding(64.dp)
+                    .size(width = 240.dp, height = 50.dp),
+                onClick = { onRequestQRCodePreview(state, ) }
             ) {
-                Text(text = "Scan QR Code")
+                Text(
+                    text = "Scan QR Code",
+                    style = TextStyle(fontSize = 18.sp)
+                )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(5.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
-                ) {
-                    Button(onClick = { onRequestPreviewProtocol(state) }) {
-                        Text(textAlign = TextAlign.Center, text = "Request Credentials (Preview)")
-                    }
-                }
-                Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
-                ) {
-                    Button(onClick = { onRequestOpenId4VPProtocol(state)}) {
-                        Text(textAlign = TextAlign.Center, text = "Request Credentials (OpenID4VP)")
-                    }
-                }
-            }
+//            Row(
+//                modifier = Modifier.fillMaxWidth().padding(5.dp)
+//            ) {
+//                Column(
+//                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
+//                ) {
+//                    Button(onClick = { onRequestPreviewProtocol(state) }) {
+//                        Text(textAlign = TextAlign.Center, text = "Request Credentials (Preview)")
+//                    }
+//                }
+//                Column(
+//                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
+//                ) {
+//                    Button(onClick = { onRequestOpenId4VPProtocol(state)}) {
+//                        Text(textAlign = TextAlign.Center, text = "Request Credentials (OpenID4VP)")
+//                    }
+//                }
+//            }
+        }
+    }
+    Box(modifier = modifier) {
+
+        // UI
+        Column(modifier = Modifier.padding(16.dp)) {
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+//            ToggleableFieldList(
+//                fields = fieldNames,
+//                enabledStates = fieldStates,
+//                onToggle = { index, isEnabled ->
+//                    fieldStates[index] = isEnabled
+//                }
+//            )
         }
     }
 }
