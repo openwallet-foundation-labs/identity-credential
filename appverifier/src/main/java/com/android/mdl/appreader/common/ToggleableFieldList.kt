@@ -7,8 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Checkbox
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,15 +19,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.primarySurface
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
@@ -47,8 +45,7 @@ fun ToggleableFieldList(
 
     Box( // Wrap the Card with a Box so we can overlay the fade
         modifier = Modifier
-            .height(400.dp)
-            .padding(top = 140.dp)
+            .padding(16.dp)
     ) {
         Card(
             modifier = Modifier
@@ -68,7 +65,7 @@ fun ToggleableFieldList(
                         FilterChip(
                             onClick = { onToggle(index, !enabledStates[index]) },
                             label = {
-                                Text(text = field, color = Color.Black)
+                                Text(text = field, color = MaterialTheme.colorScheme.primary)
                             },
                             selected = enabledStates[index],
                             leadingIcon = if (enabledStates[index]) {

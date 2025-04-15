@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,41 +68,51 @@ fun HomeScreen(
     // State to track which fields are enabled
     val fieldStates = remember { mutableStateListOf(*Array(fieldNames.size) { false }) }
 
-
-    Box(modifier = modifier) {
+    Scaffold { innerPadding ->
+        Box(modifier = modifier.padding(innerPadding)) {
 //        NfcLabel(
 //            modifier = Modifier
 //                .fillMaxWidth()
 //                .align(Alignment.Center),
 //        )
-        var dropDownOpened by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(64.dp))
-            Text(
-                text = "Acme Proximity Verifier",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            var dropDownOpened by remember { mutableStateOf(false) }
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(64.dp))
+                Text(
+                    text = "Acme Proximity Verifier",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 //            Text(
 //                text = "Documents to request",
 //                style = MaterialTheme.typography.titleSmall,
 //                color = MaterialTheme.colorScheme.onBackground
 //            )
-            Text(
-                text = "European PID",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-//            Text(
-//                text = "Attributes to request",
-//                style = MaterialTheme.typography.titleSmall,
-//                color = MaterialTheme.colorScheme.onBackground
-//            )
+                Text(
+                    text = "European PID",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Attributes to request",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Column (modifier = Modifier.fillMaxSize().weight(1f).padding(bottom=120.dp)) {
+                    ToggleableFieldList(
+                        fields = fieldNames,
+                        enabledStates = fieldStates,
+                        onToggle = { index, isEnabled ->
+                            fieldStates[index] = isEnabled
+                        }
+                    )
+                }
 //            Row(
 //                modifier = Modifier
 //                    .fillMaxWidth()
@@ -127,7 +138,7 @@ fun HomeScreen(
 //                    tint = MaterialTheme.colorScheme.onBackground
 //                )
 //            }
-        }
+            }
 //        CreateRequestDropDown(
 //            modifier = Modifier
 //                .padding(top = 100.dp, start = 16.dp, end = 16.dp)
@@ -141,21 +152,21 @@ fun HomeScreen(
 //                dropDownOpened = false
 //            }
 //        )
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Button(
-                modifier = Modifier
-                    .padding(64.dp)
-                    .size(width = 240.dp, height = 50.dp),
-                onClick = { onRequestQRCodePreview(state, ) }
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Scan QR Code",
-                    style = TextStyle(fontSize = 18.sp)
-                )
-            }
+                Button(
+                    modifier = Modifier
+                        .padding(64.dp)
+                        .size(width = 240.dp, height = 50.dp),
+                    onClick = { onRequestQRCodePreview(state, ) }
+                ) {
+                    Text(
+                        text = "Scan QR Code",
+                        style = TextStyle(fontSize = 18.sp)
+                    )
+                }
 //            Row(
 //                modifier = Modifier.fillMaxWidth().padding(5.dp)
 //            ) {
@@ -174,24 +185,10 @@ fun HomeScreen(
 //                    }
 //                }
 //            }
+            }
         }
     }
-    Box(modifier = modifier) {
 
-        // UI
-        Column(modifier = Modifier.padding(16.dp)) {
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-//            ToggleableFieldList(
-//                fields = fieldNames,
-//                enabledStates = fieldStates,
-//                onToggle = { index, isEnabled ->
-//                    fieldStates[index] = isEnabled
-//                }
-//            )
-        }
-    }
 }
 
 @Composable
