@@ -97,7 +97,7 @@ fun ToggleableFieldList(
                 .height(12.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.primary)
+                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surface)
                     )
                 )
         )
