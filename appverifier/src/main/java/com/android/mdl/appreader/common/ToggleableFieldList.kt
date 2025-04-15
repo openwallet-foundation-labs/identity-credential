@@ -1,5 +1,11 @@
 package com.android.mdl.appreader.common
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
@@ -31,11 +37,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun FilterChip(selected: Boolean = false) {
-
-}
-
-@Composable
 fun ToggleableFieldList(
     fields: List<String>,
     enabledStates: List<Boolean>,
@@ -63,6 +64,9 @@ fun ToggleableFieldList(
                 fields.forEachIndexed { index, field ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         FilterChip(
+                            modifier = Modifier.animateContentSize(
+                                animationSpec = tween(durationMillis = 200)
+                            ),
                             onClick = { onToggle(index, !enabledStates[index]) },
                             label = {
                                 Text(text = field, color = MaterialTheme.colorScheme.primary)
@@ -90,10 +94,10 @@ fun ToggleableFieldList(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(24.dp)
+                .height(12.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.White)
+                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.primary)
                     )
                 )
         )
