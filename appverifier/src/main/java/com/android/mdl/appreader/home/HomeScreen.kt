@@ -110,6 +110,13 @@ fun HomeScreen(
                         enabledStates = fieldStates,
                         onToggle = { index, isEnabled ->
                             fieldStates[index] = isEnabled
+                            val selectedAttributes = mutableListOf<String>()
+                            for ((stateIndex, field) in fieldStates.withIndex()) {
+                                if (field) {
+                                    selectedAttributes.add(fieldNames[stateIndex])
+                                }
+                            }
+                            state.euPid.attributes = selectedAttributes
                         }
                     )
                 }
@@ -160,7 +167,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .padding(64.dp)
                         .size(width = 240.dp, height = 50.dp),
-                    onClick = { onRequestQRCodePreview(state, ) }
+                    onClick = { onRequestQRCodePreview(state) }
                 ) {
                     Text(
                         text = "Scan QR Code",

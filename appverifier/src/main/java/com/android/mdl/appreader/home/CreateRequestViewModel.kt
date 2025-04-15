@@ -153,7 +153,10 @@ class CreateRequestViewModel : ViewModel() {
             requestDocumentList.addRequestDocument(
                 getRequestDocument(
                     RequestDocument.EU_PID_DOCTYPE,
-                    intentToRetain
+                    intentToRetain,
+                    filterElement = { el ->
+                        uiState.euPid.attributes!!.contains(el.attribute.identifier)
+                    }
                 )
             )
         }
