@@ -61,6 +61,7 @@ object DirectAccess {
     private const val CMD_MDOC_SWAP_IN = 0x06
     private const val CMD_MDOC_GET_INFORMATION = 0x0B
     private const val CMD_MDOC_CLEAR_USAGE_COUNT = 0x0C;
+    private const val CMD_MDOC_ENUMERATE_SLOTS = 0x0D;
     private const val APDU_RESPONSE_STATUS_OK = 0x9000
     private const val INS_ENVELOPE = 0xC3.toByte()
     private const val OFFSET_MAX_CRED_SIZE = 2UL
@@ -275,7 +276,29 @@ object DirectAccess {
      * @return a list of slot IDs
      */
     fun enumerateAllocatedSlots(): List<Int> {
-        TODO("Not yet implemented")
+        val apdu: ByteArray?
+        val response: ByteArray?
+        try {
+            transport.closeConnection()
+            transport.openConnection()
+            val bos = ByteArrayOutputStream()
+            // set instruction
+            bos.write(buildByteString { appendUInt16(CMD_MDOC_ENUMERATE_SLOTS) }.toByteArray())
+            apdu = makeCommandApdu(bos.toByteArray())
+
+
+            response = transport.sendData(apdu)
+            check(getAPDUResponseStatus(response) == APDU_RESPONSE_STATUS_OK)
+
+            val list = Cbor.decode(response.copyOfRange(0, response.size - 2)).asArray
+            return ArrayList<Int>(list.size).apply {
+                list.forEach { add(it.asNumber.toInt()) }
+            }
+        } catch (e: IOException) {
+            throw java.lang.IllegalStateException("Failed to send getCredentialUsageCount")
+        } finally {
+            transport.closeConnection()
+        }
     }
 
     // TODO: These Time formatting methods (with DateTimeComponents) might benefit from unit tests covering edge cases.
