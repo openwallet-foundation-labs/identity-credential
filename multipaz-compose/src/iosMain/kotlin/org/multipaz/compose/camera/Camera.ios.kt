@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import platform.UIKit.UIViewController
+import cocoapods.GoogleMLKit.MLKFaceLandmarkMeta
 
 @Composable
 actual fun Camera(

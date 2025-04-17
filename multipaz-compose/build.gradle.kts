@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlinCocoapods)
     id("maven-publish")
 }
 
@@ -16,6 +17,18 @@ val projectVersionName: String by rootProject.extra
 
 kotlin {
     jvmToolchain(17)
+
+    cocoapods {
+        version = "2.0"
+        summary = "CocoaPods test library"
+        homepage = "https://github.com/JetBrains/kotlin"
+        ios.deploymentTarget = "16.0"
+
+        pod("GoogleMLKit/FaceDetection") {
+            moduleName = "MLKitFaceDetection"
+            version = "8.0.0"
+        }
+    }
 
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
