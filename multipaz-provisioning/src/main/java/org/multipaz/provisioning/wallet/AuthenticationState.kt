@@ -11,8 +11,8 @@ import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.Authentication
 import org.multipaz.provisioning.ClientAuthentication
 import org.multipaz.provisioning.ClientChallenge
-import org.multipaz.provisioning.WalletServerCapabilities
-import org.multipaz.provisioning.WalletServerSettings
+import org.multipaz.provisioning.ProvisioningBackendCapabilities
+import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.provisioning.toCbor
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.toBase64Url
@@ -63,8 +63,8 @@ class AuthenticationState(
         return ClientChallenge(nonce!!, this.clientId)
     }
 
-    override suspend fun authenticate(auth: ClientAuthentication): WalletServerCapabilities {
-        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
+    override suspend fun authenticate(auth: ClientAuthentication): ProvisioningBackendCapabilities {
+        val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val clientTable = BackendEnvironment.getTable(RpcAuthInspectorAssertion.rpcClientTableSpec)
 
         val attestation = auth.attestation
@@ -110,7 +110,7 @@ class AuthenticationState(
                 data = ByteString(auth.walletApplicationCapabilities.toCbor())
             )
         }
-        return WalletServerCapabilities(
+        return ProvisioningBackendCapabilities(
             Clock.System.now()
         )
     }

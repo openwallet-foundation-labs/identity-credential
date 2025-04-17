@@ -1,19 +1,20 @@
-package org.multipaz.provisioning
+package com.android.identity.testapp.provisioning.openid4vci
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.X509Cert
 import org.multipaz.device.AssertionBindingKeys
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.DeviceAttestation
 import org.multipaz.device.DeviceAttestationIos
-import org.multipaz.rpc.backend.Configuration
+import org.multipaz.provisioning.ApplicationSupport
+import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.cache
+import org.multipaz.rpc.backend.Configuration
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.util.isCloudKeyAttestation
 import org.multipaz.util.validateAndroidKeyAttestation
 import org.multipaz.util.validateCloudKeyAttestation
-import kotlinx.io.bytestring.ByteString
 
 suspend fun validateDeviceAssertionBindingKeys(
     deviceAttestation: DeviceAttestation,

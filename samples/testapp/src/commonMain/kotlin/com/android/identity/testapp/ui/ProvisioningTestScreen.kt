@@ -1,54 +1,586 @@
 package org.multipaz.testapp.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.multipaz.provisioning.WalletApplicationCapabilities
-import org.multipaz.testapp.platformIsEmulator
-import org.multipaz.testapp.provisioning.WalletServerProvider
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import org.multipaz.provisioning.evidence.EvidenceRequestCreatePassphrase
+import org.multipaz.provisioning.evidence.EvidenceRequestMessage
+import org.multipaz.provisioning.evidence.EvidenceRequestOpenid4Vp
+import org.multipaz.provisioning.evidence.EvidenceRequestQuestionMultipleChoice
+import org.multipaz.provisioning.evidence.EvidenceRequestQuestionString
+import org.multipaz.provisioning.evidence.EvidenceRequestSetupCloudSecureArea
+import org.multipaz.provisioning.evidence.EvidenceRequestWeb
+import org.multipaz.provisioning.evidence.EvidenceResponseCreatePassphrase
+import org.multipaz.provisioning.evidence.EvidenceResponseMessage
+import org.multipaz.provisioning.evidence.EvidenceResponseQuestionMultipleChoice
+import org.multipaz.provisioning.evidence.EvidenceResponseQuestionString
+import org.multipaz.provisioning.evidence.EvidenceResponseWeb
+import com.android.identity.testapp.provisioning.model.ProvisioningModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlinx.coroutines.withContext
+import org.multipaz.compose.PassphraseEntryField
+import org.multipaz.compose.webview.RichText
+import org.multipaz.credential.Credential
+import org.multipaz.prompt.PromptModel
+import org.multipaz.provisioning.ApplicationSupport
+import org.multipaz.provisioning.LandingUrlUnknownException
+import org.multipaz.provisioning.evidence.EvidenceRequestNotificationPermission
+import org.multipaz.provisioning.evidence.EvidenceResponseNotificationPermission
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.securearea.cloud.CloudSecureArea
+import org.multipaz.util.Logger
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun ProvisioningTestScreen() {
-    val serverAddress = remember { mutableStateOf("http://localhost:8080/server") }
-    LazyColumn(
-        modifier = Modifier.padding(8.dp)
-    ) {
-        item {
-            TextField(serverAddress.value, { serverAddress.value = it }, label = {
-                Text("Wallet Server address")
-            })
-        }
-        item {
-            TextButton(
-                onClick = {
-                    CoroutineScope(Dispatchers.Default).launch {
-                        val provider = WalletServerProvider(serverAddress.value) {
-                                WalletApplicationCapabilities(
-                                    generatedAt = Clock.System.now(),
-                                    androidKeystoreAttestKeyAvailable = true,
-                                    androidKeystoreStrongBoxAvailable = true,
-                                    androidIsEmulator = platformIsEmulator,
-                                    directAccessSupported = false,
-                                )
-                            }
-
-                        val server = provider.getWalletServer()
-                        println("Server: $server")
-                    }
-                },
-                content = { Text("Test provisioning") }
+fun ProvisioningTestScreen(promptModel: PromptModel, provisioningModel: ProvisioningModel) {
+    LaunchedEffect(provisioningModel) {
+        provisioningModel.run()
+    }
+    val provisioningState = provisioningModel.state.collectAsState(ProvisioningModel.Initial).value
+    Column {
+        if (provisioningState is ProvisioningModel.EvidenceRequested) {
+            RequestEvidence(provisioningModel, promptModel, provisioningState)
+        } else {
+            val text = when (provisioningState) {
+                ProvisioningModel.Initial -> "Starting provisioning..."
+                ProvisioningModel.Connected -> "Connected to the back-end"
+                ProvisioningModel.Registration -> "Initializing session..."
+                ProvisioningModel.SendingEvidence -> "Sending evidence..."
+                ProvisioningModel.ProcessingEvidence -> "Processing evidence..."
+                ProvisioningModel.ProofingComplete -> "Evidence collected"
+                ProvisioningModel.RequestingCredentials -> "Requesting credentials..."
+                ProvisioningModel.CredentialsIssued -> "Credentials issued"
+                is ProvisioningModel.EvidenceRequested -> throw IllegalStateException()
+            }
+            Text(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(8.dp),
+                style = MaterialTheme.typography.titleLarge,
+                text = text
             )
         }
+    }
+}
+
+@Composable
+private fun RequestEvidence(
+    provisioningModel: ProvisioningModel,
+    promptModel: PromptModel,
+    request: ProvisioningModel.EvidenceRequested
+) {
+    val index = remember { mutableIntStateOf(0) }
+    val evidenceRequest = request.evidenceRequests[index.value]
+    val coroutineScope = rememberCoroutineScope { promptModel }
+    when (evidenceRequest) {
+        is EvidenceRequestQuestionString -> {
+            EvidenceRequestQuestionStringView(
+                evidenceRequest,
+                onAccept = { inputString ->
+                    coroutineScope.launch {
+                        provisioningModel.provideEvidence(
+                            EvidenceResponseQuestionString(inputString)
+                        )
+                    }
+                }
+            )
+        }
+
+        is EvidenceRequestCreatePassphrase -> {
+            EvidenceRequestCreatePassphraseView(
+                evidenceRequest,
+                onAccept = { inputString ->
+                    coroutineScope.launch {
+                        provisioningModel.provideEvidence(
+                            EvidenceResponseCreatePassphrase(inputString)
+                        )
+                    }
+                }
+            )
+        }
+
+        is EvidenceRequestNotificationPermission -> {
+            EvidenceRequestNotificationPermissionView(
+                evidenceRequest = evidenceRequest,
+                provisioningModel = provisioningModel
+            )
+        }
+
+        is EvidenceRequestMessage -> {
+            EvidenceRequestMessageView(
+                evidenceRequest = evidenceRequest,
+                provisioningModel = provisioningModel
+            )
+        }
+
+        is EvidenceRequestQuestionMultipleChoice -> {
+            EvidenceRequestQuestionMultipleChoiceView(
+                evidenceRequest,
+                onAccept = { selectedOption ->
+                    coroutineScope.launch {
+                        provisioningModel.provideEvidence(
+                            evidence = EvidenceResponseQuestionMultipleChoice(selectedOption)
+                        )
+                    }
+                }
+            )
+        }
+
+        is EvidenceRequestOpenid4Vp -> {
+            EvidenceRequestOpenid4VpView(
+                evidenceRequest = evidenceRequest,
+                viableCredentials = request.credentials,
+                onNextEvidenceRequest = {
+                    index.value++
+                }
+            )
+        }
+
+        is EvidenceRequestWeb -> {
+            EvidenceRequestWebView(
+                evidenceRequest = evidenceRequest,
+                provisioningModel = provisioningModel
+            )
+        }
+
+        else -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
+                    text = "Unsupported evidence request: $evidenceRequest"
+                )
+            }
+        }
+    }
+}
+
+private const val TAG = "ProvisioningTestScreen"
+
+@Composable
+fun EvidenceRequestMessageView(
+    evidenceRequest: EvidenceRequestMessage,
+    provisioningModel: ProvisioningModel
+) {
+    val coroutineScope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        RichText(
+            modifier = Modifier.padding(8.dp),
+            content = evidenceRequest.message,
+            assets = evidenceRequest.assets
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        val rejectButtonText = evidenceRequest.rejectButtonText
+        if (rejectButtonText != null) {
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = {
+                    coroutineScope.launch {
+                        provisioningModel.provideEvidence(
+                            evidence = EvidenceResponseMessage(false)
+                        )
+                    }
+                }) {
+                Text(rejectButtonText)
+            }
+        }
+        Button(
+            modifier = Modifier.padding(8.dp),
+            onClick = {
+                coroutineScope.launch {
+                    provisioningModel.provideEvidence(
+                        evidence = EvidenceResponseMessage(true)
+                    )
+                }
+            }) {
+            Text(evidenceRequest.acceptButtonText)
+        }
+    }
+
+}
+
+@Composable
+fun EvidenceRequestQuestionStringView(
+    evidenceRequest: EvidenceRequestQuestionString,
+    onAccept: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        RichText(
+            modifier = Modifier.padding(8.dp),
+            content = evidenceRequest.message,
+            assets = evidenceRequest.assets
+        )
+    }
+
+    var inputText by remember { mutableStateOf(evidenceRequest.defaultValue) }
+    TextField(
+        value = inputText,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        onValueChange = { inputText = it },
+        label = { Text("Answer") }
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Button(onClick = {
+            onAccept(inputText)
+        }) {
+            Text(evidenceRequest.acceptButtonText)
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestCreatePassphraseView(
+    evidenceRequest: EvidenceRequestCreatePassphrase,
+    onAccept: (String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var chosenPassphrase by remember { mutableStateOf("") }
+    var verifiedPassphrase by remember { mutableStateOf("") }
+    var showMatchErrorText by remember { mutableStateOf(false) }
+
+    val constraints = evidenceRequest.passphraseConstraints
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (chosenPassphrase.isEmpty()) {
+            RichText(
+                modifier = Modifier.padding(8.dp),
+                content = evidenceRequest.message,
+                assets = evidenceRequest.assets
+            )
+        } else {
+            RichText(
+                modifier = Modifier.padding(8.dp),
+                content = evidenceRequest.verifyMessage,
+                assets = evidenceRequest.assets
+            )
+        }
+    }
+
+    if (chosenPassphrase.isEmpty()) {
+        // Choose PIN
+        var currentPassphraseMeetsRequirements by remember { mutableStateOf(false) }
+        var currentPassphrase by remember { mutableStateOf("") }
+        PassphraseEntryField(
+            constraints = constraints,
+            checkWeakPassphrase = true,
+            onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                currentPassphrase = passphrase
+                currentPassphraseMeetsRequirements = passphraseMeetsRequirements
+                if (constraints.isFixedLength() && currentPassphraseMeetsRequirements) {
+                    chosenPassphrase = passphrase
+                } else if (donePressed) {
+                    chosenPassphrase = passphrase
+                }
+            }
+        )
+
+        if (constraints.minLength != constraints.maxLength) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Button(
+                    enabled = currentPassphraseMeetsRequirements,
+                    onClick = { chosenPassphrase = currentPassphrase }
+                ) {
+                    Text("Next")
+                }
+            }
+        }
+    } else if (verifiedPassphrase.isEmpty()) {
+        // Verify PIN
+        var currentPassphrase by remember { mutableStateOf("") }
+        PassphraseEntryField(
+            constraints = constraints,
+            onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                currentPassphrase = passphrase
+                if (constraints.isFixedLength() && currentPassphrase.length == constraints.minLength) {
+                    verifiedPassphrase = passphrase
+                } else if (donePressed) {
+                    verifiedPassphrase = passphrase
+                }
+            }
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Spacer(modifier = Modifier.weight(1.0f))
+            if (constraints.minLength != constraints.maxLength) {
+                Button(
+                    onClick = { verifiedPassphrase = currentPassphrase },
+                ) {
+                    Text("Confirm")
+                }
+            }
+        }
+    } else {
+        if (chosenPassphrase == verifiedPassphrase) {
+            onAccept(chosenPassphrase)
+            return
+        } else {
+            showMatchErrorText = true
+            PassphraseEntryField(
+                constraints = constraints,
+                onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                }
+            )
+            SideEffect {
+                scope.launch {
+                    delay(2000)
+                    verifiedPassphrase = ""
+                    showMatchErrorText = false
+                }
+            }
+        }
+    }
+
+    val matchErrorText = if (showMatchErrorText) {
+        if (constraints.requireNumerical) {
+            "PIN did not match, try again"
+        } else {
+            "Passphrase did not mach, try again"
+        }
+    } else ""
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = matchErrorText,
+            color = Color.Red
+        )
+    }
+}
+
+@Composable
+fun EvidenceRequestQuestionMultipleChoiceView(
+    evidenceRequest: EvidenceRequestQuestionMultipleChoice,
+    onAccept: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        RichText(
+            modifier = Modifier.padding(8.dp),
+            content = evidenceRequest.message,
+            assets = evidenceRequest.assets
+        )
+    }
+
+    val radioOptions = evidenceRequest.possibleValues
+    val radioOptionsKeys = radioOptions.keys.toList()
+    val (selectedOption, onOptionSelected) = remember { mutableStateOf(0) }
+    Column {
+        radioOptions.forEach { entry ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = (entry.key == radioOptionsKeys[selectedOption]),
+                        onClick = {
+                            onOptionSelected(radioOptionsKeys.indexOf(entry.key))
+                        }
+                    )
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = (entry.key == radioOptionsKeys[selectedOption]),
+                    onClick = { onOptionSelected(radioOptionsKeys.indexOf(entry.key)) }
+                )
+                Text(
+                    text = entry.value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Button(onClick = {
+            onAccept(radioOptionsKeys[selectedOption])
+            // Reset to first choice, for the next time this is used
+            onOptionSelected(0)
+        }) {
+            Text(evidenceRequest.acceptButtonText)
+        }
+    }
+
+}
+
+@Composable
+fun EvidenceRequestWebView(
+    evidenceRequest: EvidenceRequestWeb,
+    provisioningModel: ProvisioningModel,
+) {
+    val url = evidenceRequest.url
+    val redirectUri = evidenceRequest.redirectUri
+    val appSupport = provisioningModel.applicationSupport
+    // NB: these scopes will be cancelled when navigating outside of this screen.
+    LaunchedEffect(url, redirectUri) {
+        // Wait for notifications
+        withContext(provisioningModel.coroutineContext) {
+            appSupport.collect { notification ->
+                if (notification.baseUrl == redirectUri) {
+                    handleLanding(appSupport, redirectUri, provisioningModel)
+                }
+            }
+        }
+    }
+    val uriHandler = LocalUriHandler.current
+    LaunchedEffect(url, redirectUri) {
+        // Launch the browser
+        // TODO: use Chrome Custom Tabs instead?
+        uriHandler.openUri(url)
+        // Poll as a fallback
+        do {
+            delay(15.seconds)
+        } while(handleLanding(appSupport, redirectUri, provisioningModel))
+    }
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Launching browser, continue there",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+private suspend fun handleLanding(
+    appSupport: ApplicationSupport,
+    redirectUri: String,
+    provisioningViewModel: ProvisioningModel
+): Boolean {
+    val resp = try {
+        withContext(provisioningViewModel.coroutineContext) {
+            appSupport.getLandingUrlStatus(redirectUri)
+        }
+    } catch (err: LandingUrlUnknownException) {
+        Logger.e(TAG, "landing: $redirectUri unknown: $err")
+        provisioningViewModel.provideEvidence(
+            evidence = EvidenceResponseWeb("")
+        )
+        return false
+    }
+    if (resp == null) {
+        // Landing url not navigated to yet.
+        return true
+    }
+    provisioningViewModel.provideEvidence(
+        evidence = EvidenceResponseWeb(resp)
+    )
+    return false
+}
+
+@Composable
+fun EvidenceRequestOpenid4VpView(
+    evidenceRequest: EvidenceRequestOpenid4Vp,
+    viableCredentials: List<Credential>,
+    onNextEvidenceRequest: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Presentation during issuance is not yet implemented",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        )  {
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = onNextEvidenceRequest
+            ) {
+                Text(text = evidenceRequest.cancelText ?: "Use browser")
+            }
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestNotificationPermissionView(
+    evidenceRequest: EvidenceRequestNotificationPermission,
+    provisioningModel: ProvisioningModel
+) {
+    // TODO: This is a hack, until this feature is implemented
+    LaunchedEffect(true) {
+        provisioningModel.provideEvidence(
+            evidence = EvidenceResponseNotificationPermission(true)
+        )
     }
 }

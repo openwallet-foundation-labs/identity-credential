@@ -1,4 +1,4 @@
-package org.multipaz.testapp.provisioning
+package com.android.identity.testapp.provisioning.backend
 
 import org.multipaz.device.DeviceCheck
 import org.multipaz.device.AssertionNonce
@@ -15,7 +15,7 @@ import org.multipaz.provisioning.IssuingAuthority
 import org.multipaz.provisioning.IssuingAuthorityException
 import org.multipaz.provisioning.LandingUrlUnknownException
 import org.multipaz.provisioning.WalletApplicationCapabilities
-import org.multipaz.provisioning.WalletServer
+import org.multipaz.provisioning.ProvisioningBackend
 import org.multipaz.provisioning.register
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.testapp.platformSecureAreaProvider
@@ -30,21 +30,26 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.device.Assertion
+import org.multipaz.device.DeviceAssertion
+import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.AuthenticationStub
-import org.multipaz.provisioning.WalletServerStub
+import org.multipaz.provisioning.ProvisioningBackendStub
 import org.multipaz.rpc.handler.RpcAuthIssuerAssertion
 import org.multipaz.rpc.handler.RpcDispatcherAuth
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 /**
  * An object used to connect to a remote wallet server.
  */
-class WalletServerProvider(
+class ProvisioningBackendProviderRemote(
     private val baseUrl: String,
     private val getWalletApplicationCapabilities: suspend () -> WalletApplicationCapabilities,
-) {
+): ProvisioningBackendProvider {
     private val instanceLock = Mutex()
-    private var instance: WalletServer? = null
+    private var instance: ProvisioningBackend? = null
     private val issuingAuthorityMap = mutableMapOf<String, IssuingAuthority>()
 
     private var notificationsJob: Job? = null
@@ -73,14 +78,14 @@ class WalletServerProvider(
      * with the wallet server, e.g. when adding a new document or refreshing state. When the
      * call succeeds, the resulting instance is cached and returned immediately in future calls.
      *
-     * @return A [WalletServer] which can be used to interact with the remote wallet server.
+     * @return A [ProvisioningBackend] which can be used to interact with the remote wallet server.
      * @throws HttpTransport.ConnectionException if unable to connect.
      */
-    suspend fun getWalletServer(): WalletServer {
+    suspend fun getProvisioningBackend(): ProvisioningBackend {
         instanceLock.withLock {
             if (instance == null) {
                 Logger.i(TAG, "Creating new WalletServer instance: $baseUrl")
-                instance = getWalletServerUnlocked(baseUrl)
+                instance = getProvisioningBackendUnlocked(baseUrl)
                 Logger.i(TAG, "Created new WalletServer instance: $baseUrl")
             } else {
                 Logger.i(TAG, "Reusing existing WalletServer instance: $baseUrl")
@@ -92,11 +97,11 @@ class WalletServerProvider(
     /**
      * Connects to the remote wallet server, waiting for the server connection if needed.
      */
-    private suspend fun waitForWalletServer(): WalletServer {
+    private suspend fun waitForProvisioningBackend(): ProvisioningBackend {
         var delay = RECONNECT_DELAY_INITIAL
         while (true) {
             try {
-                return getWalletServer()
+                return getProvisioningBackend()
             } catch (err: HttpTransport.ConnectionException) {
                 delay(delay)
                 delay *= 2
@@ -107,12 +112,18 @@ class WalletServerProvider(
         }
     }
 
+    override val extraCoroutineContext: CoroutineContext get() = EmptyCoroutineContext
+
+    override suspend fun getApplicationSupport(): ApplicationSupport {
+        return getProvisioningBackend().applicationSupport()
+    }
+
     /**
      * Gets issuing authority by its id, caching instances. If unable to connect, suspend
      * and wait until connecting is possible.
      */
-    suspend fun getIssuingAuthority(issuingAuthorityId: String): IssuingAuthority {
-        val instance = waitForWalletServer()
+    override suspend fun getIssuingAuthority(issuingAuthorityId: String): IssuingAuthority {
+        val instance = waitForProvisioningBackend()
         var delay = RECONNECT_DELAY_INITIAL
         while (true) {
             try {
@@ -134,22 +145,21 @@ class WalletServerProvider(
         }
     }
 
-    /**
-     * Creates an Issuing Authority by the [credentialIssuerUri] and [credentialConfigurationId],
-     * caching instances. If unable to connect, suspend and wait until connecting is possible.
-     */
-    suspend fun createOpenid4VciIssuingAuthorityByUri(
-        credentialIssuerUri:String,
-        credentialConfigurationId: String
-    ): IssuingAuthority {
-        // Not allowed per spec, but double-check, so there are no surprises.
-        check(credentialIssuerUri.indexOf('#') < 0)
-        check(credentialConfigurationId.indexOf('#') < 0)
-        val id = "openid4vci#$credentialIssuerUri#$credentialConfigurationId"
-        return getIssuingAuthority(id)
+    override suspend fun makeDeviceAssertion(
+        assertionFactory: (clientId: String) -> Assertion
+    ): DeviceAssertion {
+        val serverTable = platformStorage().getTable(serverTableSpec)
+        val serverData = serverTable.get(key = baseUrl)!!.let {
+            ServerData.fromCbor(it.toByteArray())
+        }
+        return DeviceCheck.generateAssertion(
+            secureArea = platformSecureAreaProvider().get(),
+            deviceAttestationId = serverData.deviceAttestationId,
+            assertion = assertionFactory(serverData.clientId)
+        )
     }
 
-    private suspend fun getWalletServerUnlocked(baseUrl: String): WalletServer {
+    private suspend fun getProvisioningBackendUnlocked(baseUrl: String): ProvisioningBackend {
         val dispatcher: RpcDispatcher
         val notifier: RpcNotifier
         val exceptionMapBuilder = RpcExceptionMap.Builder()
@@ -229,9 +239,9 @@ class WalletServerProvider(
 
         // "root" is the entry point for the server, see FlowState annotation on
         // org.multipaz.issuance.wallet.WalletServerState
-        return WalletServerStub(
+        return ProvisioningBackendStub(
             endpoint = "root",
-            dispatcher = dispatcher,
+            dispatcher = authorizedDispatcher,
             notifier = notifier
         )
     }

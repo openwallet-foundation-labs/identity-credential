@@ -13,7 +13,7 @@ import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.LandingUrlUnknownException
-import org.multipaz.provisioning.WalletServerSettings
+import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.rpc.cache
 import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.openid4vci.toJson
@@ -103,16 +103,16 @@ class ApplicationSupportState(
 
     override suspend fun createJwtClientAssertion(
         keyAttestation: KeyAttestation,
-        keyAssertion: DeviceAssertion
+        deviceAssertion: DeviceAssertion
     ): String {
         checkClientId()
         val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
-        deviceAttestation.validateAssertion(keyAssertion)
+        deviceAttestation.validateAssertion(deviceAssertion)
 
-        val assertion = keyAssertion.assertion as AssertionDPoPKey
+        val assertion = deviceAssertion.assertion as AssertionDPoPKey
 
         if (deviceAttestation is DeviceAttestationAndroid) {
-            val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
+            val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
             val certChain = keyAttestation.certChain!!
             check(assertion.publicKey == certChain.certificates.first().ecPublicKey)
             validateAndroidKeyAttestation(

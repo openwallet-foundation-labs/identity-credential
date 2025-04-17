@@ -12,5 +12,5 @@ interface Authentication {
     suspend fun requestChallenge(clientId: String): ClientChallenge
 
     @RpcMethod
-    suspend fun authenticate(auth: ClientAuthentication): WalletServerCapabilities
+    suspend fun authenticate(auth: ClientAuthentication): ProvisioningBackendCapabilities
 }

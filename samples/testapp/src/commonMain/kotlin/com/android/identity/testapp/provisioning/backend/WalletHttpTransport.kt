@@ -1,4 +1,4 @@
-package org.multipaz.testapp.provisioning
+package com.android.identity.testapp.provisioning.backend
 
 import org.multipaz.rpc.transport.HttpTransport
 import org.multipaz.util.Logger

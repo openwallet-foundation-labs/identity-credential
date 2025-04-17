@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.multipaz.rpc.client.RpcNotifiable
+import org.multipaz.rpc.handler.NoopCipher
 import org.multipaz.rpc.handler.RpcNotifications
 import org.multipaz.rpc.handler.RpcNotificationsLocal
 import org.multipaz.rpc.handler.RpcNotificationsLocalPoll
@@ -264,10 +265,7 @@ private fun TestScope.buildLocalDispatcher(
     SolverFactoryState.register(builder)
     NotificationTestState.register(builder)
     val cipher = if (useNoopCipher) {
-        object : SimpleCipher {
-            override fun encrypt(plaintext: ByteArray): ByteArray = plaintext
-            override fun decrypt(ciphertext: ByteArray): ByteArray = ciphertext
-        }
+        NoopCipher
     } else {
         AesGcmCipher(Random.Default.nextBytes(16))
     }

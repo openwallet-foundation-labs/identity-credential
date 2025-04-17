@@ -12,8 +12,8 @@ import org.multipaz.provisioning.DocumentConfiguration
 import org.multipaz.provisioning.IssuingAuthorityConfiguration
 import org.multipaz.provisioning.IssuingAuthorityException
 import org.multipaz.provisioning.LandingUrlUnknownException
-import org.multipaz.provisioning.WalletServer
-import org.multipaz.provisioning.WalletServerSettings
+import org.multipaz.provisioning.ProvisioningBackend
+import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.provisioning.openid4vci.Openid4VciIssuingAuthorityState
 import org.multipaz.provisioning.openid4vci.Openid4VciProofingState
 import org.multipaz.provisioning.openid4vci.Openid4VciRegistrationState
@@ -37,7 +37,7 @@ import kotlin.coroutines.coroutineContext
     creatable = true
 )
 @CborSerializable
-class WalletServerState: WalletServer, RpcAuthInspector by RpcAuthBackendDelegate {
+class ProvisioningBackendState: ProvisioningBackend, RpcAuthInspector by RpcAuthBackendDelegate {
     companion object {
         private const val TAG = "WalletServerState"
 
@@ -71,7 +71,7 @@ class WalletServerState: WalletServer, RpcAuthInspector by RpcAuthBackendDelegat
         }
 
         fun registerAll(dispatcher: RpcDispatcherLocal.Builder) {
-            WalletServerState.register(dispatcher)
+            ProvisioningBackendState.register(dispatcher)
             ApplicationSupportState.register(dispatcher)
             AuthenticationState.register(dispatcher)
             IssuingAuthorityState.register(dispatcher)
@@ -96,7 +96,7 @@ class WalletServerState: WalletServer, RpcAuthInspector by RpcAuthBackendDelegat
     }
 
     override suspend fun getIssuingAuthorityConfigurations(): List<IssuingAuthorityConfiguration> {
-        val settings = WalletServerSettings(BackendEnvironment.getInterface(Configuration::class)!!)
+        val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
         val issuingAuthorityList = settings.getStringList("issuingAuthorityList")
         return if (issuingAuthorityList.isEmpty()) {
             listOf(devConfig(BackendEnvironment.get(coroutineContext)))

@@ -4,7 +4,7 @@ import org.multipaz.rpc.annotation.RpcInterface
 import org.multipaz.rpc.annotation.RpcMethod
 
 @RpcInterface
-interface WalletServer {
+interface ProvisioningBackend {
     /**
      * General-purpose server-side application support.
      *

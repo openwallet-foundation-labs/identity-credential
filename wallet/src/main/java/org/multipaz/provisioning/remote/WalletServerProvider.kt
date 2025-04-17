@@ -19,9 +19,8 @@ import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.ClientAuthentication
 import org.multipaz.provisioning.IssuingAuthority
 import org.multipaz.provisioning.WalletApplicationCapabilities
-import org.multipaz.provisioning.WalletServer
-import org.multipaz.provisioning.WalletServerStub
-import org.multipaz.provisioning.wallet.WalletServerState
+import org.multipaz.provisioning.ProvisioningBackend
+import org.multipaz.provisioning.wallet.ProvisioningBackendState
 import org.multipaz.device.DeviceCheck
 import org.multipaz.device.DeviceAttestation
 import org.multipaz.securearea.SecureAreaProvider
@@ -41,6 +40,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.provisioning.AuthenticationStub
+import org.multipaz.provisioning.ProvisioningBackendStub
 import org.multipaz.rpc.handler.RpcAuthIssuerAssertion
 import org.multipaz.rpc.handler.RpcDispatcherAuth
 import kotlin.time.Duration.Companion.seconds
@@ -72,7 +72,7 @@ class WalletServerProvider(
     private val getWalletApplicationCapabilities: suspend () -> WalletApplicationCapabilities
 ) {
     private val instanceLock = Mutex()
-    private var instance: WalletServer? = null
+    private var instance: ProvisioningBackend? = null
     private val issuingAuthorityMap = mutableMapOf<String, IssuingAuthority>()
     private var applicationSupportSupplier: ApplicationSupportSupplier? = null
 
@@ -167,14 +167,14 @@ class WalletServerProvider(
      * with the wallet server, e.g. when adding a new document or refreshing state. When the
      * call succeeds, the resulting instance is cached and returned immediately in future calls.
      *
-     * @return A [WalletServer] which can be used to interact with the remote wallet server.
+     * @return A [ProvisioningBackend] which can be used to interact with the remote wallet server.
      * @throws HttpTransport.ConnectionException if unable to connect.
      */
-    suspend fun getWalletServer(): WalletServer {
+    suspend fun getWalletServer(): ProvisioningBackend {
         instanceLock.withLock {
             if (instance == null) {
                 Logger.i(TAG, "Creating new WalletServer instance: $baseUrl")
-                val connection = estableshWalletServerConnection(baseUrl)
+                val connection = establishWalletServerConnection(baseUrl)
                 instance = connection.server
                 applicationSupportSupplier = connection.applicationSupportSupplier
                 Logger.i(TAG, "Created new WalletServer instance: $baseUrl")
@@ -188,7 +188,7 @@ class WalletServerProvider(
     /**
      * Connects to the remote wallet server, waiting for the server connection if needed.
      */
-    private suspend fun waitForWalletServer(): WalletServer {
+    private suspend fun waitForWalletServer(): ProvisioningBackend {
         var delay = RECONNECT_DELAY_INITIAL
         while (true) {
             try {
@@ -254,18 +254,18 @@ class WalletServerProvider(
         return applicationSupportSupplier!!.getApplicationSupport()
     }
 
-    private suspend fun estableshWalletServerConnection(baseUrl: String): WalletServerConnection {
+    private suspend fun establishWalletServerConnection(baseUrl: String): WalletServerConnection {
         val dispatcher: RpcDispatcher
         val notifier: RpcNotifier
         val exceptionMapBuilder = RpcExceptionMap.Builder()
         var applicationSupportSupplier: ApplicationSupportSupplier? = null
-        WalletServerState.registerExceptions(exceptionMapBuilder)
+        ProvisioningBackendState.registerExceptions(exceptionMapBuilder)
         if (baseUrl == "dev:") {
             val builder = RpcDispatcherLocal.Builder()
-            WalletServerState.registerAll(builder)
+            ProvisioningBackendState.registerAll(builder)
             notifier = RpcNotificationsLocal(noopCipher)
             applicationSupportSupplier = ApplicationSupportSupplier() {
-                val minServer = estableshWalletServerConnection(settingsModel.minServerUrl.value!!)
+                val minServer = establishWalletServerConnection(settingsModel.minServerUrl.value!!)
                 minServer.applicationSupportSupplier.getApplicationSupport()
             }
             val environment = LocalDevelopmentEnvironment(
@@ -351,7 +351,7 @@ class WalletServerProvider(
 
         // "root" is the entry point for the server, see RpcState annotation on
         // org.multipaz.provisioning.wallet.WalletServerState
-        val walletServer = WalletServerStub(
+        val walletServer = ProvisioningBackendStub(
             endpoint = "root",
             dispatcher = authorizedDispatcher,
             notifier = notifier
@@ -424,7 +424,7 @@ class WalletServerProvider(
     )
 
     internal class WalletServerConnection(
-        val server: WalletServer,
+        val server: ProvisioningBackend,
         val applicationSupportSupplier: ApplicationSupportSupplier
     )
 }

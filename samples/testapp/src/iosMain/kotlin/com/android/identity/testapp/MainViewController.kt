@@ -8,3 +8,5 @@ private val app = App.getInstanceAndInitializeInBackground(IosPromptModel())
 fun MainViewController() = ComposeUIViewController {
     app.Content()
 }
+
+fun HandleUrl(url: String) = app.handleUrl(url)

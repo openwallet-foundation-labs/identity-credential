@@ -1,15 +1,10 @@
-package org.multipaz.provisioning.openid4vci
+package com.android.identity.testapp.provisioning.openid4vci
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.Crypto
-import org.multipaz.device.AssertionDPoPKey
-import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
-import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.IssuingAuthorityException
 import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.WalletApplicationCapabilities
@@ -33,14 +28,11 @@ import org.multipaz.provisioning.evidence.EvidenceResponseQuestionString
 import org.multipaz.provisioning.evidence.EvidenceResponseSetupCloudSecureArea
 import org.multipaz.provisioning.evidence.EvidenceResponseWeb
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
-import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferAuthorizationCode
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferPreauthorizedCode
-import org.multipaz.provisioning.wallet.ApplicationSupportState
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.htmlEscape
-import org.multipaz.util.toBase64Url
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -48,16 +40,22 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
+import io.ktor.http.protocolWithAuthority
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.device.AssertionDPoPKey
+import org.multipaz.device.DeviceAssertionMaker
+import org.multipaz.provisioning.ApplicationSupport
+import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferAuthorizationCode
 import org.multipaz.rpc.backend.RpcAuthBackendDelegate
 import org.multipaz.rpc.handler.RpcAuthContext
 import org.multipaz.rpc.handler.RpcAuthInspector
-import java.net.URI
-import java.net.URLEncoder
+import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 
 @RpcState(endpoint = "openid4vci.proofing")
@@ -68,7 +66,6 @@ class Openid4VciProofingState(
     val clientId: String,
     val issuanceClientId: String,
     val documentId: String,
-    val applicationCapabilities: WalletApplicationCapabilities,
     var proofingInfo: ProofingInfo? = null,
     var access: OpenidAccess? = null,
     var secureAreaIdentifier: String? = null,
@@ -121,8 +118,8 @@ class Openid4VciProofingState(
                 val proofingInfo = this.proofingInfo
                 if (openid4VpRequest != null &&
                     authorizationMetadata.authorizationChallengeEndpoint != null) {
-                    val uri = URI(authorizationMetadata.authorizationChallengeEndpoint)
-                    val origin = uri.scheme + ":" + uri.authority
+                    val uri = Url(authorizationMetadata.authorizationChallengeEndpoint)
+                    val origin = uri.protocolWithAuthority
                     list.add(EvidenceRequestOpenid4Vp(origin, openid4VpRequest!!))
                 }
                 if (proofingInfo != null && authorizationMetadata.authorizationEndpoint != null) {
@@ -157,8 +154,9 @@ class Openid4VciProofingState(
             // Keyless credentials, no more questions
             emptyList()
         } else if (secureAreaIdentifier == null) {
+            val androidKeystoreStrongBoxAvailable = true // assume it is available
             listOf(
-                if (applicationCapabilities.androidKeystoreStrongBoxAvailable) {
+                if (androidKeystoreStrongBoxAvailable) {
                     EvidenceRequestQuestionMultipleChoice(
                         message = "Choose Secure Area",
                         assets = emptyMap(),
@@ -248,9 +246,9 @@ class Openid4VciProofingState(
     }
 
     private suspend fun getCloudSecureAreaId(): String {
-        val cloudSecureAreaUrl = URLEncoder.encode(
+        val cloudSecureAreaUrl = FormUrlEncoder.encode(
             ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
-                .cloudSecureAreaUrl, "UTF-8"
+                .cloudSecureAreaUrl
         )
         return "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
     }
@@ -307,7 +305,7 @@ class Openid4VciProofingState(
     }
 
     private suspend fun processOpenid4VpResponse(response: String) {
-        val body = String(openid4VpRequest!!.split('.')[1].fromBase64Url())
+        val body = openid4VpRequest!!.split('.')[1].fromBase64Url().decodeToString()
         val url = Json.parseToJsonElement(body).jsonObject["response_uri"]!!.jsonPrimitive.content
         val state = Json.parseToJsonElement(body).jsonObject["state"]!!.jsonPrimitive.content
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
@@ -320,7 +318,7 @@ class Openid4VciProofingState(
                 add("state", state)
             }.toString())
         }
-        val parsedResponse = Json.parseToJsonElement(String(resp.readBytes())).jsonObject
+        val parsedResponse = Json.parseToJsonElement(resp.readBytes().decodeToString()).jsonObject
         val presentationCode =
             parsedResponse["presentation_during_issuance_session"]!!.jsonPrimitive.content
         val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
@@ -343,7 +341,7 @@ class Openid4VciProofingState(
             throw IllegalStateException("failed to authorize")
         }
         val parsedChallengeResponse =
-            Json.parseToJsonElement(String(challengeResponse.readBytes())).jsonObject
+            Json.parseToJsonElement(challengeResponse.readBytes().decodeToString()).jsonObject
         val authCode = parsedChallengeResponse["authorization_code"]!!.jsonPrimitive.content
         obtainTokenUsingCode(authCode, null)
     }
@@ -368,7 +366,7 @@ class Openid4VciProofingState(
             val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
             val presentationResponse = httpClient.get(proofingInfo.openid4VpPresentation) {}
             if (presentationResponse.status == HttpStatusCode.OK) {
-                openid4VpRequest = String(presentationResponse.readBytes())
+                openid4VpRequest = presentationResponse.readBytes().decodeToString()
             }
         }
     }
@@ -397,33 +395,27 @@ class Openid4VciProofingState(
                 return
             }
         val pkceCodeVerifier = Random.Default.nextBytes(32).toBase64Url()
-        val codeChallenge = Crypto.digest(Algorithm.SHA256, pkceCodeVerifier.toByteArray()).toBase64Url()
+        val codeChallenge = Crypto.digest(
+            Algorithm.SHA256,
+            pkceCodeVerifier.encodeToByteArray()
+        ).toBase64Url()
 
         // NB: applicationSupport will only be non-null when running this code locally in the
         // Android Wallet app.
-        val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)
-        val landingUrl = applicationSupport?.createLandingUrl() ?:
-                    ApplicationSupportState(clientId).createLandingUrl()
+        val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
+        val landingUrl = applicationSupport.createLandingUrl()
 
         val clientKeyInfo = OpenidUtil.communicationKey(clientId)
-        val clientAssertion = if (applicationSupport != null) {
-            // Required when applicationSupport is exposed
-            val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
-            applicationSupport.createJwtClientAssertion(
-                clientKeyInfo.attestation,
-                assertionMaker.makeDeviceAssertion {
-                    AssertionDPoPKey(
-                        clientKeyInfo.publicKey,
-                        credentialIssuerUri
-                    )
-                }
-            )
-        } else {
-            ApplicationSupportState(clientId).createJwtClientAssertion(
-                clientKeyInfo.publicKey,
-                credentialIssuerUri
-            )
-        }
+        val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
+        val clientAssertion = applicationSupport.createJwtClientAssertion(
+            clientKeyInfo.attestation,
+            assertionMaker.makeDeviceAssertion {
+                AssertionDPoPKey(
+                    clientKeyInfo.publicKey,
+                    credentialIssuerUri
+                )
+            }
+        )
 
         val credentialOffer = this.credentialOffer
         val req = FormUrlEncoder {
@@ -451,12 +443,12 @@ class Openid4VciProofingState(
             }
             setBody(req.toString())
         }
-        val responseText = String(response.readBytes())
+        val responseText = response.readBytes().decodeToString()
         if (response.status != expectedResponseStatus) {
             Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
             throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
         }
-        val parsedResponse = Json.parseToJsonElement(responseText) as JsonObject
+        val parsedResponse = Json.parseToJsonElement(responseText).jsonObject
         if (response.status == HttpStatusCode.BadRequest) {
             val errorCode = parsedResponse["error"]
             if (errorCode !is JsonPrimitive || errorCode.content != "insufficient_authorization") {
