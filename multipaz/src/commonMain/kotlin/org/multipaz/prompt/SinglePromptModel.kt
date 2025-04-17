@@ -77,7 +77,9 @@ class SinglePromptModel<ParametersT, ResultT>(
                     try {
                         delay(lingerDuration)
                     } finally {
-                        mutableDialogState.emit(NoDialogState(false))
+                        withContext(NonCancellable) {
+                            mutableDialogState.emit(NoDialogState(false))
+                        }
                     }
                 }
             } else {
