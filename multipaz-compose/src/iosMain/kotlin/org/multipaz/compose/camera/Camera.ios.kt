@@ -10,13 +10,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import platform.UIKit.UIViewController
-import cocoapods.GoogleMLKit.MLKFaceLandmarkMeta
+import cocoapods.GoogleMLKit.MLKFaceDetector
+import kotlinx.cinterop.ExperimentalForeignApi
 
+@OptIn(ExperimentalForeignApi::class)
 @Composable
 actual fun Camera(
     cameraSelector: CameraSelector,
     modifier: Modifier
 ) {
+    println("MLKFaceDetector.description: ${MLKFaceDetector.description()}")
     UIViewControllerComposable(
         controllerProvider = {
             CameraViewController(
