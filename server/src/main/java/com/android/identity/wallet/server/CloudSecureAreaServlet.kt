@@ -16,7 +16,7 @@ import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.backend.getTable
-import org.multipaz.provisioning.WalletServerSettings
+import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.securearea.cloud.CloudSecureAreaServer
 import org.multipaz.securearea.cloud.SimplePassphraseFailureEnforcer
 import org.multipaz.server.BaseHttpServlet
@@ -186,7 +186,7 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
 
         private fun createCloudSecureArea(serverEnvironment: BackendEnvironment): CloudSecureAreaServer {
             Security.addProvider(BouncyCastleProvider())
-            val settings = WalletServerSettings(serverEnvironment.getInterface(Configuration::class)!!)
+            val settings = ProvisioningBackendSettings(serverEnvironment.getInterface(Configuration::class)!!)
             return CloudSecureAreaServer(
                 serverSecureAreaBoundKey = keyMaterial.serverSecureAreaBoundKey,
                 attestationKey = keyMaterial.attestationKey,

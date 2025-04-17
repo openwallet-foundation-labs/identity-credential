@@ -5,7 +5,7 @@ import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.WalletApplicationCapabilities
-import org.multipaz.provisioning.WalletServerSettings
+import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.rpc.cache
 import org.multipaz.provisioning.evidence.EvidenceRequest
 import org.multipaz.provisioning.evidence.EvidenceResponse
@@ -115,7 +115,7 @@ class ProofingState(
 
         val key = GraphKey(issuingAuthorityId, documentId, developerModeEnabled)
         return env.cache(ProofingGraph::class, key) { configuration, resources ->
-            val cloudSecureAreaUrl = WalletServerSettings(configuration).cloudSecureAreaUrl
+            val cloudSecureAreaUrl = ProvisioningBackendSettings(configuration).cloudSecureAreaUrl
             defaultGraph(
                 documentId,
                 resources,

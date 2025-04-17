@@ -2,7 +2,7 @@ package org.multipaz.wallet.server
 
 import org.multipaz.rpc.handler.RpcDispatcherLocal
 import org.multipaz.rpc.handler.RpcExceptionMap
-import org.multipaz.provisioning.wallet.WalletServerState
+import org.multipaz.provisioning.wallet.ProvisioningBackendState
 import org.multipaz.server.BaseRpcHttpServlet
 
 // To run this servlet for development, use this command:
@@ -14,10 +14,10 @@ import org.multipaz.server.BaseRpcHttpServlet
 //
 class RpcServlet : BaseRpcHttpServlet() {
     override fun buildExceptionMap(exceptionMapBuilder: RpcExceptionMap.Builder) {
-        WalletServerState.registerExceptions(exceptionMapBuilder)
+        ProvisioningBackendState.registerExceptions(exceptionMapBuilder)
     }
 
     override fun buildDispatcher(dispatcherBuilder: RpcDispatcherLocal.Builder) {
-        WalletServerState.registerAll(dispatcherBuilder)
+        ProvisioningBackendState.registerAll(dispatcherBuilder)
     }
 }

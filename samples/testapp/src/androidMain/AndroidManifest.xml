@@ -50,11 +50,38 @@
         <activity
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:launchMode="singleTop"
             android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!--
+                Do not include other schemes, only https. If domain is changed here, it
+                also MUST be changed in ApplicationSupportLocal class.
+                 -->
+                <data
+                    android:scheme="https"
+                    android:host="apps.multipaz.org"
+                    android:pathPattern="/landing/.*"/>
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!--  OpenId Credential Offer scheme (OID4VCI) -->
+                <data android:scheme="openid-credential-offer"/>
+                <!-- Accept all hosts for any of the defined schemes above -->
+                <data android:host="*"/>
+            </intent-filter>
+
         </activity>
 
         <activity

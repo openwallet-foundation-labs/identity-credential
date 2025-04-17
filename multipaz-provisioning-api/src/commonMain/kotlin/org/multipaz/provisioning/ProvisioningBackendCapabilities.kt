@@ -9,7 +9,7 @@ import kotlinx.datetime.Instant
  * @property generatedAt The point in time this data was generated.
  */
 @CborSerializable
-data class WalletServerCapabilities(
+data class ProvisioningBackendCapabilities(
     val generatedAt: Instant
 ) {
     companion object

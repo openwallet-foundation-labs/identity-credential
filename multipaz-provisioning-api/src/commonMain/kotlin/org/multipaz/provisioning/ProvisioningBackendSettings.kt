@@ -8,7 +8,7 @@ import kotlinx.io.bytestring.ByteString
 /**
  * Wallet Server settings.
  */
-class WalletServerSettings(private val conf: Configuration) {
+class ProvisioningBackendSettings(private val conf: Configuration) {
 
     val developerMode
         get() = getBool("developerMode", false)
