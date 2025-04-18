@@ -21,7 +21,7 @@ class ASN1RawObject(
             other.tag == tag &&
             other.content contentEquals content
 
-    override fun hashCode(): Int = content.hashCode()
+    override fun hashCode(): Int = content.contentHashCode()
 
     override fun toString(): String {
         return "ASN1RawObject($cls, $enc, $tag, ${content.toHex()})"

@@ -23,7 +23,7 @@ class ASN1BitString(
 
     override fun equals(other: Any?): Boolean = other is ASN1BitString && other.value contentEquals value
 
-    override fun hashCode(): Int = value.hashCode()
+    override fun hashCode(): Int = value.contentHashCode()
 
     override fun toString(): String {
         return "ASN1BitString(${renderBitString()})"

@@ -603,7 +603,11 @@ class CredentialData {
         CredentialData data = new CredentialData(context, storageDirectory, credentialName);
         String dataKeyAlias = getDataKeyAliasFromCredentialName(credentialName);
         try {
-            data.loadFromDisk(dataKeyAlias);
+            if (!data.loadFromDisk(dataKeyAlias)) {
+                Log.e(TAG, "Error loading file from disk. Deleting anyway.");
+                file.delete();
+                return null;
+            }
         } catch (RuntimeException e) {
             Log.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
             file.delete();
@@ -666,7 +670,7 @@ class CredentialData {
         CredentialData data = new CredentialData(context, storageDirectory, credentialName);
         String dataKeyAlias = getDataKeyAliasFromCredentialName(credentialName);
         try {
-            data.loadFromDisk(dataKeyAlias);
+            var unused = data.loadFromDisk(dataKeyAlias);
         } catch (RuntimeException e) {
             Log.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
         }

@@ -14,7 +14,7 @@ class ASN1OctetString(
 
     override fun equals(other: Any?): Boolean = other is ASN1OctetString && other.value contentEquals value
 
-    override fun hashCode(): Int = value.hashCode()
+    override fun hashCode(): Int = value.contentHashCode()
 
     override fun toString(): String {
         return "ASN1OctetString(${value.toHex()})"
