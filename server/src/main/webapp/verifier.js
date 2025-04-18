@@ -172,6 +172,7 @@ async function requestDocument(format, docType, requestId) {
                 requestId: requestId,
                 protocol: selectedProtocol,
                 origin: location.origin,
+                host: location.host,
                 scheme: document.getElementById("scheme-input").value
             }
         )
@@ -186,6 +187,7 @@ async function requestDocument(format, docType, requestId) {
                       requestId: requestId,
                       protocol: selectedProtocol,
                       origin: location.origin,
+                      host: location.host,
                       scheme: ""
                   }
               )
@@ -201,6 +203,7 @@ async function requestDocument(format, docType, requestId) {
                     requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
+                    host: location.host,
                     signRequest: false,
                     encryptResponse: true
                 }
@@ -219,6 +222,7 @@ async function requestDocument(format, docType, requestId) {
                     requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
+                    host: location.host,
                     signRequest: true,
                     encryptResponse: true
                 }
@@ -237,6 +241,7 @@ async function requestDocument(format, docType, requestId) {
                     requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
+                    host: location.host,
                     signRequest: true,
                     encryptResponse: true
                 }
@@ -255,6 +260,7 @@ async function requestDocument(format, docType, requestId) {
                     requestId: requestId,
                     protocol: selectedProtocol,
                     origin: location.origin,
+                    host: location.host,
                     signRequest: document.getElementById("openid4vp-sign-request-input").checked,
                     encryptResponse: document.getElementById("openid4vp-encrypt-response-input").checked
                 }

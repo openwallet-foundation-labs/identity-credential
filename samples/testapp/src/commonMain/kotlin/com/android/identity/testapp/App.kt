@@ -106,6 +106,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.storage.base.BaseStorageTable
+import org.multipaz.util.fromHex
 
 /**
  * Application singleton.
@@ -253,8 +254,8 @@ class App private constructor(val promptModel: PromptModel) {
     val bundledIacaCert: X509Cert by lazy {
         MdocUtil.generateIacaCertificate(
             iacaKey = iacaKey,
-            subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST IACA"),
-            serial = ASN1Integer(1L),
+            subject = X500Name.fromName("C=US,CN=OWF Multipaz TEST IACA"),
+            serial = ASN1Integer("26457B125F0AD75217A98EE6CFDEA7FC486221".fromHex()),
             validFrom = certsValidFrom,
             validUntil = certsValidUntil,
             issuerAltNameUrl = "https://github.com/openwallet-foundation-labs/identity-credential",
