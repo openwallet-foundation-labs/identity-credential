@@ -49,10 +49,16 @@ for example conversion from `ByteArray` to `ByteString` and similar things.
 
 ## Getting involved
 
-We have resources for people already involved and people wishing to get involved
+We have resources for people already involved and people wishing to contribute
+to the Multipaz project
 - [CONTRIBUTING.md](CONTRIBUTING.md) for how to get involved with the project and send PRs.
 - [CODING-STYLE.md](CODING-STYLE.md) for guidelines on writing code to be included in the project.
 - [TESTING.md](TESTING.md) explains our approach to unit and manual testing.
+- [DEVELOPER-ENVIRONMENT.md](DEVELOPER-ENVIRONMENT.md) for how to set up your system for building Multipaz.
+
+Note: If you're just looking to use the Multipaz libraries you do not need to build
+the entire Multipaz project from source. Instead, just use our released libraries,
+see the next section for an example of this.
 
 ## Examples / Samples
 
