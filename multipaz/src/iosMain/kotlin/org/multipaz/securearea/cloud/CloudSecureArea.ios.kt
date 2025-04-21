@@ -44,7 +44,7 @@ internal actual suspend fun cloudSecureAreaGetPlatformSecureArea(
     storage: Storage,
     partitionId: String,
 ): SecureArea {
-    return SecureEnclaveSecureArea.create(iosStorage, partitionId)
+    return SecureEnclaveSecureArea.create(iosStorage, "_csa_$partitionId")
 }
 
 internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(

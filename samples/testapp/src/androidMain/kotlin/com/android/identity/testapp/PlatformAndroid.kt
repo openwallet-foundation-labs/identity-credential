@@ -74,7 +74,11 @@ actual fun getLocalIpAddress(): String {
 
 private val androidStorage: AndroidStorage by lazy {
     AndroidStorage(
-        File(applicationContext.dataDir.path, "storage.db").absolutePath
+        // We do not want our database to be backed-up as it is useless without private keys
+        // in the secure area (which are not, and cannot be backed-up). In the future we
+        // may want to have another database which would be backed-up (and may be used as a way
+        // to re-provision credentials to a new device).
+        File(applicationContext.noBackupFilesDir.path, "storage.db").absolutePath
     )
 }
 
