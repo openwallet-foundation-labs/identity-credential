@@ -33,6 +33,7 @@ import com.android.identity.testapp.provisioning.backend.ProvisioningBackendProv
 import com.android.identity.testapp.provisioning.model.ProvisioningModel
 import com.android.identity.testapp.provisioning.openid4vci.extractCredentialIssuerData
 import com.android.identity.testapp.ui.AppTheme
+import com.android.identity.testapp.ui.BarcodeScanningScreen
 import com.android.identity.testapp.ui.CameraScreen
 import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
@@ -629,7 +630,8 @@ class App private constructor(val promptModel: PromptModel) {
                             onClickRichText = { navController.navigate(RichTextDestination.route) },
                             onClickNotifications = { navController.navigate(NotificationsDestination.route) },
                             onClickScreenLock = { navController.navigate(ScreenLockDestination.route) },
-                            onClickCamera = { navController.navigate(CameraDestination.route) }
+                            onClickCamera = { navController.navigate(CameraDestination.route) },
+                            onClickBarcodeScanning = { navController.navigate(BarcodeScanningDestination.route) }
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -848,6 +850,11 @@ class App private constructor(val promptModel: PromptModel) {
                     }
                     composable(route = CameraDestination.route) {
                         CameraScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = BarcodeScanningDestination.route) {
+                        BarcodeScanningScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }

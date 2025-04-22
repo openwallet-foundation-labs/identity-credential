@@ -36,6 +36,7 @@ import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
 import kotlinx.coroutines.launch
+import multipazproject.samples.testapp.generated.resources.barcode_scanning_title
 import multipazproject.samples.testapp.generated.resources.camera_title
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.cards.InfoCard
@@ -65,6 +66,7 @@ fun StartScreen(
     onClickNotifications: () -> Unit = {},
     onClickScreenLock: () -> Unit = {},
     onClickCamera: () -> Unit = {},
+    onClickBarcodeScanning: () -> Unit = {}
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
@@ -230,6 +232,12 @@ fun StartScreen(
                 item {
                     TextButton(onClick = onClickCamera) {
                         Text(stringResource(Res.string.camera_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickBarcodeScanning) {
+                        Text(stringResource(Res.string.barcode_scanning_title))
                     }
                 }
             }

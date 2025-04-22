@@ -55,7 +55,9 @@ actual fun Camera(
 
     LaunchedEffect(latestFrame) {
         latestFrame?.let {
-            overlayBitmap = onFrameCaptured(it)
+            withContext(Dispatchers.IO) {
+                overlayBitmap = onFrameCaptured(it)
+            }
         }
     }
 

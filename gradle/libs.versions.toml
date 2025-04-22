@@ -63,6 +63,7 @@ play-services-identity-credentials = "16.0.0-alpha05"
 androidx-credentials = "1.5.0-rc01"
 androidx-credentials-registry-provider = "1.0.0-alpha01"
 errorprone = "2.38.0"
+mlkit-barcode-scanning = "17.3.0"
 
 [libraries]
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
@@ -144,6 +145,7 @@ play-services-identity-credentials = {module = "com.google.android.gms:play-serv
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref="androidx-credentials" }
 androidx-credentials-registry-provider = { module = "androidx.credentials.registry:registry-provider", version.ref = "androidx-credentials-registry-provider" }
 errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref="errorprone"}
+mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref="mlkit-barcode-scanning"}
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -159,3 +161,4 @@ parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotl
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }

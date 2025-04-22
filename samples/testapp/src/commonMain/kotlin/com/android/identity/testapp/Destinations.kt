@@ -5,6 +5,7 @@ import androidx.navigation.navArgument
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.about_screen_title
 import multipazproject.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
+import multipazproject.samples.testapp.generated.resources.barcode_scanning_title
 import multipazproject.samples.testapp.generated.resources.camera_title
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_examples_title
 import multipazproject.samples.testapp.generated.resources.cloud_secure_area_screen_title
@@ -208,6 +209,11 @@ data object CameraDestination : Destination {
     override val title = Res.string.camera_title
 }
 
+data object BarcodeScanningDestination : Destination {
+    override val route = "BarcodeScanning"
+    override val title = Res.string.barcode_scanning_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -237,4 +243,5 @@ val appDestinations = listOf(
     NotificationsDestination,
     ScreenLockDestination,
     CameraDestination,
+    BarcodeScanningDestination
 )
