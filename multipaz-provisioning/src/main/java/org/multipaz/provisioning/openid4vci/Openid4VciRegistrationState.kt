@@ -1,7 +1,6 @@
 package org.multipaz.provisioning.openid4vci
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.rpc.annotation.RpcMethod
 import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.provisioning.RegistrationConfiguration
 import org.multipaz.provisioning.Registration

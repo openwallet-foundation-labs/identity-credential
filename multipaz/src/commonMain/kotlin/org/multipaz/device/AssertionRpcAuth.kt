@@ -13,7 +13,7 @@ import org.multipaz.rpc.handler.RpcAuthIssuerAssertion
 class AssertionRpcAuth(
     val target: String,
     val method: String,
-    val nonce: String,
+    val nonce: ByteString,
     val timestamp: Instant,
     val clientId: String,
     val payloadHash: ByteString

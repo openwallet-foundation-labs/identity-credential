@@ -6,6 +6,7 @@ import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.rpc.handler.RpcDispatcher
 import org.multipaz.rpc.handler.RpcNotifier
+import kotlin.concurrent.Volatile
 
 /**
  * Base class for generated RPC stubs.
@@ -16,7 +17,7 @@ abstract class RpcStub(
     val rpcEndpoint: String, // RPC endpoint name from `RpcState` annotation endpoint parameter
     val rpcDispatcher: RpcDispatcher,
     val rpcNotifier: RpcNotifier,
-    var rpcState: DataItem  // Opaque back-end data.
+    @Volatile var rpcState: DataItem  // Opaque back-end data.
 ) {
     fun toCbor(): ByteArray = Cbor.encode(toDataItem())
 

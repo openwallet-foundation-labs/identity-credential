@@ -55,7 +55,7 @@ class TestState: TestInterface, RpcAuthInspector {
         if (expected != actual) {
             throw RpcAuthException("Failed", RpcAuthError.FAILED)
         }
-        return RpcAuthContext("validClient")
+        return RpcAuthContext("validClient", "")
     }
 
     companion object

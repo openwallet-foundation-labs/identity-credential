@@ -89,6 +89,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.rpc.handler.RpcAuthClientSession
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.time.Duration
@@ -631,28 +632,33 @@ class DocumentModel(
     // For every event, we  initiate a sequence of calls into the issuer to get the latest.
     private fun startListeningForNotifications(issuingAuthorityId: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            val issuingAuthority = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
-            Logger.i(TAG, "collecting notifications for $issuingAuthorityId...")
-            issuingAuthority.collect { notification ->
-                Logger.i(
-                    TAG,
-                    "received notification $issuingAuthorityId.${notification.documentId}"
-                )
-                // Find the local [Document] instance, if any
-                try {
-                    for (id in documentStore.listDocuments()) {
-                        val document = documentStore.lookupDocument(id)
-                        if (document?.issuingAuthorityIdentifier == issuingAuthorityId &&
-                            document.documentIdentifier == notification.documentId
-                        ) {
-                            Logger.i(TAG, "Handling issuer update on ${notification.documentId}")
-                            documentsToUpdate.send(id)
+            withContext(RpcAuthClientSession()) {
+                val issuingAuthority = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
+                Logger.i(TAG, "collecting notifications for $issuingAuthorityId...")
+                issuingAuthority.collect { notification ->
+                    Logger.i(
+                        TAG,
+                        "received notification $issuingAuthorityId.${notification.documentId}"
+                    )
+                    // Find the local [Document] instance, if any
+                    try {
+                        for (id in documentStore.listDocuments()) {
+                            val document = documentStore.lookupDocument(id)
+                            if (document?.issuingAuthorityIdentifier == issuingAuthorityId &&
+                                document.documentIdentifier == notification.documentId
+                            ) {
+                                Logger.i(
+                                    TAG,
+                                    "Handling issuer update on ${notification.documentId}"
+                                )
+                                documentsToUpdate.send(id)
+                            }
                         }
+                    } catch (err: CancellationException) {
+                        throw err
+                    } catch (err: Throwable) {
+                        Logger.e(TAG, "Error processing notification", err)
                     }
-                } catch (err: CancellationException) {
-                    throw err
-                } catch (err: Throwable) {
-                    Logger.e(TAG, "Error processing notification", err)
                 }
             }
         }
@@ -723,7 +729,9 @@ class DocumentModel(
      */
     private suspend fun syncDocumentWithIssuer(document: Document) {
         try {
-            syncDocumentWithIssuerCore(document)
+            withContext(RpcAuthClientSession()) {
+                syncDocumentWithIssuerCore(document)
+            }
         } catch (e: IssuingAuthorityException) {
             // IssuingAuthorityException contains human-readable message
             walletApplication.postNotificationForDocument(document, e.message!!)
@@ -738,6 +746,7 @@ class DocumentModel(
             Logger.i(TAG, "syncDocumentWithIssuer: issuing authority is not initialized")
             return
         }
+
         val issuer = walletServerProvider.getIssuingAuthority(issuingAuthorityId)
 
         // Download latest issuer configuration.

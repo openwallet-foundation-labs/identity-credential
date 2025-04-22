@@ -79,20 +79,32 @@ used, args hold an authorization object (Cbor map) where arguments are encoded i
 as `Bstr` holding serialized argument array, and the rest of the fields depend on authorization
 implementation.
 
-Result array is encoded as three- or four- element array: the first element is updated opaque
-back-end state, the second element is an integer indicating result type: `0` for normal result
-and `1` for an exception. For the normal result the third element represents the returned value.
-For an exception, the third element is an exception id, and the fourth is Cbor representation
-of the exception object.
+Result array is encoded as 3- to 5-element array:
+ * the first element is updated opaque back-end state,
+ * the second element is an integer indicating result type,
+ * the third element is updated authorization system parameter, such as new nonce (or `null`,
+   if authorization not used or does not require parameter updates).
+
+The possible values for the second element are defined in `RpcReturnCode` enum:
+ * `RESULT` (value `0`) - additional element in the result array is `DataItem` which is a result
+   returned by the method.
+ * `EXCEPTION` (value `1`) - additional two elements contain exception id and serialized
+   exception object as `DataItem`
+ * `NONCE_RETRY` (value `2`) - indicates a problem with the authorization that could be solved
+   by simply retrying request with updated authorization parameters.
 
 Kotlin `Unit` return type is represented as an empty `Bstr`. Data return types and exceptions
-are represented by their Cbor representations. Returned back-end are represented as two-element
-arrays. The first element of the array is a `Tstr` that holds result object's endpoint, 
+are represented by their Cbor representations. Returned back-end objects are represented as
+two-element arrays. The first element of the array is a `Tstr` that holds result object's endpoint, 
 and the second is the opaque state of the result back-end object.
 
 ## RPC Stubs
 
-All Multipaz RPC stubs inherit from `RpcStub` class:
+To be able to call server-side code, one needs to obtain an appropriate `RpcDispatcher` object,
+create a client-side implementation of an interface marshalled through RPC, and (possibly) make
+a call in a context of an RPC session.
+
+Let's start with stub creation. All Multipaz RPC stubs inherit from `RpcStub` class:
 
 ```kotlin
 abstract class RpcStub(
@@ -121,6 +133,20 @@ class ExampleImpl(
     state: DataItem = Bstr(byteArrayOf())
 )
 ```
+
+A single RPC stub can be used from multiple threads or coroutines, but if its state changes during
+the call and multiple calls are done simultaneously, it is not determined which state will "win".
+It is only guaranteed that it is going to be one or the other (and not some sort of superposition).
+
+## RPC session
+
+Certain authorization scheme rely on constant updates to the authorization parameters to protect
+against stealing over-the-wire credentials and replay attacks. In this case, something is needed to
+hold onto these updates and pass them from one RPC call to the next. In Multipaz RPC mechanism
+this is done by `RpcAuthClientSession` object. Create one such object for an RPC session and pass
+it in coroutine context using `withContext(session) { ... }` statement. An RPC session must not have
+overlapping method calls, i.e. one call must complete before the next one can be made. If overlap
+is needed, multiple sessions must be created.
 
 ## Back-end object creating
 
@@ -199,8 +225,8 @@ dispatcher.dispatch("ExampleFactoryState", "create", [Bstr(), Tstr("Test")])
 
 which after dispatching it to the server-side code will return something like:
 
-```kotlin
-[Bstr(<factory-state-1>), 0, ["ExampleState", Bstr(<example-state-1>)]]
+```
+[Bstr(<factory-state-1>), 0, null, ["ExampleState", Bstr(<example-state-1>)]]
 ```
 
 Making this call
@@ -218,8 +244,8 @@ dispatcher.dispatch("ExampleState", "exampleMethod",
 
 which should produce the following response:
 
-```kotlin
-[Bstr(<example-state-2>), 0, Bstr(<returned-byte-string>)]
+```
+[Bstr(<example-state-2>), 0, null, Bstr(<returned-byte-string>)]
 ```
 
 Finally, calling
@@ -238,7 +264,7 @@ rpcDispatcher.dispatch("ExampleFactoryState", "finish",
 and response
 
 ```kotlin
-[Bstr(<factory-state-2>), 0, Bstr()]
+[Bstr(<factory-state-2>), 0, null, Bstr()]
 ```
 
 For more fleshed out example, study unit test `RpcProcessorTest`.

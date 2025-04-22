@@ -57,8 +57,9 @@ interface StorageTable {
      *   at any moment.
      * - [data] the data to store.
      *
-     * Returns the key for the newly-inserted record. Generated keys only contain ASCII
-     * alphanumeric characters.
+     * Returns the key for the newly-inserted record. Generated keys only contain letters, digits,
+     * and characters '_' and '-' (base64url character set). This restriction does not apply to
+     * the user-provided keys.
      */
     suspend fun insert(
         key: String?,

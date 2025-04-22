@@ -382,13 +382,13 @@ class RpcSymbolProcessor(
                 } else {
                     line("this.rpcState = rpcResponse[0]")
                 }
-                block("if (rpcResponse[1].asNumber.toInt() == RpcReturnCode.EXCEPTION.ordinal)") {
+                block("if (rpcResponse[2].asNumber.toInt() != RpcReturnCode.RESULT.ordinal)") {
                     line("this.rpcDispatcher.exceptionMap.handleExceptionReturn(rpcResponse)")
                 }
                 if (op.typeInfo != null) {
                     importQualifiedName(op.typeInfo.qualifiedStubName)
                     val ctr = op.typeInfo.simpleStubName
-                    line("val packed = rpcResponse[2].asArray")
+                    line("val packed = rpcResponse[3].asArray")
                     line("val target = packed[0].asTstr")
                     line("val result = $ctr(target, rpcDispatcher, rpcNotifier, packed[1])")
                     if (op.typeInfo.notifications) {
@@ -397,11 +397,11 @@ class RpcSymbolProcessor(
                     line("return result")
                 } else if (op.type != null) {
                     var result = CborSymbolProcessor.deserializeValue(
-                        this, "rpcResponse[2]", op.type
+                        this, "rpcResponse[3]", op.type
                     )
                     if (op.type.isMarkedNullable) {
                         importQualifiedName(CborSymbolProcessor.SIMPLE_TYPE)
-                        result = "if (rpcResponse[2] == Simple.NULL) { null } else { $result }"
+                        result = "if (rpcResponse[3] == Simple.NULL) { null } else { $result }"
                     }
                     line("return $result")
                 }
@@ -646,18 +646,6 @@ class RpcSymbolProcessor(
         for (annotation in declaration.annotations) {
             if (annotation.shortName.asString() == simpleName && annotation.annotationType.resolve().declaration.packageName.asString() == ANNOTATION_PACKAGE) {
                 return annotation
-            }
-        }
-        return null
-    }
-
-    private fun getClassArgument(annotation: KSAnnotation?, name: String): KSClassDeclaration? {
-        annotation?.arguments?.forEach { arg ->
-            if (arg.name?.asString() == name) {
-                val field = arg.value
-                if (field is KSType && field.declaration.qualifiedName?.asString() != "kotlin.Unit") {
-                    return field.declaration as KSClassDeclaration
-                }
             }
         }
         return null

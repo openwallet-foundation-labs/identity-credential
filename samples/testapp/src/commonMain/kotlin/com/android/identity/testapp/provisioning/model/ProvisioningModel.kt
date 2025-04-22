@@ -30,11 +30,13 @@ import org.multipaz.provisioning.evidence.EvidenceRequestOpenid4Vp
 import org.multipaz.provisioning.evidence.EvidenceResponse
 import org.multipaz.provisioning.evidence.EvidenceResponseCredentialOffer
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
+import org.multipaz.rpc.handler.RpcAuthClientSession
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.testapp.TestAppDocumentMetadata
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
+import kotlin.coroutines.CoroutineContext
 
 class ProvisioningModel(
     private val provisioningBackendProvider: ProvisioningBackendProvider,
@@ -63,9 +65,11 @@ class ProvisioningModel(
         evidenceResponseChannel.send(evidence)
     }
 
-    val coroutineContext =
+    private val coreCoroutineContext =
         Dispatchers.Default + promptModel + provisioningBackendProvider.extraCoroutineContext
 
+    var coroutineContext: CoroutineContext = coreCoroutineContext
+        private set
 
     /**
      * Run provisioning model.
@@ -76,6 +80,8 @@ class ProvisioningModel(
     suspend fun run(): Document? {
         val offer = pendingOffer ?: return null
         pendingOffer = null
+        // Run in our own RPC session.
+        coroutineContext = coreCoroutineContext + RpcAuthClientSession()
         return withContext(coroutineContext) {
             try {
                 runProvisioning(offer)

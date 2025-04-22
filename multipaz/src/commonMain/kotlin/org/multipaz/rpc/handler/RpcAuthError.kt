@@ -16,4 +16,8 @@ enum class RpcAuthError {
     REPLAY,
     /** Authorization validation failed. */
     FAILED,
+    /**
+     * RPC authorization layer mismatch between the server and the client
+     */
+    CONFIG,
 }
