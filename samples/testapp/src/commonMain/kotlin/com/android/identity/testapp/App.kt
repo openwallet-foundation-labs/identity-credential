@@ -112,6 +112,7 @@ import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.multipaz.barcodes.barcodeScannerPlatform
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
@@ -154,6 +155,7 @@ class App private constructor(val promptModel: PromptModel) {
     private val provisioningBackendProviderLocal = ProvisioningBackendProviderLocal()
 
     private suspend fun init() {
+        println("barcodes: " + barcodeScannerPlatform())
         val initFuncs = listOf<Pair<suspend () -> Unit, String>>(
             Pair(::platformInit, "platformInit"),
             Pair(::settingsInit, "settingsInit"),

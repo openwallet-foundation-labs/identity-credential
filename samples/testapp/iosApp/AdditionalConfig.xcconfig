@@ -1,0 +1,3 @@
+#include "../../../Pods/Target Support Files/Pods-TestApp/Pods-TestApp.debug.xcconfig"
+#include "../../../Pods/Target Support Files/Pods-TestApp/Pods-TestApp.release.xcconfig"
+#include "DeveloperConfig.xcconfig"

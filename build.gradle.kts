@@ -35,4 +35,5 @@ plugins {
     alias(libs.plugins.navigation.safe.args) apply false
     alias(libs.plugins.parcelable) apply false
     alias(libs.plugins.buildconfig) apply false
+    alias(libs.plugins.kotlinCocoapods) apply false
 }

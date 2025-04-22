@@ -98,6 +98,7 @@ kotlin {
                 implementation(project(":multipaz-doctypes"))
                 implementation(project(":multipaz-provisioning-api"))
                 implementation(project(":multipaz-compose"))
+                implementation(project(":multipaz-barcodes"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)
                 implementation(libs.ktor.client.core)
