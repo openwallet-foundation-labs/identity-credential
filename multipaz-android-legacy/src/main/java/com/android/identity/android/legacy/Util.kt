@@ -280,7 +280,7 @@ object Util {
         val df = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
         df.timeZone = parsedTz
         val date = try {
-            df.parse(dateString)
+            df.parse(dateString)!!
         } catch (e: ParseException) {
             throw RuntimeException("Error parsing string", e)
         }

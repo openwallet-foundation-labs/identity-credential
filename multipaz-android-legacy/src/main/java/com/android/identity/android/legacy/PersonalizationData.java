@@ -21,6 +21,8 @@ import android.icu.util.Calendar;
 
 import androidx.annotation.NonNull;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -135,6 +137,7 @@ public class PersonalizationData {
          * @return The builder.
          */
         @SuppressLint("BuilderSetStyle")
+        @CanIgnoreReturnValue
         public @NonNull Builder putEntry(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 @NonNull byte[] value) {
@@ -162,6 +165,7 @@ public class PersonalizationData {
          * @return The builder.
          */
         @SuppressLint("BuilderSetStyle")
+        @CanIgnoreReturnValue
         public @NonNull Builder putEntryString(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 @NonNull String value) {
@@ -183,6 +187,7 @@ public class PersonalizationData {
          * @return The builder.
          */
         @SuppressLint("BuilderSetStyle")
+        @CanIgnoreReturnValue
         public @NonNull Builder putEntryBytestring(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 @NonNull byte[] value) {
@@ -205,6 +210,7 @@ public class PersonalizationData {
          * @return The builder.
          */
         @SuppressLint("BuilderSetStyle")
+        @CanIgnoreReturnValue
         public @NonNull Builder putEntryInteger(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 long value) {
@@ -227,6 +233,7 @@ public class PersonalizationData {
          * @return The builder.
          */
         @SuppressLint("BuilderSetStyle")
+        @CanIgnoreReturnValue
         public @NonNull Builder putEntryBoolean(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 boolean value) {
@@ -253,6 +260,7 @@ public class PersonalizationData {
          * @return The builder.
          */
         @SuppressLint("BuilderSetStyle")
+        @CanIgnoreReturnValue
         public @NonNull Builder putEntryCalendar(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 @NonNull Calendar value) {
@@ -267,6 +275,7 @@ public class PersonalizationData {
          * @param profile The access control profile.
          * @return The builder.
          */
+        @CanIgnoreReturnValue
         public @NonNull Builder addAccessControlProfile(@NonNull AccessControlProfile profile) {
             mData.mProfiles.add(profile);
             return this;

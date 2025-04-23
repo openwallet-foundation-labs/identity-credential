@@ -19,6 +19,8 @@ package com.android.identity.android.legacy;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.security.cert.X509Certificate;
 
 /**
@@ -90,6 +92,7 @@ public class AccessControlProfile {
          *                                   false otherwise.
          * @return The builder.
          */
+        @CanIgnoreReturnValue
         public @NonNull Builder setUserAuthenticationRequired(boolean userAuthenticationRequired) {
             mProfile.mUserAuthenticationRequired = userAuthenticationRequired;
             return this;
@@ -111,6 +114,7 @@ public class AccessControlProfile {
          * @param userAuthenticationTimeoutMillis the authentication timeout, in milliseconds.
          * @return The builder.
          */
+        @CanIgnoreReturnValue
         public @NonNull Builder setUserAuthenticationTimeout(long userAuthenticationTimeoutMillis) {
             mProfile.mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
             return this;
@@ -130,6 +134,7 @@ public class AccessControlProfile {
          * @param readerCertificate the certificate to use for the access control check.
          * @return The builder.
          */
+        @CanIgnoreReturnValue
         public @NonNull Builder setReaderCertificate(@NonNull X509Certificate readerCertificate) {
             mProfile.mReaderCertificate = readerCertificate;
             return this;

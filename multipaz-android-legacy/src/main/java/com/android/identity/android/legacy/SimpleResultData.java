@@ -19,6 +19,8 @@ package com.android.identity.android.legacy;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -135,21 +137,25 @@ class SimpleResultData extends ResultData {
             this.mResultData = new SimpleResultData();
         }
 
+        @CanIgnoreReturnValue
         Builder setStaticAuthenticationData(byte[] staticAuthenticationData) {
             this.mResultData.mStaticAuthenticationData = staticAuthenticationData;
             return this;
         }
 
+        @CanIgnoreReturnValue
         Builder setAuthenticatedData(byte[] authenticatedData) {
             this.mResultData.mAuthenticatedData = authenticatedData;
             return this;
         }
 
+        @CanIgnoreReturnValue
         Builder setEcdsaSignature(byte[] ecdsaSignature) {
             this.mResultData.mEcdsaSignature = ecdsaSignature;
             return this;
         }
 
+        @CanIgnoreReturnValue
         Builder setMessageAuthenticationCode(byte [] messageAuthenticationCode) {
             this.mResultData.mMessageAuthenticationCode = messageAuthenticationCode;
             return this;
@@ -164,12 +170,14 @@ class SimpleResultData extends ResultData {
             return innerMap;
         }
 
+        @CanIgnoreReturnValue
         Builder addEntry(String namespaceName, String name, byte[] value) {
             Map<String, EntryData> innerMap = getOrCreateInnerMap(namespaceName);
             innerMap.put(name, new EntryData(value, STATUS_OK));
             return this;
         }
 
+        @CanIgnoreReturnValue
         Builder addErrorStatus(String namespaceName, String name, @Status int status) {
             Map<String, EntryData> innerMap = getOrCreateInnerMap(namespaceName);
             innerMap.put(name, new EntryData(null, status));

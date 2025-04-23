@@ -23,6 +23,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -84,6 +86,7 @@ class KeystoreWritableIdentityCredential extends WritableIdentityCredential {
      * @throws CipherSuiteNotSupportedException if the cipher suite is not supported
      * @throws IdentityCredentialException      if unable to communicate with secure hardware.
      */
+    @CanIgnoreReturnValue
     private Collection<X509Certificate> ensureCredentialKey(byte[] challenge) {
 
         if (mKeyPair != null) {

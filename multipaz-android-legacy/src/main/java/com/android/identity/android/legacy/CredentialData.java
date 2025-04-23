@@ -30,6 +30,8 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -347,6 +349,7 @@ class CredentialData {
         }
     }
 
+    @CanIgnoreReturnValue
     static CredentialData createCredentialData(@NonNull Context context,
                                                @NonNull File storageDirectory,
                                                @NonNull String docType,

@@ -62,6 +62,7 @@ androidx-sqlite = "2.5.0-alpha12"
 play-services-identity-credentials = "16.0.0-alpha05"
 androidx-credentials = "1.5.0-rc01"
 androidx-credentials-registry-provider = "1.0.0-alpha01"
+errorprone = "2.38.0"
 
 [libraries]
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
@@ -141,6 +142,7 @@ postgresql = { module="org.postgresql:postgresql", version.ref = "postgresql" }
 play-services-identity-credentials = {module = "com.google.android.gms:play-services-identity-credentials", version.ref = "play-services-identity-credentials"}
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref="androidx-credentials" }
 androidx-credentials-registry-provider = { module = "androidx.credentials.registry:registry-provider", version.ref = "androidx-credentials-registry-provider" }
+errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref="errorprone"}
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
