@@ -23,6 +23,10 @@ class AesGcmCipher(val key: ByteArray) : SimpleCipher {
     }
 
     override fun decrypt(ciphertext: ByteArray): ByteArray {
+        if (ciphertext.size <= 12) {
+            // Cannot be valid.
+            throw SimpleCipher.DataTamperedException()
+        }
         val iv = ByteArray(12)
         ciphertext.copyInto(iv, endIndex = iv.size)
         try {

@@ -8,14 +8,12 @@ import org.multipaz.rpc.handler.RpcNotificationsLocalPoll
 import org.multipaz.rpc.handler.HttpHandler
 import org.multipaz.rpc.handler.SimpleCipher
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.rpc.transport.HttpTransport
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.Storage
 import java.lang.UnsupportedOperationException
@@ -92,12 +90,10 @@ abstract class BaseRpcHttpServlet : BaseHttpServlet() {
         val requestData = req.inputStream.readNBytes(requestLength)
         try {
             val bytes = runBlocking {
-                withContext(environment) {
-                    httpHandler.post(
-                        url = "$target/$action",
-                        data = ByteString(requestData)
-                    )
-                }
+                httpHandler.post(
+                    url = "$target/$action",
+                    data = ByteString(requestData)
+                )
             }
             Logger.i(TAG, "$prefix: POST response status 200 (${bytes.size} bytes)")
             resp.outputStream.write(bytes.toByteArray())

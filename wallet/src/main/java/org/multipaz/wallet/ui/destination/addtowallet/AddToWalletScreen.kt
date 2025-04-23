@@ -40,7 +40,9 @@ import org.multipaz.wallet.util.getUrlQueryFromCustomSchemeUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.multipaz.compose.qrcode.ScanQrCodeDialog
+import org.multipaz.rpc.handler.RpcAuthClientSession
 
 private const val TAG = "AddToWalletScreen"
 
@@ -83,15 +85,17 @@ fun AddToWalletScreen(
     // force a navigation recomposition after processing the Qr code and onNavigate(route) does not work
     val navigateToOnComposable = remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        issuerDisplayDatas.clear()
-        try {
-            for (data in getIssuerDisplayDatas(walletServerProvider)) {
-                issuerDisplayDatas.add(data)
+        withContext(RpcAuthClientSession()) {
+            issuerDisplayDatas.clear()
+            try {
+                for (data in getIssuerDisplayDatas(walletServerProvider)) {
+                    issuerDisplayDatas.add(data)
+                }
+            } catch (e: Throwable) {
+                loadingIssuerDisplayError.value = e
             }
-        } catch (e: Throwable) {
-            loadingIssuerDisplayError.value = e
+            loadingIssuerDisplayDatas.value = false
         }
-        loadingIssuerDisplayDatas.value = false
     }
 
     // perform a navigateTo (hoisted navigation) from ScanQrDialog to run now after being requested

@@ -17,7 +17,7 @@ object RpcAuthBackendDelegate: RpcAuthInspector {
         method: String,
         payload: Bstr,
         authMessage: DataItem
-    ): CoroutineContext? =
+    ): CoroutineContext =
         BackendEnvironment.getInterface(RpcAuthInspector::class)!!.authCheck(
             target,
             method,

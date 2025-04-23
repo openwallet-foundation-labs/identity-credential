@@ -28,7 +28,8 @@ class ProvisioningBackendProviderLocal: ProvisioningBackendProvider {
         applicationSupportProvider = { applicationSupport!! },
         deviceAssertionMaker = this
     )
-    private val coroutineContext = backendEnvironmentLocal + RpcAuthContext(CLIENT_ID)
+    private val coroutineContext = backendEnvironmentLocal +
+            RpcAuthContext(CLIENT_ID, SESSION_ID)
 
     override val extraCoroutineContext: CoroutineContext get() = coroutineContext
 
@@ -93,5 +94,6 @@ class ProvisioningBackendProviderLocal: ProvisioningBackendProvider {
         )
 
         const val CLIENT_ID = "__LOCAL__"
+        const val SESSION_ID = "__SESSION__"
     }
 }

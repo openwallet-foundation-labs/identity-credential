@@ -148,7 +148,7 @@ class WalletApplication : Application() {
 
         // warm up Direct Access transport to prevent delays later
         initializeApplication(applicationContext)
-        DirectAccess.warmupTransport()
+        //DirectAccess.warmupTransport()
 
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in the OS itself.
@@ -339,6 +339,7 @@ class WalletApplication : Application() {
                 workRequest
             )
 
+        /*
         CoroutineScope(Dispatchers.IO).launch {
             val allocatedSlots = DirectAccess.enumerateAllocatedSlots();
             if (allocatedSlots.isNotEmpty()) {
@@ -359,6 +360,7 @@ class WalletApplication : Application() {
                 }
             }
         }
+        */
 
         powerOffReceiver = PowerOffReceiver()
         registerReceiver(powerOffReceiver, IntentFilter(Intent.ACTION_SHUTDOWN))
@@ -492,7 +494,7 @@ class WalletApplication : Application() {
             androidKeystoreAttestKeyAvailable = keystoreCapabilities.attestKeySupported,
             androidKeystoreStrongBoxAvailable = keystoreCapabilities.strongBoxSupported,
             androidIsEmulator = isProbablyRunningOnEmulator,
-            directAccessSupported = DirectAccess.isDirectAccessSupported,
+            directAccessSupported = false //DirectAccess.isDirectAccessSupported,
         )
     }
 

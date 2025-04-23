@@ -113,10 +113,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.multipaz.compose.PassphraseEntryField
 import org.multipaz.compose.getDefaultImageVector
+import org.multipaz.rpc.handler.RpcAuthClientSession
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "EvidenceRequest"
@@ -1436,28 +1437,33 @@ fun EvidenceRequestWebView(
     val context = LocalContext.current
     val url = Uri.parse(evidenceRequest.url)
     val redirectUri = evidenceRequest.redirectUri
-    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope { RpcAuthClientSession() }
     LaunchedEffect(url, redirectUri) {
-        // NB: these scopes will be cancelled when navigating outside of this screen.
-        val appSupport = walletServerProvider.getApplicationSupportConnection().applicationSupport
-        scope.launch {
-            // Wait for notifications
-            appSupport.collect { notification ->
-                if (notification.baseUrl == redirectUri) {
-                    handleLanding(appSupport, redirectUri, provisioningViewModel)
+        withContext(RpcAuthClientSession()) {
+            // NB: these scopes will be cancelled when navigating outside of this screen.
+            val appSupport =
+                walletServerProvider.getApplicationSupportConnection().applicationSupport
+            scope.launch {
+                withContext(RpcAuthClientSession()) {
+                    // Wait for notifications
+                    appSupport.collect { notification ->
+                        if (notification.baseUrl == redirectUri) {
+                            handleLanding(appSupport, redirectUri, provisioningViewModel)
+                        }
+                    }
                 }
             }
+
+            // Launch the browser
+            // TODO: use Chrome Custom Tabs instead?
+            val browserIntent = Intent(Intent.ACTION_VIEW, url)
+            context.startActivity(browserIntent)
+
+            // Poll as a fallback
+            do {
+                delay(10.seconds)
+            } while (handleLanding(appSupport, redirectUri, provisioningViewModel))
         }
-
-        // Launch the browser
-        // TODO: use Chrome Custom Tabs instead?
-        val browserIntent = Intent(Intent.ACTION_VIEW, url)
-        context.startActivity(browserIntent)
-
-        // Poll as a fallback
-        do {
-            delay(10.seconds)
-        } while(handleLanding(appSupport, redirectUri, provisioningViewModel))
     }
     Column {
         Row(

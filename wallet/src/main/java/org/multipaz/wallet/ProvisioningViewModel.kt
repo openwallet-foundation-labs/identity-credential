@@ -29,10 +29,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.buildByteString
 import org.json.JSONObject
 import org.multipaz.provisioning.IssuingAuthority
+import org.multipaz.rpc.handler.RpcAuthClientSession
 import kotlin.coroutines.cancellation.CancellationException
 
 class ProvisioningViewModel : ViewModel() {
@@ -50,7 +52,7 @@ class ProvisioningViewModel : ViewModel() {
         FAILED,
     }
 
-    var state = mutableStateOf(ProvisioningViewModel.State.IDLE)
+    var state = mutableStateOf(State.IDLE)
 
     var error: Throwable? = null
 
@@ -103,7 +105,7 @@ class ProvisioningViewModel : ViewModel() {
             this.job = null
             lastJob.cancel(CancellationException("New provisioning started"))
         }
-        this.job = viewModelScope.launch(Dispatchers.IO) {
+        this.job = viewModelScope.launch(Dispatchers.IO + RpcAuthClientSession()) {
             lastJob?.join()
             reset()
             state.value = State.IDLE
@@ -202,24 +204,26 @@ class ProvisioningViewModel : ViewModel() {
     fun provideEvidence(evidence: EvidenceResponse) {
         this.job = viewModelScope.launch(Dispatchers.IO) {
             try {
-                state.value = State.SUBMITTING_EVIDENCE
+                withContext(RpcAuthClientSession()) {
+                    state.value = State.SUBMITTING_EVIDENCE
 
-                proofing!!.sendEvidence(evidence)
+                    proofing!!.sendEvidence(evidence)
 
-                evidenceRequests = proofing!!.getEvidenceRequests()
-                currentEvidenceRequestIndex = 0
+                    evidenceRequests = proofing!!.getEvidenceRequests()
+                    currentEvidenceRequestIndex = 0
 
-                Logger.d(TAG, "ers1 ${evidenceRequests!!.size}")
-                if (evidenceRequests!!.isEmpty()) {
-                    state.value = State.PROOFING_COMPLETE
-                    val metadata = document!!.walletDocumentMetadata
-                    metadata.refreshState(walletServerProvider)
-                    metadata.markAsProvisioned()
-                    issuingAuthority!!.completeProof(proofing!!)
-                    metadata.refreshState(walletServerProvider)
-                } else {
-                    selectViableEvidenceRequest()
-                    state.value = State.EVIDENCE_REQUESTS_READY
+                    Logger.d(TAG, "ers1 ${evidenceRequests!!.size}")
+                    if (evidenceRequests!!.isEmpty()) {
+                        state.value = State.PROOFING_COMPLETE
+                        val metadata = document!!.walletDocumentMetadata
+                        metadata.refreshState(walletServerProvider)
+                        metadata.markAsProvisioned()
+                        issuingAuthority!!.completeProof(proofing!!)
+                        metadata.refreshState(walletServerProvider)
+                    } else {
+                        selectViableEvidenceRequest()
+                        state.value = State.EVIDENCE_REQUESTS_READY
+                    }
                 }
             } catch (e: Throwable) {
                 val nameToDelete = document?.identifier

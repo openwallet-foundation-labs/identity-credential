@@ -1,6 +1,9 @@
 package org.multipaz.rpc.handler
 
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.Simple
 import org.multipaz.cbor.toDataItem
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
@@ -19,7 +22,7 @@ class RpcExceptionMap private constructor(
         private val byId = mutableMapOf<String, Item<*>>()
 
         init {
-            // These exceptions are the part of the framework and is always supported.
+            // These exceptions are the part of the framework and are always supported.
             // TODO: consider adding some Kotlin exceptions (they'd need cbor serialization).
             InvalidRequestException.register(this)
             RpcAuthException.register(this)
@@ -64,10 +67,15 @@ class RpcExceptionMap private constructor(
         }
     }
 
-    fun exceptionReturn(state: DataItem, exception: Throwable): List<DataItem> {
+    fun exceptionReturn(
+        state: DataItem,
+        exception: Throwable,
+        nonce: ByteString? = null
+    ): List<DataItem> {
         val item = byClass[exception::class] ?: throw exception
         return listOf(
             state,
+            if (nonce == null) Simple.NULL else Bstr(nonce.toByteArray()),
             RpcReturnCode.EXCEPTION.ordinal.toDataItem(),
             item.exceptionId.toDataItem(),
             item.serialize(exception)
@@ -75,6 +83,16 @@ class RpcExceptionMap private constructor(
     }
 
     fun handleExceptionReturn(returnList: List<DataItem>) {
-        throw (byId[returnList[2].asTstr]!!.deserializer)(returnList[3])
+        val code = returnList[2].asNumber
+        if (code != RpcReturnCode.EXCEPTION.ordinal.toLong()) {
+            if (code == RpcReturnCode.NONCE_RETRY.ordinal.toLong()) {
+                throw RpcAuthException(
+                    "RPC authorization is absent or mismatched between the client and the back-end",
+                    RpcAuthError.CONFIG
+                )
+            }
+            throw IllegalStateException("Unknown RPC result code: $code")
+        }
+        throw (byId[returnList[3].asTstr]!!.deserializer)(returnList[4])
     }
 }
