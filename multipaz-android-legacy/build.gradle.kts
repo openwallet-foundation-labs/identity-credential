@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.kotlinx.io.bytestring)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.cbor)
+    implementation(libs.errorprone.annotations)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.junit)

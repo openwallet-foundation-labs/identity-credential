@@ -2,6 +2,8 @@ package org.multipaz.graphhash
 
 import kotlinx.io.bytestring.ByteString
 
+// ErrorProne doesn't understand that all values here are immutable. Suppress its warning.
+@Suppress("ImmutableEnum")
 enum class EdgeKind(
     val mark: ByteString
 ) {
