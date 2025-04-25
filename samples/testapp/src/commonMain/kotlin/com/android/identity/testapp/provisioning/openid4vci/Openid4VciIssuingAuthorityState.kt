@@ -45,7 +45,9 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
 import io.ktor.http.contentType
+import io.ktor.http.protocolWithAuthority
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
@@ -56,6 +58,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
+import org.multipaz.device.AssertionPoPKey
+import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.Registration
 import org.multipaz.provisioning.RequestCredentials
@@ -675,7 +679,6 @@ class Openid4VciIssuingAuthorityState(
         val refreshToken = access.refreshToken
         access = OpenidUtil.obtainToken(
             clientId = clientId,
-            issuanceClientId = issuanceClientId,
             tokenUrl = access.tokenEndpoint,
             refreshToken = refreshToken,
             accessToken = access.accessToken

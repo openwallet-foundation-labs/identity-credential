@@ -3,11 +3,9 @@ package org.multipaz.server.openid4vci
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.rpc.handler.InvalidRequestException
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
@@ -41,12 +39,8 @@ class TokenServlet : BaseServlet() {
                 codeToId(OpaqueIdType.REFRESH_TOKEN, refreshToken)
             }
             else -> throw InvalidRequestException("invalid parameter 'grant_type'")
-
         }
-        val state = runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
-        }
+        val state = blocking { IssuanceState.getIssuanceState(id) }
         if (digest != null) {
             if (state.codeChallenge == digest) {
                 state.codeChallenge = null  // challenge met
@@ -54,6 +48,7 @@ class TokenServlet : BaseServlet() {
                 throw InvalidRequestException("authorization: bad code_verifier")
             }
         }
+        blocking { validateClientAttestation(req, state.clientId) }
         authorizeWithDpop(state.dpopKey, req, state.dpopNonce?.toByteArray()?.toBase64Url(), null)
         val dpopNonce = Random.nextBytes(15)
         state.dpopNonce = ByteString(dpopNonce)
@@ -61,10 +56,7 @@ class TokenServlet : BaseServlet() {
         val cNonce = Random.nextBytes(15)
         state.redirectUri = null
         state.cNonce = ByteString(cNonce)
-        runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            storage.update(id, ByteString(state.toCbor()))
-        }
+        blocking { IssuanceState.updateIssuanceState(id, state) }
         val expiresIn = 60.minutes
         val accessToken = idToCode(OpaqueIdType.ACCESS_TOKEN, id, expiresIn)
         val refreshToken = idToCode(OpaqueIdType.REFRESH_TOKEN, id, Duration.INFINITE)

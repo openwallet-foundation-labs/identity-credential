@@ -1,10 +1,8 @@
 package org.multipaz.server.openid4vci
 
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.net.URLEncoder
@@ -16,17 +14,12 @@ class AuthorizeChallengeServlet : BaseServlet() {
         val authSession = req.getParameter("auth_session")
         val id = if (authSession == null) {
             // Initial call, authSession was not yet established
-            runBlocking {
-                createSession(environment, req)
-            }
+            blocking { createSession(req) }
         } else {
             codeToId(OpaqueIdType.AUTH_SESSION, authSession)
         }
         val presentation = req.getParameter("presentation_during_issuance_session")
-        val state = runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
-        }
+        val state = blocking { IssuanceState.getIssuanceState(id) }
         if (authSession != null) {
             authorizeWithDpop(
                 state.dpopKey,

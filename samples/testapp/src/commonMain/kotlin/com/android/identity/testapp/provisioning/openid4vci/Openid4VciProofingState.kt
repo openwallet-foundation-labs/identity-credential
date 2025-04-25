@@ -7,7 +7,6 @@ import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.provisioning.IssuingAuthorityException
 import org.multipaz.provisioning.Proofing
-import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.provisioning.evidence.EvidenceRequest
 import org.multipaz.provisioning.evidence.EvidenceRequestMessage
@@ -48,7 +47,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.device.AssertionDPoPKey
+import org.multipaz.device.AssertionPoPKey
 import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferAuthorizationCode
@@ -125,7 +124,7 @@ class Openid4VciProofingState(
                 if (proofingInfo != null && authorizationMetadata.authorizationEndpoint != null) {
                     val authorizeUrl =
                         "${authorizationMetadata.authorizationEndpoint}?" + FormUrlEncoder {
-                            add("client_id", issuanceClientId)
+                            add("client_id", clientId)
                             add("request_uri", proofingInfo.requestUri!!)
                         }
                     list.add(EvidenceRequestWeb(authorizeUrl, proofingInfo.landingUrl))
@@ -253,27 +252,6 @@ class Openid4VciProofingState(
         return "CloudSecureArea?id=${documentId}&url=$cloudSecureAreaUrl"
     }
 
-    private suspend fun processRedirectUrl(
-        env: BackendEnvironment,
-        url: String
-    ) {
-        val httpClient = env.getInterface(HttpClient::class)!!
-        val response = httpClient.get(url) {}
-        if (response.status != HttpStatusCode.Found && response.status != HttpStatusCode.SeeOther) {
-            Logger.e(TAG, "Authentication error: ${response.status}")
-            throw IssuingAuthorityException("eID card rejected by the issuer")
-        }
-        val dpopNonce = response.headers["DPoP-Nonce"]
-        if (dpopNonce == null) {
-            // Error
-            Logger.e(TAG, "No DPoP nonce in authentication response")
-            throw IllegalStateException("No DPoP nonce in authentication response")
-        }
-        val location = response.headers["Location"]!!
-        val code = location.substring(location.indexOf("code=") + 5)
-        obtainTokenUsingCode(code, dpopNonce)
-    }
-
     private suspend fun obtainTokenUsingCode(
         authCode: String,
         dpopNonce: String?
@@ -282,7 +260,6 @@ class Openid4VciProofingState(
         this.access = OpenidUtil.obtainToken(
             tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
             clientId = clientId,
-            issuanceClientId = issuanceClientId,
             authorizationCode = authCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
             dpopNonce = dpopNonce
@@ -295,7 +272,6 @@ class Openid4VciProofingState(
         this.access = OpenidUtil.obtainToken(
             tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
             clientId = clientId,
-            issuanceClientId = issuanceClientId,
             preauthorizedCode = (credentialOffer as Openid4VciCredentialOfferPreauthorizedCode).preauthorizedCode,
             txCode = txCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
@@ -353,9 +329,9 @@ class Openid4VciProofingState(
         return if (authorizationServer == null) {
             metadata.authorizationServerList[0]
         } else {
-            metadata.authorizationServerList.first { it ->
+            metadata.authorizationServerList.firstOrNull { it ->
                 it.baseUrl == authorizationServer
-            }
+            } ?: metadata.authorizationServerList[0]
         }
     }
 
@@ -405,21 +381,13 @@ class Openid4VciProofingState(
         val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
         val landingUrl = applicationSupport.createLandingUrl()
 
-        val clientKeyInfo = OpenidUtil.communicationKey(clientId)
-        val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
-        val clientAssertion = applicationSupport.createJwtClientAssertion(
-            clientKeyInfo.attestation,
-            assertionMaker.makeDeviceAssertion {
-                AssertionDPoPKey(
-                    clientKeyInfo.publicKey,
-                    credentialIssuerUri
-                )
-            }
+        val clientAttestation = OpenidUtil.createEphemeralWalletAttestation(
+            clientId = clientId,
+            endpoint = endpoint
         )
 
         val credentialOffer = this.credentialOffer
         val req = FormUrlEncoder {
-            add("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation")
             if (config.scope != null) {
                 add("scope", config.scope)
             }
@@ -432,13 +400,17 @@ class Openid4VciProofingState(
             add("response_type", "code")
             add("code_challenge_method", "S256")
             add("redirect_uri", landingUrl)
-            add("client_assertion", clientAssertion)
             add("code_challenge", codeChallenge)
-            add("client_id", issuanceClientId)
+            add("client_id", clientId)
         }
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
+        val dpop = OpenidUtil.generateDPoP(clientId, endpoint, null, null)
+
         val response = httpClient.post(endpoint) {
             headers {
+                append("OAuth-Client-Attestation", clientAttestation.attestationJwt)
+                append("OAuth-Client-Attestation-PoP", clientAttestation.attestationPopJwt)
+                append("DPoP", dpop)
                 append("Content-Type", "application/x-www-form-urlencoded")
             }
             setBody(req.toString())

@@ -10,13 +10,10 @@ import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.document.NameSpacedData
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.rpc.backend.Resources
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.util.fromBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -75,13 +72,12 @@ class AuthorizeServlet : BaseServlet() {
         val id = codeToId(OpaqueIdType.OPENID4VP_CODE, code)
         val stateRef = idToCode(OpaqueIdType.OPENID4VP_STATE, id, 5.minutes)
         val responseUri = "$baseUrl/openid4vp-response"
-        val jwt = runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            val state = IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
+        val jwt = blocking {
+            val state = IssuanceState.getIssuanceState(id)
             val session = initiateOpenid4Vp(state.clientId, responseUri, stateRef)
             state.pidReadingKey = session.privateKey
             state.pidNonce = session.nonce
-            storage.update(key = id, data = ByteString(state.toCbor()))
+            IssuanceState.updateIssuanceState(id, state)
             session.jwt
         }
         resp.contentType = "application/oauth-authz-req+jwt"
@@ -102,10 +98,9 @@ class AuthorizeServlet : BaseServlet() {
 
         val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(tokenData)
 
-        runBlocking {
+        blocking {
             val origin = baseUri.scheme + "://" + baseUri.authority
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            val state = IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
+            val state = IssuanceState.getIssuanceState(id)
             val encodedKey = (state.pidReadingKey!!.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
             val sessionTranscript = generateBrowserSessionTranscript(
                 Crypto.digest(Algorithm.SHA256, id.toByteArray()),
@@ -131,7 +126,7 @@ class AuthorizeServlet : BaseServlet() {
             }
 
             state.credentialData = data.build()
-            storage.update(key = id, data = ByteString(state.toCbor()))
+            IssuanceState.updateIssuanceState(id, state)
         }
         val issuerState = idToCode(OpaqueIdType.ISSUER_STATE, id, 5.minutes)
         resp.sendRedirect("finish_authorization?issuer_state=$issuerState")

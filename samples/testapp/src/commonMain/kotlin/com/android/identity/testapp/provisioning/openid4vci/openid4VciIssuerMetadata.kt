@@ -135,12 +135,17 @@ internal data class Openid4VciIssuerMetadata(
                 jsonObject["dpop_signing_alg_values_supported"]?.jsonArray,
                 SUPPORTED_SIGNATURE_ALGORITHMS
             ) ?: return null
-            val authorizationEndpoint = jsonObject["authorization_endpoint"]?.jsonPrimitive?.content
+            val authorizationEndpoint =
+                jsonObject["authorization_endpoint"]?.jsonPrimitive?.content
+                    ?: "$url/authorize"
+            val parEndpoint =
+                jsonObject["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content
+                    ?: "$url/par"
             val authorizationChallengeEndpoint =
                 jsonObject["authorization_challenge_endpoint"]?.jsonPrimitive?.content
             return Openid4VciAuthorizationMetadata(
                 baseUrl = url,
-                pushedAuthorizationRequestEndpoint = jsonObject["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content,
+                pushedAuthorizationRequestEndpoint = parEndpoint,
                 authorizationEndpoint = authorizationEndpoint,
                 authorizationChallengeEndpoint = authorizationChallengeEndpoint,
                 tokenEndpoint = jsonObject["token_endpoint"]!!.jsonPrimitive.content,
