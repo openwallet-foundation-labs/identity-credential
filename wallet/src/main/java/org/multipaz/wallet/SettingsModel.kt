@@ -9,7 +9,6 @@ import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.android.util.AndroidLogPrinter
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.util.Logger
@@ -103,7 +102,6 @@ class SettingsModel(
             sharedPreferences.edit { putString(PREFERENCE_MIN_SERVER_URL, value) }
         }
 
-        Logger.setLogPrinter(AndroidLogPrinter())
         this.loggingEnabled.value = sharedPreferences.getBoolean(PREFERENCE_LOGGING_ENABLED, false)
         this.loggingEnabled.observeForever { logToFile ->
             sharedPreferences.edit {

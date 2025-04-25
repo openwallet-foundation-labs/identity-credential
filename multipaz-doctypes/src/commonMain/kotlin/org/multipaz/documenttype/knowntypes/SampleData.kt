@@ -23,7 +23,7 @@ internal object SampleData {
     const val BIRTH_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
     const val ISSUE_DATE = "2024-03-15"
     const val EXPIRY_DATE = "2028-09-01"
-    const val ISSUING_COUNTRY = "ZZ"  // Note: ZZ is a user-assigned country-code as per ISO 3166-1
+    const val ISSUING_COUNTRY = "US"
     const val ISSUING_AUTHORITY_MDL = "Utopia Department of Motor Vehicles"
     const val ISSUING_AUTHORITY_EU_PID = "Utopia Central Registry"
     const val ISSUING_AUTHORITY_PHOTO_ID = "Utopia Central Registry"

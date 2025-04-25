@@ -1553,7 +1553,9 @@ private fun calcDcRequestStringOpenID4VP(
                             for (claim in request.vcRequest!!.claimsToRequest) {
                                 addJsonObject {
                                     putJsonArray("path") {
-                                        add(JsonPrimitive(claim.identifier))
+                                        for (pathElement in claim.identifier.split(".")) {
+                                            add(JsonPrimitive(pathElement))
+                                        }
                                     }
                                 }
                             }

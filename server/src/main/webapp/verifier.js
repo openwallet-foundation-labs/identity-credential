@@ -273,16 +273,18 @@ async function requestDocument(format, docType, requestId) {
 }
 
 async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
-    if (!navigator.identity || !navigator.identity.get) {
+    if (!navigator.credentials || !navigator.credentials.get) {
         alert("Digital Credentials API is not available. Please enable it via chrome://flags#web-identity-digital-credentials.");
         return;
     }
     try {
-        const credentialResponse = await navigator.identity.get({
+        console.log('protocol: ', dcRequestProtocol)
+        console.log('request: ', dcRequest)
+        const credentialResponse = await navigator.credentials.get({
             digital: {
                 providers: [{
                     protocol: dcRequestProtocol,
-                    request: dcRequest
+                    request: JSON.stringify(dcRequest)
                 }]
             },
             mediation: 'required',

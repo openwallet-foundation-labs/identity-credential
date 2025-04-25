@@ -226,7 +226,6 @@ object TestAppUtils {
         )
     }
 
-    // TODO: also provision SD-JWT credentials, if applicable
     @OptIn(ExperimentalResourceApi::class)
     private suspend fun provisionDocument(
         documentStore: DocumentStore,

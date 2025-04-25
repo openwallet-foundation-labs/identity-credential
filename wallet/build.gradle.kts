@@ -88,6 +88,10 @@ android {
         // but we need a way to indicate that these two are expected.
         disable += "PackagedPrivateKey"
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
