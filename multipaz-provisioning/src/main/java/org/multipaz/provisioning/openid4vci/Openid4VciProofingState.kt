@@ -3,7 +3,7 @@ package org.multipaz.provisioning.openid4vci
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.device.AssertionDPoPKey
+import org.multipaz.device.AssertionPoPKey
 import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.rpc.backend.Configuration
@@ -412,7 +412,7 @@ class Openid4VciProofingState(
             applicationSupport.createJwtClientAssertion(
                 clientKeyInfo.attestation,
                 assertionMaker.makeDeviceAssertion {
-                    AssertionDPoPKey(
+                    AssertionPoPKey(
                         clientKeyInfo.publicKey,
                         credentialIssuerUri
                     )

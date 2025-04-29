@@ -8,6 +8,8 @@ import org.multipaz.storage.StorageTableSpec
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.rpc.backend.getTable
 
 //------------ JSON-formatted replies from various OpenID4VCI servlets
 
@@ -43,11 +45,31 @@ data class IssuanceState(
     var credentialData: NameSpacedData? = null
 ) {
     companion object {
-        val tableSpec = StorageTableSpec(
-            name = "Openid4VciServerIssuanceState",
+        private val tableSpec = StorageTableSpec(
+            name = "Openid4VciIssuanceSession",
             supportPartitions = false,
             supportExpiration = false
         )
+
+        suspend fun createIssuanceState(issuanceState: IssuanceState): String {
+            return BackendEnvironment.getTable(tableSpec).insert(
+                key = null,
+                data = ByteString(issuanceState.toCbor())
+            )
+        }
+
+        suspend fun updateIssuanceState(issuanceStateId: String, issuanceState: IssuanceState) {
+            return BackendEnvironment.getTable(tableSpec).update(
+                key = issuanceStateId,
+                data = ByteString(issuanceState.toCbor())
+            )
+        }
+
+        suspend fun getIssuanceState(issuanceStateId: String): IssuanceState {
+            val data = BackendEnvironment.getTable(tableSpec).get(issuanceStateId)
+                ?: throw IllegalStateException("Unknown or stale issuance session")
+            return IssuanceState.fromCbor(data.toByteArray())
+        }
     }
 }
 

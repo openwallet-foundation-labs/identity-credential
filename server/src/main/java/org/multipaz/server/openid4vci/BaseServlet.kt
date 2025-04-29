@@ -15,7 +15,9 @@ import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
@@ -35,6 +37,12 @@ abstract class BaseServlet: BaseHttpServlet() {
             supportExpiration = false,
             supportPartitions = false
         )
+    }
+
+    fun<T> blocking(block: suspend CoroutineScope.() -> T): T {
+        return runBlocking {
+            withContext(environment, block)
+        }
     }
 
     override fun initializeEnvironment(env: BackendEnvironment): RpcNotifications? {

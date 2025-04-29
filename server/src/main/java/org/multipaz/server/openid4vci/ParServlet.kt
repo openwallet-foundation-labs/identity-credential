@@ -2,7 +2,6 @@ package org.multipaz.server.openid4vci
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.seconds
 
@@ -16,21 +15,16 @@ import kotlin.time.Duration.Companion.seconds
  * performing browser-based proofing/authorization, using requestUri issued in the response from
  * this request. Once web-based authorization is complete, Wallet App re-establishes control over
  * the session in [TokenServlet] by (1) proving that hash of code_verifier matches
- * code_challenge supplied to this service, (2) using DPoP authorization using the key
- * supplied in client_assertion to this service.
+ * code_challenge supplied to this service, (2) using DPoP authorization using the same key
+ * as presented in DPoP header to this endpoint. (3) Using OAuth-Client-Attestation-PoP using
+ * the same key as provided in OAuth-Client-Attestation header to this endpoint.
  *
  * One of the parameters of this servlet is redirect_uri. When the URL supplied using this
  * parameter is resolved, it signals the end of the web-based user authorization session.
  */
 class ParServlet : BaseServlet() {
-    companion object {
-        const val ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation"
-    }
-
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
-        val id = runBlocking {
-            createSession(environment, req)
-        }
+        val id = blocking { createSession(req) }
 
         // Format the result (session identifying information).
         val expirationSeconds = 600

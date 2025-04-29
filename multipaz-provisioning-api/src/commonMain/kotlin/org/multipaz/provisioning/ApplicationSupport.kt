@@ -1,7 +1,7 @@
 package org.multipaz.provisioning
 
 import org.multipaz.device.DeviceAssertion
-import org.multipaz.device.AssertionDPoPKey
+import org.multipaz.device.AssertionPoPKey
 import org.multipaz.rpc.annotation.RpcInterface
 import org.multipaz.rpc.annotation.RpcMethod
 import org.multipaz.rpc.client.RpcNotifiable
@@ -40,12 +40,23 @@ interface ApplicationSupport : RpcNotifiable<LandingUrlNotification> {
 
     /**
      * Creates OAuth JWT client assertion based on the mobile-platform-specific [KeyAttestation]
-     * for the given OpenId4VCI issuance server specified in [AssertionDPoPKey.targetUrl].
+     * for the given OpenId4VCI issuance server specified in [AssertionPoPKey.targetUrl].
      */
     @RpcMethod
     suspend fun createJwtClientAssertion(
         keyAttestation: KeyAttestation,
         deviceAssertion: DeviceAssertion  // holds AssertionDPoPKey
+    ): String
+
+
+    /**
+     * Creates OAuth JWT client attestation based on the mobile-platform-specific [KeyAttestation]
+     * for the given OpenId4VCI issuance server specified in [AssertionPoPKey.targetUrl].
+     */
+    @RpcMethod
+    suspend fun createJwtClientAttestation(
+        keyAttestation: KeyAttestation,
+        deviceAssertion: DeviceAssertion
     ): String
 
     /**

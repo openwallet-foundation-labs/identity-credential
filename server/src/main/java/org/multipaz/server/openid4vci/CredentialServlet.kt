@@ -19,7 +19,6 @@ import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.cache
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.util.MdocUtil
@@ -30,10 +29,8 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -61,18 +58,12 @@ class CredentialServlet : BaseServlet() {
         }
         val accessToken = authorization.substring(5)
         val id = codeToId(OpaqueIdType.ACCESS_TOKEN, accessToken)
-        val state = runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
-        }
+        val state = blocking { IssuanceState.getIssuanceState(id) }
         authorizeWithDpop(state.dpopKey, req, state.dpopNonce!!.toByteArray().toBase64Url(), accessToken)
         val nonce = state.cNonce!!.toByteArray().toBase64Url()  // credential nonce
         state.dpopNonce = null
         state.cNonce = null
-        runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            storage.update(id, ByteString(state.toCbor()))
-        }
+        blocking { IssuanceState.updateIssuanceState(id, state) }
         val requestString = String(req.inputStream.readNBytes(req.contentLength))
         val json = Json.parseToJsonElement(requestString) as JsonObject
         val format = Openid4VciFormat.fromJson(json)
@@ -85,7 +76,7 @@ class CredentialServlet : BaseServlet() {
         }
         if (factory.cryptographicBindingMethods.isEmpty()) {
             // Keyless credential: no need for proof/proofs parameter.
-            val credential = runBlocking {
+            val credential = blocking {
                 factory.makeCredential(environment, state, null)
             }
             resp.writer.write(Json.encodeToString(buildJsonObject {
@@ -118,7 +109,7 @@ class CredentialServlet : BaseServlet() {
 
         val authenticationKeys = when (proofType) {
             "attestation" -> {
-                val keyAttestationCertificate = runBlocking {
+                val keyAttestationCertificate = blocking {
                     environment.cache(
                         KeyAttestationCertificate::class,
                         state.clientId
@@ -179,7 +170,7 @@ class CredentialServlet : BaseServlet() {
         }
 
         val credentials =
-            runBlocking {
+            blocking {
                 authenticationKeys.map { key ->
                     factory.makeCredential(environment, state, key)
                 }

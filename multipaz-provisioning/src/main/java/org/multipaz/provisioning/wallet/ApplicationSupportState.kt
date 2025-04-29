@@ -5,7 +5,7 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
-import org.multipaz.device.AssertionDPoPKey
+import org.multipaz.device.AssertionPoPKey
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.DeviceAttestationAndroid
 import org.multipaz.rpc.annotation.RpcState
@@ -109,7 +109,7 @@ class ApplicationSupportState(
         val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
         deviceAttestation.validateAssertion(deviceAssertion)
 
-        val assertion = deviceAssertion.assertion as AssertionDPoPKey
+        val assertion = deviceAssertion.assertion as AssertionPoPKey
 
         if (deviceAttestation is DeviceAttestationAndroid) {
             val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
@@ -205,6 +205,13 @@ class ApplicationSupportState(
         val signature = sig.toCoseEncoded().toBase64Url()
 
         return "$message.$signature"
+    }
+
+    override suspend fun createJwtClientAttestation(
+        keyAttestation: KeyAttestation,
+        deviceAssertion: DeviceAssertion
+    ): String {
+        throw IllegalArgumentException("not implemented")
     }
 
     // Not exposed as RPC!

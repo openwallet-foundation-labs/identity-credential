@@ -15,11 +15,17 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
+import io.ktor.http.protocolWithAuthority
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import org.multipaz.device.AssertionPoPKey
+import org.multipaz.device.DeviceAssertionMaker
+import org.multipaz.provisioning.ApplicationSupport
 import kotlin.random.Random
 
 internal object OpenidUtil {
@@ -27,9 +33,8 @@ internal object OpenidUtil {
 
     private val keyCreationMutex = Mutex()
 
-    suspend fun communicationKey(clientId: String): KeyInfo {
+    private suspend fun getKey(alias: String): KeyInfo {
         val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        val alias = "OpenidComm_" + clientId
         return try {
             secureArea.getKeyInfo(alias)
         } catch (_: Exception) {
@@ -44,12 +49,14 @@ internal object OpenidUtil {
         }
     }
 
-    suspend fun communicationSign(clientId: String, message: ByteArray): ByteArray {
+    private suspend fun sign(alias: String, message: ByteArray): ByteArray {
         val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        val alias = "OpenidComm_" + clientId
         val sig = secureArea.sign(alias, message, null)
         return sig.toCoseEncoded()
     }
+
+    suspend fun dpopKey(clientId: String) = getKey("dpop:$clientId")
+    suspend fun dpopSign(clientId: String, message: ByteArray) = sign("dpop:$clientId", message)
 
     suspend fun generateDPoP(
         clientId: String,
@@ -57,38 +64,34 @@ internal object OpenidUtil {
         dpopNonce: String?,
         accessToken: String? = null
     ): String {
-        val keyInfo = communicationKey(clientId)
+        val publicKey = dpopKey(clientId).publicKey
+        val alg = publicKey.curve.defaultSigningAlgorithmFullySpecified.joseAlgorithmIdentifier
         val header = buildJsonObject {
-            put("typ", JsonPrimitive("dpop+jwt"))
-            put("alg", JsonPrimitive(keyInfo.publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
-            put("jwk", keyInfo.publicKey.toJson(clientId))
+            put("typ", "dpop+jwt")
+            put("alg", alg)
+            put("jwk", publicKey.toJson(clientId))
         }.toString().encodeToByteArray().toBase64Url()
-        val bodyObj = buildJsonObject {
-            put("htm", JsonPrimitive("POST"))
-            put("htu", JsonPrimitive(requestUrl))
-            put("iat", JsonPrimitive(Clock.System.now().epochSeconds))
+        val body = buildJsonObject {
+            put("htm", "POST")
+            put("htu", requestUrl)
+            put("iat", Clock.System.now().epochSeconds)
             if (dpopNonce != null) {
-                put("nonce", JsonPrimitive(dpopNonce))
+                put("nonce", dpopNonce)
             }
-            put("jti", JsonPrimitive(Random.Default.nextBytes(15).toBase64Url()))
+            put("jti", Random.Default.nextBytes(15).toBase64Url())
             if (accessToken != null) {
-                put("ath", JsonPrimitive(
-                    Crypto.digest(
-                        Algorithm.SHA256,
-                        accessToken.encodeToByteArray()
-                    ).toBase64Url()))
+                val hash = Crypto.digest(Algorithm.SHA256, accessToken.encodeToByteArray())
+                put("ath", hash.toBase64Url())
             }
-        }
-        val body = bodyObj.toString().encodeToByteArray().toBase64Url()
+        }.toString().encodeToByteArray().toBase64Url()
         val message = "$header.$body"
-        val signature = communicationSign(clientId, message.encodeToByteArray()).toBase64Url()
+        val signature = dpopSign(clientId, message.encodeToByteArray()).toBase64Url()
         return "$message.$signature"
     }
 
     suspend fun obtainToken(
         tokenUrl: String,
         clientId: String,
-        issuanceClientId: String,
         refreshToken: String? = null,
         accessToken: String? = null,
         authorizationCode: String? = null,
@@ -106,6 +109,11 @@ internal object OpenidUtil {
         // but will provide fresh, dpop nonce and the second request will get fresh access data.
         while (true) {
             val dpop = generateDPoP(clientId, tokenUrl, currentDpopNonce, null)
+            // TODO: should we use dpop nonce as nonce here?
+            val clientAttestation = createEphemeralWalletAttestation(
+                clientId = clientId,
+                endpoint = tokenUrl
+            )
             val tokenRequest = FormUrlEncoder {
                 if (refreshToken != null) {
                     add("grant_type", "refresh_token")
@@ -124,7 +132,7 @@ internal object OpenidUtil {
                 if (codeVerifier != null) {
                     add("code_verifier", codeVerifier)
                 }
-                add("client_id", issuanceClientId)
+                add("client_id", clientId)
                 // TODO: It's arbitrary in our case, right?
                 add("redirect_uri", "https://secure.redirect.com")
             }
@@ -134,6 +142,8 @@ internal object OpenidUtil {
                         append("Authorization", "DPoP $accessToken")
                     }
                     append("DPoP", dpop)
+                    append("OAuth-Client-Attestation", clientAttestation.attestationJwt)
+                    append("OAuth-Client-Attestation-PoP", clientAttestation.attestationPopJwt)
                     append("Content-Type", "application/x-www-form-urlencoded")
                 }
                 setBody(tokenRequest.toString())
@@ -163,4 +173,48 @@ internal object OpenidUtil {
             }
         }
     }
+
+    suspend fun createEphemeralWalletAttestation(
+        clientId: String,
+        endpoint: String,
+        nonce: String? = null
+    ): ClientAttestation {
+        val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
+        val keyInfo = secureArea.createKey(alias = null, createKeySettings = CreateKeySettings())
+        try {
+            val targetServer = Url(endpoint).protocolWithAuthority
+            val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
+            val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
+            val clientAttestation = applicationSupport.createJwtClientAttestation(
+                keyInfo.attestation,
+                assertionMaker.makeDeviceAssertion {
+                    AssertionPoPKey(keyInfo.publicKey, targetServer)
+                }
+            )
+
+            val alg = keyInfo.publicKey.curve.defaultSigningAlgorithmFullySpecified
+            val header = buildJsonObject {
+                put("typ", "oauth-client-attestation-pop+jwt")
+                put("alg", alg.joseAlgorithmIdentifier)
+            }.toString().encodeToByteArray().toBase64Url()
+            val body = buildJsonObject {
+                put("iss", clientId)
+                put("aud", targetServer)
+                put("iat", Clock.System.now().epochSeconds)
+                put("jti", Random.Default.nextBytes(15).toBase64Url())
+                if (nonce != null) {
+                    put("nonce", nonce)
+                }
+            }.toString().encodeToByteArray().toBase64Url()
+            val message = "$header.$body"
+            val sig = secureArea.sign(keyInfo.alias, message.encodeToByteArray(), null)
+            val clientAttestationPoP = "$message.${sig.toCoseEncoded().toBase64Url()}"
+
+            return ClientAttestation(clientAttestation, clientAttestationPoP)
+        } finally {
+            secureArea.deleteKey(keyInfo.alias)
+        }
+    }
+
+    class ClientAttestation(val attestationJwt: String, val attestationPopJwt: String)
 }

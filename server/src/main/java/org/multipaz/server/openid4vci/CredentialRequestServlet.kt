@@ -6,12 +6,9 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.rpc.handler.InvalidRequestException
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.util.toBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -34,12 +31,11 @@ class CredentialRequestServlet : BaseServlet() {
         val code = params["code"]?.jsonPrimitive?.content
             ?: throw InvalidRequestException("missing parameter 'code'")
         val id = codeToId(OpaqueIdType.PID_READING, code)
-        runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            val state = IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
+        blocking {
+            val state = IssuanceState.getIssuanceState(id)
             val nonce = Crypto.digest(Algorithm.SHA256, id.toByteArray()).toBase64Url()
             state.pidReadingKey = Crypto.createEcPrivateKey(EcCurve.P256)
-            storage.update(id, ByteString(state.toCbor()))
+            IssuanceState.updateIssuanceState(id, state)
             val pidPublicKey = (state.pidReadingKey!!.publicKey as EcPublicKeyDoubleCoordinate)
                 .asUncompressedPointEncoding.toBase64Url()
             val fullPid = EUPersonalID.getDocumentType().cannedRequests.first { it.id == "full" }

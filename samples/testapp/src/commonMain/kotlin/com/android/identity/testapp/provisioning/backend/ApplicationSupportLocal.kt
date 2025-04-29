@@ -2,6 +2,7 @@ package com.android.identity.testapp.provisioning.backend
 
 import com.android.identity.testapp.provisioning.openid4vci.toJson
 import com.android.identity.testapp.provisioning.openid4vci.validateDeviceAssertionBindingKeys
+import io.ktor.util.encodeBase64
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
@@ -9,6 +10,8 @@ import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.asn1.OID
@@ -16,7 +19,7 @@ import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X509Cert
-import org.multipaz.device.AssertionDPoPKey
+import org.multipaz.device.AssertionPoPKey
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.DeviceAttestationAndroid
 import org.multipaz.provisioning.ApplicationSupport
@@ -158,7 +161,7 @@ class ApplicationSupportLocal(
         // Do all the checks locally that we would have to do on the server to avoid surprises.
         val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
         deviceAttestation.validateAssertion(deviceAssertion)
-        val assertion = deviceAssertion.assertion as AssertionDPoPKey
+        val assertion = deviceAssertion.assertion as AssertionPoPKey
         if (deviceAttestation is DeviceAttestationAndroid) {
             val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
             val certChain = keyAttestation.certChain!!
@@ -202,6 +205,71 @@ class ApplicationSupportLocal(
         val sig = Crypto.sign(
             key = localClientAssertionPrivateKey,
             signatureAlgorithm = localClientAssertionPrivateKey.curve.defaultSigningAlgorithm,
+            message = message.encodeToByteArray()
+        )
+        val signature = sig.toCoseEncoded().toBase64Url()
+
+        return "$message.$signature"
+    }
+
+    override suspend fun createJwtClientAttestation(
+        keyAttestation: KeyAttestation,
+        deviceAssertion: DeviceAssertion
+    ): String {
+        // Implements this draft:
+        // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-04
+
+        // Do all the checks locally that we would have to do on the server to avoid surprises.
+        val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
+        deviceAttestation.validateAssertion(deviceAssertion)
+        val assertion = deviceAssertion.assertion as AssertionPoPKey
+        if (deviceAttestation is DeviceAttestationAndroid) {
+            val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
+            val certChain = keyAttestation.certChain!!
+            check(assertion.publicKey == certChain.certificates.first().ecPublicKey)
+            validateAndroidKeyAttestation(
+                certChain,
+                null,  // no challenge check needed
+                settings.androidRequireGmsAttestation,
+                settings.androidRequireVerifiedBootGreen,
+                settings.androidRequireAppSignatureCertificateDigests
+            )
+        }
+        check(keyAttestation.certChain!!.certificates[0].ecPublicKey == keyAttestation.publicKey)
+
+        // Now, generate the client attestation.
+        val signatureAlgorithm = localClientAssertionPrivateKey.curve.defaultSigningAlgorithmFullySpecified
+        val head = buildJsonObject {
+            put("typ", "oauth-client-attestation+jwt")
+            put("alg", signatureAlgorithm.joseAlgorithmIdentifier)
+            put("x5c", buildJsonArray {
+                add(localClientAssertionCertificate.encodedCertificate.encodeBase64())
+            })
+        }.toString().encodeToByteArray().toBase64Url()
+
+        val now = Clock.System.now()
+        val notBefore = now - 1.seconds
+        // Expiration here is only for the client assertion to be presented to the issuing server
+        // in the given timeframe (which happens without user interaction). It does not imply that
+        // the key becomes invalid at that point in time.
+        val expiration = now + 5.minutes
+        val payload = buildJsonObject {
+            put("iss", localClientId)
+            put("sub", clientId)
+            put("exp", expiration.epochSeconds)
+            put("cnf", buildJsonObject {
+                put("jwk", keyAttestation.publicKey.toJson(clientId))
+            })
+            put("nbf", notBefore.epochSeconds)
+            put("iat", now.epochSeconds)
+            put("wallet_name", "Multipaz Wallet")
+            put("wallet_link", "https://multipaz.org")
+        }.toString().encodeToByteArray().toBase64Url()
+
+        val message = "$head.$payload"
+        val sig = Crypto.sign(
+            key = localClientAssertionPrivateKey,
+            signatureAlgorithm = signatureAlgorithm,
             message = message.encodeToByteArray()
         )
         val signature = sig.toCoseEncoded().toBase64Url()

@@ -8,7 +8,6 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.javaPrivateKey
 import org.multipaz.crypto.javaPublicKey
 import org.multipaz.document.NameSpacedData
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.util.fromBase64Url
 import com.nimbusds.jose.crypto.ECDHDecrypter
@@ -17,8 +16,6 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jwt.EncryptedJWT
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.runBlocking
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.buildCborArray
@@ -31,10 +28,7 @@ class Openid4VpResponseServlet: BaseServlet() {
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
         val stateCode = req.getParameter("state")!!
         val id = codeToId(OpaqueIdType.OPENID4VP_STATE, stateCode)
-        val state = runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            IssuanceState.fromCbor(storage.get(id)!!.toByteArray())
-        }
+        val state = blocking { IssuanceState.getIssuanceState(id) }
 
         val encryptedJWT = EncryptedJWT.parse(req.getParameter("response")!!)
 
@@ -86,10 +80,7 @@ class Openid4VpResponseServlet: BaseServlet() {
         }
 
         state.credentialData = data.build()
-        runBlocking {
-            val storage = environment.getTable(IssuanceState.tableSpec)
-            storage.update(id, ByteString(state.toCbor()))
-        }
+        blocking { IssuanceState.updateIssuanceState(id, state) }
 
         val presentation = idToCode(OpaqueIdType.OPENID4VP_PRESENTATION, id, 5.minutes)
         resp.writer.write(buildJsonObject {
