@@ -18,15 +18,17 @@ package com.android.identity.android.legacy;
 
 import android.annotation.SuppressLint;
 import android.icu.util.Calendar;
-
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Objects;
 
 /**
  * An object that holds personalization data.
@@ -95,6 +97,23 @@ public class PersonalizationData {
             }
             return null;
         }
+
+        @Override
+        public boolean equals(@Nullable Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof NamespaceData)) {
+                return false;
+            }
+            NamespaceData that = (NamespaceData) o;
+            return mNamespace.equals(that.mNamespace) && Objects.equals(mEntries, that.mEntries);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(mNamespace, mEntries);
+        }
     }
 
     static class EntryData {
@@ -104,6 +123,24 @@ public class PersonalizationData {
         EntryData(byte[] value, Collection<AccessControlProfileId> accessControlProfileIds) {
             this.mValue = value;
             this.mAccessControlProfileIds = accessControlProfileIds;
+        }
+
+        @Override
+        public boolean equals(@Nullable Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof EntryData)) {
+                return false;
+            }
+            EntryData that = (EntryData) o;
+            return Arrays.equals(mValue, that.mValue)
+                    && Objects.equals(mAccessControlProfileIds, that.mAccessControlProfileIds);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(Arrays.hashCode(mValue), mAccessControlProfileIds.hashCode());
         }
     }
 
@@ -291,4 +328,20 @@ public class PersonalizationData {
         }
     }
 
+    @Override
+    public boolean equals(@Nullable Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof PersonalizationData)) {
+            return false;
+        }
+        PersonalizationData that = (PersonalizationData) o;
+        return mProfiles.equals(that.mProfiles) && Objects.equals(mNamespaces, that.mNamespaces);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(mProfiles.hashCode(), mNamespaces);
+    }
 }

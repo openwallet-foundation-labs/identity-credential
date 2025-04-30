@@ -579,4 +579,15 @@ public abstract class IdentityCredential {
     List<Calendar> getAuthenticationDataExpirations() {
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Looks up the next static authentication key to use. This may be null if no valid key is
+     * available.
+     *
+     * @return the next static authentication key to use.
+     */
+    @Nullable
+    public byte[] peekNextAuthenticationKey() {
+        throw new UnsupportedOperationException();
+    }
 }
