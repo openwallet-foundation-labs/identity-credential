@@ -328,8 +328,8 @@ private fun generateDsKeyAndCert(
         iacaCert = iacaCert,
         iacaKey = iacaKey,
         dsKey = dsKey.publicKey,
-        subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST DS"),
-        serial = ASN1Integer("26457B125F0AD75217A98EE6CFDEA7FC486221".fromHex()),
+        subject = X500Name.fromName("C=US,CN=OWF Multipaz TEST DS"),
+        serial = ASN1Integer.fromRandom(numBits = 128),
         validFrom = dsCertValidFrom,
         validUntil = dsCertsValidUntil,
     )

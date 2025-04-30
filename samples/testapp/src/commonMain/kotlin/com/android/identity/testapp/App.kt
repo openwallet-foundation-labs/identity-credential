@@ -299,7 +299,7 @@ class App private constructor(val promptModel: PromptModel) {
         MdocUtil.generateIacaCertificate(
             iacaKey = iacaKey,
             subject = X500Name.fromName("C=US,CN=OWF Multipaz TEST IACA"),
-            serial = ASN1Integer("26457B125F0AD75217A98EE6CFDEA7FC486221".fromHex()),
+            serial = ASN1Integer.fromRandom(numBits = 128),
             validFrom = certsValidFrom,
             validUntil = certsValidUntil,
             issuerAltNameUrl = "https://github.com/openwallet-foundation-labs/identity-credential",
@@ -334,8 +334,8 @@ class App private constructor(val promptModel: PromptModel) {
     private val bundledReaderRootCert: X509Cert by lazy {
         MdocUtil.generateReaderRootCertificate(
             readerRootKey = bundledReaderRootKey,
-            subject = X500Name.fromName("CN=OWF IC TestApp Reader Root"),
-            serial = ASN1Integer(1L),
+            subject = X500Name.fromName("CN=OWF Multipaz TestApp Reader Root"),
+            serial = ASN1Integer.fromRandom(numBits = 128),
             validFrom = certsValidFrom,
             validUntil = certsValidUntil,
         )
@@ -393,7 +393,7 @@ class App private constructor(val promptModel: PromptModel) {
                     readerRootKey = readerRootKey,
                     readerKey = readerKey.publicKey,
                     subject = X500Name.fromName("CN=OWF IC TestApp Reader Cert"),
-                    serial = ASN1Integer(1L),
+                    serial = ASN1Integer.fromRandom(numBits = 128),
                     validFrom = certsValidFrom,
                     validUntil = certsValidUntil,
                 )
@@ -418,7 +418,7 @@ class App private constructor(val promptModel: PromptModel) {
         issuerTrustManager.addTrustPoint(
             TrustPoint(
                 certificate = iacaCert,
-                displayName = "OWF IC TestApp Issuer",
+                displayName = "OWF Multipaz TestApp",
                 displayIcon = null
             )
         )
@@ -462,7 +462,7 @@ class App private constructor(val promptModel: PromptModel) {
         readerTrustManager.addTrustPoint(
             TrustPoint(
                 certificate = readerRootCert,
-                displayName = "OWF IC TestApp",
+                displayName = "OWF Multipaz TestApp",
                 displayIcon = Res.readBytes("files/utopia-brewery.png")
             )
         )

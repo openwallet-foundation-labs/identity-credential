@@ -49,10 +49,10 @@ internal object TrustManagerUtil {
         // NOTE does not check if it is valid within the validity period of
         // the issuing CA
         check(atTime >= certificate.validityNotBefore) {
-            "Certificate is not yet valid"
+            "Certificate is not yet valid ($atTime < ${certificate.validityNotBefore}"
         }
         check(atTime <= certificate.validityNotAfter) {
-            "Certificate is no longer valid"
+            "Certificate is no longer valid ($atTime > ${certificate.validityNotAfter})"
         }
     }
 

@@ -65,7 +65,8 @@ see the next section for an example of this.
 For a fully-fledged mDL wallet or reader application, the current answer is to use
 the `samples/testapp` module which works on both Android and iOS. This application
 is intended for developers and as such has a lot of options and settings. It's
-intended to exercise all code in the libraries.
+intended to exercise all code in the libraries. Prebuilt APKs are available
+from https://apps.multipaz.org.
 
 To see how to use the Multipaz libraries from another project, see
 [MpzSecureAreaSample](https://github.com/davidz25/MpzSecureAreaSample) for a

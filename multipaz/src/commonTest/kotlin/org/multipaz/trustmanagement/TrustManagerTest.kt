@@ -166,7 +166,7 @@ class TrustManagerTest {
         trustManager.addTrustPoint(TrustPoint(caCertificate))
 
         trustManager.verify(listOf(dsValidInThePastCertificate)).let {
-            assertEquals("Certificate is no longer valid", it.error?.message)
+            assertTrue(it.error!!.message!!.startsWith("Certificate is no longer valid"))
             assertFalse(it.isTrusted)
             assertEquals(3, it.trustChain!!.certificates.size)
             assertEquals(caCertificate, it.trustChain.certificates.last())
@@ -181,7 +181,7 @@ class TrustManagerTest {
         trustManager.addTrustPoint(TrustPoint(caCertificate))
 
         trustManager.verify(listOf(dsValidInTheFutureCertificate)).let {
-            assertEquals("Certificate is not yet valid", it.error?.message)
+            assertTrue(it.error!!.message!!.startsWith("Certificate is not yet valid"))
             assertFalse(it.isTrusted)
             assertEquals(3, it.trustChain!!.certificates.size)
             assertEquals(caCertificate, it.trustChain.certificates.last())
