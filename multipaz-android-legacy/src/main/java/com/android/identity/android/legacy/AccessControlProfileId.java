@@ -16,6 +16,9 @@
 
 package com.android.identity.android.legacy;
 
+import androidx.annotation.Nullable;
+import java.util.Objects;
+
 /**
  * A class used to wrap an access control profile identifiers.
  */
@@ -38,5 +41,22 @@ public class AccessControlProfileId {
      */
     public int getId() {
         return this.mId;
+    }
+
+    @Override
+    public boolean equals(@Nullable Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof AccessControlProfileId)) {
+            return false;
+        }
+        AccessControlProfileId that = (AccessControlProfileId) o;
+        return mId == that.mId;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(mId);
     }
 }

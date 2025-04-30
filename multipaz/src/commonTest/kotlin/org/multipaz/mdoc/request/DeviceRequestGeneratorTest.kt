@@ -140,7 +140,7 @@ class DeviceRequestGeneratorTest {
     companion object {
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
+        private const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
         private const val MVR_DOCTYPE = "org.iso.18013.7.1.mVR"
         private const val MVR_NAMESPACE = "org.iso.18013.7.1"
     }

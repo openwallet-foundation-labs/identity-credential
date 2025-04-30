@@ -302,19 +302,25 @@ class DeviceRetrievalHelper internal constructor(
             return
         }
 
-        val decryptedMessage =
-        try {
+        val decryptedMessage = try {
             sessionEncryption!!.decryptMessage(data)
-        } catch(e: IllegalStateException) {
-            Logger.d(TAG, "Decryption failed!")
-            transport!!.sendMessage(
-                sessionEncryption!!.encryptMessage(
-                    null, Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION
-                )
-            )
-            transport!!.close()
-            reportError(Error("Error decrypting message from reader"))
-            return
+        } catch(e: Exception) {
+            when (e) {
+                is IllegalArgumentException,
+                is IllegalStateException,
+                is NullPointerException -> {
+                    Logger.d(TAG, "Decryption failed!")
+                    transport!!.sendMessage(
+                        sessionEncryption!!.encryptMessage(
+                            null, Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                        )
+                    )
+                    transport!!.close()
+                    reportError(Error("Error decrypting message from reader"))
+                    return
+                }
+                else -> throw e
+            }
         }
 
         // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
