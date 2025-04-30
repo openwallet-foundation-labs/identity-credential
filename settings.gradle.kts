@@ -53,6 +53,7 @@ plugins {
 }
 
 include(":multipaz-cbor-rpc")
+include(":multipaz-face-detector")
 include(":multipaz")
 include(":multipaz:SwiftBridge")
 include(":multipaz-doctypes")

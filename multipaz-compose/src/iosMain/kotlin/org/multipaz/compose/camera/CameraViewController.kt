@@ -22,7 +22,6 @@ import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.AVVideoCodecKey
 import platform.AVFoundation.AVVideoCodecTypeJPEG
-import platform.Foundation.NSNotificationCenter
 import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIColor
 import platform.UIKit.UIDevice
@@ -33,7 +32,7 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_global_queue
 
 internal class CameraViewController(
-    private val cameraSelector: CameraSelector
+    private val cameraSelection: CameraSelection
 ) : UIViewController(nibName = null, bundle = null) {
     private val TAG = "CameraViewController"
     private val previewView = UIView()
@@ -73,8 +72,8 @@ internal class CameraViewController(
     private fun setupCamera() {
         captureSession.beginConfiguration()
 
-        val camera = when (cameraSelector) {
-            CameraSelector.DEFAULT_FRONT_CAMERA -> {
+        val camera = when (cameraSelection) {
+            CameraSelection.DEFAULT_FRONT_CAMERA -> {
                 AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
                     listOf(AVCaptureDeviceTypeBuiltInWideAngleCamera),
                     mediaType = AVMediaTypeVideo,
@@ -82,7 +81,7 @@ internal class CameraViewController(
                 ).devices.firstOrNull()
             }
 
-            CameraSelector.DEFAULT_BACK_CAMERA -> {
+            CameraSelection.DEFAULT_BACK_CAMERA -> {
                 AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
                     listOf(AVCaptureDeviceTypeBuiltInWideAngleCamera),
                     mediaType = AVMediaTypeVideo,
