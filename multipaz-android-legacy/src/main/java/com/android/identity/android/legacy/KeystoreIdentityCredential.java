@@ -852,4 +852,18 @@ class KeystoreIdentityCredential extends IdentityCredential {
         }
         return mData.getCredentialKeyAlias();
     }
+
+    @Override
+    @Nullable
+    public byte[] peekNextAuthenticationKey() {
+        Pair<PrivateKey, byte[]> authKeyPair =
+            mData.selectAuthenticationKey(
+                /* allowUsingExhaustedKeys= */ false,
+                /* allowUsingExpiredKeys= */ false,
+                /* incrementKeyUsageCount= */ false);
+        if (authKeyPair != null) {
+          return authKeyPair.second;
+        }
+        return null;
+    }
 }

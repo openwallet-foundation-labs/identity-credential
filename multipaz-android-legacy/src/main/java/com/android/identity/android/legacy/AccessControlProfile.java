@@ -22,6 +22,7 @@ import androidx.annotation.Nullable;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.security.cert.X509Certificate;
+import java.util.Objects;
 
 /**
  * A class used to specify access controls.
@@ -148,5 +149,25 @@ public class AccessControlProfile {
         public @NonNull AccessControlProfile build() {
             return mProfile;
         }
+    }
+
+    @Override
+    public boolean equals(@Nullable Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof AccessControlProfile)) {
+            return false;
+        }
+        AccessControlProfile that = (AccessControlProfile) o;
+        return Objects.equals(mAccessControlProfileId, that.mAccessControlProfileId)
+                && mUserAuthenticationRequired == that.mUserAuthenticationRequired
+                && mUserAuthenticationTimeoutMillis == that.mUserAuthenticationTimeoutMillis;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                mAccessControlProfileId, mUserAuthenticationRequired, mUserAuthenticationTimeoutMillis);
     }
 }
