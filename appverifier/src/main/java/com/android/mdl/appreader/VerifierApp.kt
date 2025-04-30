@@ -1,7 +1,6 @@
 package com.android.mdl.appreader
 
 import android.app.Application
-import com.android.identity.android.util.AndroidLogPrinter
 import org.multipaz.util.Logger
 import androidx.preference.PreferenceManager
 import org.multipaz.crypto.X509Cert
@@ -47,7 +46,6 @@ class VerifierApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Logger.setLogPrinter(AndroidLogPrinter())
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in the OS itself.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)

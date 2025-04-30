@@ -147,8 +147,13 @@ std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* requestJson) {
             cJSON* claims = cJSON_GetObjectItem(credential, "claims");
             cJSON_ArrayForEach(claim, claims) {
                 cJSON *path = cJSON_GetObjectItem(claim, "path");
-                // TODO: support longer paths
-                auto claimName = std::string(cJSON_GetStringValue(cJSON_GetArrayItem(path, 0)));
+                std::string claimName = "";
+                for (int n = 0; n < cJSON_GetArraySize(path); n++) {
+                    if (n > 0) {
+                        claimName.append(".");
+                    }
+                    claimName.append(std::string(cJSON_GetStringValue(cJSON_GetArrayItem(path, n))));
+                }
                 vcClaims.push_back(VcRequestedClaim(claimName));
             }
         }

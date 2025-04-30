@@ -42,6 +42,7 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
@@ -73,6 +74,8 @@ internal suspend fun digitalCredentialsPresentment(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
+    Logger.i(TAG, "mechanism.protocol: ${mechanism.protocol}")
+    Logger.i(TAG, "mechanism.request: ${mechanism.request}")
     dismissable.value = false
     try {
         when (mechanism.protocol) {
@@ -294,6 +297,8 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         preReq
     }
 
+    Logger.iJson(TAG, "request", req)
+
     val nonce = req["nonce"]!!.jsonPrimitive.content
     val responseMode = req["response_mode"]!!.jsonPrimitive.content
     if (!(responseMode == "dc_api" || responseMode == "dc_api.jwt")) {
@@ -412,6 +417,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
             put(dcqlId, response)
         }
     }
+    Logger.iJson(TAG, "vpToken", vpToken)
 
     val walletGeneratedNonce = Random.nextBytes(16).toBase64Url()
     val responseJson = if (reReaderPublicKey != null) {
@@ -575,8 +581,7 @@ private suspend fun openID4VPSdJwt(
     for (n in 0 until claims.size) {
         val claim = claims[n].jsonObject
         val path = claim["path"]!!.jsonArray
-        // TODO: support path with more than one element
-        val claimName = path.get(0).jsonPrimitive.content
+        val claimName = path.joinToString(separator = ".") { it.jsonPrimitive.content }
         val attribute = documentType?.vcDocumentType?.claims?.get(claimName)
         requestedClaims.add(
             VcRequestedClaim(

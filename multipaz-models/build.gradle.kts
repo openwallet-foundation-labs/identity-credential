@@ -64,6 +64,14 @@ kotlin {
                 implementation(libs.play.services.identity.credentials)
             }
         }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(project(":multipaz-doctypes"))
+            }
+        }
     }
 }
 
@@ -95,6 +103,10 @@ android {
         singleVariant("release") {
             withSourcesJar()
         }
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 

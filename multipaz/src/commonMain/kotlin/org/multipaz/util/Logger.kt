@@ -26,25 +26,27 @@ import kotlinx.io.Sink
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Logging facility.
- *
- * This prints out to system out by default and can be configured using [.setLogPrinter].
  */
 object Logger {
     private const val TAG = "Logger"
 
-    const val LEVEL_D = 0
-    const val LEVEL_I = 1
-    const val LEVEL_W = 2
-    const val LEVEL_E = 3
+    internal enum class Level {
+        DEBUG,
+        INFO,
+        WARNING,
+        ERROR,
+    }
 
     var isDebugEnabled = true // TODO: make false by default
 
     private var fileWriter: Sink? = null
     private var fileWriterPath: Path? = null
-    private var logPrinter: LogPrinter? = null
 
     fun startLoggingToFile(logPath: Path) {
         if (fileWriter != null) {
@@ -69,12 +71,8 @@ object Logger {
         fileWriterPath = null
     }
 
-    fun setLogPrinter(logPrinter: LogPrinter?) {
-        this.logPrinter = logPrinter
-    }
-
-    private fun prepareLine(
-        level: Int,
+    internal fun prepareLine(
+        level: Level,
         tag: String,
         msg: String,
         throwable: Throwable?
@@ -86,10 +84,10 @@ object Logger {
         sb.append(timeStamp)
         sb.append(": ")
         when (level) {
-            LEVEL_D -> sb.append("DEBUG")
-            LEVEL_I -> sb.append("INFO")
-            LEVEL_W -> sb.append("WARNING")
-            LEVEL_E -> sb.append("ERROR")
+            Level.DEBUG -> sb.append("DEBUG")
+            Level.INFO -> sb.append("INFO")
+            Level.WARNING -> sb.append("WARNING")
+            Level.ERROR -> sb.append("ERROR")
         }
         sb.append(": ")
         sb.append(tag)
@@ -102,19 +100,14 @@ object Logger {
         return sb.toString()
     }
 
-    private fun println(
-        level: Int,
+    private fun printLine(
+        level: Level,
         tag: String,
         msg: String,
         throwable: Throwable?
     ) {
         var logLine: String? = null
-        if (logPrinter != null) {
-            logPrinter!!.printLn(level, tag, msg, throwable)
-        } else {
-            logLine = prepareLine(level, tag, msg, throwable)
-            println(logLine)
-        }
+        platformLogPrinter(level, tag, msg, throwable)
         if (fileWriter != null) {
             if (logLine == null) {
                 logLine = prepareLine(level, tag, msg, throwable)
@@ -123,11 +116,7 @@ object Logger {
                 fileWriter!!.write((logLine + "\n").encodeToByteArray())
                 fileWriter!!.flush()
             } catch (e: Throwable) {
-                if (logPrinter != null) {
-                    logPrinter!!.printLn(LEVEL_E, tag, "Error writing log message to file", e)
-                } else {
-                    println("Error writing log message to file: $e")
-                }
+                platformLogPrinter(Level.ERROR, tag, "Error writing log message to file", e)
                 e.printStackTrace()
             }
         }
@@ -135,64 +124,64 @@ object Logger {
 
     fun d(tag: String, msg: String) {
         if (isDebugEnabled) {
-            println(LEVEL_D, tag, msg, null)
+            printLine(Level.DEBUG, tag, msg, null)
         }
     }
 
     fun d(tag: String, msg: String, throwable: Throwable) {
         if (isDebugEnabled) {
-            println(LEVEL_D, tag, msg, throwable)
+            printLine(Level.DEBUG, tag, msg, throwable)
         }
     }
 
     fun i(tag: String, msg: String) {
-        println(LEVEL_I, tag, msg, null)
+        printLine(Level.INFO, tag, msg, null)
     }
 
     fun i(tag: String, msg: String, throwable: Throwable) {
-        println(LEVEL_I, tag, msg, throwable)
+        printLine(Level.INFO, tag, msg, throwable)
     }
 
     fun w(tag: String, msg: String) {
-        println(LEVEL_W, tag, msg, null)
+        printLine(Level.WARNING, tag, msg, null)
     }
 
     fun w(tag: String, msg: String, throwable: Throwable) {
-        println(LEVEL_W, tag, msg, throwable)
+        printLine(Level.WARNING, tag, msg, throwable)
     }
 
     fun e(tag: String, msg: String) {
-        println(LEVEL_E, tag, msg, null)
+        printLine(Level.ERROR, tag, msg, null)
     }
 
     fun e(tag: String, msg: String, throwable: Throwable) {
-        println(LEVEL_E, tag, msg, throwable)
+        printLine(Level.ERROR, tag, msg, throwable)
     }
 
-    private fun hex(level: Int, tag: String, message: String, data: ByteArray) {
+    private fun hex(level: Level, tag: String, message: String, data: ByteArray) {
         val sb = "$message: ${data.size} bytes of data: " + data.toHex()
-        println(level, tag, sb, null)
+        printLine(level, tag, sb, null)
     }
 
     fun dHex(tag: String, message: String, data: ByteArray) {
         if (isDebugEnabled) {
-            hex(LEVEL_D, tag, message, data)
+            hex(Level.DEBUG, tag, message, data)
         }
     }
 
     fun iHex(tag: String, message: String, data: ByteArray) {
-        hex(LEVEL_I, tag, message, data)
+        hex(Level.INFO, tag, message, data)
     }
 
     fun wHex(tag: String, message: String, data: ByteArray) {
-        hex(LEVEL_W, tag, message, data)
+        hex(Level.WARNING, tag, message, data)
     }
 
     fun eHex(tag: String, message: String, data: ByteArray) {
-        hex(LEVEL_E, tag, message, data)
+        hex(Level.ERROR, tag, message, data)
     }
 
-    private fun cbor(level: Int, tag: String, message: String, encodedCbor: ByteArray) {
+    private fun cbor(level: Level, tag: String, message: String, encodedCbor: ByteArray) {
         val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex() +
                 "\n" +
                 "In diagnostic notation:\n" +
@@ -200,30 +189,53 @@ object Logger {
                     encodedCbor,
                     setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
                 )
-        println(level, tag, sb, null)
+        printLine(level, tag, sb, null)
     }
 
     fun dCbor(tag: String, message: String, encodedCbor: ByteArray) {
         if (isDebugEnabled) {
-            cbor(LEVEL_D, tag, message, encodedCbor)
+            cbor(Level.DEBUG, tag, message, encodedCbor)
         }
     }
 
     fun iCbor(tag: String, message: String, encodedCbor: ByteArray) {
-        cbor(LEVEL_I, tag, message, encodedCbor)
+        cbor(Level.INFO, tag, message, encodedCbor)
     }
 
     fun wCbor(tag: String, message: String, encodedCbor: ByteArray) {
-        cbor(LEVEL_W, tag, message, encodedCbor)
+        cbor(Level.WARNING, tag, message, encodedCbor)
     }
 
     fun eCbor(tag: String, message: String, encodedCbor: ByteArray) {
-        cbor(LEVEL_E, tag, message, encodedCbor)
+        cbor(Level.ERROR, tag, message, encodedCbor)
     }
 
-    interface LogPrinter {
-        fun printLn(
-            level: Int, tag: String, msg: String, throwable: Throwable?
-        )
+    private fun json(level: Level, tag: String, message: String, json: JsonElement) {
+        val prettyJson = Json {
+            prettyPrint = true
+            prettyPrintIndent = "  "
+        }
+        printLine(level, tag, "${message}: " + prettyJson.encodeToString(json), null)
+    }
+
+    fun dJson(tag: String, message: String, json: JsonElement) {
+        if (isDebugEnabled) {
+            json(Level.DEBUG, tag, message, json)
+        }
+    }
+
+    fun iJson(tag: String, message: String, json: JsonElement) {
+        json(Level.INFO, tag, message, json)
+    }
+
+    fun wJson(tag: String, message: String, json: JsonElement) {
+        json(Level.WARNING, tag, message, json)
+    }
+
+    fun eJson(tag: String, message: String, json: JsonElement) {
+        json(Level.ERROR, tag, message, json)
     }
 }
+
+// Low-level platform-specific printer
+internal expect fun platformLogPrinter(level: Logger.Level, tag: String, msg: String, throwable: Throwable?)

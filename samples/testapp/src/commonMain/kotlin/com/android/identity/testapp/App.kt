@@ -303,7 +303,7 @@ class App private constructor(val promptModel: PromptModel) {
             validFrom = certsValidFrom,
             validUntil = certsValidUntil,
             issuerAltNameUrl = "https://github.com/openwallet-foundation-labs/identity-credential",
-            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential"
+            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
         )
     }
 

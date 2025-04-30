@@ -5,7 +5,6 @@ import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.util.Log
 import androidx.core.content.ContextCompat
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.Crypto
@@ -35,31 +34,12 @@ import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.ResponseApdu
-import org.multipaz.util.Logger.LEVEL_D
-import org.multipaz.util.Logger.LEVEL_E
-import org.multipaz.util.Logger.LEVEL_I
-import org.multipaz.util.Logger.LEVEL_W
-import org.multipaz.util.Logger.LogPrinter
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 class NdefService: HostApduService() {
     companion object {
         private val TAG = "NdefService"
-
-        init {
-            Logger.setLogPrinter(object: LogPrinter {
-                override fun printLn(level: Int, tag: String, msg: String, throwable: Throwable?) {
-                    when (level) {
-                        LEVEL_D -> throwable?.let { Log.d(tag, msg, it) } ?: Log.d(tag, msg)
-                        LEVEL_I -> throwable?.let { Log.i(tag, msg, it) } ?: Log.i(tag, msg)
-                        LEVEL_W -> throwable?.let { Log.w(tag, msg, it) } ?: Log.w(tag, msg)
-                        LEVEL_E -> throwable?.let { Log.e(tag, msg, it) } ?: Log.e(tag, msg)
-                        else -> throw IllegalArgumentException("Unknown log level: $level")
-                    }
-                }
-            })
-        }
 
         private var engagement: MdocNfcEngagementHelper? = null
         private var disableEngagementJob: Job? = null
@@ -69,7 +49,6 @@ class NdefService: HostApduService() {
             PresentmentModel().apply { setPromptModel(promptModel) }
         }
     }
-
 
     private fun vibrate(pattern: List<Int>) {
         val vibrator = ContextCompat.getSystemService(applicationContext, Vibrator::class.java)

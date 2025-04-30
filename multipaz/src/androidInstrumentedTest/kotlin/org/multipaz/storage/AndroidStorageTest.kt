@@ -1,5 +1,6 @@
 package org.multipaz.storage
 
+import androidx.test.platform.app.InstrumentationRegistry
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.util.toHex
 import kotlinx.coroutines.CoroutineScope
@@ -14,6 +15,8 @@ import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
+import org.multipaz.storage.android.AndroidStorage
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.random.Random
 import kotlin.test.BeforeTest
 import kotlin.test.assertEquals
@@ -25,7 +28,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
-class StorageTest {
+class AndroidStorageTest {
     @BeforeTest
     fun resetSharedState() {
         TestClock.time = Instant.DISTANT_PAST
@@ -556,4 +559,43 @@ class StorageTest {
             createTransientStorageList(TestClock)
         }
     }
+}
+
+private fun createTransientStorageList(testClock: Clock): List<Storage> {
+    return listOf<Storage>(
+        EphemeralStorage(testClock),
+        /*
+        TODO: this can be enabled once SqliteStorage is moved into commonMain
+        org.multipaz.storage.sqlite.SqliteStorage(
+            connection = AndroidSQLiteDriver().open(":memory:"),
+            clock = testClock
+        ),
+        org.multipaz.storage.sqlite.SqliteStorage(
+            connection = BundledSQLiteDriver().open(":memory:"),
+            clock = testClock,
+            // bundled sqlite crashes when used with Dispatchers.IO
+            coroutineContext = newSingleThreadContext("DB")
+        ),
+         */
+        AndroidStorage(
+            databasePath = null,
+            clock = testClock,
+            keySize = 3
+        )
+    )
+}
+
+val knownNames = mutableSetOf<String>()
+
+private fun createPersistentStorage(name: String, testClock: Clock): Storage? {
+    val context = InstrumentationRegistry.getInstrumentation().context
+    val dbFile = context.getDatabasePath("$name.db")
+    if (knownNames.add(name)) {
+        dbFile.delete()
+    }
+    return AndroidStorage(
+        databasePath = dbFile.absolutePath,
+        clock = testClock,
+        keySize = 3
+    )
 }

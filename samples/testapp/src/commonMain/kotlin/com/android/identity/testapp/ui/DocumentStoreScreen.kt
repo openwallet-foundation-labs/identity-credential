@@ -21,10 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
@@ -48,6 +46,7 @@ import org.multipaz.testapp.platformSecureAreaProvider
 import org.multipaz.testapp.platformStorage
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -55,6 +54,8 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
 import org.multipaz.testapp.platformHttpClientEngineFactory
+import org.multipaz.util.fromHex
+import kotlin.time.Duration.Companion.days
 
 private const val TAG = "DocumentStoreScreen"
 
@@ -316,17 +317,21 @@ private fun generateDsKeyAndCert(
     iacaKey: EcPrivateKey,
     iacaCert: X509Cert,
 ): Pair<EcPrivateKey, X509Cert> {
-    val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
-    val certsValidUntil = LocalDate.parse("2034-12-01").atStartOfDayIn(TimeZone.UTC)
+    // The DS cert must not be valid for more than 457 days.
+    //
+    // Reference: ISO/IEC 18013-5:2021 Annex B.1.4 Document signer certificate
+    //
+    val dsCertValidFrom = Clock.System.now() - 1.days
+    val dsCertsValidUntil = dsCertValidFrom + 455.days
     val dsKey = Crypto.createEcPrivateKey(algorithm.curve!!)
     val dsCert = MdocUtil.generateDsCertificate(
         iacaCert = iacaCert,
         iacaKey = iacaKey,
         dsKey = dsKey.publicKey,
         subject = X500Name.fromName("C=ZZ,CN=OWF Identity Credential TEST DS"),
-        serial = ASN1Integer(1L),
-        validFrom = certsValidFrom,
-        validUntil = certsValidUntil,
+        serial = ASN1Integer("26457B125F0AD75217A98EE6CFDEA7FC486221".fromHex()),
+        validFrom = dsCertValidFrom,
+        validUntil = dsCertsValidUntil,
     )
     return Pair(dsKey, dsCert)
 }
