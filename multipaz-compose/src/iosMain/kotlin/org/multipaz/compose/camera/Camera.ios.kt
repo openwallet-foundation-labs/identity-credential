@@ -7,19 +7,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import platform.UIKit.UIViewController
 
 @Composable
 actual fun Camera(
-    cameraSelector: CameraSelector,
-    modifier: Modifier
+    modifier: Modifier,
+    cameraSelection: CameraSelection,
+    captureResolution: CameraCaptureResolution,
+    showCameraPreview: Boolean,
+    onFrameCaptured: suspend (frame: ImageBitmap) -> Unit
 ) {
     UIViewControllerComposable(
         controllerProvider = {
             CameraViewController(
-                cameraSelector = cameraSelector
+                cameraSelection = cameraSelection
             )
         },
         modifier = modifier

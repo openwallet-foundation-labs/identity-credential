@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -21,30 +22,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.multipaz.compose.camera.Camera
-import org.multipaz.compose.camera.CameraSelector
+import org.multipaz.compose.camera.CameraCaptureResolution
+import org.multipaz.compose.camera.CameraSelection
 import org.multipaz.compose.permissions.rememberCameraPermissionState
+import org.multipaz.util.Logger
+
+private const val TAG = "CameraScreen"
 
 @Composable
 fun CameraScreen(
     showToast: (message: String) -> Unit
 ) {
-    val showCameraDialog = remember { mutableStateOf<CameraSelector?>(null) }
-
+    val showCameraDialog = remember { mutableStateOf<CameraSelection?>(null) }
     val cameraPermissionState = rememberCameraPermissionState()
-
     val coroutineScope = rememberCoroutineScope()
+    val showPreview = true
 
     if (showCameraDialog.value != null) {
         AlertDialog(
+            modifier = Modifier.wrapContentSize(),
             title = { Text(text = "Camera dialog") },
             text = {
                 Column(
-                    Modifier.fillMaxWidth(),
+                    Modifier.wrapContentSize(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Camera(
-                        cameraSelector = showCameraDialog.value ?: CameraSelector.DEFAULT_FRONT_CAMERA,
+                        modifier = Modifier.fillMaxWidth(),
+                        cameraSelection = showCameraDialog.value!!,
+                        showCameraPreview = showPreview,
+                        captureResolution = CameraCaptureResolution.LOW,
+                        onFrameCaptured = { frame ->
+                            Logger.d(TAG, "Frame captured ${frame.width}x${frame.height}")
+                        }
                     )
                 }
             },
@@ -86,7 +97,7 @@ fun CameraScreen(
             ) {
                 item {
                     TextButton(onClick = {
-                        showCameraDialog.value = CameraSelector.DEFAULT_FRONT_CAMERA
+                        showCameraDialog.value = CameraSelection.DEFAULT_FRONT_CAMERA
                     }) {
                         Text("Start capturing video (Front Camera)")
                     }
@@ -94,7 +105,7 @@ fun CameraScreen(
 
                 item {
                     TextButton(onClick = {
-                        showCameraDialog.value = CameraSelector.DEFAULT_BACK_CAMERA
+                        showCameraDialog.value = CameraSelection.DEFAULT_BACK_CAMERA
                     }) {
                         Text("Start capturing video (Back Camera)")
                     }

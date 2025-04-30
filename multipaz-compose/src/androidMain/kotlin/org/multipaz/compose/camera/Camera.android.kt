@@ -1,81 +1,119 @@
 package org.multipaz.compose.camera
 
-import android.content.Context
+import android.util.Size
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.CameraSelector as XCameraSelector
-import androidx.camera.core.Preview
 import androidx.camera.core.UseCase
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import org.multipaz.context.applicationContext
-import org.multipaz.util.Logger
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
-
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 
 @Composable
 actual fun Camera(
-    cameraSelector: CameraSelector,
-    modifier: Modifier
+    modifier: Modifier,
+    cameraSelection: CameraSelection,
+    captureResolution: CameraCaptureResolution,
+    showCameraPreview: Boolean,
+    onFrameCaptured: suspend (frame: ImageBitmap) -> Unit
 ) {
-    val TAG = "Camera"
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val executor = remember { Executors.newSingleThreadExecutor() }
+    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
-    val preview = Preview.Builder().build()
-    val previewView = remember {
-        PreviewView(context)
+    LaunchedEffect(imageBitmap) {
+        imageBitmap?.let {
+            onFrameCaptured(it)
+        }
     }
 
-    //TODO: The actual image analysis will be added later (the API specification is in progress of definition).
-    val imageAnalysis = ImageAnalysis.Builder()
-        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-        .build()
-    imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(applicationContext)) { imageProxy ->
-        Logger.d(TAG, "Got image ${imageProxy.width} ${imageProxy.height} ${imageProxy.imageInfo}")
-        imageProxy.close()
-    }
+    DisposableEffect(cameraSelection) {
+        val cameraProvider = cameraProviderFuture.get()
 
-    val useCases = mutableListOf<UseCase>()
-    useCases.add(preview)
-    useCases.add(imageAnalysis)
+        val resolutionStrategy = ResolutionStrategy(
+            captureResolution.getDimensions(),
+            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER
+        )
 
-    val cameraSelection = XCameraSelector.Builder()
-        .apply {
-            when (cameraSelector) {
-                CameraSelector.DEFAULT_FRONT_CAMERA -> requireLensFacing(XCameraSelector.LENS_FACING_FRONT)
-                CameraSelector.DEFAULT_BACK_CAMERA -> requireLensFacing(XCameraSelector.LENS_FACING_BACK)
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setResolutionStrategy(resolutionStrategy)
+            .build()
+
+        val analysisCase = ImageAnalysis.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+            .build()
+
+        analysisCase.setAnalyzer(executor) { imageProxy ->
+            coroutineScope.launch {
+                val bitmap = imageProxy.toBitmap()
+                withContext(Dispatchers.Main) {
+                    imageBitmap = bitmap.asImageBitmap()
+                    imageProxy.close()
+                }
             }
         }
-        .build()
-    LaunchedEffect(cameraSelection) {
-        val cameraProvider = context.getCameraProvider()
+
         cameraProvider.unbindAll()
+        val useCases = mutableListOf<UseCase>(analysisCase)
         cameraProvider.bindToLifecycle(
             lifecycleOwner,
-            cameraSelection,
+            cameraSelection.toAndroidCameraSelector(),
             *useCases.toTypedArray()
         )
-        preview.setSurfaceProvider(previewView.surfaceProvider)
-    }
-    AndroidView(factory = { previewView }, modifier = modifier)
-}
 
-//TODO: See if it could be possible to request the instance simply by `ProcessCameraProvider.getInstance(this).await()`
-private suspend fun Context.getCameraProvider(): ProcessCameraProvider =
-    suspendCoroutine { continuation ->
-        ProcessCameraProvider.getInstance(this).also { cameraProvider ->
-            cameraProvider.addListener({
-                continuation.resume(cameraProvider.get())
-            }, ContextCompat.getMainExecutor(this))
+        onDispose {
+            cameraProvider.unbindAll()
+            executor.shutdown()
         }
     }
+
+    imageBitmap?.let {
+        Image(
+            modifier = modifier,
+            bitmap = processCameraBitmap(it),
+            contentDescription = "Camera frame",
+            contentScale = ContentScale.FillWidth
+        )
+    }
+}
+
+/** Common to Native camera selector. */
+private fun CameraSelection.toAndroidCameraSelector() =
+    when (this) {
+        CameraSelection.DEFAULT_BACK_CAMERA -> CameraSelector.DEFAULT_BACK_CAMERA
+        CameraSelection.DEFAULT_FRONT_CAMERA -> CameraSelector.DEFAULT_FRONT_CAMERA
+    }
+
+/** Define frame dimensions used for resolution grades. */
+private fun CameraCaptureResolution.getDimensions(): Size {
+    return when (this) {
+        CameraCaptureResolution.LOW -> Size(640, 480)
+        CameraCaptureResolution.MEDIUM -> Size(1280, 720)
+        CameraCaptureResolution.HIGH -> Size(1920, 1080)
+    }
+}
