@@ -18,7 +18,7 @@ actual fun Camera(
     cameraSelection: CameraSelection,
     captureResolution: CameraCaptureResolution,
     showCameraPreview: Boolean,
-    onFrameCaptured: suspend (frame: CameraFrame) -> ImageBitmap?
+    onFrameCaptured: suspend (frame: ImageBitmap) -> Unit
 ) {
     UIViewControllerComposable(
         controllerProvider = {
