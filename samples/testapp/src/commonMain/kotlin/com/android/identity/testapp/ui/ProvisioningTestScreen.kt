@@ -33,7 +33,6 @@ import org.multipaz.provisioning.evidence.EvidenceRequestMessage
 import org.multipaz.provisioning.evidence.EvidenceRequestOpenid4Vp
 import org.multipaz.provisioning.evidence.EvidenceRequestQuestionMultipleChoice
 import org.multipaz.provisioning.evidence.EvidenceRequestQuestionString
-import org.multipaz.provisioning.evidence.EvidenceRequestSetupCloudSecureArea
 import org.multipaz.provisioning.evidence.EvidenceRequestWeb
 import org.multipaz.provisioning.evidence.EvidenceResponseCreatePassphrase
 import org.multipaz.provisioning.evidence.EvidenceResponseMessage
@@ -44,28 +43,48 @@ import com.android.identity.testapp.provisioning.model.ProvisioningModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.PassphraseEntryField
+import org.multipaz.compose.presentment.Presentment
 import org.multipaz.compose.webview.RichText
 import org.multipaz.credential.Credential
-import org.multipaz.prompt.PromptModel
+import org.multipaz.models.presentment.DigitalCredentialsPresentmentMechanism
+import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.LandingUrlUnknownException
 import org.multipaz.provisioning.evidence.EvidenceRequestNotificationPermission
 import org.multipaz.provisioning.evidence.EvidenceResponseNotificationPermission
-import org.multipaz.securearea.SecureAreaRepository
-import org.multipaz.securearea.cloud.CloudSecureArea
+import org.multipaz.provisioning.evidence.EvidenceResponseOpenid4Vp
+import org.multipaz.testapp.App
+import org.multipaz.testapp.TestAppPresentmentSource
+import org.multipaz.testapp.platformAppIcon
+import org.multipaz.testapp.platformAppName
 import org.multipaz.util.Logger
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun ProvisioningTestScreen(promptModel: PromptModel, provisioningModel: ProvisioningModel) {
+fun ProvisioningTestScreen(
+    app: App,
+    provisioningModel: ProvisioningModel,
+    presentmentModel: PresentmentModel
+) {
     LaunchedEffect(provisioningModel) {
         provisioningModel.run()
     }
     val provisioningState = provisioningModel.state.collectAsState(ProvisioningModel.Initial).value
     Column {
         if (provisioningState is ProvisioningModel.EvidenceRequested) {
-            RequestEvidence(provisioningModel, promptModel, provisioningState)
+            RequestEvidence(
+                app,
+                provisioningModel,
+                presentmentModel,
+                provisioningState
+            )
         } else {
             val text = when (provisioningState) {
                 ProvisioningModel.Initial -> "Starting provisioning..."
@@ -91,13 +110,14 @@ fun ProvisioningTestScreen(promptModel: PromptModel, provisioningModel: Provisio
 
 @Composable
 private fun RequestEvidence(
+    app: App,
     provisioningModel: ProvisioningModel,
-    promptModel: PromptModel,
+    presentmentModel: PresentmentModel,
     request: ProvisioningModel.EvidenceRequested
 ) {
     val index = remember { mutableIntStateOf(0) }
     val evidenceRequest = request.evidenceRequests[index.value]
-    val coroutineScope = rememberCoroutineScope { promptModel }
+    val coroutineScope = rememberCoroutineScope { app.promptModel }
     when (evidenceRequest) {
         is EvidenceRequestQuestionString -> {
             EvidenceRequestQuestionStringView(
@@ -154,7 +174,10 @@ private fun RequestEvidence(
 
         is EvidenceRequestOpenid4Vp -> {
             EvidenceRequestOpenid4VpView(
+                app = app,
+                provisioningModel = provisioningModel,
                 evidenceRequest = evidenceRequest,
+                presentmentModel = presentmentModel,
                 viableCredentials = request.credentials,
                 onNextEvidenceRequest = {
                     index.value++
@@ -542,31 +565,81 @@ private suspend fun handleLanding(
 
 @Composable
 fun EvidenceRequestOpenid4VpView(
+    app: App,
+    provisioningModel: ProvisioningModel,
     evidenceRequest: EvidenceRequestOpenid4Vp,
+    presentmentModel: PresentmentModel,
     viableCredentials: List<Credential>,
     onNextEvidenceRequest: () -> Unit
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Presentation during issuance is not yet implemented",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(8.dp),
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        )  {
-            Button(
-                modifier = Modifier.padding(8.dp),
-                onClick = onNextEvidenceRequest
+    val coroutineScope = rememberCoroutineScope()
+    val presenting = remember { mutableStateOf(false) }
+    if (presenting.value) {
+        Presentment(
+            presentmentModel = presentmentModel,
+            promptModel = app.promptModel,
+            documentTypeRepository = app.documentTypeRepository,
+            source = TestAppPresentmentSource(app),
+            onPresentmentComplete = { presenting.value = false},
+            appName = platformAppName,
+            appIconPainter = painterResource(platformAppIcon),
+        )
+    } else {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Text(text = evidenceRequest.cancelText ?: "Use browser")
+                Text(
+                    text = "Presentation during issuance",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    modifier = Modifier.padding(8.dp),
+                    onClick = {
+                        presentmentModel.reset()
+                        val mechanism = object : DigitalCredentialsPresentmentMechanism(
+                            appId = "",
+                            webOrigin = evidenceRequest.originUri,
+                            protocol = "openid4vp",
+                            request = buildJsonObject {
+                                put("request", evidenceRequest.request)
+                            }.toString(),
+                            document = viableCredentials.first().document
+                        ) {
+                            override fun sendResponse(response: String) {
+                                coroutineScope.launch {
+                                    val json = Json.parseToJsonElement(response).jsonObject
+                                    provisioningModel.provideEvidence(
+                                        EvidenceResponseOpenid4Vp(json["response"]!!.jsonPrimitive.content)
+                                    )
+                                }
+                            }
+
+                            override fun close() {
+                                presenting.value = false
+                            }
+                        }
+                        presentmentModel.setConnecting()
+                        presentmentModel.setMechanism(mechanism)
+                        presenting.value = true
+                    }
+                ) {
+                    Text(text = "Present Credential")
+                }
+                Button(
+                    modifier = Modifier.padding(8.dp),
+                    onClick = onNextEvidenceRequest
+                ) {
+                    Text(text = evidenceRequest.cancelText ?: "Use browser")
+                }
             }
         }
     }

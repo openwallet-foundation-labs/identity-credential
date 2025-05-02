@@ -55,8 +55,6 @@ class Openid4VpResponseServlet: BaseServlet() {
         val decrypter = ECDHDecrypter(encKey)
         encryptedJWT.decrypt(decrypter)
 
-        val vpToken = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as String
-        val deviceResponse = vpToken.fromBase64Url()
         val responseUri = "$baseUrl/openid4vp-response"
 
         val sessionTranscript = createSessionTranscriptOpenID4VP(
@@ -65,6 +63,12 @@ class Openid4VpResponseServlet: BaseServlet() {
             authorizationRequestNonce = encryptedJWT.header.agreementPartyVInfo.toString(),
             mdocGeneratedNonce = encryptedJWT.header.agreementPartyUInfo.toString()
         )
+
+
+        val vpTokenMap = encryptedJWT.jwtClaimsSet.getClaim("vp_token") as Map<*,*>
+
+        // "cred1" is id that we specified in request DCQL.
+        val deviceResponse = (vpTokenMap["cred1"] as String).fromBase64Url()
 
         val parser = DeviceResponseParser(deviceResponse, sessionTranscript)
         val parsedResponse = parser.parse()

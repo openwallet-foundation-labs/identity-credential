@@ -745,8 +745,9 @@ class App private constructor(val promptModel: PromptModel) {
                     }
                     composable(route = ProvisioningTestDestination.route) {
                         ProvisioningTestScreen(
-                            promptModel = promptModel,
-                            provisioningModel = provisioningModel
+                            app = this@App,
+                            provisioningModel = provisioningModel,
+                            presentmentModel = presentmentModel
                         )
                     }
                     composable(route = ConsentModalBottomSheetListDestination.route) {
