@@ -1,6 +1,7 @@
 package org.multipaz.trustmanagement
 
 import org.multipaz.crypto.X509Cert
+import org.multipaz.util.toHex
 
 /**
  * Class used for the representation of a trusted CA [X509Cert], a name
@@ -36,5 +37,17 @@ data class TrustPoint(
         result = 31 * result + (displayName?.hashCode() ?: 0)
         result = 31 * result + (displayIcon?.contentHashCode() ?: 0)
         return result
+    }
+
+    override fun toString(): String {
+        val sb = StringBuilder("TrustPoint(certificate=$certificate")
+        if (displayName != null) {
+            sb.append(" displayName=${displayName}")
+        }
+        if (displayIcon != null) {
+            sb.append(" displayIcon=${displayIcon.size} bytes")
+        }
+        sb.append(")")
+        return sb.toString()
     }
 }

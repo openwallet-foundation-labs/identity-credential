@@ -14,10 +14,15 @@ import org.multipaz.trustmanagement.TrustPoint
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.multipaz.models.presentment.CredentialForPresentment
+import org.multipaz.util.Logger
 
 class TestAppPresentmentSource(
     val app: App
 ): PresentmentSource {
+
+    companion object {
+        private const val TAG = "PresentmentSource"
+    }
 
     override val documentTypeRepository: DocumentTypeRepository
         get() = app.documentTypeRepository
@@ -28,6 +33,9 @@ class TestAppPresentmentSource(
             if (trustResult.isTrusted) {
                 trustResult.trustPoints[0]
             } else {
+                trustResult.error?.let {
+                    Logger.w(TAG, "Trust-result error", it)
+                }
                 null
             }
         }

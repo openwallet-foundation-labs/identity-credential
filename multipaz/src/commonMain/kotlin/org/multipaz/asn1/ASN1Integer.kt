@@ -2,6 +2,8 @@ package org.multipaz.asn1
 
 import org.multipaz.util.toHex
 import kotlinx.io.bytestring.ByteStringBuilder
+import org.multipaz.asn1.ASN1Integer
+import kotlin.random.Random
 
 class ASN1Integer(
     val value: ByteArray,
@@ -41,6 +43,35 @@ class ASN1Integer(
     companion object {
         fun parse(content: ByteArray, tag: Int): ASN1Integer {
             return ASN1Integer(content, tag)
+        }
+
+        /**
+         * Generates a [ASN1Integer] with [numBits] bits of random
+         *
+         * @param numBits number of bits of random, must be positive and divisible by 8.
+         * @param random the [Random] to used for randomness.
+         * @return a [ASN1Integer]
+         */
+        fun fromRandom(
+            numBits: Int,
+            random: Random = Random.Default
+        ): ASN1Integer {
+            require(numBits >= 8 && numBits.and(0x07) == 0) {
+                "numBits must be positive and a multiple of 8"
+            }
+            // First byte is to satisfy 8.3.2 of https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf
+            // which states:
+            //
+            //     8.3.2 If the contents octets of an integer value encoding consist of more than one octet, then
+            //     the bits of the first octet and bit 8 of the second octet:
+            //
+            //       a) shall not all be ones; and
+            //       b) shall not all be zero.
+            //
+            //    NOTE – These rules ensure that an integer value is always encoded in the smallest possible
+            //    number of octets.
+            //
+            return ASN1Integer(byteArrayOf(random.nextInt(1, 255).toByte()) + random.nextBytes(numBits/8 - 1))
         }
     }
 }
