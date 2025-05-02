@@ -22,9 +22,12 @@ import kotlinx.datetime.plus
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import kotlin.random.Random
 
 data class Openid4VpSession(
@@ -46,14 +49,15 @@ fun initiateOpenid4Vp(
 
     val header = buildJsonObject {
         put("typ", JsonPrimitive("oauth-authz-req+jwt"))
-        put("alg", JsonPrimitive(publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
-        put("jwk", publicKey.toJson(null))
+        put("alg", JsonPrimitive(publicKey.curve.defaultSigningAlgorithmFullySpecified.joseAlgorithmIdentifier))
         put("x5c", buildJsonArray {
             for (cert in singleUseReaderKeyCertChain.certificates) {
                 add(cert.encodedCertificate.toBase64Url())
             }
         })
     }.toString().toByteArray().toBase64Url()
+
+    val credFormat = "mdoc"
 
     val body = buildJsonObject {
         put("client_id", clientId)
@@ -62,6 +66,53 @@ fun initiateOpenid4Vp(
         put("response_mode", "direct_post.jwt")
         put("nonce", nonce)
         put("state", state)
+        putJsonObject("dcql_query") {
+            putJsonArray("credentials") {
+                if (credFormat == "vc") {
+                    addJsonObject {
+                        put("id", JsonPrimitive("cred1"))
+                        put("format", JsonPrimitive("dc+sd-jwt"))
+                        putJsonObject("meta") {
+                            put("vct_values",
+                                buildJsonArray {
+                                    add(JsonPrimitive(request.vcRequest!!.vct))
+                                }
+                            )
+                        }
+                        putJsonArray("claims") {
+                            for (claim in request.vcRequest!!.claimsToRequest) {
+                                addJsonObject {
+                                    putJsonArray("path") {
+                                        add(JsonPrimitive(claim.identifier))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    addJsonObject {
+                        put("id", JsonPrimitive("cred1"))
+                        put("format", JsonPrimitive("mso_mdoc"))
+                        putJsonObject("meta") {
+                            put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
+                        }
+                        putJsonArray("claims") {
+                            for (ns in request.mdocRequest!!.namespacesToRequest) {
+                                for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                                    addJsonObject {
+                                        putJsonArray("path") {
+                                            add(JsonPrimitive(ns.namespace))
+                                            add(JsonPrimitive(de.attribute.identifier))
+                                        }
+                                        put("intent_to_retain", JsonPrimitive(intentToRetain))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         put("presentation_definition", mdocCalcPresentationDefinition(request))
         put("client_metadata", calcClientMetadata(singleUseReaderKeyPriv.publicKey))
     }.toString().toByteArray().toBase64Url()
@@ -176,7 +227,7 @@ private fun calcClientMetadata(publicKey: EcPublicKey): JsonObject {
     }
     return buildJsonObject {
         put("authorization_encrypted_response_alg", "ECDH-ES")
-        put("authorization_encrypted_response_enc", "A128CBC-HS256")
+        put("authorization_encrypted_response_enc", Algorithm.A128GCM.joseAlgorithmIdentifier)
         put("response_mode", "direct_post.jwt")
         put("vp_formats", formats)
         put("vp_formats_supported", formats)

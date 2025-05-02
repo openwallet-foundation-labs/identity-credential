@@ -301,7 +301,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
 
     val nonce = req["nonce"]!!.jsonPrimitive.content
     val responseMode = req["response_mode"]!!.jsonPrimitive.content
-    if (!(responseMode == "dc_api" || responseMode == "dc_api.jwt")) {
+    if (!(responseMode == "dc_api" || responseMode == "dc_api.jwt" || responseMode == "direct_post.jwt")) {
         // TODO: in the future, flat out reject requests that doesn't use encrypted response
         throw IllegalArgumentException("Unexpected response_mode $responseMode")
     }
@@ -345,7 +345,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     var reEncAlg: Algorithm = Algorithm.UNSET
     val reReaderPublicKey: EcPublicKey? = when (responseMode) {
         "dc_api" -> null
-        "dc_api.jwt" -> {
+        "dc_api.jwt", "direct_post.jwt" -> {
             val clientMetadata = req["client_metadata"]!!.jsonObject
             val reAlg = clientMetadata["authorization_encrypted_response_alg"]!!.jsonPrimitive.content
             if (reAlg != "ECDH-ES") {
