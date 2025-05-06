@@ -264,8 +264,9 @@ internal class GattClient(
             // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
             //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
             if (!Arrays.equals(identValue, this.identValue)) {
-                Logger.w(TAG, "Received ident '${identValue.toHex()}' does not match " +
-                            "expected ident '${this.identValue!!.toHex()}'")
+                reportError(Error("Received ident '${identValue.toHex()}' does not match " +
+                        "expected ident '${this.identValue!!.toHex()}'"));
+                return;
             }
             afterIdentObtained(gatt)
         } else if (characteristic.uuid == characteristicL2CAPUuid) {

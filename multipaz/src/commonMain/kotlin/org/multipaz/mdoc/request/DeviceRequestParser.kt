@@ -17,7 +17,6 @@ package org.multipaz.mdoc.request
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.buildCborArray
@@ -123,6 +122,8 @@ class DeviceRequestParser(
                     var encodedReaderAuth: ByteArray? = null
                     var readerAuthenticated = false
                     if (!skipReaderAuthParseAndCheck && readerAuth != null) {
+                        coseSign1CheckNoDuplicateHeaderParams(readerAuth);
+
                         encodedReaderAuth = Cbor.encode(readerAuth)
                         val readerAuthCoseSign1 = readerAuth.asCoseSign1
                         val readerCertChainDataItem =
@@ -133,17 +134,17 @@ class DeviceRequestParser(
                             ]!!.asNumber.toInt()
                         )
                         readerCertChain = readerCertChainDataItem!!.asX509CertChain
-                        val readerKey = readerCertChain!!.certificates[0].ecPublicKey
-                        val encodedReaderAuthentication = Cbor.encode(
-                            buildCborArray {
-                                add("ReaderAuthentication")
-                                add(sessionTranscript)
-                                add(itemsRequestBytesDataItem)
-                            }
-                        )
-                        val readerAuthenticationBytes =
-                            Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
                         readerAuthenticated = try {
+                            val readerKey = readerCertChain!!.certificates[0].ecPublicKey
+                            val encodedReaderAuthentication = Cbor.encode(
+                                buildCborArray {
+                                    add("ReaderAuthentication")
+                                    add(sessionTranscript)
+                                    add(itemsRequestBytesDataItem)
+                                }
+                            )
+                            val readerAuthenticationBytes =
+                              Cbor.encode(Tagged(24, Bstr(encodedReaderAuthentication)))
                             Cose.coseSign1Check(
                                 readerKey,
                                 readerAuthenticationBytes,
@@ -175,9 +176,33 @@ class DeviceRequestParser(
 
                     // parse nameSpaces
                     val nameSpaces = itemsRequest["nameSpaces"]
-                    parseNamespaces(nameSpaces, builder)
+                    if (nameSpaces != null) {
+                      parseNamespaces(nameSpaces, builder)
+                    }
                     _docRequests.add(builder.build())
                 }
+            }
+        }
+
+        private fun cborMapExtractMapNumberKeys(map: Map<DataItem, DataItem>): Collection<Long> =
+            map.keys.map { it.asNumber }
+
+        private fun coseSign1CheckNoDuplicateHeaderParams(coseSign1: DataItem) {
+            val items = coseSign1.asArray
+            if (items.size < 4) {
+                throw IllegalArgumentException("Expected at least four items in COSE_Sign1 array")
+            }
+
+            val encodedProtectedHeaders = items.elementAt(0).asBstr
+            val protectedHeaders = Cbor.decode(encodedProtectedHeaders).asMap
+            val protectedNumberKeys = cborMapExtractMapNumberKeys(protectedHeaders)
+
+            val unprotectedHeaders = items.elementAt(1).asMap
+            val unprotectedNumberKeys = cborMapExtractMapNumberKeys(unprotectedHeaders)
+
+            if (protectedNumberKeys.intersect(unprotectedNumberKeys.toSet()).isNotEmpty()) {
+                throw IllegalArgumentException(
+                        "CoseSIGN1 contains duplicate protected and unprotected headers.")
             }
         }
 

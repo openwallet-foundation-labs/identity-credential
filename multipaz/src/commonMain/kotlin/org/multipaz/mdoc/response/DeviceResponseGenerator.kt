@@ -37,6 +37,7 @@ import org.multipaz.cbor.putCborMap
  */
 class DeviceResponseGenerator(private val mStatusCode: Long) {
     private val mDocumentsBuilder = CborArray.builder()
+    private var mDocumentsAdded = false;
 
     /**
      * Adds a new document to the device response.
@@ -142,6 +143,7 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
                 }
             }
         )
+        mDocumentsAdded = true
     }
 
     /**
@@ -155,6 +157,7 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      */
     fun addDocument(encodedDocument: ByteArray) = apply {
         mDocumentsBuilder.add(Cbor.decode(encodedDocument))
+        mDocumentsAdded = true
     }
 
     /**
@@ -170,7 +173,9 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
     fun generate(): ByteArray = Cbor.encode(
         buildCborMap {
             put("version", "1.0")
-            put("documents", mDocumentsBuilder.end().build())
+            if (mDocumentsAdded) {
+                put("documents", mDocumentsBuilder.end().build())
+            }
             // TODO: The documentErrors map entry should only be present if there is a non-zero
             //  number of elements in the array. Right now we don't have a way for the application
             //  to convey document errors but when we add that API we'll need to do something so
