@@ -36,14 +36,19 @@ import kotlinx.serialization.json.JsonElement
 object Logger {
     private const val TAG = "Logger"
 
-    internal enum class Level {
+    enum class Level {
         DEBUG,
         INFO,
         WARNING,
         ERROR,
     }
 
+    fun interface LogPrinter {
+        fun print(level: Level, tag: String, msg: String, throwable: Throwable?)
+    }
+
     var isDebugEnabled = true // TODO: make false by default
+    var logPrinter: LogPrinter? = null
 
     private var fileWriter: Sink? = null
     private var fileWriterPath: Path? = null
@@ -106,8 +111,9 @@ object Logger {
         msg: String,
         throwable: Throwable?
     ) {
+        val printer = this.logPrinter ?: getPlatformLogPrinter()
         var logLine: String? = null
-        platformLogPrinter(level, tag, msg, throwable)
+        printer.print(level, tag, msg, throwable)
         if (fileWriter != null) {
             if (logLine == null) {
                 logLine = prepareLine(level, tag, msg, throwable)
@@ -116,7 +122,7 @@ object Logger {
                 fileWriter!!.write((logLine + "\n").encodeToByteArray())
                 fileWriter!!.flush()
             } catch (e: Throwable) {
-                platformLogPrinter(Level.ERROR, tag, "Error writing log message to file", e)
+                printer.print(Level.ERROR, tag, "Error writing log message to file", e)
                 e.printStackTrace()
             }
         }
@@ -238,4 +244,4 @@ object Logger {
 }
 
 // Low-level platform-specific printer
-internal expect fun platformLogPrinter(level: Logger.Level, tag: String, msg: String, throwable: Throwable?)
+internal expect fun getPlatformLogPrinter(): Logger.LogPrinter

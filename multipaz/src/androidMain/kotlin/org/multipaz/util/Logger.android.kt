@@ -3,7 +3,7 @@ package org.multipaz.util
 import android.util.Log
 import org.multipaz.util.Logger.Level
 
-internal actual fun platformLogPrinter(level: Level, tag: String, msg: String, throwable: Throwable?) {
+internal actual fun getPlatformLogPrinter() = Logger.LogPrinter { level, tag, msg, throwable ->
     // Android clamps the log message at just over 4000 characters so chunk and only include
     // the throwable with the first Log.x() call
     val messages = msg.chunked(4000)
