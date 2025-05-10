@@ -1,5 +1,5 @@
 package org.multipaz.util
 
-internal actual fun platformLogPrinter(level: Logger.Level, tag: String, msg: String, throwable: Throwable?) {
+internal actual fun getPlatformLogPrinter() = Logger.LogPrinter { level, tag, msg, throwable ->
     println(Logger.prepareLine(level, tag, msg, throwable))
 }
