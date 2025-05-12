@@ -637,7 +637,7 @@ class IssuingAuthorityState(
             random = Random.Default,
             payload = identityAttributes,
             vct = EUPersonalID.EUPID_VCT,
-            issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
+            issuer = Issuer("https://example-issuer.com", Algorithm.ESP256, "key-1")
         )
 
         val now = Clock.System.now()
