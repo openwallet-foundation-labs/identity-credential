@@ -1,13 +1,13 @@
 package org.multipaz.server.openid4vci
 
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.document.NameSpacedData
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.multipaz.models.verifier.Openid4VpVerifierModel
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.getTable
 
@@ -40,8 +40,7 @@ data class IssuanceState(
     var codeChallenge: ByteString?,
     var dpopNonce: ByteString? = null,
     var cNonce: ByteString? = null,
-    var pidReadingKey: EcPrivateKey? = null,
-    var pidNonce: String? = null,
+    var openid4VpVerifierModel: Openid4VpVerifierModel? = null,
     var credentialData: NameSpacedData? = null
 ) {
     companion object {

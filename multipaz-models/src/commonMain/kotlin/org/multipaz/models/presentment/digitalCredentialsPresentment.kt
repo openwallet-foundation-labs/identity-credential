@@ -347,11 +347,11 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         "dc_api" -> null
         "dc_api.jwt", "direct_post.jwt" -> {
             val clientMetadata = req["client_metadata"]!!.jsonObject
-            val reAlg = clientMetadata["authorization_encrypted_response_alg"]!!.jsonPrimitive.content
+            val reAlg = clientMetadata["authorization_encrypted_response_alg"]?.jsonPrimitive?.content ?: "ECDH-ES"
             if (reAlg != "ECDH-ES") {
                 throw IllegalStateException("Only ECDH-ES is supported for authorization_encrypted_response_alg")
             }
-            val reEnc = clientMetadata["authorization_encrypted_response_enc"]!!.jsonPrimitive.content
+            val reEnc = clientMetadata["authorization_encrypted_response_enc"]?.jsonPrimitive?.content ?: "A128GCM"
             reEncAlg = when (reEnc) {
                 "A128GCM" -> Algorithm.A128GCM
                 "A192GCM" -> Algorithm.A192GCM
@@ -572,8 +572,6 @@ private suspend fun openID4VPSdJwt(
     val vctValues = meta["vct_values"]!!.jsonArray
     // TODO: handle multiple VCT values...
     val vct = vctValues[0].jsonPrimitive.content
-
-    val requestedData = mutableMapOf<String, MutableList<Pair<String, Boolean>>>()
 
     val requestedClaims = mutableListOf<VcRequestedClaim>()
     val claims = credential["claims"]!!.jsonArray
