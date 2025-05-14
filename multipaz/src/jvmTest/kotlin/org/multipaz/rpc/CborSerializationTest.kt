@@ -14,7 +14,7 @@ enum class Enum2 { C, B, A }
 enum class Enum3 { C, B, A, Z }
 
 @CborSerializable(
-    schemaHash = "QTbOW5BOs_M7r4aLEgjxGy6F8FGKtNfiXakQLuAKl_0"
+    schemaHash = "iDDEU1sNO1p7l664JxFOasurn7s3Nh6gHamABa87eTU"
 )
 internal data class Simple0(val d: Enum1, val b: Long, val c: Set<String>, val a: ByteString) {
     companion object
@@ -22,7 +22,7 @@ internal data class Simple0(val d: Enum1, val b: Long, val c: Set<String>, val a
 
 // Field order does not affect structural equivalency and schema hashes.
 @CborSerializable(
-    schemaHash = "QTbOW5BOs_M7r4aLEgjxGy6F8FGKtNfiXakQLuAKl_0"
+    schemaHash = "iDDEU1sNO1p7l664JxFOasurn7s3Nh6gHamABa87eTU"
 )
 data class Simple1(val a: ByteString, val b: Long, val c: Set<String>, val d: Enum1) {
     companion object
@@ -30,7 +30,7 @@ data class Simple1(val a: ByteString, val b: Long, val c: Set<String>, val d: En
 
 // Structurally equivalent classes have the same schema hashes.
 @CborSerializable(
-    schemaHash = "QTbOW5BOs_M7r4aLEgjxGy6F8FGKtNfiXakQLuAKl_0"
+    schemaHash = "iDDEU1sNO1p7l664JxFOasurn7s3Nh6gHamABa87eTU"
 )
 class Simple2(val a: ByteArray, val b: Int, val c: List<String>, val d: Enum2) {
     override fun equals(other: Any?): Boolean {
@@ -48,7 +48,7 @@ class Simple2(val a: ByteArray, val b: Int, val c: List<String>, val d: Enum2) {
 
 // Nullable (optional) vs non-nullable (required) values affect the schema.
 @CborSerializable(
-    schemaHash = "tWBm9GBdz8UMH963R8CM6EQ5ZtaBcFXWGcLfeJVdqZw"
+    schemaHash = "jWZxG38vb6rMn5vxW3I-Gv_4n8l3qzb-VysO_p_5fqI"
 )
 data class Simple3(val a: ByteString?, val b: Int, val c: List<String>, val d: Enum2) {
     companion object
@@ -56,7 +56,7 @@ data class Simple3(val a: ByteString?, val b: Int, val c: List<String>, val d: E
 
 // Enum value set affects the schema.
 @CborSerializable(
-    schemaHash = "thsN6pcQgLYb0_5UANhkYaMnk3DPyHK3pACppMELzD0"
+    schemaHash = "vrQ3NnWf1_kx_j12OM0gDq6_6D1iUSgEBEdQJwWEWGU"
 )
 data class Simple4(val a: ByteString?, val b: Int, val c: List<String>, val d: Enum3) {
     companion object
@@ -64,7 +64,7 @@ data class Simple4(val a: ByteString?, val b: Int, val c: List<String>, val d: E
 
 // Field names affect the schema.
 @CborSerializable(
-    schemaHash = "EY5shPCnwtg6QZauhUHW6afxu2IzqMZjwqc3k_Iywck"
+    schemaHash = "T-sH4DsLtRBu41vqBVxMfs5nd3N0_OHjPUsb9088lUY"
 )
 data class Simple5(val z: ByteString?, val b: Int, val c: List<String>, val d: Enum2) {
     companion object
@@ -83,6 +83,50 @@ internal sealed class Node {
 internal data class LeafNode(val content: String): Node()
 
 internal data class ContainerNode(val nodes: List<Node>): Node()
+
+// A set of single-field data classes to verify schema hash calculation integrity.
+
+@CborSerializable(
+    schemaHash = "XibsHJRA4fVW7fXSuVNNP8fT7iuGm4zgSPaZhpSV-Ek"
+)
+data class SingleInt(val a: Int) {
+    companion object
+}
+
+@CborSerializable(
+    schemaHash = "3J--K_uKY-CKfvl7kcYbdiP576JqyoCQVMJEOF_dv-k"
+)
+data class SingleString(val a: String) {
+    companion object
+}
+
+@CborSerializable(
+    schemaHash = "9HjqePFsyLYDoJAge8f3cDV7VCLX6hnGdMCMawyJzlA"
+)
+data class SingleNullableString(val a: String?) {
+    companion object
+}
+
+@CborSerializable(
+    schemaHash = "ugMqYu2H_U3qb9Zutfl1Q6NCGn1pwTBfikkCH5yftbM"
+)
+data class SingleEnum(val a: Enum1) {
+    companion object
+}
+
+@CborSerializable(
+    schemaHash = "rBFNVff-sk2nKSoiR5WQfJiKtksNkn8xSN4FsbQLGJI"
+)
+data class SingleIntList(val a: List<Int>) {
+    companion object
+}
+
+@CborSerializable(
+    schemaHash = "MfUotQQy34Na2r6Q-rDGrHog3hbbCpI0WTnTwsGTx8o"
+)
+data class SingleStringList(val a: List<String>) {
+    companion object
+}
 
 class CborSerializationTest {
     @Test
@@ -162,10 +206,58 @@ class CborSerializationTest {
     @Test
     fun schemaIds() {
         // When schemaId is explicitly specified
-        assertEquals(Node.cborSchemaId,
-            ByteString("9uoN7E5Qk2s2m0R-b7LrskkMB8Os-mBicFLp11tXRMA".fromBase64Url()))
+        assertEquals(ByteString("9uoN7E5Qk2s2m0R-b7LrskkMB8Os-mBicFLp11tXRMA".fromBase64Url()),
+            Node.cborSchemaId)
         // When schemaId is not specified, schemaHash is used as id
-        assertEquals(Simple5.cborSchemaId,
-            ByteString("EY5shPCnwtg6QZauhUHW6afxu2IzqMZjwqc3k_Iywck".fromBase64Url()))
+        assertEquals(ByteString("T-sH4DsLtRBu41vqBVxMfs5nd3N0_OHjPUsb9088lUY".fromBase64Url()),
+            Simple5.cborSchemaId)
+    }
+
+    @Test
+    fun schemaHashSingleInt() {
+        assertEquals(
+            ByteString("XibsHJRA4fVW7fXSuVNNP8fT7iuGm4zgSPaZhpSV-Ek".fromBase64Url()),
+            SingleInt.cborSchemaId
+        )
+    }
+
+    @Test
+    fun schemaHashSingleString() {
+        assertEquals(
+            ByteString("3J--K_uKY-CKfvl7kcYbdiP576JqyoCQVMJEOF_dv-k".fromBase64Url()),
+            SingleString.cborSchemaId
+        )
+    }
+
+    @Test
+    fun schemaHashSingleNullableString() {
+        assertEquals(
+            ByteString("9HjqePFsyLYDoJAge8f3cDV7VCLX6hnGdMCMawyJzlA".fromBase64Url()),
+            SingleNullableString.cborSchemaId
+        )
+    }
+
+    @Test
+    fun schemaHashSingleEnum() {
+        assertEquals(
+            ByteString("ugMqYu2H_U3qb9Zutfl1Q6NCGn1pwTBfikkCH5yftbM".fromBase64Url()),
+            SingleEnum.cborSchemaId
+        )
+    }
+
+    @Test
+    fun schemaHashSingleIntList() {
+        assertEquals(
+            ByteString("rBFNVff-sk2nKSoiR5WQfJiKtksNkn8xSN4FsbQLGJI".fromBase64Url()),
+            SingleIntList.cborSchemaId
+        )
+    }
+
+    @Test
+    fun schemaHashSingleStringList() {
+        assertEquals(
+            ByteString("MfUotQQy34Na2r6Q-rDGrHog3hbbCpI0WTnTwsGTx8o".fromBase64Url()),
+            SingleStringList.cborSchemaId
+        )
     }
 }
