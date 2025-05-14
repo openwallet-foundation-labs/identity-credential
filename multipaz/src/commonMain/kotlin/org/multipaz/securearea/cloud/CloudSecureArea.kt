@@ -851,7 +851,7 @@ open class CloudSecureArea protected constructor(
     }
 
     @CborSerializable(
-        schemaHash = "e5QGYoSzCKpW0SQLZYu6wxtVXu5da-t6VYzJQ18vSTQ"
+        schemaHash = "05D8znv6joCoUVuDwC6vx-QB2kxFSChce08UfGvdQSg"
     )
     internal data class KeyMetadata(
         val algorithm: Algorithm,

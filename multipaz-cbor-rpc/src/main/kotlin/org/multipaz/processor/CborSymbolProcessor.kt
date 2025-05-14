@@ -986,7 +986,7 @@ class CborSymbolProcessor(
             edges.add(createEdge(index.toString(), arg.type!!.resolve(), stableOwnerClass))
         }
         // Important: collection classes are parameterized by types, so they are not
-        // defined solely by there names and thus are not cached!
+        // defined solely by their names and thus are not cached!
         return SchemaTypeInfo(Composite(edges.toList()), null, null)
     }
 
@@ -999,7 +999,11 @@ class CborSymbolProcessor(
         val declaration = type.declaration
         val typeInfo = if (declaration is KSClassDeclaration &&
             declaration.classKind == ClassKind.ENUM_CLASS) {
-            val names = declaration.declarations.map { it.simpleName.asString() }.toMutableList()
+            // NB: get only enum entry declarations!
+            val names = declaration.declarations
+                .filter { it is KSClassDeclaration && it.classKind == ClassKind.ENUM_ENTRY }
+                .map { it.simpleName.asString() }
+                .toMutableList()
             names.sortWith { a, b -> a.compareTo(b) }
             simpleLeaf("(" + names.joinToString("|") + ")")
         } else when (qualifiedName) {
