@@ -32,6 +32,7 @@ import org.multipaz.provisioning.evidence.EvidenceResponseCredentialOffer
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.rpc.handler.RpcAuthClientSession
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.testapp.TestAppDocumentMetadata
 import org.multipaz.util.Logger
@@ -279,30 +280,26 @@ class ProvisioningModel(
         val parts = request.split('.')
         val openid4vpRequest =
             Json.parseToJsonElement(parts[1].fromBase64Url().decodeToString()).jsonObject
-        val presentationDefinition = openid4vpRequest["presentation_definition"]!!.jsonObject
-        val inputDescriptors = presentationDefinition["input_descriptors"]!!.jsonArray
-        if (inputDescriptors.size != 1) {
-            throw IllegalArgumentException("Only support a single input input_descriptor")
-        }
-        val inputDescriptor = inputDescriptors[0].jsonObject
-        val docType = inputDescriptor["id"]!!.jsonPrimitive.content
 
-        // For now, we only respond to the first credential being requested.
-        //
-        // NOTE: openid4vp spec gives a non-normative example of multiple input descriptors
-        // as "alternatives credentials", see
-        //
-        //  https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.1-6
-        //
-        // Also note identity.foundation says all input descriptors MUST be satisfied, see
-        //
-        //  https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-descriptor
-        //
-        return selectMatchingCredentials(docType)
+        // Only examine a single credential for now; this all needs to be replaced with
+        // proper DCQL processing anyway.
+        val request0 = openid4vpRequest["dcql_query"]!!.jsonObject["credentials"]!!.jsonArray[0].jsonObject
+        return when (request0["format"]?.jsonPrimitive?.content) {
+            "mso_mdoc" -> {
+                val doctype = request0["meta"]!!.jsonObject["doctype_value"]!!.jsonPrimitive.content
+                selectMatchingCredentials(doctype, null)
+            }
+            "dc+sd-jwt" -> {
+                val vct = request0["meta"]!!.jsonObject["vct_values"]!!.jsonArray[0].jsonPrimitive.content
+                selectMatchingCredentials(null, vct)
+            }
+            else -> listOf()
+        }
     }
 
     private suspend fun selectMatchingCredentials(
-        docType: String
+        docType: String?,
+        vct: String?
     ): List<Credential> {
         val credentials = mutableListOf<Credential>()
         val now = Clock.System.now()
@@ -313,6 +310,10 @@ class ProvisioningModel(
                     if (credential.docType == docType) {
                         credentials.add(credential)
                         break
+                    }
+                } else if (credential is SdJwtVcCredential) {
+                    if (credential.vct == vct) {
+                        credentials.add(credential)
                     }
                 }
             }

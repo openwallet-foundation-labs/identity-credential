@@ -1,26 +1,15 @@
 package org.multipaz.server.openid4vci
 
-import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.Simple
-import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.EcCurve
-import org.multipaz.crypto.EcPublicKey
-import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.document.NameSpacedData
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.rpc.backend.Resources
-import org.multipaz.mdoc.response.DeviceResponseParser
-import org.multipaz.util.fromBase64Url
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.multipaz.cbor.addCborArray
-import org.multipaz.cbor.buildCborArray
-import org.multipaz.cbor.buildCborMap
-import org.multipaz.cbor.putCborMap
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.Tstr
+import org.multipaz.documenttype.knowntypes.EUPersonalID
+import org.multipaz.models.verifier.Openid4VpVerifierModel
 import java.net.URI
 import kotlin.time.Duration.Companion.minutes
 
@@ -74,11 +63,19 @@ class AuthorizeServlet : BaseServlet() {
         val responseUri = "$baseUrl/openid4vp-response"
         val jwt = blocking {
             val state = IssuanceState.getIssuanceState(id)
-            val session = initiateOpenid4Vp(state.clientId, responseUri, stateRef)
-            state.pidReadingKey = session.privateKey
-            state.pidNonce = session.nonce
+            val baseUri = URI(baseUrl)
+            val clientId = "x509_san_dns:${baseUri.authority}"
+            state.openid4VpVerifierModel = Openid4VpVerifierModel(clientId)
+            val jwtRequest = state.openid4VpVerifierModel!!.makeRequest(
+                state = stateRef,
+                responseUri = responseUri,
+                responseMode = "direct_post.jwt",
+                requests = mapOf(
+                    "pid" to EUPersonalID.getDocumentType().cannedRequests.first { it.id == "full" }
+                )
+            )
             IssuanceState.updateIssuanceState(id, state)
-            session.jwt
+            jwtRequest
         }
         resp.contentType = "application/oauth-authz-req+jwt"
         resp.writer.write(jwt)
@@ -89,38 +86,42 @@ class AuthorizeServlet : BaseServlet() {
      */
     override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
         val code = req.getParameter("authorizationCode")
-        val pidData = req.getParameter("pidData")
         val id = codeToId(OpaqueIdType.AUTHORIZATION_STATE, code)
+
+        val pidData = req.getParameter("pidData")
+
         val baseUri = URI(this.baseUrl)
 
-        val tokenData = Json.parseToJsonElement(pidData).jsonObject["token"]!!
-            .jsonPrimitive.content.fromBase64Url()
-
-        val (cipherText, encapsulatedPublicKey) = parseCredentialDocument(tokenData)
-
         blocking {
-            val origin = baseUri.scheme + "://" + baseUri.authority
             val state = IssuanceState.getIssuanceState(id)
-            val encodedKey = (state.pidReadingKey!!.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
-            val sessionTranscript = generateBrowserSessionTranscript(
-                Crypto.digest(Algorithm.SHA256, id.toByteArray()),
+            val origin = baseUri.scheme + "://" + baseUri.authority
+            val credMap = state.openid4VpVerifierModel!!.processResponse(
                 origin,
-                Crypto.digest(Algorithm.SHA256, encodedKey)
+                pidData
             )
-            val deviceResponseRaw = Crypto.hpkeDecrypt(
-                Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
-                state.pidReadingKey!!,
-                cipherText,
-                sessionTranscript,
-                encapsulatedPublicKey)
-            val parser = DeviceResponseParser(deviceResponseRaw, sessionTranscript)
-            val deviceResponse = parser.parse()
+            state.openid4VpVerifierModel = null
+
+            val presentation = credMap["pid"]!!
             val data = NameSpacedData.Builder()
-            for (document in deviceResponse.documents) {
-                for (namespaceName in document.issuerNamespaces) {
-                    for (dataElementName in document.getIssuerEntryNames(namespaceName)) {
-                        val value = document.getIssuerEntryData(namespaceName, dataElementName)
-                        data.putEntry(namespaceName, dataElementName, value)
+
+            when (presentation) {
+                is Openid4VpVerifierModel.MdocPresentation -> {
+                    for (document in presentation.deviceResponse.documents) {
+                        for (namespaceName in document.issuerNamespaces) {
+                            for (dataElementName in document.getIssuerEntryNames(namespaceName)) {
+                                val value = document.getIssuerEntryData(namespaceName, dataElementName)
+                                data.putEntry(namespaceName, dataElementName, value)
+                            }
+                        }
+                    }
+                }
+                is Openid4VpVerifierModel.SdJwtPresentation -> {
+                    for (disclosure in presentation.presentation.sdJwtVc.disclosures) {
+                        when (disclosure.key) {
+                            "family_name", "given_name" ->
+                                data.putEntry("eu.europa.ec.eudi.pid.1",
+                                    disclosure.key, Cbor.encode(Tstr(disclosure.value.jsonPrimitive.content)))
+                        }
                     }
                 }
             }
@@ -128,75 +129,8 @@ class AuthorizeServlet : BaseServlet() {
             state.credentialData = data.build()
             IssuanceState.updateIssuanceState(id, state)
         }
+
         val issuerState = idToCode(OpaqueIdType.ISSUER_STATE, id, 5.minutes)
         resp.sendRedirect("finish_authorization?issuer_state=$issuerState")
     }
-}
-
-// Copied from VerifierServlet.kt as is
-// TODO: this code should be removed here and in VerifierServlet.kt and the functionality
-// factored into a reusable library.
-
-private const val BROWSER_HANDOVER_V1 = "BrowserHandoverv1"
-private const val ANDROID_CREDENTIAL_DOCUMENT_VERSION = "ANDROID-HPKE-v1"
-
-private fun parseCredentialDocument(encodedCredentialDocument: ByteArray
-): Pair<ByteArray, EcPublicKey> {
-    val map = Cbor.decode(encodedCredentialDocument)
-    val version = map["version"].asTstr
-    if (!version.equals(ANDROID_CREDENTIAL_DOCUMENT_VERSION)) {
-        throw IllegalArgumentException("Unexpected version $version")
-    }
-    val encryptionParameters = map["encryptionParameters"]
-    val pkEm = encryptionParameters["pkEm"].asBstr
-    val encapsulatedPublicKey =
-        EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(EcCurve.P256, pkEm)
-    val cipherText = map["cipherText"].asBstr
-    return Pair(cipherText, encapsulatedPublicKey)
-}
-
-//    SessionTranscript = [
-//      null, // DeviceEngagementBytes not available
-//      null, // EReaderKeyBytes not available
-//      AndroidHandover // defined below
-//    ]
-//
-//    From https://github.com/WICG/mobile-document-request-api
-//
-//    BrowserHandover = [
-//      "BrowserHandoverv1",
-//      nonce,
-//      OriginInfoBytes, // origin of the request as defined in ISO/IEC 18013-7
-//      RequesterIdentity, // ? (omitting)
-//      pkRHash
-//    ]
-private fun generateBrowserSessionTranscript(
-    nonce: ByteArray,
-    origin: String,
-    requesterIdHash: ByteArray
-): ByteArray {
-    // TODO: Instead of hand-rolling this, we should use OriginInfoDomain which
-    //   uses `domain` instead of `baseUrl` which is what the latest version of 18013-7
-    //   calls for.
-    val originInfoBytes = Cbor.encode(
-        buildCborMap {
-            put("cat", 1)
-            put("type", 1)
-            putCborMap("details") {
-                put("baseUrl", origin)
-            }
-        }
-    )
-    return Cbor.encode(
-        buildCborArray {
-            add(Simple.NULL) // DeviceEngagementBytes
-            add(Simple.NULL) // EReaderKeyBytes
-            addCborArray {
-                add(BROWSER_HANDOVER_V1)
-                add(nonce)
-                add(originInfoBytes)
-                add(requesterIdHash)
-            }
-        }
-    )
 }

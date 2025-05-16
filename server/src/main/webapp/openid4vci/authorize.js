@@ -10,21 +10,40 @@ async function init(button, pidData, form) {
         alert("This browser does not support digital credential reading");
         return;
     }
-    let code = button.dataset.code;
-    let response = await fetch('credential_request', {
+    const code = button.dataset.code;
+    const response = await fetch('credential_request', {
             method: 'POST',
             headers: {
-                'Accept': 'application/json',
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({code: code})
         })
-    let credentialRequest = await response.json();
+    const credentialRequest =
+        response.headers.get("Content-Type") == "application/json"
+            ? await response.json()
+            : await response.text();
     button.disabled = false;
     button.addEventListener('click', async (evt) => {
         evt.preventDefault();  // avoid form submission from click
-        const credentialResponse = await navigator.identity.get({digital: credentialRequest});
-        pidData.value = credentialResponse.data;
-        form.submit();
+        try {
+            const credentialResponse = await navigator.identity.get({
+                        digital: {
+                           providers: [{
+                               protocol: "openid4vp",
+                               request: JSON.stringify({request: credentialRequest})
+                           }]
+                        },
+                        mediation: 'required'
+                    });
+            const data = credentialResponse.data;
+            if (typeof data == 'string') {
+                pidData.value = JSON.parse(data).response;
+            } else {
+                pidData.value = data.response;
+            }
+            form.submit();
+        } catch (err) {
+            alert("Error presenting credentials: '" + err + "'")
+        }
     });
 }
