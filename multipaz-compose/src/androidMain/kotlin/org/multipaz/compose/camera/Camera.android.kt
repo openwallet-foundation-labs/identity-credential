@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.multipaz.util.Logger
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "Camera"
 
@@ -51,15 +52,7 @@ actual fun Camera(
     val executor = remember { Executors.newSingleThreadExecutor() }
     var latestFrame by remember { mutableStateOf<CameraFrame?>(null) }
     var overlayBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-
-
-    LaunchedEffect(latestFrame) {
-        latestFrame?.let {
-            withContext(Dispatchers.IO) {
-                overlayBitmap = onFrameCaptured(it)
-            }
-        }
-    }
+    val canProcessFrame = remember { AtomicBoolean(true) }
 
     DisposableEffect(cameraSelection) {
         val cameraProvider = cameraProviderFuture.get()
@@ -80,17 +73,42 @@ actual fun Camera(
             .build()
 
         analysisCase.setAnalyzer(executor) { imageProxy ->
-            coroutineScope.launch {
-                val bitmap = imageProxy.toBitmap()
-                withContext(Dispatchers.Main) {
-                    latestFrame = CameraFrame(
-                        ImageData(bitmap.asImageBitmap()),
-                        bitmap.width,
-                        bitmap.height,
-                        imageProxy.imageInfo.rotationDegrees
-                    )
-                    imageProxy.close()
+            // Only proceed if we are not currently processing a frame
+            if (canProcessFrame.compareAndSet(true, false)) {
+                coroutineScope.launch { // Launch a coroutine for processing
+                    try {
+                        val bitmap = imageProxy.toBitmap() // Should be on a background thread
+                        val currentFrame = CameraFrame(
+                            ImageData(bitmap.asImageBitmap()),
+                            bitmap.width,
+                            bitmap.height,
+                            imageProxy.imageInfo.rotationDegrees
+                        )
+                        if (showCameraPreview) {
+                            withContext(Dispatchers.Main) {
+                                latestFrame = currentFrame
+                            }
+                        }
+                        // Call the potentially long-running onFrameCaptured on IO thread
+                        val resultOverlay = withContext(Dispatchers.Default) {
+                            onFrameCaptured(currentFrame)
+                        }
+
+                        // Update the overlay bitmap on the main thread
+                        withContext(Dispatchers.Main) {
+                            overlayBitmap = resultOverlay
+                        }
+
+                    } catch (e: Exception) {
+                        Logger.e(TAG, "Error processing frame: ${e.localizedMessage}", e)
+                    } finally {
+                        imageProxy.close()
+                        canProcessFrame.set(true)
+                    }
                 }
+            } else {
+                // If busy, just close the imageProxy and drop the frame
+                imageProxy.close()
             }
         }
 
