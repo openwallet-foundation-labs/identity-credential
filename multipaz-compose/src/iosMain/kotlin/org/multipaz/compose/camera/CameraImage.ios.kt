@@ -27,7 +27,7 @@ import platform.UIKit.UIImage
  * @param uiImage the [UIImage] from the camera.
  */
 actual data class CameraImage(val uiImage: UIImage) {
-    @OptIn(ExperimentalForeignApi::class)
+
     actual fun toImageBitmap() : ImageBitmap {
         val skiaImage = uiImage.toSkiaImage() ?: throw IllegalStateException()
         return skiaImage.toComposeImageBitmap()

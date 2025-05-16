@@ -114,17 +114,15 @@ actual fun Camera(
 
             if (cameraManager.isPreviewLayerInitialized) {
                 isCameraReadyForPreview = true
-                if (cameraManager.captureSession.isRunning()) {
-                    cameraManager.setCurrentOrientation(UIDevice.currentDevice.orientation)
-                }
+            }
+            if (cameraManager.captureSession.isRunning()) {
+                cameraManager.setCurrentOrientation(UIDevice.currentDevice.orientation)
             }
         }
 
         DisposableEffect(cameraManager) {
             val orientationListener = OrientationListener { orientation ->
-                if (cameraManager.isPreviewLayerInitialized) {
-                    cameraManager.setCurrentOrientation(orientation)
-                }
+                cameraManager.setCurrentOrientation(orientation)
             }
             orientationListener.register()
 
@@ -212,6 +210,7 @@ private class CameraManager(
         get() = if (this::previewLayer.isInitialized) true else false // Explicit true/false for clarity
     private var isFrontCamera: Boolean = false
     private var lastKnownPreviewBounds: CValue<CGRect>? = null
+    private var videoOrientation: AVCaptureVideoOrientation = AVCaptureVideoOrientationPortrait
 
     @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     suspend fun startCamera() {
@@ -303,17 +302,17 @@ private class CameraManager(
     }
 
     fun setCurrentOrientation(newOrientation: UIDeviceOrientation) {
-        if (!::previewLayer.isInitialized) {
-            Logger.w(TAG, "setCurrentOrientation called before previewLayer is initialized.")
-            return
-        }
         val avOrientation = when (newOrientation) {
             UIDeviceOrientation.UIDeviceOrientationLandscapeLeft -> AVCaptureVideoOrientationLandscapeRight
             UIDeviceOrientation.UIDeviceOrientationLandscapeRight -> AVCaptureVideoOrientationLandscapeLeft
             UIDeviceOrientation.UIDeviceOrientationPortraitUpsideDown -> AVCaptureVideoOrientationPortraitUpsideDown
             else -> AVCaptureVideoOrientationPortrait
         }
-        previewLayer.connection?.videoOrientation = avOrientation
+        videoOrientation = avOrientation
+
+        if (::previewLayer.isInitialized) {
+            previewLayer.connection?.videoOrientation = avOrientation
+        }
     }
 
     @OptIn(ExperimentalForeignApi::class, NativeRuntimeApi::class)
@@ -326,13 +325,13 @@ private class CameraManager(
 
         val uiImage = didOutputSampleBuffer.toUIImage()
         val cameraImage = CameraImage(uiImage)
-        val imageWidth = uiImage.size.useContents { width }
-        val imageHeight = uiImage.size.useContents { height }
+        val imageWidth = uiImage.size.useContents { width }.toFloat()
+        val imageHeight = uiImage.size.useContents { height }.toFloat()
         var previewTransformation = Matrix() // Identity
+        val density = UIScreen.mainScreen.scale.toFloat()
 
         if (isShowingPreview) {
             // Retrieve the current preview size.
-            val currentVideoOrientation = previewLayer.connection?.videoOrientation
             var currentPreviewFrame: CValue<CGRect>? = null
             dispatch_sync(dispatch_get_main_queue()) { // Must be dispatched to main thread to get the frame.
                 val frameFromLayer = previewLayer.presentationLayer()?.frame ?: previewLayer.frame
@@ -360,14 +359,21 @@ private class CameraManager(
             }
 
             val boundsToUse = currentPreviewFrame!!
-            val density = UIScreen.mainScreen.scale.toFloat()
 
             previewTransformation = calculatePreviewTransformationMatrix(
                 imageWidth = imageWidth,
                 imageHeight = imageHeight,
                 previewBoundsDp = boundsToUse,
                 density = density,
-                videoOrientation = currentVideoOrientation ?: AVCaptureVideoOrientationPortrait,
+                videoOrientation = videoOrientation,
+                isFrontCamera = this.isFrontCamera
+            )
+        }
+        else {
+            previewTransformation = calculateBitmapTransformationMatrix(
+                imageWidth = imageWidth,
+                imageHeight = imageHeight,
+                videoOrientation = videoOrientation,
                 isFrontCamera = this.isFrontCamera
             )
         }
@@ -376,7 +382,8 @@ private class CameraManager(
             cameraImage = cameraImage,
             width = imageWidth.toInt(),
             height = imageHeight.toInt(),
-            previewTransformation = previewTransformation
+            rotation = videoOrientation.toRotationAngle(),
+            previewTransformation = previewTransformation,
         )
 
         runBlocking {
@@ -387,6 +394,15 @@ private class CameraManager(
         GC.collect()
     }
 }
+
+private fun  AVCaptureVideoOrientation.toRotationAngle(): Int =
+    when (this) {
+        AVCaptureVideoOrientationLandscapeLeft -> 270
+        AVCaptureVideoOrientationLandscapeRight -> 90
+        AVCaptureVideoOrientationPortrait -> 0
+        AVCaptureVideoOrientationPortraitUpsideDown -> 180
+        else -> 0
+    }
 
 @OptIn(ExperimentalForeignApi::class)
 private class OrientationListener(
@@ -425,28 +441,12 @@ private class OrientationListener(
 @OptIn(ExperimentalForeignApi::class)
 private fun CMSampleBufferRef.toUIImage(): UIImage {
     val imageBuffer = CMSampleBufferGetImageBuffer(this)
-    if (imageBuffer == null) {
-        throw IllegalStateException("Could not get CVImageBufferRef from CMSampleBufferRef.")
-    }
+        ?: throw IllegalStateException("Could not get CVImageBufferRef from CMSampleBufferRef.")
     val ciImage = CIImage.imageWithCVPixelBuffer(imageBuffer)
-    if (ciImage == null) {
-        throw IllegalStateException("Could not create CIImage from CVImageBufferRef.")
-    }
-
-    val temporaryContext: CIContext? = CIContext.contextWithOptions(null)
-    if (temporaryContext == null) {
-        throw IllegalStateException("Error: Could not create CIContext.")
-    }
-
+    val temporaryContext: CIContext = CIContext.contextWithOptions(null)
     val bufferWidth = CVPixelBufferGetWidth(imageBuffer).toDouble()
     val bufferHeight = CVPixelBufferGetHeight(imageBuffer).toDouble()
-    val imageRect = CGRectMake(
-        x = 0.0,
-        y = 0.0,
-        width = bufferWidth,
-        height = bufferHeight
-    )
-
+    val imageRect = CGRectMake(0.0, 0.0, bufferWidth, bufferHeight)
     var videoImage: CGImageRef? = null
     val finalUiImage: UIImage = try {
         videoImage = temporaryContext.createCGImage(ciImage, fromRect = imageRect)
@@ -466,6 +466,7 @@ private fun CMSampleBufferRef.toUIImage(): UIImage {
 
 /**
  * Infer transformation Matrix for conversion of the captured image coordinates to the displayed preview coordinates.
+ * The matrix is also used to infer the image mirrored state of the captured bitmap.
  *
  * @param imageWidth Pixel width of the raw camera image.
  * @param imageHeight Pixel height of the raw camera image.
@@ -478,8 +479,8 @@ private fun CMSampleBufferRef.toUIImage(): UIImage {
  */
 @OptIn(ExperimentalForeignApi::class)
 private fun calculatePreviewTransformationMatrix(
-    imageWidth: Double,
-    imageHeight: Double,
+    imageWidth: Float,
+    imageHeight: Float,
     previewBoundsDp: CValue<CGRect>?,
     density: Float,
     videoOrientation: AVCaptureVideoOrientation,
@@ -554,10 +555,45 @@ private fun calculatePreviewTransformationMatrix(
         resultMatrix.scale(x = 1f, y = -1f) // Mirror along local Y-axis (which corresponds to the screen X axis)
     }
 
-    val imageCenterOriginalX = (imageWidth / 2.0).toFloat()
-    val imageCenterOriginalY = (imageHeight / 2.0).toFloat()
-    resultMatrix.translate(-imageCenterOriginalX, -imageCenterOriginalY)
+    resultMatrix.translate(-imageWidth / 2, -imageHeight / 2)
 
     return resultMatrix
 }
 
+/**
+ * Simplified transformation matrix for the no-preview use cases helping to handle front/back camera configurations
+ * at different device rotation angles when passing the iOS camera bitmap to MLKit for face detection.
+ */
+private fun calculateBitmapTransformationMatrix(
+    imageWidth: Float,
+    imageHeight: Float,
+    videoOrientation: AVCaptureVideoOrientation,
+    isFrontCamera: Boolean,
+): Matrix {
+    val resultMatrix = Matrix() // Initialize to identity.
+
+    if (imageWidth <= 0.0 || imageHeight <= 0.0) {
+        Logger.w(TAG, "Invalid image dimensions. Returning identity.")
+        return resultMatrix
+    }
+
+    val imageCenterX = imageWidth / 2
+    val imageCenterY = imageHeight / 2
+
+    resultMatrix.translate(imageCenterX, imageCenterY)
+
+    val uiRotationDegrees = when (videoOrientation) {
+        AVCaptureVideoOrientationPortraitUpsideDown -> -90f
+        AVCaptureVideoOrientationLandscapeLeft, AVCaptureVideoOrientationLandscapeRight -> 180f
+        else -> 90f // AVCaptureVideoOrientationPortrait and unknown.
+    }
+    resultMatrix.rotateZ(uiRotationDegrees)
+
+    if (isFrontCamera) {
+        resultMatrix.scale(x = 1f, y = -1f) // Mirror along local Y-axis (which corresponds to the screen X axis)
+    }
+
+    resultMatrix.translate(-imageCenterX, -imageCenterY)
+
+    return resultMatrix
+}

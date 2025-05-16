@@ -32,8 +32,15 @@ kotlin {
 
     cocoapods {
         ios.deploymentTarget = "16.0"
+        framework {
+            isStatic = true
+        }
         pod("GoogleMLKit/BarcodeScanning") {
             moduleName = "MLKitBarcodeScanning"
+            version = "8.0.0"
+        }
+        pod("GoogleMLKit/FaceDetection") {
+            moduleName = "MLKitFaceDetection"
             version = "8.0.0"
         }
         pod("MLKitVision") {
@@ -97,6 +104,7 @@ kotlin {
             dependencies {
                 implementation(libs.androidx.material)
                 implementation(libs.androidx.camera.camera2)
+                implementation(libs.face.detection)
                 implementation(libs.mlkit.barcode.scanning)
             }
         }
@@ -107,7 +115,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.multipaz.barcodes"
+    namespace = "org.multipaz.mlkit"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

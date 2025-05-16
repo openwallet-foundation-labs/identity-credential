@@ -5,13 +5,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -204,6 +207,10 @@ fun CameraScreen(
                 }
 
                 item {
+                    GroupDivider()
+                }
+
+                item {
                     TextButton(onClick = {
                         captureWithPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.LOW)
                     }) { Text("Capture with Preview (Back Camera, Low Res)") }
@@ -220,6 +227,10 @@ fun CameraScreen(
                 }
 
                 item {
+                    GroupDivider()
+                }
+
+                item {
                     TextButton(onClick = {
                         captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.LOW)
                     }) { Text("Capture without Preview (Front Camera, Low Res)") }
@@ -233,6 +244,10 @@ fun CameraScreen(
                     TextButton(onClick = {
                         captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.HIGH)
                     }) { Text("Capture without Preview (Front Camera, High Res)") }
+                }
+
+                item {
+                    GroupDivider()
                 }
 
                 item {
@@ -254,3 +269,5 @@ fun CameraScreen(
         }
     }
 }
+
+
