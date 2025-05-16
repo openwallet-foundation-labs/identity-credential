@@ -11,10 +11,8 @@ import androidx.compose.ui.graphics.ImageBitmap
  * @param cameraSelection The desired hardware camera to use.
  * @param showCameraPreview Whether to show the preview of the captured frame within the Camera composable.
  * @param captureResolution The desired resolution to use for the camera capture.
- * @param onFrameCaptured A callback to invoke when a frame is captured with the frame object.
- *     The callback method is run on the I/O thread and could return the overlay ImageBitmap to be displayed on top
- *     of the captured frame bitmap when the [showCameraPreview] is enabled, or `null` if that's not needed. If the
- *     returned overlay bitmap dimensions does not match the captured frame dimensions it will be ignored.
+ * @param onFrameCaptured A callback to invoke when a frame is captured with the frame object. This is invoked
+ *     on an I/O thread.
  */
 @Composable
 expect fun Camera(
@@ -22,5 +20,5 @@ expect fun Camera(
     cameraSelection: CameraSelection = CameraSelection.DEFAULT_FRONT_CAMERA,
     captureResolution: CameraCaptureResolution,
     showCameraPreview: Boolean,
-    onFrameCaptured: suspend (frame: CameraFrame)  -> ImageBitmap?
+    onFrameCaptured: suspend (frame: CameraFrame) -> Unit
 )

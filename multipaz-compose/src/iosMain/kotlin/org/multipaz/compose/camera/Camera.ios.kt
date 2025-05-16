@@ -27,7 +27,7 @@ actual fun Camera(
     cameraSelection: CameraSelection,
     captureResolution: CameraCaptureResolution,
     showCameraPreview: Boolean,
-    onFrameCaptured: suspend (frame: CameraFrame) -> ImageBitmap?
+    onFrameCaptured: suspend (frame: CameraFrame) -> Unit
 ) {
     val cameraManager = remember { CameraManager(cameraSelection, captureResolution) }
     var latestFrame by remember { mutableStateOf<CameraFrame?>(null) }
@@ -46,7 +46,7 @@ actual fun Camera(
                     try {
                         if (cameraActive) {
                             Logger.d(TAG, "onFrame call...")
-                            overlayBitmap = onFrameCaptured(frame)
+                            onFrameCaptured(frame)
                         }
                     } catch (_: CancellationException) {
                         Logger.d(TAG, "Cancellation.")

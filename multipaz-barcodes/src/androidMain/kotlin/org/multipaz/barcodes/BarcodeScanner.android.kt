@@ -48,7 +48,7 @@ actual fun scanBarcode(image: ImageBitmap): List<Barcode> {
                     format = format,
                     boundingBox = boundingBox,
                     cornerPoints = cornerPoints,
-                    text = barcode.rawValue!!
+                    text = barcode.rawValue ?: barcode.url?.url ?: ""
                 )
             )
         }

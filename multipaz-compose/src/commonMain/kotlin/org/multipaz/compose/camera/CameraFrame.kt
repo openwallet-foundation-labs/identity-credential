@@ -1,6 +1,7 @@
 package org.multipaz.compose.camera
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Matrix
 
 expect class ImageData {
     fun toImageBitmap(): ImageBitmap
@@ -17,11 +18,7 @@ data class CameraFrame(
     /** Image height in pixels. Same for native and common bitmap. Used for data validation, composition, drawing.*/
     val height: Int,
 
-    /**
-     * Native image rotation in degrees. Returned from Camera engine (android), simulated for iOS impl.
-     * Usually you need to rotate the imageData bitmap for that angle to make it displayed upright in the preview.
-     */
-    val rotation: Int
+    val transformation: Matrix
 ) {
     fun toImageBitmap(): ImageBitmap {
         return imageData.toImageBitmap()

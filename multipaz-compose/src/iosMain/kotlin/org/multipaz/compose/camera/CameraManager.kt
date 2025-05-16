@@ -1,6 +1,7 @@
 package org.multipaz.compose.camera
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Matrix
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -158,14 +159,17 @@ class CameraManager(
                 1 -> {
                     // Working option (when imageData is ImageBitmap). Slow, wrong colors, crashing after a while.
                     val imageBitmap = cvpToImageBitmap(imageBuffer)
+                    /*
                     onFrame.invoke(
                         CameraFrame(
                             imageData = ImageData(UIImage()), // Mock.
-                            imageBitmap.width,
-                            imageBitmap.height,
-                            270
+                            width = imageBitmap.width,
+                            height = imageBitmap.height,
+                            transformation = Matrix()
                         )
                     )
+
+                     */
                 }
 
                 2 -> {
@@ -185,6 +189,7 @@ class CameraManager(
                         val image = Image.makeFromEncoded(data) //coorect but also fails
                         Logger.d(TAG, "Img size: ${image.width}x${image.height}")
 
+                        /*
                         onFrame.invoke(
                             CameraFrame(
                                 imageData = ImageData(UIImage()), // Mock.
@@ -193,6 +198,8 @@ class CameraManager(
                                 rotation = 270
                             )
                         )
+
+                         */
                     } catch (e: Exception) {
                         Logger.d(TAG, "Exception: $e")
                     }
@@ -202,8 +209,8 @@ class CameraManager(
                     convertCVImageBufferToUIImage(imageBuffer)?.let {
                         val width = CVPixelBufferGetWidth(imageBuffer).toInt()
                         val height = CVPixelBufferGetHeight(imageBuffer).toInt()
-                        val cameraFrame = CameraFrame(ImageData(it), width, height, 270)
-                        onFrame.invoke(cameraFrame)
+                        //val cameraFrame = CameraFrame(ImageData(it), width, height, 270)
+                        //onFrame.invoke(cameraFrame)
                     }
                 }
             }
