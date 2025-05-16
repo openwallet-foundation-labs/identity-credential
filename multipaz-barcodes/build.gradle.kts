@@ -96,6 +96,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.androidx.material)
+                implementation(libs.androidx.camera.camera2)
                 implementation(libs.mlkit.barcode.scanning)
             }
         }
