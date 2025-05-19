@@ -249,7 +249,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				APP_NAME = "Test App";
+				APP_NAME = "Multipaz Test App";
 				BUNDLE_ID = com.android.identity.testapp;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -313,7 +313,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				APP_NAME = "Test App";
+				APP_NAME = "Multipaz Test App";
 				BUNDLE_ID = com.android.identity.testapp;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -371,7 +371,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7B9C61172DBA8D46000484FF /* AdditionalConfig.xcconfig */;
 			buildSettings = {
-				APP_NAME = "Test App";
+				APP_NAME = "Multipaz Test App";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_ID = com.android.identity.testapp;
 				CODE_SIGN_ENTITLEMENTS = TestApp/TestApp.entitlements;
@@ -406,7 +406,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7B9C61172DBA8D46000484FF /* AdditionalConfig.xcconfig */;
 			buildSettings = {
-				APP_NAME = "Test App";
+				APP_NAME = "Multipaz Test App";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_ID = com.android.identity.testapp;
 				CODE_SIGN_ENTITLEMENTS = TestApp/TestApp.entitlements;
