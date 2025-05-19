@@ -1,5 +1,7 @@
 package org.multipaz.barcodes
 
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
@@ -10,13 +12,27 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 
 import com.google.mlkit.vision.common.InputImage
+import org.multipaz.compose.camera.CameraImage
+
+@OptIn(ExperimentalGetImage::class)
+actual fun scanBarcode(cameraImage: CameraImage): List<Barcode> {
+    val imageProxy = cameraImage.imageProxy
+    val inputImage = InputImage.fromMediaImage(
+        /* image = */ imageProxy.image!!,
+        /* rotationDegrees = */ 0
+    )
+    return scanBarcode(inputImage)
+}
 
 actual fun scanBarcode(image: ImageBitmap): List<Barcode> {
-
     val inputImage = InputImage.fromBitmap(
         /* bitmap = */ image.asAndroidBitmap(),
         /* rotationDegrees = */ 0
     )
+    return scanBarcode(inputImage)
+}
+
+private fun scanBarcode(inputImage: InputImage): List<Barcode> {
     val options = BarcodeScannerOptions.Builder()
         .enableAllPotentialBarcodes()
         .build()
@@ -48,7 +64,7 @@ actual fun scanBarcode(image: ImageBitmap): List<Barcode> {
                     format = format,
                     boundingBox = boundingBox,
                     cornerPoints = cornerPoints,
-                    text = barcode.rawValue!!
+                    text = barcode.rawValue ?: barcode.url?.url ?: ""
                 )
             )
         }

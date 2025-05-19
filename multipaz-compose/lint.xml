@@ -2,4 +2,7 @@
 <lint>
     <!-- We explicitly want app authors to add permissions, so the IC library has none. -->
     <issue id="MissingPermission" severity="ignore" />
+
+    <!-- This is to use OutputTransform.getMatrix -->
+    <issue id="RestrictedApi" severity="ignore" />
 </lint>

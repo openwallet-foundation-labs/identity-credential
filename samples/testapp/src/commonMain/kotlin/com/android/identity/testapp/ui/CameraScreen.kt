@@ -1,6 +1,9 @@
 package com.android.identity.testapp.ui
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,14 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.ImageBitmapConfig
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PaintingStyle
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -43,38 +42,120 @@ private const val TAG = "CameraScreen"
 fun CameraScreen(
     showToast: (message: String) -> Unit
 ) {
-    val showCameraDialog = remember { mutableStateOf<CameraSelection?>(null) }
+    val captureWithPreview = remember { mutableStateOf<Pair<CameraSelection, CameraCaptureResolution>?>(null) }
+    val captureWithoutPreview = remember { mutableStateOf<Pair<CameraSelection, CameraCaptureResolution>?>(null) }
     val cameraPermissionState = rememberCameraPermissionState()
     val coroutineScope = rememberCoroutineScope()
-    val showPreview = true
 
-    if (showCameraDialog.value != null) {
+    captureWithPreview.value?.let {
+        val lastFrameReceived = remember { mutableStateOf<CameraFrame?>(null) }
         AlertDialog(
             modifier = Modifier.wrapContentSize(),
-            title = { Text(text = "Camera dialog") },
+            title = { Text(text = "Camera with Preview") },
             text = {
                 Column(
                     Modifier.wrapContentSize(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Camera(
-                        modifier = Modifier.fillMaxWidth(),
-                        cameraSelection = showCameraDialog.value!!,
-                        showCameraPreview = showPreview,
-                        captureResolution = CameraCaptureResolution.LOW,
-                        onFrameCaptured = { incomingVideoFrame ->
-                            // Note: this is a suspend-func called on an I/O thread managed by Camera() composable
-                            renderBitmapWithFourCircles(incomingVideoFrame.width, incomingVideoFrame.height)
-                        }
+                    Text(
+                        text = "Camera preview with a canvas on top with circles drawn " +
+                                "in the coordinate system of the captured frame."
                     )
+                    Box(modifier = Modifier.fillMaxWidth().clipToBounds()) {
+                        Camera(
+                            modifier = Modifier.fillMaxWidth(),
+                            cameraSelection = it.first,
+                            captureResolution = it.second,
+                            showCameraPreview = true,
+                            onFrameCaptured = { incomingVideoFrame ->
+                                lastFrameReceived.value = incomingVideoFrame
+                            }
+                        )
+                        Canvas(modifier = Modifier.fillMaxWidth()) {
+                            if (lastFrameReceived.value != null) {
+                                val tm = lastFrameReceived.value!!.previewTransformation
+                                val t = Clock.System.now().toEpochMilliseconds() % 1000
+                                val frameWidth = lastFrameReceived.value!!.width.toFloat()
+                                val frameHeight = lastFrameReceived.value!!.height.toFloat()
+                                val dx = t * frameWidth / 2000f
+                                val dy = t * frameHeight / 2000f
+                                drawCircle(
+                                    color = Color.Red,
+                                    center = tm.map(Offset(0f, 0f)),
+                                    radius = 15f
+                                )
+                                drawCircle(
+                                    color = Color.Green,
+                                    center = tm.map(Offset(frameWidth, 0f)),
+                                    radius = 15f
+                                )
+                                drawCircle(
+                                    color = Color.Blue,
+                                    center = tm.map(Offset(frameWidth - dx, frameHeight - dy)),
+                                    radius = 15f
+                                )
+                                drawCircle(
+                                    color = Color.Cyan,
+                                    center = tm.map(Offset(0f, frameHeight)),
+                                    radius = 15f
+                                )
+                            }
+                        }
+                    }
                 }
             },
-            onDismissRequest = { showCameraDialog.value = null },
+            onDismissRequest = { captureWithPreview.value = null },
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = {
-                    showCameraDialog.value = null
+                    captureWithPreview.value = null
+                }) {
+                    Text(text = "Close")
+                }
+            }
+        )
+    }
+
+    captureWithoutPreview.value?.let {
+        val lastBitmapCaptured = remember { mutableStateOf<ImageBitmap?>(null) }
+        AlertDialog(
+            modifier = Modifier.wrapContentSize(),
+            title = { Text(text = "Camera without Preview") },
+            text = {
+                Column(
+                    Modifier.wrapContentSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Camera capture without preview. The captured image is rendered " +
+                                "as an ImageBitmap without any transformations applied."
+                    )
+                    Camera(
+                        cameraSelection = it.first,
+                        captureResolution = it.second,
+                        showCameraPreview = false,
+                        onFrameCaptured = { incomingVideoFrame ->
+                            val bitmap = incomingVideoFrame.cameraImage.toImageBitmap()
+                            Logger.i(TAG, "Received bitmap of width ${bitmap.width} height ${bitmap.height}")
+                            lastBitmapCaptured.value = bitmap
+                        }
+                    )
+                    lastBitmapCaptured.value?.let {
+                        Image(
+                            modifier = Modifier.fillMaxWidth(),
+                            bitmap = it,
+                            contentDescription = "Camera frame",
+                        )
+                    }
+                }
+            },
+            onDismissRequest = { captureWithoutPreview.value = null },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    captureWithoutPreview.value = null
                 }) {
                     Text(text = "Close")
                 }
@@ -108,44 +189,68 @@ fun CameraScreen(
             ) {
                 item {
                     TextButton(onClick = {
-                        showCameraDialog.value = CameraSelection.DEFAULT_FRONT_CAMERA
-                    }) {
-                        Text("Start capturing video (Front Camera)")
-                    }
+                        captureWithPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.LOW)
+                    }) { Text("Capture with Preview (Front Camera, Low Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.MEDIUM)
+                    }) { Text("Capture with Preview (Front Camera, Medium Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.HIGH)
+                    }) { Text("Capture with Preview (Front Camera, High Res)") }
                 }
 
                 item {
                     TextButton(onClick = {
-                        showCameraDialog.value = CameraSelection.DEFAULT_BACK_CAMERA
-                    }) {
-                        Text("Start capturing video (Back Camera)")
-                    }
+                        captureWithPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.LOW)
+                    }) { Text("Capture with Preview (Back Camera, Low Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.MEDIUM)
+                    }) { Text("Capture with Preview (Back Camera, Medium Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.HIGH)
+                    }) { Text("Capture with Preview (Back Camera, High Res)") }
+                }
+
+                item {
+                    TextButton(onClick = {
+                        captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.LOW)
+                    }) { Text("Capture without Preview (Front Camera, Low Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.MEDIUM)
+                    }) { Text("Capture without Preview (Front Camera, Medium Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_FRONT_CAMERA, CameraCaptureResolution.HIGH)
+                    }) { Text("Capture without Preview (Front Camera, High Res)") }
+                }
+
+                item {
+                    TextButton(onClick = {
+                        captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.LOW)
+                    }) { Text("Capture without Preview (Back Camera, Low Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.MEDIUM)
+                    }) { Text("Capture without Preview (Back Camera, Medium Res)") }
+                }
+                item {
+                    TextButton(onClick = {
+                        captureWithoutPreview.value = Pair(CameraSelection.DEFAULT_BACK_CAMERA, CameraCaptureResolution.HIGH)
+                    }) { Text("Capture without Preview (Back Camera, High Res)") }
                 }
             }
         }
     }
-}
-
-private val paint = Paint().apply {
-    color = Color.Red
-    style = PaintingStyle.Stroke
-    isAntiAlias = true
-}
-
-private fun renderBitmapWithFourCircles(width: Int, height: Int): ImageBitmap? {
-    if (width == 0 || height == 0) return null
-    val outImage = ImageBitmap(
-        width = width,
-        height = height,
-        config = ImageBitmapConfig.Argb8888,
-        hasAlpha = true
-    )
-    val canvas = Canvas(outImage)
-    val x = Clock.System.now().toEpochMilliseconds() % 1000
-    canvas.drawCircle(Offset(20f + x*width/2000.0f, 20f + x*width/2000.0f), radius = 15f, paint)
-    canvas.drawCircle(Offset(20f, height-20f), radius = 15f, paint)
-    canvas.drawCircle(Offset(width - 20f, 20f), radius = 15f, paint)
-    canvas.drawCircle(Offset(width - 20f, height - 20f), radius = 15f, paint)
-
-    return outImage
 }

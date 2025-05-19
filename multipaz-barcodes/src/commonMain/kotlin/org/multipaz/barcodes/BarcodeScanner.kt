@@ -3,6 +3,7 @@ package org.multipaz.barcodes
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
+import org.multipaz.compose.camera.CameraImage
 
 enum class BarcodeFormat {
     QR_CODE,
@@ -17,3 +18,5 @@ data class Barcode(
 )
 
 expect fun scanBarcode(image: ImageBitmap): List<Barcode>
+
+expect fun scanBarcode(cameraImage: CameraImage): List<Barcode>
