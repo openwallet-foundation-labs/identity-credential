@@ -108,15 +108,26 @@ fun BarcodeScanningScreen(
                                 // Note: after mapping the bbox through the transformation matrix it's
                                 // possible that things are flipped or rotated... so we need to derive
                                 // our own top-left and bottom-right coordinates.
-                                val bbMappedTopLeft = tm.map(barcode.boundingBox.topLeft)
-                                val bbMappedBottomRight = tm.map(barcode.boundingBox.bottomRight)
+                                // Original corner points.
+                                val originalTopLeft = barcode.boundingBox.topLeft
+                                val originalTopRight = Offset(barcode.boundingBox.right, barcode.boundingBox.top)
+                                val originalBottomLeft = Offset(barcode.boundingBox.left, barcode.boundingBox.bottom)
+                                val originalBottomRight = barcode.boundingBox.bottomRight
+
+                                // Transform all four points.
+                                val mappedP1 = tm.map(originalTopLeft)
+                                val mappedP2 = tm.map(originalTopRight)
+                                val mappedP3 = tm.map(originalBottomLeft)
+                                val mappedP4 = tm.map(originalBottomRight)
+
+                                // Find min/max X and Y from all mapped points to correctly map the Rect.
                                 val bbTopLeft = Offset(
-                                    x = min(bbMappedTopLeft.x, bbMappedBottomRight.x),
-                                    y = min(bbMappedTopLeft.y, bbMappedBottomRight.y)
+                                    x = minOf(mappedP1.x, mappedP2.x, mappedP3.x, mappedP4.x),
+                                    y = minOf(mappedP1.y, mappedP2.y, mappedP3.y, mappedP4.y)
                                 )
                                 val bbBottomRight = Offset(
-                                    x = max(bbMappedTopLeft.x, bbMappedBottomRight.x),
-                                    y = max(bbMappedTopLeft.y, bbMappedBottomRight.y)
+                                    x = maxOf(mappedP1.x, mappedP2.x, mappedP3.x, mappedP4.x),
+                                    y = maxOf(mappedP1.y, mappedP2.y, mappedP3.y, mappedP4.y)
                                 )
 
                                 drawRoundRect(

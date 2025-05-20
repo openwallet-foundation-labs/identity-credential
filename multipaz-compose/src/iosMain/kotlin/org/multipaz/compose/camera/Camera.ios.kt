@@ -1,9 +1,17 @@
 package org.multipaz.compose.camera
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
@@ -19,7 +27,10 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.useContents
 import kotlinx.cinterop.value
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.multipaz.util.Logger
 import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureDevice
@@ -32,6 +43,8 @@ import platform.AVFoundation.AVCaptureSessionPreset1280x720
 import platform.AVFoundation.AVCaptureSessionPreset1920x1080
 import platform.AVFoundation.AVCaptureSessionPreset640x480
 import platform.AVFoundation.AVCaptureVideoDataOutput
+import platform.AVFoundation.AVCaptureVideoDataOutputSampleBufferDelegateProtocol
+import platform.AVFoundation.AVCaptureVideoOrientation
 import platform.AVFoundation.AVCaptureVideoOrientationLandscapeLeft
 import platform.AVFoundation.AVCaptureVideoOrientationLandscapeRight
 import platform.AVFoundation.AVCaptureVideoOrientationPortrait
@@ -39,37 +52,41 @@ import platform.AVFoundation.AVCaptureVideoOrientationPortraitUpsideDown
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
 import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVMediaTypeVideo
-import platform.AVFoundation.AVCaptureVideoDataOutputSampleBufferDelegateProtocol
 import platform.AVFoundation.position
 import platform.CoreGraphics.CGImageRef
+import platform.CoreGraphics.CGImageRelease
 import platform.CoreGraphics.CGRect
+import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGRectZero
+import platform.CoreImage.CIContext
+import platform.CoreImage.CIImage
+import platform.CoreImage.createCGImage
+import platform.CoreMedia.CMSampleBufferGetImageBuffer
 import platform.CoreMedia.CMSampleBufferRef
-import platform.CoreVideo.kCVPixelFormatType_32BGRA
+import platform.CoreVideo.CVPixelBufferGetHeight
+import platform.CoreVideo.CVPixelBufferGetWidth
 import platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey
+import platform.CoreVideo.kCVPixelFormatType_32BGRA
 import platform.Foundation.NSError
-import platform.QuartzCore.CALayer
+import platform.Foundation.NSNotification
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSSelectorFromString
 import platform.QuartzCore.CATransaction
 import platform.QuartzCore.kCATransactionDisableActions
 import platform.UIKit.UIDevice
 import platform.UIKit.UIDeviceOrientation
+import platform.UIKit.UIDeviceOrientationDidChangeNotification
+import platform.UIKit.UIImage
+import platform.UIKit.UIScreen
 import platform.UIKit.UIView
 import platform.darwin.NSObject
+import platform.darwin.dispatch_get_main_queue
 import platform.darwin.dispatch_queue_create
-import platform.UIKit.UIImage
-import platform.CoreMedia.CMSampleBufferGetImageBuffer
-import platform.CoreImage.CIImage
-import platform.CoreImage.CIContext
-import platform.CoreImage.createCGImage
-import platform.CoreVideo.CVPixelBufferGetHeight
-import platform.CoreVideo.CVPixelBufferGetWidth
-import platform.Foundation.NSNotification
-import platform.Foundation.NSNotificationCenter
-import platform.Foundation.NSSelectorFromString
+import platform.darwin.dispatch_sync
 import kotlin.native.runtime.GC
 import kotlin.native.runtime.NativeRuntimeApi
 
-private val TAG = "Camera"
+private const val TAG = "Camera"
 
 @Composable
 actual fun Camera(
@@ -79,60 +96,102 @@ actual fun Camera(
     showCameraPreview: Boolean,
     onFrameCaptured: suspend (frame: CameraFrame) -> Unit
 ) {
-    val cameraManager = remember {
-        CameraManager(
-            cameraSelection = cameraSelection,
-            captureResolution = captureResolution,
-            onCameraFrameCaptured = onFrameCaptured
-        )
-    }
-
-    DisposableEffect(Unit) {
-        val orientationListener = OrientationListener { orientation ->
-            cameraManager.setCurrentOrientation(orientation)
-        }
-        orientationListener.register()
-        onDispose {
-            orientationListener.unregister()
-        }
-    }
-
-    if (showCameraPreview) {
-        UIKitView<UIView>(
-            modifier = modifier.fillMaxSize(),
-            factory = {
-                val previewContainer = CameraPreviewView(cameraManager)
-                cameraManager.startCamera(previewContainer.layer)
-                previewContainer
-            },
-            properties = UIKitInteropProperties(
-                isInteractive = true,
-                isNativeAccessibilityEnabled = true,
+    BoxWithConstraints(modifier) {
+        val cameraManager = remember(cameraSelection, captureResolution) {
+            CameraManager(
+                cameraSelection = cameraSelection,
+                captureResolution = captureResolution,
+                onCameraFrameCaptured = onFrameCaptured,
+                isShowingPreview = showCameraPreview
             )
-        )
-    } else {
-        cameraManager.startCamera(null)
-    }
+        }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            cameraManager.stopCamera()
+        var isCameraReadyForPreview by remember(cameraManager) { mutableStateOf(false) }
+
+        LaunchedEffect(cameraManager) {
+
+            cameraManager.startCamera()
+
+            if (cameraManager.isPreviewLayerInitialized) {
+                isCameraReadyForPreview = true
+                if (cameraManager.captureSession.isRunning()) {
+                    cameraManager.setCurrentOrientation(UIDevice.currentDevice.orientation)
+                }
+            }
+        }
+
+        DisposableEffect(cameraManager) {
+            val orientationListener = OrientationListener { orientation ->
+                if (cameraManager.isPreviewLayerInitialized) {
+                    cameraManager.setCurrentOrientation(orientation)
+                }
+            }
+            orientationListener.register()
+
+            onDispose {
+                orientationListener.unregister()
+                cameraManager.stopCamera()
+            }
+        }
+
+        LaunchedEffect(cameraManager, showCameraPreview, cameraManager.isPreviewLayerInitialized) {
+            if (showCameraPreview && !isCameraReadyForPreview) {
+                if (cameraManager.isPreviewLayerInitialized) {
+                    isCameraReadyForPreview = true
+                } else {
+                    kotlinx.coroutines.yield() // Allow time for DisposableEffect.
+                    // Re-check after yield, DisposableEffect might have completed.
+                    if (cameraManager.isPreviewLayerInitialized) {
+                        isCameraReadyForPreview = true
+                    }
+                }
+            } else if (!showCameraPreview) {
+                isCameraReadyForPreview = false
+            }
+        }
+
+        if (showCameraPreview) {
+            if (isCameraReadyForPreview) {
+                UIKitView(
+                    factory = {
+                        val camView = CameraPreviewView(cameraManager.previewLayer)
+                        camView
+                    },
+                    modifier = modifier.fillMaxSize(),
+                    update = { view ->
+                        view.setNeedsLayout()
+                        view.layoutIfNeeded() // Force layout pass during update.
+                    },
+                    properties = UIKitInteropProperties(
+                        isInteractive = false,
+                        isNativeAccessibilityEnabled = false
+                    )
+                )
+            } else {
+                Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Initializing Camera Preview...")
+                }
+            }
         }
     }
 }
 
-
 @OptIn(ExperimentalForeignApi::class)
 private class CameraPreviewView(
-    private val coordinator: CameraManager
-): UIView(frame = cValue { CGRectZero }) {
+    private val previewLayer: AVCaptureVideoPreviewLayer
+) : UIView(frame = cValue { CGRectZero }) {
+
+    init {
+        // Add the previewLayer as a sublayer of this UIView's primary layer.
+        this.layer.addSublayer(previewLayer)
+    }
+
     @OptIn(ExperimentalForeignApi::class)
     override fun layoutSubviews() {
         super.layoutSubviews()
         CATransaction.begin()
-        CATransaction.setValue(true, kCATransactionDisableActions)
-        layer.setFrame(frame)
-        coordinator.setFrame(frame)
+        CATransaction.setValue(true, kCATransactionDisableActions) // Disable animations
+        previewLayer.frame = this.bounds // Key line
         CATransaction.commit()
     }
 }
@@ -142,97 +201,119 @@ private class CameraManager(
     val cameraSelection: CameraSelection,
     val captureResolution: CameraCaptureResolution,
     val onCameraFrameCaptured: suspend (cameraFrame: CameraFrame) -> Unit,
-): AVCaptureVideoDataOutputSampleBufferDelegateProtocol, NSObject() {
+    val isShowingPreview: Boolean
+) : AVCaptureVideoDataOutputSampleBufferDelegateProtocol, NSObject() {
 
-    private var previewLayer: AVCaptureVideoPreviewLayer? = null
     lateinit var captureSession: AVCaptureSession
-
-    fun stopCamera() {
-        captureSession.stopRunning()
-    }
+        private set
+    lateinit var previewLayer: AVCaptureVideoPreviewLayer // Initialized in startCamera.
+        private set
+    val isPreviewLayerInitialized: Boolean
+        get() = if (this::previewLayer.isInitialized) true else false // Explicit true/false for clarity
+    private var isFrontCamera: Boolean = false
+    private var lastKnownPreviewBounds: CValue<CGRect>? = null
 
     @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-    fun startCamera(layer: CALayer?) {
-        captureSession = AVCaptureSession()
+    suspend fun startCamera() {
+        if (::captureSession.isInitialized && captureSession.isRunning()) {
+            return
+        }
+        if (::captureSession.isInitialized && !captureSession.isRunning()) {
+            // Session was stopped but exists, thus just restart.
+            withContext(Dispatchers.IO) {
+                captureSession.startRunning()
+            }
+            return
+        }
+
+        captureSession = AVCaptureSession() // Init capture session first.
         captureSession.sessionPreset = when (captureResolution) {
             CameraCaptureResolution.LOW -> AVCaptureSessionPreset640x480
             CameraCaptureResolution.MEDIUM -> AVCaptureSessionPreset1280x720
             CameraCaptureResolution.HIGH -> AVCaptureSessionPreset1920x1080
         }
 
-        val devices = AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo).map { it as AVCaptureDevice }
+        // Initialize Preview layer.
+        previewLayer = AVCaptureVideoPreviewLayer(session = captureSession).apply {
+            this.videoGravity = AVLayerVideoGravityResizeAspectFill
+            this.frame = CGRectMake(0.0, 0.0, 0.0, 0.0) // Will be set by layoutSubviews
+        }
+
+        val devices = AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo)
+            .map { it as AVCaptureDevice }
 
         val requestedDevicePosition = when (cameraSelection) {
             CameraSelection.DEFAULT_BACK_CAMERA -> AVCaptureDevicePositionBack
             CameraSelection.DEFAULT_FRONT_CAMERA -> AVCaptureDevicePositionFront
         }
-        val device = devices.firstOrNull { device ->
-            device.position == requestedDevicePosition
-        } ?: run {
-            AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
-        }
+        val device = devices.firstOrNull { it.position == requestedDevicePosition }
+            ?: AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
 
         if (device == null) {
             Logger.e(TAG, "Device has no camera")
+            // Clean up if partial initialization occurred
+            if (::captureSession.isInitialized && captureSession.isRunning()) captureSession.stopRunning()
             return
         }
 
-        val videoInput = memScoped {
-            val error: ObjCObjectVar<NSError?> = alloc<ObjCObjectVar<NSError?>>()
-            val videoInput = AVCaptureDeviceInput(device = device, error = error.ptr)
-            if (error.value != null) {
-                Logger.e(TAG, "Error constructing input: ${error.value}")
-                null
+        isFrontCamera = device.position == AVCaptureDevicePositionFront
+
+        memScoped {
+            val error: ObjCObjectVar<NSError?> = alloc()
+            val input = AVCaptureDeviceInput(device, error.ptr)
+            if (input != null) {
+                if (captureSession.canAddInput(input)) {
+                    captureSession.addInput(input)
+                } else {
+                    Logger.e(TAG, "Error adding input device.")
+                    if (::captureSession.isInitialized && captureSession.isRunning()) captureSession.stopRunning()
+                    return@memScoped
+                }
             } else {
-                videoInput
+                Logger.e(TAG, "Error constructing input: ${error.value}")
+                if (::captureSession.isInitialized && captureSession.isRunning()) captureSession.stopRunning()
+                return@memScoped
             }
         }
 
-        if (videoInput != null && captureSession.canAddInput(videoInput)) {
-            captureSession.addInput(videoInput)
-        } else {
-            Logger.e(TAG, "Error adding input")
-            return
+        val videoDataOutput = AVCaptureVideoDataOutput().apply {
+            videoSettings = mapOf(kCVPixelBufferPixelFormatTypeKey to kCVPixelFormatType_32BGRA)
+            alwaysDiscardsLateVideoFrames = true
+            val queue = dispatch_queue_create("org.multipaz.compose.camera_queue", null)
+            setSampleBufferDelegate(this@CameraManager, queue)
         }
 
-        val videoDataOutput = AVCaptureVideoDataOutput()
         if (captureSession.canAddOutput(videoDataOutput)) {
-            videoDataOutput.videoSettings = mapOf(
-                kCVPixelBufferPixelFormatTypeKey to kCVPixelFormatType_32BGRA,
-            )
-            videoDataOutput.alwaysDiscardsLateVideoFrames = true
-            val queue = dispatch_queue_create("org.multipaz.compose.camera_queue", null)
-            videoDataOutput.setSampleBufferDelegate(this, queue = queue)
             captureSession.addOutput(videoDataOutput)
         } else {
-            Logger.e(TAG, "Error adding output")
+            Logger.e(TAG, "Error adding output.")
+            if (::captureSession.isInitialized && captureSession.isRunning()) captureSession.stopRunning()
             return
         }
 
-        if (layer != null) {
-            previewLayer = AVCaptureVideoPreviewLayer(session = captureSession)
-            previewLayer!!.frame = layer.bounds
-            previewLayer!!.videoGravity = AVLayerVideoGravityResizeAspectFill
-            setCurrentOrientation(newOrientation = UIDevice.currentDevice.orientation)
-            layer.addSublayer(previewLayer!!)
+        withContext(Dispatchers.IO) {
+            captureSession.startRunning()
         }
+    }
 
-        captureSession.startRunning()
+    fun stopCamera() {
+        if (::captureSession.isInitialized && captureSession.isRunning()) {
+            captureSession.stopRunning()
+        }
     }
 
     fun setCurrentOrientation(newOrientation: UIDeviceOrientation) {
-        when(newOrientation) {
-            UIDeviceOrientation.UIDeviceOrientationLandscapeLeft ->
-                previewLayer?.connection?.videoOrientation = AVCaptureVideoOrientationLandscapeRight
-            UIDeviceOrientation.UIDeviceOrientationLandscapeRight ->
-                previewLayer?.connection?.videoOrientation = AVCaptureVideoOrientationLandscapeLeft
-            UIDeviceOrientation.UIDeviceOrientationPortrait ->
-                previewLayer?.connection?.videoOrientation = AVCaptureVideoOrientationPortrait
-            UIDeviceOrientation.UIDeviceOrientationPortraitUpsideDown ->
-                previewLayer?.connection?.videoOrientation = AVCaptureVideoOrientationPortraitUpsideDown
-            else ->
-                previewLayer?.connection?.videoOrientation = AVCaptureVideoOrientationPortrait
+        if (!::previewLayer.isInitialized) {
+            Logger.w(TAG, "setCurrentOrientation called before previewLayer is initialized.")
+            return
         }
+        val avOrientation = when (newOrientation) {
+            UIDeviceOrientation.UIDeviceOrientationLandscapeLeft -> AVCaptureVideoOrientationLandscapeRight
+            UIDeviceOrientation.UIDeviceOrientationLandscapeRight -> AVCaptureVideoOrientationLandscapeLeft
+            UIDeviceOrientation.UIDeviceOrientationPortraitUpsideDown -> AVCaptureVideoOrientationPortraitUpsideDown
+            else -> AVCaptureVideoOrientationPortrait
+        }
+        previewLayer.connection?.videoOrientation = avOrientation
     }
 
     @OptIn(ExperimentalForeignApi::class, NativeRuntimeApi::class)
@@ -241,18 +322,60 @@ private class CameraManager(
         didOutputSampleBuffer: CMSampleBufferRef?,
         fromConnection: AVCaptureConnection
     ) {
-        val uiImage = didOutputSampleBuffer!!.toUIImage()
-        val cameraImage = CameraImage(uiImage)
+        if (didOutputSampleBuffer == null) return
 
-        // TODO: Actually calculate the correct matrix, right now we're just
-        //  return the Identity matrix.
-        //
-        val previewTransformation = Matrix()
+        val uiImage = didOutputSampleBuffer.toUIImage()
+        val cameraImage = CameraImage(uiImage)
+        val imageWidth = uiImage.size.useContents { width }
+        val imageHeight = uiImage.size.useContents { height }
+        var previewTransformation = Matrix() // Identity
+
+        if (isShowingPreview) {
+            // Retrieve the current preview size.
+            val currentVideoOrientation = previewLayer.connection?.videoOrientation
+            var currentPreviewFrame: CValue<CGRect>? = null
+            dispatch_sync(dispatch_get_main_queue()) { // Must be dispatched to main thread to get the frame.
+                val frameFromLayer = previewLayer.presentationLayer()?.frame ?: previewLayer.frame
+                if (frameFromLayer.useContents { size.width > 0.0 && size.height > 0.0 }) {
+                    currentPreviewFrame = frameFromLayer
+                } else {
+                    Logger.w(TAG, "The previewLayer.frame is zero. Using lastKnownPreviewBounds if available.")
+                }
+            }
+
+            if (currentPreviewFrame == null) {
+                if (lastKnownPreviewBounds != null && lastKnownPreviewBounds!!.useContents { size.width > 0.0 && size.height > 0.0 }) {
+                    currentPreviewFrame = lastKnownPreviewBounds
+                } else {
+                    Logger.e(TAG, "captureOutput: No valid bounds (neither main thread nor fallback). Skipping frame.")
+                    return // Skip "bad" frame processing.
+                }
+            }
+
+            if (currentPreviewFrame!!.useContents { size.width > 0.0 && size.height > 0.0 }) {
+                lastKnownPreviewBounds = currentPreviewFrame
+            } else {
+                Logger.e(TAG, "Preview bounds can't be retrieved. Skipping frame.")
+                return
+            }
+
+            val boundsToUse = currentPreviewFrame!!
+            val density = UIScreen.mainScreen.scale.toFloat()
+
+            previewTransformation = calculatePreviewTransformationMatrix(
+                imageWidth = imageWidth,
+                imageHeight = imageHeight,
+                previewBoundsDp = boundsToUse,
+                density = density,
+                videoOrientation = currentVideoOrientation ?: AVCaptureVideoOrientationPortrait,
+                isFrontCamera = this.isFrontCamera
+            )
+        }
 
         val cameraFrame = CameraFrame(
             cameraImage = cameraImage,
-            width = (uiImage.size.useContents { width }.toInt()),
-            height = (uiImage.size.useContents { height }.toInt()),
+            width = imageWidth.toInt(),
+            height = imageHeight.toInt(),
             previewTransformation = previewTransformation
         )
 
@@ -260,12 +383,8 @@ private class CameraManager(
             onCameraFrameCaptured(cameraFrame)
         }
 
-        // To is needed to avoid lockups, see https://youtrack.jetbrains.com/issue/KT-74239
+        // Not recommended but IS needed to avoid lockups, see https://youtrack.jetbrains.com/issue/KT-74239
         GC.collect()
-    }
-
-    fun setFrame(rect: CValue<CGRect>) {
-        previewLayer?.setFrame(rect)
     }
 }
 
@@ -274,7 +393,7 @@ private class OrientationListener(
     val orientationChanged: (UIDeviceOrientation) -> Unit
 ) : NSObject() {
 
-    val notificationName = platform.UIKit.UIDeviceOrientationDidChangeNotification
+    val notificationName = UIDeviceOrientationDidChangeNotification
 
     @OptIn(BetaInteropApi::class)
     @Suppress("UNUSED_PARAMETER")
@@ -321,7 +440,7 @@ private fun CMSampleBufferRef.toUIImage(): UIImage {
 
     val bufferWidth = CVPixelBufferGetWidth(imageBuffer).toDouble()
     val bufferHeight = CVPixelBufferGetHeight(imageBuffer).toDouble()
-    val imageRect = platform.CoreGraphics.CGRectMake(
+    val imageRect = CGRectMake(
         x = 0.0,
         y = 0.0,
         width = bufferWidth,
@@ -329,20 +448,116 @@ private fun CMSampleBufferRef.toUIImage(): UIImage {
     )
 
     var videoImage: CGImageRef? = null
-    var finalUiImage: UIImage? = null
-    try {
+    val finalUiImage: UIImage = try {
         videoImage = temporaryContext.createCGImage(ciImage, fromRect = imageRect)
         if (videoImage == null) {
             throw IllegalStateException("Error: Could not create CGImageRef from CIImage.")
         }
-        finalUiImage = UIImage(cGImage = videoImage)
+        UIImage(cGImage = videoImage)
     } catch (e: Throwable) {
         throw IllegalStateException("Error during image creation", e)
     } finally {
         videoImage?.let {
-            platform.CoreGraphics.CGImageRelease(it)
+            CGImageRelease(it)
         }
     }
     return finalUiImage
+}
+
+/**
+ * Infer transformation Matrix for conversion of the captured image coordinates to the displayed preview coordinates.
+ *
+ * @param imageWidth Pixel width of the raw camera image.
+ * @param imageHeight Pixel height of the raw camera image.
+ * @param previewBoundsDp Preview bounds IN DP.
+ * @param density Screen density to convert DP to PX.
+ * @param videoOrientation Video orientation of the camera.
+ * @param isFrontCamera Whether the camera is a front camera.
+ *
+ * @return Matrix representing the transformation
+ */
+@OptIn(ExperimentalForeignApi::class)
+private fun calculatePreviewTransformationMatrix(
+    imageWidth: Double,
+    imageHeight: Double,
+    previewBoundsDp: CValue<CGRect>?,
+    density: Float,
+    videoOrientation: AVCaptureVideoOrientation,
+    isFrontCamera: Boolean,
+): Matrix {
+    val resultMatrix = Matrix() // Initialize to identity.
+
+    if (previewBoundsDp == null || imageWidth <= 0.0 || imageHeight <= 0.0 || density <= 0f) {
+        Logger.w(TAG, "Invalid image dimensions or density. Returning identity.")
+        return resultMatrix
+    }
+
+    var previewWidthPx: Double
+    var previewHeightPx: Double
+
+    previewBoundsDp.useContents {
+        previewWidthPx = this.size.width * density // Convert DP to Pixels.
+        previewHeightPx = this.size.height * density // Convert DP to Pixels.
+    }
+
+    val previewCenterXPx = (previewWidthPx / 2.0).toFloat()
+    val previewCenterYPx = (previewHeightPx / 2.0).toFloat()
+    resultMatrix.translate(previewCenterXPx, previewCenterYPx)
+
+    var uiRotationDegrees = 0f
+    var swapDimensions = false
+
+    when (videoOrientation) {
+        AVCaptureVideoOrientationPortraitUpsideDown -> {
+            uiRotationDegrees = -90f
+            swapDimensions = true
+        }
+
+        AVCaptureVideoOrientationPortrait -> {
+            uiRotationDegrees = 90f
+            swapDimensions = true
+        }
+
+        AVCaptureVideoOrientationLandscapeLeft -> {
+            uiRotationDegrees = 180f
+            swapDimensions = false
+        }
+
+        AVCaptureVideoOrientationLandscapeRight -> {
+            uiRotationDegrees = 0f
+            swapDimensions = false
+        }
+    }
+
+    val imageWidthForScale = if (swapDimensions) imageHeight else imageWidth
+    val imageHeightForScale = if (swapDimensions) imageWidth else imageHeight
+    var scale = 1f
+    if (imageWidthForScale > 0.0 && imageHeightForScale > 0.0 && previewWidthPx > 0.0 && previewHeightPx > 0.0) {
+        val previewAspectRatio = previewWidthPx / previewHeightPx
+        val imageAspectRatioAfterTotalRotation = imageWidthForScale / imageHeightForScale
+        if (previewAspectRatio > imageAspectRatioAfterTotalRotation) {
+            scale = (previewWidthPx / imageWidthForScale).toFloat()
+        } else {
+            scale = (previewHeightPx / imageHeightForScale).toFloat()
+        }
+    } else {
+        Logger.w(TAG, "Cannot calculate scale due to zero dimension. Defaulting scale to 1.0.")
+    }
+
+    resultMatrix.scale(x = scale, y = scale)
+
+    if (uiRotationDegrees != 0f) {
+        resultMatrix.rotateZ(uiRotationDegrees)
+    }
+
+    if (isFrontCamera) {
+        resultMatrix.scale(x = 1f, y = -1f) // Mirror along local Y-axis (which corresponds to the screen X axis)
+    }
+
+    val imageCenterOriginalX = (imageWidth / 2.0).toFloat()
+    val imageCenterOriginalY = (imageHeight / 2.0).toFloat()
+    resultMatrix.translate(-imageCenterOriginalX, -imageCenterOriginalY)
+
+    return resultMatrix
 }
 
