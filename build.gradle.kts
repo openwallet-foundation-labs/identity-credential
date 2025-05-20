@@ -11,11 +11,24 @@ val projectVersionCode: Int by extra {
     stdout.toString().trim().toInt()
 }
 
-// For versionName, we use the output of: git describe --tags --dirty
+// For versionName, we use the output of: 'git describe --tags --dirty' and replace
+// all but the first '-' with a '.' character. This ensures our version string is
+// compliant with Semantic Versioning, see https://semver.org/
+//
+// This yields version strings such as
+//
+//  "0.91.0"                     - for the release tagged 0.91.0
+//  "0.91.0-42.g12345678"        - for 42 commits past release 0.91.0
+//  "0.91.0-42.g12345678.dirty"  - for 42 commits past release 0.91.0 with local modifications
+//
 val projectVersionName: String by extra {
     val stdout = ByteArrayOutputStream()
     rootProject.exec {
-        commandLine("git", "describe", "--tags", "--dirty")
+        commandLine(
+            "bash",
+            "-c",
+            "git describe --tags --dirty | sed 's/-/@temp_dash@/1; s/-/./g; s/@temp_dash@/-/g'"
+        )
         standardOutput = stdout
     }
     @Suppress("DEPRECATION") // toString() is deprecated.

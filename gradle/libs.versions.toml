@@ -64,6 +64,7 @@ androidx-credentials = "1.5.0-rc01"
 androidx-credentials-registry-provider = "1.0.0-alpha01"
 errorprone = "2.38.0"
 mlkit-barcode-scanning = "17.3.0"
+semver = "3.0.0"
 
 [libraries]
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
@@ -146,6 +147,7 @@ androidx-credentials = { module = "androidx.credentials:credentials", version.re
 androidx-credentials-registry-provider = { module = "androidx.credentials.registry:registry-provider", version.ref = "androidx-credentials-registry-provider" }
 errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref="errorprone"}
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref="mlkit-barcode-scanning"}
+semver = { module = "io.github.z4kn4fein:semver", version.ref="semver" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
