@@ -26,25 +26,39 @@ private const val TAG = "AppUpdateCard"
 
 @Composable
 fun AppUpdateCard() {
-    if (BuildConfig.TEST_APP_UPDATE_URL.isEmpty()) {
+    // Uncomment below if working on this code from Android Studio.
+    //
+    //val updateUrl =  "https://apps.multipaz.org/testapp/LATEST-VERSION.txt"
+    //val updateWebsiteUrl =  "https://apps.multipaz.org/"
+    //val currentVersion = "0.91.0-pre.48.574b479c"
+    val updateUrl = BuildConfig.TEST_APP_UPDATE_URL
+    val updateWebsiteUrl = BuildConfig.TEST_APP_UPDATE_WEBSITE_URL
+    val currentVersion = BuildConfig.VERSION
+
+    if (updateUrl.isEmpty()) {
         return
     }
 
     val latestVersionString = remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(true) {
-        val httpClient = HttpClient(platformHttpClientEngineFactory().create())
-        val response = httpClient.get(BuildConfig.TEST_APP_UPDATE_URL)
-        if (response.status == HttpStatusCode.OK) {
-            latestVersionString.value = response.readBytes().decodeToString().trim()
-            Logger.i(TAG, "Latest available version from ${BuildConfig.TEST_APP_UPDATE_WEBSITE_URL} is ${latestVersionString.value}")
+        try {
+            val httpClient = HttpClient(platformHttpClientEngineFactory().create())
+            val response = httpClient.get(updateUrl)
+            if (response.status == HttpStatusCode.OK) {
+                latestVersionString.value = response.readBytes().decodeToString().trim()
+                Logger.i(TAG, "Latest available version from $updateWebsiteUrl is ${latestVersionString.value} " +
+                        "and our version is $currentVersion")
+            }
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Error checking latest version from $updateWebsiteUrl", e)
         }
     }
 
 
     latestVersionString.value?.let {
         val currentVersion = Version.parse(
-            versionString = BuildConfig.VERSION,
+            versionString = currentVersion,
             strict = false
         )
         val availableVersion = Version.parse(
@@ -55,20 +69,21 @@ fun AppUpdateCard() {
             InfoCard {
                 val str = buildAnnotatedString {
                     append(
-                        "You are running version ${BuildConfig.VERSION} and version " +
-                                "${latestVersionString.value} is the latest available on "
+                        "You are running version $currentVersion and version " +
+                        "${latestVersionString.value} is the latest available. " +
+                        "Visit "
                     )
                     withLink(
                         LinkAnnotation.Url(
-                            BuildConfig.TEST_APP_UPDATE_WEBSITE_URL,
+                            updateWebsiteUrl,
                             TextLinkStyles(
                                 style = SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline),
                             )
                         )
                     ) {
-                        append(BuildConfig.TEST_APP_UPDATE_WEBSITE_URL)
+                        append(updateWebsiteUrl)
                     }
-                    append(".")
+                    append(" to update.")
                 }
                 Text(text = str)
             }

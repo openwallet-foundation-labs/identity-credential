@@ -11,28 +11,45 @@ val projectVersionCode: Int by extra {
     stdout.toString().trim().toInt()
 }
 
-// For versionName, we use the output of: 'git describe --tags --dirty' and replace
-// all but the first '-' with a '.' character. This ensures our version string is
-// compliant with Semantic Versioning, see https://semver.org/
+// The version number of the project.
 //
-// This yields version strings such as
+// For a tagged release, projectVersionNext should be blank and the next commit
+// following the release should bump it to the next version number.
 //
-//  "0.91.0"                     - for the release tagged 0.91.0
-//  "0.91.0-42.g12345678"        - for 42 commits past release 0.91.0
-//  "0.91.0-42.g12345678.dirty"  - for 42 commits past release 0.91.0 with local modifications
-//
-val projectVersionName: String by extra {
+val projectVersionLast = "0.90"
+val projectVersionNext = "0.91.0"
+
+private fun runCommand(args: List<String>): String {
     val stdout = ByteArrayOutputStream()
     rootProject.exec {
-        commandLine(
-            "bash",
-            "-c",
-            "git describe --tags --dirty | sed 's/-/@temp_dash@/1; s/-/./g; s/@temp_dash@/-/g'"
-        )
+        commandLine(args)
         standardOutput = stdout
     }
-    @Suppress("DEPRECATION") // toString() is deprecated.
-    stdout.toString().trim()
+    return stdout.toString().trim()
+}
+
+// Generate a project version meeting the requirements of Semantic Versioning 2.0.0
+// according to https://semver.org/
+//
+// Essentially, for tagged releases use the version number e.g. "0.91.0". Otherwise use
+// the next version number with a pre-release string set to "pre.N.H" where N is the
+// number of commits since the last version and H is the short commit hash of the
+// where we cut the pre-release from. Example: 0.91.0-pre.48.574b479c
+//
+val projectVersionName: String by extra {
+    if (projectVersionNext.isEmpty()) {
+        projectVersionLast
+    } else {
+        val numCommitsSinceTag = runCommand(listOf("git", "rev-list", "${projectVersionLast}..", "--count"))
+        val commitHash = runCommand(listOf("git", "rev-parse", "--short", "HEAD"))
+        projectVersionNext + "-pre.${numCommitsSinceTag}.${commitHash}"
+    }
+}
+
+tasks.register("printVersionName") {
+    doLast {
+        println(projectVersionName)
+    }
 }
 
 plugins {
