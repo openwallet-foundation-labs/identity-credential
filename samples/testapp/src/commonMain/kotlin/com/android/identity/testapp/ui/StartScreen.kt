@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.android.identity.testapp.ui.AppUpdateCard
 import org.multipaz.testapp.DocumentModel
 import org.multipaz.testapp.Platform
 import org.multipaz.testapp.platform
@@ -79,6 +80,7 @@ fun StartScreen(
             modifier = Modifier.padding(8.dp)
         ) {
             Column {
+                AppUpdateCard()
                 if (documentModel.documentInfos.isEmpty()) {
                     WarningCard(
                         modifier = Modifier.clickable() {
