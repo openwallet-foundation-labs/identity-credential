@@ -32,6 +32,8 @@ import org.multipaz.rpc.handler.RpcDispatcherLocal
 import org.multipaz.rpc.handler.RpcExceptionMap
 import org.multipaz.rpc.handler.SimpleCipher
 import org.multipaz.rpc.transport.HttpTransport
+import org.multipaz.server.ServerConfiguration
+import org.multipaz.server.ServerEnvironment
 import org.multipaz.util.Logger
 
 const val TAG = "ApplicationExt"

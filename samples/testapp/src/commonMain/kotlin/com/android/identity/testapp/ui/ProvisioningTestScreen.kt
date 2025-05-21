@@ -85,6 +85,19 @@ fun ProvisioningTestScreen(
                 presentmentModel,
                 provisioningState
             )
+        } else if (provisioningState is ProvisioningModel.Error) {
+            Text(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(8.dp),
+                style = MaterialTheme.typography.titleLarge,
+                text = "Error: ${provisioningState.err.message}"
+            )
+            Text(
+                modifier = Modifier.padding(4.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                text = "For details: adb logcat -s ProvisioningModel"
+            )
         } else {
             val text = when (provisioningState) {
                 ProvisioningModel.Initial -> "Starting provisioning..."
@@ -95,6 +108,7 @@ fun ProvisioningTestScreen(
                 ProvisioningModel.ProofingComplete -> "Evidence collected"
                 ProvisioningModel.RequestingCredentials -> "Requesting credentials..."
                 ProvisioningModel.CredentialsIssued -> "Credentials issued"
+                is ProvisioningModel.Error -> throw IllegalStateException()
                 is ProvisioningModel.EvidenceRequested -> throw IllegalStateException()
             }
             Text(

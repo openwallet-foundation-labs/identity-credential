@@ -16,23 +16,24 @@ import kotlin.time.Duration.Companion.seconds
 class OpenidAccess(
     val accessToken: String,
     val accessTokenExpiration: Instant,
-    var dpopNonce: String?,
-    var cNonce: String?,
-    var tokenEndpoint: String,
     var refreshToken: String?,
+    var dpopNonce: String?,
+    var tokenEndpoint: String
 ) {
     companion object {
-        suspend fun parseResponse(tokenEndpoint: String, tokenResponse: HttpResponse): OpenidAccess {
+        suspend fun parseResponse(
+            tokenEndpoint: String,
+            tokenResponse: HttpResponse
+        ): OpenidAccess {
             val dpopNonce = tokenResponse.headers["DPoP-Nonce"]
             val tokenString = tokenResponse.readBytes().decodeToString()
             val token = Json.parseToJsonElement(tokenString) as JsonObject
             val accessToken = getField(token, "access_token").content
-            val cNonce = getField(token, "c_nonce").content
             val duration = getField(token, "expires_in").long
             val accessTokenExpiration = Clock.System.now() + duration.seconds
             val refreshToken = token["refresh_token"]?.jsonPrimitive?.content
-            return OpenidAccess(accessToken, accessTokenExpiration, dpopNonce,
-                cNonce, tokenEndpoint, refreshToken)
+            return OpenidAccess(accessToken, accessTokenExpiration, refreshToken, dpopNonce,
+                tokenEndpoint)
         }
 
         private fun getField(jsonElement: JsonObject, name: String): JsonPrimitive {
