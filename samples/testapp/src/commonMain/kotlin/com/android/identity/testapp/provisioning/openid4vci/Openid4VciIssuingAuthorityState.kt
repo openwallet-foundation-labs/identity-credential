@@ -56,6 +56,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
 import org.multipaz.device.AssertionPoPKey
@@ -306,7 +307,32 @@ class Openid4VciIssuingAuthorityState(
 
         refreshAccessIfNeeded(documentId, document)
 
-        val cNonce = document.access!!.cNonce!!
+        // obtain c_nonce (serves as challenge for the device-bound key)
+        val access = document.access!!
+        val dpop = OpenidUtil.generateDPoP(
+            clientId,
+            metadata.nonceEndpoint,
+            access.dpopNonce,
+            null
+        )
+        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
+        val nonceResponse = httpClient.post(metadata.nonceEndpoint) {
+            headers {
+                append("DPoP", dpop)
+            }
+        }
+        if (nonceResponse.headers.contains("DPoP-Nonce")) {
+            access.dpopNonce = nonceResponse.headers["DPoP-Nonce"]!!
+            updateIssuerDocument(documentId, document, false)
+        }
+        if (nonceResponse.status != HttpStatusCode.OK) {
+            throw IssuingAuthorityException("Error getting a nonce")
+        }
+        Logger.i(TAG, "Got successful response for nonce request")
+        val responseText = nonceResponse.readBytes().decodeToString()
+        val cNonce = Json.parseToJsonElement(responseText)
+                .jsonObject["c_nonce"]!!.jsonPrimitive.content
+
         val configuration = if (document.secureAreaIdentifier!!.startsWith("CloudSecureArea?")) {
             CredentialConfiguration(
                 challenge = ByteString(cNonce.encodeToByteArray()),
@@ -467,10 +493,10 @@ class Openid4VciIssuingAuthorityState(
             }
             setBody(request.toString())
         }
-        access.cNonce = null  // used up
 
         if (credentialResponse.headers.contains("DPoP-Nonce")) {
             access.dpopNonce = credentialResponse.headers["DPoP-Nonce"]!!
+            updateIssuerDocument(documentId, document, false)
         }
 
         if (credentialResponse.status != HttpStatusCode.OK) {
@@ -671,7 +697,7 @@ class Openid4VciIssuingAuthorityState(
     ) {
         var access = document.access!!
         val nowPlusSlack = Clock.System.now() + 30.seconds
-        if (access.cNonce != null && nowPlusSlack < access.accessTokenExpiration) {
+        if (nowPlusSlack < access.accessTokenExpiration) {
             // No need to refresh.
             return
         }
@@ -683,7 +709,6 @@ class Openid4VciIssuingAuthorityState(
             refreshToken = refreshToken,
             accessToken = access.accessToken
         )
-        check(access.cNonce != null)
         document.access = access
         Logger.i(TAG, "Refreshed access tokens")
         if (access.refreshToken == null) {

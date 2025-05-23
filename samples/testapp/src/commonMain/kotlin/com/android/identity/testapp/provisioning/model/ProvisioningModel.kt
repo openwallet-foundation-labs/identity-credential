@@ -2,6 +2,7 @@ package com.android.identity.testapp.provisioning.model
 
 import com.android.identity.testapp.provisioning.backend.ProvisioningBackendProvider
 import com.android.identity.testapp.provisioning.backend.createOpenid4VciIssuingAuthorityByUri
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,6 +22,7 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.prompt.PromptModel
 import org.multipaz.provisioning.ApplicationSupport
+import org.multipaz.provisioning.CredentialConfiguration
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialRequest
 import org.multipaz.provisioning.RegistrationResponse
@@ -31,6 +33,7 @@ import org.multipaz.provisioning.evidence.EvidenceResponse
 import org.multipaz.provisioning.evidence.EvidenceResponseCredentialOffer
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.rpc.handler.RpcAuthClientSession
+import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.securearea.SecureAreaRepository
@@ -81,11 +84,17 @@ class ProvisioningModel(
     suspend fun run(): Document? {
         val offer = pendingOffer ?: return null
         pendingOffer = null
-        // Run in our own RPC session.
+        // Run in its own RPC session.
         coroutineContext = coreCoroutineContext + RpcAuthClientSession()
         return withContext(coroutineContext) {
             try {
                 runProvisioning(offer)
+            } catch(err: CancellationException) {
+                throw err
+            } catch(err: Throwable) {
+                Logger.e(TAG, "Error provisioning", err)
+                mutableState.emit(Error(err))
+                null
             } finally {
                 privateApplicationSupport = null
             }
@@ -160,66 +169,94 @@ class ProvisioningModel(
 
         val credentialCount = issuerConfiguration.numberOfCredentialsToRequest ?: 3
         val documentConfiguration = issuingAuthority.getDocumentConfiguration(issuerDocumentIdentifier)
+
+        var pendingCredentials: List<Credential>
+        var credentialConfiguration: CredentialConfiguration?
+
         // get the initial set of credentials
-        val credentialWorkflow = issuingAuthority.requestCredentials(issuerDocumentIdentifier)
-        val mdocConfiguration = documentConfiguration.mdocConfiguration
-        val (pendingCredentials, credentialConfiguration) = if (mdocConfiguration != null) {
-            val credentialConfiguration =
-                credentialWorkflow.getCredentialConfiguration(CredentialFormat.MDOC_MSO)
-            val (secureArea, createKeySettings) = secureAreaRepository.byConfiguration(
-                credentialConfiguration.secureAreaConfiguration,
-                credentialConfiguration.challenge
-            )
-            val pending = (0..<credentialCount).map {
-                MdocCredential.create(
-                    document = document,
-                    asReplacementForIdentifier = null,
-                    domain = CREDENTIAL_DOMAIN_MDOC,
-                    secureArea = secureArea,
-                    docType = mdocConfiguration.docType,
-                    createKeySettings = createKeySettings
+        if (documentConfiguration.sdJwtVcDocumentConfiguration?.keyBound == false) {
+            // keyless, no need for keys
+            pendingCredentials = listOf()
+            credentialConfiguration = null
+        } else {
+            // create keys in the selected secure area and send them to the issuer
+            val credentialWorkflow = issuingAuthority.requestCredentials(issuerDocumentIdentifier)
+            val mdocConfiguration = documentConfiguration.mdocConfiguration
+            val sdJwtVcDocumentConfiguration = documentConfiguration.sdJwtVcDocumentConfiguration
+            if (mdocConfiguration != null) {
+                credentialConfiguration =
+                    credentialWorkflow.getCredentialConfiguration(CredentialFormat.MDOC_MSO)
+                val (secureArea, createKeySettings) = secureAreaRepository.byConfiguration(
+                    credentialConfiguration.secureAreaConfiguration,
+                    credentialConfiguration.challenge
+                )
+                pendingCredentials = (0..<credentialCount).map {
+                    MdocCredential.create(
+                        document = document,
+                        asReplacementForIdentifier = null,
+                        domain = CREDENTIAL_DOMAIN_MDOC,
+                        secureArea = secureArea,
+                        docType = mdocConfiguration.docType,
+                        createKeySettings = createKeySettings
+                    )
+                }
+            } else if (sdJwtVcDocumentConfiguration != null) {
+                credentialConfiguration =
+                    credentialWorkflow.getCredentialConfiguration(CredentialFormat.SD_JWT_VC)
+                val (secureArea, createKeySettings) = secureAreaRepository.byConfiguration(
+                    credentialConfiguration.secureAreaConfiguration,
+                    credentialConfiguration.challenge
+                )
+                pendingCredentials = (0..<credentialCount).map {
+                    KeyBoundSdJwtVcCredential.create(
+                        document = document,
+                        asReplacementForIdentifier = null,
+                        domain = CREDENTIAL_DOMAIN_SD_JWT_VC,
+                        secureArea = secureArea,
+                        vct = sdJwtVcDocumentConfiguration.vct,
+                        createKeySettings = createKeySettings
+                    )
+                }
+            } else {
+                throw IllegalArgumentException("no supported configuration")
+            }
+
+            val credentialRequests = mutableListOf<CredentialRequest>()
+            for (pendingCredential in pendingCredentials) {
+                credentialRequests.add(
+                    CredentialRequest(
+                        (pendingCredential as SecureAreaBoundCredential).getAttestation()
+                    )
                 )
             }
-            Pair(pending, credentialConfiguration)
-        } else {
-            throw IllegalArgumentException("not yet supported")
-        }
-
-        val credentialRequests = mutableListOf<CredentialRequest>()
-        for (pendingCredential in pendingCredentials) {
-            credentialRequests.add(
-                CredentialRequest(
-                    (pendingCredential as SecureAreaBoundCredential).getAttestation()
-                )
-            )
-        }
-        val keysAssertion = if (credentialConfiguration.keyAssertionRequired) {
-            provisioningBackendProvider.makeDeviceAssertion { clientId ->
-                AssertionBindingKeys(
-                    publicKeys = credentialRequests.map { request ->
-                        request.secureAreaBoundKeyAttestation.publicKey
-                    },
-                    nonce = credentialConfiguration.challenge,
-                    clientId = clientId,
-                    keyStorage = listOf(),
-                    userAuthentication = listOf(),
-                    issuedAt = Clock.System.now()
-                )
+            val keysAssertion = if (credentialConfiguration.keyAssertionRequired) {
+                provisioningBackendProvider.makeDeviceAssertion { clientId ->
+                    AssertionBindingKeys(
+                        publicKeys = credentialRequests.map { request ->
+                            request.secureAreaBoundKeyAttestation.publicKey
+                        },
+                        nonce = credentialConfiguration.challenge,
+                        clientId = clientId,
+                        keyStorage = listOf(),
+                        userAuthentication = listOf(),
+                        issuedAt = Clock.System.now()
+                    )
+                }
+            } else {
+                null
             }
-        } else {
-            null
-        }
 
-        mutableState.emit(RequestingCredentials)
+            mutableState.emit(RequestingCredentials)
 
-        val challenges = credentialWorkflow.sendCredentials(
-            credentialRequests = credentialRequests,
-            keysAssertion = keysAssertion
-        )
-        if (challenges.isNotEmpty()) {
-            throw IllegalArgumentException("Not yet supported")
+            val challenges = credentialWorkflow.sendCredentials(
+                credentialRequests = credentialRequests,
+                keysAssertion = keysAssertion
+            )
+            if (challenges.isNotEmpty()) {
+                throw IllegalArgumentException("Proof of possession is not supported")
+            }
+            issuingAuthority.completeRequestCredentials(credentialWorkflow)
         }
-        issuingAuthority.completeRequestCredentials(credentialWorkflow)
 
         val documentState = issuingAuthority.getState(issuerDocumentIdentifier)
         if (documentState.numAvailableCredentials > 0) {
@@ -229,7 +266,7 @@ class ProvisioningModel(
                     KeylessSdJwtVcCredential.create(
                         document,
                         null,
-                        CREDENTIAL_DOMAIN_SD_JWT_VC,
+                        CREDENTIAL_DOMAIN_SD_JWT_VC_KEYLESS,
                         documentConfiguration.sdJwtVcDocumentConfiguration!!.vct
                     )
                 } else {
@@ -337,9 +374,14 @@ class ProvisioningModel(
         val credentials: List<Credential>
     ): State()
 
+    data class Error(
+        val err: Throwable
+    ): State()
+
     companion object {
-        const val CREDENTIAL_DOMAIN_MDOC = "mdoc/MSO"
-        const val CREDENTIAL_DOMAIN_SD_JWT_VC = "SD-JWT"
+        const val CREDENTIAL_DOMAIN_MDOC = "mdoc_user_auth"
+        const val CREDENTIAL_DOMAIN_SD_JWT_VC = "sdjwt_user_auth"
+        const val CREDENTIAL_DOMAIN_SD_JWT_VC_KEYLESS = "sdjwt_keyless"
 
         const val TAG = "ProvisioningModel"
     }
