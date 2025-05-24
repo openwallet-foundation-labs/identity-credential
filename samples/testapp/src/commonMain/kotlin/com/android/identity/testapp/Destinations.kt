@@ -27,6 +27,7 @@ import multipazproject.samples.testapp.generated.resources.credential_viewer_tit
 import multipazproject.samples.testapp.generated.resources.document_store_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.document_viewer_title
+import multipazproject.samples.testapp.generated.resources.face_detection_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
@@ -205,8 +206,13 @@ data object ScreenLockDestination : Destination {
 }
 
 data object CameraDestination : Destination {
-    override val route = "Camera"
+    override val route = "camera"
     override val title = Res.string.camera_title
+}
+
+data object FaceDetectionDestination : Destination {
+    override val route = "face_detection"
+    override val title = Res.string.face_detection_title
 }
 
 data object BarcodeScanningDestination : Destination {
@@ -243,5 +249,6 @@ val appDestinations = listOf(
     NotificationsDestination,
     ScreenLockDestination,
     CameraDestination,
+    FaceDetectionDestination,
     BarcodeScanningDestination
 )

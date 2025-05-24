@@ -376,7 +376,8 @@ private class CameraManager(
             cameraImage = cameraImage,
             width = imageWidth.toInt(),
             height = imageHeight.toInt(),
-            previewTransformation = previewTransformation
+            rotation = 0, //todo ?
+            previewTransformation = previewTransformation,
         )
 
         runBlocking {

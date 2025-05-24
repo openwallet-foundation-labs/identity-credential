@@ -21,6 +21,11 @@ data class CameraFrame(
     val height: Int,
 
     /**
+     * Image rotation in degrees (0 for portrait).
+     */
+    val rotation: Int,
+
+    /**
      * A matrix to convert from coordinates in [CameraImage] to coordinates in the preview.
      *
      * This can be used to render graphics on top of the preview, for example to put boxes
