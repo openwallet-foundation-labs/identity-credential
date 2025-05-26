@@ -52,6 +52,7 @@ enum class OID(
     X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION("1.3.6.1.4.1.11129.2.1.49", "Multipaz Key Attestation (X.509 extension)"),
 
     ISO_18013_5_MDL_DS("1.0.18013.5.1.2", "Mobile Driving Licence (mDL) Document Signer (DS)"),
+    ISO_18013_5_MDL_READER_AUTH("1.0.18013.5.1.6", "Mobile Driving Licence (mDL) Reader Auth"),
 
     ;
 

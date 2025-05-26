@@ -393,4 +393,58 @@ class MdocUtilTest {
             iacaCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!
         )
     }
+
+    @Test
+    fun testGenerateReaderAuthCertificate() {
+        val readerRootKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val rootCert = MdocUtil.generateReaderRootCertificate(
+            readerRootKey = readerRootKey,
+            subject = X500Name.fromName("CN=TEST Reader Root,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            crlUrl = "http://www.example.com/issuer/crl"
+        )
+        val readerKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val readerCert = MdocUtil.generateReaderCertificate(
+            readerRootCert = rootCert,
+            readerRootKey = readerRootKey,
+            readerKey = readerKey.publicKey,
+            subject = X500Name.fromName("CN=TEST Reader Certificate,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+        )
+        assertEquals(
+            "BIT STRING (7 bit) 0000011",
+            ASN1.print(ASN1.decode(rootCert.getExtensionValue(
+                OID.X509_EXTENSION_KEY_USAGE.oid)!!)!!).trim()
+        )
+        assertEquals(
+            """
+            SEQUENCE (2 elem)
+              BOOLEAN true
+              INTEGER 0
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(rootCert.getExtensionValue(
+                OID.X509_EXTENSION_BASIC_CONSTRAINTS.oid)!!)!!).trim()
+        )
+        assertContentEquals(
+            readerCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!,
+            rootCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!
+        )
+        assertEquals(
+            """
+            SEQUENCE (1 elem)
+              OBJECT IDENTIFIER 1.0.18013.5.1.6 Mobile Driving Licence (mDL) Reader Auth
+            """.trimIndent(),
+            ASN1.print(ASN1.decode(readerCert.getExtensionValue(
+                OID.X509_EXTENSION_EXTENDED_KEY_USAGE.oid)!!)!!).trim()
+        )
+        assertEquals(
+            "BIT STRING (1 bit) 1",
+            ASN1.print(ASN1.decode(readerCert.getExtensionValue(
+                OID.X509_EXTENSION_KEY_USAGE.oid)!!)!!).trim()
+        )
+    }
 }

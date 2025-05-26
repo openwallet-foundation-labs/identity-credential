@@ -450,6 +450,7 @@ object MdocUtil {
             validUntil = validUntil
         )
             .includeSubjectKeyIdentifier()
+            .includeAuthorityKeyIdentifierAsSubjectKeyIdentifier()
             // From 18013-5 table B.1: critical: Key certificate signature + CRL signature bits set
             .setKeyUsage(setOf(X509KeyUsage.CRL_SIGN, X509KeyUsage.KEY_CERT_SIGN))
             // From 18013-5 table B.1: critical, CA=true, pathLenConstraint=0
@@ -553,13 +554,14 @@ object MdocUtil {
     /**
      * Generates a self-signed reader root certificate.
      *
-     * Note that there are no requirements in ISO/IEC 18013-5:2021 for reader certificates.
+     * Note that there are no requirements in ISO/IEC 18013-5:2021 for reader root certificates.
      *
      * @param readerRootKey the private key.
      * @param subject the value to use for subject and issuer, e.g. "CN=Test Reader Root,C=ZZ".
      * @param serial the serial number to use for the certificate.
      * @param validFrom the point in time the certificate should be valid from.
      * @param validUntil the point in time the certificate should be valid until.
+     * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
      * @return a [X509Cert].
      */
     fun generateReaderRootCertificate(
@@ -568,6 +570,7 @@ object MdocUtil {
         serial: ASN1Integer,
         validFrom: Instant,
         validUntil: Instant,
+        crlUrl: String,
     ): X509Cert {
         return X509Cert.Builder(
             publicKey = readerRootKey.publicKey,
@@ -580,15 +583,33 @@ object MdocUtil {
             validUntil = validUntil
         )
             .includeSubjectKeyIdentifier()
+            .includeAuthorityKeyIdentifierAsSubjectKeyIdentifier()
             .setKeyUsage(setOf(X509KeyUsage.CRL_SIGN, X509KeyUsage.KEY_CERT_SIGN))
             .setBasicConstraints(true, 0)
+            // From 18013-5 table B.1: non-critical, The ‘reasons’ and ‘cRL Issuer’
+            // fields shall not be used.
+            .addExtension(
+                OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid,
+                false,
+                ASN1.encode(
+                    ASN1Sequence(listOf(
+                        ASN1Sequence(listOf(
+                            ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.CONSTRUCTED, 0, ASN1.encode(
+                                ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.CONSTRUCTED, 0, ASN1.encode(
+                                    ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.PRIMITIVE, 6,
+                                        crlUrl.encodeToByteArray()
+                                    )
+                                ))
+                            ))
+                        ))
+                    ))
+                )
+            )
             .build()
     }
 
     /**
-     * Generates a reader certificate.
-     *
-     * Note that there are no requirements in ISO/IEC 18013-5:2021 for reader certificates.
+     * Generates a reader auth certificate according to ISO/IEC 18013-5:2021 Annex B.1.7.
      *
      * @param readerRootCert the reader root certificate.
      * @param readerRootKey the private key for the reader root certificate.
@@ -621,6 +642,18 @@ object MdocUtil {
             .includeSubjectKeyIdentifier()
             .setAuthorityKeyIdentifierToCertificate(readerRootCert)
             .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
+            .addExtension(
+                OID.X509_EXTENSION_EXTENDED_KEY_USAGE.oid,
+                true,
+                ASN1.encode(ASN1Sequence(listOf(
+                    ASN1ObjectIdentifier(OID.ISO_18013_5_MDL_READER_AUTH.oid)
+                )))
+            )
+            .addExtension(
+                OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid,
+                false,
+                readerRootCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!
+            )
             .build()
     }
 
