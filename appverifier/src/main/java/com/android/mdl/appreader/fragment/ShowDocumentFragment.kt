@@ -206,6 +206,10 @@ class ShowDocumentFragment : Fragment() {
         sb.append("Session encryption curve: <b>" + transferManager.getMdocSessionEncryptionCurve() + "</b><br>")
         sb.append("<br>")
 
+        if (documents.isEmpty()) {
+            sb.append("<h3>No documents received.</h3>")
+        }
+
         for (doc in documents) {
             sb.append("<h3>Doctype: <font color=\"$primaryColor\">${doc.docType}</font></h3>")
             val cc = doc.issuerCertificateChain.certificates
