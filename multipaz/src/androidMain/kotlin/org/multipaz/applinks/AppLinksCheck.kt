@@ -12,12 +12,15 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.util.Logger
@@ -120,60 +123,68 @@ object AppLinksCheck {
                         byteCode.toInt(16).toByte()
                     }.toByteArray())
                 }.toSet()
-                var digestsValid = false
-                if (requireAllSigners) {
-                    digestsValid = serverDigests.containsAll(digests)
+                val digestsValid =  if (requireAllSigners) {
+                    serverDigests.containsAll(digests)
                 } else {
-                    for (digest in digests) {
-                        if (serverDigests.contains(digest)) {
-                            digestsValid = true
-                            break
-                        }
-                    }
+                    serverDigests == digests
                 }
                 if (digestsValid) {
                     Logger.i(TAG, "Server app link setup is validated")
                     return true
-                } else {
-                    Logger.e(TAG, "Server app link setup appears to be invalid")
-                    break
                 }
             } catch (err: Exception) {
                 Logger.e(TAG, "Parsing error", err)
                 continue
             }
         }
-        Logger.e(TAG, "Server app link setup could not be verified")
-        printSampleAssetLinksFile(assetLinksUrl, packageName,
+        Logger.e(TAG, "Server app link setup could not be verified. This happens when you")
+        Logger.e(TAG, "build the apk yourself instead of installing it from apps.multipaz.org")
+        if (appLinkServer == "https://apps.multipaz.org") {
+            Logger.e(TAG, "There are two ways to fix this issue. If you are a member of Multipaz")
+            Logger.e(TAG, "team, you should create a PR adding your app signing key digest:")
+            Logger.e(TAG, digestToString(digests.first()))
+            Logger.e(TAG, "as a separate line to this file:")
+            Logger.e(
+                TAG,
+                "multipaz-backend-server/src/main/resources/resources/android_trusted_app_signatures.txt"
+            )
+            Logger.e(TAG, "The other way is to use your own HTTPS server. Replace apps.multipaz.org")
+            Logger.e(TAG, "where it is referenced in the code with your server URL (in particular")
+            Logger.e(TAG, "in AndroidManifest.xml), and set up assetlinks.json as instructed.")
+        }
+        printSampleAssetLinksFile(packageName,
             if (requireAllSigners) digests else setOf(digests.first()))
         return false
     }
 
     private fun printSampleAssetLinksFile(
-        url: String,
         packageName: String,
         digests: Set<ByteString>
     ) {
         val jsonData = buildJsonArray {
-            add(buildJsonObject {
-                put("relation", buildJsonArray {
+            addJsonObject {
+                putJsonArray("relation") {
                     add("delegate_permission/common.handle_all_urls")
-                })
-                put("target", buildJsonObject {
+                }
+                putJsonObject("target") {
                     put("namespace", "android_app")
                     put("package_name", packageName)
-                    put("sha256_cert_fingerprints", buildJsonArray {
+                    putJsonArray("sha256_cert_fingerprints") {
                         for (digest in digests) {
-                            add(digest.toByteArray().joinToString(":") { byte ->
-                                (byte.toInt() and 0xFF).toString(16).padStart(2, '0')
-                            }.uppercase(Locale.ROOT))
+                            add(digestToString((digest)))
                         }
-                    })
-                })
-            })
+                    }
+                }
+            }
         }
         val json = Json { prettyPrint = true }
         val jsonText = json.encodeToString(JsonArray.serializer(), jsonData)
-        Logger.e(TAG, "Sample file to upload to (or merge into) '$url':\n$jsonText")
+        Logger.e(TAG, "Sample file to upload to (or merge into) '.well-known/assetlinks.json':")
+        Logger.e(TAG, jsonText)
     }
+
+    private fun digestToString(digest: ByteString): String =
+        digest.toByteArray().joinToString(":") { byte ->
+            (byte.toInt() and 0xFF).toString(16).padStart(2, '0')
+        }.uppercase(Locale.ROOT)
 }
