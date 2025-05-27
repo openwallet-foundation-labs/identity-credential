@@ -281,7 +281,7 @@ class VerifierServlet : BaseHttpServlet() {
                     serial = ASN1Integer(1L),
                     validFrom = validFrom,
                     validUntil = validUntil,
-                    crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential"
+                    crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
                 )
 
                 return KeyMaterial(
@@ -437,7 +437,7 @@ class VerifierServlet : BaseHttpServlet() {
             serial = ASN1Integer(1L),
             validFrom = certsValidFrom,
             validUntil = certsValidUntil,
-            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential"
+            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
         )
 
         val readerKeyCertificate = X509Cert.Builder(
