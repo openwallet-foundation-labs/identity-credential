@@ -339,6 +339,7 @@ class App private constructor(val promptModel: PromptModel) {
             serial = ASN1Integer.fromRandom(numBits = 128),
             validFrom = certsValidFrom,
             validUntil = certsValidUntil,
+            crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
         )
     }
 
