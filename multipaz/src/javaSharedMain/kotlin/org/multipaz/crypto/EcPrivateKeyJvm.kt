@@ -5,12 +5,12 @@ import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier
 import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.interfaces.ECPrivateKey
 import org.bouncycastle.jce.spec.ECPrivateKeySpec
 import org.bouncycastle.util.BigIntegers
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.interfaces.ECPrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
 
 fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKey =
@@ -24,7 +24,7 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
         EcCurve.BRAINPOOLP512R1 -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyDoubleCoordinate
             val priv = this as ECPrivateKey
-            EcPrivateKeyDoubleCoordinate(curve, priv.d.toByteArray(), pub.x, pub.y)
+            EcPrivateKeyDoubleCoordinate(curve, priv.s.toByteArray(), pub.x, pub.y)
         }
 
         EcCurve.ED25519,
