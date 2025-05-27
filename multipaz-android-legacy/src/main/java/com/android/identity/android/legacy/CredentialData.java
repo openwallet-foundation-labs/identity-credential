@@ -1601,15 +1601,7 @@ class CredentialData {
             // We don't care about the cipherText, only whether the key is unlocked.
         } catch (UserNotAuthenticatedException e) {
             return false;
-        } catch (NoSuchPaddingException
-                | BadPaddingException
-                | NoSuchAlgorithmException
-                | CertificateException
-                | InvalidKeyException
-                | IOException
-                | IllegalBlockSizeException
-                | UnrecoverableEntryException
-                | KeyStoreException e) {
+        } catch (Throwable e) {
             // If this fails, it probably means authentication is needed...
             Log.w(TAG, "Unexpected exception `" + e.getMessage()
                     + "`, assuming user not authenticated");
