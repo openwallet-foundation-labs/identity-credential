@@ -111,6 +111,7 @@ kotlin {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
+                implementation(libs.ktor.client.java)
             }
         }
 

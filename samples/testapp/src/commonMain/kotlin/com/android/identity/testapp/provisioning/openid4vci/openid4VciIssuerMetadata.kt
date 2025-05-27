@@ -6,6 +6,9 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
+import io.ktor.http.authority
+import io.ktor.http.protocolWithAuthority
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -19,6 +22,7 @@ import kotlinx.serialization.json.jsonPrimitive
 // from .well-known/openid-credential-issuer
 internal data class Openid4VciIssuerMetadata(
     val credentialIssuer: String,
+    val nonceEndpoint: String,
     val credentialEndpoint: String,
     val display: List<Openid4VciIssuerDisplay>,
     val credentialConfigurations: Map<String, Openid4VciCredentialConfiguration>,
@@ -32,7 +36,8 @@ internal data class Openid4VciIssuerMetadata(
                 val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
 
                 // Fetch issuer metadata
-                val issuerMetadataUrl = "$issuerUrl/.well-known/openid-credential-issuer"
+
+                val issuerMetadataUrl = wellKnown(issuerUrl, "openid-credential-issuer")
                 val issuerMetadataRequest = httpClient.get(issuerMetadataUrl) {}
                 if (issuerMetadataRequest.status != HttpStatusCode.OK) {
                     throw IllegalStateException("Invalid issuer, no $issuerMetadataUrl")
@@ -47,7 +52,7 @@ internal data class Openid4VciIssuerMetadata(
                 val authorizationMetadataList = mutableListOf<Openid4VciAuthorizationMetadata>()
                 for (authorizationServerUrl in authorizationServerUrls) {
                     val authorizationMetadataUrl =
-                        "$authorizationServerUrl/.well-known/oauth-authorization-server"
+                        wellKnown(authorizationServerUrl, "oauth-authorization-server")
                     val authorizationMetadataRequest = httpClient.get(authorizationMetadataUrl) {}
                     if (authorizationMetadataRequest.status != HttpStatusCode.OK) {
                         if (authorizationServerUrl != issuerUrl) {
@@ -67,6 +72,7 @@ internal data class Openid4VciIssuerMetadata(
                 }
                 Openid4VciIssuerMetadata(
                     credentialIssuer = credentialMetadata["credential_issuer"]?.jsonPrimitive?.content ?: issuerUrl,
+                    nonceEndpoint = credentialMetadata["nonce_endpoint"]!!.jsonPrimitive.content,
                     credentialEndpoint = credentialMetadata["credential_endpoint"]!!.jsonPrimitive.content,
                     display = extractDisplay(credentialMetadata["display"]),
                     authorizationServerList = authorizationMetadataList.toList(),
@@ -94,6 +100,14 @@ internal data class Openid4VciIssuerMetadata(
                         }
                 )
             }
+        }
+
+        // ".well-known/$name" file for the given url
+        private fun wellKnown(url: String, name: String): String {
+            val parsedUrl = Url(url)
+            val head = parsedUrl.protocolWithAuthority
+            val path = parsedUrl.encodedPath
+            return "$head/.well-known/$name$path"
         }
 
         private fun preferred(available: JsonArray?, supported: List<String>): String? {

@@ -34,6 +34,7 @@ compose-material-icons-extended = "1.6.7"
 androidx-navigation = "2.7.7"
 code-scanner = "2.3.2"
 ktor = "2.3.13"
+logback = "1.5.18"
 javax-servlet-api = "4.0.1"
 androidx-lifecycle = "2.2.0"
 androidx-lifecycle-ktx = "2.8.2"
@@ -116,6 +117,9 @@ ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-double-receive = { module = "io.ktor:ktor-server-double-receive", version.ref = "ktor" }
+ktor-server-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref="logback" }
 androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "androidx-lifecycle-ktx" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle-ktx" }

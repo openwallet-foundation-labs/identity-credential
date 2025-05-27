@@ -43,6 +43,7 @@ class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
     constructor(document: Document) : super(document)
 
     override suspend fun deserialize(dataItem: DataItem) {
+        super.deserialize(dataItem)
         vct = dataItem["vct"].asTstr
     }
 
