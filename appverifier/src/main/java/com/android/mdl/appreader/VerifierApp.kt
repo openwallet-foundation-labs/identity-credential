@@ -24,6 +24,7 @@ import java.security.Security
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import kotlinx.io.files.Path
+import java.io.File
 
 class VerifierApp : Application() {
 
@@ -37,7 +38,9 @@ class VerifierApp : Application() {
     }
 
     private val certificateStorageEngine by lazy {
-        GenericStorageEngine(Path(getDir("Certificates", MODE_PRIVATE).name))
+        val certDir = getDir("Certificates", MODE_PRIVATE)
+        val certFile = "imported_certs"
+        GenericStorageEngine(Path(File(certDir, certFile).absolutePath))
     }
 
     private val documentTypeRepository by lazy {

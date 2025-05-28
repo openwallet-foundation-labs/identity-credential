@@ -56,7 +56,7 @@ class TrustManager {
     /**
      * Remove a [TrustPoint] from the [TrustManager].
      */
-    fun removeTrustPoint(trustPoint: TrustPoint) = {
+    fun removeTrustPoint(trustPoint: TrustPoint) {
         check(trustPoint.certificate.subjectKeyIdentifier != null)
         certificates.remove(trustPoint.certificate.subjectKeyIdentifier!!.toHex())
     }
