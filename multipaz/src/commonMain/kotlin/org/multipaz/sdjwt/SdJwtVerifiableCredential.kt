@@ -1,6 +1,5 @@
 package org.multipaz.sdjwt
 
-import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
@@ -25,7 +24,7 @@ import kotlinx.serialization.json.JsonElement
  * <header>.<body>.<signature>~<Disclosure 1>~<Disclosure 2>~...~<Disclosure N>~
  *
  * The header is the base64-encoding of a JSON structure that contains the
- * typ: vc+sd-jwt entry, and an alg entry that specifies how the signature was generated.
+ * typ: dc+sd-jwt entry, and an alg entry that specifies how the signature was generated.
  *
  * It is separated from the body by a period. The body is the base64-encoding of a JSON
  * structure that includes the undisclosed (hashed) identity attributes, along with

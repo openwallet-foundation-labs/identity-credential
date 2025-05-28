@@ -38,12 +38,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.openid4vci.credential.Openid4VciFormat
 import org.multipaz.openid4vci.util.IssuanceState
@@ -87,7 +89,11 @@ suspend fun credential(call: ApplicationCall) {
         val credential = factory.makeCredential(state, null)
         call.respondText(
             text = buildJsonObject {
-                put("credential", credential)
+                putJsonArray("credentials") {
+                    addJsonObject {
+                        put("credential", credential)
+                    }
+                }
             }.toString(),
             contentType = ContentType.Application.Json
         )
@@ -179,19 +185,16 @@ suspend fun credential(call: ApplicationCall) {
 
     val credentials = authenticationKeys.map { key -> factory.makeCredential(state, key) }
 
-    val result = if (singleProof && credentials.size == 1) {
+    val result =
         buildJsonObject {
-            put("credential", credentials[0])
-        }
-    } else {
-        buildJsonObject {
-            put("credentials", buildJsonArray {
+            putJsonArray("credentials") {
                 for (credential in credentials) {
-                    add(JsonPrimitive(credential))
+                    addJsonObject {
+                        put("credential", credential)
+                    }
                 }
-            })
+            }
         }
-    }
     call.respondText(
         text = Json.encodeToString(result),
         contentType = ContentType.Application.Json

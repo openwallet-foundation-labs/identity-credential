@@ -25,6 +25,7 @@ import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.CredentialConfiguration
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialRequest
+import org.multipaz.provisioning.KeyPossessionProof
 import org.multipaz.provisioning.RegistrationResponse
 import org.multipaz.provisioning.evidence.EvidenceRequest
 import org.multipaz.provisioning.evidence.EvidenceRequestCredentialOffer
@@ -253,7 +254,19 @@ class ProvisioningModel(
                 keysAssertion = keysAssertion
             )
             if (challenges.isNotEmpty()) {
-                throw IllegalArgumentException("Proof of possession is not supported")
+                if (challenges.size != pendingCredentials.size) {
+                    throw IllegalStateException("Unexpected number of possession challenges")
+                }
+                val possessionProofs = mutableListOf<KeyPossessionProof>()
+                for ((credential, challenge) in pendingCredentials.zip(challenges)) {
+                    credential as SecureAreaBoundCredential
+                    val signature = credential.secureArea.sign(
+                        alias = credential.alias,
+                        dataToSign = challenge.messageToSign.toByteArray()
+                    )
+                    possessionProofs.add(KeyPossessionProof(ByteString(signature.toCoseEncoded())))
+                }
+                credentialWorkflow.sendPossessionProofs(possessionProofs)
             }
             issuingAuthority.completeRequestCredentials(credentialWorkflow)
         }

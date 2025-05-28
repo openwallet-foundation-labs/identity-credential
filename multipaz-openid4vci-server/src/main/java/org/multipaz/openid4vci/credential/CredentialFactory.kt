@@ -57,7 +57,7 @@ internal sealed class Openid4VciFormat {
     companion object {
         fun fromJson(json: JsonObject): Openid4VciFormat {
             return when (val format = json["format"]?.jsonPrimitive?.content) {
-                "vc+sd-jwt" -> Openid4VciFormatSdJwt(json["vct"]!!.jsonPrimitive.content)
+                "dc+sd-jwt" -> Openid4VciFormatSdJwt(json["vct"]!!.jsonPrimitive.content)
                 "mso_mdoc" -> Openid4VciFormatMdoc(json["doctype"]!!.jsonPrimitive.content)
                 else -> throw InvalidRequestException("Unsupported format '$format'")
             }
@@ -72,5 +72,5 @@ internal data class Openid4VciFormatMdoc(val docType: String) : Openid4VciFormat
 internal val openId4VciFormatMdl = Openid4VciFormatMdoc(DrivingLicense.MDL_DOCTYPE)
 
 internal data class Openid4VciFormatSdJwt(val vct: String) : Openid4VciFormat() {
-    override val id: String get() = "vc+sd-jwt"
+    override val id: String get() = "dc+sd-jwt"
 }
