@@ -43,11 +43,10 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Url
 import io.ktor.http.contentType
-import io.ktor.http.protocolWithAuthority
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
@@ -56,11 +55,12 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import org.multipaz.crypto.Algorithm
-import org.multipaz.device.AssertionPoPKey
-import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.provisioning.Proofing
 import org.multipaz.provisioning.Registration
 import org.multipaz.provisioning.RequestCredentials
@@ -400,7 +400,7 @@ class Openid4VciIssuingAuthorityState(
 
             check(credentials.size == publicKeys.size)
             document.credentials.addAll(credentials.zip(publicKeys).map {
-                val credential = it.first.jsonPrimitive.content
+                val credential = it.first.jsonObject["credential"]!!.jsonPrimitive.content
                 val publicKey = it.second
                 when (credentialConfiguration.format) {
                     is Openid4VciFormatSdJwt -> {
@@ -455,7 +455,7 @@ class Openid4VciIssuingAuthorityState(
             issuerDocument
         )
         check(credentials.size == 1)
-        val credential = credentials[0].jsonPrimitive.content
+        val credential = credentials[0].jsonObject["credential"]!!.jsonPrimitive.content
         val sdJwt = SdJwtVerifiableCredential.fromString(credential)
         val jwtBody = JwtBody.fromString(sdJwt.body)
         issuerDocument.credentials.add(
@@ -476,27 +476,40 @@ class Openid4VciIssuingAuthorityState(
         document: Openid4VciIssuerDocument
     ): JsonArray {
         val access = document.access!!
-        val dpop = OpenidUtil.generateDPoP(
-            clientId,
-            metadata.credentialEndpoint,
-            access.dpopNonce,
-            access.accessToken
-        )
-        Logger.e(TAG,"Credential request: $request")
-
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
-        val credentialResponse = httpClient.post(metadata.credentialEndpoint) {
-            headers {
-                append("Authorization", "DPoP ${access.accessToken}")
-                append("DPoP", dpop)
-                append("Content-Type", "application/json")
-            }
-            setBody(request.toString())
-        }
 
-        if (credentialResponse.headers.contains("DPoP-Nonce")) {
-            access.dpopNonce = credentialResponse.headers["DPoP-Nonce"]!!
-            updateIssuerDocument(documentId, document, false)
+        // without a nonce we may need to retry
+        var retry = access.dpopNonce == null
+        var credentialResponse: HttpResponse
+        while (true) {
+            val dpop = OpenidUtil.generateDPoP(
+                clientId,
+                metadata.credentialEndpoint,
+                access.dpopNonce,
+                access.accessToken
+            )
+            Logger.e(TAG, "Credential request: $request")
+
+            credentialResponse = httpClient.post(metadata.credentialEndpoint) {
+                headers {
+                    append("Authorization", "DPoP ${access.accessToken}")
+                    append("DPoP", dpop)
+                    append("Content-Type", "application/json")
+                }
+                setBody(request.toString())
+            }
+            if (credentialResponse.headers.contains("DPoP-Nonce")) {
+                access.dpopNonce = credentialResponse.headers["DPoP-Nonce"]!!
+                if (retry) {
+                    retry = false // don't retry more than once
+                    if (credentialResponse.status != HttpStatusCode.OK) {
+                        Logger.e(TAG, "Retry with a fresh DPoP nonce")
+                        continue  // retry with the nonce
+                    }
+                }
+                updateIssuerDocument(documentId, document, false)
+            }
+            break
         }
 
         if (credentialResponse.status != HttpStatusCode.OK) {
@@ -508,17 +521,14 @@ class Openid4VciIssuingAuthorityState(
             document.state = DocumentCondition.DELETION_REQUESTED
             updateIssuerDocument(documentId, document, false)
 
-            throw IssuingAuthorityException("Error getting a credential issued")
+            throw IssuingAuthorityException(
+                "Error getting a credential issued: ${credentialResponse.status} $errResponseText")
         }
         Logger.i(TAG, "Got successful response for credential request")
         val responseText = credentialResponse.readBytes().decodeToString()
 
         val response = Json.parseToJsonElement(responseText) as JsonObject
-        return if (response.contains("credential")) {
-            JsonArray(listOf(response["credential"]!!))
-        } else {
-            response["credentials"] as JsonArray
-        }
+        return response["credentials"]!!.jsonArray
     }
 
     private fun createRequestUsingProofOfPossession(
@@ -533,17 +543,19 @@ class Openid4VciIssuingAuthorityState(
         }
 
         val request = buildJsonObject {
+            put("credential_configuration_id", configuration.id)
+            // this is obsolete:
+            //putFormat(configuration.format!!)
             if (proofs.size == 1) {
-                put("proof", buildJsonObject {
+                putJsonObject("proof") {
                     put("jwt", proofs[0])
-                    put("proof_type", JsonPrimitive("jwt"))
-                })
+                    put("proof_type", "jwt")
+                }
             } else {
-                put("proofs", buildJsonObject {
+                putJsonObject("proofs") {
                     put("jwt", JsonArray(proofs))
-                })
+                }
             }
-            putFormat(configuration.format!!)
         }
 
         return Pair(request, publicKeys)
@@ -707,7 +719,8 @@ class Openid4VciIssuingAuthorityState(
             clientId = clientId,
             tokenUrl = access.tokenEndpoint,
             refreshToken = refreshToken,
-            accessToken = access.accessToken
+            accessToken = access.accessToken,
+            landingUrl = null  // TODO: do we need to remember it for refresh?
         )
         document.access = access
         Logger.i(TAG, "Refreshed access tokens")

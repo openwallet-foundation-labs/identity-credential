@@ -7,7 +7,6 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
-import io.ktor.http.authority
 import io.ktor.http.protocolWithAuthority
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -36,8 +35,7 @@ internal data class Openid4VciIssuerMetadata(
                 val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
 
                 // Fetch issuer metadata
-
-                val issuerMetadataUrl = wellKnown(issuerUrl, "openid-credential-issuer")
+                val issuerMetadataUrl = wellKnownVci(issuerUrl, "openid-credential-issuer")
                 val issuerMetadataRequest = httpClient.get(issuerMetadataUrl) {}
                 if (issuerMetadataRequest.status != HttpStatusCode.OK) {
                     throw IllegalStateException("Invalid issuer, no $issuerMetadataUrl")
@@ -45,14 +43,14 @@ internal data class Openid4VciIssuerMetadata(
                 val credentialMetadataText = issuerMetadataRequest.readBytes().decodeToString()
                 val credentialMetadata = Json.parseToJsonElement(credentialMetadataText).jsonObject
 
-                // Fetch authorization metadata
+                // Fetch oauth metadata
                 val authorizationServers = credentialMetadata["authorization_servers"]?.jsonArray
                 val authorizationServerUrls =
                     authorizationServers?.map { it.jsonPrimitive.content } ?: listOf(issuerUrl)
                 val authorizationMetadataList = mutableListOf<Openid4VciAuthorizationMetadata>()
                 for (authorizationServerUrl in authorizationServerUrls) {
                     val authorizationMetadataUrl =
-                        wellKnown(authorizationServerUrl, "oauth-authorization-server")
+                        wellKnownOauth(authorizationServerUrl, "oauth-authorization-server")
                     val authorizationMetadataRequest = httpClient.get(authorizationMetadataUrl) {}
                     if (authorizationMetadataRequest.status != HttpStatusCode.OK) {
                         if (authorizationServerUrl != issuerUrl) {
@@ -79,9 +77,6 @@ internal data class Openid4VciIssuerMetadata(
                     credentialConfigurations =
                         credentialMetadata["credential_configurations_supported"]!!.jsonObject.mapValues {
                             val obj = it.value.jsonObject
-                            val credentialSigningAlgorithms =
-                                obj["credential_signing_alg_values_supported"]
-                                    ?: obj["cryptographic_suites_supported"]!!  // Deprecated name
                             Openid4VciCredentialConfiguration(
                                 id = it.key,
                                 scope = obj["scope"]?.jsonPrimitive?.content,
@@ -90,7 +85,8 @@ internal data class Openid4VciIssuerMetadata(
                                     SUPPORTED_BINDING_METHODS
                                 ),
                                 credentialSigningAlgorithm = preferred(
-                                    credentialSigningAlgorithms.jsonArray,
+                                    obj["credential_signing_alg_values_supported"]?.jsonArray
+                                        ?: obj["cryptographic_signing_alg_values_supported"]?.jsonArray,  // TODO: old name, to remove
                                     SUPPORTED_SIGNATURE_ALGORITHMS
                                 ),
                                 proofType = extractProofType(obj["proof_types_supported"]?.jsonObject),
@@ -102,8 +98,13 @@ internal data class Openid4VciIssuerMetadata(
             }
         }
 
-        // ".well-known/$name" file for the given url
-        private fun wellKnown(url: String, name: String): String {
+        // ".well-known/$name" file for the given url according to OpenId4VCI spec
+        private fun wellKnownVci(url: String, name: String): String {
+            return "$url/.well-known/$name"
+        }
+
+        // ".well-known/$name" file for the given url according to RFC8414
+        private fun wellKnownOauth(url: String, name: String): String {
             val parsedUrl = Url(url)
             val head = parsedUrl.protocolWithAuthority
             val path = parsedUrl.encodedPath
@@ -111,9 +112,6 @@ internal data class Openid4VciIssuerMetadata(
         }
 
         private fun preferred(available: JsonArray?, supported: List<String>): String? {
-            if (available == null) {
-                return "none"
-            }
             val availableSet = available?.map { it.jsonPrimitive.content }?.toSet() ?: return null
             return supported.firstOrNull { availableSet.contains(it) }
         }
@@ -140,7 +138,7 @@ internal data class Openid4VciIssuerMetadata(
             val responseType = preferred(
                 jsonObject["response_types_supported"]?.jsonArray,
                 SUPPORTED_RESPONSE_TYPES
-            ) ?: return null
+            ) ?: "code" //throw IllegalArgumentException("'response_types_supported' is required in authorization server metadata")
             val codeChallengeMethod = preferred(
                 jsonObject["code_challenge_methods_supported"]?.jsonArray,
                 SUPPORTED_CODE_CHALLENGE_METHODS
@@ -198,7 +196,7 @@ internal data class Openid4VciIssuerMetadata(
 
         private fun extractFormat(jsonObject: JsonObject): Openid4VciFormat? {
             return when (jsonObject["format"]?.jsonPrimitive?.content) {
-                "vc+sd-jwt" -> Openid4VciFormatSdJwt(jsonObject["vct"]!!.jsonPrimitive.content)
+                "dc+sd-jwt" -> Openid4VciFormatSdJwt(jsonObject["vct"]!!.jsonPrimitive.content)
                 "mso_mdoc" -> Openid4VciFormatMdoc(jsonObject["doctype"]!!.jsonPrimitive.content)
                 else -> null
             }
@@ -241,8 +239,8 @@ internal data class Openid4VciCredentialConfiguration(
     val format: Openid4VciFormat?,
     val display: List<Openid4VciIssuerDisplay>
 ) {
-    val isSupported: Boolean get() = cryptographicBindingMethod != null &&
-            credentialSigningAlgorithm != null && proofType != null && format != null
+    val isSupported: Boolean get() = credentialSigningAlgorithm != null &&
+            proofType != null && format != null
 }
 
 internal sealed class Openid4VciFormat {
@@ -254,7 +252,7 @@ internal data class Openid4VciFormatMdoc(val docType: String) : Openid4VciFormat
 }
 
 internal data class Openid4VciFormatSdJwt(val vct: String) : Openid4VciFormat() {
-    override val id: String get() = "vc+sd-jwt"
+    override val id: String get() = "dc+sd-jwt"
 }
 
 internal sealed class Openid4VciProofType {

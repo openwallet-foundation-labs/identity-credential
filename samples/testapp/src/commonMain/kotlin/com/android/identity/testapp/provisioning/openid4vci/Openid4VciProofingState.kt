@@ -47,8 +47,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.device.AssertionPoPKey
-import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferAuthorizationCode
 import org.multipaz.rpc.backend.RpcAuthBackendDelegate
@@ -73,7 +71,8 @@ class Openid4VciProofingState(
     var notificationPermissonRequested: Boolean = false,
     var openid4VpRequest: String? = null,
     var txCode: String? = null,
-    var credentialOffer: Openid4VciCredentialOffer? = null
+    var credentialOffer: Openid4VciCredentialOffer? = null,
+    var landingUrl: String? = null
 ): Proofing, RpcAuthInspector by RpcAuthBackendDelegate {
     companion object {
         private const val TAG = "Openid4VciProofingState"
@@ -89,8 +88,16 @@ class Openid4VciProofingState(
             if (credentialOffer == null) {
                 listOf(EvidenceRequestCredentialOffer())
             } else if (!tosAcknowleged) {
-                val issuingAuthorityName = metadata.display[0].text
-                val documentName = configuration.display[0].text
+                val issuingAuthorityName = if (metadata.display.isEmpty()) {
+                    "Untitled Issuer"
+                } else {
+                    metadata.display[0].text
+                }
+                val documentName = if (configuration.display.isEmpty()) {
+                    "Untitled Credential"
+                } else {
+                    configuration.display[0].text
+                }
                 val message = BackendEnvironment.getInterface(Resources::class)!!
                     .getStringResource("generic/tos.html")!!
                     .replace("\$ISSUER_NAME", issuingAuthorityName)
@@ -262,7 +269,8 @@ class Openid4VciProofingState(
             clientId = clientId,
             authorizationCode = authCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
-            dpopNonce = dpopNonce
+            dpopNonce = dpopNonce,
+            landingUrl = landingUrl
         )
         Logger.i(TAG, "Token request: success")
     }
@@ -275,7 +283,8 @@ class Openid4VciProofingState(
             preauthorizedCode = (credentialOffer as Openid4VciCredentialOfferPreauthorizedCode).preauthorizedCode,
             txCode = txCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
-            dpopNonce = null
+            dpopNonce = null,
+            landingUrl = landingUrl
         )
         Logger.i(TAG, "Token request: success")
     }
@@ -379,7 +388,7 @@ class Openid4VciProofingState(
         // NB: applicationSupport will only be non-null when running this code locally in the
         // Android Wallet app.
         val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
-        val landingUrl = applicationSupport.createLandingUrl()
+        landingUrl = applicationSupport.createLandingUrl()
 
         val clientAttestation = OpenidUtil.createEphemeralWalletAttestation(
             clientId = clientId,
@@ -399,7 +408,7 @@ class Openid4VciProofingState(
             }
             add("response_type", "code")
             add("code_challenge_method", "S256")
-            add("redirect_uri", landingUrl)
+            add("redirect_uri", landingUrl!!)
             add("code_challenge", codeChallenge)
             add("client_id", clientId)
         }
@@ -435,7 +444,7 @@ class Openid4VciProofingState(
             requestUri = requestUri?.jsonPrimitive?.content,
             authSession = authSession?.jsonPrimitive?.content,
             pkceCodeVerifier = pkceCodeVerifier,
-            landingUrl = landingUrl,
+            landingUrl = landingUrl!!,
             openid4VpPresentation = presentation?.jsonPrimitive?.content
         )
     }

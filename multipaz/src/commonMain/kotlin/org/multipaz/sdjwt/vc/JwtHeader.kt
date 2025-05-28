@@ -10,16 +10,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.sdjwt.util.getJsonArray
 import org.multipaz.sdjwt.util.getJsonArrayOrNull
-import org.multipaz.util.fromBase64Url
 import kotlin.io.encoding.Base64
-import kotlin.io.encoding.Base64.PaddingOption
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * Header for an (issuer-signed) JWT that is to be used in a SD-JWT VC.
- * It specifies the type 'vc+sd-jwt' and the algorithm used by the
+ * It specifies the type 'dc+sd-jwt' and the algorithm used by the
  * issuer to sign the JWT payload (consisting of the base64-url-encoded
  * header, as defined here, a period, and the base64-url-encoded body, as
  * defined in [JwtBody]).
@@ -48,7 +45,7 @@ class JwtHeader(val algorithm: Algorithm, val kid: String?, val x5c: X509CertCha
 
     companion object {
 
-        const val SD_JWT_VC_TYPE = "vc+sd-jwt"
+        const val SD_JWT_VC_TYPE = "dc+sd-jwt"
 
         fun fromString(input: String): JwtHeader {
             val jsonObj = parse(input)

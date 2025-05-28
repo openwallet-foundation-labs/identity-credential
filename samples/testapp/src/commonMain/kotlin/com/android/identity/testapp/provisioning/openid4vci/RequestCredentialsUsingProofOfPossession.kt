@@ -13,8 +13,9 @@ import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.rpc.backend.RpcAuthBackendDelegate
 import org.multipaz.rpc.handler.RpcAuthContext
 import org.multipaz.rpc.handler.RpcAuthInspector
@@ -56,17 +57,17 @@ class RequestCredentialsUsingProofOfPossession(
         )
         val nonce = JsonPrimitive(credentialConfiguration.challenge.decodeToString())
         val requests = credentialRequests.map { request ->
-            val header = JsonObject(mapOf(
-                "typ" to JsonPrimitive("openid4vci-proof+jwt"),
-                "alg" to JsonPrimitive("ES256"),
-                "jwk" to request.secureAreaBoundKeyAttestation.publicKey.toJson(null)
-            )).toString().encodeToByteArray().toBase64Url()
-            val body = JsonObject(mapOf(
-                "iss" to JsonPrimitive(issuanceClientId),
-                "aud" to JsonPrimitive(credentialIssuerUri),
-                "iat" to JsonPrimitive(Clock.System.now().epochSeconds),
-                "nonce" to nonce
-            )).toString().encodeToByteArray().toBase64Url()
+            val header = buildJsonObject {
+                put("typ", "openid4vci-proof+jwt")
+                put("alg", "ES256")
+                put("jwk", request.secureAreaBoundKeyAttestation.publicKey.toJson(null))
+            }.toString().encodeToByteArray().toBase64Url()
+            val body = buildJsonObject {
+                put("iss", clientId)
+                put("aud", credentialIssuerUri)
+                put("iat", Clock.System.now().epochSeconds)
+                put("nonce", nonce)
+            }.toString().encodeToByteArray().toBase64Url()
             ProofOfPossessionCredentialRequest(request, format!!, "$header.$body")
         }
         this.credentialRequests = requests

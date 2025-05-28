@@ -20,7 +20,6 @@ import io.ktor.http.protocolWithAuthority
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.device.AssertionPoPKey
@@ -92,6 +91,7 @@ internal object OpenidUtil {
     suspend fun obtainToken(
         tokenUrl: String,
         clientId: String,
+        landingUrl: String?,
         refreshToken: String? = null,
         accessToken: String? = null,
         authorizationCode: String? = null,
@@ -133,8 +133,9 @@ internal object OpenidUtil {
                     add("code_verifier", codeVerifier)
                 }
                 add("client_id", clientId)
-                // TODO: It's arbitrary in our case, right?
-                add("redirect_uri", "https://secure.redirect.com")
+                if (landingUrl != null) {
+                    add("redirect_uri", landingUrl)
+                }
             }
             val tokenResponse = httpClient.post(tokenUrl) {
                 headers {
