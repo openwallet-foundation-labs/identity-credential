@@ -212,7 +212,7 @@ class DataTransportUdp(
             try {
                 socketWriterThread!!.join()
             } catch (e: InterruptedException) {
-                Log.e(TAG, "Caught exception while joining writing thread: $e")
+                Logger.e(TAG, "Caught exception while joining writing thread: $e")
             }
         }
         if (serverSocket != null) {

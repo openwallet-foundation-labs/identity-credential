@@ -18,7 +18,6 @@ package com.android.identity.android.legacy;
 
 import android.content.Context;
 import android.icu.util.Calendar;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -29,6 +28,7 @@ import org.multipaz.crypto.EcCurve;
 import org.multipaz.crypto.EcPublicKeyJvmKt;
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator;
 import org.multipaz.mdoc.response.DeviceResponseGenerator;
+import org.multipaz.util.Logger;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -87,7 +87,7 @@ public class Utility {
             if (encodedIssuerSignedItemForNs == null) {
                 // Fine if this is null, the verifier might have requested elements in a namespace
                 // we have no issuer-signed values for.
-                Log.w(TAG, "Skipping namespace " + namespaceName + " which is not in "
+                Logger.INSTANCE.w(TAG, "Skipping namespace " + namespaceName + " which is not in "
                         + "issuerSignedMapping");
             } else {
                 Collection<String> entryNames = issuerSigned.getEntryNames(namespaceName);

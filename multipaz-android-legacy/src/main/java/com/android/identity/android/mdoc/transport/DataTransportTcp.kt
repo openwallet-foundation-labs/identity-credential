@@ -19,7 +19,6 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import android.nfc.NdefRecord
 import android.text.format.Formatter
-import android.util.Log
 import android.util.Pair
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.util.Logger
@@ -218,21 +217,21 @@ class DataTransportTcp(
             try {
                 socketWriterThread!!.join()
             } catch (e: InterruptedException) {
-                Log.e(TAG, "Caught exception while joining writing thread: $e")
+                Logger.e(TAG, "Caught exception while joining writing thread", e)
             }
         }
         if (serverSocket != null) {
             try {
                 serverSocket!!.close()
             } catch (e: IOException) {
-                Log.e(TAG, "Caught exception while shutting down: $e")
+                Logger.e(TAG, "Caught exception while shutting down", e)
             }
         }
         if (socket != null) {
             try {
                 socket!!.close()
             } catch (e: IOException) {
-                Log.e(TAG, "Caught exception while shutting down: $e")
+                Logger.e(TAG, "Caught exception while shutting down", e)
             }
         }
     }

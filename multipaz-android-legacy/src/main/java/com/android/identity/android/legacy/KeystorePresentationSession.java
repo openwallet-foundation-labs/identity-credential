@@ -20,11 +20,12 @@ package com.android.identity.android.legacy;
 import android.content.Context;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
+
+import org.multipaz.util.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -176,7 +177,7 @@ class KeystorePresentationSession extends PresentationSession {
             kg.generateKey();
             entry = ks.getEntry(alias, null);
             if (entry != null) {
-                Log.d(TAG, "Created key with alias " + alias);
+                Logger.INSTANCE.d(TAG, "Created key with alias " + alias);
                 return ((KeyStore.SecretKeyEntry) entry).getSecretKey();
             }
             throw new IllegalStateException("Error getting secretKey after creating it");

@@ -25,8 +25,6 @@ import static org.junit.Assert.assertTrue;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
 import org.multipaz.crypto.Algorithm;
@@ -106,6 +104,7 @@ import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.multipaz.util.Logger;
 
 @RunWith(JUnit4.class)
 @SuppressWarnings("deprecation")
@@ -162,12 +161,12 @@ public class UtilTest {
         WritableIdentityCredential wc = store.createCredential(credentialName, docType);
 
         Collection<X509Certificate> certChain = wc.getCredentialKeyCertificateChain(provisioningChallenge);
-        Log.i(TAG, String.format(Locale.US, "Cert chain for self-signed credential '%s' has %d elements",
+        Logger.INSTANCE.i(TAG, String.format(Locale.US, "Cert chain for self-signed credential '%s' has %d elements",
                 credentialName, certChain.size()));
         int certNum = 0;
         for (X509Certificate certificate : certChain) {
             try {
-                Log.i(TAG, String.format(Locale.US, "Certificate %d: %s",
+                Logger.INSTANCE.i(TAG, String.format(Locale.US, "Certificate %d: %s",
                         certNum++, Util.toHex(certificate.getEncoded())));
             } catch (CertificateEncodingException e) {
                 e.printStackTrace();
