@@ -25,13 +25,13 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
-import android.util.Log;
 
 import androidx.biometric.BiometricPrompt;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.multipaz.crypto.EcCurve;
+import org.multipaz.util.Logger;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -158,7 +158,7 @@ public class ProvisioningTest {
 
         String pretty = "";
         pretty = Util.cborPrettyPrint(proofOfProvisioning);
-        Log.e(TAG, "pretty: " + pretty);
+        Logger.INSTANCE.e(TAG, "pretty: " + pretty);
         // Checks that order of elements is the order it was added, using the API.
         assertEquals("[\n"
                 + "  'ProofOfProvisioning',\n"

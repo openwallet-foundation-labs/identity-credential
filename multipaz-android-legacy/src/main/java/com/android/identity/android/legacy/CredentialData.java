@@ -25,7 +25,6 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.security.keystore.UserNotAuthenticatedException;
 import android.util.AtomicFile;
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -42,6 +41,7 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.multipaz.util.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -607,12 +607,12 @@ class CredentialData {
         String dataKeyAlias = getDataKeyAliasFromCredentialName(credentialName);
         try {
             if (!data.loadFromDisk(dataKeyAlias)) {
-                Log.e(TAG, "Error loading file from disk. Deleting anyway.");
+                Logger.INSTANCE.e(TAG, "Error loading file from disk. Deleting anyway.");
                 file.delete();
                 return null;
             }
         } catch (RuntimeException e) {
-            Log.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
+            Logger.INSTANCE.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
             file.delete();
             return null;
         }
@@ -675,7 +675,7 @@ class CredentialData {
         try {
             var unused = data.loadFromDisk(dataKeyAlias);
         } catch (RuntimeException e) {
-            Log.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
+            Logger.INSTANCE.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
         }
         file.delete();
 
@@ -1379,7 +1379,7 @@ class CredentialData {
                      */
                     kpg.initialize(builder.build());
                     kpg.generateKeyPair();
-                    Log.i(TAG, "AuthKey created, strongBoxBacked=" + isStrongBoxBacked);
+                    Logger.INSTANCE.i(TAG, "AuthKey created, strongBoxBacked=" + isStrongBoxBacked);
 
                     X509Certificate certificate = generateAuthenticationKeyCert(
                             aliasForAuthKey, mCredentialKeyAlias, mProofOfProvisioningSha256);
@@ -1538,7 +1538,7 @@ class CredentialData {
                 return null;
             }
 
-            Log.i(TAG, "Using exhausted key.");
+            Logger.INSTANCE.i(TAG, "Using exhausted key.");
         }
 
         KeyStore.Entry entry = null;
@@ -1603,7 +1603,7 @@ class CredentialData {
             return false;
         } catch (Throwable e) {
             // If this fails, it probably means authentication is needed...
-            Log.w(TAG, "Unexpected exception `" + e.getMessage()
+            Logger.INSTANCE.w(TAG, "Unexpected exception `" + e.getMessage()
                     + "`, assuming user not authenticated");
             return false;
         }

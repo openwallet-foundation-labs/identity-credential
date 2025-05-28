@@ -27,13 +27,13 @@ import android.content.Context;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.AtomicFile;
-import android.util.Log;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.multipaz.util.Logger;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -93,7 +93,7 @@ public class X509CertificateSigningTest {
             X509Certificate cert = Util.signPublicKeyWithPrivateKey(keyToSignAlias,
                     keyToSignWithAlias);
             assertNotNull(cert);
-            Log.d(TAG, "Cert:\n--\n" + cert + "\n--\n");
+            Logger.INSTANCE.d(TAG, "Cert:\n--\n" + cert + "\n--\n");
 
             String filename = "ic_cert.bin";
             AtomicFile file = new AtomicFile(appContext.getFileStreamPath(filename));

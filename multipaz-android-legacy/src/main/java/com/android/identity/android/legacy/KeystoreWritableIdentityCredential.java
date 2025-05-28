@@ -19,11 +19,12 @@ package com.android.identity.android.legacy;
 import android.content.Context;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
+import org.multipaz.util.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -133,7 +134,7 @@ class KeystoreWritableIdentityCredential extends WritableIdentityCredential {
             */
             kpg.initialize(builder.build());
             mKeyPair = kpg.generateKeyPair();
-            Log.i(TAG, "CredentialKey created, strongBoxBacked=" + isStrongBoxBacked);
+            Logger.INSTANCE.i(TAG, "CredentialKey created, strongBoxBacked=" + isStrongBoxBacked);
 
             Certificate[] certificates = ks.getCertificateChain(aliasForCredential);
             mCertificates = new ArrayList<>();

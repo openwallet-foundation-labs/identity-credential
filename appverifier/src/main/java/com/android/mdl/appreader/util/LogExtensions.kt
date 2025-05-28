@@ -1,15 +1,15 @@
 package com.android.mdl.appreader.util
 
-import android.util.Log
 import com.android.mdl.appreader.VerifierApp
+import org.multipaz.util.Logger
 
 fun Any.logDebug(message: String, exception: Throwable? = null) {
     if (!VerifierApp.isDebugLogEnabled()) return
     val tag: String = tagValue()
     if (exception == null) {
-        Log.d(tag, message)
+        Logger.d(tag, message)
     } else {
-        Log.d(tag, message, exception)
+        Logger.d(tag, message, exception)
     }
 }
 
@@ -17,9 +17,9 @@ fun Any.logError(message: String, exception: Throwable? = null) {
     if (!VerifierApp.isDebugLogEnabled()) return
     val tag: String = tagValue()
     if (exception == null) {
-        Log.e(tag, message)
+        Logger.e(tag, message)
     } else {
-        Log.e(tag, message, exception)
+        Logger.e(tag, message, exception)
     }
 }
 
