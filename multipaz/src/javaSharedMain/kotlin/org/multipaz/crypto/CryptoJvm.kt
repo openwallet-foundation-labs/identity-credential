@@ -887,7 +887,7 @@ actual object Crypto {
             key.javaPrivateKey as ECPrivateKey,
             null, null, null, null, null, null, null, null, null
         )
-        check(signatureAlgorithm == Algorithm.ES256)
+        check(signatureAlgorithm == Algorithm.ES256 || signatureAlgorithm == Algorithm.ESP256)
         val builder = JWSHeader.Builder(JWSAlgorithm.ES256)
         if (x5c != null) {
             builder.x509CertChain(x5c.certificates.map { cert ->

@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlin.random.Random
 
 /**
- * Creates a new SD-JWT Verifiable Credential generator.
+ * Creates a new SD-JWT Verifiable Credential.
  *
  * @param digestAlg for hashing the disclosures (optional, defaults to sha-256)
  * @param random for creating random salts for the disclosures (optional)

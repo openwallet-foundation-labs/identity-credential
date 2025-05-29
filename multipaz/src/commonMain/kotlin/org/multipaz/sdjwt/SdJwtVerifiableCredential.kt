@@ -1,5 +1,6 @@
 package org.multipaz.sdjwt
 
+import io.ktor.util.reflect.instanceOf
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
@@ -14,7 +15,11 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 
 /**
  * A selectively-disclosable JWT verifiable credential.
@@ -82,6 +87,30 @@ class SdJwtVerifiableCredential(
         }
 
         return disclosure.value
+    }
+
+    fun getDisclosed(): JsonObject {
+
+        val hashToDisclosure = mutableMapOf<String, Disclosure>()
+        println("disclosures")
+        for (d in disclosures) {
+            println("${d.hash} $d")
+            hashToDisclosure.put(d.hash, d)
+        }
+        println("--")
+
+        val obj = Json.decodeFromString(JsonObject.serializer(), body.fromBase64Url().decodeToString())
+        val ret = buildJsonObject {
+            for (key in obj.keys) {
+                val value = obj[key]
+                if (key == "_sd" && value!!.instanceOf(JsonArray::class)) {
+
+                } else {
+                    println(key)
+                }
+            }
+        }
+        return ret
     }
 
     val sdHashAlg get() = JwtBody.fromString(body).sdHashAlg

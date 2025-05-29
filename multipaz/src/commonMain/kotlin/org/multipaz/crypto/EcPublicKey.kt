@@ -1,5 +1,7 @@
 package org.multipaz.crypto
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.toDataItem
@@ -7,6 +9,7 @@ import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
+import org.multipaz.util.fromBase64Url
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
@@ -37,6 +40,14 @@ sealed class EcPublicKey(
      */
     @OptIn(ExperimentalEncodingApi::class)
     fun toPem(): String = Crypto.ecPublicKeyToPem(this)
+
+    /**
+     * Encodes the public key as a JSON Web Key according to
+     * [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517).
+     *
+     * @return a JSON Web Key.
+     */
+    abstract fun toJwk(): JsonObject
 
     fun toDataItem(): DataItem = toCoseKey().toDataItem()
 
@@ -85,6 +96,32 @@ sealed class EcPublicKey(
                     throw IllegalArgumentException("Unknown key type $coseKey.keyType")
                 }
             }
+
+        /**
+         * Creates a [EcPublicKey] from a JSON Web Key according to
+         * [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517).
+         *
+         * @param jwk the JSON Web Key.
+         * @return the public key.
+         */
+        fun fromJwk(jwk: JsonObject): EcPublicKey {
+            return when (val kty = jwk["kty"]!!.jsonPrimitive.content) {
+                "OKP" -> {
+                    EcPublicKeyOkp(
+                        EcCurve.fromJwkName(jwk["crv"]!!.jsonPrimitive.content),
+                        jwk["x"]!!.jsonPrimitive.content.fromBase64Url()
+                    )
+                }
+                "EC" -> {
+                    EcPublicKeyDoubleCoordinate(
+                        EcCurve.fromJwkName(jwk["crv"]!!.jsonPrimitive.content),
+                        jwk["x"]!!.jsonPrimitive.content.fromBase64Url(),
+                        jwk["y"]!!.jsonPrimitive.content.fromBase64Url()
+                    )
+                }
+                else -> throw IllegalArgumentException("Unsupported key type $kty")
+            }
+        }
 
         fun fromDataItem(dataItem: DataItem): EcPublicKey {
             return CoseKey.fromDataItem(dataItem).ecPublicKey
