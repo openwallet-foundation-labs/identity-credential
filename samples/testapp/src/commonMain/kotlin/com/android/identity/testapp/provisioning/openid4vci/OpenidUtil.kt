@@ -20,6 +20,7 @@ import io.ktor.http.protocolWithAuthority
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.device.AssertionPoPKey
@@ -68,7 +69,7 @@ internal object OpenidUtil {
         val header = buildJsonObject {
             put("typ", "dpop+jwt")
             put("alg", alg)
-            put("jwk", publicKey.toJson(clientId))
+            put("jwk", publicKey.toJwk(additionalClaims = buildJsonObject { put("kid", JsonPrimitive(clientId)) }))
         }.toString().encodeToByteArray().toBase64Url()
         val body = buildJsonObject {
             put("htm", "POST")

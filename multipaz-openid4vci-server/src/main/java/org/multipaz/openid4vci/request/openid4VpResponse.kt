@@ -50,14 +50,7 @@ suspend fun openid4VpResponse(call: ApplicationCall) {
             }
         }
         is Openid4VpVerifierModel.SdJwtPresentation -> {
-            for (disclosure in presentation.presentation.sdJwtVc.disclosures) {
-                when (disclosure.key) {
-                    // For demo purposes just transfer these two.
-                    "family_name", "given_name" ->
-                        data.putEntry("eu.europa.ec.eudi.pid.1",
-                            disclosure.key, Cbor.encode(Tstr(disclosure.value.jsonPrimitive.content)))
-                }
-            }
+            TODO()
         }
     }
 

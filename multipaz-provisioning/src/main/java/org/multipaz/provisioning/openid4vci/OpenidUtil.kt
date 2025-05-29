@@ -61,7 +61,7 @@ internal object OpenidUtil {
         val header = buildJsonObject {
             put("typ", JsonPrimitive("dpop+jwt"))
             put("alg", JsonPrimitive(keyInfo.publicKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier))
-            put("jwk", keyInfo.publicKey.toJson(clientId))
+            put("jwk", keyInfo.publicKey.toJwk(additionalClaims = buildJsonObject { put("kid", JsonPrimitive(clientId)) }))
         }.toString().toByteArray().toBase64Url()
         val bodyObj = buildJsonObject {
             put("htm", JsonPrimitive("POST"))

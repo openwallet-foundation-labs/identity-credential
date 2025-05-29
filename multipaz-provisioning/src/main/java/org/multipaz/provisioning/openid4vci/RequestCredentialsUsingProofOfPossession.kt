@@ -59,7 +59,7 @@ class RequestCredentialsUsingProofOfPossession(
             val header = JsonObject(mapOf(
                 "typ" to JsonPrimitive("openid4vci-proof+jwt"),
                 "alg" to JsonPrimitive("ES256"),
-                "jwk" to request.secureAreaBoundKeyAttestation.publicKey.toJson(null)
+                "jwk" to request.secureAreaBoundKeyAttestation.publicKey.toJwk()
             )).toString().toByteArray().toBase64Url()
             val body = JsonObject(mapOf(
                 "iss" to JsonPrimitive(issuanceClientId),

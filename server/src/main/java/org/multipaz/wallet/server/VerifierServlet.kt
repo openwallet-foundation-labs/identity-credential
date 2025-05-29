@@ -34,8 +34,6 @@ import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.sdjwt.presentation.SdJwtVerifiablePresentation
-import org.multipaz.sdjwt.vc.JwtBody
 import org.multipaz.server.BaseHttpServlet
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
@@ -64,10 +62,12 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -93,6 +93,8 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.sdjwt.SdJwt
+import org.multipaz.sdjwt.SdJwtKb
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.URLEncoder
@@ -295,7 +297,14 @@ class VerifierServlet : BaseHttpServlet() {
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     companion object {
+
+        val prettyJson = Json {
+            prettyPrint = true
+            prettyPrintIndent = "  "
+        }
+
         val SESSION_EXPIRATION_INTERVAL = 1.days
 
         private val verifierSessionTableSpec = StorageTableSpec(
@@ -1255,65 +1264,54 @@ class VerifierServlet : BaseHttpServlet() {
         resp: HttpServletResponse,
         clientIdToUse: String,
     ) {
-        val presentationString = session.verifiablePresentation!!
-        Logger.d(TAG, "Handling SD-JWT: $presentationString")
-        val presentation = SdJwtVerifiablePresentation.fromString(presentationString)
-
         val lines = mutableListOf<OpenID4VPResultLine>()
 
-        for (disclosure in presentation.sdJwtVc.disclosures.sortedBy { it.key }) {
-            val valueToAdd = when (disclosure.value) {
-                is JsonPrimitive -> disclosure.value.jsonPrimitive.content
-                is JsonArray -> disclosure.value.jsonArray.toString()
-                else -> "Unknown Response Type: ${disclosure.value}"
+        val presentationString = session.verifiablePresentation!!
+        Logger.d(TAG, "Handling SD-JWT: $presentationString")
+        val (sdJwt, sdJwtKb) = if (presentationString.endsWith("~")) {
+            Pair(SdJwt(presentationString), null)
+        } else {
+            val sdJwtKb = SdJwtKb(presentationString)
+            Pair(sdJwtKb.sdJwt, sdJwtKb)
+        }
+        val issuerCert = sdJwt.x5c?.certificates?.first()
+        if (issuerCert == null) {
+            lines.add(OpenID4VPResultLine("Error", "Issuer-signed key not in `x5c` in header"))
+            return
+        }
+        if (sdJwtKb == null && sdJwt.jwtBody["cnf"] != null) {
+            lines.add(OpenID4VPResultLine("Error", "`cnf` claim present but we got a SD-JWT, not a SD-JWT+KB"))
+            return
+        }
+
+        val processedJwt = if (sdJwtKb != null) {
+            // TODO: actually check nonce, audience, and creationTime
+            try {
+                val payload = sdJwtKb.verify(
+                    issuerKey = issuerCert.ecPublicKey,
+                    checkNonce = { nonce -> true },
+                    checkAudience = { audience -> true },
+                    checkCreationTime = { creationTime -> true },
+                )
+                lines.add(OpenID4VPResultLine("Key-Binding", "Verified"))
+                payload
+            } catch (e: Throwable) {
+                lines.add(OpenID4VPResultLine("Key-Binding", "Error validating: $e"))
+                return
             }
-            lines.add(OpenID4VPResultLine(disclosure.key, valueToAdd))
-        }
-
-        // Check for the actual claims we requested, in addition to what was supplied
-        // in the response.
-        val disclosedClaims = presentation.sdJwtVc.disclosures.map { it.key }.toMutableSet()
-        // There are several special cases that aren't in the selective disclosures, which our
-        // JwtBody implementation copies into its properties:
-        val jwtBody = JwtBody.fromString(presentation.sdJwtVc.body)
-        val specialCases: Map<String, String?> = mapOf(
-            Pair("iss", jwtBody.issuer),
-            Pair("vct", jwtBody.docType),
-            Pair("iat", jwtBody.timeSigned?.toString()),
-            Pair("nbf", jwtBody.timeValidityBegin?.toString()),
-            Pair("exp", jwtBody.timeValidityEnd?.toString()),
-            Pair("cnf", jwtBody.publicKey?.asJwk.toString())
-        )
-        for (key in specialCases.keys) {
-            val value = specialCases[key] ?: continue
-            lines.add(OpenID4VPResultLine(key, value))
-            disclosedClaims.add(key)
-            Logger.i(TAG, "Adding special case $key: $value")
-        }
-
-        // on the verifier, check that the key binding can be verified with the
-        // key mentioned in the SD-JWT:
-        Logger.i(TAG, "using client_id ${clientIdToUse}")
-        try {
-            if (presentation.verifyKeyBinding(
-                    checkAudience = { clientIdToUse == it },
-                    checkNonce = {
-                        session.nonce.toByteArray().toBase64Url() == it
-                    },
-                    checkCreationTime = { true /* TODO: sometimes flaky it < Clock.System.now() */ }
-                )) {
-                lines.add(OpenID4VPResultLine("Key-binding", "Verified"))
-            } else {
-                lines.add(OpenID4VPResultLine("Key-binding", "Not Key-bound"))
+        } else {
+            try {
+                sdJwt.verify(issuerCert.ecPublicKey)
+            } catch (e: Throwable) {
+                lines.add(OpenID4VPResultLine("Error", "Error validating signature: $e"))
+                return
             }
-        } catch (e: Throwable) {
-            lines.add(OpenID4VPResultLine("Key-binding", "Verification failed: ${e.message}"))
         }
 
-        // also on the verifier, check the signature over the SD-JWT from the issuer
-        // TODO: We need to verify the issuer signature. Where do we get the public
-        // key of the issuer?
-        //presentation.sdJwtVc.verifyIssuerSignature(issuerCert.ecPublicKey)
+        for ((claimName, claimValue) in processedJwt) {
+            val claimValueStr = prettyJson.encodeToString(claimValue)
+            lines.add(OpenID4VPResultLine(claimName, claimValueStr))
+        }
 
         val json = Json { ignoreUnknownKeys = true }
         resp.outputStream.write(json.encodeToString(OpenID4VPResultData(lines)).encodeToByteArray())
@@ -1593,7 +1591,7 @@ private fun calcDcRequestStringOpenID4VP(
     }
     val signedRequestElement = JsonWebSignature.sign(
         key = readerAuthKey,
-        signatureAlgorithm = readerAuthKey.curve.defaultSigningAlgorithm,
+        signatureAlgorithm = readerAuthKey.curve.defaultSigningAlgorithmFullySpecified,
         claimsSet = unsignedRequest,
         type = "oauth-authz-req+jwt",
         x5c = readerAuthKeyCertification

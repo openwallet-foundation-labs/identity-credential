@@ -33,8 +33,6 @@ import org.multipaz.securearea.config.SecureAreaConfigurationCloud
 import org.multipaz.rpc.backend.getTable
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.mso.StaticAuthDataParser
-import org.multipaz.sdjwt.SdJwtVerifiableCredential
-import org.multipaz.sdjwt.vc.JwtBody
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
@@ -67,6 +65,7 @@ import org.multipaz.provisioning.RequestCredentials
 import org.multipaz.rpc.backend.RpcAuthBackendDelegate
 import org.multipaz.rpc.handler.RpcAuthContext
 import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.sdjwt.SdJwt
 import kotlin.time.Duration.Companion.seconds
 
 @RpcState(endpoint = "openid4vci")
@@ -404,12 +403,11 @@ class Openid4VciIssuingAuthorityState(
                 val publicKey = it.second
                 when (credentialConfiguration.format) {
                     is Openid4VciFormatSdJwt -> {
-                        val sdJwt = SdJwtVerifiableCredential.fromString(credential)
-                        val jwtBody = JwtBody.fromString(sdJwt.body)
+                        val sdJwt = SdJwt(credential)
                         CredentialData(
                             publicKey,
-                            jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
-                            jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
+                            sdJwt.validFrom ?: sdJwt.issuedAt ?: Clock.System.now(),
+                            sdJwt.validUntil ?: Instant.DISTANT_FUTURE,
                             CredentialFormat.SD_JWT_VC,
                             credential.encodeToByteArray()
                         )
@@ -456,13 +454,12 @@ class Openid4VciIssuingAuthorityState(
         )
         check(credentials.size == 1)
         val credential = credentials[0].jsonObject["credential"]!!.jsonPrimitive.content
-        val sdJwt = SdJwtVerifiableCredential.fromString(credential)
-        val jwtBody = JwtBody.fromString(sdJwt.body)
+        val sdJwt = SdJwt(credential)
         issuerDocument.credentials.add(
             CredentialData(
                 null,
-                jwtBody.timeValidityBegin ?: jwtBody.timeSigned ?: Clock.System.now(),
-                jwtBody.timeValidityEnd ?: Instant.DISTANT_FUTURE,
+                sdJwt.validFrom ?: sdJwt.issuedAt ?: Clock.System.now(),
+                sdJwt.validUntil ?: Instant.DISTANT_FUTURE,
                 CredentialFormat.SD_JWT_VC,
                 credential.encodeToByteArray()
             )

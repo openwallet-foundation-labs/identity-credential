@@ -1,10 +1,16 @@
 package org.multipaz.crypto
 
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.util.fromBase64
+import org.multipaz.util.toBase64
 
 /**
  * A chain of certificates.
@@ -35,6 +41,13 @@ data class X509CertChain(
     }
 
     /**
+     * Encodes the certificate as JSON Array according to RFC 7515 Section 4.1.6.
+     *
+     * @return a [JsonElement].
+     */
+    fun toX5c() = JsonArray(certificates.map { JsonPrimitive(it.encodedCertificate.toBase64()) }) as JsonElement
+
+    /**
      * Validates that every certificate in the chain is signed by the next one.
      *
      * @return true if every certificate in the chain is signed by the next one, false otherwise.
@@ -58,6 +71,16 @@ data class X509CertChain(
                     listOf(dataItem.asX509Cert)
                 }
             return X509CertChain(certificates)
+        }
+
+        /**
+         * Decodes a certificate chain encoded according to RFC 7515 Section 4.1.6.
+         *
+         * @return the certificate chain.
+         */
+        fun fromX5c(x5c: JsonElement): X509CertChain {
+            require(x5c is JsonArray)
+            return X509CertChain(x5c.map { X509Cert(it.jsonPrimitive.content.fromBase64()) })
         }
     }
 }

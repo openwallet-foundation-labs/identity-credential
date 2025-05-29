@@ -4,7 +4,7 @@ import org.multipaz.claim.Claim
 import org.multipaz.claim.VcClaim
 import org.multipaz.credential.Credential
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.sdjwt.SdJwtVerifiableCredential
+import org.multipaz.sdjwt.SdJwt
 
 /**
  * A SD-JWT VC credential, according to [draft-ietf-oauth-sd-jwt-vc-03]
@@ -32,6 +32,25 @@ interface SdJwtVcCredential {
         documentTypeRepository: DocumentTypeRepository?
     ): List<VcClaim> {
         val ret = mutableListOf<VcClaim>()
+        val sdJwt = SdJwt(issuerProvidedData.decodeToString())
+        val issuerKey = sdJwt.x5c!!.certificates.first().ecPublicKey
+        val processedJwt = sdJwt.verify(issuerKey)
+
+        // TODO: for now we only consider top-level claims
+        val dt = documentTypeRepository?.getDocumentTypeForVc(vct)
+        for ((claimName, claimValue) in processedJwt) {
+            val attribute = dt?.vcDocumentType?.claims?.get(claimName)
+            ret.add(
+                VcClaim(
+                    displayName = dt?.vcDocumentType?.claims?.get(claimName)?.displayName ?: claimName,
+                    attribute = attribute,
+                    claimName = claimName,
+                    value = claimValue
+                )
+            )
+        }
+
+        /*
         val sdJwt = SdJwtVerifiableCredential.fromString(issuerProvidedData.decodeToString())
         val dt = documentTypeRepository?.getDocumentTypeForVc(vct)
         for (disclosure in sdJwt.disclosures) {
@@ -45,6 +64,8 @@ interface SdJwtVcCredential {
                 )
             )
         }
+
+         */
         return ret
     }
 }

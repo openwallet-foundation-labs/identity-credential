@@ -47,7 +47,6 @@ import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.wallet.provisioning.DocumentExtensions.documentConfiguration
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.response.DeviceResponseGenerator
-import org.multipaz.sdjwt.SdJwtVerifiableCredential
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
@@ -124,6 +123,7 @@ import kotlinx.serialization.json.put
 import org.multipaz.cbor.addCborArray
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.sdjwt.SdJwt
 import org.multipaz.wallet.ui.prompt.consent.ConsentDocument
 import java.util.UUID
 import kotlin.io.encoding.Base64
@@ -1100,12 +1100,13 @@ private fun filterConsentFields(
     if (credential == null) {
         return list
     }
-    val sdJwt = SdJwtVerifiableCredential.fromString(
-        String(credential.issuerProvidedData, Charsets.US_ASCII))
+    val sdJwt = SdJwt(String(credential.issuerProvidedData, Charsets.US_ASCII))
+    val issuerKey = sdJwt.x5c!!.certificates.first().ecPublicKey
+    val processedJwt = sdJwt.verify(issuerKey)
 
     val availableClaims = mutableSetOf<String>()
-    for (disclosure in sdJwt.disclosures) {
-        availableClaims.add(disclosure.key)
+    for ((claimName, _) in processedJwt) {
+        availableClaims.add(claimName)
     }
     return list.filter { vcConsentField ->
         availableClaims.contains(vcConsentField.claimName)

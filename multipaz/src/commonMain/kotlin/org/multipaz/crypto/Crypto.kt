@@ -226,30 +226,4 @@ expect object Crypto {
         encryptedJwt: JsonElement,
         recipientKey: EcPrivateKey
     ): JsonObject
-
-    // TODO: replace with non-platform specific code
-    internal fun jwsSign(
-        key: EcPrivateKey,
-        signatureAlgorithm: Algorithm,
-        claimsSet: JsonObject,
-        type: String?,
-        x5c: X509CertChain?
-    ): JsonElement
-
-    // TODO: replace with non-platform specific code
-    internal fun jwsVerify(
-        signedJwt: JsonElement,
-        publicKey: EcPublicKey
-    )
-
-    // TODO: replace with non-platform specific code
-    internal fun jwsGetInfo(
-        signedJwt: JsonElement,
-    ): JwsInfo
 }
-
-internal data class JwsInfo(
-    val claimsSet: JsonObject,
-    val type: String?,
-    val x5c: X509CertChain?
-)

@@ -15,12 +15,12 @@ import org.multipaz.jpeg2k.Jpeg2kConverter
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.mso.StaticAuthDataParser
-import org.multipaz.sdjwt.SdJwtVerifiableCredential
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.sdjwt.SdJwt
 
 private const val TAG = "ViewDocumentData"
 
@@ -210,22 +210,20 @@ private fun Document.renderDocumentDetailsForSdJwt(
 
     val vcType = documentTypeRepository.getDocumentTypeForVc(credential.vct)?.vcDocumentType
 
-    val sdJwt = SdJwtVerifiableCredential.fromString(
-        String(credential.issuerProvidedData, Charsets.US_ASCII))
-
-    for (disclosure in sdJwt.disclosures) {
-        val content = if (disclosure.value is JsonPrimitive) {
-            disclosure.value.jsonPrimitive.content
+    val sdJwt = SdJwt(String(credential.issuerProvidedData, Charsets.US_ASCII))
+    val issuerKey = sdJwt.x5c!!.certificates.first().ecPublicKey
+    val processedJwt = sdJwt.verify(issuerKey)
+    for ((claimName, claimValue) in processedJwt) {
+        val content = if (claimValue is JsonPrimitive) {
+            claimValue.jsonPrimitive.content
         } else {
-            disclosure.value.toString()
+            claimValue.toString()
         }
-        val claimName = disclosure.key
         val displayName = vcType
             ?.claims
             ?.get(claimName)
             ?.displayName
             ?: claimName
-
         kvPairs[claimName] = AttributeDisplayInfoPlainText(displayName, content)
     }
 

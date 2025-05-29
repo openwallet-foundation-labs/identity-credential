@@ -51,10 +51,8 @@ import org.multipaz.wallet.provisioning.remote.WalletServerProvider
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.mso.StaticAuthDataParser
 import org.multipaz.mdoc.request.DeviceRequestParser
-import org.multipaz.sdjwt.SdJwtVerifiableCredential
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
-import org.multipaz.sdjwt.vc.JwtBody
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInvalidatedException
 import org.multipaz.securearea.KeyLockedException
@@ -90,6 +88,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.rpc.handler.RpcAuthClientSession
+import org.multipaz.sdjwt.SdJwt
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.time.Duration
@@ -459,14 +458,11 @@ class DocumentModel(
 
         val kvPairs = mutableMapOf<String, String>()
 
-        val sdJwt = SdJwtVerifiableCredential.fromString(
-            String(sdJwtVcCredential.issuerProvidedData, Charsets.US_ASCII)
-        )
-        val body = JwtBody.fromString(sdJwt.body)
+        val sdJwt = SdJwt(String(sdJwtVcCredential.issuerProvidedData, Charsets.US_ASCII))
 
-        kvPairs.put("Issuer", body.issuer)
-        kvPairs.put("Document Type", body.docType)
-        kvPairs.put("Digest Hash Algorithm", body.sdHashAlg.toString())
+        kvPairs.put("Issuer", sdJwt.issuer)
+        kvPairs.put("Document Type", sdJwt.credentialType!!)
+        kvPairs.put("Digest Hash Algorithm", sdJwt.digestAlg.description)
 
         if (sdJwtVcCredential is SecureAreaBoundCredential) {
             addSecureAreaBoundCredentialInfo(sdJwtVcCredential, kvPairs)
@@ -483,9 +479,9 @@ class DocumentModel(
             format = CredentialFormat.SD_JWT_VC,
             description = "IETF SD-JWT Verifiable Credential",
             usageCount = sdJwtVcCredential.usageCount,
-            signedAt = body.timeSigned,
-            validFrom = body.timeValidityBegin,
-            validUntil = body.timeValidityEnd,
+            signedAt = sdJwt.issuedAt,
+            validFrom = sdJwt.validFrom,
+            validUntil = sdJwt.validUntil,
             expectedUpdate = null,
             replacementPending = replacement != null,
             details = kvPairs

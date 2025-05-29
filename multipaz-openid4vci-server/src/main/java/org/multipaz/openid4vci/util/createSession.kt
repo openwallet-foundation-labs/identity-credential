@@ -6,12 +6,12 @@ import org.multipaz.crypto.X509Cert
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.cache
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.util.fromBase64Url
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.crypto.EcPublicKey
 import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.rpc.backend.Configuration
 
@@ -64,7 +64,7 @@ suspend fun validateClientAttestation(request: ApplicationRequest, clientId: Str
             ClientCertificate(certificate)
         }
     checkJwtSignature(attestationIssuerCertificate.certificate.ecPublicKey, clientAttestationJwt)
-    val attestationKey = JsonWebKey(attestationBody["cnf"]!!.jsonObject).asEcPublicKey
+    val attestationKey = EcPublicKey.fromJwk(attestationBody["cnf"]!!.jsonObject["jwk"]!!.jsonObject)
 
     // Validate client attestation proof-of-possession
     checkJwtSignature(attestationKey, clientAttestationPoPJwt)
@@ -109,7 +109,7 @@ suspend fun createSession(request: ApplicationRequest, parameters: Parameters): 
     val dpopHeader = Json.parseToJsonElement(
         dpopParts[0].fromBase64Url().decodeToString()
     ).jsonObject
-    val dpopKey = JsonWebKey(dpopHeader).asEcPublicKey
+    val dpopKey = EcPublicKey.fromJwk(dpopHeader)
     checkJwtSignature(dpopKey, dpopJwt)
 
     // Create a session
