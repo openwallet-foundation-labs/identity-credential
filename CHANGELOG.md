@@ -5,8 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.91] - Not yet released, expected end of May 2025
- - Fix generated reader auth certificates to contain required extensions from ISO/IEC 18013-5:2021 Annex B.1.7.
+## [0.91.0] - 2025-05-30
+Changes since Multipaz 0.90 include
+- Fix generated reader auth certificates to contain required extensions from 
+  ISO/IEC 18013-5:2021 Annex B.1.7.
+- Multiplatform Camera composable in `multipaz-compose` library.
+- OpenID4VP draft 24 updates, based on interoperability testing.
+- OpenID4VCI updates.
+- Preliminary ZKP support.
+- Preliminary support for scanning barcodes, using MLKit.
+- Updated RPC schema hash calculations to better support with different Kotlin versions.
+- Better support for semantic versioning.
+- New icons.
+- New https://apps.multipaz.org/ website with prebuilt APKs.
 
 ## [0.90] - 2025-03-26
 This is the first release with the CHANGELOG.md file and also the first release using the new
