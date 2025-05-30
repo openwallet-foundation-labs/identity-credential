@@ -17,7 +17,7 @@ val projectVersionCode: Int by extra {
 // following the release should bump it to the next version number.
 //
 val projectVersionLast = "0.91.0"
-val projectVersionNext = ""
+val projectVersionNext = "0.92.0"
 
 private fun runCommand(args: List<String>): String {
     val stdout = ByteArrayOutputStream()
