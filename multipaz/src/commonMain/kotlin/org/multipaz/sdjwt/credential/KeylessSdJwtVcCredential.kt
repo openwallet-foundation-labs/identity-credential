@@ -42,6 +42,9 @@ class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
      */
     constructor(document: Document) : super(document)
 
+    override val credentialType: String
+        get() = CREDENTIAL_TYPE
+
     override suspend fun deserialize(dataItem: DataItem) {
         super.deserialize(dataItem)
         vct = dataItem["vct"].asTstr
@@ -53,6 +56,8 @@ class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
     }
 
     companion object {
+        const val CREDENTIAL_TYPE: String = "KeylessSdJwtVcCredential"
+
         suspend fun create(
             document: Document,
             asReplacementForIdentifier: String?,

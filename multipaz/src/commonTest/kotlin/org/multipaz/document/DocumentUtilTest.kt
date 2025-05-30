@@ -46,7 +46,7 @@ class DocumentUtilTest {
         }
         credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(
-            TestSecureAreaBoundCredential::class
+            TestSecureAreaBoundCredential.CREDENTIAL_TYPE
         ) { document -> TestSecureAreaBoundCredential(document) }
     }
 
@@ -275,6 +275,8 @@ class DocumentUtilTest {
 
     class TestSecureAreaBoundCredential : SecureAreaBoundCredential {
         companion object {
+            const val CREDENTIAL_TYPE = "test-key-bound"
+
             suspend fun create(
                 document: Document,
                 asReplacementForIdentifier: String?,
@@ -304,6 +306,9 @@ class DocumentUtilTest {
         constructor(
             document: Document
         ) : super(document) {}
+
+        override val credentialType: String
+            get() = CREDENTIAL_TYPE
 
         override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
             throw NotImplementedError()

@@ -80,7 +80,7 @@ class DeviceResponseGeneratorTest {
             add(SoftwareSecureArea.create(storage))
         }
         credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential::class) {
+        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) {
             document -> MdocCredential(document)
         }
     }

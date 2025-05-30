@@ -57,8 +57,8 @@ class SdJwtVcTest {
             add(SoftwareSecureArea.create(storage))
         }
         credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
-                document ->  KeyBoundSdJwtVcCredential(document)
+        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential.CREDENTIAL_TYPE) {
+            document -> KeyBoundSdJwtVcCredential(document)
         }
 
         val documentStore = DocumentStore(

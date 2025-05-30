@@ -3,7 +3,6 @@ package org.multipaz.sdjwt.credential
 import org.multipaz.cbor.CborBuilder
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.MapBuilder
-import org.multipaz.claim.Claim
 import org.multipaz.claim.VcClaim
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
@@ -19,6 +18,7 @@ import org.multipaz.securearea.SecureArea
 class KeyBoundSdJwtVcCredential : SecureAreaBoundCredential, SdJwtVcCredential {
     companion object {
         private const val TAG = "SdJwtVcCredential"
+        const val CREDENTIAL_TYPE: String = "KeyBoundSdJwtVcCredential"
 
         suspend fun create(
             document: Document,
@@ -91,6 +91,9 @@ class KeyBoundSdJwtVcCredential : SecureAreaBoundCredential, SdJwtVcCredential {
         super.addSerializedData(builder)
         builder.put("vct", vct)
     }
+
+    override val credentialType: String
+        get() = CREDENTIAL_TYPE
 
     override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<VcClaim> {
         return getClaimsImpl(documentTypeRepository)

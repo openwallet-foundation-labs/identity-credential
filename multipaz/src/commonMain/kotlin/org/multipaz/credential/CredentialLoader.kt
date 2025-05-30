@@ -38,9 +38,14 @@ class CredentialLoader {
      * @param createCredentialFunction a function to create a [Credential] of the given type.
      */
     fun addCredentialImplementation(
-        credentialType: KClass<out Credential>,
+        credentialType: String,
         createCredentialFunction: suspend (Document) -> Credential
-    ) = createCredentialFunctions.put(credentialType.simpleName!!, createCredentialFunction)
+    ) {
+        if (createCredentialFunctions.contains(credentialType)) {
+            throw IllegalArgumentException("'$credentialType' is already registered")
+        }
+        createCredentialFunctions[credentialType] = createCredentialFunction
+    }
 
     /**
      * Loads a [Credential] from storage
@@ -59,6 +64,10 @@ class CredentialLoader {
         val credential = createCredentialFunction.invoke(document)
         credential._identifier = identifier
         credential.deserialize(dataItem)
+        if (credential.credentialType != credentialType) {
+            throw IllegalStateException(
+                "Inconsistent credential type: '$credentialType' vs '${credential.credentialType}")
+        }
         return credential
     }
 }

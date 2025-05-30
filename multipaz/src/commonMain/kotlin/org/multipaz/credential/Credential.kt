@@ -90,6 +90,13 @@ abstract class Credential {
      */
     internal var _identifier: String? = null
 
+    /**
+     * Identifies credential type.
+     *
+     * Each leaf [Credential] subclass must have a unique type.
+     */
+    abstract val credentialType: String
+
     val identifier: String
         get() = _identifier!!
 
@@ -306,7 +313,7 @@ abstract class Credential {
      */
     private fun toDataItem(): DataItem {
         return buildCborMap {
-            put("credentialType", this@Credential::class.simpleName!!)  // used by CredentialFactory
+            put("credentialType", credentialType)  // used by CredentialFactory
             put("domain", domain)
             put("usageCount", usageCount.toLong())
             if (replacementForIdentifier != null) {
