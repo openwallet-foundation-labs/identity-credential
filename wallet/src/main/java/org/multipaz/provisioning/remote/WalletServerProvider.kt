@@ -382,16 +382,16 @@ class WalletServerProvider(
         override val exceptionMap: RpcExceptionMap
             get() = base.exceptionMap
 
-        override suspend fun dispatch(flow: String, method: String, args: DataItem): List<DataItem> {
-            Logger.i(TAG, "POST [${Thread.currentThread().name}] $flow/$method")
+        override suspend fun dispatch(target: String, method: String, args: DataItem): List<DataItem> {
+            Logger.i(TAG, "POST [${Thread.currentThread().name}] $target/$method")
             val start = System.nanoTime()
             try {
                 return withContext(Dispatchers.IO) {
-                    base.dispatch(flow, method, args)
+                    base.dispatch(target, method, args)
                 }
             } finally {
                 val duration = System.nanoTime() - start
-                Logger.i(TAG, "${durationText(duration)} [${Thread.currentThread().name}] $flow/$method")
+                Logger.i(TAG, "${durationText(duration)} [${Thread.currentThread().name}] $target/$method")
             }
         }
 
