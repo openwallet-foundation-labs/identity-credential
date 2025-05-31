@@ -23,7 +23,6 @@ import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
-import org.multipaz.claim.Claim
 import org.multipaz.claim.MdocClaim
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
@@ -50,6 +49,8 @@ import kotlinx.datetime.Instant
 class MdocCredential : SecureAreaBoundCredential {
     companion object {
         private const val TAG = "MdocCredential"
+
+        const val CREDENTIAL_TYPE: String = "MdocCredential"
 
         suspend fun create(
             document: Document,
@@ -111,6 +112,9 @@ class MdocCredential : SecureAreaBoundCredential {
         super.deserialize(dataItem)
         docType = dataItem["docType"].asTstr
     }
+
+    override val credentialType: String
+        get() = CREDENTIAL_TYPE
 
     /**
      * The docType of the credential as defined in

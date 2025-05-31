@@ -122,7 +122,7 @@ class DeviceRetrievalHelperTest {
             add(AndroidKeystoreSecureArea.create(storage))
         }
         val credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential::class) { document ->
+        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) { document ->
             MdocCredential(document)
         }
         documentStore = DocumentStore(

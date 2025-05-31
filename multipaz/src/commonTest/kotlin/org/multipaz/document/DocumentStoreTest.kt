@@ -19,7 +19,6 @@ import org.multipaz.claim.Claim
 import org.multipaz.credential.Credential
 import org.multipaz.credential.CredentialLoader
 import org.multipaz.credential.SecureAreaBoundCredential
-import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
@@ -40,8 +39,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import kotlinx.datetime.Instant;
 import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.buildByteString
-import org.multipaz.crypto.Algorithm
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -70,10 +67,10 @@ class DocumentStoreTest {
         }
         credentialLoader = CredentialLoader()
         credentialLoader.addCredentialImplementation(
-            TestSecureAreaBoundCredential::class
+            TestSecureAreaBoundCredential.CREDENTIAL_TYPE
         ) { document -> TestSecureAreaBoundCredential(document) }
         credentialLoader.addCredentialImplementation(
-            TestCredential::class
+            TestCredential.CREDENTIAL_TYPE
         ) { document -> TestCredential(document) }
     }
 
@@ -693,13 +690,22 @@ class DocumentStoreTest {
 
         constructor(document: Document) : super(document)
 
+        override val credentialType: String
+            get() = CREDENTIAL_TYPE
+
         override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
             throw NotImplementedError()
+        }
+
+        companion object {
+            const val CREDENTIAL_TYPE = "keyless"
         }
     }
 
     class TestSecureAreaBoundCredential : SecureAreaBoundCredential {
         companion object {
+            const val CREDENTIAL_TYPE = "key-bound"
+
             suspend fun create(
                 document: Document,
                 asReplacementForIdentifier: String?,
@@ -729,6 +735,9 @@ class DocumentStoreTest {
         constructor(
             document: Document
         ) : super(document) {}
+
+        override val credentialType: String
+            get() = CREDENTIAL_TYPE
 
         override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
             throw NotImplementedError()

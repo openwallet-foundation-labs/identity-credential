@@ -84,6 +84,8 @@ class DirectAccessCredential: Credential {
     companion object {
         private const val TAG = "DirectAccessCredential"
 
+        const val CREDENTIAL_TYPE = "DirectAccessCredential"
+
         suspend fun create(
             document: Document,
             asReplacementForIdentifier: String?,
@@ -142,6 +144,9 @@ class DirectAccessCredential: Credential {
     constructor(
         document: Document
     ) : super(document) {}
+
+    override val credentialType: String
+        get() = CREDENTIAL_TYPE
 
     /**
      * Constructs a Credential from serialized data, ie. the inverse of

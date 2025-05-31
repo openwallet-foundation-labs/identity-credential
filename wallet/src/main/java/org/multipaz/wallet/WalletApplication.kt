@@ -210,16 +210,16 @@ class WalletApplication : Application() {
 
         // init credentialFactory
         credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential::class) {
+        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) {
             document -> MdocCredential(document)
         }
-        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential::class) {
+        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential.CREDENTIAL_TYPE) {
             document -> KeyBoundSdJwtVcCredential(document)
         }
-        credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential::class) {
+        credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential.CREDENTIAL_TYPE) {
             document -> KeylessSdJwtVcCredential(document)
         }
-        credentialLoader.addCredentialImplementation(DirectAccessCredential::class) {
+        credentialLoader.addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
             document -> DirectAccessCredential(document)
         }
 

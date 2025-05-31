@@ -108,7 +108,7 @@ fun DocumentViewerScreen(
                                         credentialInfo.credential.identifier
                                     )
                                 },
-                            keyText = credentialInfo.credential::class.simpleName.toString(),
+                            keyText = credentialInfo.credential.credentialType,
                             valueText = buildAnnotatedString {
                                 withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
                                     append("Usage count ${credentialInfo.credential.usageCount}. Click for details")

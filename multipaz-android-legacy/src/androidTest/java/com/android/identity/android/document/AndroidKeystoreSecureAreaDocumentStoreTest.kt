@@ -59,7 +59,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
             add(AndroidKeystoreSecureArea.create(storage))
         }
         credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(TestSecureAreaBoundCredential::class) {
+        credentialLoader.addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) {
             document -> TestSecureAreaBoundCredential(document)
         }
     }
@@ -109,6 +109,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
     class TestSecureAreaBoundCredential : SecureAreaBoundCredential {
         companion object {
+            const val CREDENTIAL_TYPE = "android-key-bound"
             suspend fun create(
                 document: Document,
                 asReplacementForIdentifier: String?,
@@ -138,6 +139,9 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         constructor(
             document: Document
         ) : super(document) {}
+
+        override val credentialType: String
+            get() = CREDENTIAL_TYPE
 
         override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<Claim> {
             throw NotImplementedError()
