@@ -314,6 +314,7 @@ private class CameraManager(
             else -> AVCaptureVideoOrientationPortrait
         }
         previewLayer.connection?.videoOrientation = avOrientation
+        Logger.d(TAG, "setCurrentOrientation $avOrientation")
     }
 
     @OptIn(ExperimentalForeignApi::class, NativeRuntimeApi::class)
@@ -329,10 +330,10 @@ private class CameraManager(
         val imageWidth = uiImage.size.useContents { width }
         val imageHeight = uiImage.size.useContents { height }
         var previewTransformation = Matrix() // Identity
+        val currentVideoOrientation = previewLayer.connection?.videoOrientation
 
         if (isShowingPreview) {
             // Retrieve the current preview size.
-            val currentVideoOrientation = previewLayer.connection?.videoOrientation
             var currentPreviewFrame: CValue<CGRect>? = null
             dispatch_sync(dispatch_get_main_queue()) { // Must be dispatched to main thread to get the frame.
                 val frameFromLayer = previewLayer.presentationLayer()?.frame ?: previewLayer.frame
@@ -376,7 +377,8 @@ private class CameraManager(
             cameraImage = cameraImage,
             width = imageWidth.toInt(),
             height = imageHeight.toInt(),
-            previewTransformation = previewTransformation
+            rotation = currentVideoOrientation?.toRotationAngle() ?: 0,
+            previewTransformation = previewTransformation,
         )
 
         runBlocking {
@@ -387,6 +389,15 @@ private class CameraManager(
         GC.collect()
     }
 }
+
+private fun  AVCaptureVideoOrientation.toRotationAngle(): Int =
+    when (this) {
+        AVCaptureVideoOrientationLandscapeLeft -> 270
+        AVCaptureVideoOrientationLandscapeRight -> 90
+        AVCaptureVideoOrientationPortrait -> 0
+        AVCaptureVideoOrientationPortraitUpsideDown -> 180
+        else -> 0
+    }
 
 @OptIn(ExperimentalForeignApi::class)
 private class OrientationListener(

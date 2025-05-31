@@ -35,6 +35,7 @@ import com.android.identity.testapp.provisioning.openid4vci.extractCredentialIss
 import com.android.identity.testapp.ui.AppTheme
 import com.android.identity.testapp.ui.BarcodeScanningScreen
 import com.android.identity.testapp.ui.CameraScreen
+import com.android.identity.testapp.ui.FaceDetectionScreen
 import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
@@ -117,7 +118,6 @@ import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
-import org.multipaz.util.fromHex
 
 /**
  * Application singleton.
@@ -632,6 +632,7 @@ class App private constructor(val promptModel: PromptModel) {
                             onClickNotifications = { navController.navigate(NotificationsDestination.route) },
                             onClickScreenLock = { navController.navigate(ScreenLockDestination.route) },
                             onClickCamera = { navController.navigate(CameraDestination.route) },
+                            onClickFaceDetection = { navController.navigate(FaceDetectionDestination.route) },
                             onClickBarcodeScanning = { navController.navigate(BarcodeScanningDestination.route) }
                         )
                     }
@@ -851,6 +852,11 @@ class App private constructor(val promptModel: PromptModel) {
                     }
                     composable(route = CameraDestination.route) {
                         CameraScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = FaceDetectionDestination.route) {
+                        FaceDetectionScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }
