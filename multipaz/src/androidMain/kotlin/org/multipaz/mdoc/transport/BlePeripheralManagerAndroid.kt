@@ -503,29 +503,30 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
         characteristic: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val rc = gattServer!!.notifyCharacteristicChanged(
+        suspendCancellableCoroutine { continuation ->
+            setWaitCondition(WaitState.CHARACTERISTIC_WRITE_COMPLETED, continuation)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val rc = gattServer!!.notifyCharacteristicChanged(
                     device!!,
                     characteristic,
                     false,
                     value)
-            if (rc != BluetoothStatusCodes.SUCCESS) {
-                throw Error("Error notifyCharacteristicChanged on characteristic ${characteristic.uuid} rc=$rc")
+                if (rc != BluetoothStatusCodes.SUCCESS) {
+                    throw Error("Error notifyCharacteristicChanged on characteristic ${characteristic.uuid} rc=$rc")
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                characteristic.setValue(value)
+                @Suppress("DEPRECATION")
+                if (!gattServer!!.notifyCharacteristicChanged(
+                        device!!,
+                        characteristic,
+                        false)
+                ) {
+                    throw Error("Error notifyCharacteristicChanged on characteristic ${characteristic.uuid}")
+                }
             }
-        } else {
-            @Suppress("DEPRECATION")
-            characteristic.setValue(value)
-            @Suppress("DEPRECATION")
-            if (!gattServer!!.notifyCharacteristicChanged(
-                device!!,
-                characteristic,
-                false)
-            ) {
-                throw Error("Error notifyCharacteristicChanged on characteristic ${characteristic.uuid}")
-            }
-        }
-        suspendCancellableCoroutine<Boolean> { continuation ->
-            setWaitCondition(WaitState.CHARACTERISTIC_WRITE_COMPLETED, continuation)
         }
     }
 
