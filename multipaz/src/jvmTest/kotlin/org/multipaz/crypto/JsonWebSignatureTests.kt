@@ -1,7 +1,5 @@
 package org.multipaz.crypto
 
-import org.multipaz.asn1.ASN1Integer
-import org.multipaz.util.toBase64Url
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -14,17 +12,15 @@ import com.nimbusds.jose.proc.JWSKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import com.nimbusds.jwt.proc.BadJWTException
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
-import com.nimbusds.jwt.proc.JWTClaimsSetVerifier
-import junit.framework.TestCase.assertTrue
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.asn1.ASN1Integer
+import org.multipaz.util.toBase64Url
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.test.Test
@@ -120,7 +116,7 @@ class JsonWebSignatureTests {
             Curve.P_256,
             signingKey.publicKey.javaPublicKey as ECPublicKey,
             signingKey.javaPrivateKey as ECPrivateKey,
-            null, null, null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null, null, null
         )
         val builder = JWSHeader.Builder(JWSAlgorithm.ES256)
         builder.x509CertChain(
