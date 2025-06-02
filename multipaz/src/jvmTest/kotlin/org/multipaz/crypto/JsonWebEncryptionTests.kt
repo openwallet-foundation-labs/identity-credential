@@ -56,7 +56,7 @@ class JsonWebEncryptionTests {
             Curve.P_256,
             recipientKey.publicKey.javaPublicKey as ECPublicKey,
             recipientKey.javaPrivateKey as ECPrivateKey,
-            null, null, null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null, null, null
         )
         val decrypter = ECDHDecrypter(encKey)
         encryptedJWT.decrypt(decrypter)
