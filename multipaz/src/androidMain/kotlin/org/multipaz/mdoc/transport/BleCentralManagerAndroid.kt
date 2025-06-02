@@ -600,25 +600,26 @@ internal class BleCentralManagerAndroid : BleCentralManager {
         characteristic: BluetoothGattCharacteristic,
         value: ByteArray,
     ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val rc = gatt!!.writeCharacteristic(
-                characteristic,
-                value,
-                BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-            )
-            if (rc != BluetoothStatusCodes.SUCCESS) {
-                throw Error("Error writing to characteristic ${characteristic.uuid}, rc=$rc")
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            characteristic.setValue(value)
-            @Suppress("DEPRECATION")
-            if (!gatt!!.writeCharacteristic(characteristic)) {
-                throw Error("Error writing to characteristic ${characteristic.uuid}")
-            }
-        }
-        suspendCancellableCoroutine<Boolean> { continuation ->
+        suspendCancellableCoroutine { continuation ->
             setWaitCondition(WaitState.CHARACTERISTIC_WRITE_COMPLETED, continuation)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val rc = gatt!!.writeCharacteristic(
+                    characteristic,
+                    value,
+                    BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                )
+                if (rc != BluetoothStatusCodes.SUCCESS) {
+                    throw Error("Error writing to characteristic ${characteristic.uuid}, rc=$rc")
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                characteristic.setValue(value)
+                @Suppress("DEPRECATION")
+                if (!gatt!!.writeCharacteristic(characteristic)) {
+                    throw Error("Error writing to characteristic ${characteristic.uuid}")
+                }
+            }
         }
     }
 
