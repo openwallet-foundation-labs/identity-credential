@@ -355,27 +355,4 @@ actual object Crypto {
     ): JsonObject {
         throw NotImplementedError("This is not yet implemented")
     }
-
-    internal actual fun jwsSign(
-        key: EcPrivateKey,
-        signatureAlgorithm: Algorithm,
-        claimsSet: JsonObject,
-        type: String?,
-        x5c: X509CertChain?
-    ): JsonElement {
-        throw NotImplementedError("This is not yet implemented")
-    }
-
-    internal actual fun jwsVerify(
-        signedJwt: JsonElement,
-        publicKey: EcPublicKey
-    ) {
-        throw NotImplementedError("This is not yet implemented")
-    }
-
-    internal actual fun jwsGetInfo(
-        signedJwt: JsonElement
-    ): JwsInfo {
-        throw NotImplementedError("This is not yet implemented")
-    }
 }

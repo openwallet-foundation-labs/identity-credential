@@ -60,9 +60,6 @@ import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.mrtd.MrtdNfcData
 import org.multipaz.mrtd.MrtdNfcDataDecoder
-import org.multipaz.sdjwt.Issuer
-import org.multipaz.sdjwt.SdJwtVcGenerator
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import kotlinx.datetime.Clock
@@ -75,6 +72,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearsUntil
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.buildCborArray
@@ -86,6 +84,7 @@ import org.multipaz.provisioning.wallet.AuthenticationState
 import org.multipaz.rpc.backend.RpcAuthBackendDelegate
 import org.multipaz.rpc.handler.RpcAuthContext
 import org.multipaz.rpc.handler.RpcAuthInspector
+import org.multipaz.sdjwt.SdJwt
 import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -633,23 +632,10 @@ class IssuingAuthorityState(
             }
         }
 
-        val sdJwtVcGenerator = SdJwtVcGenerator(
-            random = Random.Default,
-            payload = identityAttributes,
-            vct = EUPersonalID.EUPID_VCT,
-            issuer = Issuer("https://example-issuer.com", Algorithm.ESP256, "key-1")
-        )
-
         val now = Clock.System.now()
-
         val timeSigned = now
         val validFrom = now
         val validUntil = validFrom + 30.days
-
-        sdJwtVcGenerator.publicKey = JsonWebKey(authenticationKey)
-        sdJwtVcGenerator.timeSigned = timeSigned
-        sdJwtVcGenerator.timeValidityBegin = validFrom
-        sdJwtVcGenerator.timeValidityEnd = validUntil
 
         // Just use the mdoc Document Signing key for now
         //
@@ -660,9 +646,22 @@ class IssuingAuthorityState(
             resources.getStringResource("ds_private_key.pem")!!,
             documentSigningKeyCert.ecPublicKey
         )
-        val sdJwt = sdJwtVcGenerator.generateSdJwt(documentSigningKey)
 
-        return sdJwt.toString().toByteArray()
+        val sdJwt = SdJwt.create(
+            issuerKey = documentSigningKey,
+            issuerAlgorithm = documentSigningKey.curve.defaultSigningAlgorithmFullySpecified,
+            issuerCertChain = X509CertChain(listOf(documentSigningKeyCert)),
+            kbKey = authenticationKey,
+            claims = identityAttributes,
+            nonSdClaims = buildJsonObject {
+                put("iss", JsonPrimitive("https://example-issuer.com"))
+                put("iat", JsonPrimitive(timeSigned.epochSeconds))
+                put("nbf", JsonPrimitive(validFrom.epochSeconds))
+                put("exp", JsonPrimitive(validUntil.epochSeconds))
+            },
+        )
+
+        return sdJwt.compactSerialization.toByteArray()
     }
 
     private suspend fun generateDocumentConfiguration(

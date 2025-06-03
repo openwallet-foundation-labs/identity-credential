@@ -2,8 +2,6 @@ package org.multipaz.models.presentment
 
 import org.multipaz.request.Requester
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tstr
 import org.multipaz.credential.Credential
@@ -32,8 +30,6 @@ import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
 import org.multipaz.request.VcRequest
 import org.multipaz.request.VcRequestedClaim
-import org.multipaz.sdjwt.SdJwtVerifiableCredential
-import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
@@ -42,9 +38,10 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
@@ -57,6 +54,8 @@ import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
+import org.multipaz.sdjwt.SdJwt
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
@@ -620,24 +619,26 @@ private suspend fun openID4VPSdJwt(
         }
     }
 
-    val attributesToDisclose = requestedClaims.map { it.claimName }.toSet()
-    val sdJwt = SdJwtVerifiableCredential.fromString(sdjwtVcCredential.issuerProvidedData.decodeToString())
-    val filteredSdJwt = sdJwt.discloseOnly(attributesToDisclose)
-
-    val secureAreaBoundCredential = if (sdjwtVcCredential is SecureAreaBoundCredential) {
-        sdjwtVcCredential as SecureAreaBoundCredential
-    } else {
-        null
+    val sdJwt = SdJwt(sdjwtVcCredential.issuerProvidedData.decodeToString())
+    val pathsToDisclose = requestedClaims.map { claim: VcRequestedClaim ->
+        // TODO: support proper paths
+        JsonArray(listOf(JsonPrimitive(claim.claimName)))
     }
+    val filteredSdJwt = sdJwt.filter(pathsToDisclose)
+
     sdjwtVcCredential.increaseUsageCount()
-    return filteredSdJwt.createPresentation(
-        secureArea = secureAreaBoundCredential?.secureArea,
-        alias = secureAreaBoundCredential?.alias,
-        keyUnlockData = KeyUnlockInteractive(),
-        nonce = nonce,
-        audience = clientId,
-        creationTime = Clock.System.now(),
-    ).toString()
+    return if (sdjwtVcCredential is SecureAreaBoundCredential) {
+        filteredSdJwt.present(
+            kbSecureArea = sdjwtVcCredential.secureArea,
+            kbAlias = sdjwtVcCredential.alias,
+            kbKeyUnlockData = KeyUnlockInteractive(),
+            nonce = nonce,
+            audience = clientId,
+            creationTime = Clock.System.now()
+        ).compactSerialization
+    } else {
+        filteredSdJwt.compactSerialization
+    }
 }
 
 @OptIn(ExperimentalEncodingApi::class)

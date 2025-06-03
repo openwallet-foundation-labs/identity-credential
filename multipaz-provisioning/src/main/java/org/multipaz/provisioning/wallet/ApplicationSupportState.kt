@@ -16,7 +16,6 @@ import org.multipaz.provisioning.LandingUrlUnknownException
 import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.rpc.cache
 import org.multipaz.rpc.backend.getTable
-import org.multipaz.provisioning.openid4vci.toJson
 import org.multipaz.provisioning.validateDeviceAssertionBindingKeys
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.storage.StorageTableSpec
@@ -173,7 +172,7 @@ class ApplicationSupportState(
         val head = buildJsonObject {
             put("typ", JsonPrimitive("keyattestation+jwt"))
             put("alg", JsonPrimitive(alg))
-            put("jwk", publicKey.toJson(null))  // TODO: use x5c instead here?
+            put("jwk", publicKey.toJwk())  // TODO: use x5c instead here?
         }.toString().toByteArray().toBase64Url()
 
         val now = Clock.System.now()
@@ -181,7 +180,7 @@ class ApplicationSupportState(
         val expiration = now + 5.minutes
         val payload = buildJsonObject {
             put("iss", attestationData.clientId)
-            put("attested_keys", JsonArray(keyList.map { it.toJson(null) }))
+            put("attested_keys", JsonArray(keyList.map { it.toJwk() }))
             put("nonce", nonce)
             put("nbf", notBefore.epochSeconds)
             put("exp", expiration.epochSeconds)
@@ -252,7 +251,7 @@ class ApplicationSupportState(
         val head = buildJsonObject {
             put("typ", JsonPrimitive("JWT"))
             put("alg", JsonPrimitive(alg))
-            put("jwk", publicKey.toJson(null))
+            put("jwk", publicKey.toJwk())
         }.toString().toByteArray().toBase64Url()
 
         val now = Clock.System.now()
@@ -267,7 +266,7 @@ class ApplicationSupportState(
                 "sub" to JsonPrimitive(attestationData.clientId), // RFC 7523 Section 3, item 2.B
                 "cnf" to JsonObject(
                     mapOf(
-                        "jwk" to clientPublicKey.toJson(clientId)
+                        "jwk" to clientPublicKey.toJwk(additionalClaims = buildJsonObject { put("kid", JsonPrimitive(clientId)) })
                     )
                 ),
                 "nbf" to JsonPrimitive(notBefore.epochSeconds),

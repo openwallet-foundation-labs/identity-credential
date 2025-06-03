@@ -30,11 +30,8 @@ import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.request.DeviceRequestGenerator
-import org.multipaz.sdjwt.Issuer
-import org.multipaz.sdjwt.SdJwtVcGenerator
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.util.Logger
@@ -49,12 +46,14 @@ import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.sdjwt.SdJwt
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -514,24 +513,21 @@ object TestAppUtils {
                     )
                 }
 
-                val sdJwtVcGenerator = SdJwtVcGenerator(
-                    vct = credential.vct,
-                    payload = identityAttributes,
-                    issuer = Issuer(
-                        "https://example-issuer.com",
-                        dsKey.publicKey.curve.defaultSigningAlgorithmFullySpecified,
-                        null,
-                        X509CertChain(listOf(dsCert))
-                    ),
+                val kbKey = (credential as? SecureAreaBoundCredential)?.getAttestation()?.publicKey
+                val sdJwt = SdJwt.create(
+                    issuerKey = dsKey,
+                    issuerAlgorithm = dsKey.publicKey.curve.defaultSigningAlgorithmFullySpecified,
+                    issuerCertChain = X509CertChain(listOf(dsCert)),
+                    kbKey = kbKey,
+                    claims = identityAttributes,
+                    nonSdClaims = buildJsonObject {
+                        put("iss", "https://example-issuer.com")
+                        put("vct", credential.vct)
+                        // TODO: other attributes e.g. iat
+                    },
                 )
-                sdJwtVcGenerator.publicKey =
-                    (credential as? SecureAreaBoundCredential)?.let { JsonWebKey(it.getAttestation().publicKey) }
-                sdJwtVcGenerator.timeSigned = signedAt
-                sdJwtVcGenerator.timeValidityBegin = validFrom
-                sdJwtVcGenerator.timeValidityEnd = validUntil
-                val sdJwt = sdJwtVcGenerator.generateSdJwt(dsKey)
                 credential.certify(
-                    sdJwt.toString().encodeToByteArray(),
+                    sdJwt.compactSerialization.encodeToByteArray(),
                     validFrom,
                     validUntil
                 )

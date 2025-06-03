@@ -35,8 +35,6 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.documenttype.DocumentCannedRequest
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.sdjwt.presentation.SdJwtVerifiablePresentation
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
@@ -196,7 +194,7 @@ class Openid4VpVerifierModel(
                     MdocPresentation(parser.parse())
                 }
                 "dc+sd-jwt" -> {
-                    SdJwtPresentation(SdJwtVerifiablePresentation.fromString(presentationText))
+                    SdJwtPresentation(presentationText)
                 }
                 else -> throw IllegalStateException("Unknown format for id '$id'")
             }
@@ -247,11 +245,11 @@ class Openid4VpVerifierModel(
             put("vp_formats_supported", vpFormats)
             put("jwks", buildJsonObject {
                 put("keys", buildJsonArray {
-                    add(JsonWebKey(ephemeralPrivateKey.publicKey).toRawJwk {
+                    add(ephemeralPrivateKey.publicKey.toJwk(additionalClaims = buildJsonObject {
                         put("use", "enc")
                         put("kid", "default")
                         put("alg", "ECDH-ES")
-                    })
+                    }))
                 })
             })
         }
@@ -299,7 +297,7 @@ class Openid4VpVerifierModel(
 
     class MdocPresentation(val deviceResponse: DeviceResponseParser.DeviceResponse): Presentation()
 
-    class SdJwtPresentation(val presentation: SdJwtVerifiablePresentation): Presentation()
+    class SdJwtPresentation(val compactSerialization: String): Presentation()
 
     companion object {
         // TODO: for now, instead of using the per-site Reader Root generated at first run, use the

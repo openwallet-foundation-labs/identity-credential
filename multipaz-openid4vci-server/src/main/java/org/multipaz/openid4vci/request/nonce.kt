@@ -9,10 +9,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import org.multipaz.crypto.EcPublicKey
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.openid4vci.util.authorizeWithDpop
 import org.multipaz.rpc.handler.InvalidRequestException
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
@@ -30,7 +30,7 @@ suspend fun nonce(call: ApplicationCall) {
     val dpopHeader = Json.parseToJsonElement(
         parts[0].fromBase64Url().decodeToString()
     ).jsonObject
-    val dpopKey = JsonWebKey(dpopHeader).asEcPublicKey
+    val dpopKey = EcPublicKey.fromJwk(dpopHeader)
     val id = IssuanceState.lookupIssuanceStateId(dpopKey)
     val state = IssuanceState.getIssuanceState(id)
     val existingDPoPNonce = state.dpopNonce?.toByteArray()?.toBase64Url()

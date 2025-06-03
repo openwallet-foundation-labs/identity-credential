@@ -1,11 +1,18 @@
 package org.multipaz.crypto
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
+import org.multipaz.util.toBase64Url
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 
 /**
  * EC Public Key with Octet Key Pairs.
@@ -25,6 +32,21 @@ data class EcPublicKeyOkp(
                 Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem())
             ) + additionalLabels
         )
+
+    override fun toJwk(
+        additionalClaims: JsonObject?,
+    ): JsonObject {
+        return buildJsonObject {
+            put("kty", JsonPrimitive("OKP"))
+            put("crv", JsonPrimitive(curve.jwkName))
+            put("x", JsonPrimitive(x.toBase64Url()))
+            if (additionalClaims != null) {
+                for ((k, v) in additionalClaims) {
+                    put(k, v)
+                }
+            }
+        }
+    }
 
     init {
         when (curve) {

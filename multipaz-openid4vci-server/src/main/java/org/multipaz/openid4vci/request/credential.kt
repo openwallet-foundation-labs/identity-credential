@@ -26,9 +26,6 @@ import org.multipaz.rpc.cache
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.sdjwt.Issuer
-import org.multipaz.sdjwt.SdJwtVcGenerator
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
@@ -46,6 +43,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.openid4vci.credential.Openid4VciFormat
 import org.multipaz.openid4vci.util.IssuanceState
@@ -53,6 +51,7 @@ import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.authorizeWithDpop
 import org.multipaz.openid4vci.util.checkJwtSignature
 import org.multipaz.openid4vci.util.codeToId
+import org.multipaz.sdjwt.SdJwt
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
@@ -154,9 +153,7 @@ suspend fun credential(call: ApplicationCall) {
                     throw InvalidRequestException("invalid nonce in 'proof(s).attestation' parameter")
                 }
                 body["attested_keys"]!!.jsonArray.map { key ->
-                    JsonWebKey(buildJsonObject {
-                        put("jwk", key)
-                    }).asEcPublicKey
+                    EcPublicKey.fromJwk(key.jsonObject)
                 }
             }
         }
@@ -171,9 +168,8 @@ suspend fun credential(call: ApplicationCall) {
                 if (parts.size != 3) {
                     throw InvalidRequestException("invalid value for 'proof.jwt' parameter")
                 }
-                val head =
-                    Json.parseToJsonElement(String(parts[0].fromBase64Url())) as JsonObject
-                val authenticationKey = JsonWebKey(head).asEcPublicKey
+                val head = Json.parseToJsonElement(String(parts[0].fromBase64Url())) as JsonObject
+                val authenticationKey = EcPublicKey.fromJwk(head)
                 checkJwtSignature(authenticationKey, jwt)
                 authenticationKey
             }
@@ -212,23 +208,11 @@ private suspend fun createCredentialSdJwt(
         put("family_name", JsonPrimitive(data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "family_name")))
     }
 
-    val sdJwtVcGenerator = SdJwtVcGenerator(
-        random = Random,
-        payload = identityAttributes,
-        vct = EUPersonalID.EUPID_VCT,
-        issuer = Issuer("https://example-issuer.com", Algorithm.ES256, "key-1")
-    )
-
     val now = Clock.System.now()
 
     val timeSigned = now
     val validFrom = now
     val validUntil = validFrom + 30.days
-
-    sdJwtVcGenerator.publicKey = JsonWebKey(authenticationKey)
-    sdJwtVcGenerator.timeSigned = timeSigned
-    sdJwtVcGenerator.timeValidityBegin = validFrom
-    sdJwtVcGenerator.timeValidityEnd = validUntil
 
     val resources = BackendEnvironment.getInterface(Resources::class)!!
     val documentSigningKeyCert =
@@ -236,9 +220,22 @@ private suspend fun createCredentialSdJwt(
     val documentSigningKey = EcPrivateKey.fromPem(
         resources.getStringResource("ds_private_key.pem")!!,
         documentSigningKeyCert.ecPublicKey)
-    val sdJwt = sdJwtVcGenerator.generateSdJwt(documentSigningKey)
 
-    return sdJwt.toString()
+    val sdJwt = SdJwt.create(
+        issuerKey = documentSigningKey,
+        issuerAlgorithm = documentSigningKey.curve.defaultSigningAlgorithmFullySpecified,
+        issuerCertChain = X509CertChain(listOf(documentSigningKeyCert)),
+        kbKey = authenticationKey,
+        claims = identityAttributes,
+        nonSdClaims = buildJsonObject {
+            put("iss", "https://example-issuer.com")
+            put("vct", UtopiaMovieTicket.MOVIE_TICKET_VCT)
+            put("iat", timeSigned.epochSeconds)
+            put("nbf", validFrom.epochSeconds)
+            put("exp", validUntil.epochSeconds)
+        }
+    )
+    return sdJwt.compactSerialization
 }
 
 private suspend fun createCredentialMdoc(

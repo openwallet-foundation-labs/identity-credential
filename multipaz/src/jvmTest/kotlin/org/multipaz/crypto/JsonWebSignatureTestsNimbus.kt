@@ -20,7 +20,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.asn1.ASN1Integer
-import org.multipaz.util.toBase64Url
+import org.multipaz.util.toBase64
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.test.Test
@@ -28,9 +28,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.time.Duration.Companion.days
 
-class JsonWebSignatureTests {
+// Note: This checks the JsonWebSignature implementation against the https://connect2id.com/products/nimbus-jose-jwt
+// implementation
+class JsonWebSignatureTestsNimbus {
 
-    // TODO: Check for other curves once JsonWebSignature is implemented in a multiplatform fashion.
+    // TODO: Check for other curves than just P-256.
 
     @Test
     fun testSigning() {
@@ -59,7 +61,7 @@ class JsonWebSignatureTests {
 
         val signedJwt = JsonWebSignature.sign(
             key = signingKey,
-            signatureAlgorithm = signingKey.curve.defaultSigningAlgorithm,
+            signatureAlgorithm = signingKey.curve.defaultSigningAlgorithmFullySpecified,
             claimsSet = claimsSet,
             type = "oauth-authz-req+jwt",
             x5c = X509CertChain(listOf(signingKeyCert))
@@ -120,7 +122,7 @@ class JsonWebSignatureTests {
         )
         val builder = JWSHeader.Builder(JWSAlgorithm.ES256)
         builder.x509CertChain(
-            listOf(com.nimbusds.jose.util.Base64.from(signingKeyCert.encodedCertificate.toBase64Url()))
+            listOf(com.nimbusds.jose.util.Base64.from(signingKeyCert.encodedCertificate.toBase64()))
         )
         builder.type(JOSEObjectType("oauth-authz-req+jwt"))
         builder.keyID(ecKey.getKeyID())
@@ -152,41 +154,5 @@ class JsonWebSignatureTests {
                 otherKey.publicKey
             )
         }
-    }
-
-    @Test
-    fun roundtrip() {
-        val signingKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val now = Clock.System.now()
-        val signingKeyCert = X509Cert.Builder(
-            publicKey = signingKey.publicKey,
-            signingKey = signingKey,
-            signatureAlgorithm = signingKey.curve.defaultSigningAlgorithm,
-            serialNumber = ASN1Integer(1L),
-            subject = X500Name.fromName("CN=Test Key"),
-            issuer = X500Name.fromName("CN=Test Key"),
-            validFrom = now,
-            validUntil = now + 1.days
-        ).includeSubjectKeyIdentifier()
-            .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
-            .build()
-
-        val claimsSet = buildJsonObject {
-            put("vp_token", buildJsonObject {
-                put("credential", buildJsonObject {
-                    put("foo", JsonPrimitive("blah"))
-                })
-            })
-        }
-
-        val jws = JsonWebSignature.sign(
-            key = signingKey,
-            signatureAlgorithm = signingKey.curve.defaultSigningAlgorithm,
-            claimsSet = claimsSet,
-            type = "oauth-authz-req+jwt",
-            x5c = X509CertChain(listOf(signingKeyCert))
-        )
-
-        JsonWebSignature.verify(jws, signingKey.publicKey)
     }
 }

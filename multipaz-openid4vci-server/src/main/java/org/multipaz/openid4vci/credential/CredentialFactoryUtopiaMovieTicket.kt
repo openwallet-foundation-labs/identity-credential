@@ -7,13 +7,13 @@ import org.multipaz.crypto.X509Cert
 import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
-import org.multipaz.sdjwt.Issuer
-import org.multipaz.sdjwt.SdJwtVcGenerator
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.openid4vci.util.IssuanceState
+import org.multipaz.sdjwt.SdJwt
 import kotlin.random.Random
 
 internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
@@ -51,22 +51,11 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
             put("seat_id", "G2")
         }
 
-        val sdJwtVcGenerator = SdJwtVcGenerator(
-            random = Random,
-            payload = identityAttributes,
-            vct = UtopiaMovieTicket.MOVIE_TICKET_VCT,
-            issuer = Issuer("https://example-issuer.com", Algorithm.ESP256, "key-1")
-        )
-
         val now = Clock.System.now()
 
         val timeSigned = now
         val validFrom = Instant.parse("2024-04-01T12:00:00Z")
         val validUntil = Instant.parse("2034-04-01T12:00:00Z")
-
-        sdJwtVcGenerator.timeSigned = timeSigned
-        sdJwtVcGenerator.timeValidityBegin = validFrom
-        sdJwtVcGenerator.timeValidityEnd = validUntil
 
         val resources = BackendEnvironment.getInterface(Resources::class)!!
         val documentSigningKeyCert =
@@ -74,9 +63,22 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
         val documentSigningKey = EcPrivateKey.fromPem(
             resources.getStringResource("ds_private_key.pem")!!,
             documentSigningKeyCert.ecPublicKey)
-        val sdJwt = sdJwtVcGenerator.generateSdJwt(documentSigningKey)
 
-        return sdJwt.toString()
+        val sdJwt = SdJwt.create(
+            issuerKey = documentSigningKey,
+            issuerAlgorithm = documentSigningKey.curve.defaultSigningAlgorithmFullySpecified,
+            issuerCertChain = X509CertChain(listOf(documentSigningKeyCert)),
+            kbKey = null,
+            claims = identityAttributes,
+            nonSdClaims = buildJsonObject {
+                put("iss", "https://example-issuer.com")
+                put("vct", UtopiaMovieTicket.MOVIE_TICKET_VCT)
+                put("iat", timeSigned.epochSeconds)
+                put("nbf", validFrom.epochSeconds)
+                put("exp", validUntil.epochSeconds)
+            }
+        )
+        return sdJwt.compactSerialization
     }
 
     companion object {

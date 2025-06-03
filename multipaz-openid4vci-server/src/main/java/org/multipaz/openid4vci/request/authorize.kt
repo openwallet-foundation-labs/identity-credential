@@ -113,16 +113,7 @@ suspend fun authorizePost(call: ApplicationCall)  {
             }
 
             is Openid4VpVerifierModel.SdJwtPresentation -> {
-                for (disclosure in presentation.presentation.sdJwtVc.disclosures) {
-                    when (disclosure.key) {
-                        "family_name", "given_name" ->
-                            data.putEntry(
-                                EUPersonalID.EUPID_NAMESPACE,
-                                disclosure.key,
-                                Cbor.encode(Tstr(disclosure.value.jsonPrimitive.content))
-                            )
-                    }
-                }
+                TODO()
             }
         }
     } else {

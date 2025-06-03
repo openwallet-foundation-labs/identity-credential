@@ -60,7 +60,7 @@ class RequestCredentialsUsingProofOfPossession(
             val header = buildJsonObject {
                 put("typ", "openid4vci-proof+jwt")
                 put("alg", "ES256")
-                put("jwk", request.secureAreaBoundKeyAttestation.publicKey.toJson(null))
+                put("jwk", request.secureAreaBoundKeyAttestation.publicKey.toJwk())
             }.toString().encodeToByteArray().toBase64Url()
             val body = buildJsonObject {
                 put("iss", clientId)

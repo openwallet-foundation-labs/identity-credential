@@ -9,7 +9,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
@@ -43,10 +45,8 @@ import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.sdjwt.Issuer
-import org.multipaz.sdjwt.SdJwtVcGenerator
+import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
-import org.multipaz.sdjwt.util.JsonWebKey
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -440,24 +440,22 @@ class DocumentStoreTestHarness {
             createKeySettings = SoftwareCreateKeySettings.Builder().build()
         )
 
-        val sdJwtVcGenerator = SdJwtVcGenerator(
-            vct = credential.vct,
-            payload = identityAttributes,
-            issuer = Issuer(
-                "https://example-issuer.com",
-                dsKey.publicKey.curve.defaultSigningAlgorithmFullySpecified,
-                null,
-                X509CertChain(listOf(dsCert))
-            ),
+        val sdJwt = SdJwt.create(
+            issuerKey = dsKey,
+            issuerAlgorithm = dsKey.curve.defaultSigningAlgorithmFullySpecified,
+            issuerCertChain = X509CertChain(listOf(dsCert)),
+            kbKey = (credential as? SecureAreaBoundCredential)?.let { it.secureArea.getKeyInfo(it.alias).publicKey },
+            claims = identityAttributes,
+            nonSdClaims = buildJsonObject {
+                put("iss", "https://example-issuer.com")
+                put("vct", credential.vct)
+                put("iat", signedAt.epochSeconds)
+                put("nbf", validFrom.epochSeconds)
+                put("exp", validUntil.epochSeconds)
+            },
         )
-        sdJwtVcGenerator.publicKey =
-            (credential as? SecureAreaBoundCredential)?.let { JsonWebKey(it.getAttestation().publicKey) }
-        sdJwtVcGenerator.timeSigned = signedAt
-        sdJwtVcGenerator.timeValidityBegin = validFrom
-        sdJwtVcGenerator.timeValidityEnd = validUntil
-        val sdJwt = sdJwtVcGenerator.generateSdJwt(dsKey)
         credential.certify(
-            sdJwt.toString().encodeToByteArray(),
+            sdJwt.compactSerialization.encodeToByteArray(),
             validFrom,
             validUntil
         )

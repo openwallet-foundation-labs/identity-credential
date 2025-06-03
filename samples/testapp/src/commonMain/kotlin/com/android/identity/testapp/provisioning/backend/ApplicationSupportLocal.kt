@@ -1,6 +1,5 @@
 package com.android.identity.testapp.provisioning.backend
 
-import com.android.identity.testapp.provisioning.openid4vci.toJson
 import com.android.identity.testapp.provisioning.openid4vci.validateDeviceAssertionBindingKeys
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.flow.FlowCollector
@@ -181,7 +180,7 @@ class ApplicationSupportLocal(
         val head = buildJsonObject {
             put("typ", "JWT")
             put("alg", alg)
-            put("jwk", localClientAssertionCertificate.ecPublicKey.toJson(null))
+            put("jwk", localClientAssertionCertificate.ecPublicKey.toJwk())
         }.toString().encodeToByteArray().toBase64Url()
 
         val now = Clock.System.now()
@@ -194,7 +193,7 @@ class ApplicationSupportLocal(
             put("iss", localClientId)
             put("sub", localClientId) // RFC 7523 Section 3, item 2.B
             put("cnf", buildJsonObject {
-                put("jwk", keyAttestation.publicKey.toJson(clientId))
+                put("jwk", keyAttestation.publicKey.toJwk(buildJsonObject { put("kid", JsonPrimitive(clientId)) }))
             })
             put("nbf", notBefore.epochSeconds)
             put("exp", expiration.epochSeconds)
@@ -258,7 +257,7 @@ class ApplicationSupportLocal(
             put("sub", clientId)
             put("exp", expiration.epochSeconds)
             put("cnf", buildJsonObject {
-                put("jwk", keyAttestation.publicKey.toJson(clientId))
+                put("jwk", keyAttestation.publicKey.toJwk(buildJsonObject { put("kid", JsonPrimitive(clientId)) }))
             })
             put("nbf", notBefore.epochSeconds)
             put("iat", now.epochSeconds)
@@ -298,7 +297,7 @@ class ApplicationSupportLocal(
         val head = buildJsonObject {
             put("typ", "keyattestation+jwt")
             put("alg", alg)
-            put("jwk", localClientAssertionCertificate.ecPublicKey.toJson(null))  // TODO: use x5c instead here?
+            put("jwk", localClientAssertionCertificate.ecPublicKey.toJwk())  // TODO: use x5c instead here?
         }.toString().encodeToByteArray().toBase64Url()
 
         val now = Clock.System.now()
@@ -306,7 +305,7 @@ class ApplicationSupportLocal(
         val expiration = now + 5.minutes
         val payload = buildJsonObject {
             put("iss", localClientId)
-            put("attested_keys", JsonArray(keyList.map { it.toJson(null) }))
+            put("attested_keys", JsonArray(keyList.map { it.toJwk() }))
             put("nonce", nonce)
             put("nbf", notBefore.epochSeconds)
             put("exp", expiration.epochSeconds)

@@ -7,6 +7,10 @@ import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import org.multipaz.util.toBase64Url
 
 /**
  * EC Public Key with two coordinates.
@@ -29,6 +33,22 @@ data class EcPublicKeyDoubleCoordinate(
                 Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem())
             ) + additionalLabels
         )
+
+    override fun toJwk(
+        additionalClaims: JsonObject?,
+    ): JsonObject {
+        return buildJsonObject {
+            put("kty", JsonPrimitive("EC"))
+            put("crv", JsonPrimitive(curve.jwkName))
+            put("x", JsonPrimitive(x.toBase64Url()))
+            put("y", JsonPrimitive(y.toBase64Url()))
+            if (additionalClaims != null) {
+                for ((k, v) in additionalClaims) {
+                    put(k, v)
+                }
+            }
+        }
+    }
 
     init {
         when (curve) {
