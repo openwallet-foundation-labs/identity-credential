@@ -850,7 +850,10 @@ class VerifierServlet : BaseHttpServlet() {
         val encryptedResponse = response["response"]
         val vpToken = if (encryptedResponse != null) {
             session.responseWasEncrypted = true
-            val decryptedResponse = JsonWebEncryption.decrypt(encryptedResponse, session.encryptionKey).jsonObject
+            val decryptedResponse = JsonWebEncryption.decrypt(
+                encryptedResponse.jsonPrimitive.content,
+                session.encryptionKey
+            ).jsonObject
             decryptedResponse["vp_token"]!!.jsonObject
         } else {
             response["vp_token"]!!.jsonObject
@@ -1597,7 +1600,7 @@ private fun calcDcRequestStringOpenID4VP(
         x5c = readerAuthKeyCertification
     )
     val signedRequest = buildJsonObject {
-        put("request", JsonPrimitive(signedRequestElement.jsonPrimitive.content))
+        put("request", JsonPrimitive(signedRequestElement))
     }
     return signedRequest.toString()
 }

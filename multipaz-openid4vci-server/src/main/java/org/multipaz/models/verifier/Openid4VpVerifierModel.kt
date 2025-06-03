@@ -172,7 +172,7 @@ class Openid4VpVerifierModel(
         responseUri: String,
         response: String
     ): Map<String, Presentation> {
-        val decrypted = JsonWebEncryption.decrypt(JsonPrimitive(response), ephemeralPrivateKey)
+        val decrypted = JsonWebEncryption.decrypt(response, ephemeralPrivateKey)
         val header = Json.parseToJsonElement(
             response.substring(0, response.indexOf('.')).fromBase64Url().decodeToString()
         ).jsonObject

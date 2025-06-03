@@ -100,8 +100,6 @@ kotlin {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
-                // TODO: remove when JsonWebEncryption is implemented fully in Kotlin
-                implementation(libs.nimbus.oauth2.oidc.sdk)
             }
         }
 

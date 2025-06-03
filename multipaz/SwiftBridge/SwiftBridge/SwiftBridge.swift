@@ -43,21 +43,30 @@ import DeviceCheck
         return Data(mac)
     }
     
-    @objc(aesGcmEncrypt: : :) public class func aesGcmEncrypt(key: Data, plainText: Data, nonce: Data) -> Data {
+    @objc(aesGcmEncrypt: : : :) public class func aesGcmEncrypt(key: Data, plainText: Data, nonce: Data, aad: Data?) -> Data {
         let symmetricKey = SymmetricKey(data: key)
-        let sealedBox = try! AES.GCM.seal(plainText, using: symmetricKey, nonce: AES.GCM.Nonce(data: nonce))
-        var ret = sealedBox.ciphertext
-        ret.append(sealedBox.tag)
-        return ret
+        if (aad != nil) {
+            let sealedBox = try! AES.GCM.seal(plainText, using: symmetricKey, nonce: AES.GCM.Nonce(data: nonce), authenticating: aad!)
+            var ret = sealedBox.ciphertext
+            ret.append(sealedBox.tag)
+            return ret
+        } else {
+            let sealedBox = try! AES.GCM.seal(plainText, using: symmetricKey, nonce: AES.GCM.Nonce(data: nonce))
+            var ret = sealedBox.ciphertext
+            ret.append(sealedBox.tag)
+            return ret
+        }
     }
     
-    @objc(aesGcmDecrypt: : :) public class func aesGcmDecrypt(key: Data, cipherText: Data, nonce: Data) -> Data? {
+    @objc(aesGcmDecrypt: : : : :) public class func aesGcmDecrypt(key: Data, cipherText: Data, tag: Data, nonce: Data, aad: Data?) -> Data? {
         let symmetricKey = SymmetricKey(data: key)
-        var combined = nonce
-        combined.append(cipherText)
-        let sealedBox = try! AES.GCM.SealedBox(combined: combined)
+        let sealedBox = try! AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: nonce), ciphertext: cipherText, tag: tag)
         do {
-            return try AES.GCM.open(sealedBox, using: symmetricKey)
+            if (aad != nil) {
+                return try AES.GCM.open(sealedBox, using: symmetricKey, authenticating: aad!)
+            } else {
+                return try AES.GCM.open(sealedBox, using: symmetricKey)
+            }
         } catch {
             return nil
         }

@@ -1,5 +1,6 @@
 package org.multipaz.crypto
 
+import com.nimbusds.jose.CompressionAlgorithm
 import org.multipaz.util.toBase64Url
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JWEAlgorithm
@@ -14,6 +15,7 @@ import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -24,15 +26,17 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.test.assertEquals
 
-class JsonWebEncryptionTests {
+class JsonWebEncryptionTestsNimbus {
 
-    // TODO: Check for other curves once JsonWebEncryption is implemented in a multiplatform fashion.
+    // TODO: Check for other curves than just P-256.
 
-    @Test fun testEncryptEcdhEs_A128GCM() = testEncryptEcdhEs(Algorithm.A128GCM)
-    @Test fun testEncryptEcdhEs_A192GCM() = testEncryptEcdhEs(Algorithm.A192GCM)
-    @Test fun testEncryptEcdhEs_A256GCM() = testEncryptEcdhEs(Algorithm.A256GCM)
+    @Test fun testEncryptEcdhEs_A128GCM() = testEncryptEcdhEs(Algorithm.A128GCM, false)
+    @Test fun testEncryptEcdhEs_A192GCM() = testEncryptEcdhEs(Algorithm.A192GCM, false)
+    @Test fun testEncryptEcdhEs_A256GCM() = testEncryptEcdhEs(Algorithm.A256GCM, false)
 
-    private fun testEncryptEcdhEs(encAlg: Algorithm) {
+    @Test fun testEncryptEcdhEs_Compression() = testEncryptEcdhEs(Algorithm.A128GCM, true)
+
+    private fun testEncryptEcdhEs(encAlg: Algorithm, useCompression: Boolean) {
         val recipientKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
         val claims = buildJsonObject {
@@ -46,12 +50,13 @@ class JsonWebEncryptionTests {
             claimsSet = claims,
             recipientPublicKey = recipientKey.publicKey,
             encAlg = encAlg,
-            apu = byteArrayOf(1, 2, 3).toBase64Url(),
-            apv = byteArrayOf(4, 5, 6).toBase64Url()
+            apu = ByteString(1, 2, 3),
+            apv = ByteString(4, 5, 6),
+            compressionLevel = if (useCompression) 5 else null,
         )
 
         // Use Nimbus to decrypt
-        val encryptedJWT = EncryptedJWT.parse(encryptedJwt.jsonPrimitive.content)
+        val encryptedJWT = EncryptedJWT.parse(encryptedJwt)
         val encKey = ECKey(
             Curve.P_256,
             recipientKey.publicKey.javaPublicKey as ECPublicKey,
@@ -65,11 +70,13 @@ class JsonWebEncryptionTests {
         assertEquals(claims, decryptedClaims)
     }
 
-    @Test fun testDecryptEcdhEs_A128GCM() = testEncryptEcdhEs(Algorithm.A128GCM)
-    @Test fun testDecryptEcdhEs_A192GCM() = testEncryptEcdhEs(Algorithm.A192GCM)
-    @Test fun testDecryptEcdhEs_A256GCM() = testEncryptEcdhEs(Algorithm.A256GCM)
+    @Test fun testDecryptEcdhEs_A128GCM() = testDecryptEcdhEs(Algorithm.A128GCM, false)
+    @Test fun testDecryptEcdhEs_A192GCM() = testDecryptEcdhEs(Algorithm.A192GCM, false)
+    @Test fun testDecryptEcdhEs_A256GCM() = testDecryptEcdhEs(Algorithm.A256GCM, false)
 
-    private fun testDecryptEcdhEs(encAlg: Algorithm) {
+    @Test fun testDecryptEcdhEs_Compression() = testDecryptEcdhEs(Algorithm.A128GCM, true)
+
+    private fun testDecryptEcdhEs(encAlg: Algorithm, useCompression: Boolean) {
         val recipientKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val claims = buildJsonObject {
             put("vp_token", buildJsonObject {
@@ -85,15 +92,18 @@ class JsonWebEncryptionTests {
         // Build the Encrypted JWT with Nimbus
         val responseEncryptionAlg = JWEAlgorithm.parse("ECDH-ES")
         val responseEncryptionMethod = EncryptionMethod.parse(encAlg.joseAlgorithmIdentifier)
-        val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
+        val builder = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
             .agreementPartyUInfo(Base64URL(apu.toByteArray().toBase64Url()))
-            .agreementPartyUInfo(Base64URL(apv.toByteArray().toBase64Url()))
-            .build()
+            .agreementPartyVInfo(Base64URL(apv.toByteArray().toBase64Url()))
+        if (useCompression) {
+            builder.compressionAlgorithm(CompressionAlgorithm.DEF)
+        }
+        val jweHeader = builder.build()
         val keySet = JWKSet(JWK.parseFromPEMEncodedObjects(recipientKey.publicKey.toPem()))
         val claimSet = JWTClaimsSet.parse(claims.toString())
         val eJwt = EncryptedJWT(jweHeader, claimSet)
         eJwt.encrypt(ECDHEncrypter(keySet.keys[0] as ECKey))
-        val encryptedJwt = JsonPrimitive(eJwt.serialize())
+        val encryptedJwt = eJwt.serialize()
 
         val decryptedClaims = JsonWebEncryption.decrypt(
             encryptedJwt = encryptedJwt,

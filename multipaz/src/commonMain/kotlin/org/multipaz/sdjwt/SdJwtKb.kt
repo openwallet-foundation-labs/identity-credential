@@ -76,7 +76,7 @@ class SdJwtKb(
         checkCreationTime: (creationTime: Instant) -> Boolean
     ): JsonObject {
         try {
-            JsonWebSignature.verify(JsonPrimitive("$kbHeader.$kbBody.$kbSignature"), sdJwt.kbKey!!)
+            JsonWebSignature.verify("$kbHeader.$kbBody.$kbSignature", sdJwt.kbKey!!)
         } catch (e: Throwable) {
             throw SignatureVerificationException("Error validating KB signature", e)
         }

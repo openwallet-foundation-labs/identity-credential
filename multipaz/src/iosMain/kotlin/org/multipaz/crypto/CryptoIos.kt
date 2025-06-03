@@ -11,6 +11,7 @@ import org.multipaz.util.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import org.multipaz.util.toHex
 import platform.Foundation.NSData
 import platform.Foundation.NSUUID
 
@@ -58,12 +59,14 @@ actual object Crypto {
         algorithm: Algorithm,
         key: ByteArray,
         nonce: ByteArray,
-        messagePlaintext: ByteArray
+        messagePlaintext: ByteArray,
+        aad: ByteArray?
     ): ByteArray {
         return SwiftBridge.aesGcmEncrypt(
             key.toNSData(),
             messagePlaintext.toNSData(),
-            nonce.toNSData()
+            nonce.toNSData(),
+            aad?.toNSData()
         ).toByteArray()
     }
 
@@ -71,12 +74,18 @@ actual object Crypto {
         algorithm: Algorithm,
         key: ByteArray,
         nonce: ByteArray,
-        messageCiphertext: ByteArray
+        messageCiphertext: ByteArray,
+        aad: ByteArray?
     ): ByteArray {
+        val ctLen = messageCiphertext.size
+        val ct = messageCiphertext.sliceArray(IntRange(0, ctLen - 16 - 1))
+        val tag = messageCiphertext.sliceArray(IntRange(ctLen - 16, ctLen - 1))
         return SwiftBridge.aesGcmDecrypt(
             key.toNSData(),
-            messageCiphertext.toNSData(),
-            nonce.toNSData()
+            ct.toNSData(),
+            tag.toNSData(),
+            nonce.toNSData(),
+            aad?.toNSData()
         )?.toByteArray() ?: throw IllegalStateException("Decryption failed")
     }
 
@@ -337,22 +346,5 @@ actual object Crypto {
             }
         }
         return true
-    }
-
-    internal actual fun encryptJwtEcdhEs(
-        key: EcPublicKey,
-        encAlgorithm: Algorithm,
-        claims: JsonObject,
-        apu: String,
-        apv: String
-    ): JsonElement {
-        throw NotImplementedError("This is not yet implemented")
-    }
-
-    internal actual fun decryptJwtEcdhEs(
-        encryptedJwt: JsonElement,
-        recipientKey: EcPrivateKey
-    ): JsonObject {
-        throw NotImplementedError("This is not yet implemented")
     }
 }
