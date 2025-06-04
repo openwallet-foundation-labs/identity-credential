@@ -1,6 +1,8 @@
 package com.android.identity.testapp.provisioning.openid4vci
 
+import io.ktor.http.decodeURLQueryComponent
 import io.ktor.http.encodeURLParameter
+import io.ktor.http.parameters
 
 class FormUrlEncoder(block: FormUrlEncoder.() -> Unit) {
     private val buffer = StringBuilder()
@@ -25,6 +27,23 @@ class FormUrlEncoder(block: FormUrlEncoder.() -> Unit) {
     companion object {
         fun encode(text: String): String {
             return text.encodeURLParameter()
+        }
+
+        fun parse(query: String): Map<String, String> {
+            return buildMap {
+                val parameters = query.substring(query.indexOf('?') + 1)
+                for (parameter in parameters.split('&')) {
+                    val index = parameter.indexOf('=')
+                    if (index < 0) {
+                        put(parameter.decodeURLQueryComponent(), "")
+                    } else {
+                        put(
+                            key = parameter.substring(0, index).decodeURLQueryComponent(),
+                            value = parameter.substring(index + 1).decodeURLQueryComponent()
+                        )
+                    }
+                }
+            }
         }
     }
 }

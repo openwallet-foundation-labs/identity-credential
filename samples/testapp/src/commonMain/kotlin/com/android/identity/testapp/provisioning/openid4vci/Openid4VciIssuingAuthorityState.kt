@@ -312,11 +312,12 @@ class Openid4VciIssuingAuthorityState(
             clientId,
             metadata.nonceEndpoint,
             access.dpopNonce,
-            null
+            access.accessToken
         )
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         val nonceResponse = httpClient.post(metadata.nonceEndpoint) {
             headers {
+                append("Authorization", "DPoP ${access.accessToken}")
                 append("DPoP", dpop)
             }
         }

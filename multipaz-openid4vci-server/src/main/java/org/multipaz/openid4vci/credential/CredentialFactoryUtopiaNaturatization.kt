@@ -30,6 +30,10 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
     override val format: Openid4VciFormat
         get() = FORMAT
 
+    override val requireClientAttestation: Boolean get() = false
+
+    override val requireKeyAttestation: Boolean get() = false
+
     override val proofSigningAlgorithms: List<String>
         get() = CredentialFactory.DEFAULT_PROOF_SIGNING_ALGORITHMS
 

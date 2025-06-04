@@ -20,12 +20,16 @@ import io.ktor.http.protocolWithAuthority
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.decodeToString
+import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.device.AssertionPoPKey
 import org.multipaz.device.DeviceAssertionMaker
 import org.multipaz.provisioning.ApplicationSupport
+import org.multipaz.rpc.backend.getTable
+import org.multipaz.storage.StorageTableSpec
 import kotlin.random.Random
 
 internal object OpenidUtil {
@@ -111,7 +115,7 @@ internal object OpenidUtil {
         while (true) {
             val dpop = generateDPoP(clientId, tokenUrl, currentDpopNonce, null)
             // TODO: should we use dpop nonce as nonce here?
-            val clientAttestation = createEphemeralWalletAttestation(
+            val clientAttestation = createWalletAttestation(
                 clientId = clientId,
                 endpoint = tokenUrl
             )
@@ -135,7 +139,9 @@ internal object OpenidUtil {
                 }
                 add("client_id", clientId)
                 if (landingUrl != null) {
-                    add("redirect_uri", landingUrl)
+                    val queryIndex = landingUrl.indexOf('?')
+                    add("redirect_uri",
+                        if (queryIndex < 0) landingUrl else landingUrl.substring(0, queryIndex))
                 }
             }
             val tokenResponse = httpClient.post(tokenUrl) {
@@ -176,47 +182,70 @@ internal object OpenidUtil {
         }
     }
 
-    suspend fun createEphemeralWalletAttestation(
+    suspend fun createWalletAttestation(
         clientId: String,
         endpoint: String,
         nonce: String? = null
     ): ClientAttestation {
         val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        val keyInfo = secureArea.createKey(alias = null, createKeySettings = CreateKeySettings())
-        try {
-            val targetServer = Url(endpoint).protocolWithAuthority
-            val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
-            val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
-            val clientAttestation = applicationSupport.createJwtClientAttestation(
-                keyInfo.attestation,
-                assertionMaker.makeDeviceAssertion {
-                    AssertionPoPKey(keyInfo.publicKey, targetServer)
-                }
-            )
-
-            val alg = keyInfo.publicKey.curve.defaultSigningAlgorithmFullySpecified
-            val header = buildJsonObject {
-                put("typ", "oauth-client-attestation-pop+jwt")
-                put("alg", alg.joseAlgorithmIdentifier)
-            }.toString().encodeToByteArray().toBase64Url()
-            val body = buildJsonObject {
-                put("iss", clientId)
-                put("aud", targetServer)
-                put("iat", Clock.System.now().epochSeconds)
-                put("jti", Random.Default.nextBytes(15).toBase64Url())
-                if (nonce != null) {
-                    put("nonce", nonce)
-                }
-            }.toString().encodeToByteArray().toBase64Url()
-            val message = "$header.$body"
-            val sig = secureArea.sign(keyInfo.alias, message.encodeToByteArray(), null)
-            val clientAttestationPoP = "$message.${sig.toCoseEncoded().toBase64Url()}"
-
-            return ClientAttestation(clientAttestation, clientAttestationPoP)
-        } finally {
-            secureArea.deleteKey(keyInfo.alias)
+        val targetServer = Url(endpoint).protocolWithAuthority
+        val table = BackendEnvironment.getTable(walletAttestationKeysTableSpec)
+        val existingKeyInfo = table.get(targetServer)?.let {
+            try {
+                secureArea.getKeyInfo(it.decodeToString())
+            } catch (err: IllegalArgumentException) {
+                table.delete(targetServer)
+                Logger.e(TAG, "Client attestation key not found, creating a new one", err)
+                null
+            }
         }
+        val keyInfo = if (existingKeyInfo != null) {
+            existingKeyInfo
+        } else {
+            val newKey = secureArea.createKey(
+                alias = null,
+                createKeySettings = CreateKeySettings(
+                    nonce = targetServer.encodeToByteString()
+                )
+            )
+            table.insert(targetServer, newKey.alias.encodeToByteString())
+            newKey
+        }
+        val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
+        val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
+        val clientAttestation = applicationSupport.createJwtClientAttestation(
+            keyInfo.attestation,
+            assertionMaker.makeDeviceAssertion {
+                AssertionPoPKey(keyInfo.publicKey, targetServer)
+            }
+        )
+
+        val alg = keyInfo.publicKey.curve.defaultSigningAlgorithmFullySpecified
+        val header = buildJsonObject {
+            put("typ", "oauth-client-attestation-pop+jwt")
+            put("alg", alg.joseAlgorithmIdentifier)
+        }.toString().encodeToByteArray().toBase64Url()
+        val body = buildJsonObject {
+            put("iss", clientId)
+            put("aud", targetServer)
+            put("iat", Clock.System.now().epochSeconds)
+            put("jti", Random.Default.nextBytes(15).toBase64Url())
+            if (nonce != null) {
+                put("nonce", nonce)
+            }
+        }.toString().encodeToByteArray().toBase64Url()
+        val message = "$header.$body"
+        val sig = secureArea.sign(keyInfo.alias, message.encodeToByteArray(), null)
+        val clientAttestationPoP = "$message.${sig.toCoseEncoded().toBase64Url()}"
+
+        return ClientAttestation(clientAttestation, clientAttestationPoP)
     }
 
     class ClientAttestation(val attestationJwt: String, val attestationPopJwt: String)
+
+    private val walletAttestationKeysTableSpec = StorageTableSpec(
+        name = "WalletAttestationKeys",
+        supportPartitions = false,
+        supportExpiration = false
+    )
 }

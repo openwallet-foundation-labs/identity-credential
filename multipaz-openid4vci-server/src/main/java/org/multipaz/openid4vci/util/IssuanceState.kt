@@ -13,15 +13,18 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.models.verifier.Openid4VpVerifierModel
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.getTable
+import org.multipaz.storage.KeyExistsStorageException
 import org.multipaz.util.toBase64Url
 
 @CborSerializable
 data class IssuanceState(
     val clientId: String,
     val scope: String,
-    val dpopKey: EcPublicKey,
+    val clientAttestationKey: EcPublicKey?,
+    var dpopKey: EcPublicKey?,
     var redirectUri: String?,
     var codeChallenge: ByteString?,
+    var clientState: String? = null,
     var dpopNonce: ByteString? = null,
     var cNonce: ByteString? = null,
     var openid4VpVerifierModel: Openid4VpVerifierModel? = null,
@@ -51,8 +54,12 @@ data class IssuanceState(
             BackendEnvironment.getTable(dpopKeyHashTable).get(keyHash(dpopKey))!!.decodeToString()
 
         suspend fun createIssuanceState(issuanceState: IssuanceState): String {
-            val existingStateEncodedId = BackendEnvironment.getTable(dpopKeyHashTable).get(
-                keyHash(issuanceState.dpopKey))
+            val dpopKey = issuanceState.dpopKey
+            val existingStateEncodedId = if (dpopKey == null) {
+                null
+            } else {
+                BackendEnvironment.getTable(dpopKeyHashTable).get(keyHash(dpopKey))
+            }
             if (existingStateEncodedId != null) {
                 val issuanceStateId = existingStateEncodedId.decodeToString()
                 BackendEnvironment.getTable(tableSpec).update(
@@ -65,11 +72,21 @@ data class IssuanceState(
                     key = null,
                     data = ByteString(issuanceState.toCbor())
                 )
-                BackendEnvironment.getTable(dpopKeyHashTable).insert(
-                    key = keyHash(issuanceState.dpopKey),
-                    data = issuanceStateId.encodeToByteString()
-                )
+                if (dpopKey != null) {
+                    updateDPoPKey(issuanceStateId, issuanceState)
+                }
                 return issuanceStateId
+            }
+        }
+
+        suspend fun updateDPoPKey(issuanceStateId: String, issuanceState: IssuanceState) {
+            val table = BackendEnvironment.getTable(dpopKeyHashTable)
+            val key = keyHash(issuanceState.dpopKey!!)
+            val data = issuanceStateId.encodeToByteString()
+            try {
+                table.insert(key = key, data = data)
+            } catch (err: KeyExistsStorageException) {
+                table.update(key = key, data = data)
             }
         }
 

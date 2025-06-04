@@ -20,14 +20,20 @@ import org.multipaz.provisioning.evidence.Openid4VciTxCode
 import org.multipaz.util.Logger
 
 // TODO: this is useful function, find a good home for it
-private fun String.decodeUrlQuery(): Map<String, String> {
+fun String.decodeUrlQuery(): Map<String, String> {
     return split('&').associate {
         val index = it.indexOf('=')
-        val name = if (index < 0) "" else it.substring(0, index)
-        Pair(
-            name.decodeURLPart(),
-            it.decodeURLPart(index + 1)
-        )
+        if (index < 0) {
+            Pair(
+                it.decodeURLPart(),
+                ""
+            )
+        } else {
+            Pair(
+                it.decodeURLPart(0, index),
+                it.decodeURLPart(index + 1)
+            )
+        }
     }
 }
 

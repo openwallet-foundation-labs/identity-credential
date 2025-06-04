@@ -214,11 +214,9 @@ class Openid4VciProofingState(
                 obtainTokenUsingPreauthorizedCode()
             }
             is EvidenceResponseWeb -> {
-                val index = evidenceResponse.response.indexOf("code=")
-                if (index < 0) {
-                    throw IllegalStateException("No code after web authorization")
-                }
-                val authCode = evidenceResponse.response.substring(index + 5)
+                val parsed = FormUrlEncoder.parse(evidenceResponse.response)
+                val authCode = parsed["code"]
+                    ?: throw IllegalStateException("No code after web authorization")
                 obtainTokenUsingCode(authCode, null)
             }
             is EvidenceResponseMessage -> {
@@ -388,9 +386,11 @@ class Openid4VciProofingState(
         // NB: applicationSupport will only be non-null when running this code locally in the
         // Android Wallet app.
         val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
-        landingUrl = applicationSupport.createLandingUrl()
-
-        val clientAttestation = OpenidUtil.createEphemeralWalletAttestation(
+        val landingUrl = applicationSupport.createLandingUrl()
+        this.landingUrl = landingUrl
+        val queryIndex = landingUrl.indexOf('?')
+        val redirectUrl = if (queryIndex < 0) landingUrl else landingUrl.substring(0, queryIndex)
+        val clientAttestation = OpenidUtil.createWalletAttestation(
             clientId = clientId,
             endpoint = endpoint
         )
@@ -408,9 +408,14 @@ class Openid4VciProofingState(
             }
             add("response_type", "code")
             add("code_challenge_method", "S256")
-            add("redirect_uri", landingUrl!!)
+            add("redirect_uri", redirectUrl)
             add("code_challenge", codeChallenge)
             add("client_id", clientId)
+            if (queryIndex >= 0) {
+                for ((name, value) in landingUrl.substring(queryIndex + 1).decodeUrlQuery()) {
+                    add(name, value)
+                }
+            }
         }
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         val dpop = OpenidUtil.generateDPoP(clientId, endpoint, null, null)

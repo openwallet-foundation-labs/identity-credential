@@ -1,5 +1,6 @@
 package com.android.identity.testapp.provisioning.backend
 
+import com.android.identity.testapp.provisioning.openid4vci.decodeUrlQuery
 import com.android.identity.testapp.provisioning.openid4vci.validateDeviceAssertionBindingKeys
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.flow.FlowCollector
@@ -104,7 +105,7 @@ class ApplicationSupportLocal(
             data = ByteString(),
             expiration = Clock.System.now() + 5.hours
         )
-        return APP_LINK_BASE_URL + landingId
+        return "$APP_LINK_BASE_URL?state=$landingId"
     }
 
     /**
@@ -116,29 +117,34 @@ class ApplicationSupportLocal(
             Logger.e(TAG, "Invalid landing url: '$url'")
             return
         }
-        val landingUrl = url.substring(0, index)
-        if (!landingUrl.startsWith(APP_LINK_BASE_URL)) {
+        if (url.substring(0, index) != APP_LINK_BASE_URL) {
             Logger.e(TAG, "Not a landing url: '$url'")
             return
         }
-        val id = landingUrl.substring(APP_LINK_BASE_URL.length)
-        val query = url.substring(index + 1)
+        val queryString = url.substring(index + 1)
+        val query = queryString.decodeUrlQuery()
+        val id = query["state"]
+        if (id == null) {
+            Logger.e(TAG, "Not a landing url: '$url'")
+            return
+        }
         val table = BackendEnvironment.getTable(urlTableSpec)
         try {
-            table.update(id, query.encodeToByteString())
+            table.update(id, queryString.encodeToByteString())
         } catch (err: NoRecordStorageException) {
             Logger.e(TAG, "No record for landing url: '$url'")
             return
         }
         Logger.e(TAG, "Emitting notification for landing url: '$url'")
-        emit(LandingUrlNotification(landingUrl))
+        emit(LandingUrlNotification("$APP_LINK_BASE_URL?state=$id"))
     }
 
     override suspend fun getLandingUrlStatus(landingUrl: String): String? {
-        if (!landingUrl.startsWith(APP_LINK_BASE_URL)) {
+        val index = landingUrl.indexOf("?state=")
+        if (index < 0 || landingUrl.substring(0, index) != APP_LINK_BASE_URL) {
             throw IllegalArgumentException("Not a landing url: '$landingUrl'")
         }
-        val id = landingUrl.substring(APP_LINK_BASE_URL.length)
+        val id = landingUrl.substring(index + 7)
         val table = BackendEnvironment.getTable(urlTableSpec)
         val record = table.get(id)
             ?: throw LandingUrlUnknownException("Unknown landing url: '$landingUrl'")
@@ -297,7 +303,9 @@ class ApplicationSupportLocal(
         val head = buildJsonObject {
             put("typ", "keyattestation+jwt")
             put("alg", alg)
-            put("jwk", localClientAssertionCertificate.ecPublicKey.toJwk())  // TODO: use x5c instead here?
+            put("x5c", buildJsonArray {
+                add(localClientAssertionCertificate.encodedCertificate.encodeBase64())
+            })
         }.toString().encodeToByteArray().toBase64Url()
 
         val now = Clock.System.now()

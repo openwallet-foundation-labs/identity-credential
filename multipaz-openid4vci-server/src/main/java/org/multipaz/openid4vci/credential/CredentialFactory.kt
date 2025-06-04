@@ -20,6 +20,8 @@ internal interface CredentialFactory {
     val offerId: String
     val scope: String
     val format: Openid4VciFormat
+    val requireClientAttestation: Boolean get() = true
+    val requireKeyAttestation: Boolean get() = true
     val proofSigningAlgorithms: List<String>  // must be empty for keyless credentials
     val cryptographicBindingMethods: List<String>  // must be empty for keyless credentials
     val credentialSigningAlgorithms: List<String>
@@ -55,10 +57,11 @@ internal sealed class Openid4VciFormat {
     abstract val id: String
 
     companion object {
-        fun fromJson(json: JsonObject): Openid4VciFormat {
+        fun fromJson(json: JsonObject): Openid4VciFormat? {
             return when (val format = json["format"]?.jsonPrimitive?.content) {
                 "dc+sd-jwt" -> Openid4VciFormatSdJwt(json["vct"]!!.jsonPrimitive.content)
                 "mso_mdoc" -> Openid4VciFormatMdoc(json["doctype"]!!.jsonPrimitive.content)
+                null -> null
                 else -> throw InvalidRequestException("Unsupported format '$format'")
             }
         }

@@ -66,6 +66,7 @@ class Openid4VpVerifierModel(
         state: String,
         responseMode: String,
         requests: Map<String, DocumentCannedRequest>,
+        readerIdentity: ReaderIdentity,
         expectedOrigins: List<String> = listOf(),
         responseUri: String? = null,
     ): String {
@@ -74,12 +75,7 @@ class Openid4VpVerifierModel(
         val header = buildJsonObject {
             put("typ", JsonPrimitive("oauth-authz-req+jwt"))
             put("alg", JsonPrimitive(signingAlgorithm.joseAlgorithmIdentifier))
-            put("x5c", buildJsonArray {
-                for (cert in createCertificateChain().certificates) {
-                    // NOT Base64Url for this parameter!
-                    add(cert.encodedCertificate.encodeBase64())
-                }
-            })
+            put("x5c", createCertificateChain(readerIdentity).toX5c())
         }.toString().toByteArray().toBase64Url()
 
         val bodyJson = buildJsonObject {
@@ -201,7 +197,7 @@ class Openid4VpVerifierModel(
         }
     }
 
-    private fun createCertificateChain(): X509CertChain {
+    private fun createCertificateChain(readerIdentity: ReaderIdentity): X509CertChain {
         val now = Clock.System.now()
         val validFrom = now.plus(DateTimePeriod(minutes = -10), TimeZone.currentSystemDefault())
         val validUntil = now.plus(DateTimePeriod(minutes = 10), TimeZone.currentSystemDefault())
@@ -209,8 +205,8 @@ class Openid4VpVerifierModel(
         val readerKeySubject = "CN=OWF IC Online Verifier Single-Use Reader Key"
 
         val readerKeyCertificate = MdocUtil.generateReaderCertificate(
-            readerRootCert = owfIcReaderCert,
-            readerRootKey = owfIcReaderRoot,
+            readerRootCert = readerIdentity.certificateChain.certificates.first(),
+            readerRootKey = readerIdentity.privateKey,
             readerKey = readerKey.publicKey,
             subject = X500Name.fromName(readerKeySubject),
             serial = ASN1Integer(1L),
@@ -218,7 +214,12 @@ class Openid4VpVerifierModel(
             validUntil = validUntil
         )
 
-        return X509CertChain(listOf(readerKeyCertificate, owfIcReaderCert))
+        return X509CertChain(
+            buildList {
+                add(readerKeyCertificate)
+                addAll(readerIdentity.certificateChain.certificates)
+            }
+        )
     }
 
     private fun buildClientMetadata(): JsonObject {
@@ -299,30 +300,11 @@ class Openid4VpVerifierModel(
 
     class SdJwtPresentation(val compactSerialization: String): Presentation()
 
-    companion object {
-        // TODO: for now, instead of using the per-site Reader Root generated at first run, use the
-        //  well-known OWF IC Reader root checked into Git.
-        val owfIcReaderCert = X509Cert.fromPem("""
-            -----BEGIN CERTIFICATE-----
-            MIICCTCCAY+gAwIBAgIQZc/0rhdjZ9n3XoZYzpt2GjAKBggqhkjOPQQDAzA+MS8wLQYDVQQDDCZP
-            V0YgSWRlbnRpdHkgQ3JlZGVudGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCWlowHhcNMjQw
-            OTE3MTY1NjA5WhcNMjkwOTE3MTY1NjA5WjA+MS8wLQYDVQQDDCZPV0YgSWRlbnRpdHkgQ3JlZGVu
-            dGlhbCBURVNUIFJlYWRlciBDQTELMAkGA1UEBhMCWlowdjAQBgcqhkjOPQIBBgUrgQQAIgNiAATM
-            1ZVDQ7E4A+ujJl0J7Op8qvy/BSgg/UCTw+WrwYI32/jV9pk8Qu5BSTbUDZE2PQheqy4s3j8y1gMu
-            +Q5pemhYn/c4OMYXZY8uD+t4Wo9UFoSDkFbvlumZ/cuO5TTAI76jUjBQMB0GA1UdDgQWBBTgtILK
-            HJ50qO/Nc33zshz2aX4+4TAfBgNVHSMEGDAWgBTgtILKHJ50qO/Nc33zshz2aX4+4TAOBgNVHQ8B
-            Af8EBAMCAQYwCgYIKoZIzj0EAwMDaAAwZQIxALmOcU+Ggax3wHbD8tcd8umuDxzimf9PSICjvlh5
-            kwR0/1SZZF7bqMAOQXsrwNYFLgIwLVirmU4WvRlUktR2Ty5kxgDG0iy+g00ur9JXCF+wAUQjKHbg
-            VvIQ6NRr06GwpPJR
-            -----END CERTIFICATE-----
-        """.trimIndent())
-
-        val owfIcReaderRoot = EcPrivateKey.fromPem("""
-            -----BEGIN PRIVATE KEY-----
-            MFcCAQAwEAYHKoZIzj0CAQYFK4EEACIEQDA+AgEBBDDxgrZBXnoO54/hZM2DAGrByoWRatjH9hGs
-            lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
-            -----END PRIVATE KEY-----
-        """.trimIndent(),
-            owfIcReaderCert.ecPublicKey)
+    @CborSerializable
+    data class ReaderIdentity(
+        val privateKey: EcPrivateKey,
+        val certificateChain: X509CertChain
+    ) {
+        companion object
     }
 }

@@ -24,6 +24,8 @@ import io.ktor.util.pipeline.PipelineContext
 import io.ktor.util.pipeline.PipelinePhase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.openid4vci.request.authorizeChallenge
 import org.multipaz.openid4vci.request.authorizeGet
 import org.multipaz.openid4vci.request.authorizePost
@@ -39,6 +41,7 @@ import org.multipaz.openid4vci.request.token
 import org.multipaz.openid4vci.request.wellKnownOauthAuthorization
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
 import org.multipaz.openid4vci.util.AUTHZ_REQ
+import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.server.ServerConfiguration
 import org.multipaz.server.ServerEnvironment
 import org.multipaz.util.Logger
@@ -68,8 +71,21 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
                 body.invoke(self)
             } catch (err: CancellationException) {
                 throw err
+            } catch (err: InvalidRequestException) {
+                // TODO: format in request-specific way
+                Logger.e(TAG, "Error", err)
+                err.printStackTrace()
+                call.respondText(
+                    status = HttpStatusCode.BadRequest,
+                    text = buildJsonObject {
+                        put("error", "invalid")
+                        put("error_description", err.message ?: "")
+                    }.toString(),
+                    contentType = ContentType.Application.Json
+                )
             } catch (err: Throwable) {
                 Logger.e(TAG, "Error", err)
+                err.printStackTrace()
                 call.respondText(
                     status = HttpStatusCode.InternalServerError,
                     text = err::class.simpleName + ": " + err.message,
@@ -115,7 +131,7 @@ fun Application.traceCalls(configuration: ServerConfiguration) {
     val traceStream = if (traceFile == "-") {
         OutputStreamWriter(System.out)
     } else {
-        FileWriter(traceFile)
+        FileWriter(traceFile, true)
     }
     val before = PipelinePhase("before")
     insertPhaseBefore(ApplicationCallPipeline.Call, before)

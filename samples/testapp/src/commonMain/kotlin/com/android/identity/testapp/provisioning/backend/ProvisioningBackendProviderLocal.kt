@@ -9,7 +9,6 @@ import org.multipaz.device.Assertion
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.toCbor
 import org.multipaz.device.DeviceCheck
-import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.IssuingAuthority
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.getTable
@@ -93,7 +92,7 @@ class ProvisioningBackendProviderLocal: ProvisioningBackendProvider {
             supportExpiration = false
         )
 
-        const val CLIENT_ID = "__LOCAL__"
+        const val CLIENT_ID = "urn:uuid:418745b8-78a3-4810-88df-7898aff3ffb4"
         const val SESSION_ID = "__SESSION__"
     }
 }
