@@ -18,12 +18,14 @@ class OpenidAccess(
     val accessTokenExpiration: Instant,
     var refreshToken: String?,
     var dpopNonce: String?,
-    var tokenEndpoint: String
+    var tokenEndpoint: String,
+    var useClientAssertion: Boolean
 ) {
     companion object {
         suspend fun parseResponse(
             tokenEndpoint: String,
-            tokenResponse: HttpResponse
+            tokenResponse: HttpResponse,
+            useClientAssertion: Boolean
         ): OpenidAccess {
             val dpopNonce = tokenResponse.headers["DPoP-Nonce"]
             val tokenString = tokenResponse.readBytes().decodeToString()
@@ -33,7 +35,7 @@ class OpenidAccess(
             val accessTokenExpiration = Clock.System.now() + duration.seconds
             val refreshToken = token["refresh_token"]?.jsonPrimitive?.content
             return OpenidAccess(accessToken, accessTokenExpiration, refreshToken, dpopNonce,
-                tokenEndpoint)
+                tokenEndpoint, useClientAssertion)
         }
 
         private fun getField(jsonElement: JsonObject, name: String): JsonPrimitive {

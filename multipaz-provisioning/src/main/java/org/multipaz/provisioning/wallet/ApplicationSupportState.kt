@@ -101,33 +101,12 @@ class ApplicationSupportState(
     }
 
     override suspend fun createJwtClientAssertion(
-        keyAttestation: KeyAttestation,
-        deviceAssertion: DeviceAssertion
+        authorizationServerUrl: String
     ): String {
-        checkClientId()
-        val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
-        deviceAttestation.validateAssertion(deviceAssertion)
-
-        val assertion = deviceAssertion.assertion as AssertionPoPKey
-
-        if (deviceAttestation is DeviceAttestationAndroid) {
-            val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
-            val certChain = keyAttestation.certChain!!
-            check(assertion.publicKey == certChain.certificates.first().ecPublicKey)
-            validateAndroidKeyAttestation(
-                certChain,
-                null,  // no challenge check needed
-                settings.androidRequireGmsAttestation,
-                settings.androidRequireVerifiedBootGreen,
-                settings.androidRequireAppSignatureCertificateDigests
-            )
-        }
-
-        check(keyAttestation.certChain!!.certificates[0].ecPublicKey == keyAttestation.publicKey)
-        return createJwtClientAssertion(keyAttestation.publicKey, assertion.targetUrl)
+        return createJwtClientAssertion(authorizationServerUrl)
     }
 
-    override suspend fun getClientAssertionId(targetIssuanceUrl: String): String {
+    override suspend fun getClientAssertionId(authorizationServerUrl: String): String {
         checkClientId()
         return MULTIPAZ_CLIENT_ID
     }

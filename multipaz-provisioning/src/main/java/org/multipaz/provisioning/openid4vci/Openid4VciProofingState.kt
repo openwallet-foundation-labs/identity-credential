@@ -405,24 +405,11 @@ class Openid4VciProofingState(
         val landingUrl = applicationSupport?.createLandingUrl() ?:
                     ApplicationSupportState(clientId).createLandingUrl()
 
-        val clientKeyInfo = OpenidUtil.communicationKey(clientId)
         val clientAssertion = if (applicationSupport != null) {
             // Required when applicationSupport is exposed
-            val assertionMaker = BackendEnvironment.getInterface(DeviceAssertionMaker::class)!!
-            applicationSupport.createJwtClientAssertion(
-                clientKeyInfo.attestation,
-                assertionMaker.makeDeviceAssertion {
-                    AssertionPoPKey(
-                        clientKeyInfo.publicKey,
-                        credentialIssuerUri
-                    )
-                }
-            )
+            applicationSupport.createJwtClientAssertion(credentialIssuerUri)
         } else {
-            ApplicationSupportState(clientId).createJwtClientAssertion(
-                clientKeyInfo.publicKey,
-                credentialIssuerUri
-            )
+            ApplicationSupportState(clientId).createJwtClientAssertion(credentialIssuerUri)
         }
 
         val credentialOffer = this.credentialOffer

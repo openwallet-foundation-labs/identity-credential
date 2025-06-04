@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.logback.classic)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 ktor {

@@ -11,7 +11,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.openid4vci.util.IssuanceState
+import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.authorizeWithDpop
+import org.multipaz.openid4vci.util.codeToId
+import org.multipaz.openid4vci.util.extractAccessToken
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
@@ -21,25 +24,23 @@ import kotlin.random.Random
  * Endpoint to obtain fresh `c_nonce` (challenge for device binding key attestation).
  */
 suspend fun nonce(call: ApplicationCall) {
-    val dpop = call.request.headers["DPoP"]
-        ?: throw InvalidRequestException("DPoP header required")
-    val parts = dpop.split('.')
-    if (parts.size != 3) {
-        throw InvalidRequestException("DPoP invalid")
-    }
-    val dpopHeader = Json.parseToJsonElement(
-        parts[0].fromBase64Url().decodeToString()
-    ).jsonObject
-    val dpopKey = EcPublicKey.fromJwk(dpopHeader)
-    val id = IssuanceState.lookupIssuanceStateId(dpopKey)
+    val accessToken = extractAccessToken(call.request)
+    val id = codeToId(OpaqueIdType.ACCESS_TOKEN, accessToken)
     val state = IssuanceState.getIssuanceState(id)
-    val existingDPoPNonce = state.dpopNonce?.toByteArray()?.toBase64Url()
-    authorizeWithDpop(call.request, state.dpopKey, existingDPoPNonce, null)
+
+    authorizeWithDpop(
+        request = call.request,
+        publicKey = state.dpopKey ?: throw InvalidRequestException("DPoP was not established"),
+        clientId = state.clientId,
+        dpopNonce = state.dpopNonce,
+        accessToken = accessToken
+    )
     val dpopNonce = Random.nextBytes(15)
     state.dpopNonce = ByteString(dpopNonce)
     val cNonce = Random.nextBytes(15)
-    state.redirectUri = null
     state.cNonce = ByteString(cNonce)
+    state.redirectUri = null
+    state.clientState = null
     IssuanceState.updateIssuanceState(id, state)
     call.response.header("DPoP-Nonce", dpopNonce.toBase64Url())
     call.response.header("Cache-Control", "no-store")

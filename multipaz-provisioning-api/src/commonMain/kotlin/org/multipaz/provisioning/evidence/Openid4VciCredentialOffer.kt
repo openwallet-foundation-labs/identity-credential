@@ -7,34 +7,44 @@ import org.multipaz.cbor.annotation.CborSerializable
  * https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-credential-offer-parameters
  */
 @CborSerializable
-sealed class Openid4VciCredentialOffer(
-    val issuerUri: String,
-    val configurationId: String,
-    val authorizationServer: String?
-) {
+sealed class Openid4VciCredentialOffer {
+    abstract val issuerUri: String
+    abstract val configurationId: String
+    abstract val authorizationServer: String?
+
     companion object
+}
+
+/**
+ * Credential offer that does not contain grants.
+ */
+data class Openid4VciCredentialOfferGrantless(
+    override val issuerUri: String,
+    override val configurationId: String,
+): Openid4VciCredentialOffer() {
+    override val authorizationServer: String? get() = null
 }
 
 /**
  * Credential offer with Grant Type `urn:ietf:params:oauth:grant-type:pre-authorized_code`.
  */
-class Openid4VciCredentialOfferPreauthorizedCode(
-    issuerUri: String,
-    configurationId: String,
-    authorizationServer: String?,
+data class Openid4VciCredentialOfferPreauthorizedCode(
+    override val issuerUri: String,
+    override val configurationId: String,
+    override val authorizationServer: String?,
     val preauthorizedCode: String,
     val txCode: Openid4VciTxCode?
-) : Openid4VciCredentialOffer(issuerUri, configurationId, authorizationServer)
+) : Openid4VciCredentialOffer()
 
 /**
  * Credential offer with Grant Type `authorization_code`.
  */
-class Openid4VciCredentialOfferAuthorizationCode(
-    issuerUri: String,
-    configurationId: String,
-    authorizationServer: String?,
+data class Openid4VciCredentialOfferAuthorizationCode(
+    override val issuerUri: String,
+    override val configurationId: String,
+    override val authorizationServer: String?,
     val issuerState: String?
-) : Openid4VciCredentialOffer(issuerUri, configurationId, authorizationServer)
+) : Openid4VciCredentialOffer()
 
 
 /**

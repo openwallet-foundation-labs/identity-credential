@@ -15,19 +15,26 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferAuthorizationCode
+import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferGrantless
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOfferPreauthorizedCode
 import org.multipaz.provisioning.evidence.Openid4VciTxCode
 import org.multipaz.util.Logger
 
 // TODO: this is useful function, find a good home for it
-private fun String.decodeUrlQuery(): Map<String, String> {
+fun String.decodeUrlQuery(): Map<String, String> {
     return split('&').associate {
         val index = it.indexOf('=')
-        val name = if (index < 0) "" else it.substring(0, index)
-        Pair(
-            name.decodeURLPart(),
-            it.decodeURLPart(index + 1)
-        )
+        if (index < 0) {
+            Pair(
+                it.decodeURLPart(),
+                ""
+            )
+        } else {
+            Pair(
+                it.decodeURLPart(0, index),
+                it.decodeURLPart(index + 1)
+            )
+        }
     }
 }
 
@@ -71,33 +78,34 @@ fun Openid4VciCredentialOffer.Companion.parse(json: JsonObject): Openid4VciCrede
     val credentialConfigurationIds = json["credential_configuration_ids"]!!.jsonArray
     // Right now only use the first configuration id
     val credentialConfigurationId = credentialConfigurationIds[0].jsonPrimitive.content
-    if (json.containsKey("grants")) {
-        val grants = json["grants"]!!.jsonObject
-        val preAuthGrant = grants["urn:ietf:params:oauth:grant-type:pre-authorized_code"]
-        if (preAuthGrant != null) {
-            val grant = preAuthGrant.jsonObject
-            val preauthorizedCode = grant["pre-authorized_code"]!!.jsonPrimitive.content
+    if (!json.containsKey("grants")) {
+        return Openid4VciCredentialOfferGrantless(credentialIssuerUri, credentialConfigurationId)
+    }
+    val grants = json["grants"]!!.jsonObject
+    val preAuthGrant = grants["urn:ietf:params:oauth:grant-type:pre-authorized_code"]
+    if (preAuthGrant != null) {
+        val grant = preAuthGrant.jsonObject
+        val preauthorizedCode = grant["pre-authorized_code"]!!.jsonPrimitive.content
+        val authorizationServer = grant["authorization_server"]?.jsonPrimitive?.content
+        val txCode = extractTxCode(grant["tx_code"])
+        return Openid4VciCredentialOfferPreauthorizedCode(
+            issuerUri = credentialIssuerUri,
+            configurationId = credentialConfigurationId,
+            authorizationServer = authorizationServer,
+            preauthorizedCode = preauthorizedCode,
+            txCode = txCode
+        )
+    } else {
+        val grant = grants["authorization_code"]?.jsonObject
+        if (grant != null) {
+            val issuerState = grant["issuer_state"]?.jsonPrimitive?.content
             val authorizationServer = grant["authorization_server"]?.jsonPrimitive?.content
-            val txCode = extractTxCode(grant["tx_code"])
-            return Openid4VciCredentialOfferPreauthorizedCode(
+            return Openid4VciCredentialOfferAuthorizationCode(
                 issuerUri = credentialIssuerUri,
                 configurationId = credentialConfigurationId,
                 authorizationServer = authorizationServer,
-                preauthorizedCode = preauthorizedCode,
-                txCode = txCode
+                issuerState = issuerState
             )
-        } else {
-            val grant = grants["authorization_code"]?.jsonObject
-            if (grant != null) {
-                val issuerState = grant["issuer_state"]?.jsonPrimitive?.content
-                val authorizationServer = grant["authorization_server"]?.jsonPrimitive?.content
-                return Openid4VciCredentialOfferAuthorizationCode(
-                    issuerUri = credentialIssuerUri,
-                    configurationId = credentialConfigurationId,
-                    authorizationServer = authorizationServer,
-                    issuerState = issuerState
-                )
-            }
         }
     }
     throw IllegalArgumentException("Could not parse credential offer")
