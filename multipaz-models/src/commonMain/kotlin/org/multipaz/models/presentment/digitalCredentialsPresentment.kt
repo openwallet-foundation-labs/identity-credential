@@ -38,6 +38,7 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -287,9 +288,9 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     val signedRequest = preReq["request"]
     val req = if (signedRequest != null) {
         val jws = Json.parseToJsonElement(signedRequest.jsonPrimitive.content)
-        val info = JsonWebSignature.getInfo(jws)
+        val info = JsonWebSignature.getInfo(jws.jsonPrimitive.content)
         check(info.x5c != null) { "x5c missing in JWS" }
-        JsonWebSignature.verify(jws, info.x5c!!.certificates.first().ecPublicKey)
+        JsonWebSignature.verify(jws.jsonPrimitive.content, info.x5c!!.certificates.first().ecPublicKey)
         requesterCertChain = info.x5c
         info.claimsSet
     } else {
@@ -421,13 +422,15 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     val walletGeneratedNonce = Random.nextBytes(16).toBase64Url()
     val responseJson = if (reReaderPublicKey != null) {
         buildJsonObject {
-            put("response", JsonWebEncryption.encrypt(
-                claimsSet = vpToken.jsonObject,
-                recipientPublicKey = reReaderPublicKey,
-                encAlg = reEncAlg,
-                apu = nonce,
-                apv = walletGeneratedNonce
-            ))
+            put("response",
+                JsonWebEncryption.encrypt(
+                    claimsSet = vpToken.jsonObject,
+                    recipientPublicKey = reReaderPublicKey,
+                    encAlg = reEncAlg,
+                    apu = nonce.encodeToByteString(),
+                    apv = walletGeneratedNonce.encodeToByteString()
+                )
+            )
         }
     } else {
         vpToken

@@ -164,7 +164,7 @@ class SdJwt(
     ): JsonObject {
         // TODO: make sure we perform all checks in Section 7.1
         try {
-            JsonWebSignature.verify(JsonPrimitive("$header.$body.$signature"), issuerKey)
+            JsonWebSignature.verify("$header.$body.$signature", issuerKey)
         } catch (e: Throwable) {
             throw SignatureVerificationException("Error validating issuer signature", e)
         }
@@ -316,7 +316,7 @@ class SdJwt(
             claimsSet = kbBody,
             type = "kb+jwt",
             x5c = null
-        ).jsonPrimitive.content
+        )
         return SdJwtKb(compactSerialization + kbJwt)
     }
 
@@ -356,7 +356,7 @@ class SdJwt(
             claimsSet = kbBody,
             type = "kb+jwt",
             x5c = null
-        ).jsonPrimitive.content
+        )
         return SdJwtKb(compactSerialization + kbJwt)
     }
 
@@ -439,7 +439,7 @@ class SdJwt(
                     claimsSet = issuerSignedJwtBody,
                     type = "dc+sd-jwt",
                     x5c = issuerCertChain
-                ).jsonPrimitive.content
+                )
             )
             sb.append('~')
             for (disclosure in disclosures) {

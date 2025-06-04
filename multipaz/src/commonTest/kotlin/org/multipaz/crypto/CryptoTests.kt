@@ -77,30 +77,70 @@ class CryptoTests {
         assertEquals(
             "2ccda4a5415cb91e135c2a0f78c9b2fd" + "b36d1df9b9d5e596f83e8b7f52971cb3",
             Crypto.encrypt(
-                Algorithm.A128GCM,
-                "7fddb57453c241d03efbed3ac44e371c".fromHex(),
-                "ee283a3fc75575e33efd4887".fromHex(),
-                "d5de42b461646c255c87bd2962d3b9a2".fromHex(),
+                algorithm = Algorithm.A128GCM,
+                key = "7fddb57453c241d03efbed3ac44e371c".fromHex(),
+                nonce = "ee283a3fc75575e33efd4887".fromHex(),
+                messagePlaintext = "d5de42b461646c255c87bd2962d3b9a2".fromHex(),
             ).toHex()
         )
 
         assertEquals(
             "69482957e6be5c54882d00314e0259cf" + "191e9f29bef63a26860c1e020a21137e",
             Crypto.encrypt(
-                Algorithm.A192GCM,
-                "fbc0b4c56a714c83217b2d1bcadd2ed2e9efb0dcac6cc19f".fromHex(),
-                "5f4b43e811da9c470d6a9b01".fromHex(),
-                "d2ae38c4375954835d75b8e4c2f9bbb4".fromHex(),
+                algorithm = Algorithm.A192GCM,
+                key = "fbc0b4c56a714c83217b2d1bcadd2ed2e9efb0dcac6cc19f".fromHex(),
+                nonce = "5f4b43e811da9c470d6a9b01".fromHex(),
+                messagePlaintext = "d2ae38c4375954835d75b8e4c2f9bbb4".fromHex(),
             ).toHex()
         )
 
         assertEquals(
             "fa4362189661d163fcd6a56d8bf0405a" + "d636ac1bbedd5cc3ee727dc2ab4a9489",
             Crypto.encrypt(
-                Algorithm.A256GCM,
-                "31bdadd96698c204aa9ce1448ea94ae1fb4a9a0b3c9d773b51bb1822666b8f22".fromHex(),
-                "0d18e06c7c725ac9e362e1ce".fromHex(),
-                "2db5168e932556f8089a0622981d017d".fromHex(),
+                algorithm = Algorithm.A256GCM,
+                key = "31bdadd96698c204aa9ce1448ea94ae1fb4a9a0b3c9d773b51bb1822666b8f22".fromHex(),
+                nonce = "0d18e06c7c725ac9e362e1ce".fromHex(),
+                messagePlaintext = "2db5168e932556f8089a0622981d017d".fromHex(),
+            ).toHex()
+        )
+    }
+
+    @Test
+    fun encryptWithAad() {
+        // These test vectors are from a zip file that can be downloaded from
+        //
+        //   https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/CAVP-TESTING-BLOCK-CIPHER-MODES#GCMVS
+        //
+        assertEquals(
+            "93fe7d9e9bfd10348a5606e5cafa7354" + "0032a1dc85f1c9786925a2e71d8272dd",
+            Crypto.encrypt(
+                algorithm = Algorithm.A128GCM,
+                key = "c939cc13397c1d37de6ae0e1cb7c423c".fromHex(),
+                nonce = "b3d8cc017cbb89b39e0f67e2".fromHex(),
+                messagePlaintext = "c3b3c41f113a31b73d9a5cd432103069".fromHex(),
+                aad = "24825602bd12a984e0092d3e448eda5f".fromHex()
+            ).toHex()
+        )
+
+        assertEquals(
+            "a54b5da33fc1196a8ef31a5321bfcaeb" + "1c198086450ae1834dd6c2636796bce2",
+            Crypto.encrypt(
+                algorithm = Algorithm.A192GCM,
+                key = "6f44f52c2f62dae4e8684bd2bc7d16ee7c557330305a790d".fromHex(),
+                nonce = "9ae35825d7c7edc9a39a0732".fromHex(),
+                messagePlaintext = "37222d30895eb95884bbbbaee4d9cae1".fromHex(),
+                aad = "1b4236b846fc2a0f782881ba48a067e9".fromHex()
+            ).toHex()
+        )
+
+        assertEquals(
+            "8995ae2e6df3dbf96fac7b7137bae67f" + "eca5aa77d51d4a0a14d9c51e1da474ab",
+            Crypto.encrypt(
+                algorithm = Algorithm.A256GCM,
+                key = "92e11dcdaa866f5ce790fd24501f92509aacf4cb8b1339d50c9c1240935dd08b".fromHex(),
+                nonce = "ac93a1a6145299bde902f21a".fromHex(),
+                messagePlaintext = "2d71bcfa914e4ac045b2aa60955fad24".fromHex(),
+                aad = "1e0889016f67601c8ebea4943bc23ad6".fromHex()
             ).toHex()
         )
     }
@@ -114,30 +154,70 @@ class CryptoTests {
         assertEquals(
             "28286a321293253c3e0aa2704a278032",
             Crypto.decrypt(
-                Algorithm.A128GCM,
-                "e98b72a9881a84ca6b76e0f43e68647a".fromHex(),
-                "8b23299fde174053f3d652ba".fromHex(),
-                ("5a3c1cf1985dbb8bed818036fdd5ab42" + "23c7ab0f952b7091cd324835043b5eb5").fromHex(),
+                algorithm = Algorithm.A128GCM,
+                key = "e98b72a9881a84ca6b76e0f43e68647a".fromHex(),
+                nonce = "8b23299fde174053f3d652ba".fromHex(),
+                messageCiphertext = ("5a3c1cf1985dbb8bed818036fdd5ab42" + "23c7ab0f952b7091cd324835043b5eb5").fromHex(),
             ).toHex()
         )
 
         assertEquals(
             "99ae6f479b3004354ff18cd86c0b6efb",
             Crypto.decrypt(
-                Algorithm.A192GCM,
-                "7a7c5b6a8a9ab5acae34a9f6e41f19a971f9c330023c0f0c".fromHex(),
-                "aa4c38bf587f94f99fee77d5".fromHex(),
-                ("132ae95bd359c44aaefa6348632cafbd" + "19d7c7d5809ad6648110f22f272e7d72").fromHex(),
+                algorithm = Algorithm.A192GCM,
+                key = "7a7c5b6a8a9ab5acae34a9f6e41f19a971f9c330023c0f0c".fromHex(),
+                nonce = "aa4c38bf587f94f99fee77d5".fromHex(),
+                messageCiphertext = ("132ae95bd359c44aaefa6348632cafbd" + "19d7c7d5809ad6648110f22f272e7d72").fromHex(),
             ).toHex()
         )
 
         assertEquals(
             "7789b41cb3ee548814ca0b388c10b343",
             Crypto.decrypt(
-                Algorithm.A256GCM,
-                "4c8ebfe1444ec1b2d503c6986659af2c94fafe945f72c1e8486a5acfedb8a0f8".fromHex(),
-                "473360e0ad24889959858995".fromHex(),
-                ("d2c78110ac7e8f107c0df0570bd7c90c" + "c26a379b6d98ef2852ead8ce83a833a7").fromHex(),
+                algorithm = Algorithm.A256GCM,
+                key = "4c8ebfe1444ec1b2d503c6986659af2c94fafe945f72c1e8486a5acfedb8a0f8".fromHex(),
+                nonce = "473360e0ad24889959858995".fromHex(),
+                messageCiphertext = ("d2c78110ac7e8f107c0df0570bd7c90c" + "c26a379b6d98ef2852ead8ce83a833a7").fromHex(),
+            ).toHex()
+        )
+    }
+
+    @Test
+    fun decryptWithAad() {
+        // These test vectors are from a zip file that can be downloaded from
+        //
+        //   https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/CAVP-TESTING-BLOCK-CIPHER-MODES#GCMVS
+        //
+        assertEquals(
+            "ecafe96c67a1646744f1c891f5e69427",
+            Crypto.decrypt(
+                algorithm = Algorithm.A128GCM,
+                key = "816e39070410cf2184904da03ea5075a".fromHex(),
+                nonce = "32c367a3362613b27fc3e67e".fromHex(),
+                messageCiphertext = ("552ebe012e7bcf90fcef712f8344e8f1" + "ecaae9fc68276a45ab0ca3cb9dd9539f").fromHex(),
+                aad = "f2a30728ed874ee02983c294435d3c16".fromHex()
+            ).toHex()
+        )
+
+        assertEquals(
+            "7e3a29d47de8668a74c249ed96f8f0d2a2d5e05359c116cbdcad74b8c5ddf72c503ee12824b4039b9bf8f2b6aea9b7105f351e",
+            Crypto.decrypt(
+                algorithm = Algorithm.A192GCM,
+                key = "497ac0078bdfa10c7db2d49f978b1ac0610bb40aa60b5b29".fromHex(),
+                nonce = "e1608bae5ad218ae76633f9a".fromHex(),
+                messageCiphertext = ("225cddca92cf6438e69a4afcd8079a03cab65ae81f2631d14035a9656c6c68c699725fc374b909fab2709aab06037447e04cdb" + "a328f90905a4eb69d2c7be7942e7e24a").fromHex(),
+                aad = "fe71426fcb2cab1579a8adaee34fc790".fromHex()
+            ).toHex()
+        )
+
+        assertEquals(
+            "85fc3dfad9b5a8d3258e4fc44571bd3b",
+            Crypto.decrypt(
+                algorithm = Algorithm.A256GCM,
+                key = "54e352ea1d84bfe64a1011096111fbe7668ad2203d902a01458c3bbd85bfce14".fromHex(),
+                nonce = "df7c3bca00396d0c018495d9".fromHex(),
+                messageCiphertext = ("426e0efc693b7be1f3018db7ddbb7e4d" + "ee8257795be6a1164d7e1d2d6cac77a7").fromHex(),
+                aad = "7e968d71b50c1f11fd001f3fef49d045".fromHex()
             ).toHex()
         )
     }

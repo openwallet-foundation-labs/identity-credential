@@ -67,7 +67,7 @@ class JsonWebSignatureTestsNimbus {
             x5c = X509CertChain(listOf(signingKeyCert))
         )
 
-        val sjwt = SignedJWT.parse(signedJwt.jsonPrimitive.content)
+        val sjwt = SignedJWT.parse(signedJwt)
         val jwtProcessor = DefaultJWTProcessor<SecurityContext>()
         val x5c = sjwt.header?.x509CertChain ?: throw IllegalArgumentException("Error retrieving x5c")
         val pubCertChain = x5c.mapNotNull { runCatching { X509Cert(it.decode()) }.getOrNull() }
@@ -135,14 +135,14 @@ class JsonWebSignatureTestsNimbus {
         val signedJwt = Json.parseToJsonElement(signedJWT.serialize())
 
         // Verify JwsInfo fields
-        val info = JsonWebSignature.getInfo(signedJwt)
+        val info = JsonWebSignature.getInfo(signedJwt.jsonPrimitive.content)
         assertEquals(claimsSet, info.claimsSet)
         assertEquals("oauth-authz-req+jwt", info.type)
         assertEquals(X509CertChain(listOf(signingKeyCert)), info.x5c)
 
         // Verify signature checks out
         JsonWebSignature.verify(
-            signedJwt,
+            signedJwt.jsonPrimitive.content,
             info.x5c!!.certificates.first().ecPublicKey
         )
 
@@ -150,7 +150,7 @@ class JsonWebSignatureTestsNimbus {
         val otherKey = Crypto.createEcPrivateKey(EcCurve.P256)
         assertFails {
             JsonWebSignature.verify(
-                signedJwt,
+                signedJwt.jsonPrimitive.content,
                 otherKey.publicKey
             )
         }

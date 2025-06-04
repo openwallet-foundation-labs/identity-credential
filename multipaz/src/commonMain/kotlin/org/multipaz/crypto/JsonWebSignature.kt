@@ -23,7 +23,7 @@ object JsonWebSignature {
      * @param claimsSet the claims set.
      * @param type the value to put in the "typ" header parameter or `null`.
      * @param x5c: the certificate chain to put in the "x5c" header parameter or `null`.
-     * @return a [JsonElement] with the JWS.
+     * @return the compact serialization with the JWS.
      */
     fun sign(
         key: EcPrivateKey,
@@ -31,7 +31,7 @@ object JsonWebSignature {
         claimsSet: JsonObject,
         type: String?,
         x5c: X509CertChain?
-    ): JsonElement {
+    ): String {
         require(signatureAlgorithm.fullySpecified) {
             "signatureAlgorithm must be fully specified"
         }
@@ -49,7 +49,7 @@ object JsonWebSignature {
             message = toBeSigned
         )
         val signatureStr = (signature.r + signature.s).toBase64Url()
-        return JsonPrimitive("$headerStr.$bodyStr.$signatureStr")
+        return "$headerStr.$bodyStr.$signatureStr"
     }
 
     /**
@@ -61,7 +61,7 @@ object JsonWebSignature {
      * @param claimsSet the claims set.
      * @param type the value to put in the "typ" header parameter or `null`.
      * @param x5c: the certificate chain to put in the "x5c" header parameter or `null`.
-     * @return a [JsonElement] with the JWS.
+     * @return the compact serialization of the JWS.
      */
     suspend fun sign(
         secureArea: SecureArea,
@@ -70,7 +70,7 @@ object JsonWebSignature {
         claimsSet: JsonObject,
         type: String?,
         x5c: X509CertChain?
-    ): JsonElement {
+    ): String {
         val headerStr = buildJsonObject {
             put("alg", JsonPrimitive(secureArea.getKeyInfo(alias).algorithm.joseAlgorithmIdentifier!!))
             type?.let { put("typ", JsonPrimitive(it)) }
@@ -85,21 +85,21 @@ object JsonWebSignature {
             keyUnlockData = keyUnlockData
         )
         val signatureStr = (signature.r + signature.s).toBase64Url()
-        return JsonPrimitive("$headerStr.$bodyStr.$signatureStr")
+        return "$headerStr.$bodyStr.$signatureStr"
     }
 
     /**
      * Verify the signature of a JWS.
      *
-     * @param jws the JWS.
+     * @param jws the compact serialization of the JWS.
      * @param publicKey the key to use for verification
      * @throws Throwable if verification fails.
      */
     fun verify(
-        jws: JsonElement,
+        jws: String,
         publicKey: EcPublicKey
     ) {
-        val splits = jws.jsonPrimitive.content.split(".")
+        val splits = jws.split(".")
         require(splits.size == 3) { "Malformed JWS" }
         val (headerStr, bodyStr, signatureStr) = splits
         val headerObj = Json.decodeFromString(JsonObject.serializer(), headerStr.fromBase64Url().decodeToString())
@@ -131,11 +131,11 @@ object JsonWebSignature {
     /**
      * Get information about a JWS.
      *
-     * @param jws the JWS.
+     * @param jws the compact serialization of the JWS.
      * @return a [JwsInfo] with information about the JWS.
      */
-    fun getInfo(jws: JsonElement): JwsInfo {
-        val splits = jws.jsonPrimitive.content.split(".")
+    fun getInfo(jws: String): JwsInfo {
+        val splits = jws.split(".")
         require(splits.size == 3) { "Malformed JWS" }
         val (headerStr, bodyStr, _) = splits
         val headerObj = Json.decodeFromString(JsonObject.serializer(), headerStr.fromBase64Url().decodeToString())

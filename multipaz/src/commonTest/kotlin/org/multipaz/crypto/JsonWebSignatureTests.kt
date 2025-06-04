@@ -8,9 +8,25 @@ import kotlin.test.Test
 import kotlin.time.Duration.Companion.days
 
 class JsonWebSignatureTests {
-    @Test
-    fun roundtrip() {
-        val signingKey = Crypto.createEcPrivateKey(EcCurve.P256)
+
+    @Test fun roundTrip_P256() = roundtrip(EcCurve.P256)
+    @Test fun roundTrip_P384() = roundtrip(EcCurve.P384)
+    @Test fun roundTrip_P521() = roundtrip(EcCurve.P521)
+    @Test fun roundTrip_B256() = roundtrip(EcCurve.BRAINPOOLP256R1)
+    @Test fun roundTrip_B320() = roundtrip(EcCurve.BRAINPOOLP320R1)
+    @Test fun roundTrip_B384() = roundtrip(EcCurve.BRAINPOOLP384R1)
+    @Test fun roundTrip_B512() = roundtrip(EcCurve.BRAINPOOLP512R1)
+    @Test fun roundTrip_ED25519() = roundtrip(EcCurve.ED25519)
+    @Test fun roundTrip_ED448() = roundtrip(EcCurve.ED448)
+
+    fun roundtrip(curve: EcCurve) {
+        // TODO: use assumeTrue() when available in kotlin-test
+        if (!Crypto.supportedCurves.contains(curve)) {
+            println("Curve $curve not supported on platform")
+            return
+        }
+
+        val signingKey = Crypto.createEcPrivateKey(curve)
         val now = Clock.System.now()
         val signingKeyCert = X509Cert.Builder(
             publicKey = signingKey.publicKey,

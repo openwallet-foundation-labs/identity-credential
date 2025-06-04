@@ -2,7 +2,6 @@ package org.multipaz.crypto
 
 import org.multipaz.util.UUID
 import org.multipaz.util.fromJavaUuid
-import org.multipaz.util.toBase64Url
 import com.google.crypto.tink.HybridDecrypt
 import com.google.crypto.tink.HybridEncrypt
 import com.google.crypto.tink.InsecureSecretKeyAccess
@@ -22,35 +21,7 @@ import com.google.crypto.tink.proto.Keyset
 import com.google.crypto.tink.proto.OutputPrefixType
 import com.google.crypto.tink.shaded.protobuf.ByteString as TinkByteString
 import com.google.crypto.tink.subtle.EllipticCurves
-import com.nimbusds.jose.EncryptionMethod
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWEAlgorithm
-import com.nimbusds.jose.JWEHeader
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSSigner
-import com.nimbusds.jose.crypto.ECDHDecrypter
-import com.nimbusds.jose.crypto.ECDHEncrypter
-import com.nimbusds.jose.crypto.ECDSASigner
-import com.nimbusds.jose.jwk.Curve
-import com.nimbusds.jose.jwk.ECKey
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier
-import com.nimbusds.jose.proc.JWSKeySelector
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jose.util.Base64URL
-import com.nimbusds.jwt.EncryptedJWT
-import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
-import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.agreement.X448Agreement
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -197,6 +168,7 @@ actual object Crypto {
         key: ByteArray,
         nonce: ByteArray,
         messagePlaintext: ByteArray,
+        aad: ByteArray?
     ): ByteArray {
         when (algorithm) {
             Algorithm.A128GCM -> {}
@@ -208,6 +180,7 @@ actual object Crypto {
         }
         return Cipher.getInstance("AES/GCM/NoPadding").run {
             init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
+            aad?.let { updateAAD(it) }
             doFinal(messagePlaintext)
         }
     }
@@ -228,6 +201,7 @@ actual object Crypto {
         key: ByteArray,
         nonce: ByteArray,
         messageCiphertext: ByteArray,
+        aad: ByteArray?
     ): ByteArray {
         when (algorithm) {
             Algorithm.A128GCM -> {}
@@ -244,6 +218,7 @@ actual object Crypto {
                     SecretKeySpec(key, "AES"),
                     GCMParameterSpec(128, nonce)
                 )
+                aad?.let { updateAAD(it) }
                 doFinal(messageCiphertext)
             }
         } catch (e: Exception) {
@@ -834,42 +809,5 @@ actual object Crypto {
             }
         }
         return true
-    }
-
-    internal actual fun encryptJwtEcdhEs(
-        key: EcPublicKey,
-        encAlgorithm: Algorithm,
-        claims: JsonObject,
-        apu: String,
-        apv: String
-    ): JsonElement {
-        val responseEncryptionAlg = JWEAlgorithm.parse("ECDH-ES")
-        val responseEncryptionMethod = EncryptionMethod.parse(encAlgorithm.joseAlgorithmIdentifier!!)
-        val jweHeader = JWEHeader.Builder(responseEncryptionAlg, responseEncryptionMethod)
-            .agreementPartyUInfo(Base64URL(apu))
-            .agreementPartyVInfo(Base64URL(apv))
-            .build()
-        val keySet = JWKSet(JWK.parseFromPEMEncodedObjects(key.toPem()))
-        val claimSet = JWTClaimsSet.parse(claims.toString())
-        val eJwt = EncryptedJWT(jweHeader, claimSet)
-        eJwt.encrypt(ECDHEncrypter(keySet.keys[0] as ECKey))
-        return JsonPrimitive(eJwt.serialize())
-    }
-
-    internal actual fun decryptJwtEcdhEs(
-        encryptedJwt: JsonElement,
-        recipientKey: EcPrivateKey
-    ): JsonObject {
-        val encryptedJWT = EncryptedJWT.parse(encryptedJwt.jsonPrimitive.content)
-        @Suppress("DEPRECATION") // ECKey is deprecated
-        val encKey = ECKey(
-            Curve.P_256,
-            recipientKey.publicKey.javaPublicKey as ECPublicKey,
-            recipientKey.javaPrivateKey as ECPrivateKey,
-            null, null, null, null, null, null, null, null, null
-        )
-        val decrypter = ECDHDecrypter(encKey)
-        encryptedJWT.decrypt(decrypter)
-        return Json.decodeFromString<JsonObject>(encryptedJWT.jwtClaimsSet.toString())
     }
 }
