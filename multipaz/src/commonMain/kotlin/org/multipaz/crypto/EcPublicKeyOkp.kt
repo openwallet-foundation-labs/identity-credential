@@ -3,6 +3,7 @@ package org.multipaz.crypto
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
@@ -37,9 +38,9 @@ data class EcPublicKeyOkp(
         additionalClaims: JsonObject?,
     ): JsonObject {
         return buildJsonObject {
-            put("kty", JsonPrimitive("OKP"))
-            put("crv", JsonPrimitive(curve.jwkName))
-            put("x", JsonPrimitive(x.toBase64Url()))
+            put("kty", "OKP")
+            put("crv", curve.jwkName)
+            put("x", x.toBase64Url())
             if (additionalClaims != null) {
                 for ((k, v) in additionalClaims) {
                     put(k, v)

@@ -10,6 +10,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.util.toBase64Url
 
 /**
@@ -38,10 +39,10 @@ data class EcPublicKeyDoubleCoordinate(
         additionalClaims: JsonObject?,
     ): JsonObject {
         return buildJsonObject {
-            put("kty", JsonPrimitive("EC"))
-            put("crv", JsonPrimitive(curve.jwkName))
-            put("x", JsonPrimitive(x.toBase64Url()))
-            put("y", JsonPrimitive(y.toBase64Url()))
+            put("kty", "EC")
+            put("crv", curve.jwkName)
+            put("x", x.toBase64Url())
+            put("y", y.toBase64Url())
             if (additionalClaims != null) {
                 for ((k, v) in additionalClaims) {
                     put(k, v)
