@@ -66,13 +66,11 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
@@ -202,6 +200,15 @@ private data class DCBeginRequest(
     val docType: String,
     val requestId: String,
     val protocol: String,
+    val origin: String,
+    val host: String,
+    val signRequest: Boolean,
+    val encryptResponse: Boolean,
+)
+
+@Serializable
+private data class DCBeginRawDcqlRequest(
+    val rawDcql: String,
     val origin: String,
     val host: String,
     val signRequest: Boolean,
@@ -501,6 +508,8 @@ class VerifierServlet : BaseHttpServlet() {
             return handleOpenID4VPResponse(remoteHost, req, resp, requestData)
         } else if (req.requestURI.endsWith("verifier/dcBegin")) {
             handleDcBegin(remoteHost, req, resp, requestData)
+        } else if (req.requestURI.endsWith("verifier/dcBeginRawDcql")) {
+            handleDcBeginRawDcql(remoteHost, req, resp, requestData)
         } else if (req.requestURI.endsWith("verifier/dcGetData")) {
             handleDcGetData(remoteHost, req, resp, requestData)
         } else {
@@ -631,7 +640,7 @@ class VerifierServlet : BaseHttpServlet() {
         // Uncomment when making test vectors...
         //Logger.iCbor(TAG, "readerKey: ", Cbor.encode(session.encryptionKey.toCoseKey().toDataItem()))
 
-        val dcRequestString = mdocCalcDcRequestString(
+        val dcRequestString = calcDcRequestString(
             documentTypeRepo,
             request.format,
             session,
@@ -645,6 +654,59 @@ class VerifierServlet : BaseHttpServlet() {
             readerAuthKeyCertification,
             request.signRequest,
             request.encryptResponse,
+        )
+        Logger.i(TAG, "dcRequestString: $dcRequestString")
+        val json = Json { ignoreUnknownKeys = true }
+        val responseString = json.encodeToString(DCBeginResponse(sessionId, dcRequestString))
+        resp.status = HttpServletResponse.SC_OK
+        resp.outputStream.write(responseString.encodeToByteArray())
+        resp.contentType = "application/json"
+    }
+
+    private fun handleDcBeginRawDcql(
+        remoteHost: String,
+        req: HttpServletRequest,
+        resp: HttpServletResponse,
+        requestData: ByteArray
+    ) {
+        val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
+        val request = Json.decodeFromString<DCBeginRawDcqlRequest>(requestString)
+        Logger.i(TAG, "rawDcql ${request.rawDcql}")
+
+        val protocol = Protocol.W3C_DC_OPENID4VP
+
+        // Create a new session
+        val session = Session(
+            nonce = ByteString(Random.Default.nextBytes(16)),
+            origin = request.origin,
+            host = request.host,
+            encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256),
+            requestFormat = "",
+            requestDocType = "",
+            requestId = "",
+            protocol = protocol,
+            signRequest = request.signRequest,
+            encryptResponse = request.encryptResponse,
+        )
+        val sessionId = runBlocking {
+            verifierSessionTable.insert(
+                key = null,
+                data = ByteString(session.toCbor()),
+                expiration = Clock.System.now() + SESSION_EXPIRATION_INTERVAL
+            )
+        }
+
+        val (readerAuthKey, readerAuthKeyCertification) = createSingleUseReaderKey(session.host)
+
+        val dcRequestString = calcDcRequestStringOpenID4VPforDCQL(
+            session = session,
+            nonce = session.nonce,
+            readerPublicKey = session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate,
+            readerAuthKey = readerAuthKey,
+            readerAuthKeyCertification = readerAuthKeyCertification,
+            signRequest = request.signRequest,
+            encryptResponse = request.encryptResponse,
+            dcql = Json.decodeFromString(JsonObject.serializer(), request.rawDcql)
         )
         Logger.i(TAG, "dcRequestString: $dcRequestString")
         val json = Json { ignoreUnknownKeys = true }
@@ -690,21 +752,18 @@ class VerifierServlet : BaseHttpServlet() {
         }
 
         try {
-            when (session.requestFormat) {
-                "mdoc" -> {
-                    handleGetDataMdoc(session, resp)
+            if (session.sessionTranscript != null) {
+                handleGetDataMdoc(session, resp)
+            } else {
+                val clientIdToUse = if (session.signRequest) {
+                    "x509_san_dns:${session.host}"
+                } else {
+                    "web-origin:${session.origin}"
                 }
-                "vc" -> {
-                    val clientIdToUse = if (session.signRequest) {
-                        "x509_san_dns:${session.host}"
-                    } else {
-                        "web-origin:${session.origin}"
-                    }
-                    handleGetDataSdJwt(session, resp, clientIdToUse)
-                }
+                handleGetDataSdJwt(session, resp, clientIdToUse)
             }
         } catch (e: Throwable) {
-            Logger.e(TAG, "$remoteHost: Error validating DeviceResponse", e)
+            Logger.e(TAG, "$remoteHost: Error validating response", e)
             resp.status = HttpServletResponse.SC_BAD_REQUEST
             return
         }
@@ -858,40 +917,51 @@ class VerifierServlet : BaseHttpServlet() {
         } else {
             response["vp_token"]!!.jsonObject
         }
-        Logger.i(TAG, "vp_token: ${vpToken.toString()}")
-        val vpTokenForCred = vpToken["cred1"]!!.jsonPrimitive.content
+        Logger.iJson(TAG, "vpToken", vpToken)
 
-        when (session.requestFormat) {
-            "mdoc" -> {
-                val effectiveClientId = if (session.signRequest) {
-                    "x509_san_dns:${session.host}"
-                } else {
-                    "web-origin:${session.origin}"
+        // TODO: handle multiple vpTokens being returned
+        val vpTokenForCred = vpToken.values.first().jsonPrimitive.content
+
+        // This is a total hack but in case of Raw DCQL we actually don't really
+        // know what was requested. This heuristic to determine if the token is
+        // for an ISO mdoc or IETF SD-JWT VC works for now...
+        //
+        val isMdoc = try {
+            val decodedCbor = Cbor.decode(vpTokenForCred.fromBase64Url())
+            true
+        } catch (e: Throwable) {
+            false
+        }
+        Logger.i(TAG, "isMdoc: $isMdoc")
+
+        if (isMdoc) {
+            val effectiveClientId = if (session.signRequest) {
+                "x509_san_dns:${session.host}"
+            } else {
+                "web-origin:${session.origin}"
+            }
+            val handoverInfo = Cbor.encode(
+                buildCborArray {
+                    add(session.origin)
+                    add(effectiveClientId)
+                    add(session.nonce.toByteArray().toBase64Url())
                 }
-                val handoverInfo = Cbor.encode(
-                    buildCborArray {
-                        add(session.origin)
-                        add(effectiveClientId)
-                        add(session.nonce.toByteArray().toBase64Url())
+            )
+            session.sessionTranscript = Cbor.encode(
+                buildCborArray {
+                    add(Simple.NULL) // DeviceEngagementBytes
+                    add(Simple.NULL) // EReaderKeyBytes
+                    addCborArray {
+                        add("OpenID4VPDCAPIHandover")
+                        add(Crypto.digest(Algorithm.SHA256, handoverInfo))
                     }
-                )
-                session.sessionTranscript = Cbor.encode(
-                    buildCborArray {
-                        add(Simple.NULL) // DeviceEngagementBytes
-                        add(Simple.NULL) // EReaderKeyBytes
-                        addCborArray {
-                            add("OpenID4VPDCAPIHandover")
-                            add(Crypto.digest(Algorithm.SHA256, handoverInfo))
-                        }
-                    }
-                )
-                Logger.iCbor(TAG, "handoverInfo", handoverInfo)
-                Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
-                session.deviceResponse = vpTokenForCred.fromBase64Url()
-            }
-            "vc" -> {
-                session.verifiablePresentation = vpTokenForCred
-            }
+                }
+            )
+            Logger.iCbor(TAG, "handoverInfo", handoverInfo)
+            Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
+            session.deviceResponse = vpTokenForCred.fromBase64Url()
+        } else {
+            session.verifiablePresentation = vpTokenForCred
         }
     }
 
@@ -1361,7 +1431,7 @@ private fun createSessionTranscriptOpenID4VP(
     )
 }
 
-private fun mdocCalcDcRequestString(
+private fun calcDcRequestString(
     documentTypeRepository: DocumentTypeRepository,
     format: String,
     session: Session,
@@ -1467,19 +1537,15 @@ private fun mdocCalcDcRequestStringPreview(
     return top.toString(JSONStyle.NO_COMPRESS)
 }
 
-private fun calcDcRequestStringOpenID4VP(
-    documentTypeRepository: DocumentTypeRepository,
-    format: String,
+private fun calcDcRequestStringOpenID4VPforDCQL(
     session: Session,
-    request: DocumentCannedRequest,
     nonce: ByteString,
-    origin: String,
-    readerKey: EcPrivateKey,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
     readerAuthKey: EcPrivateKey,
     readerAuthKeyCertification: X509CertChain,
     signRequest: Boolean,
-    encryptResponse: Boolean
+    encryptResponse: Boolean,
+    dcql: JsonObject,
 ): String {
     val responseMode = if (encryptResponse) {
         Logger.i(TAG, "readerPublicKey is ${readerPublicKey}")
@@ -1517,6 +1583,7 @@ private fun calcDcRequestStringOpenID4VP(
                         put("use", JsonPrimitive("enc"))
                         put("crv", JsonPrimitive("P-256"))
                         put("alg", JsonPrimitive("ECDH-ES"))
+                        put("kid", JsonPrimitive("reader-auth-key"))
                         put("x", JsonPrimitive(readerPublicKey.x.toBase64Url()))
                         put("y", JsonPrimitive(readerPublicKey.y.toBase64Url()))
                     }
@@ -1537,56 +1604,7 @@ private fun calcDcRequestStringOpenID4VP(
             }
         }
         put("nonce", JsonPrimitive(nonce.toByteArray().toBase64Url()))
-
-        putJsonObject("dcql_query") {
-            putJsonArray("credentials") {
-                if (format == "vc") {
-                    addJsonObject {
-                        put("id", JsonPrimitive("cred1"))
-                        put("format", JsonPrimitive("dc+sd-jwt"))
-                        putJsonObject("meta") {
-                            put("vct_values",
-                                buildJsonArray {
-                                    add(JsonPrimitive(request.vcRequest!!.vct))
-                                }
-                            )
-                        }
-                        putJsonArray("claims") {
-                            for (claim in request.vcRequest!!.claimsToRequest) {
-                                addJsonObject {
-                                    putJsonArray("path") {
-                                        for (pathElement in claim.identifier.split(".")) {
-                                            add(JsonPrimitive(pathElement))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    addJsonObject {
-                        put("id", JsonPrimitive("cred1"))
-                        put("format", JsonPrimitive("mso_mdoc"))
-                        putJsonObject("meta") {
-                            put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
-                        }
-                        putJsonArray("claims") {
-                            for (ns in request.mdocRequest!!.namespacesToRequest) {
-                                for ((de, intentToRetain) in ns.dataElementsToRequest) {
-                                    addJsonObject {
-                                        putJsonArray("path") {
-                                            add(JsonPrimitive(ns.namespace))
-                                            add(JsonPrimitive(de.attribute.identifier))
-                                        }
-                                        put("intent_to_retain", JsonPrimitive(intentToRetain))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        put("dcql_query", dcql)
     }
 
     if (!signRequest) {
@@ -1603,6 +1621,82 @@ private fun calcDcRequestStringOpenID4VP(
         put("request", JsonPrimitive(signedRequestElement))
     }
     return signedRequest.toString()
+}
+
+private fun calcDcRequestStringOpenID4VP(
+    documentTypeRepository: DocumentTypeRepository,
+    format: String,
+    session: Session,
+    request: DocumentCannedRequest,
+    nonce: ByteString,
+    origin: String,
+    readerKey: EcPrivateKey,
+    readerPublicKey: EcPublicKeyDoubleCoordinate,
+    readerAuthKey: EcPrivateKey,
+    readerAuthKeyCertification: X509CertChain,
+    signRequest: Boolean,
+    encryptResponse: Boolean
+): String {
+    val dcql = buildJsonObject {
+        putJsonArray("credentials") {
+            if (format == "vc") {
+                addJsonObject {
+                    put("id", JsonPrimitive("cred1"))
+                    put("format", JsonPrimitive("dc+sd-jwt"))
+                    putJsonObject("meta") {
+                        put(
+                            "vct_values",
+                            buildJsonArray {
+                                add(JsonPrimitive(request.vcRequest!!.vct))
+                            }
+                        )
+                    }
+                    putJsonArray("claims") {
+                        for (claim in request.vcRequest!!.claimsToRequest) {
+                            addJsonObject {
+                                putJsonArray("path") {
+                                    for (pathElement in claim.identifier.split(".")) {
+                                        add(JsonPrimitive(pathElement))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                addJsonObject {
+                    put("id", JsonPrimitive("cred1"))
+                    put("format", JsonPrimitive("mso_mdoc"))
+                    putJsonObject("meta") {
+                        put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
+                    }
+                    putJsonArray("claims") {
+                        for (ns in request.mdocRequest!!.namespacesToRequest) {
+                            for ((de, intentToRetain) in ns.dataElementsToRequest) {
+                                addJsonObject {
+                                    putJsonArray("path") {
+                                        add(JsonPrimitive(ns.namespace))
+                                        add(JsonPrimitive(de.attribute.identifier))
+                                    }
+                                    put("intent_to_retain", JsonPrimitive(intentToRetain))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return calcDcRequestStringOpenID4VPforDCQL(
+        session = session,
+        nonce = nonce,
+        readerPublicKey = readerPublicKey,
+        readerAuthKey = readerAuthKey,
+        readerAuthKeyCertification = readerAuthKeyCertification,
+        signRequest = signRequest,
+        encryptResponse = encryptResponse,
+        dcql = dcql
+    )
 }
 
 private fun mdocCalcDcRequestStringArf(

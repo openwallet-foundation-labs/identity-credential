@@ -58,6 +58,8 @@ async function onLoad() {
           active = false
       }
     }
+    addTab("Raw DCQL", "rawDcql", "any", null, false)
+    rawDcqlReset_mdl1()
 }
 
 function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
@@ -76,14 +78,29 @@ function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
     var str = '<div class="tab-pane fade show ' + activeStr + '" '
     str += 'id="pills-' + tabId + '" role="tabpanel" '
     str += 'aria-labelledby="pills-tab-' + tabId + '" tabindex="0"> '
-    str += '  <div class="d-grid gap-2 mx-auto"> '
-    for (sr of sampleRequests) {
-        str += '    <button type="button" class="btn btn-primary btn-lg" '
-        str += 'onclick="requestDocument(\'' + mdocOrVc + '\', \'' + docTypeOrVct + '\', \'' + sr.id + '\')" >'
-        str += sr.displayName
+    if (sampleRequests == null) {
+        // Raw DCQL box
+        str += '  <div class="d-grid gap-2 mx-auto"> '
+        str += '    <textarea class="form-control" id="rawDclqTextArea" rows="12">'
+        str += '</textarea>'
+        str += '<div class="d-grid gap-2 mx-auto">'
+        str += '<button type="button" class="btn btn-secondary btn-sm" onclick="rawDcqlReset_mdl1()">Reset (mDL, age_over_21 + portrait)</button> '
+        str += '<button type="button" class="btn btn-secondary btn-sm" onclick="rawDcqlReset_sdjwt1()">Reset (SD-JWT VC EU PID, age_equals_or_over.18 + picture)</button> '
+        str += '    <button type="button" class="btn btn-primary btn-sm" onclick="requestDocumentRawDcql()" >'
+        str += 'Request'
         str += '    </button> '
+        str += '</div>'
+        str += '  </div> '
+    } else {
+        str += '  <div class="d-grid gap-2 mx-auto"> '
+        for (sr of sampleRequests) {
+            str += '    <button type="button" class="btn btn-primary btn-lg" '
+            str += 'onclick="requestDocument(\'' + mdocOrVc + '\', \'' + docTypeOrVct + '\', \'' + sr.id + '\')" >'
+            str += sr.displayName
+            str += '    </button> '
+        }
+        str += '  </div> '
     }
-    str += '  </div> '
     str += '</div> '
 
     $(str).appendTo('#pills-tabContent')
@@ -92,6 +109,67 @@ function addTab(tabName, mdocOrVc, docTypeOrVct, sampleRequests, active) {
     $('#pills-tab-' + tabId).on('shown.bs.tab', function (e) {
         updateProtocolOptions(mdocOrVc);
     });
+}
+
+function rawDcqlReset_mdl1() {
+  const textArea = document.getElementById('rawDclqTextArea')
+  textArea.value =
+    '{\n' +
+    '  "credentials": [\n' +
+    '    {\n' +
+    '      "id": "mdoc",\n' +
+    '      "format": "mso_mdoc",\n' +
+    '      "meta": {\n' +
+    '        "doctype_value": "org.iso.18013.5.1.mDL"\n' +
+    '      },\n' +
+    '      "claims": [\n' +
+    '        {\n' +
+    '          "path": [\n' +
+    '            "org.iso.18013.5.1",\n' +
+    '            "age_over_21"\n' +
+    '          ]\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "path": [\n' +
+    '            "org.iso.18013.5.1",\n' +
+    '            "portrait"\n' +
+    '          ]\n' +
+    '        }\n' +
+    '      ]\n' +
+    '    }\n' +
+    '  ]\n' +
+    '}\n';
+}
+
+function rawDcqlReset_sdjwt1() {
+  const textArea = document.getElementById('rawDclqTextArea')
+  textArea.value =
+    '{\n' +
+    '  "credentials": [\n' +
+    '    {\n' +
+    '      "id": "pid",\n' +
+    '      "format": "dc+sd-jwt",\n' +
+    '      "meta": {\n' +
+    '        "vct_values": [\n' +
+    '          "urn:eudi:pid:1"\n' +
+    '        ]\n' +
+    '      },\n' +
+    '      "claims": [\n' +
+    '        {\n' +
+    '          "path": [\n' +
+    '            "age_equal_or_over",\n' +
+    '            "18"\n' +
+    '          ]\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "path": [\n' +
+    '            "picture"\n' +
+    '          ]\n' +
+    '        }\n' +
+    '      ]\n' +
+    '    }\n' +
+    '  ]\n' +
+    '}\n';
 }
 
 function updateProtocolOptions(mdocOrVc) {
@@ -155,6 +233,31 @@ async function onLoadRedirect() {
 function redirectClose() {
     console.log('redirectClose')
     window.close()
+}
+
+async function requestDocumentRawDcql() {
+    const textArea = document.getElementById('rawDclqTextArea')
+    const rawDcql = textArea.value
+    console.log('requestDocumentRawDcql, rawDcql=' + rawDcql)
+    if (selectedProtocol != "w3c_dc_openid4vp") {
+        alert("Only OpenID4VP supports Raw DCQL.")
+        return
+    }
+    try {
+        const response = await callServer(
+            'dcBeginRawDcql',
+            {
+                rawDcql: rawDcql,
+                origin: location.origin,
+                host: location.host,
+                signRequest: document.getElementById("openid4vp-sign-request-input").checked,
+                encryptResponse: document.getElementById("openid4vp-encrypt-response-input").checked
+            }
+        )
+        dcRequestCredential(response.sessionId, 'openid4vp', JSON.parse(response.dcRequestString))
+    } catch (err) {
+        alert("Something went wrong: " + err)
+    }
 }
 
 async function requestDocument(format, docType, requestId) {
