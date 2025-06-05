@@ -28,6 +28,7 @@
     <string name="notifications_title">Notifications</string>
     <string name="screen_lock_title">Screen Lock</string>
     <string name="camera_title">Camera</string>
+    <string name="face_detection_title">Face Detection</string>
     <string name="barcode_scanning_title">Barcode Scanning</string>
 
 </resources>
