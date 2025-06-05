@@ -1,11 +1,18 @@
 package org.multipaz.crypto
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
+import org.multipaz.util.toBase64Url
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 
 /**
  * EC Private Key with Octet Key Pairs.
@@ -24,6 +31,22 @@ data class EcPrivateKeyOkp(
             Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem()),
             Pair(Cose.COSE_KEY_PARAM_D.toCoseLabel, d.toDataItem()),
             Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem())) + additionalLabels)
+    }
+
+    override fun toJwk(
+        additionalClaims: JsonObject?,
+    ): JsonObject {
+        return buildJsonObject {
+            put("kty", "OKP")
+            put("crv", curve.jwkName)
+            put("d", d.toBase64Url())
+            put("x", x.toBase64Url())
+            if (additionalClaims != null) {
+                for ((k, v) in additionalClaims) {
+                    put(k, v)
+                }
+            }
+        }
     }
 
     override val publicKey: EcPublicKey

@@ -260,6 +260,33 @@ class CryptoTests {
         )
     }
 
+    fun testJwkEncodeDecode(curve: EcCurve) {
+        // TODO: use assumeTrue() when available in kotlin-test
+        if (!Crypto.supportedCurves.contains(curve)) {
+            println("Curve $curve not supported on platform")
+            return
+        }
+
+        val privateKey = Crypto.createEcPrivateKey(curve)
+        val publicKey = privateKey.publicKey
+
+        // Test round tripping
+        assertEquals(EcPublicKey.fromJwk(publicKey.toJwk()), publicKey)
+        assertEquals(EcPrivateKey.fromJwk(privateKey.toJwk()), privateKey)
+    }
+
+    @Test fun testJwkEncodeDecode_P256() = testJwkEncodeDecode(EcCurve.P256)
+    @Test fun testJwkEncodeDecode_P384() = testJwkEncodeDecode(EcCurve.P384)
+    @Test fun testJwkEncodeDecode_P521() = testJwkEncodeDecode(EcCurve.P521)
+    @Test fun testJwkEncodeDecode_BRAINPOOLP256R1() = testJwkEncodeDecode(EcCurve.BRAINPOOLP256R1)
+    @Test fun testJwkEncodeDecode_BRAINPOOLP320R1() = testJwkEncodeDecode(EcCurve.BRAINPOOLP320R1)
+    @Test fun testJwkEncodeDecode_BRAINPOOLP384R1() = testJwkEncodeDecode(EcCurve.BRAINPOOLP384R1)
+    @Test fun testJwkEncodeDecode_BRAINPOOLP512R1() = testJwkEncodeDecode(EcCurve.BRAINPOOLP512R1)
+    @Test fun testJwkEncodeDecode_ED25519() = testJwkEncodeDecode(EcCurve.ED25519)
+    @Test fun testJwkEncodeDecode_X25519() = testJwkEncodeDecode(EcCurve.X25519)
+    @Test fun testJwkEncodeDecode_ED448() = testJwkEncodeDecode(EcCurve.ED448)
+    @Test fun testJwkEncodeDecode_X448() = testJwkEncodeDecode(EcCurve.X448)
+
     fun testPemEncodeDecode(curve: EcCurve) {
         // TODO: use assumeTrue() when available in kotlin-test
         if (!Crypto.supportedCurves.contains(curve)) {

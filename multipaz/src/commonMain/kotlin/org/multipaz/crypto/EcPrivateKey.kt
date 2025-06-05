@@ -1,5 +1,7 @@
 package org.multipaz.crypto
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.toDataItem
@@ -7,6 +9,7 @@ import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
+import org.multipaz.util.fromBase64Url
 
 /**
  * An EC private key.
@@ -39,6 +42,20 @@ sealed class EcPrivateKey(
     fun toPem(): String = Crypto.ecPrivateKeyToPem(this)
 
     fun toDataItem(): DataItem = toCoseKey().toDataItem()
+
+    /**
+     * Encodes the private key as a JSON Web Key according to
+     * [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517).
+     *
+     * By default this only includes the `kty`, `crv`, `d`, `x`, `y` (if double-coordinate) claims,
+     * use [additionalClaims] to include other claims.
+     *
+     * @param additionalClaims additional claims to include or `null`.
+     * @return a JSON Web Key.
+     */
+    abstract fun toJwk(
+        additionalClaims: JsonObject? = null
+    ): JsonObject
 
     /**
      * The public part of the key.
@@ -90,6 +107,34 @@ sealed class EcPrivateKey(
                     throw IllegalArgumentException("Unknown key type ${coseKey.keyType}")
                 }
             }
+
+        /**
+         * Creates a [EcPrivateKey] from a JSON Web Key according to
+         * [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517).
+         *
+         * @param jwk the JSON Web Key.
+         * @return the private key.
+         */
+        fun fromJwk(jwk: JsonObject): EcPrivateKey {
+            return when (val kty = jwk["kty"]!!.jsonPrimitive.content) {
+                "OKP" -> {
+                    EcPrivateKeyOkp(
+                        EcCurve.fromJwkName(jwk["crv"]!!.jsonPrimitive.content),
+                        jwk["d"]!!.jsonPrimitive.content.fromBase64Url(),
+                        jwk["x"]!!.jsonPrimitive.content.fromBase64Url()
+                    )
+                }
+                "EC" -> {
+                    EcPrivateKeyDoubleCoordinate(
+                        EcCurve.fromJwkName(jwk["crv"]!!.jsonPrimitive.content),
+                        jwk["d"]!!.jsonPrimitive.content.fromBase64Url(),
+                        jwk["x"]!!.jsonPrimitive.content.fromBase64Url(),
+                        jwk["y"]!!.jsonPrimitive.content.fromBase64Url()
+                    )
+                }
+                else -> throw IllegalArgumentException("Unsupported key type $kty")
+            }
+        }
 
         fun fromDataItem(dataItem: DataItem): EcPrivateKey {
             return fromCoseKey(CoseKey.fromDataItem(dataItem))
