@@ -24,7 +24,7 @@ object EUCertificateOfResidence {
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("EU Certificate of Residency")
             .addMdocDocumentType(DOCTYPE)
-            .addVcDocumentType(vct = VCT, keyBound = true)
+            .addJsonDocumentType(type = VCT, keyBound = true)
             .addAttribute(
                 DocumentAttributeType.String,
                 "family_name",
@@ -268,7 +268,7 @@ object EUCertificateOfResidence {
                         "age_over_18" to false,
                     )
                 ),
-                vcClaims = listOf("age_over_18")
+                jsonClaims = listOf("age_over_18")
             )
             .addSampleRequest(
                 id = "mandatory",
@@ -285,7 +285,7 @@ object EUCertificateOfResidence {
                         "issuing_country" to false
                     )
                 ),
-                vcClaims = listOf(
+                jsonClaims = listOf(
                     "family_name",
                     "given_name",
                     "birth_date",
@@ -302,7 +302,7 @@ object EUCertificateOfResidence {
                 mdocDataElements = mapOf(
                     NAMESPACE to mapOf()
                 ),
-                vcClaims = listOf()
+                jsonClaims = listOf()
             )
             .build()
     }

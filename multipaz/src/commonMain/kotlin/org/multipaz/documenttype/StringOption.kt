@@ -17,8 +17,7 @@
 package org.multipaz.documenttype
 
 /**
- * Class that represents a combination of a string value
- * and a name suitable for display presentation.
+ * Class that represents a combination of a string value and a name suitable for display presentation.
  *
  * @param value a string value.
  * @param displayName a name suitable for display of the value.

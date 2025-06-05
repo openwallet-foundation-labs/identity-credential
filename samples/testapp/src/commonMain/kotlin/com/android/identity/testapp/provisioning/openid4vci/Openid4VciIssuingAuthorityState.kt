@@ -126,7 +126,7 @@ class Openid4VciIssuingAuthorityState(
                         is Openid4VciFormatMdoc ->
                             documentType.mdocDocumentType?.docType == config.format.docType
                         is Openid4VciFormatSdJwt ->
-                            documentType.vcDocumentType?.type == config.format.vct
+                            documentType.jsonDocumentType?.vct == config.format.vct
                         null -> false
                     }
                 }

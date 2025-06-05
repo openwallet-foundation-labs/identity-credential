@@ -1,7 +1,7 @@
 package org.multipaz.documenttype
 
 /**
- * An enumeration of icons used to represent ISO mdoc data elements or VC claims.
+ * An enumeration of icons used to represent ISO mdoc data elements or JSON-based credential claims.
  *
  * @property iconName the icon name according to https://fonts.google.com/icons
  */

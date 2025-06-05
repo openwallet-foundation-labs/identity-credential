@@ -550,19 +550,19 @@ class VerifierServlet : BaseHttpServlet() {
                         sr.id,
                         sr.displayName,
                         sr.mdocRequest != null,
-                        sr.vcRequest != null,
+                        sr.jsonRequest != null,
                     ))
                     if (sr.mdocRequest != null) {
                         dtSupportsMdoc = true
                     }
-                    if (sr.vcRequest != null) {
+                    if (sr.jsonRequest != null) {
                         dtSupportsVc = true
                     }
                 }
                 requests.add(DocumentTypeWithRequests(
                     dt.displayName,
                     if (dtSupportsMdoc) dt.mdocDocumentType!!.docType else null,
-                    if (dtSupportsVc) dt.vcDocumentType!!.type else null,
+                    if (dtSupportsVc) dt.jsonDocumentType!!.vct else null,
                     sampleRequests
                 ))
             }
@@ -582,7 +582,7 @@ class VerifierServlet : BaseHttpServlet() {
     ): DocumentCannedRequest {
         return when (format) {
             "mdoc" -> documentTypeRepo.getDocumentTypeForMdoc(docType)!!.cannedRequests.first { it.id == requestId}
-            "vc" -> documentTypeRepo.getDocumentTypeForVc(docType)!!.cannedRequests.first { it.id == requestId}
+            "vc" -> documentTypeRepo.getDocumentTypeForJson(docType)!!.cannedRequests.first { it.id == requestId}
             else -> throw IllegalArgumentException("Unknown format $format")
         }
     }
@@ -1647,12 +1647,12 @@ private fun calcDcRequestStringOpenID4VP(
                         put(
                             "vct_values",
                             buildJsonArray {
-                                add(JsonPrimitive(request.vcRequest!!.vct))
+                                add(JsonPrimitive(request.jsonRequest!!.vct))
                             }
                         )
                     }
                     putJsonArray("claims") {
-                        for (claim in request.vcRequest!!.claimsToRequest) {
+                        for (claim in request.jsonRequest!!.claimsToRequest) {
                             addJsonObject {
                                 putJsonArray("path") {
                                     for (pathElement in claim.identifier.split(".")) {
@@ -1870,12 +1870,12 @@ private fun sdjwtCalcPresentationDefinition(
     val vctArray = JSONArray()
     vctArray.add("\$.vct")
     val vctFilter = JSONObject()
-    vctFilter.put("const", request.vcRequest!!.vct)
+    vctFilter.put("const", request.jsonRequest!!.vct)
     val vctField = JSONObject()
     vctField.put("path", vctArray)
     vctField.put("filter", vctFilter)
     fields.add(vctField)
-    for (claim in request.vcRequest!!.claimsToRequest) {
+    for (claim in request.jsonRequest!!.claimsToRequest) {
         var array = JSONArray()
         array.add("\$.${claim.identifier}")
         val field = JSONObject()

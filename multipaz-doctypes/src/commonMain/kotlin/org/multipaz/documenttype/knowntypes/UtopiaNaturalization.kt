@@ -1,11 +1,8 @@
 package org.multipaz.documenttype.knowntypes
 
-import org.multipaz.cbor.toDataItem
-import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.Icon
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -19,8 +16,8 @@ object UtopiaNaturalization {
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("Utopia Naturalization Certificate")
-            .addVcDocumentType(vct = VCT, keyBound = true)
-            .addVcAttribute(
+            .addJsonDocumentType(type = VCT, keyBound = true)
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "family_name",
                 "Family Name",
@@ -28,7 +25,7 @@ object UtopiaNaturalization {
                 Icon.PERSON,
                 JsonPrimitive(SampleData.FAMILY_NAME)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "given_name",
                 "Given Names",
@@ -36,7 +33,7 @@ object UtopiaNaturalization {
                 Icon.PERSON,
                 JsonPrimitive(SampleData.GIVEN_NAME)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Date,
                 "birth_date",
                 "Date of Birth",
@@ -44,7 +41,7 @@ object UtopiaNaturalization {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.BIRTH_DATE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Date,
                 "naturalization_date",
                 "Date of Naturalization",
@@ -55,7 +52,7 @@ object UtopiaNaturalization {
             .addSampleRequest(
                 id = "full",
                 displayName = "All Data Elements",
-                vcClaims = listOf()
+                jsonClaims = listOf()
             )
             .build()
     }

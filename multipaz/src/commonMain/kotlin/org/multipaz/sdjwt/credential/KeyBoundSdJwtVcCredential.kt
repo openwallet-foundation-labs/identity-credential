@@ -3,7 +3,7 @@ package org.multipaz.sdjwt.credential
 import org.multipaz.cbor.CborBuilder
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.MapBuilder
-import org.multipaz.claim.VcClaim
+import org.multipaz.claim.JsonClaim
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -95,7 +95,7 @@ class KeyBoundSdJwtVcCredential : SecureAreaBoundCredential, SdJwtVcCredential {
     override val credentialType: String
         get() = CREDENTIAL_TYPE
 
-    override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<VcClaim> {
+    override fun getClaims(documentTypeRepository: DocumentTypeRepository?): List<JsonClaim> {
         return getClaimsImpl(documentTypeRepository)
     }
 }

@@ -42,12 +42,12 @@ interface PresentmentSource {
      * Returns a credential that can be presented.
      *
      * @param request the request.
-     * @param document the document to get a credential from.
+     * @param document the document to get a credential from or `null`.
      * @return a [CredentialForPresentment] object with a credential that can be used for presentment.
      */
     suspend fun getCredentialForPresentment(
         request: Request,
-        document: Document
+        document: Document?
     ): CredentialForPresentment
 
     /**

@@ -208,7 +208,7 @@ private fun Document.renderDocumentDetailsForSdJwt(
 ): DocumentDetails {
     val kvPairs = mutableMapOf<String, AttributeDisplayInfo>()
 
-    val vcType = documentTypeRepository.getDocumentTypeForVc(credential.vct)?.vcDocumentType
+    val vcType = documentTypeRepository.getDocumentTypeForJson(credential.vct)?.jsonDocumentType
 
     val sdJwt = SdJwt(String(credential.issuerProvidedData, Charsets.US_ASCII))
     val issuerKey = sdJwt.x5c!!.certificates.first().ecPublicKey

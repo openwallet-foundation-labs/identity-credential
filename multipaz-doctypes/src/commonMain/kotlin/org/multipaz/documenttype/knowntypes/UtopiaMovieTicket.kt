@@ -16,8 +16,8 @@ object UtopiaMovieTicket {
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("Movie Ticket")
-            .addVcDocumentType(vct = MOVIE_TICKET_VCT, keyBound = false)
-            .addVcAttribute(
+            .addJsonDocumentType(type = MOVIE_TICKET_VCT, keyBound = false)
+            .addJsonAttribute(
                 DocumentAttributeType.Number,
                 "ticket_number",
                 "Ticket Number",
@@ -25,7 +25,7 @@ object UtopiaMovieTicket {
                 Icon.NUMBERS,
                 JsonPrimitive(SampleData.TICKET_NUMBER)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "cinema_id",
                 "Cinema Theater",
@@ -33,7 +33,7 @@ object UtopiaMovieTicket {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.CINEMA_ID)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "movie_id",
                 "Movie Title",
@@ -41,7 +41,7 @@ object UtopiaMovieTicket {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.MOVIE_ID)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "movie_rating",
                 "Age Rating Code",
@@ -49,7 +49,7 @@ object UtopiaMovieTicket {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.MOVIE_RATING)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Date,
                 "movie_date",
                 "Date",
@@ -57,7 +57,7 @@ object UtopiaMovieTicket {
                 Icon.DATE_RANGE,
                 JsonPrimitive(SampleData.MOVIE_DATE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "movie_time",
                 "Time",
@@ -65,7 +65,7 @@ object UtopiaMovieTicket {
                 Icon.CALENDAR_CLOCK,
                 JsonPrimitive(SampleData.MOVIE_TIME)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "theater_id",
                 "Theater",
@@ -73,7 +73,7 @@ object UtopiaMovieTicket {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.THEATRE_NAME)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "seat_id",
                 "Seat",
@@ -81,7 +81,7 @@ object UtopiaMovieTicket {
                 Icon.NUMBERS,
                 JsonPrimitive(SampleData.THEATRE_SEAT)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "parking_option",
                 "Parking",
@@ -92,19 +92,19 @@ object UtopiaMovieTicket {
             .addSampleRequest(
                 id = "is_parking_prepaid",
                 displayName = "Prepaid Parking",
-                vcClaims = listOf("parking_option")
+                jsonClaims = listOf("parking_option")
             )
             .addSampleRequest(
                 id = "ticket_id",
                 displayName = "Ticket Number",
-                vcClaims = listOf(
+                jsonClaims = listOf(
                     "ticket_number",
                 )
             )
             .addSampleRequest(
                 id = "full",
                 displayName = "All Data Elements",
-                vcClaims = listOf()
+                jsonClaims = listOf()
             )
             .build()
     }

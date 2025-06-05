@@ -2,8 +2,6 @@ package org.multipaz.testapp
 
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
 import org.multipaz.cbor.Tagged
@@ -283,7 +281,7 @@ object TestAppUtils {
             )
         }
 
-        if (documentType.vcDocumentType != null) {
+        if (documentType.jsonDocumentType != null) {
             addSdJwtVcCredentials(
                 document = document,
                 documentType = documentType,
@@ -460,13 +458,17 @@ object TestAppUtils {
         numCredentialsPerDomain: Int,
         givenNameOverride: String
     ) {
-        if (documentType.vcDocumentType == null) {
+        if (documentType.jsonDocumentType == null) {
             return
         }
 
         val identityAttributes = buildJsonObject {
-            for ((claimName, attribute) in documentType.vcDocumentType!!.claims) {
-                val sampleValue = attribute.sampleValueVc
+            for ((claimName, attribute) in documentType.jsonDocumentType!!.claims) {
+                // Skip sub-claims.
+                if (claimName.contains('.')) {
+                    continue
+                }
+                val sampleValue = attribute.sampleValueJson
                 if (sampleValue != null) {
                     val value = if (claimName.startsWith("given_name")) {
                         JsonPrimitive(givenNameOverride)
@@ -480,7 +482,7 @@ object TestAppUtils {
             }
         }
 
-        val (domains, numCredentialsPerDomainAdj) = if (documentType.vcDocumentType!!.keyBound) {
+        val (domains, numCredentialsPerDomainAdj) = if (documentType.jsonDocumentType!!.keyBound) {
             Pair(listOf(CREDENTIAL_DOMAIN_SDJWT_USER_AUTH, CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH), numCredentialsPerDomain)
         } else {
             // No point in having multiple credentials for keyless credentials..
@@ -488,14 +490,14 @@ object TestAppUtils {
         }
         for (domain in domains) {
             for (n in 1..numCredentialsPerDomainAdj) {
-                val credential = if (documentType.vcDocumentType!!.keyBound) {
+                val credential = if (documentType.jsonDocumentType!!.keyBound) {
                     val userAuthenticationRequired = (domain == CREDENTIAL_DOMAIN_SDJWT_USER_AUTH)
                     KeyBoundSdJwtVcCredential.create(
                         document = document,
                         asReplacementForIdentifier = null,
                         domain = domain,
                         secureArea = secureArea,
-                        vct = documentType.vcDocumentType!!.type,
+                        vct = documentType.jsonDocumentType!!.vct,
                         createKeySettings = secureAreaCreateKeySettingsFunc(
                             "Challenge".encodeToByteString(),
                             deviceKeyAlgorithm,
@@ -509,7 +511,7 @@ object TestAppUtils {
                         document = document,
                         asReplacementForIdentifier = null,
                         domain = domain,
-                        vct = documentType.vcDocumentType!!.type,
+                        vct = documentType.jsonDocumentType!!.vct,
                     )
                 }
 

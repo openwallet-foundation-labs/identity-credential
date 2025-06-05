@@ -27,8 +27,8 @@ import kotlinx.serialization.json.JsonElement
  * @property displayName the name suitable for display of the attribute.
  * @property description a description of the attribute.
  * @property icon the icon for the attribute, if available.
- * @property sampleValueMdoc a sample value for the attribute, if available.
- * @property sampleValueVc a sample value for the attribute, if available.
+ * @property sampleValueMdoc a sample value for the attribute for ISO mdoc credentials, if available.
+ * @property sampleValueJson a sample value for the attribute for JSON-based credentials, if available.
  */
 data class DocumentAttribute(
     val type: DocumentAttributeType,
@@ -37,5 +37,5 @@ data class DocumentAttribute(
     val description: String,
     val icon: Icon?,
     val sampleValueMdoc: DataItem?,
-    val sampleValueVc: JsonElement?
+    val sampleValueJson: JsonElement?
 )

@@ -19,12 +19,10 @@ package org.multipaz.documenttype
 /**
  * A class that contains the metadata of Document Types.
  *
- * The repository is initially empty, but in the
- * [org.multipaz.documenttype.knowntypes] package
- * there are well known document types which can be added
- * using the [addDocumentType] method.
+ * The repository is initially empty, but in the [org.multipaz.documenttype.knowntypes] package
+ * there are well known document types which can be added using the [addDocumentType] method.
  *
- * Applications also may add their own Document Types.
+ * Applications also may add their own document types.
  */
 class DocumentTypeRepository {
     private val _documentTypes: MutableList<DocumentType> = mutableListOf()
@@ -44,10 +42,10 @@ class DocumentTypeRepository {
         _documentTypes.add(documentType)
 
     /**
-     * Gets the first [DocumentType] in [documentTypes] with a given mdoc doctype.
+     * Gets the first [DocumentType] in [documentTypes] with a given ISO mdoc doc type.
      *
      * @param mdocDocType the mdoc doc type.
-     * @return the [DocumentType] or null if not found.
+     * @return the [DocumentType] or `null` if not found.
      */
     fun getDocumentTypeForMdoc(mdocDocType: String): DocumentType? =
         _documentTypes.find {
@@ -55,14 +53,14 @@ class DocumentTypeRepository {
         }
 
     /**
-     * Gets the first [DocumentType] in [documentTypes] with a given VC vct.
+     * Gets the first [DocumentType] in [documentTypes] with a given VCT.
      *
-     * @param vct the Verification Credential Type.
-     * @return the [DocumentType] or null if not found.
+     * @param vct the type e.g. `urn:eudi:pid:1`.
+     * @return the [DocumentType] or `null` if not found.
      */
-    fun getDocumentTypeForVc(vct: String): DocumentType? =
+    fun getDocumentTypeForJson(vct: String): DocumentType? =
         _documentTypes.find {
-            it.vcDocumentType?.type?.equals(vct) ?: false
+            it.jsonDocumentType?.vct?.equals(vct) ?: false
         }
 
     /**
