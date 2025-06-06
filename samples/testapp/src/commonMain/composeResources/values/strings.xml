@@ -30,5 +30,8 @@
     <string name="camera_title">Camera</string>
     <string name="face_detection_title">Face Detection</string>
     <string name="barcode_scanning_title">Barcode Scanning</string>
+    <string name="selfie_check_title">Selfie Check</string>
+    <string name="selfie_check_subtitle">Selfie Verification for Utopia Department of Motor Vehicles</string>
+    <string name="selfie_check_dialog_title">Selfie Verification</string>
 
 </resources>

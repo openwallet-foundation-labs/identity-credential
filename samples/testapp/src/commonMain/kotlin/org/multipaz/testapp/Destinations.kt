@@ -31,6 +31,7 @@ import multipazproject.samples.testapp.generated.resources.face_detection_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
+import multipazproject.samples.testapp.generated.resources.selfie_check_title
 import multipazproject.samples.testapp.generated.resources.settings_screen_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -220,6 +221,11 @@ data object BarcodeScanningDestination : Destination {
     override val title = Res.string.barcode_scanning_title
 }
 
+data object SelfieCheckScreenDestination : Destination {
+    override val route = "SelfieCheck"
+    override val title = Res.string.selfie_check_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -250,5 +256,6 @@ val appDestinations = listOf(
     ScreenLockDestination,
     CameraDestination,
     FaceDetectionDestination,
-    BarcodeScanningDestination
+    BarcodeScanningDestination,
+    SelfieCheckScreenDestination
 )
