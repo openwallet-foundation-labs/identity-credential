@@ -1,0 +1,35 @@
+<resources>
+
+    <!-- Selfie check stepFeedback (displayed on the dedicated card). -->
+    <string name="selfie_instruction_preface">To verify your identity you will be asked to perform a series of head movements in the following screens.\n
+All analysis is local, doesn't leave the device, and isn't shared with anyone. One of the video frames from the verification will be shared with %1$s at the end, after your approval.\n
+Please do this in a well-lit room and without any distractions in the background.</string>
+    <string name="selfie_instruction_initial_state">Get ready for selfie check.</string>
+    <string name="selfie_instruction_center_face">Please center your face in the oval.</string>
+    <string name="selfie_instruction_rotate_head_left">Slowly turn your head to the LEFT.</string>
+    <string name="selfie_instruction_rotate_head_right">Slowly turn your head to the RIGHT.</string>
+    <string name="selfie_instruction_rotate_head_up">Slowly tilt your head UP.</string>
+    <string name="selfie_instruction_rotate_head_down">Slowly tilt your head DOWN.</string>
+    <string name="selfie_instruction_circular_gaze_start">Look around you (all the way left and right).</string>
+    <string name="selfie_instruction_circular_gaze_remaining">Keep looking around... %1$s areas.</string>
+    <string name="selfie_instruction_close_eyes">Please close your eyes.</string>
+    <string name="selfie_instruction_smile">Please smile.</string>
+    <string name="selfie_instruction_completed">Selfie check completed! Thank you.</string>
+    <string name="selfie_instruction_move_horizontally">Move face horizontally to center.</string>
+    <string name="selfie_instruction_move_vertically">Move face vertically to center.</string>
+    <string name="selfie_instruction_keep_head_level">Keep your head level while looking around.</string>
+    <string name="selfie_instruction_look_around">Look around (left and right).</string>
+    <string name="selfie_instruction_keep_looking">Keep looking around slowly to fill missing areas.</string>
+    <string name="selfie_instruction_close_firmly">Please close both eyes firmly but relaxed.</string>
+    <string name="selfie_instruction_clear_smile">Please give a clear smile.</string>
+    <string name="selfie_instruction_look_straight">Please look directly into the camera with the face centered.</string>
+    <string name="selfie_instruction_failed_timeout">Verification Failed. Step timed out: %1$s. Please try again.</string>
+    <string name="selfie_instruction_selfie_sent">Image sent. You can close this dialog window.</string>
+
+    <string name="selfie_button_try_again">TRY AGAIN</string>
+    <string name="selfie_button_start_check">START VERIFICATION</string>
+    <string name="selfie_prompt_consent">I consent to sharing this image with %1$s.</string>
+    <string name="selfie_prompt_done">Done!</string>
+    <string name="selfie_button_send">Send</string>
+
+</resources>

@@ -40,6 +40,7 @@ import com.android.identity.testapp.ui.AppTheme
 import com.android.identity.testapp.ui.BarcodeScanningScreen
 import com.android.identity.testapp.ui.CameraScreen
 import com.android.identity.testapp.ui.FaceDetectionScreen
+import com.android.identity.testapp.ui.SelfieCheckScreen
 import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
@@ -653,7 +654,8 @@ class App private constructor (val promptModel: PromptModel) {
                             onClickScreenLock = { navController.navigate(ScreenLockDestination.route) },
                             onClickCamera = { navController.navigate(CameraDestination.route) },
                             onClickFaceDetection = { navController.navigate(FaceDetectionDestination.route) },
-                            onClickBarcodeScanning = { navController.navigate(BarcodeScanningDestination.route) }
+                            onClickBarcodeScanning = { navController.navigate(BarcodeScanningDestination.route) },
+                            onClickSelfieCheck = { navController.navigate(SelfieCheckScreenDestination.route) }
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -882,6 +884,11 @@ class App private constructor (val promptModel: PromptModel) {
                     }
                     composable(route = BarcodeScanningDestination.route) {
                         BarcodeScanningScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = SelfieCheckScreenDestination.route) {
+                        SelfieCheckScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }

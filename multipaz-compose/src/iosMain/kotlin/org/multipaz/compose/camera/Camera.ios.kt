@@ -372,7 +372,7 @@ private class CameraManager(
     ) {
         if (didOutputSampleBuffer == null) return
 
-        val uiImage = didOutputSampleBuffer.toUIImage()
+        val uiImage = didOutputSampleBuffer.toUIImage() ?: return
         val cameraImage = CameraImage(uiImage)
         val imageWidth = uiImage.size.useContents { width }.toFloat()
         val imageHeight = uiImage.size.useContents { height }.toFloat()
@@ -437,7 +437,7 @@ private class CameraManager(
             )
 
             runBlocking {
-                onCameraFrameCaptured(cameraFrame)
+                onCameraFrameCaptured?.let { it(cameraFrame) }
             }
         }
 
@@ -454,11 +454,11 @@ private class CameraManager(
             return
         }
         if (didOutputMetadataObjects.isEmpty()) {
-            onQrCodeScanned(null)
+            onQrCodeScanned?.let { it(null) }
         } else {
             val metadataObj = didOutputMetadataObjects[0] as AVMetadataMachineReadableCodeObject
             if (metadataObj.type == AVMetadataObjectTypeQRCode) {
-                onQrCodeScanned(metadataObj.stringValue)
+                onQrCodeScanned?.let { it(metadataObj.stringValue) }
             }
 
         }
@@ -510,7 +510,7 @@ private class OrientationListener(
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun CMSampleBufferRef.toUIImage(): UIImage {
+private fun CMSampleBufferRef.toUIImage(): UIImage? {
     val imageBuffer = CMSampleBufferGetImageBuffer(this)
         ?: throw IllegalStateException("Could not get CVImageBufferRef from CMSampleBufferRef.")
     val ciImage = CIImage.imageWithCVPixelBuffer(imageBuffer)
@@ -522,15 +522,20 @@ private fun CMSampleBufferRef.toUIImage(): UIImage {
     val finalUiImage: UIImage = try {
         videoImage = temporaryContext.createCGImage(ciImage, fromRect = imageRect)
         if (videoImage == null) {
-            throw IllegalStateException("Error: Could not create CGImageRef from CIImage.")
+            Logger.e(TAG, "Error: Could not create CGImageRef from CIImage.")
+            return null
         }
         UIImage(cGImage = videoImage)
     } catch (e: Throwable) {
-        throw IllegalStateException("Error during image creation", e)
+        Logger.e(TAG, "Error during image creation", e)
+        return null
     } finally {
-        videoImage?.let {
-            CGImageRelease(it)
+        try {
+            videoImage?.let {
+                CGImageRelease(it)
+            }
         }
+        catch (_: Throwable) { }
     }
     return finalUiImage
 }
