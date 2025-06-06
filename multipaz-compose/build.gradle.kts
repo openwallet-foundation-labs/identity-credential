@@ -2,6 +2,7 @@ import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -29,6 +30,8 @@ kotlin {
         publishLibraryVariants("release")
     }
 
+    val xcFrameworkName = "MultipazCompose"
+    val xcf = XCFramework(xcFrameworkName)
     listOf(
         iosX64(),
         iosArm64(),
@@ -45,6 +48,22 @@ kotlin {
                 "-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/${platform}/",
             )
         }
+        it.binaries.framework {
+            export(compose.runtime)
+            export(compose.foundation)
+            export(compose.material3)
+            export(compose.ui)
+            export(compose.components.resources)
+            export(compose.components.uiToolingPreview)
+            export(compose.materialIconsExtended)
+            export(libs.jetbrains.navigation.compose)
+            export(libs.jetbrains.navigation.runtime)
+            baseName = xcFrameworkName
+            binaryOption("bundleVersion", projectVersionCode.toString())
+            binaryOption("bundleShortVersionString", projectVersionName)
+            xcf.add(this)
+            freeCompilerArgs += listOf("-Xoverride-konan-properties=minVersion.ios=16.0;minVersionSinceXcode15.ios=16.0")
+        }
     }
 
     sourceSets {
@@ -59,6 +78,15 @@ kotlin {
                 implementation(compose.materialIconsExtended)
                 implementation(libs.jetbrains.navigation.compose)
                 implementation(libs.jetbrains.navigation.runtime)
+                api(compose.runtime)
+                api(compose.foundation)
+                api(compose.material3)
+                api(compose.ui)
+                api(compose.components.resources)
+                api(compose.components.uiToolingPreview)
+                api(compose.materialIconsExtended)
+                api(libs.jetbrains.navigation.compose)
+                api(libs.jetbrains.navigation.runtime)
 
                 implementation(project(":multipaz"))
                 implementation(project(":multipaz-models"))

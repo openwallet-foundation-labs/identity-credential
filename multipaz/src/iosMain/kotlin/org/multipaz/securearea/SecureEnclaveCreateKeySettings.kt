@@ -1,9 +1,8 @@
 package org.multipaz.securearea
 
-import kotlinx.io.bytestring.buildByteString
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.EcCurve
 
 
 /**
@@ -12,17 +11,14 @@ import org.multipaz.crypto.EcCurve
 class SecureEnclaveCreateKeySettings private constructor(
     algorithm: Algorithm,
 
-    /**
-     * Whether user authentication is required.
-     */
-    val userAuthenticationRequired: Boolean,
+    userAuthenticationRequired: Boolean,
 
     /**
      * The user authentication types that can be used to unlock the key.
      */
     val userAuthenticationTypes: Set<SecureEnclaveUserAuthType>
 
-) : CreateKeySettings(algorithm, buildByteString {}) {
+) : CreateKeySettings(algorithm, ByteString(), userAuthenticationRequired) {
 
     /**
      * A builder for [SecureEnclaveCreateKeySettings].

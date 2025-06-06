@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     id("maven-publish")
@@ -11,6 +13,8 @@ kotlin {
 
     jvm()
 
+    val xcFrameworkName = "MultipazDoctypes"
+    val xcf = XCFramework(xcFrameworkName)
     listOf(
         iosX64(),
         iosArm64(),
@@ -26,6 +30,13 @@ kotlin {
             linkerOpts(
                 "-L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/${platform}/",
             )
+        }
+        it.binaries.framework {
+            baseName = xcFrameworkName
+            binaryOption("bundleVersion", projectVersionCode.toString())
+            binaryOption("bundleShortVersionString", projectVersionName)
+            xcf.add(this)
+            freeCompilerArgs += listOf("-Xoverride-konan-properties=minVersion.ios=16.0;minVersionSinceXcode15.ios=16.0")
         }
     }
 

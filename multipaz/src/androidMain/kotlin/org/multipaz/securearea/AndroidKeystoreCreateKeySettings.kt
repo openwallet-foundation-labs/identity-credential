@@ -17,10 +17,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
      */
     val attestationChallenge: ByteString,
 
-    /**
-     * Gets whether user authentication is required.
-     */
-    val userAuthenticationRequired: Boolean,
+    userAuthenticationRequired: Boolean,
 
     /**
      * The user authentication timeout, or 0 if authentication is required on every use.
@@ -54,7 +51,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
      */
     val validUntil: Instant?
 
-) : CreateKeySettings(algorithm, attestationChallenge) {
+) : CreateKeySettings(algorithm, attestationChallenge, userAuthenticationRequired) {
 
     /**
      * A builder for [CreateKeySettings].

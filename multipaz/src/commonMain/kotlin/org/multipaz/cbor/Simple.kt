@@ -1,7 +1,9 @@
 package org.multipaz.cbor
 
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlin.experimental.ExperimentalObjCName
 import kotlin.experimental.or
+import kotlin.native.ObjCName
 
 /**
  * Simple (major type 7)
@@ -18,14 +20,18 @@ class Simple(val value: UInt) : DataItem(MajorType.SPECIAL) {
         builder.append(majorTypeShifted.or(value.toByte()))
     }
 
+    @OptIn(ExperimentalObjCName::class)
     companion object {
         /** The [Simple] value for FALSE */
+        @ObjCName(name = "False", swiftName = "FALSE")
         val FALSE = Simple(20U)
 
         /** The [Simple] value for TRUE */
+        @ObjCName(name = "True", swiftName = "TRUE")
         val TRUE = Simple(21U)
 
         /** The [Simple] value for NULL */
+        @ObjCName(name = "Null", swiftName = "NULL")
         val NULL = Simple(22U)
 
         /** The [Simple] value for UNDEFINED */

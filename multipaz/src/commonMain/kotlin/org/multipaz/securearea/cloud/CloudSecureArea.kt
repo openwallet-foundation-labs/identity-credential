@@ -498,7 +498,15 @@ open class CloudSecureArea protected constructor(
             createKeySettings
         } else {
             // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            CloudCreateKeySettings.Builder(createKeySettings.nonce).build()
+            CloudCreateKeySettings.Builder(createKeySettings.nonce)
+                .setUserAuthenticationRequired(
+                    required = createKeySettings.userAuthenticationRequired,
+                    types = setOf(
+                        CloudUserAuthType.PASSCODE,
+                        CloudUserAuthType.BIOMETRIC,
+                    )
+                )
+                .build()
         }
         setupE2EE(false)
         try {

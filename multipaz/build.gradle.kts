@@ -3,6 +3,7 @@ import org.gradle.kotlin.dsl.get
 import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
@@ -29,6 +30,8 @@ kotlin {
         publishLibraryVariants("release")
     }
 
+    val xcFrameworkName = "Multipaz"
+    val xcf = XCFramework(xcFrameworkName)
     listOf(
         iosX64(),
         iosArm64(),
@@ -63,6 +66,20 @@ kotlin {
                     )
                 }
             }
+            it.binaries.framework {
+                export(libs.kotlinx.io.bytestring)
+                export(libs.kotlinx.io.core)
+                export(libs.kotlinx.datetime)
+                export(libs.kotlinx.coroutines.core)
+                export(libs.kotlinx.serialization.json)
+                export(libs.ktor.client.core)
+                baseName = xcFrameworkName
+                binaryOption("bundleVersion", projectVersionCode.toString())
+                binaryOption("bundleShortVersionString", projectVersionName)
+                linkerOpts("-lsqlite3")
+                xcf.add(this)
+                freeCompilerArgs += listOf("-Xoverride-konan-properties=minVersion.ios=16.0;minVersionSinceXcode15.ios=16.0")
+            }
         }
     }
 
@@ -81,6 +98,12 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.ktor.client.core)
+                api(libs.kotlinx.io.bytestring)
+                api(libs.kotlinx.io.core)
+                api(libs.kotlinx.datetime)
+                api(libs.kotlinx.coroutines.core)
+                api(libs.kotlinx.serialization.json)
+                api(libs.ktor.client.core)
             }
         }
 

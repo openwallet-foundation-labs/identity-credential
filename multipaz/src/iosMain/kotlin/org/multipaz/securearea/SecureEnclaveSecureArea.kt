@@ -85,6 +85,12 @@ class SecureEnclaveSecureArea private constructor(
             // only key settings can really be honored).
             SecureEnclaveCreateKeySettings.Builder()
                 .setAlgorithm(createKeySettings.algorithm)
+                .setUserAuthenticationRequired(
+                    required = createKeySettings.userAuthenticationRequired,
+                    userAuthenticationTypes = setOf(
+                        SecureEnclaveUserAuthType.USER_PRESENCE
+                    )
+                )
                 .build()
         }
 

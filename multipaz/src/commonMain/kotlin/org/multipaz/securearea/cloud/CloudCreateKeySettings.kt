@@ -17,10 +17,7 @@ class CloudCreateKeySettings private constructor(
      */
     val attestationChallenge: ByteString,
 
-    /**
-     * Whether user authentication is required.
-     */
-    val userAuthenticationRequired: Boolean,
+    userAuthenticationRequired: Boolean,
 
     /**
      * User authentication types permitted.
@@ -41,7 +38,7 @@ class CloudCreateKeySettings private constructor(
      * Whether the key is protected by a passphrase.
      */
     val passphraseRequired: Boolean,
-) : CreateKeySettings(algorithm, attestationChallenge) {
+) : CreateKeySettings(algorithm, attestationChallenge, userAuthenticationRequired) {
 
     /**
      * A builder for [CloudCreateKeySettings].
