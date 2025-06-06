@@ -65,6 +65,18 @@ abstract class SecureAreaBoundCredential : Credential {
     }
 
     /**
+     * Uses an existing authentication key to which this credential is bound and adds the credential
+     * to the document.
+     *
+     * @param keyAlias the alias of the key to use.
+     * @throws IllegalArgumentException if the key does not exist
+     */
+    protected suspend fun useExistingKey(keyAlias: String) {
+        alias = secureArea.getKeyInfo(keyAlias).alias
+        addToDocument()
+    }
+
+    /**
      * Constructs a Credential from serialized data.
      *
      * @param document the [Document] that the credential belongs to.
