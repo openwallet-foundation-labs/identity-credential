@@ -30,5 +30,6 @@
     <string name="camera_title">Camera</string>
     <string name="face_detection_title">Face Detection</string>
     <string name="barcode_scanning_title">Barcode Scanning</string>
+    <string name="selfie_check_title">Selfie Check</string>
 
 </resources>

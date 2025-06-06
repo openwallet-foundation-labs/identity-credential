@@ -1,0 +1,30 @@
+<resources>
+
+    <!-- Selfie check stepFeedback. -->
+    <string name="selfie_instruction_default">Please position your face in the frame.</string>
+    <string name="selfie_instruction_initial_state">Get ready for selfie check.</string>
+    <string name="selfie_instruction_center_face">Please center your face in the oval.</string>
+    <string name="selfie_instruction_rotate_head_left">Slowly turn your head to the LEFT.</string>
+    <string name="selfie_instruction_rotate_head_right">Slowly turn your head to the RIGHT.</string>
+    <string name="selfie_instruction_rotate_head_up">Slowly tilt your head UP.</string>
+    <string name="selfie_instruction_rotate_head_down">Slowly tilt your head DOWN.</string>
+    <string name="selfie_instruction_circular_gaze_start">Look around you (all the way left and right).</string>
+    <string name="selfie_instruction_circular_gaze_remaining">Keep looking around... %1$s areas.</string>
+    <string name="selfie_instruction_close_eyes">Please close your eyes.</string>
+    <string name="selfie_instruction_smile">Please smile.</string>
+    <string name="selfie_instruction_completed">Selfie check completed! Thank you.</string>
+    <string name="selfie_instruction_failed_face_centering">Cannot detect face position. Ensure camera is active.</string>
+    <string name="selfie_instruction_move_horizontally">Move face horizontally to center.</string>
+    <string name="selfie_instruction_move_vertically">Move face vertically to center.</string>
+    <string name="selfie_instruction_keep_head_level">Keep your head level while looking around.</string>
+    <string name="selfie_instruction_look_around">Look around (left and right).</string>
+    <string name="selfie_instruction_keep_looking">Keep looking around... %1$s areas missing.</string>
+    <string name="selfie_instruction_close_firmly">Please close both eyes firmly.</string>
+    <string name="selfie_instruction_clear_smile">Please give a clear smile.</string>
+    <string name="selfie_instruction_failed_timeout">Verification Failed. Step timed out: %1$s. Please try again.</string>
+
+    <string name="selfie_button_try_again">TRY AGAIN</string>
+    <string name="selfie_button_start_check">START SELFIE CHECK</string>
+    <string name="selfie_prompt_done">Done!</string>
+
+</resources>

@@ -5,12 +5,24 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.createBitmap
 import org.multipaz.compose.camera.CameraFrame
+import java.io.ByteArrayOutputStream
 
 actual fun decodeImage(encodedData: ByteArray): ImageBitmap {
     return BitmapFactory.decodeByteArray(encodedData, 0, encodedData.size).asImageBitmap()
+}
+
+actual fun encodeImageAsPng(imageBitmap: ImageBitmap): ByteArray? {
+    val androidBitmap = imageBitmap.asAndroidBitmap()
+    val stream = ByteArrayOutputStream()
+    val success = androidBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream) // Quality is ignored for PNG but must be provided
+    if (!success) {
+        throw RuntimeException("Failed to compress Android Bitmap to PNG.")
+    }
+    return stream.toByteArray()
 }
 
 private val paint = Paint().apply {

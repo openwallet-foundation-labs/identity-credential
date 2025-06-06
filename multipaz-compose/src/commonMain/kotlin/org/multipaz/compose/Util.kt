@@ -5,6 +5,8 @@ import org.multipaz.compose.camera.CameraFrame
 
 expect fun decodeImage(encodedData: ByteArray): ImageBitmap
 
+expect fun encodeImageAsPng(imageBitmap: ImageBitmap): ByteArray?
+
 /**
  * Extract an arbitrary geometry rectangular bitmap from the original bitmap.
  *

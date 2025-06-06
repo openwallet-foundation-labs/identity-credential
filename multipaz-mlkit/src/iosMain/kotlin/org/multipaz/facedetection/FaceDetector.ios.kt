@@ -11,6 +11,7 @@ import cocoapods.GoogleMLKit.MLKFaceDetectorClassificationModeAll
 import cocoapods.GoogleMLKit.MLKFaceDetectorContourModeAll
 import cocoapods.GoogleMLKit.MLKFaceDetectorLandmarkModeAll
 import cocoapods.GoogleMLKit.MLKFaceDetectorOptions
+import cocoapods.GoogleMLKit.MLKFaceDetectorPerformanceModeAccurate
 import cocoapods.GoogleMLKit.MLKFaceDetectorPerformanceModeFast
 import cocoapods.GoogleMLKit.MLKFaceLandmark
 import cocoapods.MLKitVision.MLKVisionImage
@@ -20,6 +21,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.refTo
 import kotlinx.cinterop.useContents
 import org.multipaz.compose.camera.CameraFrame
+import org.multipaz.compose.toUIImage
 import org.multipaz.util.Logger
 import platform.CoreGraphics.CGBitmapContextCreate
 import platform.CoreGraphics.CGBitmapContextCreateImage
@@ -51,9 +53,10 @@ actual fun detectFaces(image: ImageBitmap): List<DetectedFace>? {
 @OptIn(ExperimentalForeignApi::class)
 private val faceDetectorOptions = MLKFaceDetectorOptions().apply {
     classificationMode = MLKFaceDetectorClassificationModeAll
-    performanceMode = MLKFaceDetectorPerformanceModeFast
+    performanceMode = MLKFaceDetectorPerformanceModeAccurate
     landmarkMode = MLKFaceDetectorLandmarkModeAll
     contourMode = MLKFaceDetectorContourModeAll
+    minFaceSize = 0.20
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -150,29 +153,6 @@ private fun MLKFace.toMultiplatformFace(): DetectedFace {
             contours = (contours as List<MLKFaceContour>).toMFaceContourList()
         )
     }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-private fun ImageBitmap.toUIImage(): UIImage? {
-    val width = this.width
-    val height = this.height
-    val buffer = IntArray(width * height)
-
-    this.readPixels(buffer)
-
-    val colorSpace = CGColorSpaceCreateDeviceRGB()
-    val context = CGBitmapContextCreate(
-        data = buffer.refTo(0),
-        width = width.toULong(),
-        height = height.toULong(),
-        bitsPerComponent = 8u,
-        bytesPerRow = (4 * width).toULong(),
-        space = colorSpace,
-        bitmapInfo = CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value
-    )
-
-    val cgImage = CGBitmapContextCreateImage(context)
-    return cgImage?.let { UIImage.imageWithCGImage(it) }
 }
 
 private fun calculateMLKitImageOrientation(frameData: CameraFrame): UIImageOrientation {
