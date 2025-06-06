@@ -1,86 +1,91 @@
 package org.multipaz.document
 
+import org.multipaz.cbor.annotation.CborSerializable
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.isEmpty
+import kotlin.concurrent.Volatile
 
 /**
- * An object that is associated with every [Document] in the [DocumentStore]; it is referenced by
- * [Document.metadata] field.
- *
- * An application should implement this interface and use it to store application-specific data.
- * A factory function for [DocumentMetadata] is passed as a parameter to [DocumentStore]
- * constructor. An application must implement at least the members in this interface but
- * should be free to add other application-specific data it may want to associate with
- * the document (e.g. which issuer this document came from).
- *
- * Each [Document] has an associated [DocumentMetadata] instance. This instance stays the same
- * for the lifetime of the [Document]. Its state should be saved to the persistent storage
- * every time it changes (see `saveFn` parameter to [DocumentMetadataFactory]), so that it can
- * be loaded in the future.
- *
- * Several fields (such as [displayName]) are predefined, so that common high-level utilities
- * in the UI layer such as can display something meaningful to the end user. Text strings are
- * presented to the user as-is, so they should be short and may need to be localized.
+ * Implementation of [AbstractDocumentMetadata] suitable for most use-cases.
  */
-interface DocumentMetadata {
-    /** Whether the document is provisioned, i.e. issuer is ready to provide credentials. */
-    val provisioned: Boolean
+class DocumentMetadata private constructor(
+    data: ByteString?,
+    private val saveFn: suspend (data: ByteString) -> Unit
+) : AbstractDocumentMetadata {
+    @Volatile
+    private var data: Data = if (data == null || data.isEmpty()) {
+        Data()  // new document or SimpleDocumentMetadata never saved
+    } else {
+        Data.fromCbor(data.toByteArray())
+    }
 
-    /** User-facing name of this specific [Document] instance, e.g. "John's Passport". */
-    val displayName: String?
+    override val provisioned get() = data.provisioned
+    override val displayName get() = data.displayName
+    override val typeDisplayName get() = data.typeDisplayName
+    override val cardArt get() = data.cardArt
+    override val issuerLogo get() = data.issuerLogo
+    override val other get() = data.other
 
-    /** User-facing name of this document type, e.g. "Utopia Passport". */
-    val typeDisplayName: String?
+    override suspend fun markAsProvisioned() {
+        val lastData = data
+        val newData = Data(
+            provisioned = true,
+            displayName = lastData.displayName,
+            typeDisplayName = lastData.typeDisplayName,
+            cardArt = lastData.cardArt,
+            issuerLogo = lastData.issuerLogo,
+            other = lastData.other
+        )
+        data = newData
+        saveFn(ByteString(data.toCbor()))
+    }
 
-    /**
-     * An image that represents this document to the user in the UI. Generally, the aspect
-     * ratio of 1.586 is expected (based on ID-1 from the ISO/IEC 7810). PNG format is expected
-     * and transparency is supported. */
-    val cardArt: ByteString?
+    override suspend fun setMetadata(
+        displayName: String?,
+        typeDisplayName: String?,
+        cardArt: ByteString?,
+        issuerLogo: ByteString?,
+        other: ByteString?
+    ) {
+        val lastData = data
+        data = Data(
+            provisioned = lastData.provisioned,
+            displayName = displayName,
+            typeDisplayName = typeDisplayName,
+            cardArt = cardArt,
+            issuerLogo = issuerLogo,
+            other = other
+        )
+        saveFn(ByteString(data.toCbor()))
+    }
 
-    /**
-     * An image that represents the issuer of the document in the UI, e.g. passport office logo.
-     * PNG format is expected, transparency is supported and square aspect ratio is preferred.
-     */
-    val issuerLogo: ByteString?
-
-    /**
-     * Called when the document that this [DocumentMetadata] associated with is deleted.
-     */
-    suspend fun documentDeleted()
+    @CborSerializable
+    internal data class Data(
+        val provisioned: Boolean = false,
+        val displayName: String? = null,
+        val typeDisplayName: String? = null,
+        val cardArt: ByteString? = null,
+        val issuerLogo: ByteString? = null,
+        val other: ByteString? = null
+    ) {
+        companion object
+    }
 
     companion object {
-        internal val emptyNamespacedData = NameSpacedData.Builder().build()
+        /**
+         * The factory for [DocumentMetadata].
+         *
+         * @param documentId the document to create metadata for.
+         * @param serializedData the serialized metadata.
+         * @param saveFn a function to serialize the instance into serialized metadata.
+         * @return the created [DocumentMetadata]
+         */
+        suspend fun create(
+            documentId: String,
+            serializedData: ByteString?,
+            saveFn: suspend (data: ByteString) -> Unit
+        ): DocumentMetadata {
+            return DocumentMetadata(serializedData, saveFn)
+        }
     }
 }
-
-/**
- * Function that creates an instance of [DocumentMetadata].
- *
- * - `documentId` is [Document.identifier] for which [DocumentMetadata] is created
- * - `data` is data saved by the previously-existing [DocumentMetadata] for this document
- * - `saveFn` is a function that saves the state of this [DocumentMetadata] instance to the
- *    persistent storage
- *
- * There are two scenarios when [DocumentMetadata] is created.
- *
- * The first scenario is when a new [Document] is created using [DocumentStore.createDocument].
- * In this case, `data` is `null`. Once [DocumentMetadata] is created, it is initialized using
- * function passed to [DocumentStore.createDocument] method.
- *
- * The second scenario is when a previously-existing [Document] is loaded from the storage. In this
- * case `data` is equal to the byte string that was last saved by the previously-existing
- * [DocumentMetadata] for this document. If no data was saved, `data` is set to the empty byte
- * string.
- *
- * When the state of the [DocumentMetadata] instance changes, it should call `saveFn` and
- * save its state to the persistent storage, so it can be loaded in the future, however exact
- * timing of `saveFn` call is entirely up to the application.
- *
- * Additionally, every time `saveFn` is called, a [DocumentUpdated] event is emitted on
- * [DocumentStore.eventFlow].
- */
-typealias DocumentMetadataFactory = suspend (
-    documentId: String,
-    data: ByteString?,
-    saveFn: suspend (data: ByteString) -> Unit
-) -> DocumentMetadata

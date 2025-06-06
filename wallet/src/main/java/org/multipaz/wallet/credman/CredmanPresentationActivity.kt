@@ -24,7 +24,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.util.CredmanUtil
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tstr
 import org.multipaz.mdoc.credential.MdocCredential

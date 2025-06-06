@@ -35,7 +35,6 @@ import org.multipaz.cose.Cose
 import org.multipaz.cose.Cose.coseSign1Sign
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.CoseNumberLabel
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.NameSpacedData
@@ -48,7 +47,6 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.X509KeyUsage
-import org.multipaz.document.SimpleDocumentMetadata
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.mso.StaticAuthDataGenerator
@@ -79,7 +77,9 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.document.buildDocumentStore
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.securearea.SecureAreaProvider
 import java.security.Security
 import java.util.Calendar
 import java.util.concurrent.Executor
@@ -109,7 +109,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var documentStore: DocumentStore
 
     @Before
-    fun setUp() {
+    fun setUp() = runBlocking {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
@@ -118,19 +118,13 @@ class DeviceRetrievalHelperTest {
         initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
 
         storage = AndroidStorage(":memory:")
-        secureAreaRepository = SecureAreaRepository.build {
-            add(AndroidKeystoreSecureArea.create(storage))
-        }
-        val credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) { document ->
-            MdocCredential(document)
-        }
-        documentStore = DocumentStore(
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(AndroidKeystoreSecureArea.create(storage))
+            .build()
+        documentStore = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {}
     }
 
     private suspend fun asyncSetup() {

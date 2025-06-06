@@ -71,8 +71,16 @@ from https://apps.multipaz.org.
 
 To see how to use the Multipaz libraries from another project, see
 [MpzSecureAreaSample](https://github.com/davidz25/MpzSecureAreaSample) for a
-minimal Compose Multiplatform app using the SecureArea abstraction. This application
-works on both Android and iOS.
+minimal Compose Multiplatform app using the SecureArea abstraction and
+[MpzCmpWallet](https://github.com/davidz25/MpzCmpWallet) for a Compose Multiplatform app
+implementing a minimal ISO/IEC 18013-5:2021 wallet using QR and Bluetooth Low Energy.
+These applications work on both Android and iOS.
+
+To see how to consume Multipaz in a Swift application see
+[MpzSwiftWallet](https://github.com/davidz25/MpzSwiftWallet). This is a minimal
+ISO/IEC 18013-5:2021 wallet using QR and Bluetooth Low Energy, using SwiftUI. This
+is using [Multipaz.xcframework](https://apps.multipaz.org/xcf) through the Swift
+Packager Manager.
 
 For a sample using the legacy library, see
 [SimpleVerifierStandalone](https://github.com/davidz25/SimpleVerifierStandalone)

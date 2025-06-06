@@ -32,6 +32,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
@@ -54,34 +55,28 @@ import kotlin.test.assertTrue
 class DocumentStoreTest {
     private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
-    private lateinit var credentialLoader: CredentialLoader
 
     // This isn't really used, we only use a single domain.
     private val CREDENTIAL_DOMAIN = "domain"
 
     @BeforeTest
-    fun setup() {
+    fun setup() = runBlocking {
         storage = EphemeralStorage()
-        secureAreaRepository = SecureAreaRepository.build {
-            add(SoftwareSecureArea.create(storage))
-        }
-        credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(
-            TestSecureAreaBoundCredential.CREDENTIAL_TYPE
-        ) { document -> TestSecureAreaBoundCredential(document) }
-        credentialLoader.addCredentialImplementation(
-            TestCredential.CREDENTIAL_TYPE
-        ) { document -> TestCredential(document) }
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(SoftwareSecureArea.create(storage))
+            .build()
     }
 
     private fun runDocumentTest(testBody: suspend TestScope.(docStore: DocumentStore) -> Unit) {
         runTest {
-            val documentStore = DocumentStore(
+            val documentStore = buildDocumentStore(
                 storage = storage,
-                secureAreaRepository = secureAreaRepository,
-                credentialLoader = credentialLoader,
-                documentMetadataFactory = SimpleDocumentMetadata::create
-            )
+                secureAreaRepository = secureAreaRepository
+            ) {
+                addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                    TestSecureAreaBoundCredential(document)
+                }
+            }
             testBody(documentStore)
         }
     }
@@ -100,12 +95,14 @@ class DocumentStoreTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun testEventFlow() = runTest {
-        val documentStore = DocumentStore(
+        val documentStore = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                TestSecureAreaBoundCredential(document)
+            }
+        }
 
         val events = mutableListOf<DocumentEvent>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -128,7 +125,7 @@ class DocumentStoreTest {
         runCurrent()
         assertEquals(DocumentUpdated(doc2.identifier), events.last())
 
-        doc1.simpleMetadata.setBasicProperties("foo", "bar", null, null)
+        doc1.simpleMetadata.setMetadata("foo", "bar", null, null, null)
         runCurrent()
         assertEquals(DocumentUpdated(doc1.identifier), events.last())
 
@@ -329,12 +326,14 @@ class DocumentStoreTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun testCredentialPersistence() = runTest {
-        val documentStore = DocumentStore(
+        val documentStore = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                TestSecureAreaBoundCredential(document)
+            }
+        }
 
         var n: Int
         val timeValidityBegin = Instant.fromEpochMilliseconds(50)
@@ -393,12 +392,14 @@ class DocumentStoreTest {
         assertEquals(6, pending.size.toLong())
 
         runCurrent()
-        val documentStore2 = DocumentStore(
+        val documentStore2 = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                TestSecureAreaBoundCredential(document)
+            }
+        }
 
         val document2 = documentStore2.lookupDocument(document.identifier)
         assertNotNull(document2)
@@ -440,31 +441,35 @@ class DocumentStoreTest {
 
     @Test
     fun testDocumentMetadata() = runTest {
-        val documentStore = DocumentStore(
+        val documentStore = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                TestSecureAreaBoundCredential(document)
+            }
+        }
         val document = documentStore.createDocument {
-            val appData = it as SimpleDocumentMetadata
-            appData.setBasicProperties("init", "", null, null)
+            val appData = it as DocumentMetadata
+            appData.setMetadata("init", "", null, null, null)
         }
         val appData = document.simpleMetadata
         assertFalse(appData.provisioned)
         assertEquals("init", appData.displayName)
         appData.markAsProvisioned()
         assertTrue(appData.provisioned)
-        appData.setBasicProperties("foo", "bar", ByteString(1, 2, 3), null)
+        appData.setMetadata("foo", "bar", ByteString(1, 2, 3), null, null)
         assertEquals("foo", appData.displayName)
         assertEquals(ByteString(1, 2, 3), appData.cardArt)
 
-        val documentStore2 = DocumentStore(
+        val documentStore2 = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                TestSecureAreaBoundCredential(document)
+            }
+        }
         val document2 = documentStore2.lookupDocument(document.identifier)
         assertNotNull(document2)
         val appData2 = document2.simpleMetadata
@@ -744,6 +749,6 @@ class DocumentStoreTest {
         }
     }
 
-    val Document.simpleMetadata: SimpleDocumentMetadata
-        get() = metadata as SimpleDocumentMetadata
+    val Document.simpleMetadata: DocumentMetadata
+        get() = metadata as DocumentMetadata
 }

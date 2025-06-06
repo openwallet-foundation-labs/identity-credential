@@ -29,15 +29,12 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import io.ktor.client.engine.android.Android
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.multipaz.android.direct_access.DirectAccess
+import kotlinx.coroutines.runBlocking
 import org.multipaz.android.direct_access.DirectAccessCredential
 import org.multipaz.context.initializeApplication
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.securearea.cloud.CloudSecureArea
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -71,9 +68,7 @@ import org.multipaz.wallet.logging.EventLogger
 import org.multipaz.wallet.util.toByteArray
 import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.multipaz.android.direct_access.DirectAccessDocumentMetadata
-import org.multipaz.wallet.provisioning.DocumentExtensions.documentConfiguration
-import org.multipaz.wallet.provisioning.DocumentExtensions.walletDocumentMetadata
+import org.multipaz.document.buildDocumentStore
 import java.io.File
 import java.net.URLDecoder
 import java.security.Security
@@ -127,7 +122,6 @@ class WalletApplication : Application() {
     lateinit var storage: Storage
     lateinit var documentTypeRepository: DocumentTypeRepository
     lateinit var secureAreaRepository: SecureAreaRepository
-    lateinit var credentialLoader: CredentialLoader
     lateinit var documentStore: DocumentStore
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
@@ -182,10 +176,10 @@ class WalletApplication : Application() {
         }
 
         // init SecureAreaRepository
-        secureAreaRepository = SecureAreaRepository.build {
-            add(SoftwareSecureArea.create(storage))
-            add(secureAreaProvider.get())
-            addFactory(CloudSecureArea.IDENTIFIER_PREFIX) { identifier ->
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .addProvider(SecureAreaProvider { SoftwareSecureArea.create(storage)})
+            .addProvider(secureAreaProvider)
+            .addFactory(CloudSecureArea.IDENTIFIER_PREFIX) { identifier ->
                 val queryString = identifier.substring(CloudSecureArea.IDENTIFIER_PREFIX.length + 1)
                 val params = queryString.split("&").map {
                     val parts = it.split("=", ignoreCase = false, limit = 2)
@@ -206,30 +200,18 @@ class WalletApplication : Application() {
                     Android
                 )
             }
-        }
-
-        // init credentialFactory
-        credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) {
-            document -> MdocCredential(document)
-        }
-        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential.CREDENTIAL_TYPE) {
-            document -> KeyBoundSdJwtVcCredential(document)
-        }
-        credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential.CREDENTIAL_TYPE) {
-            document -> KeylessSdJwtVcCredential(document)
-        }
-        credentialLoader.addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
-            document -> DirectAccessCredential(document)
-        }
+            .build()
 
         // init documentStore
-        documentStore = DocumentStore(
+        documentStore = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = WalletDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
+                document -> DirectAccessCredential(document)
+            }
+            setDocumentMetadataFactory(WalletDocumentMetadata::create)
+        }
 
         // init Wallet Server
         walletServerProvider = WalletServerProvider(

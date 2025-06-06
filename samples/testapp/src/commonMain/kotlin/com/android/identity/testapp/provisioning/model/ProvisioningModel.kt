@@ -38,7 +38,6 @@ import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.securearea.SecureAreaRepository
-import org.multipaz.testapp.TestAppDocumentMetadata
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import kotlin.coroutines.CoroutineContext
@@ -126,14 +125,11 @@ class ProvisioningModel(
         Logger.i(TAG, "Registration complete")
 
         val pendingDocumentConfiguration = issuerConfiguration.pendingDocumentInformation
-        val document = documentStore.createDocument { metadata ->
-            val testMetadata = metadata as TestAppDocumentMetadata
-            testMetadata.initialize(
-                displayName = pendingDocumentConfiguration.displayName,
-                typeDisplayName = pendingDocumentConfiguration.typeDisplayName,
-                cardArt = ByteString(pendingDocumentConfiguration.cardArt)
-            )
-        }
+        val document = documentStore.createDocument(
+            displayName = pendingDocumentConfiguration.displayName,
+            typeDisplayName = pendingDocumentConfiguration.typeDisplayName,
+            cardArt = ByteString(pendingDocumentConfiguration.cardArt)
+        )
 
         Logger.i(TAG, "Start proofing")
         val proofing = issuingAuthority.proof(issuerDocumentIdentifier)

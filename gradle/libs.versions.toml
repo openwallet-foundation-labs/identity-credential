@@ -1,5 +1,5 @@
 [versions]
-agp = "8.4.0"
+agp = "8.9.0"
 android-compileSdk = "35"
 android-minSdk = "26"
 android-targetSdk = "35"
@@ -13,14 +13,14 @@ androidx-test-junit = "1.1.5"
 compose-plugin = "1.7.1"
 faceDetection = "16.1.6"
 junit = "4.13.2"
-kotlin = "2.1.0"
+kotlin = "2.1.21"
 kotlinx-coroutines = "1.8.1"
 kotlinx-io = "0.4.0"
 kotlinx-datetime = "0.6.0"
 kotlinx-serialization = "1.7.0"
 bouncy-castle = "1.78.1"
 tink = "1.13.0"
-ksp = "2.1.0-1.0.29"
+ksp = "2.1.21-2.0.1"
 androidx-biometrics = "1.2.0-alpha05"
 uiToolingPreview = "1.7.6"
 volley = "1.2.1"
@@ -66,6 +66,7 @@ androidx-credentials-registry-provider = "1.0.0-alpha01"
 errorprone = "2.38.0"
 mlkit-barcode-scanning = "17.3.0"
 semver = "3.0.0"
+skie = "0.10.2"
 
 [libraries]
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
@@ -168,3 +169,4 @@ buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+skie = { id = "co.touchlab.skie", version.ref = "skie" }

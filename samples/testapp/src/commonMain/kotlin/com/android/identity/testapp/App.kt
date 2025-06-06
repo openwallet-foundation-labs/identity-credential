@@ -1,5 +1,7 @@
 package org.multipaz.testapp
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -20,7 +22,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -40,7 +44,6 @@ import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
@@ -115,16 +118,17 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.document.buildDocumentStore
+import org.multipaz.models.presentment.PresentmentSource
+import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
 
 /**
  * Application singleton.
- *
- * Use [App.Companion.getInstance] to get an instance.
  */
-class App private constructor(val promptModel: PromptModel) {
+class App private constructor (val promptModel: PromptModel) {
 
     lateinit var settingsModel: TestAppSettingsModel
 
@@ -154,29 +158,64 @@ class App private constructor(val promptModel: PromptModel) {
 
     private val provisioningBackendProviderLocal = ProvisioningBackendProviderLocal()
 
-    private suspend fun init() {
-        val initFuncs = listOf<Pair<suspend () -> Unit, String>>(
-            Pair(::platformInit, "platformInit"),
-            Pair(::settingsInit, "settingsInit"),
-            Pair(::documentTypeRepositoryInit, "documentTypeRepositoryInit"),
-            Pair(::documentStoreInit, "documentStoreInit"),
-            Pair(::documentModelInit, "documentModelInit"),
-            Pair(::keyStorageInit, "keyStorageInit"),
-            Pair(::iacaInit, "iacaInit"),
-            Pair(::readerRootInit, "readerRootInit"),
-            Pair(::readerInit, "readerInit"),
-            Pair(::trustManagersInit, "trustManagersInit"),
-            Pair(::provisioningModelInit, "provisioningModelInit")
+    private val initLock = Mutex()
+    private var initialized = false
+
+    fun getPresentmentSource(): PresentmentSource {
+        val useAuth = settingsModel.presentmentRequireAuthentication.value
+        return SimplePresentmentSource(
+            documentStore = documentStore,
+            documentTypeRepository = documentTypeRepository,
+            readerTrustManager = readerTrustManager,
+            preferSignatureToKeyAgreement = settingsModel.presentmentPreferSignatureToKeyAgreement.value,
+            domainMdocSignature = if (useAuth) {
+                TestAppUtils.CREDENTIAL_DOMAIN_MDOC_USER_AUTH
+            } else {
+                TestAppUtils.CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH
+            },
+            domainMdocKeyAgreement = if (useAuth) {
+                TestAppUtils.CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH
+            } else {
+                TestAppUtils.CREDENTIAL_DOMAIN_MDOC_MAC_NO_USER_AUTH
+            },
+            domainKeylessSdJwt = TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_KEYLESS,
+            domainKeyBoundSdJwt = if (useAuth) {
+                TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_USER_AUTH
+            } else {
+                TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH
+            },
         )
-        val begin = Clock.System.now()
-        for ((func, name) in initFuncs) {
-            val funcBegin = Clock.System.now()
-            func()
-            val funcEnd = Clock.System.now()
-            Logger.i(TAG, "$name initialization time: ${(funcEnd - funcBegin).inWholeMilliseconds} ms")
+    }
+
+    suspend fun init() {
+        initLock.withLock {
+            if (initialized) {
+                return
+            }
+            val initFuncs = listOf<Pair<suspend () -> Unit, String>>(
+                Pair(::platformInit, "platformInit"),
+                Pair(::settingsInit, "settingsInit"),
+                Pair(::documentTypeRepositoryInit, "documentTypeRepositoryInit"),
+                Pair(::documentStoreInit, "documentStoreInit"),
+                Pair(::documentModelInit, "documentModelInit"),
+                Pair(::keyStorageInit, "keyStorageInit"),
+                Pair(::iacaInit, "iacaInit"),
+                Pair(::readerRootInit, "readerRootInit"),
+                Pair(::readerInit, "readerInit"),
+                Pair(::trustManagersInit, "trustManagersInit"),
+                Pair(::provisioningModelInit, "provisioningModelInit")
+            )
+            val begin = Clock.System.now()
+            for ((func, name) in initFuncs) {
+                val funcBegin = Clock.System.now()
+                func()
+                val funcEnd = Clock.System.now()
+                Logger.i(TAG, "$name initialization time: ${(funcEnd - funcBegin).inWholeMilliseconds} ms")
+            }
+            val end = Clock.System.now()
+            Logger.i(TAG, "Total application initialization time: ${(end - begin).inWholeMilliseconds} ms")
+            initialized = true
         }
-        val end = Clock.System.now()
-        Logger.i(TAG, "Total application initialization time: ${(end - begin).inWholeMilliseconds} ms")
     }
 
     private suspend fun settingsInit() {
@@ -193,15 +232,15 @@ class App private constructor(val promptModel: PromptModel) {
 
     private suspend fun documentStoreInit() {
         softwareSecureArea = SoftwareSecureArea.create(platformStorage())
-        secureAreaRepository = SecureAreaRepository.build {
-            add(softwareSecureArea)
-            add(platformSecureAreaProvider().get())
-            addFactory(CloudSecureArea.IDENTIFIER_PREFIX) { identifier ->
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(softwareSecureArea)
+            .add(platformSecureAreaProvider().get())
+            .addFactory(CloudSecureArea.IDENTIFIER_PREFIX) { identifier ->
                 val queryString = identifier.substring(CloudSecureArea.IDENTIFIER_PREFIX.length + 1)
-                val params = queryString.split("&").map {
+                val params = queryString.split("&").associate {
                     val parts = it.split("=", ignoreCase = false, limit = 2)
                     parts[0] to parts[1].decodeURLPart()
-                }.toMap()
+                }
                 val cloudSecureAreaUrl = params["url"]!!
                 Logger.i(TAG, "Creating CSA with url $cloudSecureAreaUrl for $identifier")
                 CloudSecureArea.create(
@@ -211,24 +250,8 @@ class App private constructor(val promptModel: PromptModel) {
                     platformHttpClientEngineFactory()
                 )
             }
-        }
-        val credentialLoader: CredentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) {
-            document -> MdocCredential(document)
-        }
-        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential.CREDENTIAL_TYPE) {
-            document -> KeyBoundSdJwtVcCredential(document)
-        }
-        credentialLoader.addCredentialImplementation(KeylessSdJwtVcCredential.CREDENTIAL_TYPE) {
-            document -> KeylessSdJwtVcCredential(document)
-        }
-        documentStore = DocumentStore(
-            storage = platformStorage(),
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = TestAppDocumentMetadata::create,
-            documentTableSpec = testDocumentTableSpec
-        )
+            .build()
+        documentStore = buildDocumentStore(storage = platformStorage(), secureAreaRepository = secureAreaRepository) {}
     }
 
     private suspend fun documentModelInit() {
@@ -379,6 +402,7 @@ class App private constructor(val promptModel: PromptModel) {
                 keyStorage.insert("readerRootCert", ByteString(Cbor.encode(bundledReaderRootCert.toDataItem())))
                 bundledReaderRootCert
             }
+        println("readerRootCert: ${readerRootCert.toPem()}")
     }
 
     private suspend fun readerInit() {
@@ -519,31 +543,11 @@ class App private constructor(val promptModel: PromptModel) {
         private const val OID4VCI_CREDENTIAL_OFFER_URL_SCHEME = "openid-credential-offer://"
 
         private var app: App? = null
-        private val appLock = Mutex()
-
-        suspend fun getInstance(promptModel: PromptModel): App {
-            appLock.withLock {
-                if (app == null) {
-                    app = App(promptModel)
-                    app!!.init()
-                } else {
-                    check(app!!.promptModel === promptModel)
-                }
-            }
-            return app!!
-        }
-
-        // TODO: Only used in MainViewController.kt because of deadlocks when doing
-        //       `val app = runBlocking { App.getInstance() }`. Investigate.
-        //
-        fun getInstanceAndInitializeInBackground(promptModel: PromptModel): App {
-            if (app != null) {
+        fun getInstance(promptModel: PromptModel): App {
+            if (app == null) {
+                app = App(promptModel)
+            } else {
                 check(app!!.promptModel === promptModel)
-                return app!!
-            }
-            app = App(promptModel)
-            CoroutineScope(Dispatchers.IO).launch {
-                app!!.init()
             }
             return app!!
         }
@@ -567,6 +571,22 @@ class App private constructor(val promptModel: PromptModel) {
     @Composable
     @Preview
     fun Content(navController: NavHostController = rememberNavController()) {
+        var isInitialized = remember { mutableStateOf<Boolean>(false) }
+        if (!isInitialized.value) {
+            CoroutineScope(Dispatchers.Main).launch {
+                init()
+                isInitialized.value = true
+            }
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Initializing...")
+            }
+            return
+        }
+
         val backStackEntry by navController.currentBackStackEntryAsState()
         val routeWithoutArgs = backStackEntry?.destination?.route?.substringBefore('/')
 
@@ -715,7 +735,7 @@ class App private constructor(val promptModel: PromptModel) {
                     }
                     composable(route = SoftwareSecureAreaDestination.route) {
                         SoftwareSecureAreaScreen(
-                            softwareSecureArea = app!!.softwareSecureArea,
+                            softwareSecureArea = softwareSecureArea,
                             promptModel = promptModel,
                             showToast = { message -> showToast(message) }
                         )

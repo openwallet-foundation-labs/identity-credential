@@ -41,6 +41,7 @@ import org.multipaz.request.Request
 import org.multipaz.request.JsonRequest
 import org.multipaz.sdjwt.SdJwtKb
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
+import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
@@ -81,116 +82,6 @@ class DigitalCredentialsPresentmentTest {
         }
     }
 
-    class TestPresentmentSource(
-        val documentStore: DocumentStore,
-        override val documentTypeRepository: DocumentTypeRepository
-    ): PresentmentSource {
-        override fun findTrustPoint(request: Request): TrustPoint? {
-            return null
-        }
-
-        override suspend fun getDocumentsMatchingRequest(request: Request): List<Document> {
-            return when (request) {
-                is MdocRequest -> mdocFindDocumentsForRequest(request)
-                is JsonRequest -> sdjwtFindDocumentsForRequest(request)
-            }
-        }
-
-        private suspend fun mdocFindDocumentsForRequest(
-            request: MdocRequest,
-        ): List<Document> {
-            val result = mutableListOf<Document>()
-            for (documentName in documentStore.listDocuments()) {
-                val document = documentStore.lookupDocument(documentName) ?: continue
-                if (mdocDocumentMatchesRequest(request, document)) {
-                    result.add(document)
-                }
-            }
-            return result
-        }
-
-        private suspend fun mdocDocumentMatchesRequest(
-            request: MdocRequest,
-            document: Document,
-        ): Boolean {
-            for (credential in document.getCertifiedCredentials()) {
-                if (credential is MdocCredential && credential.docType == request.docType) {
-                    return true
-                }
-            }
-            return false
-        }
-
-        private suspend fun sdjwtFindDocumentsForRequest(
-            request: JsonRequest,
-        ): List<Document> {
-            val result = mutableListOf<Document>()
-
-            for (documentName in documentStore.listDocuments()) {
-                val document = documentStore.lookupDocument(documentName) ?: continue
-                if (sdjwtDocumentMatchesRequest(request, document)) {
-                    result.add(document)
-                }
-            }
-            return result
-        }
-
-        private suspend fun sdjwtDocumentMatchesRequest(
-            request: JsonRequest,
-            document: Document,
-        ): Boolean {
-            for (credential in document.getCertifiedCredentials()) {
-                if (credential is SdJwtVcCredential && credential.vct == request.vct) {
-                    return true
-                }
-            }
-            return false
-        }
-
-        override suspend fun getCredentialForPresentment(
-            request: Request,
-            document: Document?
-        ): CredentialForPresentment {
-            val documentToUse = document ?: getDocumentsMatchingRequest(request).first()
-            return when (request) {
-                is MdocRequest -> mdocGetCredentialsForPresentment(request, documentToUse)
-                is JsonRequest -> sdjwtGetCredentialsForPresentment(request, documentToUse)
-            }
-        }
-
-        private suspend fun mdocGetCredentialsForPresentment(
-            request: MdocRequest,
-            document: Document,
-        ): CredentialForPresentment {
-            val now = Clock.System.now()
-            return CredentialForPresentment(
-                credential = document.findCredential(domain = "mdoc", now = now),
-                credentialKeyAgreement = null
-            )
-        }
-
-        private suspend fun sdjwtGetCredentialsForPresentment(
-            request: JsonRequest,
-            document: Document,
-        ): CredentialForPresentment {
-            val now = Clock.System.now()
-            return CredentialForPresentment(
-                credential = document.findCredential(domain = "sdjwt", now = now),
-                credentialKeyAgreement = null
-            )
-        }
-
-        override fun shouldShowConsentPrompt(
-            credential: Credential,
-            request: Request
-        ): Boolean = true
-
-        override fun shouldPreferSignatureToKeyAgreement(
-            document: Document,
-            request: Request
-        ): Boolean = true
-    }
-
     private data class ShownConsentPrompt(
         val document: Document,
         val request: Request,
@@ -219,9 +110,14 @@ class DigitalCredentialsPresentmentTest {
 
         val encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
-        val presentmentSource = TestPresentmentSource(
+        val readerTrustManager = TrustManager()
+        val presentmentSource = SimplePresentmentSource(
             documentStore = documentStoreTestHarness.documentStore,
-            documentTypeRepository = documentStoreTestHarness.documentTypeRepository
+            documentTypeRepository = documentStoreTestHarness.documentTypeRepository,
+            readerTrustManager = readerTrustManager,
+            preferSignatureToKeyAgreement = true,
+            domainMdocSignature = "mdoc",
+            domainKeyBoundSdJwt = "sdjwt",
         )
 
         val nonce = Random.Default.nextBytes(16).toBase64Url()

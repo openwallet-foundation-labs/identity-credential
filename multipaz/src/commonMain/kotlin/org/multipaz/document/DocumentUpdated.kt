@@ -5,7 +5,7 @@ import org.multipaz.credential.Credential
 /**
  * A document in the [DocumentStore] was updated.
  *
- * This includes changes to [DocumentMetadata] persistent state or to a [Credential] that
+ * This includes changes to [AbstractDocumentMetadata] persistent state or to a [Credential] that
  * belongs to the [Document].
  */
 class DocumentUpdated(documentId: String): DocumentEvent(documentId) {

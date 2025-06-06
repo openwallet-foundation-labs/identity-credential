@@ -17,14 +17,14 @@ in Android Studio. If you're just making a library change in common code it's li
 enough to just rely on unit tests or the Android version of TestApp for testing. In other
 words there is rarely a need to use Xcode at all.
 
-Download Xcode 16 or lower version(no more than 16.0) and set Xcode 16 as the default xcoder
+Download Xcode and set Xcode 16 as the default
+
 ```shell
 sudo xcode-select -s /Applications/Xcode.app   # set default xcode
 
 xcode-select -p   # check whether set succesfully or not
 
 /Applications/Xcode.app   # expected to return 
-
 ```
 
 To build Testapp in Xcode you will need to create the `samples/testapp/iosApp/DeveloperConfig.xcconfig`

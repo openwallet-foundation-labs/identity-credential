@@ -35,7 +35,7 @@ actual data class CameraImage(val uiImage: UIImage) {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun UIImage.toSkiaImage(): Image? {
+internal fun UIImage.toSkiaImage(): Image? {
     val imageRef =
         platform.CoreGraphics.CGImageCreateCopyWithColorSpace(this.CGImage,
             platform.CoreGraphics.CGColorSpaceCreateDeviceRGB()) ?: return null

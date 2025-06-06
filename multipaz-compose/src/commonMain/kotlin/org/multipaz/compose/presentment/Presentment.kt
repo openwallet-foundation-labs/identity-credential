@@ -255,9 +255,7 @@ private fun ConsentPrompt(
     presentmentModel: PresentmentModel
 ) {
     val documentMetadata = presentmentModel.consentData.document.metadata
-    val cardArt = remember {
-        documentMetadata.cardArt!!.toByteArray().decodeToImageBitmap()
-    }
+    val cardArt = documentMetadata.cardArt?.let { remember { it.toByteArray().decodeToImageBitmap() } }
     // TODO: use sheetGesturesEnabled=false when available - see
     //  https://issuetracker.google.com/issues/288211587 for details
     val sheetState = rememberModalBottomSheetState(

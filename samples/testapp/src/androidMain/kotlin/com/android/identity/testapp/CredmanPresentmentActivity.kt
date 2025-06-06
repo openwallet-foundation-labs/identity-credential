@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.json.JSONObject
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.models.presentment.PresentmentSource
 
 class CredmanPresentmentActivity: FragmentActivity() {
     companion object {
@@ -44,7 +45,9 @@ class CredmanPresentmentActivity: FragmentActivity() {
 
         CoroutineScope(Dispatchers.Main).launch {
             presentmentModel.setPromptModel(NdefService.promptModel)
-            startPresentment(App.getInstance(NdefService.promptModel))
+            val app = App.getInstance(NdefService.promptModel)
+            app.init()
+            startPresentment(app)
         }
     }
 
@@ -112,7 +115,7 @@ class CredmanPresentmentActivity: FragmentActivity() {
                         presentmentModel = presentmentModel,
                         promptModel = app.promptModel,
                         documentTypeRepository = app.documentTypeRepository,
-                        source = TestAppPresentmentSource(app),
+                        source = app.getPresentmentSource(),
                         onPresentmentComplete = { finish() },
                         appName = platformAppName,
                         appIconPainter = painterResource(platformAppIcon),

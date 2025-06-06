@@ -160,15 +160,15 @@ private suspend fun digitalCredentialsPreviewProtocol(
         ),
         docType = docType
     )
-    val credentialsForPresentment = source.getCredentialForPresentment(
+    val mdocCredential = source.selectCredential(
+        document = presentmentMechanism.document,
         request = requestBeforeFiltering,
-        document = presentmentMechanism.document
-    )
-    if (credentialsForPresentment.credential == null) {
+        keyAgreementPossible = emptyList(),
+    ) as MdocCredential?
+    if (mdocCredential == null) {
         Logger.w(TAG, "No credential found for docType ${docType}")
         return
     }
-    val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
     val encodedSessionTranscript = if (presentmentMechanism.webOrigin == null) {
         Cbor.encode(
@@ -222,19 +222,13 @@ private suspend fun digitalCredentialsPreviewProtocol(
         ),
         docType = docType
     )
-    val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
-        credential = mdocCredential,
-        request = request,
-    )
-    if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(mdocCredential.document, request, null)) {
-            return
-        }
+    if (!showConsentPrompt(mdocCredential.document, request, null)) {
+        return
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
-        credentialForPresentment = credentialsForPresentment,
+        credential = mdocCredential,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
@@ -483,15 +477,15 @@ private suspend fun openID4VPMsoMdoc(
         ),
         docType = docType
     )
-    val credentialsForPresentment = source.getCredentialForPresentment(
+    val mdocCredential = source.selectCredential(
+        document = presentmentMechanism.document,
         request = requestBeforeFiltering,
-        document = presentmentMechanism.document
-    )
-    if (credentialsForPresentment.credential == null) {
+        keyAgreementPossible = emptyList()
+    ) as MdocCredential?
+    if (mdocCredential == null) {
         Logger.w(TAG, "No credential found for docType ${docType}")
         return null
     }
-    val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
     val handoverInfo = Cbor.encode(
         buildCborArray {
@@ -526,21 +520,15 @@ private suspend fun openID4VPMsoMdoc(
         ),
         docType = docType
     )
-    val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
-        credential = mdocCredential,
-        request = request,
-    )
     val trustPoint = source.findTrustPoint(request)
-    if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
-            return null
-        }
+    if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+        return null
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(
         calcDocument(
-            credentialForPresentment = credentialsForPresentment,
+            credential = mdocCredential,
             requestedClaims = request.requestedClaims,
             encodedSessionTranscript = encodedSessionTranscript,
         )
@@ -598,33 +586,27 @@ private suspend fun openID4VPSdJwt(
         requestedClaims = requestedClaims,
         vct = vct
     )
-    val credentialsForPresentment = source.getCredentialForPresentment(
+    val sdjwtVcCredential = source.selectCredential(
+        document = presentmentMechanism.document,
         request = request,
-        document = presentmentMechanism.document
-    )
-    if (credentialsForPresentment.credential == null) {
+        keyAgreementPossible = emptyList()
+    ) as SdJwtVcCredential?
+    if (sdjwtVcCredential == null) {
         Logger.w(TAG, "No credential found for vct ${vct}")
         return null
     }
-    val sdjwtVcCredential = credentialsForPresentment.credential as SdJwtVcCredential
 
     // Consent prompt..
-    val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
-        credential = sdjwtVcCredential as Credential,
-        request = request,
-    )
     val trustPoint = source.findTrustPoint(request)
-    if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(sdjwtVcCredential.document, request, trustPoint)) {
-            return null
-        }
+    if (!showConsentPrompt((sdjwtVcCredential as Credential).document, request, trustPoint)) {
+        return null
     }
 
     val sdJwt = SdJwt(sdjwtVcCredential.issuerProvidedData.decodeToString())
     val pathsToDisclose = requestedClaims.map { claim: JsonRequestedClaim -> claim.claimPath }
     val filteredSdJwt = sdJwt.filter(pathsToDisclose)
 
-    sdjwtVcCredential.increaseUsageCount()
+    (sdjwtVcCredential as Credential).increaseUsageCount()
     return if (sdjwtVcCredential is SecureAreaBoundCredential) {
         filteredSdJwt.present(
             kbSecureArea = sdjwtVcCredential.secureArea,
@@ -689,16 +671,16 @@ private suspend fun digitalCredentialsArfProtocol(
         requesterAppId = presentmentMechanism.appId,
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
-    val credentialsForPresentment = source.getCredentialForPresentment(
+    val mdocCredential = source.selectCredential(
+        document = presentmentMechanism.document,
         request = requestBeforeFiltering,
-        document = presentmentMechanism.document
-    )
-    if (credentialsForPresentment.credential == null) {
+        keyAgreementPossible = emptyList()
+    ) as MdocCredential?
+    if (mdocCredential == null) {
         Logger.w(TAG, "No credential found for docType ${docRequest.docType}")
         return
     }
-    val mdocCredential = credentialsForPresentment.credential as MdocCredential
-    
+
     val request = docRequest.toMdocRequest(
         documentTypeRepository = documentTypeRepository,
         mdocCredential = mdocCredential,
@@ -706,19 +688,13 @@ private suspend fun digitalCredentialsArfProtocol(
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
     val trustPoint = source.findTrustPoint(request)
-    val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
-        credential = mdocCredential,
-        request = request,
-    )
-    if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
-            return
-        }
+    if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+        return
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
-        credentialForPresentment = credentialsForPresentment,
+        credential = mdocCredential,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
@@ -802,15 +778,15 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         requesterAppId = presentmentMechanism.appId,
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
-    val credentialsForPresentment = source.getCredentialForPresentment(
+    val mdocCredential = source.selectCredential(
+        document = presentmentMechanism.document,
         request = requestBeforeFiltering,
-        document = presentmentMechanism.document
-    )
-    if (credentialsForPresentment.credential == null) {
+        keyAgreementPossible = emptyList()
+    ) as MdocCredential?
+    if (mdocCredential == null) {
         Logger.w(TAG, "No credential found for docType ${docRequest.docType}")
         return
     }
-    val mdocCredential = credentialsForPresentment.credential as MdocCredential
 
     val request = docRequest.toMdocRequest(
         documentTypeRepository = documentTypeRepository,
@@ -819,19 +795,13 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
     val trustPoint = source.findTrustPoint(request)
-    val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
-        credential = mdocCredential,
-        request = request,
-    )
-    if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
-            return
-        }
+    if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+        return
     }
 
     val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
     deviceResponseGenerator.addDocument(calcDocument(
-        credentialForPresentment = credentialsForPresentment,
+        credential = mdocCredential,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
     ))
@@ -864,7 +834,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
 }
 
 private suspend fun calcDocument(
-    credentialForPresentment: CredentialForPresentment,
+    credential: MdocCredential,
     requestedClaims: List<MdocRequestedClaim>,
     encodedSessionTranscript: ByteArray
 ): ByteArray {
@@ -872,7 +842,6 @@ private suspend fun calcDocument(
     //   depending on the value of PresentmentSource.preferSignatureToKeyAgreement(). See also
     //   calcDocument in mdocPresentment.kt.
     //
-    val credential = credentialForPresentment.credential as MdocCredential
 
     val issuerSigned = Cbor.decode(credential.issuerProvidedData)
     val issuerNamespaces = IssuerNamespaces.fromDataItem(issuerSigned["nameSpaces"])

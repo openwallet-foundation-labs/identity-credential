@@ -3,7 +3,23 @@ package org.multipaz.compose
 import androidx.compose.ui.graphics.ImageBitmap
 import org.multipaz.compose.camera.CameraFrame
 
+/**
+ * Decodes a bitmap image.
+ *
+ * @param encodedData encoded data in PNG, JPEG, or other well-known file formats.
+ * @return the decoded bitmap, as a [ImageBitmap].
+ */
 expect fun decodeImage(encodedData: ByteArray): ImageBitmap
+
+/**
+ * Generates a QR code.
+ *
+ * @param url the URL with the contents of the QR code.
+ * @return an [ImageBitmap] with the QR code.
+ */
+expect fun generateQrCode(
+    url: String,
+): ImageBitmap
 
 /**
  * Extract an arbitrary geometry rectangular bitmap from the original bitmap.

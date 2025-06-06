@@ -22,13 +22,13 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.MapBuilder
 import org.multipaz.claim.Claim
 import org.multipaz.credential.Credential
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.KeyAttestation
 import kotlinx.datetime.Instant
+import org.multipaz.wallet.provisioning.WalletDocumentMetadata
 
 /**
  * An mdoc credential, according to
@@ -123,8 +123,8 @@ class DirectAccessCredential: Credential {
         this.docType = docType
 
         val metadata = document.metadata
-        check(metadata is DirectAccessDocumentMetadata) {
-            "To use DirectAccessCredential, document's metadata must implement DirectAccessDocumentMetadata"
+        check(metadata is WalletDocumentMetadata) {
+            "To use DirectAccessCredential, document's metadata must implement WalletDocumentMetadata"
         }
         val documentSlot = metadata.directAccessDocumentSlot
         DirectAccess.createCredential(documentSlot).let {
@@ -204,7 +204,7 @@ class DirectAccessCredential: Credential {
         validUntil: Instant
     ) {
         // update presentation package
-        val metadata = document.metadata as DirectAccessDocumentMetadata
+        val metadata = document.metadata as WalletDocumentMetadata
         encryptedPresentationData = DirectAccess.certifyCredential(
             metadata.directAccessDocumentSlot,
             issuerProvidedAuthenticationData,
@@ -220,7 +220,7 @@ class DirectAccessCredential: Credential {
      * (ie. this credential would be the one used during presentation).
      */
     fun setAsActiveCredential() {
-        val metadata = document.metadata as DirectAccessDocumentMetadata
+        val metadata = document.metadata as WalletDocumentMetadata
         val documentSlot = metadata.directAccessDocumentSlot
         DirectAccess.setActiveCredential(documentSlot, encryptedPresentationData)
     }

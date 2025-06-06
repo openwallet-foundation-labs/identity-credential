@@ -16,8 +16,27 @@
 
 package org.multipaz.documenttype
 
+import kotlinx.datetime.Instant
 import org.multipaz.cbor.DataItem
 import kotlinx.serialization.json.JsonElement
+import org.multipaz.cbor.Bstr
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.RawCbor
+import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.toDataItem
+import org.multipaz.cose.Cose
+import org.multipaz.cose.CoseLabel
+import org.multipaz.cose.CoseNumberLabel
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.document.Document
+import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
+import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
+import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.SecureArea
 
 /**
  * Class representing the metadata of a Document Type.
@@ -263,5 +282,112 @@ class DocumentType private constructor(
             sampleRequests,
             mdocBuilder?.build(),
             jsonBuilder?.build())
+    }
+
+    // TODO: also add createSdJwtVCWithSampleData()
+
+    /**
+     * Adds a [MdocCredential] to a [Document] with sample data for the document type.
+     *
+     * @param document the [Document] to add the credential to.
+     * @param secureArea the [SecureArea] to use for `DeviceKey`.
+     * @param createKeySettings the [CreateKeySettings] to use.
+     * @param dsKey the key to sign the MSO with.
+     * @param dsCertChain the certification for [dsKey]
+     * @param signedAt the time the MSO was signed.
+     * @param validFrom the time at which the credential is valid from.
+     * @param validUntil the time at which the credential is valid until.
+     * @param expectedUpdate the time at which to expect an update, or `null`.
+     * @param domain the domain to use for the credential.
+     * @return the [MdocCredential] that was added to [document].
+     */
+    suspend fun createMdocCredentialWithSampleData(
+        document: Document,
+        secureArea: SecureArea,
+        createKeySettings: CreateKeySettings,
+        dsKey: EcPrivateKey,
+        dsCertChain: X509CertChain,
+        signedAt: Instant,
+        validFrom: Instant,
+        validUntil: Instant,
+        expectedUpdate: Instant? = null,
+        domain: String = "mdoc",
+    ): MdocCredential {
+        require(mdocDocumentType != null)
+
+        val issuerNamespaces = buildIssuerNamespaces {
+            for ((nsName, ns) in mdocDocumentType.namespaces) {
+                addNamespace(nsName) {
+                    for ((deName, de) in ns.dataElements) {
+                        val sampleValue = de.attribute.sampleValueMdoc
+                        if (sampleValue != null) {
+                            addDataElement(deName, sampleValue)
+                        }
+                    }
+                }
+            }
+        }
+
+        val mdocCredential = MdocCredential.create(
+            document = document,
+            asReplacementForIdentifier = null,
+            domain = domain,
+            secureArea = secureArea,
+            docType = mdocDocumentType.docType,
+            createKeySettings = createKeySettings
+        )
+
+        // Generate an MSO and issuer-signed data for this authentication key.
+        val msoGenerator = MobileSecurityObjectGenerator(
+            Algorithm.SHA256,
+            mdocDocumentType.docType,
+            mdocCredential.getAttestation().publicKey
+        )
+        msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, expectedUpdate)
+        msoGenerator.addValueDigests(issuerNamespaces)
+
+        val mso = msoGenerator.generate()
+        val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
+
+        // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
+        //
+        // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+        //
+        val protectedHeaders = mapOf<CoseLabel, DataItem>(
+            Pair(
+                CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
+            )
+        )
+        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+            Pair(
+                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                dsCertChain.toDataItem()
+            )
+        )
+        val encodedIssuerAuth = Cbor.encode(
+            Cose.coseSign1Sign(
+                dsKey,
+                taggedEncodedMso,
+                true,
+                dsKey.publicKey.curve.defaultSigningAlgorithm,
+                protectedHeaders,
+                unprotectedHeaders
+            ).toDataItem()
+        )
+        val issuerProvidedAuthenticationData = Cbor.encode(
+            buildCborMap {
+                put("nameSpaces", issuerNamespaces.toDataItem())
+                put("issuerAuth", RawCbor(encodedIssuerAuth))
+            }
+        )
+
+        // Now that we have issuer-provided authentication data we ccan ertify the authentication key.
+        mdocCredential.certify(
+            issuerProvidedAuthenticationData,
+            validFrom,
+            validUntil
+        )
+        return mdocCredential
     }
 }
