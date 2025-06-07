@@ -7,7 +7,7 @@ import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
-import org.multipaz.request.VcRequest
+import org.multipaz.request.JsonRequest
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustPoint
@@ -46,17 +46,18 @@ class TestAppPresentmentSource(
     ): List<Document> {
         return when (request) {
             is MdocRequest -> mdocFindDocumentsForRequest(app, request)
-            is VcRequest -> sdjwtFindDocumentsForRequest(app, request)
+            is JsonRequest -> sdjwtFindDocumentsForRequest(app, request)
         }
     }
 
     override suspend fun getCredentialForPresentment(
         request: Request,
-        document: Document
+        document: Document?
     ): CredentialForPresentment {
+        val documentToQuery = document ?: getDocumentsMatchingRequest(request).first()
         return when (request) {
-            is MdocRequest -> mdocGetCredentialsForPresentment(app, request, document)
-            is VcRequest -> sdjwtGetCredentialsForPresentment(app, request, document)
+            is MdocRequest -> mdocGetCredentialsForPresentment(app, request, documentToQuery)
+            is JsonRequest -> sdjwtGetCredentialsForPresentment(app, request, documentToQuery)
         }
     }
 
@@ -129,7 +130,7 @@ private suspend fun mdocGetCredentialsForPresentment(
 
 private suspend fun sdjwtFindDocumentsForRequest(
     app: App,
-    request: VcRequest,
+    request: JsonRequest,
 ): List<Document> {
     val now = Clock.System.now()
     val result = mutableListOf<Document>()
@@ -144,7 +145,7 @@ private suspend fun sdjwtFindDocumentsForRequest(
 }
 
 private suspend fun sdjwtDocumentMatchesRequest(
-    request: VcRequest,
+    request: JsonRequest,
     document: Document,
 ): Boolean {
     for (credential in document.getCertifiedCredentials()) {
@@ -157,7 +158,7 @@ private suspend fun sdjwtDocumentMatchesRequest(
 
 private suspend fun sdjwtFindCredentialInDocument(
     app: App,
-    request: VcRequest,
+    request: JsonRequest,
     now: Instant,
     document: Document,
 ): Credential? {
@@ -186,7 +187,7 @@ private suspend fun sdjwtFindCredentialInDocument(
 
 private suspend fun sdjwtGetCredentialsForPresentment(
     app: App,
-    request: VcRequest,
+    request: JsonRequest,
     document: Document,
 ): CredentialForPresentment {
     val now = Clock.System.now()

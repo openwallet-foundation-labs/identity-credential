@@ -1,15 +1,10 @@
 package org.multipaz.documenttype.knowntypes
 
-import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.toDataItem
-import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.Icon
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
 
 /**
  * Object containing the metadata of the German ID Document Type.
@@ -26,8 +21,8 @@ object GermanPersonalID {
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("German Personal ID")
-            .addVcDocumentType(vct = EUPID_VCT, keyBound = true)
-            .addVcAttribute(
+            .addJsonDocumentType(type = EUPID_VCT, keyBound = true)
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "family_name",
                 "Family Name",
@@ -35,7 +30,7 @@ object GermanPersonalID {
                 Icon.PERSON,
                 JsonPrimitive(SampleData.FAMILY_NAME)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "given_name",
                 "Given Names",
@@ -43,7 +38,7 @@ object GermanPersonalID {
                 Icon.PERSON,
                 JsonPrimitive(SampleData.GIVEN_NAME)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Date,
                 "birthdate",
                 "Date of Birth",
@@ -51,7 +46,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.BIRTH_DATE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Number,
                 "age_in_years",
                 "Age in Years",
@@ -59,7 +54,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_IN_YEARS)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Number,
                 "age_birth_year",
                 "Year of Birth",
@@ -67,7 +62,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_BIRTH_YEAR)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "12",
                 "Older Than 12",
@@ -75,7 +70,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_OVER)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "14",
                 "Older Than 14",
@@ -83,7 +78,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_OVER)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "16",
                 "Older Than 16",
@@ -92,7 +87,7 @@ object GermanPersonalID {
                 JsonPrimitive(SampleData.AGE_OVER_16)
             )
             // TODO: nest in age_equal_or_over object
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "18",
                 "Older Than 18",
@@ -100,7 +95,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_OVER_18)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "21",
                 "Older Than 21",
@@ -108,7 +103,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_OVER_21)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Boolean,
                 "65",
                 "Older Than 65",
@@ -116,7 +111,7 @@ object GermanPersonalID {
                 Icon.TODAY,
                 JsonPrimitive(SampleData.AGE_OVER_65)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "birth_family_name",
                 "Family Name at Birth",
@@ -124,7 +119,7 @@ object GermanPersonalID {
                 Icon.PERSON,
                 JsonPrimitive(SampleData.FAMILY_NAME_BIRTH)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "birth_place",
                 "Place of Birth",
@@ -132,7 +127,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.BIRTH_PLACE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "birth_country",
                 "Country of Birth",
@@ -140,7 +135,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.BIRTH_COUNTRY)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "birth_state",
                 "State of Birth",
@@ -148,7 +143,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.BIRTH_STATE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "birth_city",
                 "City of Birth",
@@ -156,7 +151,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.BIRTH_CITY)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "street_address",
                 "Resident Address",
@@ -164,7 +159,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.RESIDENT_ADDRESS)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "locality",
                 "Resident City",
@@ -172,7 +167,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.RESIDENT_CITY)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "country",
                 "Resident Country",
@@ -180,7 +175,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.RESIDENT_COUNTRY)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "postal_code",
                 "Resident Postal Code",
@@ -188,7 +183,7 @@ object GermanPersonalID {
                 Icon.PLACE,
                 JsonPrimitive(SampleData.RESIDENT_POSTAL_CODE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
                 "gender",
                 "Gender",
@@ -196,7 +191,7 @@ object GermanPersonalID {
                 Icon.EMERGENCY,
                 JsonPrimitive(SampleData.SEX_ISO218)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.ComplexType,
                 "nationalities",
                 "Nationality",
@@ -206,7 +201,7 @@ object GermanPersonalID {
                     add(JsonPrimitive(SampleData.NATIONALITY))
                 }
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Date,
                 "issuance_date",
                 "Date of Issue",
@@ -214,7 +209,7 @@ object GermanPersonalID {
                 Icon.DATE_RANGE,
                 JsonPrimitive(SampleData.ISSUE_DATE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.Date,
                 "expiry_date",
                 "Date of Expiry",
@@ -222,7 +217,7 @@ object GermanPersonalID {
                 Icon.CALENDAR_CLOCK,
                 JsonPrimitive(SampleData.EXPIRY_DATE)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "issuing_authority",
                 "Issuing Authority",
@@ -232,7 +227,7 @@ object GermanPersonalID {
                 Icon.ACCOUNT_BALANCE,
                 JsonPrimitive(SampleData.ISSUING_AUTHORITY_EU_PID)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "document_number",
                 "Document Number",
@@ -240,7 +235,7 @@ object GermanPersonalID {
                 Icon.NUMBERS,
                 JsonPrimitive(SampleData.DOCUMENT_NUMBER)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "administrative_number",
                 "Administrative Number",
@@ -248,7 +243,7 @@ object GermanPersonalID {
                 Icon.NUMBERS,
                 JsonPrimitive(SampleData.ADMINISTRATIVE_NUMBER)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.String,
                 "issuing_jurisdiction",
                 "Issuing Jurisdiction",
@@ -258,7 +253,7 @@ object GermanPersonalID {
                 Icon.ACCOUNT_BALANCE,
                 JsonPrimitive(SampleData.ISSUING_JURISDICTION)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "issuing_country",
                 "Issuing Country",
@@ -270,12 +265,12 @@ object GermanPersonalID {
             .addSampleRequest(
                 id = "age_over_18",
                 displayName = "Age Over 18",
-                vcClaims = listOf("18")
+                jsonClaims = listOf("18")
             )
             .addSampleRequest(
                 id = "mandatory",
                 displayName = "Mandatory Data Elements",
-                vcClaims = listOf(
+                jsonClaims = listOf(
                     "family_name",
                     "given_name",
                     "birthdate",
@@ -289,7 +284,7 @@ object GermanPersonalID {
             .addSampleRequest(
                 id = "full",
                 displayName = "All Data Elements",
-                vcClaims = listOf()
+                jsonClaims = listOf()
             )
             .build()
     }

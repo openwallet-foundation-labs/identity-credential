@@ -33,7 +33,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.Simple
 import org.multipaz.credential.Credential
 import org.multipaz.crypto.Algorithm
@@ -58,8 +57,8 @@ import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim
-import org.multipaz.request.VcRequest
-import org.multipaz.request.VcRequestedClaim
+import org.multipaz.request.JsonRequest
+import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.wallet.ui.theme.IdentityCredentialTheme
 // TODO: replace the nimbusds library usage with non-java-based alternative
@@ -110,6 +109,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -412,7 +412,7 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
                 val credential =
                     document.findCredential(WalletApplication.CREDENTIAL_DOMAIN_SD_JWT_VC, now)
                         ?: throw IllegalStateException("No credentials available")
-                val claims = VcRequestedClaim.Companion.generateClaims(
+                val claims = JsonRequestedClaim.Companion.generateClaims(
                     vct,
                     requestedClaims,
                     walletApp.documentTypeRepository,
@@ -708,9 +708,9 @@ class OpenID4VPPresentationActivity : FragmentActivity() {
             is SdJwtVcCredential -> {
                 // TODO: b/393388152 - need to verify "claims as" cast is indeed safe.
                 @Suppress("UNCHECKED_CAST")
-                val request = VcRequest(
+                val request = JsonRequest(
                     requester = Requester(),  // TODO: pass origin.
-                    requestedClaims = claims as List<VcRequestedClaim>,
+                    requestedClaims = claims as List<JsonRequestedClaim>,
                     vct = credential.vct
                 )
                 showSdJwtPresentmentFlow(
@@ -1072,21 +1072,21 @@ internal fun formatAsDocumentRequest(inputDescriptor: JsonObject): DocumentReque
  * @param vcCredential if set, the returned list is filtered so it only references claims
  *     available in the credential.
  */
-private fun VcRequestedClaim.Companion.generateClaims(
+private fun JsonRequestedClaim.Companion.generateClaims(
     vct: String,
     claims: List<String>,
     documentTypeRepository: DocumentTypeRepository,
     vcCredential: SdJwtVcCredential?,
-): List<VcRequestedClaim> {
-    val vcType = documentTypeRepository.getDocumentTypeForVc(vct)?.vcDocumentType
-    val ret = mutableListOf<VcRequestedClaim>()
+): List<JsonRequestedClaim> {
+    val vcType = documentTypeRepository.getDocumentTypeForJson(vct)?.jsonDocumentType
+    val ret = mutableListOf<JsonRequestedClaim>()
     for (claimName in claims) {
         val attribute = vcType?.claims?.get(claimName)
         ret.add(
-            VcRequestedClaim(
+            JsonRequestedClaim(
                 attribute?.displayName ?: claimName,
                 attribute,
-                claimName
+                JsonArray(listOf(JsonPrimitive(claimName)))
             )
         )
     }
@@ -1094,9 +1094,9 @@ private fun VcRequestedClaim.Companion.generateClaims(
 }
 
 private fun filterConsentFields(
-    list: List<VcRequestedClaim>,
+    list: List<JsonRequestedClaim>,
     credential: SdJwtVcCredential?
-): List<VcRequestedClaim> {
+): List<JsonRequestedClaim> {
     if (credential == null) {
         return list
     }
@@ -1109,6 +1109,6 @@ private fun filterConsentFields(
         availableClaims.add(claimName)
     }
     return list.filter { vcConsentField ->
-        availableClaims.contains(vcConsentField.claimName)
+        availableClaims.contains(vcConsentField.claimPath[0].jsonPrimitive.content)
     }
 }

@@ -8,6 +8,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
@@ -15,15 +16,15 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * A claim in a VC credential.
+ * A claim in a JSON-based credential.
  *
- * @property claimName the claim name.
+ * @property claimPath the claim name.
  * @property value the value of the claim
  */
-data class VcClaim(
+data class JsonClaim(
     override val displayName: String,
     override val attribute: DocumentAttribute?,
-    val claimName: String,
+    val claimPath: JsonArray,
     val value: JsonElement
 ) : Claim(displayName, attribute) {
 
@@ -36,7 +37,7 @@ data class VcClaim(
                     value.toString()
                 }
             } else {
-                when (attribute!!.type) {
+                when (attribute.type) {
                     // TODO: translations
                     DocumentAttributeType.Boolean -> {
                         if (value.jsonPrimitive.boolean) {
@@ -80,7 +81,7 @@ data class VcClaim(
                         value.jsonPrimitive.content
                     }
                     is DocumentAttributeType.StringOptions -> {
-                        val type = attribute!!.type as DocumentAttributeType.StringOptions
+                        val type = attribute.type as DocumentAttributeType.StringOptions
                         val option = type.options.find { it.value == value.jsonPrimitive.content }
                         option?.displayName ?: value.jsonPrimitive.content
                     }

@@ -31,12 +31,10 @@ import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 
 /**
- * Class containing the metadata of a data element of an mDoc
- * Document Type
+ * Class containing the metadata of a data element in a ISO mdoc.
  *
  * @param attribute the generic metadata.
- * @param mandatory a mDoc specific indication whether the
- * data element is mandatory
+ * @param mandatory a ISO mdoc specific indication whether the data element is mandatory
  */
 data class MdocDataElement(
     val attribute: DocumentAttribute,
@@ -51,13 +49,11 @@ data class MdocDataElement(
      *
      * The returned value is suitable for displaying in an user interface.
      *
-     * This method never throws an exception, if an error happens it falls back
-     * to returning the CBOR rendered as diagnostics using [Cbor.toDiagnostics]
-     * using the flag [DiagnosticOption.BSTR_PRINT_LENGTH].
+     * This method never throws an exception, if an error happens it falls back to returning the CBOR rendered as
+     * diagnostics using [Cbor.toDiagnostics] using the flag [DiagnosticOption.BSTR_PRINT_LENGTH].
      *
      * @param value the value, as a CBOR data item
-     * @param timeZone the time zone to use, for rendering date-time. It is never used
-     * for rendering a full-date.
+     * @param timeZone the time zone to use, for rendering date-time. It is never used for rendering a full-date.
      * @param trueFalseStrings a pair with the strings to use for false and true.
      * @return a string representing the value.
      */

@@ -26,14 +26,13 @@ import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.software.SoftwareKeyInfo
 import org.multipaz.securearea.software.SoftwareKeyUnlockData
 import org.multipaz.securearea.software.SoftwareSecureArea
-import org.multipaz.util.Logger
 import org.multipaz.wallet.R
 import org.multipaz.wallet.ui.prompt.biometric.showBiometricPrompt
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
 import org.multipaz.request.RequestedClaim
-import org.multipaz.request.VcRequest
+import org.multipaz.request.JsonRequest
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.wallet.ui.prompt.consent.ConsentDocument
@@ -222,7 +221,7 @@ suspend fun showMdocPresentmentFlow(
 
 suspend fun showSdJwtPresentmentFlow(
     activity: FragmentActivity,
-    request: VcRequest,
+    request: JsonRequest,
     trustPoint: TrustPoint?,
     document: ConsentDocument,
     credential: Credential,
@@ -238,7 +237,7 @@ suspend fun showSdJwtPresentmentFlow(
     ) { keyUnlockData: KeyUnlockData? ->
         val sdJwt = SdJwt(String(credential.issuerProvidedData, Charsets.US_ASCII))
 
-        val requestedAttributes = request.requestedClaims.map { it.claimName }.toSet()
+        val requestedAttributes = request.requestedClaims.map { it.claimPath[0].jsonPrimitive.content }.toSet()
         val filteredSdJwt = sdJwt.filter(
             includeDisclosure = { path: JsonArray, value: JsonElement ->
                 path.size == 1 && requestedAttributes.contains(path[0].jsonPrimitive.content)

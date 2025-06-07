@@ -28,8 +28,8 @@ import org.multipaz.mdoc.util.toMdocRequest
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
-import org.multipaz.request.VcRequest
-import org.multipaz.request.VcRequestedClaim
+import org.multipaz.request.JsonRequest
+import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
@@ -40,9 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
@@ -229,7 +227,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
         request = request,
     )
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentmentMechanism.document, request, null)) {
+        if (!showConsentPrompt(mdocCredential.document, request, null)) {
             return
         }
     }
@@ -534,7 +532,7 @@ private suspend fun openID4VPMsoMdoc(
     )
     val trustPoint = source.findTrustPoint(request)
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentmentMechanism.document, request, trustPoint)) {
+        if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
             return null
         }
     }
@@ -575,24 +573,24 @@ private suspend fun openID4VPSdJwt(
     // TODO: handle multiple VCT values...
     val vct = vctValues[0].jsonPrimitive.content
 
-    val requestedClaims = mutableListOf<VcRequestedClaim>()
+    val requestedClaims = mutableListOf<JsonRequestedClaim>()
     val claims = credential["claims"]!!.jsonArray
-    val documentType = documentTypeRepository.getDocumentTypeForVc(vct)
+    val documentType = documentTypeRepository.getDocumentTypeForJson(vct)
     for (n in 0 until claims.size) {
         val claim = claims[n].jsonObject
         val path = claim["path"]!!.jsonArray
         val claimName = path.joinToString(separator = ".") { it.jsonPrimitive.content }
-        val attribute = documentType?.vcDocumentType?.claims?.get(claimName)
+        val attribute = documentType?.jsonDocumentType?.claims?.get(claimName)
         requestedClaims.add(
-            VcRequestedClaim(
+            JsonRequestedClaim(
                 displayName = attribute?.displayName ?: claimName,
                 attribute = attribute,
-                claimName = claimName
+                claimPath = path
             )
         )
     }
 
-    val request = VcRequest(
+    val request = JsonRequest(
         requester = Requester(
             certChain = requesterCertChain,
             websiteOrigin = presentmentMechanism.webOrigin
@@ -617,16 +615,13 @@ private suspend fun openID4VPSdJwt(
     )
     val trustPoint = source.findTrustPoint(request)
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentmentMechanism.document, request, trustPoint)) {
+        if (!showConsentPrompt(sdjwtVcCredential.document, request, trustPoint)) {
             return null
         }
     }
 
     val sdJwt = SdJwt(sdjwtVcCredential.issuerProvidedData.decodeToString())
-    val pathsToDisclose = requestedClaims.map { claim: VcRequestedClaim ->
-        // TODO: support proper paths
-        JsonArray(listOf(JsonPrimitive(claim.claimName)))
-    }
+    val pathsToDisclose = requestedClaims.map { claim: JsonRequestedClaim -> claim.claimPath }
     val filteredSdJwt = sdJwt.filter(pathsToDisclose)
 
     sdjwtVcCredential.increaseUsageCount()
@@ -716,7 +711,7 @@ private suspend fun digitalCredentialsArfProtocol(
         request = request,
     )
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentmentMechanism.document, request, trustPoint)) {
+        if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
             return
         }
     }
@@ -829,7 +824,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         request = request,
     )
     if (shouldShowConsentPrompt) {
-        if (!showConsentPrompt(presentmentMechanism.document, request, trustPoint)) {
+        if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
             return
         }
     }

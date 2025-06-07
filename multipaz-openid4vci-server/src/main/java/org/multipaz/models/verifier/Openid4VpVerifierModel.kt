@@ -110,12 +110,12 @@ class Openid4VpVerifierModel(
                                 putJsonObject("meta") {
                                     put("vct_values",
                                         buildJsonArray {
-                                            add(JsonPrimitive(request.vcRequest!!.vct))
+                                            add(JsonPrimitive(request.jsonRequest!!.vct))
                                         }
                                     )
                                 }
                                 putJsonArray("claims") {
-                                    for (claim in request.vcRequest!!.claimsToRequest) {
+                                    for (claim in request.jsonRequest!!.claimsToRequest) {
                                         addJsonObject {
                                             putJsonArray("path") {
                                                 add(JsonPrimitive(claim.identifier))

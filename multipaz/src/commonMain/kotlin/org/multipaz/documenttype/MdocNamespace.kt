@@ -19,11 +19,9 @@ package org.multipaz.documenttype
 import org.multipaz.cbor.DataItem
 
 /**
- * Class containing the metadata of a namespace in an mDoc
- * Document Type.
+ * Class containing the metadata of a namespace in an ISO mdoc Document Type.
  *
- * @param namespace the namespace of this part of the mDoc
- * Document Type.
+ * @param namespace the namespace of this part of the ISO mdoc Document Type.
  * @param dataElements the data elements in this namespace.
  */
 class MdocNamespace private constructor(
@@ -32,6 +30,9 @@ class MdocNamespace private constructor(
 ) {
     /**
      * Builder class for class [MdocNamespace].
+     *
+     * @param namespace the namespace of this part of the ISO mdoc Document Type.
+     * @param dataElements the data elements in this namespace.
      */
     data class Builder(
         val namespace: String,
@@ -39,8 +40,7 @@ class MdocNamespace private constructor(
     ) {
 
         /**
-         * Add a data element to a namespace in the mDoc
-         * Document Type.
+         * Add a data element to a namespace in the ISO mdoc Document Type.
          *
          * @param type the datatype of this attribute.
          * @param identifier the identifier of this attribute.

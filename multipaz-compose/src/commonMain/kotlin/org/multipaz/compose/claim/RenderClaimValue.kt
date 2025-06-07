@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.multipaz.claim.Claim
 import org.multipaz.claim.MdocClaim
-import org.multipaz.claim.VcClaim
+import org.multipaz.claim.JsonClaim
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.util.fromBase64Url
 import kotlinx.datetime.TimeZone
@@ -45,7 +45,7 @@ fun RenderClaimValue(
         if (claim.attribute?.type == DocumentAttributeType.Picture) {
             val bytes = when (claim) {
                 is MdocClaim -> claim.value.asBstr
-                is VcClaim -> claim.value.jsonPrimitive.content.fromBase64Url()
+                is JsonClaim -> claim.value.jsonPrimitive.content.fromBase64Url()
             }
             val img = decodeImage(bytes)
             Image(

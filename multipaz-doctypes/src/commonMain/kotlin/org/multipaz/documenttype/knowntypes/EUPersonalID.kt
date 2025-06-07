@@ -38,21 +38,13 @@ object EUPersonalID {
     const val EUPID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
     const val EUPID_VCT = "urn:eudi:pid:1"
 
-    // TODO: Need to put some smarts into this so enclosing objects are automatically
-    //  generated so we don't need to e.g. specify separate `age_equal_or_over` object.
-    //  This should be inferred from the fact that we specify age_over_equals.NN
-    //  separately. We still need an appropriate `displayName` / `description` fields
-    //  for the object so we probably want something like addVcAttributeObject() but
-    //  we shouldn't have to repeat its value.
-    //
-
     /**
      * Build the EU Personal ID Document Type.
      */
     fun getDocumentType(): DocumentType {
         return DocumentType.Builder("EU Personal ID")
             .addMdocDocumentType(EUPID_DOCTYPE)
-            .addVcDocumentType(vct = EUPID_VCT, keyBound = true)
+            .addJsonDocumentType(type = EUPID_VCT, keyBound = true)
             .addAttribute(
                 type = DocumentAttributeType.String,
                 identifier = "family_name",
@@ -62,7 +54,7 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PERSON,
                 sampleValueMdoc = SampleData.FAMILY_NAME.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.FAMILY_NAME)
+                sampleValueJson = JsonPrimitive(SampleData.FAMILY_NAME)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
@@ -73,19 +65,19 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PERSON,
                 sampleValueMdoc = SampleData.GIVEN_NAME.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.GIVEN_NAME)
+                sampleValueJson = JsonPrimitive(SampleData.GIVEN_NAME)
             )
             .addAttribute(
                 type = DocumentAttributeType.Date,
                 mdocIdentifier = "birth_date",
-                vcIdentifier = "birthdate",
+                jsonIdentifier = "birthdate",
                 displayName = "Date of Birth",
                 description = "Day, month, and year on which the PID holder was born. If unknown, approximate date of birth.",
                 mandatory = true,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.TODAY,
                 sampleValueMdoc = LocalDate.parse(SampleData.BIRTH_DATE).toDataItemFullDate(),
-                sampleValueVc = JsonPrimitive(SampleData.BIRTH_DATE)
+                sampleValueJson = JsonPrimitive(SampleData.BIRTH_DATE)
             )
             .addAttribute(
                 type = DocumentAttributeType.Number,
@@ -96,7 +88,7 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.TODAY,
                 sampleValueMdoc = SampleData.AGE_IN_YEARS.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.AGE_IN_YEARS)
+                sampleValueJson = JsonPrimitive(SampleData.AGE_IN_YEARS)
             )
             .addAttribute(
                 type = DocumentAttributeType.Number,
@@ -107,9 +99,9 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.TODAY,
                 sampleValueMdoc = SampleData.AGE_BIRTH_YEAR.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.AGE_BIRTH_YEAR)
+                sampleValueJson = JsonPrimitive(SampleData.AGE_BIRTH_YEAR)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.ComplexType,
                 identifier = "age_equal_or_over",
                 displayName = "Older Than Age Attestations",
@@ -123,50 +115,50 @@ object EUPersonalID {
             .addAttribute(
                 type = DocumentAttributeType.Boolean,
                 mdocIdentifier = "age_over_18",
-                vcIdentifier = "age_equal_or_over.18",
+                jsonIdentifier = "age_equal_or_over.18",
                 displayName = "Older Than 18",
                 description = "Age over 18?",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.TODAY,
                 sampleValueMdoc = SampleData.AGE_OVER_18.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.AGE_OVER_18)
+                sampleValueJson = JsonPrimitive(SampleData.AGE_OVER_18)
             )
             .addAttribute(
                 type = DocumentAttributeType.Boolean,
                 mdocIdentifier = "age_over_21",
-                vcIdentifier = "age_equal_or_over.21",
+                jsonIdentifier = "age_equal_or_over.21",
                 displayName = "Older Than 21",
                 description = "Age over 21?",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.TODAY,
                 sampleValueMdoc = SampleData.AGE_OVER_21.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.AGE_OVER_21)
+                sampleValueJson = JsonPrimitive(SampleData.AGE_OVER_21)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "family_name_birth",
-                vcIdentifier = "birth_family_name",
+                jsonIdentifier = "birth_family_name",
                 displayName = "Family Name at Birth",
                 description = "Last name(s), surname(s), or primary identifier of the PID holder at birth",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PERSON,
                 sampleValueMdoc = SampleData.FAMILY_NAME_BIRTH.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.FAMILY_NAME_BIRTH)
+                sampleValueJson = JsonPrimitive(SampleData.FAMILY_NAME_BIRTH)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "given_name_birth",
-                vcIdentifier = "birth_given_name",
+                jsonIdentifier = "birth_given_name",
                 displayName = "First Name at Birth",
                 description = "First name(s), other name(s), or secondary identifier of the PID holder at birth",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PERSON,
                 sampleValueMdoc = SampleData.GIVEN_NAME_BIRTH.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.GIVEN_NAME_BIRTH)
+                sampleValueJson = JsonPrimitive(SampleData.GIVEN_NAME_BIRTH)
             )
             .addMdocAttribute(
                 type = DocumentAttributeType.String,
@@ -178,7 +170,7 @@ object EUPersonalID {
                 icon = Icon.PLACE,
                 sampleValue = SampleData.BIRTH_PLACE.toDataItem(),
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.String,
                 identifier = "place_of_birth",
                 displayName = "Place of Birth",
@@ -193,40 +185,40 @@ object EUPersonalID {
             .addAttribute(
                 type = DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 mdocIdentifier = "birth_country",
-                vcIdentifier = "place_of_birth.country",
+                jsonIdentifier = "place_of_birth.country",
                 displayName = "Country of Birth",
                 description = "The country where the PID User was born, as an Alpha-2 country code as specified in ISO 3166-1",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.BIRTH_COUNTRY.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.BIRTH_COUNTRY)
+                sampleValueJson = JsonPrimitive(SampleData.BIRTH_COUNTRY)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "birth_state",
-                vcIdentifier = "place_of_birth.region",
+                jsonIdentifier = "place_of_birth.region",
                 displayName = "State of Birth",
                 description = "The state, province, district, or local area where the PID User was born",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.BIRTH_STATE.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.BIRTH_STATE)
+                sampleValueJson = JsonPrimitive(SampleData.BIRTH_STATE)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "birth_city",
-                vcIdentifier = "place_of_birth.locality",
+                jsonIdentifier = "place_of_birth.locality",
                 displayName = "City of Birth",
                 description = "The municipality, city, town, or village where the PID User was born",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.BIRTH_CITY.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.BIRTH_CITY)
+                sampleValueJson = JsonPrimitive(SampleData.BIRTH_CITY)
             )
-            .addVcAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.ComplexType,
                 identifier = "address",
                 displayName = "Address",
@@ -245,86 +237,86 @@ object EUPersonalID {
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "resident_address",
-                vcIdentifier = "address.formatted",
+                jsonIdentifier = "address.formatted",
                 displayName = "Resident Address",
                 description = "The full address of the place where the PID holder currently resides and/or may be contacted (street/house number, municipality etc.)",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_ADDRESS.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_ADDRESS)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_ADDRESS)
             )
             .addAttribute(
                 type = DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 mdocIdentifier = "resident_country",
-                vcIdentifier = "address.country",
+                jsonIdentifier = "address.country",
                 displayName = "Resident Country",
                 description = "The country where the PID User currently resides, as an Alpha-2 country code as specified in ISO 3166-1",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_COUNTRY.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_COUNTRY)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_COUNTRY)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "resident_state",
-                vcIdentifier = "address.region",
+                jsonIdentifier = "address.region",
                 displayName = "Resident State",
                 description = "The state, province, district, or local area where the PID User currently resides.",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_STATE.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_STATE)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_STATE)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "resident_city",
-                vcIdentifier = "address.locality",
+                jsonIdentifier = "address.locality",
                 displayName = "Resident City",
                 description = "The city where the PID holder currently resides",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_CITY.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_CITY)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_CITY)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "resident_postal_code",
-                vcIdentifier = "address.postal_code",
+                jsonIdentifier = "address.postal_code",
                 displayName = "Resident Postal Code",
                 description = "The postal code of the place where the PID holder currently resides",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_POSTAL_CODE.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_POSTAL_CODE)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_POSTAL_CODE)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "resident_street",
-                vcIdentifier = "address.street_address",
+                jsonIdentifier = "address.street_address",
                 displayName = "Resident Street",
                 description = "The name of the street where the PID User currently resides.",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_STREET.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_STREET)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_STREET)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "resident_house_number",
-                vcIdentifier = "address.house_number",
+                jsonIdentifier = "address.house_number",
                 displayName = "Resident House Number",
                 description = "The house number where the PID User currently resides, including any affix or suffix",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.RESIDENT_HOUSE_NUMBER.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.RESIDENT_HOUSE_NUMBER)
+                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_HOUSE_NUMBER)
             )
             .addAttribute(
                 type = DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -335,12 +327,12 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.EMERGENCY,
                 sampleValueMdoc = SampleData.SEX_ISO218.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.SEX_ISO218)
+                sampleValueJson = JsonPrimitive(SampleData.SEX_ISO218)
             )
             .addAttribute(
                 type = DocumentAttributeType.ComplexType,
                 mdocIdentifier = "nationality",
-                vcIdentifier = "nationalities",
+                jsonIdentifier = "nationalities",
                 displayName = "Nationality",
                 description = "Alpha-2 country code as specified in ISO 3166-1, representing the nationality of the PID User.",
                 mandatory = true,
@@ -350,7 +342,7 @@ object EUPersonalID {
                     add(SampleData.NATIONALITY)
                     add(SampleData.SECOND_NATIONALITY)
                 },
-                sampleValueVc = buildJsonArray {
+                sampleValueJson = buildJsonArray {
                     add(JsonPrimitive(SampleData.NATIONALITY))
                     add(JsonPrimitive(SampleData.SECOND_NATIONALITY))
                 }
@@ -358,26 +350,26 @@ object EUPersonalID {
             .addAttribute(
                 type = DocumentAttributeType.Date,
                 mdocIdentifier = "issuance_date",
-                vcIdentifier = "date_of_issuance",
+                jsonIdentifier = "date_of_issuance",
                 displayName = "Date of Issue",
                 description = "Date (and possibly time) when the PID was issued.",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.DATE_RANGE,
                 sampleValueMdoc = LocalDate.parse(SampleData.ISSUE_DATE).toDataItemFullDate(),
-                sampleValueVc = JsonPrimitive(SampleData.ISSUE_DATE)
+                sampleValueJson = JsonPrimitive(SampleData.ISSUE_DATE)
             )
             .addAttribute(
                 type = DocumentAttributeType.Date,
                 mdocIdentifier = "expiry_date",
-                vcIdentifier = "date_of_expiry",
+                jsonIdentifier = "date_of_expiry",
                 displayName = "Date of Expiry",
                 description = "Date (and possibly time) when the PID will expire.",
                 mandatory = true,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.CALENDAR_CLOCK,
                 sampleValueMdoc = LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate(),
-                sampleValueVc = JsonPrimitive(SampleData.EXPIRY_DATE)
+                sampleValueJson = JsonPrimitive(SampleData.EXPIRY_DATE)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
@@ -390,7 +382,7 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.ACCOUNT_BALANCE,
                 sampleValueMdoc = SampleData.ISSUING_AUTHORITY_EU_PID.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.ISSUING_AUTHORITY_EU_PID)
+                sampleValueJson = JsonPrimitive(SampleData.ISSUING_AUTHORITY_EU_PID)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
@@ -401,7 +393,7 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.NUMBERS,
                 sampleValueMdoc = SampleData.DOCUMENT_NUMBER.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.DOCUMENT_NUMBER)
+                sampleValueJson = JsonPrimitive(SampleData.DOCUMENT_NUMBER)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
@@ -412,7 +404,7 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.NUMBERS,
                 sampleValueMdoc = SampleData.ADMINISTRATIVE_NUMBER.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.ADMINISTRATIVE_NUMBER)
+                sampleValueJson = JsonPrimitive(SampleData.ADMINISTRATIVE_NUMBER)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
@@ -425,7 +417,7 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.ACCOUNT_BALANCE,
                 sampleValueMdoc = SampleData.ISSUING_JURISDICTION.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.ISSUING_JURISDICTION)
+                sampleValueJson = JsonPrimitive(SampleData.ISSUING_JURISDICTION)
             )
             .addAttribute(
                 type = DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -437,43 +429,43 @@ object EUPersonalID {
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.ACCOUNT_BALANCE,
                 sampleValueMdoc = SampleData.ISSUING_COUNTRY.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.ISSUING_COUNTRY)
+                sampleValueJson = JsonPrimitive(SampleData.ISSUING_COUNTRY)
             )
             .addAttribute(
                 type = DocumentAttributeType.Picture,
                 mdocIdentifier = "portrait",
-                vcIdentifier = "picture",
+                jsonIdentifier = "picture",
                 displayName = "Photo of Holder",
                 description = "A reproduction of the PID holder’s portrait.",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.ACCOUNT_BOX,
                 sampleValueMdoc = SampleData.PORTRAIT_BASE64URL.fromBase64Url().toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.PORTRAIT_BASE64URL)
+                sampleValueJson = JsonPrimitive(SampleData.PORTRAIT_BASE64URL)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "email_address",
-                vcIdentifier = "email",
+                jsonIdentifier = "email",
                 displayName = "Email Address of Holder",
                 description = "Electronic mail address of the user to whom the person identification data relates, in conformance with [RFC 5322].",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.EMAIL_ADDRESS.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.EMAIL_ADDRESS)
+                sampleValueJson = JsonPrimitive(SampleData.EMAIL_ADDRESS)
             )
             .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "mobile_phone_number",
-                vcIdentifier = "phone_number",
+                jsonIdentifier = "phone_number",
                 displayName = "Mobile Phone of Holder",
                 description = "Mobile telephone number of the User to whom the person identification data relates, starting with the '+' symbol as the international code prefix and the country code, followed by numbers only.",
                 mandatory = false,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
                 sampleValueMdoc = SampleData.MOBILE_PHONE_NUMBER.toDataItem(),
-                sampleValueVc = JsonPrimitive(SampleData.MOBILE_PHONE_NUMBER)
+                sampleValueJson = JsonPrimitive(SampleData.MOBILE_PHONE_NUMBER)
             )
             .addSampleRequest(
                 id = "age_over_18",
@@ -483,7 +475,7 @@ object EUPersonalID {
                         "age_over_18" to false,
                     )
                 ),
-                vcClaims = listOf("age_equal_or_over.18")
+                jsonClaims = listOf("age_equal_or_over.18")
             )
             .addSampleRequest(
                 id = "age_over_18_and_portrait",
@@ -494,7 +486,7 @@ object EUPersonalID {
                         "portrait" to false,
                     )
                 ),
-                vcClaims = listOf("age_equal_or_over.18", "picture")
+                jsonClaims = listOf("age_equal_or_over.18", "picture")
             )
             .addSampleRequest(
                 id = "mandatory",
@@ -511,7 +503,7 @@ object EUPersonalID {
                         "issuing_country" to false
                     )
                 ),
-                vcClaims = listOf(
+                jsonClaims = listOf(
                     "family_name",
                     "given_name",
                     "birthdate",
@@ -528,7 +520,7 @@ object EUPersonalID {
                 mdocDataElements = mapOf(
                     EUPID_NAMESPACE to mapOf()
                 ),
-                vcClaims = listOf()
+                jsonClaims = listOf()
             )
             .build()
     }

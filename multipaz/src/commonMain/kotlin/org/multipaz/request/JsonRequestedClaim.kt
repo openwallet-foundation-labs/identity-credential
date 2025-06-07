@@ -1,16 +1,17 @@
 package org.multipaz.request
 
+import kotlinx.serialization.json.JsonArray
 import org.multipaz.documenttype.DocumentAttribute
 
 /**
- * A request for a claim in a VC credential.
+ * A request for a claim in a JSON-based credential.
  *
- * @property claimName the claim name.
+ * @property claimPath the claims path pointer.
  */
-data class VcRequestedClaim(
+data class JsonRequestedClaim(
     override val displayName: String,
     override val attribute: DocumentAttribute?,
-    val claimName: String,
+    val claimPath: JsonArray,
 ): RequestedClaim(displayName, attribute) {
     companion object
 }
