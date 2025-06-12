@@ -15,19 +15,20 @@
  */
 package org.multipaz.mdoc.credential
 
+import kotlinx.datetime.Instant
+import kotlinx.serialization.json.JsonObject
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborBuilder
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.MapBuilder
+import org.multipaz.claim.MdocClaim
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
-import org.multipaz.claim.MdocClaim
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.util.Logger
-import kotlinx.datetime.Instant
 
 /**
  * An mdoc credential, according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html).
@@ -51,6 +52,50 @@ class MdocCredential : SecureAreaBoundCredential {
         private const val TAG = "MdocCredential"
 
         const val CREDENTIAL_TYPE: String = "MdocCredential"
+
+        /**
+         * Creates a batch of [MdocCredential] instances with keys created in a single batch operation.
+         *
+         * This method optimizes the key creation process by using the secure area's batch key creation
+         * functionality. This can be significantly more efficient than creating keys individually,
+         * especially for hardware-backed secure areas where multiple key operations might be expensive.
+         *
+         * @param numberOfCredentials The number of credentials to create in the batch.
+         * @param document The document to add the credentials to.
+         * @param domain The domain for all credentials in the batch.
+         * @param secureArea The secure area to use for creating keys.
+         * @param docType The docType for all credentials in the batch.
+         * @param createKeySettings The settings to use for key creation, including algorithm parameters.
+         * @return A pair containing:
+         *   - A list of created [MdocCredential] instances, ready to be certified
+         *   - An optional [JsonObject] containing OpenID4VCI key attestation data if supported by the secure area
+         */
+        suspend fun createBatch(
+            numberOfCredentials: Int,
+            document: Document,
+            domain: String,
+            secureArea: SecureArea,
+            docType: String,
+            createKeySettings: CreateKeySettings
+        ): Pair<List<MdocCredential>, JsonObject?> {
+            val batchResult = secureArea.batchCreateKey(numberOfCredentials, createKeySettings)
+            val credentials = batchResult.keyInfos
+                .map { it.alias }
+                .map { keyAlias ->
+                    MdocCredential(
+                        document = document,
+                        asReplacementForIdentifier = null,
+                        domain = domain,
+                        secureArea = secureArea,
+                        docType = docType,
+                    ).apply {
+                        useExistingKey(keyAlias)
+                    }
+                }
+
+            return Pair(credentials, batchResult.openid4vciKeyAttestation)
+
+        }
 
         suspend fun create(
             document: Document,
