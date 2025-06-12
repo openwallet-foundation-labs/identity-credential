@@ -1,5 +1,6 @@
 package com.android.identity.testapp.provisioning.backend
 
+import com.android.identity.testapp.provisioning.openid4vci.decodeUrlQuery
 import com.android.identity.testapp.provisioning.openid4vci.validateDeviceAssertionBindingKeys
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.flow.FlowCollector
@@ -7,11 +8,14 @@ import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.multipaz.asn1.OID
 import org.multipaz.cbor.annotation.CborSerializable
@@ -36,6 +40,7 @@ import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import org.multipaz.util.validateAndroidKeyAttestation
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -66,7 +71,25 @@ class ApplicationSupportLocal(
             supportExpiration = true
         )
 
-        private val localClientAssertionCertificate = X509Cert.fromPem("""
+        private val localClientAssertionJwk = Json.parseToJsonElement("""
+            {
+                "kty": "EC",
+                "alg": "ES256",
+                "key_ops": [
+                    "sign"
+                ],
+                "kid": "895b72b9-0808-4fcc-bb19-960d14a9e28f",
+                "crv": "P-256",
+                "x": "nSmAFnZx-SqgTEyqqOSmZyLESdbiSUIYlRlLLoWy5uc",
+                "y": "FN1qcif7nyVX1MHN_YSbo7o7RgG2kPJUjg27YX6AKsQ",
+                "d": "TdQhxDqbAUpzMJN5XXQqLea7-6LvQu2GFKzj5QmFDCw"
+            }            
+        """.trimIndent()).jsonObject
+
+        private val localClientAssertionPrivateKey = EcPrivateKey.fromJwk(localClientAssertionJwk)
+        private val localClientAssertionKeyId = localClientAssertionJwk["kid"]!!.jsonPrimitive.content
+
+        private val localAttestationCertificate = X509Cert.fromPem("""
                 -----BEGIN CERTIFICATE-----
                 MIIBxTCCAUugAwIBAgIJAOQTL9qcQopZMAoGCCqGSM49BAMDMDgxNjA0BgNVBAMT
                 LXVybjp1dWlkOjYwZjhjMTE3LWI2OTItNGRlOC04ZjdmLTYzNmZmODUyYmFhNjAe
@@ -82,18 +105,18 @@ class ApplicationSupportLocal(
             """.trimIndent()
         )
 
-        private val localClientAssertionPrivateKey = EcPrivateKey.fromPem("""
+        private val localAtteststionPrivateKey = EcPrivateKey.fromPem("""
             -----BEGIN PRIVATE KEY-----
             ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDBn7jeRC9u9de3kOkrt9lLT
             Pvd1hflNq1FCgs7D+qbbwz1BQa4XXU0SjsV+R1GjnAY=
             -----END PRIVATE KEY-----
             """.trimIndent(),
-            localClientAssertionCertificate.ecPublicKey
+            localAttestationCertificate.ecPublicKey
         )
 
         // NB: this identifies the test app (not a specific instance of the test app)
         private val localClientId =
-            localClientAssertionCertificate.subject.components[OID.COMMON_NAME.oid]?.value
+            localAttestationCertificate.subject.components[OID.COMMON_NAME.oid]?.value
                 ?: throw IllegalStateException("No common name (CN) in certificate's subject")
     }
 
@@ -104,7 +127,7 @@ class ApplicationSupportLocal(
             data = ByteString(),
             expiration = Clock.System.now() + 5.hours
         )
-        return APP_LINK_BASE_URL + landingId
+        return "$APP_LINK_BASE_URL?state=$landingId"
     }
 
     /**
@@ -116,29 +139,34 @@ class ApplicationSupportLocal(
             Logger.e(TAG, "Invalid landing url: '$url'")
             return
         }
-        val landingUrl = url.substring(0, index)
-        if (!landingUrl.startsWith(APP_LINK_BASE_URL)) {
+        if (url.substring(0, index) != APP_LINK_BASE_URL) {
             Logger.e(TAG, "Not a landing url: '$url'")
             return
         }
-        val id = landingUrl.substring(APP_LINK_BASE_URL.length)
-        val query = url.substring(index + 1)
+        val queryString = url.substring(index + 1)
+        val query = queryString.decodeUrlQuery()
+        val id = query["state"]
+        if (id == null) {
+            Logger.e(TAG, "Not a landing url: '$url'")
+            return
+        }
         val table = BackendEnvironment.getTable(urlTableSpec)
         try {
-            table.update(id, query.encodeToByteString())
+            table.update(id, queryString.encodeToByteString())
         } catch (err: NoRecordStorageException) {
             Logger.e(TAG, "No record for landing url: '$url'")
             return
         }
         Logger.e(TAG, "Emitting notification for landing url: '$url'")
-        emit(LandingUrlNotification(landingUrl))
+        emit(LandingUrlNotification("$APP_LINK_BASE_URL?state=$id"))
     }
 
     override suspend fun getLandingUrlStatus(landingUrl: String): String? {
-        if (!landingUrl.startsWith(APP_LINK_BASE_URL)) {
+        val index = landingUrl.indexOf("?state=")
+        if (index < 0 || landingUrl.substring(0, index) != APP_LINK_BASE_URL) {
             throw IllegalArgumentException("Not a landing url: '$landingUrl'")
         }
-        val id = landingUrl.substring(APP_LINK_BASE_URL.length)
+        val id = landingUrl.substring(index + 7)
         val table = BackendEnvironment.getTable(urlTableSpec)
         val record = table.get(id)
             ?: throw LandingUrlUnknownException("Unknown landing url: '$landingUrl'")
@@ -149,55 +177,37 @@ class ApplicationSupportLocal(
         return record.decodeToString()
     }
 
-    override suspend fun getClientAssertionId(targetIssuanceUrl: String): String {
-        return localClientId
+    override suspend fun getClientAssertionId(tokenUrl: String): String {
+        return clientId
     }
 
-    override suspend fun createJwtClientAssertion(
-        keyAttestation: KeyAttestation,
-        deviceAssertion: DeviceAssertion
-    ): String {
-        // Do all the checks locally that we would have to do on the server to avoid surprises.
-        val deviceAttestation = RpcAuthInspectorAssertion.getClientDeviceAttestation(clientId)!!
-        deviceAttestation.validateAssertion(deviceAssertion)
-        val assertion = deviceAssertion.assertion as AssertionPoPKey
-        if (deviceAttestation is DeviceAttestationAndroid) {
-            val settings = ProvisioningBackendSettings(BackendEnvironment.getInterface(Configuration::class)!!)
-            val certChain = keyAttestation.certChain!!
-            check(assertion.publicKey == certChain.certificates.first().ecPublicKey)
-            validateAndroidKeyAttestation(
-                certChain,
-                null,  // no challenge check needed
-                settings.androidRequireGmsAttestation,
-                settings.androidRequireVerifiedBootGreen,
-                settings.androidRequireAppSignatureCertificateDigests
-            )
-        }
-        check(keyAttestation.certChain!!.certificates[0].ecPublicKey == keyAttestation.publicKey)
-
-        // Now, generate the client assertion.
-        val alg = localClientAssertionPrivateKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier
+    override suspend fun createJwtClientAssertion(tokenUrl: String): String {
+        val alg = localClientAssertionPrivateKey.curve.defaultSigningAlgorithmFullySpecified.joseAlgorithmIdentifier
         val head = buildJsonObject {
             put("typ", "JWT")
             put("alg", alg)
-            put("jwk", localClientAssertionCertificate.ecPublicKey.toJwk())
+            put("kid", localClientAssertionKeyId)
         }.toString().encodeToByteArray().toBase64Url()
 
+        // TODO: figure out what should be passed as `aud`.
+        //  per 'https://datatracker.ietf.org/doc/html/rfc7523#page-5' tokenUrl is appropriate,
+        //  but Openid validation suite does not seem to take that.
+        val aud = if (tokenUrl.endsWith("/token")) {
+            // A hack to get authorization url from token url; would not work in general case.
+            tokenUrl.substring(0, tokenUrl.length - 5)
+        } else {
+            tokenUrl
+        }
+
         val now = Clock.System.now()
-        val notBefore = now - 1.seconds
-        // Expiration here is only for the client assertion to be presented to the issuing server
-        // in the given timeframe (which happens without user interaction). It does not imply that
-        // the key becomes invalid at that point in time.
         val expiration = now + 5.minutes
         val payload = buildJsonObject {
-            put("iss", localClientId)
-            put("sub", localClientId) // RFC 7523 Section 3, item 2.B
-            put("cnf", buildJsonObject {
-                put("jwk", keyAttestation.publicKey.toJwk(buildJsonObject { put("kid", JsonPrimitive(clientId)) }))
-            })
-            put("nbf", notBefore.epochSeconds)
+            put("jti", Random.Default.nextBytes(18).toBase64Url())
+            put("iss", clientId)
+            put("sub", clientId) // RFC 7523 Section 3, item 2.B
             put("exp", expiration.epochSeconds)
             put("iat", now.epochSeconds)
+            put("aud", aud)
         }.toString().encodeToByteArray().toBase64Url()
 
         val message = "$head.$payload"
@@ -237,12 +247,12 @@ class ApplicationSupportLocal(
         check(keyAttestation.certChain!!.certificates[0].ecPublicKey == keyAttestation.publicKey)
 
         // Now, generate the client attestation.
-        val signatureAlgorithm = localClientAssertionPrivateKey.curve.defaultSigningAlgorithmFullySpecified
+        val signatureAlgorithm = localAtteststionPrivateKey.curve.defaultSigningAlgorithmFullySpecified
         val head = buildJsonObject {
             put("typ", "oauth-client-attestation+jwt")
             put("alg", signatureAlgorithm.joseAlgorithmIdentifier)
             put("x5c", buildJsonArray {
-                add(localClientAssertionCertificate.encodedCertificate.encodeBase64())
+                add(localAttestationCertificate.encodedCertificate.encodeBase64())
             })
         }.toString().encodeToByteArray().toBase64Url()
 
@@ -267,7 +277,7 @@ class ApplicationSupportLocal(
 
         val message = "$head.$payload"
         val sig = Crypto.sign(
-            key = localClientAssertionPrivateKey,
+            key = localAtteststionPrivateKey,
             signatureAlgorithm = signatureAlgorithm,
             message = message.encodeToByteArray()
         )
@@ -293,11 +303,13 @@ class ApplicationSupportLocal(
         val nonce = assertion.nonce.decodeToString()
         val keyList = assertion.publicKeys
 
-        val alg = localClientAssertionPrivateKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier
+        val alg = localAtteststionPrivateKey.curve.defaultSigningAlgorithm.joseAlgorithmIdentifier
         val head = buildJsonObject {
             put("typ", "keyattestation+jwt")
             put("alg", alg)
-            put("jwk", localClientAssertionCertificate.ecPublicKey.toJwk())  // TODO: use x5c instead here?
+            put("x5c", buildJsonArray {
+                add(localAttestationCertificate.encodedCertificate.encodeBase64())
+            })
         }.toString().encodeToByteArray().toBase64Url()
 
         val now = Clock.System.now()
@@ -324,8 +336,8 @@ class ApplicationSupportLocal(
 
         val message = "$head.$payload"
         val sig = Crypto.sign(
-            key = localClientAssertionPrivateKey,
-            signatureAlgorithm = localClientAssertionPrivateKey.curve.defaultSigningAlgorithm,
+            key = localAtteststionPrivateKey,
+            signatureAlgorithm = localAtteststionPrivateKey.curve.defaultSigningAlgorithm,
             message = message.encodeToByteArray()
         )
         val signature = sig.toCoseEncoded().toBase64Url()

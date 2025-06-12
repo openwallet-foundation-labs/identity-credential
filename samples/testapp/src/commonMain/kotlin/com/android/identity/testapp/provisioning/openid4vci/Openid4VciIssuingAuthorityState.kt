@@ -77,7 +77,7 @@ class Openid4VciIssuingAuthorityState(
     val clientId: String,
     val credentialIssuerUri: String, // credential offer issuing authority path
     val credentialConfigurationId: String,
-    val issuanceClientId: String // client id in OpenID4VCI protocol
+    val issuanceClientId: String // client id in OpenID4VCI protocol,
 ) : IssuingAuthority, RpcAuthInspector by RpcAuthBackendDelegate {
 
     init {
@@ -312,11 +312,12 @@ class Openid4VciIssuingAuthorityState(
             clientId,
             metadata.nonceEndpoint,
             access.dpopNonce,
-            null
+            access.accessToken
         )
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         val nonceResponse = httpClient.post(metadata.nonceEndpoint) {
             headers {
+                append("Authorization", "DPoP ${access.accessToken}")
                 append("DPoP", dpop)
             }
         }
@@ -444,6 +445,7 @@ class Openid4VciIssuingAuthorityState(
         val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val credentialConfiguration = metadata.credentialConfigurations[credentialConfigurationId]!!
         val request = buildJsonObject {
+            put("credential_configuration_id", credentialConfiguration.id)
             putFormat(credentialConfiguration.format!!)
         }
         val credentials = obtainCredentials(
@@ -569,6 +571,7 @@ class Openid4VciIssuingAuthorityState(
                 keysAssertion = credentialRequestSet.keysAssertion
             )
             val request = buildJsonObject {
+                put("credential_configuration_id", configuration.id)
                 put("proof", buildJsonObject {
                     put("attestation", JsonPrimitive(jwtKeyAttestation))
                     put("proof_type", JsonPrimitive("attestation"))
@@ -717,7 +720,8 @@ class Openid4VciIssuingAuthorityState(
             tokenUrl = access.tokenEndpoint,
             refreshToken = refreshToken,
             accessToken = access.accessToken,
-            landingUrl = null  // TODO: do we need to remember it for refresh?
+            landingUrl = null,  // TODO: do we need to remember it for refresh?
+            useClientAssertion = access.useClientAssertion
         )
         document.access = access
         Logger.i(TAG, "Refreshed access tokens")

@@ -1,5 +1,7 @@
 package org.multipaz.openid4vci.request
 
+import io.ktor.http.Url
+import io.ktor.http.authority
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respondText
@@ -13,10 +15,11 @@ import org.multipaz.openid4vci.util.AUTHZ_REQ
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.codeToId
+import org.multipaz.openid4vci.util.getBaseUrl
+import org.multipaz.openid4vci.util.getDomain
+import org.multipaz.openid4vci.util.getReaderIdentity
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.backend.Configuration
-import java.net.URI
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -30,16 +33,15 @@ suspend fun credentialRequest(call: ApplicationCall) {
         ?: throw InvalidRequestException("missing parameter 'code'")
     val id = codeToId(OpaqueIdType.PID_READING, code)
     val stateRef = idToCode(OpaqueIdType.OPENID4VP_STATE, id, 5.minutes)
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
-    val baseUri = URI(baseUrl)
-    val origin = baseUri.scheme + "://" + baseUri.authority
     val state = IssuanceState.getIssuanceState(id)
-    val model = Openid4VpVerifierModel("x509_san_dns:${baseUri.authority}")
+    val domain = BackendEnvironment.getDomain()
+    val model = Openid4VpVerifierModel("origin:${domain}")
     state.openid4VpVerifierModel = model
     val credentialRequest = model.makeRequest(
         state = stateRef,
         responseMode = "dc_api.jwt",
-        expectedOrigins = listOf(origin),
+        expectedOrigins = listOf(domain),
+        readerIdentity = getReaderIdentity(),
         requests = mapOf(
             "pid" to EUPersonalID.getDocumentType().cannedRequests.first { it.id == "mandatory" }
         )

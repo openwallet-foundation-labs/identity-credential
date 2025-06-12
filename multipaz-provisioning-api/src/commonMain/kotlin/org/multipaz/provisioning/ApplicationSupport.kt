@@ -36,17 +36,13 @@ interface ApplicationSupport : RpcNotifiable<LandingUrlNotification> {
      * [createJwtClientAssertion].
      */
     @RpcMethod
-    suspend fun getClientAssertionId(targetIssuanceUrl: String): String
+    suspend fun getClientAssertionId(tokenUrl: String): String
 
     /**
-     * Creates OAuth JWT client assertion based on the mobile-platform-specific [KeyAttestation]
-     * for the given OpenId4VCI issuance server specified in [AssertionPoPKey.targetUrl].
+     * Creates fresh OAuth JWT client assertion based on the server-side key and clientId.
      */
     @RpcMethod
-    suspend fun createJwtClientAssertion(
-        keyAttestation: KeyAttestation,
-        deviceAssertion: DeviceAssertion  // holds AssertionDPoPKey
-    ): String
+    suspend fun createJwtClientAssertion(tokenUrl: String): String
 
 
     /**

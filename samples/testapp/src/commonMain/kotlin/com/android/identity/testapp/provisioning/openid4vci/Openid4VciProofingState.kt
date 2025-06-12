@@ -37,6 +37,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
@@ -214,11 +215,9 @@ class Openid4VciProofingState(
                 obtainTokenUsingPreauthorizedCode()
             }
             is EvidenceResponseWeb -> {
-                val index = evidenceResponse.response.indexOf("code=")
-                if (index < 0) {
-                    throw IllegalStateException("No code after web authorization")
-                }
-                val authCode = evidenceResponse.response.substring(index + 5)
+                val parsed = FormUrlEncoder.parse(evidenceResponse.response)
+                val authCode = parsed["code"]
+                    ?: throw IllegalStateException("No code after web authorization")
                 obtainTokenUsingCode(authCode, null)
             }
             is EvidenceResponseMessage -> {
@@ -264,27 +263,31 @@ class Openid4VciProofingState(
         dpopNonce: String?
     ) {
         val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
+        val authorizationServer = selectAuthorizationServer(metadata)
         this.access = OpenidUtil.obtainToken(
-            tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
+            tokenUrl = authorizationServer.tokenEndpoint,
             clientId = clientId,
             authorizationCode = authCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
             dpopNonce = dpopNonce,
-            landingUrl = landingUrl
+            landingUrl = landingUrl,
+            useClientAssertion = authorizationServer.useClientAssertion
         )
         Logger.i(TAG, "Token request: success")
     }
 
     private suspend fun obtainTokenUsingPreauthorizedCode() {
         val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
+        val authorizationServer = selectAuthorizationServer(metadata)
         this.access = OpenidUtil.obtainToken(
-            tokenUrl = selectAuthorizationServer(metadata).tokenEndpoint,
+            tokenUrl = authorizationServer.tokenEndpoint,
             clientId = clientId,
             preauthorizedCode = (credentialOffer as Openid4VciCredentialOfferPreauthorizedCode).preauthorizedCode,
             txCode = txCode,
             codeVerifier = proofingInfo?.pkceCodeVerifier,
             dpopNonce = null,
-            landingUrl = landingUrl
+            landingUrl = landingUrl,
+            useClientAssertion = authorizationServer.useClientAssertion
         )
         Logger.i(TAG, "Token request: success")
     }
@@ -363,6 +366,7 @@ class Openid4VciProofingState(
         val metadata = Openid4VciIssuerMetadata.get(credentialIssuerUri)
         val config = metadata.credentialConfigurations[credentialConfigurationId]!!
         val authorizationMetadata = selectAuthorizationServer(metadata)
+        val useClientAssertion = authorizationMetadata.useClientAssertion
         // Use authorization challenge if available, as we want to try it first before falling
         // back to web-based authorization.
         val (endpoint, expectedResponseStatus) =
@@ -388,47 +392,89 @@ class Openid4VciProofingState(
         // NB: applicationSupport will only be non-null when running this code locally in the
         // Android Wallet app.
         val applicationSupport = BackendEnvironment.getInterface(ApplicationSupport::class)!!
-        landingUrl = applicationSupport.createLandingUrl()
+        val landingUrl = applicationSupport.createLandingUrl()
+        this.landingUrl = landingUrl
+        val queryIndex = landingUrl.indexOf('?')
+        val redirectUrl = if (queryIndex < 0) landingUrl else landingUrl.substring(0, queryIndex)
+        // Either wallet attestation or client assertion is used
+        val clientAttestation = if (useClientAssertion) {
+            null
+        } else {
+            OpenidUtil.createWalletAttestation(
+                clientId = clientId,
+                endpoint = endpoint
+            )
+        }
+        val clientAssertion = if (useClientAssertion) {
+            OpenidUtil.createClientAssertion(authorizationMetadata.tokenEndpoint)
+        } else {
+            null
+        }
 
-        val clientAttestation = OpenidUtil.createEphemeralWalletAttestation(
-            clientId = clientId,
-            endpoint = endpoint
-        )
+        var dpopNonce: String? = null
+        var response: HttpResponse
 
-        val credentialOffer = this.credentialOffer
-        val req = FormUrlEncoder {
-            if (config.scope != null) {
-                add("scope", config.scope)
-            }
-            if (credentialOffer is Openid4VciCredentialOfferAuthorizationCode) {
-                val issuerState = credentialOffer.issuerState
-                if (issuerState != null) {
-                    add("issuer_state", issuerState)
+        while (true) {
+            // retry loop for DPoP nonce
+            val credentialOffer = this.credentialOffer
+            val req = FormUrlEncoder {
+                if (config.scope != null) {
+                    add("scope", config.scope)
+                } else {
+                    // TODO: this is a hack, remove; this should come from credential configuration
+                    add("scope", "default")
+                }
+                if (credentialOffer is Openid4VciCredentialOfferAuthorizationCode) {
+                    val issuerState = credentialOffer.issuerState
+                    if (issuerState != null) {
+                        add("issuer_state", issuerState)
+                    }
+                }
+                if (clientAssertion != null) {
+                    add("client_assertion", clientAssertion)
+                    add(
+                        "client_assertion_type",
+                        "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+                    )
+                }
+                add("response_type", "code")
+                add("code_challenge_method", "S256")
+                add("redirect_uri", redirectUrl)
+                add("code_challenge", codeChallenge)
+                add("client_id", clientId)
+                if (queryIndex >= 0) {
+                    for ((name, value) in landingUrl.substring(queryIndex + 1).decodeUrlQuery()) {
+                        add(name, value)
+                    }
                 }
             }
-            add("response_type", "code")
-            add("code_challenge_method", "S256")
-            add("redirect_uri", landingUrl!!)
-            add("code_challenge", codeChallenge)
-            add("client_id", clientId)
-        }
-        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
-        val dpop = OpenidUtil.generateDPoP(clientId, endpoint, null, null)
-
-        val response = httpClient.post(endpoint) {
-            headers {
-                append("OAuth-Client-Attestation", clientAttestation.attestationJwt)
-                append("OAuth-Client-Attestation-PoP", clientAttestation.attestationPopJwt)
-                append("DPoP", dpop)
-                append("Content-Type", "application/x-www-form-urlencoded")
+            val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
+            val dpop = OpenidUtil.generateDPoP(clientId, endpoint, dpopNonce, null)
+            response = httpClient.post(endpoint) {
+                headers {
+                    if (clientAttestation != null) {
+                        append("OAuth-Client-Attestation", clientAttestation.attestationJwt)
+                        append("OAuth-Client-Attestation-PoP", clientAttestation.attestationPopJwt)
+                    }
+                    append("DPoP", dpop)
+                    append("Content-Type", "application/x-www-form-urlencoded")
+                }
+                setBody(req.toString())
             }
-            setBody(req.toString())
-        }
-        val responseText = response.readBytes().decodeToString()
-        if (response.status != expectedResponseStatus) {
+            if (response.status == expectedResponseStatus) {
+                break
+            }
+            val responseText = response.readBytes().decodeToString()
             Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
+            if (dpopNonce == null) {
+                dpopNonce = response.headers["DPoP-Nonce"]
+                if (dpopNonce != null) {
+                    continue  // retry the request with the nonce
+                }
+            }
             throw IssuingAuthorityException("Error establishing authenticated channel with issuer")
         }
+        val responseText = response.readBytes().decodeToString()
         val parsedResponse = Json.parseToJsonElement(responseText).jsonObject
         if (response.status == HttpStatusCode.BadRequest) {
             val errorCode = parsedResponse["error"]
@@ -444,7 +490,7 @@ class Openid4VciProofingState(
             requestUri = requestUri?.jsonPrimitive?.content,
             authSession = authSession?.jsonPrimitive?.content,
             pkceCodeVerifier = pkceCodeVerifier,
-            landingUrl = landingUrl!!,
+            landingUrl = landingUrl,
             openid4VpPresentation = presentation?.jsonPrimitive?.content
         )
     }

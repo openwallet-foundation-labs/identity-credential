@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.crypto.Algorithm
 
 // from .well-known/openid-credential-issuer
 internal data class Openid4VciIssuerMetadata(
@@ -84,10 +85,11 @@ internal data class Openid4VciIssuerMetadata(
                                     obj["cryptographic_binding_methods_supported"]?.jsonArray,
                                     SUPPORTED_BINDING_METHODS
                                 ),
-                                credentialSigningAlgorithm = preferred(
+                                credentialSigningAlgorithm = preferredAlgorithm(
                                     obj["credential_signing_alg_values_supported"]?.jsonArray
                                         ?: obj["cryptographic_signing_alg_values_supported"]?.jsonArray,  // TODO: old name, to remove
-                                    SUPPORTED_SIGNATURE_ALGORITHMS
+                                    SUPPORTED_SIGNATURE_ALGORITHMS,
+                                    Algorithm.ESP256
                                 ),
                                 proofType = extractProofType(obj["proof_types_supported"]?.jsonObject),
                                 format = extractFormat(obj),
@@ -114,6 +116,36 @@ internal data class Openid4VciIssuerMetadata(
         private fun preferred(available: JsonArray?, supported: List<String>): String? {
             val availableSet = available?.map { it.jsonPrimitive.content }?.toSet() ?: return null
             return supported.firstOrNull { availableSet.contains(it) }
+        }
+
+        private fun preferredAlgorithm(
+            available: JsonArray?,
+            supported: List<Algorithm>,
+            defaultAlgorithm: Algorithm? = null
+        ): Algorithm? {
+            if (available == null) {
+                if (defaultAlgorithm != null) {
+                    Logger.e(TAG, "Expected issuing server metadata missing")
+                }
+                return defaultAlgorithm
+            }
+            // Accept both JOSE and COSE identifiers
+            val availableJoseSet = available
+                .filterIsInstance<JsonPrimitive>()
+                .filter { it.isString }
+                .map { it.content }
+                .toSet()
+            val availableCoseSet = available
+                .filterIsInstance<JsonPrimitive>()
+                .filter { !it.isString }
+                .map { it.content.toInt() }
+                .toSet()
+            return supported.firstOrNull {
+                val cose = it.coseAlgorithmIdentifier
+                val jose = it.joseAlgorithmIdentifier
+                (cose != null && availableCoseSet.contains(cose)) ||
+                        (jose != null && availableJoseSet.contains(jose))
+            }
         }
 
         private fun extractDisplay(displayJson: JsonElement?): List<Openid4VciIssuerDisplay> {
@@ -143,9 +175,10 @@ internal data class Openid4VciIssuerMetadata(
                 jsonObject["code_challenge_methods_supported"]?.jsonArray,
                 SUPPORTED_CODE_CHALLENGE_METHODS
             ) ?: return null
-            val dpopSigningAlgorithm = preferred(
+            val dpopSigningAlgorithm = preferredAlgorithm(
                 jsonObject["dpop_signing_alg_values_supported"]?.jsonArray,
-                SUPPORTED_SIGNATURE_ALGORITHMS
+                SUPPORTED_SIGNATURE_ALGORITHMS,
+                Algorithm.ESP256
             ) ?: return null
             val authorizationEndpoint =
                 jsonObject["authorization_endpoint"]?.jsonPrimitive?.content
@@ -155,6 +188,20 @@ internal data class Openid4VciIssuerMetadata(
                     ?: "$url/par"
             val authorizationChallengeEndpoint =
                 jsonObject["authorization_challenge_endpoint"]?.jsonPrimitive?.content
+            val authMethods =
+                jsonObject["token_endpoint_auth_methods_supported"]?.jsonArray
+            var requireClientAssertion = false
+            if (authMethods != null) {
+                // Normally we send client attestation, but if server requests it, we can do
+                // client assertion too.
+                // TODO: see what other types (if any) we may want to support.
+                for (authMethod in authMethods) {
+                    if (authMethod is JsonPrimitive && authMethod.content == "private_key_jwt") {
+                        requireClientAssertion = true
+                        break
+                    }
+                }
+            }
             return Openid4VciAuthorizationMetadata(
                 baseUrl = url,
                 pushedAuthorizationRequestEndpoint = parEndpoint,
@@ -164,6 +211,7 @@ internal data class Openid4VciIssuerMetadata(
                 responseType = responseType,
                 codeChallengeMethod = codeChallengeMethod,
                 dpopSigningAlgorithm = dpopSigningAlgorithm,
+                useClientAssertion = requireClientAssertion
             )
         }
 
@@ -173,9 +221,10 @@ internal data class Openid4VciIssuerMetadata(
             }
             val attestation = jsonObject["attestation"]?.jsonObject
             if (attestation != null) {
-                val alg = preferred(
+                val alg = preferredAlgorithm(
                     attestation["proof_signing_alg_values_supported"]?.jsonArray,
-                    SUPPORTED_SIGNATURE_ALGORITHMS
+                    SUPPORTED_SIGNATURE_ALGORITHMS,
+                    Algorithm.ESP256
                 )
                 if (alg != null) {
                     return Openid4VciProofTypeKeyAttestation(alg)
@@ -183,9 +232,10 @@ internal data class Openid4VciIssuerMetadata(
             }
             val jwt = jsonObject["jwt"]?.jsonObject
             if (jwt != null) {
-                val alg = preferred(
+                val alg = preferredAlgorithm(
                     jwt["proof_signing_alg_values_supported"]?.jsonArray,
-                    SUPPORTED_SIGNATURE_ALGORITHMS
+                    SUPPORTED_SIGNATURE_ALGORITHMS,
+                    Algorithm.ESP256
                 )
                 if (alg != null) {
                     return Openid4VciProofTypeJwt(alg)
@@ -198,13 +248,18 @@ internal data class Openid4VciIssuerMetadata(
             return when (jsonObject["format"]?.jsonPrimitive?.content) {
                 "dc+sd-jwt" -> Openid4VciFormatSdJwt(jsonObject["vct"]!!.jsonPrimitive.content)
                 "mso_mdoc" -> Openid4VciFormatMdoc(jsonObject["doctype"]!!.jsonPrimitive.content)
+
+                // TODO: out of date, remove
+                "vc+sd-jwt" -> Openid4VciFormatSdJwt(jsonObject["vct"]!!.jsonPrimitive.content)
+
                 else -> null
             }
         }
 
         // Supported methods/algorithms in the order of preference
-        private val SUPPORTED_BINDING_METHODS = listOf("cose_key", "jwk")
-        private val SUPPORTED_SIGNATURE_ALGORITHMS = listOf("ES256")
+        // TODO: "JWK" is non-standard, but used by some test servers. Remove it.
+        private val SUPPORTED_BINDING_METHODS = listOf("cose_key", "jwk", "JWK")
+        private val SUPPORTED_SIGNATURE_ALGORITHMS = listOf(Algorithm.ESP256, Algorithm.ES256)
         private val SUPPORTED_RESPONSE_TYPES = listOf("code")
         private val SUPPORTED_CODE_CHALLENGE_METHODS = listOf("S256")
     }
@@ -219,7 +274,8 @@ internal data class Openid4VciAuthorizationMetadata(
     val tokenEndpoint: String,
     val responseType: String,
     val codeChallengeMethod: String,
-    val dpopSigningAlgorithm: String,
+    val dpopSigningAlgorithm: Algorithm,
+    val useClientAssertion: Boolean
 )
 
 internal data class Openid4VciIssuerDisplay(
@@ -234,7 +290,7 @@ internal data class Openid4VciCredentialConfiguration(
     val id: String,
     val scope: String?,
     val cryptographicBindingMethod: String?,
-    val credentialSigningAlgorithm: String?,
+    val credentialSigningAlgorithm: Algorithm?,
     val proofType: Openid4VciProofType?,
     val format: Openid4VciFormat?,
     val display: List<Openid4VciIssuerDisplay>
@@ -264,13 +320,13 @@ internal object Openid4VciNoProof : Openid4VciProofType() {
 }
 
 internal data class Openid4VciProofTypeJwt(
-    val signingAlgorithm: String
+    val signingAlgorithm: Algorithm
 ) : Openid4VciProofType() {
     override val id: String get() = "jwt"
 }
 
 internal data class Openid4VciProofTypeKeyAttestation(
-    val signingAlgorithm: String
+    val signingAlgorithm: Algorithm
 ) : Openid4VciProofType() {
     override val id: String get() = "attestation"
 }
