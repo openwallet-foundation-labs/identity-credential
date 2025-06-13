@@ -171,6 +171,7 @@ android {
 
 dependencies {
     add("kspCommonMainMetadata", project(":multipaz-cbor-rpc"))
+    implementation(libs.cbor)
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {

@@ -7,6 +7,8 @@ import org.multipaz.document.NameSpacedData
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isEmpty
 import kotlin.concurrent.Volatile
+import org.multipaz.device.fromCbor
+import org.multipaz.device.fromDataItem
 
 class TestAppDocumentMetadata private constructor(
     serializedData: ByteString?,
