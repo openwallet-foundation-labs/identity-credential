@@ -17,6 +17,16 @@ in Android Studio. If you're just making a library change in common code it's li
 enough to just rely on unit tests or the Android version of TestApp for testing. In other
 words there is rarely a need to use Xcode at all.
 
+Download Xcode 16 or lower version(no more than 16.0) and set Xcode 16 as the default xcoder
+```shell
+sudo xcode-select -s /Applications/Xcode.app   # set default xcode
+
+xcode-select -p   # check whether set succesfully or not
+
+/Applications/Xcode.app   # expected to return 
+
+```
+
 To build Testapp in Xcode you will need to create the `samples/testapp/iosApp/DeveloperConfig.xcconfig`
 file with the Team ID assigned to you by Apple. The project includes a template which can
 be used for this in the `samples/testapp/iosApp/DeveloperConfig.xcconfig.template` file.
@@ -25,6 +35,7 @@ be used for this in the `samples/testapp/iosApp/DeveloperConfig.xcconfig.templat
 cp samples/testapp/iosApp/DeveloperConfig.xcconfig.template samples/testapp/iosApp/DeveloperConfig.xcconfig && \
 $EDITOR samples/testapp/iosApp/DeveloperConfig.xcconfig
 ```
+In the opened editor, add the Team ID assigned to you by Apple.
 
 You also need to install [CocoaPods](https://cocoapods.org/) and set up your environment so
 it's functional (e.g. the `pod` program is in PATH). Then you need to run
