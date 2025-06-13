@@ -36,4 +36,8 @@ data class CameraFrame(
      * If preview is disabled, this is the identity matrix.
      */
     val previewTransformation: Matrix
-)
+
+) {
+    /** Determine if the rotation angle indicates the camera was used from a landscape phone orientation mode. */
+    val isLandscape: Boolean = (rotation == 90 || rotation == 270)
+}
