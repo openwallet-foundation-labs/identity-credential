@@ -81,8 +81,9 @@ object JsonWebEncryption {
             partyVInfo =  buildByteString { apv?.let { appendInt32(it.size); append(it) } },
             suppPubInfo = buildByteString { appendInt32(keyDataLenBits) }
         )
-
-        val nonce = random.nextBytes(16)
+        // 96 bits (12 bytes) is a recommended IV size, but AndroidOpenSSL provider requires
+        // it, so just go with that recommendation.
+        val nonce = random.nextBytes(12)
         val messageToEncrypt = if (compressionLevel != null) {
             deflate(
                 data = Json.encodeToString(claimsSet).encodeToByteArray(),
@@ -98,6 +99,8 @@ object JsonWebEncryption {
             messagePlaintext = messageToEncrypt,
             aad = protectedHeaderB64.toByteArray(),
         )
+        // Auth tag is a single block which is always 16 bytes long for AES, irrespective of
+        // the key length.
         val cipherText = cipherTextWithTag.copyOfRange(0, cipherTextWithTag.size - 16)
         val authTag = cipherTextWithTag.copyOfRange(cipherTextWithTag.size - 16, cipherTextWithTag.size)
         return protectedHeaderB64 + "." + "." + nonce.toBase64Url() + "." + cipherText.toBase64Url() + "." + authTag.toBase64Url()
