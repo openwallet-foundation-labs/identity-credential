@@ -52,8 +52,6 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)
                 implementation(libs.kotlinx.serialization.json)
-                implementation(libs.qrose)
-                implementation(libs.easyqrscan)
             }
         }
 

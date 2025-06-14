@@ -1,15 +1,13 @@
 package org.multipaz.compose.notifications
 
-import androidx.compose.ui.graphics.ImageBitmap
 import org.multipaz.util.UUID
 import org.multipaz.util.toKotlinError
 import org.multipaz.util.toNSData
-import io.github.alexzhirkevich.qrose.ImageFormat
-import io.github.alexzhirkevich.qrose.toByteArray
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.compose.encodeImageToPng
 import platform.darwin.NSObject
 import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
@@ -79,9 +77,8 @@ private object NotificationManagerIos  {
                     NSTemporaryDirectory() + "/notificationImage_${Random.nextInt()}.png"
                 )
                 with(Dispatchers.IO) {
-                    notification.image
-                        .toByteArray(ImageFormat.PNG).toNSData()
-                        .writeToURL(url = tmpFileUrl, atomically = true)
+                    val pngImage = encodeImageToPng(notification.image)
+                    pngImage.toByteArray().toNSData().writeToURL(url = tmpFileUrl, atomically = true)
                 }
                 setAttachments(
                     listOf(

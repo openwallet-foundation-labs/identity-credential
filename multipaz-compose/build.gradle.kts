@@ -75,8 +75,6 @@ kotlin {
                 implementation(project(":multipaz-models"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
-                implementation(libs.qrose)
-                implementation(libs.easyqrscan)
                 implementation(libs.kotlinx.io.core)
             }
         }
