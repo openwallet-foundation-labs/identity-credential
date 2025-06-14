@@ -21,11 +21,8 @@ import org.multipaz.claim.Claim
 import org.multipaz.context.initializeApplication
 import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
 import org.multipaz.securearea.AndroidKeystoreSecureArea
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
-import org.multipaz.document.DocumentStore
-import org.multipaz.document.SimpleDocumentMetadata
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
@@ -38,6 +35,8 @@ import kotlinx.io.bytestring.ByteString
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.document.buildDocumentStore
+import org.multipaz.securearea.SecureAreaProvider
 
 // See DocumentStoreTest in non-Android tests for main tests for DocumentStore. These
 // tests are just for the Android-specific bits including attestation.
@@ -49,29 +48,22 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
     private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
-    private lateinit var credentialLoader: CredentialLoader
 
     @Before
-    fun setup() {
+    fun setup() = runBlocking {
         initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
         storage = AndroidStorage(":memory:")
-        secureAreaRepository = SecureAreaRepository.build {
-            add(AndroidKeystoreSecureArea.create(storage))
-        }
-        credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(TestSecureAreaBoundCredential.CREDENTIAL_TYPE) {
-            document -> TestSecureAreaBoundCredential(document)
-        }
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(AndroidKeystoreSecureArea.create(storage))
+            .build()
     }
 
     @Test
     fun testBasic() = runBlocking {
-        val documentStore = DocumentStore(
+        val documentStore = buildDocumentStore(
             storage = storage,
             secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+        ) {}
         val document = documentStore.createDocument()
 
         // Create pending credential and check its attestation

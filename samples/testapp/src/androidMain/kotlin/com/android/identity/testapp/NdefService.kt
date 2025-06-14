@@ -19,7 +19,6 @@ import org.multipaz.nfc.CommandApdu
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.models.presentment.PresentmentTimeout
 import org.multipaz.context.initializeApplication
-import org.multipaz.mdoc.transport.advertiseAndWait
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.util.Logger
@@ -33,6 +32,8 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.mdoc.transport.advertise
+import org.multipaz.mdoc.transport.waitForConnection
 import org.multipaz.nfc.ResponseApdu
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -246,14 +247,15 @@ class NdefService: HostApduService() {
         engagementDuration: Duration,
     ) {
         presentmentModel.presentmentScope.launch {
-            val transport = connectionMethods.advertiseAndWait(
+            val transports = connectionMethods.advertise(
                 role = MdocRole.MDOC,
                 transportFactory = MdocTransportFactory.Default,
                 options = MdocTransportOptions(
                     bleUseL2CAP = settingsModel.readerBleL2CapEnabled.value
                 ),
+            )
+            val transport = transports.waitForConnection(
                 eSenderKey = eDeviceKey.publicKey,
-                onConnectionMethodsReady = {}
             )
             presentmentModel.setMechanism(
                 MdocPresentmentMechanism(

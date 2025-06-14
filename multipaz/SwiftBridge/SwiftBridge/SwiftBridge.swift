@@ -1,8 +1,10 @@
 import CryptoKit
+import UIKit
 import Foundation
 import Security
 import LocalAuthentication
 import DeviceCheck
+import CoreImage
 
 @objc public class SwiftBridge : NSObject {
     @objc(sha1:) public class func sha1(data: Data) -> Data {
@@ -463,6 +465,20 @@ import DeviceCheck
         var error: Unmanaged<CFError>? = nil
         guard SecKeyVerifySignature(key!, algorithm, message as CFData, signature as CFData, &error) else {
             return error!.takeRetainedValue() as Error
+        }
+        return nil
+    }
+
+    @objc(generateQrCode:) public class func generateQrCode(url: String) -> UIImage? {
+        let data = url.data(using: String.Encoding.ascii)
+        if let filter = CIFilter(name: "CIQRCodeGenerator") {
+            filter.setValue(data, forKey: "inputMessage")
+            let transform = CGAffineTransform(scaleX: 8, y: 8)
+            if let output = filter.outputImage?.transformed(by: transform) {
+                let context = CIContext()
+                let cgImage = context.createCGImage(output, from: CGRect(x: 0, y: 0, width: output.extent.width, height: output.extent.height))
+                return UIImage(cgImage: cgImage!)
+            }
         }
         return nil
     }

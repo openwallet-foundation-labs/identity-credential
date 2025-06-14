@@ -61,7 +61,6 @@ import org.multipaz.provisioning.evidence.EvidenceRequestNotificationPermission
 import org.multipaz.provisioning.evidence.EvidenceResponseNotificationPermission
 import org.multipaz.provisioning.evidence.EvidenceResponseOpenid4Vp
 import org.multipaz.testapp.App
-import org.multipaz.testapp.TestAppPresentmentSource
 import org.multipaz.testapp.platformAppIcon
 import org.multipaz.testapp.platformAppName
 import org.multipaz.util.Logger
@@ -593,7 +592,7 @@ fun EvidenceRequestOpenid4VpView(
             presentmentModel = presentmentModel,
             promptModel = app.promptModel,
             documentTypeRepository = app.documentTypeRepository,
-            source = TestAppPresentmentSource(app),
+            source = app.getPresentmentSource(),
             onPresentmentComplete = { presenting.value = false},
             appName = platformAppName,
             appIconPainter = painterResource(platformAppIcon),

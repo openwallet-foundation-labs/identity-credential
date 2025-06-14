@@ -123,23 +123,15 @@ internal suspend fun mdocPresentment(
                     showDocumentPicker(documents)
                         ?: continue
                 }
-                val credentialsForPresentment = source.getCredentialForPresentment(
+                val mdocCredential = source.selectCredential(
+                    document = document,
                     request = requestWithoutFiltering,
-                    document = document
-                )
-                if (credentialsForPresentment.credential == null) {
+                    keyAgreementPossible = listOf(mechanism.eDeviceKey.curve)
+                ) as MdocCredential?
+                if (mdocCredential == null) {
                     Logger.w(TAG, "No credential found")
                     return
                 }
-
-                // Pick either Signing or Key Agreement credential...
-                val mdocCredential = pickCredential(
-                    document = document,
-                    credentialForPresentment = credentialsForPresentment,
-                    eReaderKey = SessionEncryption.getEReaderKey(sessionData),
-                    source = source,
-                    request = requestWithoutFiltering
-                )
 
                 val request = docRequest.toMdocRequest(
                     documentTypeRepository = documentTypeRepository,
@@ -149,14 +141,8 @@ internal suspend fun mdocPresentment(
                 // credential that can satisfy the request...
                 //
                 val trustPoint = source.findTrustPoint(request)
-                val shouldShowConsentPrompt = source.shouldShowConsentPrompt(
-                    credential = mdocCredential,
-                    request = request,
-                )
-                if (shouldShowConsentPrompt) {
-                    if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
-                        continue
-                    }
+                if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+                    continue
                 }
 
                 deviceResponseGenerator.addDocument(calcDocument(
@@ -239,37 +225,4 @@ private suspend fun calcDocument(
     }
 
     return documentGenerator.generate()
-}
-
-private suspend fun pickCredential(
-    document: Document,
-    credentialForPresentment: CredentialForPresentment,
-    eReaderKey: EcPublicKey,
-    source: PresentmentSource,
-    request: Request
-): MdocCredential {
-    // Prefer MACing if possible... this requires that we have a credential that can do that
-    // and that the curve of its DeviceKey matches EReaderKey...
-    //
-    // TODO: support MAC keys from v1.1 request.
-    //
-    val keyAgreementPossible = if (credentialForPresentment.credentialKeyAgreement != null) {
-        val kaCredential = credentialForPresentment.credentialKeyAgreement as MdocCredential
-        val keyInfo = kaCredential.secureArea.getKeyInfo(kaCredential.alias)
-        if (keyInfo.algorithm.isKeyAgreement && eReaderKey.curve == keyInfo.publicKey.curve) {
-            true
-        } else {
-            false
-        }
-    } else {
-        false
-    }
-    val preferSignature = source.shouldPreferSignatureToKeyAgreement(document, request)
-
-    val credential = if (!preferSignature && keyAgreementPossible) {
-        credentialForPresentment.credentialKeyAgreement as MdocCredential
-    } else {
-        credentialForPresentment.credential
-    }
-    return credential as MdocCredential
 }

@@ -249,14 +249,11 @@ object TestAppUtils {
             cardArtResource,
         )
 
-        val document = documentStore.createDocument {
-            val metadata = it as TestAppDocumentMetadata
-            metadata.initialize(
-                displayName = displayName,
-                typeDisplayName = documentType.displayName,
-                cardArt = ByteString(cardArt),
-            )
-        }
+        val document = documentStore.createDocument(
+            displayName = displayName,
+            typeDisplayName = documentType.displayName,
+            cardArt = ByteString(cardArt),
+        )
 
         val now = Clock.System.now()
         val signedAt = now - 1.hours

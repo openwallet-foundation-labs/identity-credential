@@ -15,6 +15,7 @@
  */
 package org.multipaz.mdoc.response
 
+import kotlinx.coroutines.runBlocking
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
@@ -51,6 +52,9 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.document.DocumentStoreTest
+import org.multipaz.document.DocumentUtilTest.TestSecureAreaBoundCredential
+import org.multipaz.document.buildDocumentStore
 import kotlin.random.Random
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -62,7 +66,6 @@ import kotlin.test.assertTrue
 class DeviceResponseGeneratorTest {
     private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
-    private lateinit var credentialLoader: CredentialLoader
 
     private lateinit var mdocCredentialSign: MdocCredential
     private lateinit var mdocCredentialMac: MdocCredential
@@ -74,28 +77,23 @@ class DeviceResponseGeneratorTest {
     private lateinit var dsCert: X509Cert
 
     @BeforeTest
-    fun setup() {
+    fun setup() = runBlocking {
         storage = EphemeralStorage()
-        secureAreaRepository = SecureAreaRepository.build {
-            add(SoftwareSecureArea.create(storage))
-        }
-        credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) {
-            document -> MdocCredential(document)
-        }
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(SoftwareSecureArea.create(storage))
+            .build()
     }
 
     // This isn't really used, we only use a single domain.
     private val AUTH_KEY_DOMAIN = "domain"
-    private val MDOC_CREDENTIAL_IDENTIFIER = "MdocCredential"
 
     private suspend fun provisionDocument() {
-        val documentStore = DocumentStore(
-            storage,
-            secureAreaRepository,
-            credentialLoader,
-            TestDocumentMetadata::create
-        )
+        val documentStore = buildDocumentStore(
+            storage = storage,
+            secureAreaRepository = secureAreaRepository
+        ) {
+            setDocumentMetadataFactory(TestDocumentMetadata::create)
+        }
 
         // Create the document...
         document = documentStore.createDocument()

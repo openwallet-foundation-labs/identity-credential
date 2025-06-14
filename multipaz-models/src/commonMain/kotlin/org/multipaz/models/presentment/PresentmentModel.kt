@@ -178,7 +178,7 @@ class PresentmentModel {
     }
 
     /**
-     * Sets the [PresentmentSource] to use for presentment.
+     * Sets the [PresentmentSource] to use as the source of truth for presentment.
      *
      * This sets the model to [State.PROCESSING].
      *

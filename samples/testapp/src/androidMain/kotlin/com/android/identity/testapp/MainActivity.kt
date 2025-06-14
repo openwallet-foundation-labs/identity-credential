@@ -13,9 +13,9 @@ import androidx.lifecycle.coroutineScope
 import com.android.identity.testapp.provisioning.backend.ApplicationSupportLocal
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import org.multipaz.context.initializeApplication
 import kotlinx.coroutines.launch
 import org.multipaz.applinks.AppLinksCheck
+import org.multipaz.context.initializeApplication
 import org.multipaz.util.Logger
 
 class MainActivity : FragmentActivity() {
@@ -54,6 +54,7 @@ class MainActivity : FragmentActivity() {
 
         lifecycle.coroutineScope.launch {
             val app = App.getInstance(NdefService.promptModel)
+            app.init()
             app.startExportDocumentsToDigitalCredentials()
             setContent {
                 app.Content()
@@ -86,6 +87,7 @@ class MainActivity : FragmentActivity() {
             if (url != null) {
                 lifecycle.coroutineScope.launch {
                     val app = App.getInstance(NdefService.promptModel)
+                    app.init()
                     app.handleUrl(url)
                 }
             }

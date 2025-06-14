@@ -19,7 +19,8 @@ import kotlinx.coroutines.test.runTest
 import org.multipaz.credential.CredentialLoader
 import org.multipaz.crypto.Algorithm
 import org.multipaz.document.DocumentStore
-import org.multipaz.document.SimpleDocumentMetadata
+import org.multipaz.document.DocumentMetadata
+import org.multipaz.document.buildDocumentStore
 import org.multipaz.securearea.BatchCreateKeyResult
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
@@ -46,20 +47,10 @@ class KeyBoundSdJwtVcCredentialTest {
         secureArea = TestSecureArea(
             delegate = SoftwareSecureArea.create(storage)
         )
-        secureAreaRepository = SecureAreaRepository.build {
-            add(secureArea)
-        }
-        credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(KeyBoundSdJwtVcCredential.CREDENTIAL_TYPE) { document ->
-            KeyBoundSdJwtVcCredential(document)
-        }
-
-        documentStore = DocumentStore(
-            storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(secureArea)
+            .build()
+        documentStore = buildDocumentStore(storage = storage, secureAreaRepository = secureAreaRepository) {}
     }
 
     @Test

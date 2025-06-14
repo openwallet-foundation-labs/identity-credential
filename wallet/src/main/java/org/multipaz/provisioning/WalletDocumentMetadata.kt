@@ -1,8 +1,7 @@
 package org.multipaz.wallet.provisioning
 
-import org.multipaz.android.direct_access.DirectAccessDocumentMetadata
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.document.DocumentMetadata
+import org.multipaz.document.AbstractDocumentMetadata
 import org.multipaz.wallet.provisioning.remote.WalletServerProvider
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -11,15 +10,14 @@ import kotlinx.io.bytestring.isEmpty
 import org.multipaz.provisioning.DocumentConfiguration
 import org.multipaz.provisioning.DocumentState
 import org.multipaz.provisioning.IssuingAuthorityConfiguration
-import kotlin.concurrent.Volatile
 
 /**
- * [DocumentMetadata] implementation for the Wallet app.
+ * [AbstractDocumentMetadata] implementation for the Wallet app.
  */
 class WalletDocumentMetadata private constructor(
     serializedData: ByteString?,
     private val saveFn: suspend (data: ByteString) -> Unit
-) : DocumentMetadata, DirectAccessDocumentMetadata {
+) : AbstractDocumentMetadata {
     private val lock = Mutex()
     private val data: Data = if (serializedData == null || serializedData.isEmpty()) {
         Data()
@@ -29,15 +27,26 @@ class WalletDocumentMetadata private constructor(
 
     override val provisioned get() = data.provisioned
 
-    suspend fun markAsProvisioned() = lock.withLock {
+    override suspend fun markAsProvisioned() = lock.withLock {
         check(!data.provisioned)
         data.provisioned = true
+    }
+
+    override suspend fun setMetadata(
+        displayName: String?,
+        typeDisplayName: String?,
+        cardArt: ByteString?,
+        issuerLogo: ByteString?,
+        other: ByteString?
+    ) {
+        throw IllegalStateException("Shouldn't be reached")
     }
 
     override val displayName get() = data.documentConfiguration!!.displayName
     override val typeDisplayName get() = data.documentConfiguration!!.typeDisplayName
     override val cardArt get() = ByteString(data.documentConfiguration!!.cardArt)
     override val issuerLogo get() = ByteString(data.issuingAuthorityConfiguration!!.issuingAuthorityLogo)
+    override val other get() = null
 
     /** The identifier for the [IssuingAuthority] the credential belongs to */
     val issuingAuthorityIdentifier: String? get() = data.issuingAuthorityIdentifier
@@ -116,14 +125,14 @@ class WalletDocumentMetadata private constructor(
             save()
         }
 
-    override var directAccessDocumentSlot: Int = -1
-    get() : Int {
-        return if (data.documentSlot != null) {
-            data.documentSlot!!
-        } else {
-            -1
+    var directAccessDocumentSlot: Int = -1
+        get() : Int {
+            return if (data.documentSlot != null) {
+                data.documentSlot!!
+            } else {
+                -1
+            }
         }
-    }
 
     suspend fun initialize(
         issuingAuthorityIdentifier: String,
@@ -155,6 +164,7 @@ class WalletDocumentMetadata private constructor(
         @Volatile var issuingAuthorityConfiguration: IssuingAuthorityConfiguration? = null,
         @Volatile var state: DocumentState? = null,
         @Volatile var documentSlot: Int? = null,
+        @Volatile var other: ByteString? = null
     ) {
         companion object
     }

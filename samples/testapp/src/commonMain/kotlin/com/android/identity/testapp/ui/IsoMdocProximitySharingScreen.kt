@@ -27,10 +27,8 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
-import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
-import org.multipaz.mdoc.transport.advertiseAndWait
 import org.multipaz.prompt.PromptModel
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.util.Logger
@@ -41,7 +39,10 @@ import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.qrcode.ShowQrCodeDialog
+import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.mdoc.transport.advertise
+import org.multipaz.mdoc.transport.waitForConnection
 
 private const val TAG = "IsoMdocProximitySharingScreen"
 
@@ -180,20 +181,22 @@ private suspend fun doHolderFlow(
 ) {
     val eDeviceKey = Crypto.createEcPrivateKey(sessionEncryptionCurve)
     lateinit var encodedDeviceEngagement: ByteString
-    val transport = connectionMethods.advertiseAndWait(
+
+    val advertisedTransports = connectionMethods.advertise(
         role = MdocRole.MDOC,
         transportFactory = MdocTransportFactory.Default,
         options = options,
+    )
+    val engagementGenerator = EngagementGenerator(
         eSenderKey = eDeviceKey.publicKey,
-        onConnectionMethodsReady = { advertisedConnectionMethods ->
-            val engagementGenerator = EngagementGenerator(
-                eSenderKey = eDeviceKey.publicKey,
-                version = "1.0"
-            )
-            engagementGenerator.addConnectionMethods(advertisedConnectionMethods)
-            encodedDeviceEngagement = ByteString(engagementGenerator.generate())
-            showQrCode.value = encodedDeviceEngagement
-        }
+        version = "1.0"
+    )
+    engagementGenerator.addConnectionMethods(advertisedTransports.map { it.connectionMethod })
+    encodedDeviceEngagement = ByteString(engagementGenerator.generate())
+    showQrCode.value = encodedDeviceEngagement
+    val transport = advertisedTransports.waitForConnection(
+        eSenderKey = eDeviceKey.publicKey,
+        coroutineScope = presentmentModel.presentmentScope
     )
     presentmentModel.setMechanism(
         MdocPresentmentMechanism(

@@ -15,10 +15,10 @@
  */
 package org.multipaz.document
 
+import kotlinx.coroutines.runBlocking
 import org.multipaz.claim.Claim
 import org.multipaz.credential.CredentialLoader
 import org.multipaz.credential.SecureAreaBoundCredential
-import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
@@ -28,6 +28,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant;
+import org.multipaz.document.DocumentStoreTest.TestSecureAreaBoundCredential
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -36,28 +37,25 @@ import kotlin.test.assertEquals
 class DocumentUtilTest {
     private lateinit var storage: Storage
     private lateinit var secureAreaRepository: SecureAreaRepository
-    private lateinit var credentialLoader: CredentialLoader
 
     @BeforeTest
-    fun setup() {
+    fun setup() = runBlocking {
         storage = EphemeralStorage()
-        secureAreaRepository = SecureAreaRepository.build {
-            add(SoftwareSecureArea.create(storage))
-        }
-        credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(
-            TestSecureAreaBoundCredential.CREDENTIAL_TYPE
-        ) { document -> TestSecureAreaBoundCredential(document) }
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(SoftwareSecureArea.create(storage))
+            .build()
     }
 
     @Test
     fun managedCredentialHelper() = runTest {
-        val documentStore = DocumentStore(
+        val documentStore = buildDocumentStore(
             storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = SimpleDocumentMetadata::create
-        )
+            secureAreaRepository = secureAreaRepository
+        ) {
+            addCredentialImplementation(DocumentStoreTest.TestSecureAreaBoundCredential.CREDENTIAL_TYPE) { document ->
+                TestSecureAreaBoundCredential(document)
+            }
+        }
         val secureArea: SecureArea =
             secureAreaRepository.getImplementation(SoftwareSecureArea.IDENTIFIER)!!
         val document = documentStore.createDocument()

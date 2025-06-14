@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.models.presentment.PresentmentSource
 
 class NfcPresentmentActivity : FragmentActivity() {
     companion object {
@@ -28,7 +29,9 @@ class NfcPresentmentActivity : FragmentActivity() {
         initializeApplication(this.applicationContext)
         enableEdgeToEdge()
         CoroutineScope(Dispatchers.Main).launch {
-            startPresentment(App.getInstance(NdefService.promptModel))
+            val app = App.getInstance(NdefService.promptModel)
+            app.init()
+            startPresentment(app)
         }
     }
 
@@ -41,7 +44,7 @@ class NfcPresentmentActivity : FragmentActivity() {
                         presentmentModel = NdefService.presentmentModel,
                         documentTypeRepository = app.documentTypeRepository,
                         promptModel = app.promptModel,
-                        source = TestAppPresentmentSource(app),
+                        source = app.getPresentmentSource(),
                         onPresentmentComplete = { finish() },
                         appName = platformAppName,
                         appIconPainter = painterResource(platformAppIcon),

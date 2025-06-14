@@ -21,6 +21,7 @@ import android.content.pm.FeatureInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
 import org.multipaz.R
@@ -163,6 +164,14 @@ class AndroidKeystoreSecureArea private constructor(
             // If user passed in a generic SecureArea.CreateKeySettings, honor them.
             AndroidKeystoreCreateKeySettings.Builder(createKeySettings.nonce)
                 .setAlgorithm(createKeySettings.algorithm)
+                .setUserAuthenticationRequired(
+                    required = createKeySettings.userAuthenticationRequired,
+                    timeoutMillis = 0,
+                    userAuthenticationTypes = setOf(
+                        UserAuthenticationType.LSKF,
+                        UserAuthenticationType.BIOMETRIC
+                    )
+                )
                 .build()
         }
 
@@ -316,11 +325,11 @@ class AndroidKeystoreSecureArea private constructor(
         val entry = ks.getEntry(existingAlias, null)
             ?: throw IllegalArgumentException("A key with this alias doesn't exist")
 
-        val keyInfo: android.security.keystore.KeyInfo = try {
+        val keyInfo: KeyInfo = try {
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
             try {
-                factory.getKeySpec(privateKey, android.security.keystore.KeyInfo::class.java)
+                factory.getKeySpec(privateKey, KeyInfo::class.java)
             } catch (e: InvalidKeySpecException) {
                 throw IllegalStateException("Given key is not an Android Keystore key", e)
             }
@@ -603,7 +612,7 @@ class AndroidKeystoreSecureArea private constructor(
             val keyInfo = if (entry != null) {
                 val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
                 val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
-                factory.getKeySpec(privateKey, android.security.keystore.KeyInfo::class.java)
+                factory.getKeySpec(privateKey, KeyInfo::class.java)
             } else {
                 null
             }

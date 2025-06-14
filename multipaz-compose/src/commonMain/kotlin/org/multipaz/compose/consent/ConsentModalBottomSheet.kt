@@ -77,7 +77,7 @@ import kotlin.math.min
  * @param request the request.
  * @param documentName the name of the document.
  * @param documentDescription a description of the document.
- * @param documentCardArt cart art for the document.
+ * @param documentCardArt cart art for the document or `null`.
  * @param trustPoint if the requester is in a trust-list, the [TrustPoint] indicating this
  * @param onConfirm called when the sheet is dismissed.
  * @param onCancel called when the user presses the "Share" button.
@@ -89,7 +89,7 @@ fun ConsentModalBottomSheet(
     request: Request,
     documentName: String,
     documentDescription: String,
-    documentCardArt: ImageBitmap,
+    documentCardArt: ImageBitmap?,
     trustPoint: TrustPoint?,
     onConfirm: () -> Unit = {},
     onCancel: () -> Unit = {}
@@ -241,7 +241,7 @@ private fun RelyingPartySection(
 private fun DocumentSection(
     documentName: String,
     documentDescription: String,
-    documentCardArt: ImageBitmap,
+    documentCardArt: ImageBitmap?,
 ) {
     Column(
         modifier = Modifier
@@ -258,12 +258,14 @@ private fun DocumentSection(
             Row(
                 modifier = Modifier.padding(16.dp)
             ) {
-                Icon(
-                    modifier = Modifier.size(50.dp),
-                    bitmap = documentCardArt,
-                    contentDescription = stringResource(Res.string.consent_modal_bottom_sheet_card_art_description),
-                    tint = Color.Unspecified
-                )
+                if (documentCardArt != null) {
+                    Icon(
+                        modifier = Modifier.size(50.dp),
+                        bitmap = documentCardArt,
+                        contentDescription = stringResource(Res.string.consent_modal_bottom_sheet_card_art_description),
+                        tint = Color.Unspecified
+                    )
+                }
                 Column(
                     modifier = Modifier.padding(start = 16.dp)
                 ) {

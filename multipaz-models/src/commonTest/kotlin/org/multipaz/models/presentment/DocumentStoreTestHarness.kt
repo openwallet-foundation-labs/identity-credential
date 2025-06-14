@@ -4,7 +4,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.asn1.ASN1Integer
@@ -18,7 +17,6 @@ import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.CoseNumberLabel
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
@@ -29,8 +27,8 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.Document
-import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.DocumentStore
+import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.knowntypes.DrivingLicense
@@ -46,11 +44,8 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
-import org.multipaz.storage.StorageTableSpec
-import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.Logger
-import org.multipaz.util.fromHex
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -120,21 +115,11 @@ class DocumentStoreTestHarness {
         storage = EphemeralStorage()
 
         softwareSecureArea = SoftwareSecureArea.create(storage)
-        secureAreaRepository = SecureAreaRepository.build {
-            add(softwareSecureArea)
-        }
+        secureAreaRepository = SecureAreaRepository.Builder()
+            .add(softwareSecureArea)
+            .build()
 
-        val credentialLoader = CredentialLoader()
-        credentialLoader.addCredentialImplementation(MdocCredential.CREDENTIAL_TYPE) {
-            document -> MdocCredential(document)
-        }
-        documentStore = DocumentStore(
-            storage = storage,
-            secureAreaRepository = secureAreaRepository,
-            credentialLoader = credentialLoader,
-            documentMetadataFactory = TestDocumentMetadata::create,
-            documentTableSpec = testDocumentTableSpec
-        )
+        documentStore = buildDocumentStore(storage = storage, secureAreaRepository = secureAreaRepository) {}
 
         val now = Clock.System.now()
         val signedAt = now - 1.days
@@ -167,11 +152,10 @@ class DocumentStoreTestHarness {
             iacaKeyPub
         )
 
-        // TODO: Generate random serials with sufficient entropy as per 18013-5 Annex B
         val iacaCert = MdocUtil.generateIacaCertificate(
             iacaKey = iacaKey,
             subject = X500Name.fromName("C=US,CN=OWF Multipaz TEST IACA"),
-            serial = ASN1Integer("26457B125F0AD75217A98EE6CFDEA7FC486221".fromHex()),
+            serial = ASN1Integer.fromRandom(numBits = 128),
             validFrom = iacaValidFrom,
             validUntil = iacaValidUntil,
             issuerAltNameUrl = "https://github.com/openwallet-foundation-labs/identity-credential",
@@ -184,7 +168,7 @@ class DocumentStoreTestHarness {
             iacaKey = iacaKey,
             dsKey = dsKey.publicKey,
             subject = X500Name.fromName("C=US,CN=OWF Multipaz TEST DS"),
-            serial = ASN1Integer("26457B125F0AD75217A98EE6CFDEA7FC486221".fromHex()),
+            serial = ASN1Integer.fromRandom(numBits = 128),
             validFrom = dsValidFrom,
             validUntil = dsValidUntil,
         )
@@ -211,45 +195,6 @@ class DocumentStoreTestHarness {
         )
 
         isInitialized = true
-    }
-
-    private class TestDocumentMetadata private constructor(
-        private val saveFn: suspend (data: ByteString) -> Unit
-    ) : DocumentMetadata {
-        override val provisioned: Boolean
-            get() = true
-        override val displayName: String?
-            get() = null
-        override val typeDisplayName: String?
-            get() = null
-        override val cardArt: ByteString?
-            get() = null
-        override val issuerLogo: ByteString?
-            get() = null
-
-        override suspend fun documentDeleted() {
-        }
-
-        companion object {
-            suspend fun create(
-                documentId: String,
-                serializedData: ByteString?,
-                saveFn: suspend (data: ByteString) -> Unit
-            ): TestDocumentMetadata {
-                return TestDocumentMetadata(saveFn)
-            }
-        }
-    }
-
-    private val testDocumentTableSpec = object: StorageTableSpec(
-        name = "TestDocuments",
-        supportExpiration = false,
-        supportPartitions = false,
-        schemaVersion = 1L,           // Bump every time incompatible changes are made
-    ) {
-        override suspend fun schemaUpgrade(oldTable: BaseStorageTable) {
-            oldTable.deleteAll()
-        }
     }
 
     private suspend fun provisionTestDocuments(

@@ -144,6 +144,7 @@ android {
                     "proguard-rules.pro"
                 )
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     flavorDimensions.addAll(listOf("standard"))

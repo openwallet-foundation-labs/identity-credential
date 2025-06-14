@@ -1,16 +1,16 @@
 package org.multipaz.mdoc.response
 
 import org.multipaz.document.Document
-import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.NameSpacedData
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isEmpty
+import org.multipaz.document.AbstractDocumentMetadata
 import kotlin.concurrent.Volatile
 
 class TestDocumentMetadata private constructor(
     data: ByteString?,
     private val saveFn: suspend (data: ByteString) -> Unit
-) : DocumentMetadata {
+) : AbstractDocumentMetadata {
     override val provisioned: Boolean
         get() = false
     override val displayName: String
@@ -20,6 +20,8 @@ class TestDocumentMetadata private constructor(
     override val cardArt: ByteString?
         get() = null
     override val issuerLogo: ByteString?
+        get() = null
+    override val other: ByteString?
         get() = null
 
     @Volatile
@@ -34,12 +36,21 @@ class TestDocumentMetadata private constructor(
         }
     }
 
+    override suspend fun markAsProvisioned() {
+    }
+
+    override suspend fun setMetadata(
+        displayName: String?,
+        typeDisplayName: String?,
+        cardArt: ByteString?,
+        issuerLogo: ByteString?,
+        other: ByteString?
+    ) {
+    }
+
     suspend fun setNameSpacedData(nameSpacedData: NameSpacedData) {
         this.nameSpacedData = nameSpacedData
         saveFn(ByteString(nameSpacedData.encodeAsCbor()))
-    }
-
-    override suspend fun documentDeleted() {
     }
 
     companion object {
