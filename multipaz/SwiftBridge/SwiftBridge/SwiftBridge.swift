@@ -473,10 +473,23 @@ import CoreImage
         let data = url.data(using: String.Encoding.ascii)
         if let filter = CIFilter(name: "CIQRCodeGenerator") {
             filter.setValue(data, forKey: "inputMessage")
-            let transform = CGAffineTransform(scaleX: 8, y: 8)
+            let scalingFactor = 4.0
+            let transform = CGAffineTransform(scaleX: scalingFactor, y: scalingFactor)
             if let output = filter.outputImage?.transformed(by: transform) {
+                // iOS QR Code generator doesn't add the proper Quiet Zone so we need
+                // to do this ourselves. Add four modules as required by the standard.
+                //
+                let quietZonePadding = 4*scalingFactor
                 let context = CIContext()
-                let cgImage = context.createCGImage(output, from: CGRect(x: 0, y: 0, width: output.extent.width, height: output.extent.height))
+                let cgImage = context.createCGImage(
+                    output,
+                    from: CGRect(
+                        x: -quietZonePadding,
+                        y: -quietZonePadding,
+                        width: output.extent.width + 2*quietZonePadding,
+                        height: output.extent.height + 2*quietZonePadding
+                    )
+                )
                 return UIImage(cgImage: cgImage!)
             }
         }

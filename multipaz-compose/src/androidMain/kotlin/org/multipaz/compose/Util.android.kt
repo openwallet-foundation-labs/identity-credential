@@ -3,48 +3,25 @@ package org.multipaz.compose
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.createBitmap
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.MultiFormatWriter
-import com.google.zxing.WriterException
-import com.google.zxing.common.BitMatrix
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.camera.CameraFrame
-import com.google.zxing.qrcode.QRCodeWriter
+import java.io.ByteArrayOutputStream
 
 actual fun decodeImage(encodedData: ByteArray): ImageBitmap {
     return BitmapFactory.decodeByteArray(encodedData, 0, encodedData.size).asImageBitmap()
 }
 
-actual fun generateQrCode(
-    url: String,
-): ImageBitmap {
-    val width = 800
-    val result: BitMatrix = try {
-        MultiFormatWriter().encode(
-            url,
-            BarcodeFormat.QR_CODE, width, width, null
-        )
-    } catch (e: WriterException) {
-        throw java.lang.IllegalArgumentException(e)
-    }
-    val w = result.width
-    val h = result.height
-    val pixels = IntArray(w * h)
-    for (y in 0 until h) {
-        val offset = y * w
-        for (x in 0 until w) {
-            pixels[offset + x] = if (result[x, y]) Color.BLACK else Color.WHITE
-        }
-    }
-    val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    bitmap.setPixels(pixels, 0, width, 0, 0, w, h)
-    return bitmap.asImageBitmap()
+actual fun encodeImageToPng(image: ImageBitmap): ByteString {
+    val bitmap = image.asAndroidBitmap()
+    val baos = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
+    return ByteString(baos.toByteArray())
 }
-
 
 private val paint = Paint().apply {
     isAntiAlias = false

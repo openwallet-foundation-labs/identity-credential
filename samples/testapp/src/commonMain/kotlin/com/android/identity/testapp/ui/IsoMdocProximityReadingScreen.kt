@@ -90,7 +90,7 @@ import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
-import org.multipaz.compose.qrcode.ScanQrCodeDialog
+import com.android.identity.testapp.ui.ScanQrCodeDialog
 import org.multipaz.mdoc.role.MdocRole
 
 private const val TAG = "IsoMdocProximityReadingScreen"

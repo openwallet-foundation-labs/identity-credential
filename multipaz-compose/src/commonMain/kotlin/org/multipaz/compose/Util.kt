@@ -1,6 +1,7 @@
 package org.multipaz.compose
 
 import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.camera.CameraFrame
 
 /**
@@ -12,14 +13,12 @@ import org.multipaz.compose.camera.CameraFrame
 expect fun decodeImage(encodedData: ByteArray): ImageBitmap
 
 /**
- * Generates a QR code.
+ * Encodes a bitmap to PNG
  *
- * @param url the URL with the contents of the QR code.
- * @return an [ImageBitmap] with the QR code.
+ * @param image the image to encode.
+ * @return a [ByteString] with the encoded data.
  */
-expect fun generateQrCode(
-    url: String,
-): ImageBitmap
+expect fun encodeImageToPng(image: ImageBitmap): ByteString
 
 /**
  * Extract an arbitrary geometry rectangular bitmap from the original bitmap.
