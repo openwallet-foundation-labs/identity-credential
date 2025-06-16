@@ -349,7 +349,7 @@ async function requestDocument(format, docType, requestId) {
                     encryptResponse: true
                 }
             )
-            dcRequestCredential(response.sessionId, 'org.iso.mdoc', JSON.parse(response.dcRequestString))
+            dcRequestCredential(response.sessionId, 'org-iso-mdoc', JSON.parse(response.dcRequestString))
         } catch (err) {
             alert("Something went wrong: " + err)
         }
@@ -385,9 +385,9 @@ async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
         console.log('request: ', dcRequest)
         const credentialResponse = await navigator.credentials.get({
             digital: {
-                providers: [{
+                requests: [{
                     protocol: dcRequestProtocol,
-                    request: JSON.stringify(dcRequest)
+                    data: dcRequest
                 }]
             },
             mediation: 'required',

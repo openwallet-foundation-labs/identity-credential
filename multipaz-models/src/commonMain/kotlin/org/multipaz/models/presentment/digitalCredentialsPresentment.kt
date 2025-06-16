@@ -73,7 +73,7 @@ internal suspend fun digitalCredentialsPresentment(
     ) -> Boolean
 ) {
     Logger.i(TAG, "mechanism.protocol: ${mechanism.protocol}")
-    Logger.i(TAG, "mechanism.request: ${mechanism.request}")
+    Logger.i(TAG, "mechanism.request: ${mechanism.data}")
     dismissable.value = false
     try {
         when (mechanism.protocol) {
@@ -98,7 +98,7 @@ internal suspend fun digitalCredentialsPresentment(
                 source = source,
                 showConsentPrompt = showConsentPrompt
             )
-            "org.iso.mdoc" -> digitalCredentialsMdocApiProtocol(
+            "org.iso.mdoc", "org-iso-mdoc" -> digitalCredentialsMdocApiProtocol(
                 documentTypeRepository = documentTypeRepository,
                 presentmentModel = model,
                 presentmentMechanism = mechanism,
@@ -127,7 +127,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val previewRequest = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
+    val previewRequest = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
     val selector = previewRequest["selector"]!!.jsonObject
     val nonceBase64 = previewRequest["nonce"]!!.jsonPrimitive.content
     val readerPublicKeyBase64 = previewRequest["readerPublicKey"]!!.jsonPrimitive.content
@@ -275,7 +275,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     ) -> Boolean
 ) {
     var requesterCertChain: X509CertChain? = null
-    val preReq = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
+    val preReq = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
 
     val signedRequest = preReq["request"]
     val req = if (signedRequest != null) {
@@ -633,7 +633,7 @@ private suspend fun digitalCredentialsArfProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val arfRequest = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
+    val arfRequest = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
@@ -737,7 +737,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val arfRequest = Json.parseToJsonElement(presentmentMechanism.request).jsonObject
+    val arfRequest = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 

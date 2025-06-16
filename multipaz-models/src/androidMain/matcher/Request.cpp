@@ -6,9 +6,9 @@
 
 #include "Request.h"
 
-std::unique_ptr<Request> Request::parsePreview(cJSON* requestJson) {
+std::unique_ptr<Request> Request::parsePreview(cJSON* dataJson) {
 
-    cJSON* selector = cJSON_GetObjectItem(requestJson, "selector");
+    cJSON* selector = cJSON_GetObjectItem(dataJson, "selector");
     cJSON* docType = cJSON_GetObjectItem(selector, "doctype");
     std::string docTypeValue = std::string(cJSON_GetStringValue(docType));
 
@@ -50,8 +50,8 @@ std::string base64UrlDecode(const std::string& data) {
     return from_base64(s);
 }
 
-std::unique_ptr<Request> Request::parseMdocApi(cJSON* requestJson) {
-    cJSON* deviceRequestJson = cJSON_GetObjectItem(requestJson, "deviceRequest");
+std::unique_ptr<Request> Request::parseMdocApi(cJSON* dataJson) {
+    cJSON* deviceRequestJson = cJSON_GetObjectItem(dataJson, "deviceRequest");
     std::string deviceRequestBase64 = std::string(cJSON_GetStringValue(deviceRequestJson));
 
     std::string docTypeValue;
@@ -88,14 +88,14 @@ std::unique_ptr<Request> Request::parseMdocApi(cJSON* requestJson) {
     return std::unique_ptr<Request> { new Request(docTypeValue, dataElements) };
 }
 
-std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* requestJson) {
+std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson) {
     std::string docTypeValue = "";
     auto dataElements = std::vector<MdocRequestDataElement>();
     std::vector<std::string> vctValues;
     auto vcClaims = std::vector<VcRequestedClaim>();
 
     // Handle signed request... the payload of the JWS is between the first and second '.' characters.
-    cJSON* request = cJSON_GetObjectItem(requestJson, "request");
+    cJSON* request = cJSON_GetObjectItem(dataJson, "request");
     if (request != nullptr) {
         std::string jwtStr = std::string(cJSON_GetStringValue(request));
         size_t firstDot = jwtStr.find(".");
@@ -108,7 +108,7 @@ std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* requestJson) {
         }
         std::string payloadBase64 = jwtStr.substr(firstDot + 1, secondDot - firstDot - 1);
         std::string payload = base64UrlDecode(payloadBase64);
-        requestJson = cJSON_Parse(payload.c_str());
+        dataJson = cJSON_Parse(payload.c_str());
     }
 
     // TODO: this is a simple minimal non-conforming implementation of DCQL. Will be adjusted to
@@ -116,7 +116,7 @@ std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* requestJson) {
     //   https://github.com/openwallet-foundation-labs/identity-credential/tree/dcql-library
     //
 
-    cJSON* dcqlQuery = cJSON_GetObjectItem(requestJson, "dcql_query");
+    cJSON* dcqlQuery = cJSON_GetObjectItem(dataJson, "dcql_query");
     cJSON* credentials = cJSON_GetObjectItem(dcqlQuery, "credentials");
 
     // TODO: for now we only consider the first credential request

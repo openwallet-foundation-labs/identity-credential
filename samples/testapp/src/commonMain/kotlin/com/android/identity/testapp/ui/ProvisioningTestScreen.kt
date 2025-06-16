@@ -622,7 +622,7 @@ fun EvidenceRequestOpenid4VpView(
                             appId = "",
                             webOrigin = evidenceRequest.originUri,
                             protocol = "openid4vp",
-                            request = buildJsonObject {
+                            data = buildJsonObject {
                                 put("request", evidenceRequest.request)
                             }.toString(),
                             document = viableCredentials.first().document
