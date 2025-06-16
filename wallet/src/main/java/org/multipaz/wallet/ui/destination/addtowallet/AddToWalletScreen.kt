@@ -41,8 +41,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.multipaz.compose.qrcode.ScanQrCodeDialog
 import org.multipaz.rpc.handler.RpcAuthClientSession
+import org.multipaz.wallet.ScanQrCodeDialog
 
 private const val TAG = "AddToWalletScreen"
 

@@ -38,7 +38,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
-import org.multipaz.compose.qrcode.ShowQrCodeDialog
+import com.android.identity.testapp.ui.ShowQrCodeDialog
 import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.transport.advertise

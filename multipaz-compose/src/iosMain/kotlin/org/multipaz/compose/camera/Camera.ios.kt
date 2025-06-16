@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
@@ -31,12 +32,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.multipaz.util.Logger
 import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureDevice
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureDevicePositionBack
 import platform.AVFoundation.AVCaptureDevicePositionFront
+import platform.AVFoundation.AVCaptureMetadataOutput
+import platform.AVFoundation.AVCaptureMetadataOutputObjectsDelegateProtocol
 import platform.AVFoundation.AVCaptureOutput
 import platform.AVFoundation.AVCaptureSession
 import platform.AVFoundation.AVCaptureSessionPreset1280x720
@@ -52,6 +56,7 @@ import platform.AVFoundation.AVCaptureVideoOrientationPortraitUpsideDown
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
 import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVMediaTypeVideo
+import platform.AVFoundation.AVMetadataObjectTypeQRCode
 import platform.AVFoundation.position
 import platform.CoreGraphics.CGImageRef
 import platform.CoreGraphics.CGImageRelease
@@ -85,6 +90,7 @@ import platform.darwin.dispatch_queue_create
 import platform.darwin.dispatch_sync
 import kotlin.native.runtime.GC
 import kotlin.native.runtime.NativeRuntimeApi
+import platform.AVFoundation.AVMetadataMachineReadableCodeObject
 
 private const val TAG = "Camera"
 
@@ -96,12 +102,32 @@ actual fun Camera(
     showCameraPreview: Boolean,
     onFrameCaptured: suspend (frame: CameraFrame) -> Unit
 ) {
+    IosCamera(
+        modifier = modifier,
+        cameraSelection = cameraSelection,
+        captureResolution = captureResolution,
+        showCameraPreview = showCameraPreview,
+        onFrameCaptured = onFrameCaptured,
+        onQrCodeScanned = null
+    )
+}
+
+@Composable
+internal fun IosCamera(
+    modifier: Modifier,
+    cameraSelection: CameraSelection,
+    captureResolution: CameraCaptureResolution,
+    showCameraPreview: Boolean,
+    onFrameCaptured: (suspend (frame: CameraFrame) -> Unit)?,
+    onQrCodeScanned: ((qrCode: String?) -> Unit)?
+) {
     BoxWithConstraints(modifier) {
         val cameraManager = remember(cameraSelection, captureResolution) {
             CameraManager(
                 cameraSelection = cameraSelection,
                 captureResolution = captureResolution,
                 onCameraFrameCaptured = onFrameCaptured,
+                onQrCodeScanned = onQrCodeScanned,
                 isShowingPreview = showCameraPreview
             )
         }
@@ -137,7 +163,7 @@ actual fun Camera(
                 if (cameraManager.isPreviewLayerInitialized) {
                     isCameraReadyForPreview = true
                 } else {
-                    kotlinx.coroutines.yield() // Allow time for DisposableEffect.
+                    yield() // Allow time for DisposableEffect.
                     // Re-check after yield, DisposableEffect might have completed.
                     if (cameraManager.isPreviewLayerInitialized) {
                         isCameraReadyForPreview = true
@@ -198,9 +224,12 @@ private class CameraPreviewView(
 private class CameraManager(
     val cameraSelection: CameraSelection,
     val captureResolution: CameraCaptureResolution,
-    val onCameraFrameCaptured: suspend (cameraFrame: CameraFrame) -> Unit,
+    val onCameraFrameCaptured: (suspend (cameraFrame: CameraFrame) -> Unit)?,
+    val onQrCodeScanned: ((qrCode: String?) -> Unit)?,
     val isShowingPreview: Boolean
-) : AVCaptureVideoDataOutputSampleBufferDelegateProtocol, NSObject() {
+) : AVCaptureVideoDataOutputSampleBufferDelegateProtocol,
+    AVCaptureMetadataOutputObjectsDelegateProtocol,
+    NSObject() {
 
     lateinit var captureSession: AVCaptureSession
         private set
@@ -285,9 +314,29 @@ private class CameraManager(
         if (captureSession.canAddOutput(videoDataOutput)) {
             captureSession.addOutput(videoDataOutput)
         } else {
-            Logger.e(TAG, "Error adding output.")
+            Logger.e(TAG, "Error adding video data output")
             if (::captureSession.isInitialized && captureSession.isRunning()) captureSession.stopRunning()
             return
+        }
+
+
+        if (onQrCodeScanned != null) {
+            val metadataOutput = AVCaptureMetadataOutput()
+            if (captureSession.canAddOutput(metadataOutput)) {
+                captureSession.addOutput(metadataOutput)
+            } else {
+                Logger.e(TAG, "Error adding metadata output")
+                if (::captureSession.isInitialized && captureSession.isRunning()) captureSession.stopRunning()
+                return
+            }
+
+            metadataOutput.metadataObjectTypes = listOf(
+                AVMetadataObjectTypeQRCode
+            )
+            metadataOutput.setMetadataObjectsDelegate(
+                objectsDelegate = this,
+                queue = dispatch_get_main_queue()
+            )
         }
 
         withContext(Dispatchers.IO) {
@@ -358,7 +407,7 @@ private class CameraManager(
                 return
             }
 
-            val boundsToUse = currentPreviewFrame!!
+            val boundsToUse = currentPreviewFrame
 
             previewTransformation = calculatePreviewTransformationMatrix(
                 imageWidth = imageWidth,
@@ -378,21 +427,43 @@ private class CameraManager(
             )
         }
 
-        val cameraFrame = CameraFrame(
-            cameraImage = cameraImage,
-            width = imageWidth.toInt(),
-            height = imageHeight.toInt(),
-            rotation = videoOrientation.toRotationAngle(),
-            previewTransformation = previewTransformation,
-        )
+        if (onCameraFrameCaptured != null) {
+            val cameraFrame = CameraFrame(
+                cameraImage = cameraImage,
+                width = imageWidth.toInt(),
+                height = imageHeight.toInt(),
+                rotation = videoOrientation.toRotationAngle(),
+                previewTransformation = previewTransformation,
+            )
 
-        runBlocking {
-            onCameraFrameCaptured(cameraFrame)
+            runBlocking {
+                onCameraFrameCaptured(cameraFrame)
+            }
         }
 
         // Not recommended but IS needed to avoid lockups, see https://youtrack.jetbrains.com/issue/KT-74239
         GC.collect()
     }
+
+    override fun captureOutput(
+        output: AVCaptureOutput,
+        didOutputMetadataObjects: List<*>,
+        fromConnection: AVCaptureConnection
+    ) {
+        if (onQrCodeScanned == null) {
+            return
+        }
+        if (didOutputMetadataObjects.isEmpty()) {
+            onQrCodeScanned(null)
+        } else {
+            val metadataObj = didOutputMetadataObjects[0] as AVMetadataMachineReadableCodeObject
+            if (metadataObj.type == AVMetadataObjectTypeQRCode) {
+                onQrCodeScanned(metadataObj.stringValue)
+            }
+
+        }
+    }
+
 }
 
 private fun  AVCaptureVideoOrientation.toRotationAngle(): Int =

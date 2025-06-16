@@ -9,8 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.multipaz.compose.qrcode.ShowQrCodeDialog
-import org.multipaz.compose.qrcode.ScanQrCodeDialog
+import com.android.identity.testapp.ui.ShowQrCodeDialog
+import com.android.identity.testapp.ui.ScanQrCodeDialog
 
 @Composable
 fun QrCodesScreen(
@@ -23,8 +23,7 @@ fun QrCodesScreen(
     if (showMdocQrCodeDialog.value) {
         ShowQrCodeDialog(
             title = { Text(text = "Scan code on reader") },
-            text = { Text(text = "Your personal information won't be shared yet. You don't need to hand your " +
-                    "phone to anyone to share your ID.") },
+            text = { Text(text = "This is a QR code from ISO/IEC 18013-5:2021 Annex D.") },
             dismissButton = "Close",
             // This is the DeviceEngagement test vector from ISO/IEC 18013-5:2021 Annex D encoded
             // as specified in clause 8.2.2.3.
@@ -45,19 +44,25 @@ fun QrCodesScreen(
     }
 
     if (showQrScanDialog.value) {
+        val qrCode = remember { mutableStateOf<String?>(null) }
         ScanQrCodeDialog(
             title = { Text ("Scan code") },
-            text = { Text ("Ask the person you wish to request identity attributes from to present" +
-                    " a QR code. This is usually in their identity wallet.") },
+            text = { Text ("If a QR code is detected, it is printed out at the bottom of the dialog") },
             dismissButton = "Close",
             onCodeScanned = { data ->
-                if (data.startsWith("mdoc:")) {
-                    showToast("Scanned mdoc URI $data")
-                    showQrScanDialog.value = false
-                    true
+                qrCode.value = data
+                false
+            },
+            onNoCodeDetected = {
+                qrCode.value = null
+            },
+            additionalContent = {
+                if (qrCode.value == null) {
+                    Text("No QR Code detected")
                 } else {
-                    false
+                    Text("QR: ${qrCode.value}")
                 }
+
             },
             onDismiss = { showQrScanDialog.value = false }
         )
@@ -83,7 +88,7 @@ fun QrCodesScreen(
         item {
             TextButton(
                 onClick = { showQrScanDialog.value = true },
-                content = { Text("Scan mdoc QR code") }
+                content = { Text("Scan QR code") }
             )
         }
     }
