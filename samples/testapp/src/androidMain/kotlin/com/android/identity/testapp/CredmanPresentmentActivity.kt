@@ -28,7 +28,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.json.JSONObject
 import org.multipaz.compose.prompt.PromptDialogs
-import org.multipaz.models.presentment.PresentmentSource
 
 class CredmanPresentmentActivity: FragmentActivity() {
     companion object {
@@ -54,8 +53,8 @@ class CredmanPresentmentActivity: FragmentActivity() {
     @OptIn(ExperimentalDigitalCredentialApi::class)
     private suspend fun startPresentment(app: App) {
         try {
-            val request = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)
-            val credentialId = request!!.selectedEntryId!!
+            val credentialRequest = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)
+            val credentialId = credentialRequest!!.selectedEntryId!!
 
             val stream = assets.open("privilegedUserAgents.json")
             val data = ByteArray(stream.available())
@@ -63,12 +62,12 @@ class CredmanPresentmentActivity: FragmentActivity() {
             stream.close()
             val privilegedUserAgents = data.decodeToString()
 
-            val callingAppInfo = request.callingAppInfo
+            val callingAppInfo = credentialRequest.callingAppInfo
             val callingPackageName = callingAppInfo.packageName
             val callingOrigin = callingAppInfo.getOrigin(privilegedUserAgents)
-            val option = request.credentialOptions[0] as GetDigitalCredentialOption
+            val option = credentialRequest.credentialOptions[0] as GetDigitalCredentialOption
             val json = JSONObject(option.requestJson)
-            val provider = json.getJSONArray("providers").getJSONObject(0)
+            val firstRequest = json.getJSONArray("requests").getJSONObject(0)
 
             val document = app.documentStore.lookupForCredmanId(credentialId)
                 ?: throw Error("No registered document for ID $credentialId")
@@ -76,8 +75,8 @@ class CredmanPresentmentActivity: FragmentActivity() {
             val mechanism = object : DigitalCredentialsPresentmentMechanism(
                 appId = callingPackageName,
                 webOrigin = callingOrigin,
-                protocol = provider.getString("protocol"),
-                request = provider.getString("request"),
+                protocol = firstRequest.getString("protocol"),
+                data = firstRequest.getString("data"),
                 document = document
             ) {
                 override fun sendResponse(response: String) {

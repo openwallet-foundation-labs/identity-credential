@@ -106,8 +106,11 @@ bool Credential::matchesRequest(const Request& request) {
 
 void Credential::addCredentialToPicker(const Request& request) {
     char* cred_id = (char*) id.c_str();
-    void* icon = malloc(bitmap.size());
-    memcpy(icon, bitmap.data(), bitmap.size());
+    void* icon = nullptr;
+    if (bitmap.size() > 0) {
+        icon = malloc(bitmap.size());
+        memcpy(icon, bitmap.data(), bitmap.size());
+    }
     ::AddStringIdEntry(
             cred_id,
             (char*) icon,

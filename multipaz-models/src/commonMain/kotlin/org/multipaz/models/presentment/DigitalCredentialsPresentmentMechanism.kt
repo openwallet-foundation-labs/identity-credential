@@ -9,15 +9,15 @@ import org.multipaz.document.Document
  *
  * @property appId the id of the application making the request.
  * @property webOrigin the origin of the website if the application is a web browser, or `null` if it's not.
- * @property protocol the W3C Digital Credentials protocol field.
- * @property request the W3C Digital Credentials request field.
+ * @property protocol the W3C Digital Credentials `protocol` field.
+ * @property data the W3C Digital Credentials `data` field.
  * @property document the [Document] the request is for or `null` if a document wasn't selected by the user.
  */
 abstract class DigitalCredentialsPresentmentMechanism(
     val appId: String,
     val webOrigin: String?,
     val protocol: String,
-    val request: String,
+    val data: String,
     val document: Document?
 ): PresentmentMechanism {
 

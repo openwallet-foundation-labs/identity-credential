@@ -2,7 +2,6 @@ package org.multipaz.models.presentment
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -22,7 +21,6 @@ import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.addCborArray
 import org.multipaz.cbor.buildCborArray
-import org.multipaz.credential.Credential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -31,16 +29,10 @@ import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.Document
-import org.multipaz.document.DocumentStore
-import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
-import org.multipaz.request.JsonRequest
 import org.multipaz.sdjwt.SdJwtKb
-import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.fromBase64Url
@@ -62,7 +54,7 @@ class DigitalCredentialsPresentmentTest {
 
     class TestPresentmentMechanism(
         protocol: String,
-        request: String,
+        data: String,
         document: Document?,
         var response: String? = null,
         var closed: Boolean = false
@@ -70,7 +62,7 @@ class DigitalCredentialsPresentmentTest {
         appId = APP_ID,
         webOrigin = ORIGIN,
         protocol = protocol,
-        request = request,
+        data = data,
         document = document,
     ) {
         override fun sendResponse(response: String) {
@@ -192,7 +184,7 @@ class DigitalCredentialsPresentmentTest {
 
         val presentmentMechanism = TestPresentmentMechanism(
             protocol = "openid4vp",
-            request = request,
+            data = request,
             document = null,
         )
 

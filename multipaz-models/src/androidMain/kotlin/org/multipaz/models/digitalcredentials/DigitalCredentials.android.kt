@@ -166,11 +166,11 @@ private suspend fun exportMdocCredential(
         cardArt.size,
         options
     )
-    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 128, 128, true)
+    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 48, 48, true)
     val stream = ByteArrayOutputStream()
     scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
     val cardArtResized = stream.toByteArray()
-    Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+    Logger.i(TAG, "Resized cardart to 48x48, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
 
     return buildCborMap {
         put("title", displayName)
@@ -226,11 +226,11 @@ private suspend fun exportSdJwtVcCredential(
         cardArt.size,
         options
     )
-    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 128, 128, true)
+    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 48, 48, true)
     val stream = ByteArrayOutputStream()
     scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
     val cardArtResized = stream.toByteArray()
-    Logger.i(TAG, "Resized cardart to 128x128, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+    Logger.i(TAG, "Resized cardart to 48x48, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
 
     return buildCborMap {
         put("title", displayName)

@@ -22,43 +22,38 @@ extern "C" int main() {
     char* requestBlob = (char*) malloc(requestSize);
     ::GetRequestBuffer(requestBlob);
     cJSON* requestJson = cJSON_Parse(requestBlob);
-    cJSON *providers = cJSON_GetObjectItemCaseSensitive(requestJson, "providers");
-    if (cJSON_IsArray(providers)) {
-        int numProviders = cJSON_GetArraySize(providers);
-        for (int n = 0; n < numProviders; n++) {
-            cJSON *provider = cJSON_GetArrayItem(providers, n);
-            if (!cJSON_IsObject(provider)) {
+    cJSON *requests = cJSON_GetObjectItemCaseSensitive(requestJson, "requests");
+    if (cJSON_IsArray(requests)) {
+        int numRequests = cJSON_GetArraySize(requests);
+        for (int n = 0; n < numRequests; n++) {
+            cJSON *request = cJSON_GetArrayItem(requests, n);
+            if (!cJSON_IsObject(request)) {
                 continue;
             }
-            cJSON *protocol = cJSON_GetObjectItem(provider, "protocol");
-            std::string protocolValue = std::string(cJSON_GetStringValue(protocol));
-            cJSON *protocolRequest = cJSON_GetObjectItem(provider, "request");
-            const char* protocolRequestValue = cJSON_GetStringValue(protocolRequest);
-            cJSON* protocolRequestJson = cJSON_Parse(protocolRequestValue);
 
-            std::unique_ptr<Request> request;
+            std::unique_ptr<Request> r;
             if (protocolValue == "preview") {
                 // The OG "preview" protocol.
                 //
-                request = std::move(Request::parsePreview(protocolRequestJson));
+                r = std::move(Request::parsePreview(protocolData));
             } else if (protocolValue == "openid4vp") {
                 // 18013-7 Annex D
                 //
-                request = std::move(Request::parseOpenID4VP(protocolRequestJson));
-            } else if (protocolValue == "org.iso.mdoc") {
+                r = std::move(Request::parseOpenID4VP(protocolData));
+            } else if (protocolValue == "org.iso.mdoc" || protocolValue == "org-iso-mdoc") {
                 // 18013-7 Annex C
                 //
-                request = std::move(Request::parseMdocApi(protocolRequestJson));
+                r = std::move(Request::parseMdocApi(protocolData));
             } else if (protocolValue == "austroads-request-forwarding-v2") {
                 // From a matcher point of view, ARFv2 is structurally equivalent to mdoc-api
                 //
-                request = std::move(Request::parseMdocApi(protocolRequestJson));
+                r = std::move(Request::parseMdocApi(protocolData));
             }
 
-            if (request) {
+            if (r) {
                 for (auto& credential : db->credentials) {
-                    if (credential.matchesRequest(*request)) {
-                        credential.addCredentialToPicker(*request);
+                    if (credential.matchesRequest(*r)) {
+                        credential.addCredentialToPicker(*r);
                     }
                 }
             }
