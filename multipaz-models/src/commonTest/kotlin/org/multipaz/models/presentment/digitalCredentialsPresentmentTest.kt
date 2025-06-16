@@ -4,17 +4,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
@@ -24,22 +17,26 @@ import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.JsonWebEncryption
-import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.Document
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.openid.OpenID4VP
 import org.multipaz.request.Request
 import org.multipaz.sdjwt.SdJwtKb
 import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.util.Constants
+import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DigitalCredentialsPresentmentTest {
     companion object {
@@ -91,16 +88,14 @@ class DigitalCredentialsPresentmentTest {
     private suspend fun testOpenID4VP(
         version: Int,
         signRequest: Boolean,
-        encryptResponse: Boolean,
+        encryptionKey: EcPrivateKey?,
         dcql: JsonObject
     ): TestOpenID4VPResponse {
-        require(version == 24) { "Only OpenID4VP draft 24 is currently supported" }
+        require(version == 24 || version == 29) { "Only OpenID4VP draft 24 or 29 is currently supported" }
 
         documentStoreTestHarness.initialize()
 
         val presentmentModel = PresentmentModel()
-
-        val encryptionKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
         val readerTrustManager = TrustManager()
         val presentmentSource = SimplePresentmentSource(
@@ -114,77 +109,61 @@ class DigitalCredentialsPresentmentTest {
 
         val nonce = Random.Default.nextBytes(16).toBase64Url()
 
-        // TODO: factor OpenID4VP request building to library to share this with verifier code e.g. VerifierServlet.kt
-        val requestObject = buildJsonObject {
-            put("response_type", "vp_token")
-            put("response_mode", if (encryptResponse) "dc_api.jwt" else "dc_api")
-            if (signRequest) {
-                put("client_id", CLIENT_ID)
-                putJsonArray("expected_origins") {
-                    add(ORIGIN)
-                }
-            }
-            put("dcql_query", dcql)
-            put("nonce", nonce)
-            putJsonObject("client_metadata") {
-                put("vp_formats", buildJsonObject {
-                    putJsonObject("mso_mdoc") {
-                        putJsonArray("alg") {
-                            add("ES256")
-                        }
-                    }
-                    putJsonObject("dc+sd-jwt") {
-                        putJsonArray("sd-jwt_alg_values") {
-                            add("ES256")
-                        }
-                        putJsonArray("kb-jwt_alg_values") {
-                            add("ES256")
-                        }
-                    }
-                })
-                if (encryptResponse) {
-                    put("authorization_encrypted_response_alg", "ECDH-ES")
-                    put("authorization_encrypted_response_enc", "A128GCM")
-                    putJsonObject("jwks") {
-                        putJsonArray("keys") {
-                            add(encryptionKey.publicKey.toJwk())
-                        }
-                    }
-                }
-            }
-        }
-
-        val readerAuthKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val readerAuthCert = MdocUtil.generateReaderCertificate(
-            readerRootCert = documentStoreTestHarness.readerRootCert,
-            readerRootKey = documentStoreTestHarness.readerRootKey,
-            readerKey = readerAuthKey.publicKey,
-            subject = X500Name.fromName("CN=Multipaz Reader Cert Single-Use key"),
-            serial = ASN1Integer.fromRandom(128),
-            validFrom = documentStoreTestHarness.readerRootCert.validityNotBefore,
-            validUntil = documentStoreTestHarness.readerRootCert.validityNotAfter
-        )
-
-        val request = if (signRequest) {
-            buildJsonObject {
-                put(
-                    "request",
-                    JsonWebSignature.sign(
-                        key = readerAuthKey,
-                        signatureAlgorithm = readerAuthKey.curve.defaultSigningAlgorithmFullySpecified,
-                        claimsSet = requestObject,
-                        type = "oauth-authz-req+jwt",
-                        x5c = X509CertChain(listOf(readerAuthCert, documentStoreTestHarness.readerRootCert))
-                    )
-                )
-            }.toString()
+        val (readerAuthKey, readerAuthCert) = if (signRequest) {
+            val key = Crypto.createEcPrivateKey(EcCurve.P256)
+            val cert = MdocUtil.generateReaderCertificate(
+                readerRootCert = documentStoreTestHarness.readerRootCert,
+                readerRootKey = documentStoreTestHarness.readerRootKey,
+                readerKey = key.publicKey,
+                subject = X500Name.fromName("CN=Multipaz Reader Cert Single-Use key"),
+                serial = ASN1Integer.fromRandom(128),
+                validFrom = documentStoreTestHarness.readerRootCert.validityNotBefore,
+                validUntil = documentStoreTestHarness.readerRootCert.validityNotAfter
+            )
+            Pair(key, cert)
         } else {
-            requestObject.toString()
+            Pair(null, null)
         }
 
+        val requestString = if (version == 29) {
+            OpenID4VP.generateRequest(
+                origin = ORIGIN,
+                clientId = CLIENT_ID,
+                nonce = nonce,
+                responseEncryptionKey = encryptionKey?.publicKey,
+                requestSigningKey = readerAuthKey,
+                requestSigningKeyCertification = readerAuthCert?.let {
+                    X509CertChain(listOf(it, documentStoreTestHarness.readerRootCert))
+                },
+                dclqQuery = dcql
+            ).toString()
+        } else {
+            OpenID4VP.generateRequestDraft24(
+                origin = ORIGIN,
+                clientId = CLIENT_ID,
+                nonce = nonce,
+                responseEncryptionKey = encryptionKey?.publicKey,
+                requestSigningKey = readerAuthKey,
+                requestSigningKeyCertification = readerAuthCert?.let {
+                    X509CertChain(listOf(it, documentStoreTestHarness.readerRootCert))
+                },
+                dclqQuery = dcql
+            ).toString()
+        }
+
+
+        val protocol = if (version == 24) {
+            "openid4vp"
+        } else {
+            if (signRequest) {
+                "openid4vp-v1-signed"
+            } else {
+                "openid4vp-v1-unsigned"
+            }
+        }
         val presentmentMechanism = TestPresentmentMechanism(
-            protocol = "openid4vp",
-            data = request,
+            protocol = protocol,
+            data = requestString,
             document = null,
         )
 
@@ -203,9 +182,24 @@ class DigitalCredentialsPresentmentTest {
             }
         )
         val dcResponseObject = Json.decodeFromString(JsonObject.serializer(), presentmentMechanism.response!!)
-        val decryptedDcResponse = if (encryptResponse) {
+        val decryptedDcResponse = if (encryptionKey != null) {
+            val jweCompactSerialization = dcResponseObject["response"]!!.jsonPrimitive.content
+            if (version == 29) {
+                // From Section 8.3: If the selected public key contains a kid parameter, the JWE MUST
+                // include the same value in the kid JWE Header Parameter (as defined in Section 4.1.6)
+                // of the encrypted response.
+                val protectedHeader = Json.decodeFromString(
+                    JsonObject.serializer(),
+                    jweCompactSerialization.split('.')[0].fromBase64Url().decodeToString()
+                )
+                assertEquals(
+                    "response-encryption-key",
+                    protectedHeader["kid"]!!.jsonPrimitive.content
+                )
+            }
+
             JsonWebEncryption.decrypt(
-                dcResponseObject["response"]!!.jsonPrimitive.content,
+                jweCompactSerialization,
                 encryptionKey
             )
         } else {
@@ -234,47 +228,73 @@ class DigitalCredentialsPresentmentTest {
         //
         val vpToken = mutableMapOf<String, List<String>>()
         for ((credId, result) in decryptedDcResponse["vp_token"]!!.jsonObject) {
-            when {
-                result is JsonPrimitive -> vpToken[credId] = listOf(result.jsonPrimitive.content)
-                result is JsonArray -> vpToken[credId] = result.jsonArray.toList().map { it.jsonPrimitive.content }
+            vpToken[credId] = when (version) {
+                24 -> listOf(result.jsonPrimitive.content)
+                29 -> result.jsonArray.toList().map { it.jsonPrimitive.content }
                 else -> throw IllegalStateException("Unexpected value $result in vpToken")
             }
         }
-
 
         return TestOpenID4VPResponse(
             shownConsentPrompts = shownConsentPrompts,
             vpToken = vpToken,
             nonce = nonce,
             origin = ORIGIN,
-            clientId = CLIENT_ID,
+            clientId = if (version == 29) {
+                if (signRequest) {
+                    CLIENT_ID
+                } else {
+                    "web-origin:$ORIGIN"
+                }
+            } else {
+                CLIENT_ID
+            }
         )
     }
 
     suspend fun test_OpenID4VP_mdoc(
         version: Int,
         signRequest: Boolean,
-        encryptResponse: Boolean,
+        encryptionKey: EcPrivateKey?,
         dcql: String,
         expectedMdocResponse: String
     ) {
         val response = testOpenID4VP(
             version = version,
             signRequest = signRequest,
-            encryptResponse = encryptResponse,
+            encryptionKey = encryptionKey,
             dcql = Json.decodeFromString(JsonObject.serializer(), dcql)
         )
         assertEquals(1, response.vpToken.keys.size)
         val credId = response.vpToken.keys.first()
         val encodedDeviceResponse = response.vpToken[credId]!![0].fromBase64Url()
 
-        val handoverInfo = Cbor.encode(
-            buildCborArray {
-                add(response.origin)
-                add(response.clientId)
-                add(response.nonce)
-            }
-        )
+        val handoverInfo = if (version == 29) {
+            Cbor.encode(
+                buildCborArray {
+                    add(response.origin)
+                    add(response.nonce)
+                    if (encryptionKey != null) {
+                        add(encryptionKey.publicKey.toJwkThumbprint(Algorithm.SHA256).toByteArray())
+                    } else {
+                        add(Simple.NULL)
+                    }
+                }
+            )
+        } else {
+            Cbor.encode(
+                buildCborArray {
+                    add(response.origin)
+                    if (signRequest) {
+                        add(response.clientId)
+                    } else {
+                        add("web-origin:${response.origin}")
+                    }
+                    add(response.nonce)
+                }
+            )
+        }
+        Logger.iCbor(TAG, "handoverInfo", handoverInfo)
         val encodedSessionTranscript = Cbor.encode(
             buildCborArray {
                 add(Simple.NULL) // DeviceEngagementBytes
@@ -285,38 +305,46 @@ class DigitalCredentialsPresentmentTest {
                 }
             }
         )
+        val deviceResponse = DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript).parse()
+        assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, deviceResponse.status)
+        assertEquals(1, deviceResponse.documents.size)
+        val doc = deviceResponse.documents[0]
+        assertTrue(doc.issuerSignedAuthenticated)
+        assertTrue(doc.deviceSignedAuthenticated)
+        assertEquals(0, doc.numIssuerEntryDigestMatchFailures)
         assertEquals(
             expectedMdocResponse,
-            DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript).parse().prettyPrint().trim()
+            deviceResponse.prettyPrint().trim()
         )
     }
 
     suspend fun test_OpenID4VP_sdJwt(
         version: Int,
         signRequest: Boolean,
-        encryptResponse: Boolean,
+        encryptionKey: EcPrivateKey?,
         dcql: String,
         expectedSdJwtResponse: String
     ) {
         val response = testOpenID4VP(
             version = version,
             signRequest = signRequest,
-            encryptResponse = encryptResponse,
+            encryptionKey = encryptionKey,
             dcql = Json.decodeFromString(JsonObject.serializer(), dcql)
         )
         assertEquals(1, response.vpToken.keys.size)
         val credId = response.vpToken.keys.first()
         val compactSerialization = response.vpToken[credId]!![0]
         val sdJwtKb = SdJwtKb(compactSerialization)
+        val expectedAudience = if (version == 29) {
+            "origin:$ORIGIN"
+        } else {
+            if (signRequest) CLIENT_ID else "web-origin:$ORIGIN"
+        }
         val processedJwt = sdJwtKb.verify(
             issuerKey = documentStoreTestHarness.dsKey.publicKey,
             checkNonce = { nonce -> nonce == response.nonce },
             checkAudience = { audience ->
-                if (signRequest) {
-                    audience == CLIENT_ID
-                } else {
-                    audience == "web-origin:$ORIGIN"
-                }
+                    expectedAudience == audience
             },
             checkCreationTime = { creationTime -> true },
         ).filterKeys { key -> !setOf("iat", "nbf", "exp", "cnf").contains(key) }  // filter out variable claims
@@ -334,10 +362,11 @@ class DigitalCredentialsPresentmentTest {
         signRequest: Boolean,
         encryptResponse: Boolean,
     ) {
+        val encryptionKey = if (encryptResponse) Crypto.createEcPrivateKey(EcCurve.P256) else null
         test_OpenID4VP_mdoc(
             version = version,
             signRequest = signRequest,
-            encryptResponse = encryptResponse,
+            encryptionKey = encryptionKey,
             dcql =
                 """
                     {
@@ -367,10 +396,11 @@ class DigitalCredentialsPresentmentTest {
         signRequest: Boolean,
         encryptResponse: Boolean,
     ) {
+        val encryptionKey = if (encryptResponse) Crypto.createEcPrivateKey(EcCurve.P256) else null
         test_OpenID4VP_sdJwt(
             version = version,
             signRequest = signRequest,
-            encryptResponse = encryptResponse,
+            encryptionKey = encryptionKey,
             dcql =
                 """
                     {
@@ -408,6 +438,16 @@ class DigitalCredentialsPresentmentTest {
     @Test fun OID4VP_24_NoSignedRequest_EncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(24, false, true) }
     @Test fun OID4VP_24_SignedRequest_NoEncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(24, true, false) }
     @Test fun OID4VP_24_SignedRequest_EncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(24, true, true) }
+
+    @Test fun OID4VP_29_NoSignedRequest_NoEncryptedResponse_mDL() = runTest { test_OID4VP_mDL(29, false, false) }
+    @Test fun OID4VP_29_NoSignedRequest_EncryptedResponse_mDL() = runTest { test_OID4VP_mDL(29, false, true) }
+    @Test fun OID4VP_29_SignedRequest_NoEncryptedResponse_mDL() = runTest { test_OID4VP_mDL(29, true, false) }
+    @Test fun OID4VP_29_SignedRequest_EncryptedResponse_mDL() = runTest { test_OID4VP_mDL(29, true, true) }
+
+    @Test fun OID4VP_29_NoSignedRequest_NoEncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(29, false, false) }
+    @Test fun OID4VP_29_NoSignedRequest_EncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(29, false, true) }
+    @Test fun OID4VP_29_SignedRequest_NoEncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(29, true, false) }
+    @Test fun OID4VP_29_SignedRequest_EncryptedResponse_SDJWT() = runTest { test_OID4VP_SDJWT(29, true, true) }
 
 }
 

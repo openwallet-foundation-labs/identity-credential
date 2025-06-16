@@ -28,5 +28,5 @@ struct Request {
 
     static std::unique_ptr<Request> parsePreview(cJSON *requestJson);
     static std::unique_ptr<Request> parseMdocApi(cJSON *requestJson);
-    static std::unique_ptr<Request> parseOpenID4VP(cJSON *requestJson);
+    static std::unique_ptr<Request> parseOpenID4VP(cJSON *requestJson, std::string protocolValue);
 };

@@ -30,16 +30,21 @@ extern "C" int main() {
             if (!cJSON_IsObject(request)) {
                 continue;
             }
+            cJSON *protocol = cJSON_GetObjectItem(request, "protocol");
+            std::string protocolValue = std::string(cJSON_GetStringValue(protocol));
+            cJSON *protocolData = cJSON_GetObjectItem(request, "data");
 
             std::unique_ptr<Request> r;
             if (protocolValue == "preview") {
                 // The OG "preview" protocol.
                 //
                 r = std::move(Request::parsePreview(protocolData));
-            } else if (protocolValue == "openid4vp") {
-                // 18013-7 Annex D
+            } else if (protocolValue == "openid4vp" ||
+                       protocolValue == "openid4vp-v1-unsigned" ||
+                       protocolValue == "openid4vp-v1-signed") {
+                // OpenID4VP
                 //
-                r = std::move(Request::parseOpenID4VP(protocolData));
+                r = std::move(Request::parseOpenID4VP(protocolData, protocolValue));
             } else if (protocolValue == "org.iso.mdoc" || protocolValue == "org-iso-mdoc") {
                 // 18013-7 Annex C
                 //

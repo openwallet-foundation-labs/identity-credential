@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="origin-trial" content="AqrF+vKVQZS3y5OJ3K2wkWZ4yEVxroNpC0oQR3kFeRmnvjBw+T9NPftQV9reLYszk8kNYyF1Zw+u3UZ9PMuxFQIAAACBeyJvcmlnaW4iOiJodHRwczovL2RpZ2l0YWwtY3JlZGVudGlhbHMuZGV2OjQ0MyIsImZlYXR1cmUiOiJXZWJJZGVudGl0eURpZ2l0YWxDcmVkZW50aWFscyIsImV4cGlyeSI6MTc0NDc2MTU5OSwiaXNTdWJkb21haW4iOnRydWV9">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>OWF Digital Document Online Verifier</title>
+    <title>OWF Multipaz Verifier</title>
     <link rel="icon" type="image/x-icon" href="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/fingerprint/default/24px.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -15,7 +15,7 @@
 <div class="col-lg-8 mx-auto p-4 py-md-5">
     <header class="d-flex align-items-center pb-3 mb-4 border-bottom">
         <a href="/" class="d-flex align-items-center text-body-emphasis text-decoration-none">
-            <span class="fs-4">OWF Digital Document Online Verifier</span>
+            <span class="fs-4">OWF Multipaz Verifier</span>
         </a>
     </header>
 
@@ -36,20 +36,23 @@
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle btn-lg overflow-visible" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false" id="protocolDropdown">
-                    W3C Digital Credentials API (OpenID4VP)
+                    W3C DC API (OpenID4VP Draft 29)
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item mdoc-only" value="w3c_dc_preview" href="#">
-                        W3C Digital Credentials API (Preview)
+                        W3C DC API (Preview)
                     </a></li>
                     <li><a class="dropdown-item mdoc-only" value="w3c_dc_arf" href="#">
-                        W3C Digital Credentials API (Austroads Request Forwarding)
+                        W3C DC API (Austroads Request Forwarding)
                     </a></li>
                     <li><a class="dropdown-item mdoc-only" value="w3c_dc_mdoc_api" href="#">
-                        W3C Digital Credentials API (18013-7 Annex C)
+                        W3C DC API (18013-7 Annex C)
                     </a></li>
-                    <li><a class="dropdown-item" value="w3c_dc_openid4vp" href="#">
-                        W3C Digital Credentials API (OpenID4VP)
+                    <li><a class="dropdown-item" value="w3c_dc_openid4vp_24" href="#">
+                        W3C DC API (OpenID4VP Draft 24)
+                    </a></li>
+                    <li><a class="dropdown-item" value="w3c_dc_openid4vp_29" href="#">
+                        W3C DC API (OpenID4VP Draft 29)
                     </a></li>
                     <li><a class="dropdown-item" value="openid4vp_plain" href="#">
                         OpenID4VP (openid4vp:// URI scheme)
@@ -81,7 +84,7 @@
 
     </main>
     <footer class="pt-5 my-5 text-body-secondary border-top">
-        This verifier is part of the <a href="https://github.com/openwallet-foundation-labs/identity-credential">OWF Identity Credential</a> project
+        This verifier is part of the <a href="https://github.com/openwallet-foundation-labs/identity-credential">OWF Multipaz</a> project
         and is considered experimental software. Use at your own risk. <a href="verifier/readerRootCert">Reader Root Certificate</a>.
     </footer>
 </div>

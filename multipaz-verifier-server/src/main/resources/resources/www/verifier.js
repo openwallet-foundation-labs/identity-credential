@@ -1,6 +1,6 @@
 
 // Keep in sync with verifier.html
-var selectedProtocol = 'w3c_dc_openid4vp'
+var selectedProtocol = 'w3c_dc_openid4vp_29'
 
 // If the user clicks on one of the protocol entries, that becomes both the selected and the
 // preferred protocol. If the selected protocol is disabled (because, for instance, the user selects
@@ -19,7 +19,8 @@ async function onLoad() {
         if (selected === 'w3c_dc_preview' ||
             selected === 'w3c_dc_arf' ||
             selected === 'w3c_dc_mdoc_api' ||
-            selected === 'w3c_dc_openid4vp' ||
+            selected === 'w3c_dc_openid4vp_24' ||
+            selected === 'w3c_dc_openid4vp_29' ||
             selected === 'openid4vp_plain' ||
             selected === 'openid4vp_eudi' ||
             selected === 'openid4vp_mdoc' ||
@@ -32,10 +33,10 @@ async function onLoad() {
             scheme.hidden = (selected !== 'openid4vp_custom')
 
             const openid4vp_sign_request_checkbox = document.getElementById("openid4vp-sign-request")
-            openid4vp_sign_request_checkbox.hidden = (selected !== 'w3c_dc_openid4vp')
+            openid4vp_sign_request_checkbox.hidden = (selected !== 'w3c_dc_openid4vp_24' && selected !== 'w3c_dc_openid4vp_29')
 
             const openid4vp_encrypt_response_checkbox = document.getElementById("openid4vp-encrypt-response")
-            openid4vp_encrypt_response_checkbox.hidden = (selected !== 'w3c_dc_openid4vp')
+            openid4vp_encrypt_response_checkbox.hidden = (selected !== 'w3c_dc_openid4vp_24' && selected !== 'w3c_dc_openid4vp_29')
         }
     })
 
@@ -205,9 +206,9 @@ function updateProtocolOptions(mdocOrVc) {
     }
 
     const openid4vp_sign_request_checkbox = document.getElementById("openid4vp-sign-request")
-    openid4vp_sign_request_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp')
+    openid4vp_sign_request_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp_24' && selectedProtocol !== 'w3c_dc_openid4vp_29')
     const openid4vp_encrypt_response_checkbox = document.getElementById("openid4vp-encrypt-response")
-    openid4vp_encrypt_response_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp')
+    openid4vp_encrypt_response_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp_24' && selectedProtocol !== 'w3c_dc_openid4vp_29')
 }
 
 async function onLoadRedirect() {
@@ -239,22 +240,33 @@ async function requestDocumentRawDcql() {
     const textArea = document.getElementById('rawDclqTextArea')
     const rawDcql = textArea.value
     console.log('requestDocumentRawDcql, rawDcql=' + rawDcql)
-    if (selectedProtocol != "w3c_dc_openid4vp") {
-        alert("Only OpenID4VP supports Raw DCQL.")
+    if (selectedProtocol != "w3c_dc_openid4vp_24" && selectedProtocol !== 'w3c_dc_openid4vp_29') {
+        alert("Only OpenID4VP over W3C DC supports Raw DCQL.")
         return
     }
     try {
+        var signRequest = document.getElementById("openid4vp-sign-request-input").checked
         const response = await callServer(
             'dcBeginRawDcql',
             {
                 rawDcql: rawDcql,
+                protocol: selectedProtocol,
                 origin: location.origin,
                 host: location.host,
-                signRequest: document.getElementById("openid4vp-sign-request-input").checked,
+                signRequest: signRequest,
                 encryptResponse: document.getElementById("openid4vp-encrypt-response-input").checked
             }
         )
-        dcRequestCredential(response.sessionId, 'openid4vp', JSON.parse(response.dcRequestString))
+        var requestString = JSON.parse(response.dcRequestString)
+        if (selectedProtocol === "w3c_dc_openid4vp_29") {
+          if (signRequest) {
+            dcRequestCredential(response.sessionId, 'openid4vp-v1-signed', requestString)
+          } else {
+            dcRequestCredential(response.sessionId, 'openid4vp-v1-unsigned', requestString)
+          }
+        } else {
+            dcRequestCredential(response.sessionId, 'openid4vp', requestString)
+        }
     } catch (err) {
         alert("Something went wrong: " + err)
     }
@@ -353,8 +365,9 @@ async function requestDocument(format, docType, requestId) {
         } catch (err) {
             alert("Something went wrong: " + err)
         }
-    } else if (selectedProtocol === "w3c_dc_openid4vp") {
+    } else if (selectedProtocol === "w3c_dc_openid4vp_24" || selectedProtocol === 'w3c_dc_openid4vp_29') {
         try {
+            var signRequest = document.getElementById("openid4vp-sign-request-input").checked
             const response = await callServer(
                 'dcBegin',
                 {
@@ -364,11 +377,20 @@ async function requestDocument(format, docType, requestId) {
                     protocol: selectedProtocol,
                     origin: location.origin,
                     host: location.host,
-                    signRequest: document.getElementById("openid4vp-sign-request-input").checked,
+                    signRequest: signRequest,
                     encryptResponse: document.getElementById("openid4vp-encrypt-response-input").checked
                 }
             )
-            dcRequestCredential(response.sessionId, 'openid4vp', JSON.parse(response.dcRequestString))
+            var requestString = JSON.parse(response.dcRequestString)
+            if (selectedProtocol === "w3c_dc_openid4vp_29") {
+              if (signRequest) {
+                dcRequestCredential(response.sessionId, 'openid4vp-v1-signed', requestString)
+              } else {
+                dcRequestCredential(response.sessionId, 'openid4vp-v1-unsigned', requestString)
+              }
+            } else {
+                dcRequestCredential(response.sessionId, 'openid4vp', requestString)
+            }
         } catch (err) {
             alert("Something went wrong: " + err)
         }

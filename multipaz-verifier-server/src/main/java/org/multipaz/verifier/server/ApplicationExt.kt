@@ -42,6 +42,7 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
                 throw err
             } catch (err: Throwable) {
                 Logger.e(TAG, "Error", err)
+                err.printStackTrace()
                 call.respondText(
                     status = HttpStatusCode.InternalServerError,
                     text = err::class.simpleName + ": " + err.message,

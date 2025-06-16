@@ -88,7 +88,7 @@ std::unique_ptr<Request> Request::parseMdocApi(cJSON* dataJson) {
     return std::unique_ptr<Request> { new Request(docTypeValue, dataElements) };
 }
 
-std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson) {
+std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson, std::string protocolName) {
     std::string docTypeValue = "";
     auto dataElements = std::vector<MdocRequestDataElement>();
     std::vector<std::string> vctValues;

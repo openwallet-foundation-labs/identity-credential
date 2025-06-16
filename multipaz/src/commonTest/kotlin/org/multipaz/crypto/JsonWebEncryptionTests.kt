@@ -9,12 +9,15 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.multipaz.util.appendInt32
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import org.multipaz.util.toHex
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class JsonWebEncryptionTests {
 
@@ -64,18 +67,37 @@ class JsonWebEncryptionTests {
                 })
             })
         }
+        val apu = ByteString(1, 2, 3)
+        val apv = ByteString(4, 5, 6)
+        val encryptedJwt = JsonWebEncryption.encrypt(
+            claimsSet = claims,
+            recipientPublicKey = recipientKey.publicKey,
+            encAlg = encAlg,
+            apu = apu,
+            apv = apv,
+            kid = "foobar",
+            compressionLevel = if (useCompression) 5 else null
+        )
         val decryptedClaims = JsonWebEncryption.decrypt(
-            encryptedJwt = JsonWebEncryption.encrypt(
-                claimsSet = claims,
-                recipientPublicKey = recipientKey.publicKey,
-                encAlg = encAlg,
-                apu = ByteString(1, 2, 3),
-                apv = ByteString(4, 5, 6),
-                compressionLevel = if (useCompression) 5 else null
-            ),
+            encryptedJwt = encryptedJwt,
             recipientKey = recipientKey
         )
         assertEquals(decryptedClaims, claims)
+
+        // Check protected header
+        val splits = encryptedJwt.split('.')
+        assertEquals(5, splits.size)
+        val ph = Json.decodeFromString(JsonObject.serializer(), splits[0].fromBase64Url().decodeToString())
+        assertEquals("ECDH-ES", ph["alg"]!!.jsonPrimitive.content)
+        assertEquals(encAlg.joseAlgorithmIdentifier, ph["enc"]!!.jsonPrimitive.content)
+        assertEquals("foobar", ph["kid"]!!.jsonPrimitive.content)
+        if (useCompression) {
+            assertEquals("DEF", ph["zip"]!!.jsonPrimitive.content)
+        } else {
+            assertNull(ph["zip"])
+        }
+        assertEquals(apu.toByteArray().toBase64Url(), ph["apu"]!!.jsonPrimitive.content)
+        assertEquals(apv.toByteArray().toBase64Url(), ph["apv"]!!.jsonPrimitive.content)
     }
 
     @Test
