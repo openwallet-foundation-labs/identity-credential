@@ -8,7 +8,7 @@ import io.ktor.server.response.respondText
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.codeToId
-import org.multipaz.openid4vci.util.getBaseUrl
+import org.multipaz.server.getBaseUrl
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.handler.InvalidRequestException

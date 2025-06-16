@@ -15,6 +15,7 @@ import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.openid4vci.credential.Openid4VciFormatMdoc
 import org.multipaz.openid4vci.credential.Openid4VciFormatSdJwt
 import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.server.baseUrl
 
 const val PREFIX = "openid4vci.issuer"
 
@@ -23,7 +24,7 @@ const val PREFIX = "openid4vci.issuer"
  */
 suspend fun wellKnownOpenidCredentialIssuer(call: ApplicationCall) {
     val configuration = BackendEnvironment.getInterface(Configuration::class)!!
-    val baseUrl = configuration.getValue("base_url")
+    val baseUrl = configuration.baseUrl
     val name = configuration.getValue("issuer_name") ?: "Multipaz Sample Issuer"
     val locale = configuration.getValue("issuer_locale") ?: "en-US"
     call.respondText(

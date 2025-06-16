@@ -5,6 +5,8 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.callloging.CallLogging
 import org.multipaz.server.ServerConfiguration
+import org.multipaz.server.serverHost
+import org.multipaz.server.serverPort
 
 /**
  * Main entry point to launch the server.
@@ -18,9 +20,8 @@ class Main {
         @JvmStatic
         fun main(args: Array<String>) {
             val configuration = ServerConfiguration(args)
-            val port = (configuration.getValue("serverPort") ?: "8007").toInt()
-            val host = configuration.getValue("serverHost") ?: "0.0.0.0"
-            embeddedServer(Netty, port = port, host = host, module = {
+            val host = configuration.serverHost ?: "0.0.0.0"
+            embeddedServer(Netty, port = configuration.serverPort, host = host, module = {
                 install(CallLogging)
                 traceCalls(configuration)
                 configureRouting(configuration)

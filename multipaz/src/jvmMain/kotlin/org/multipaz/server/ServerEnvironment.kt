@@ -69,9 +69,9 @@ class ServerEnvironment(
         private suspend fun initialize(configuration: Configuration): ServerEnvironment {
 
             val storage = JdbcStorage(
-                configuration.getValue("databaseConnection") ?: defaultDatabase(),
-                configuration.getValue("databaseUser") ?: "",
-                configuration.getValue("databasePassword") ?: ""
+                configuration.getValue("database_connection") ?: defaultDatabase(),
+                configuration.getValue("database_user") ?: "",
+                configuration.getValue("database_password") ?: ""
             )
 
             val httpClient = HttpClient(Java) {

@@ -17,6 +17,7 @@ import org.multipaz.openid4vci.util.codeToId
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Configuration
+import org.multipaz.server.getBaseUrl
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -29,11 +30,11 @@ suspend fun openid4VpResponse(call: ApplicationCall) {
     val id = codeToId(OpaqueIdType.OPENID4VP_STATE, stateCode)
     val state = IssuanceState.getIssuanceState(id)
 
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
-        val credMap = state.openid4VpVerifierModel!!.processResponse(
-            "$baseUrl/openid4vp-response",
-            parameters["response"]!!
-        )
+    val baseUrl = BackendEnvironment.getBaseUrl()
+    val credMap = state.openid4VpVerifierModel!!.processResponse(
+        "$baseUrl/openid4vp-response",
+        parameters["response"]!!
+    )
 
     val presentation = credMap["pid"]!!
     val data = NameSpacedData.Builder()

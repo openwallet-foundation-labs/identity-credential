@@ -38,7 +38,7 @@ suspend fun<ResourceT : Any> BackendEnvironment.Companion.cache(
     clazz: KClass<ResourceT>,
     key: Any = "",
     factory: suspend (Configuration, Resources) -> ResourceT): ResourceT =
-    BackendEnvironment.get(coroutineContext).cache(clazz, key, factory)
+        get(coroutineContext).cache(clazz, key, factory)
 
 private val cache = WeakHashMap<Configuration, WeakHashMap<Resources, EnvironmentCache>>()
 

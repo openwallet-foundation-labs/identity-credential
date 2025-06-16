@@ -9,12 +9,13 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Configuration
+import org.multipaz.server.getBaseUrl
 
 /**
  * Generates `.well-known/oauth-authorization-server` metadata file.
  */
 suspend fun wellKnownOauthAuthorization(call: ApplicationCall) {
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
     call.respondText(
         text = buildJsonObject {
             put("issuer", baseUrl)

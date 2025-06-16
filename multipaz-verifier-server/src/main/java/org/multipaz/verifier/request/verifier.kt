@@ -59,6 +59,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -81,6 +82,7 @@ import kotlinx.serialization.json.putJsonObject
 import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
 import net.minidev.json.JSONStyle
+import org.bouncycastle.util.BigIntegers
 import org.multipaz.asn1.ASN1
 import org.multipaz.asn1.ASN1Encoding
 import org.multipaz.asn1.ASN1Sequence
@@ -99,6 +101,10 @@ import org.multipaz.rpc.cache
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.SdJwtKb
+import org.multipaz.server.ServerIdentity
+import org.multipaz.server.baseUrl
+import org.multipaz.server.getBaseUrl
+import org.multipaz.server.getServerIdentity
 import java.net.URLEncoder
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
@@ -265,65 +271,6 @@ private data class DCArfResponse(
     val encryptedResponse: String
 )
 
-data class KeyMaterial(
-    val readerRootKey: EcPrivateKey,
-    val readerRootKeyCertificates: X509CertChain,
-    val readerRootKeySignatureAlgorithm: Algorithm,
-    val readerRootKeyIssuer: String,
-) {
-    fun toCbor() = Cbor.encode(
-        buildCborArray {
-            add(readerRootKey.toCoseKey().toDataItem())
-            add(readerRootKeyCertificates.toDataItem())
-            add(readerRootKeySignatureAlgorithm.coseAlgorithmIdentifier!!)
-            add(readerRootKeyIssuer)
-        }
-    )
-
-    companion object {
-        fun fromCbor(encodedCbor: ByteArray): KeyMaterial {
-            val array = Cbor.decode(encodedCbor).asArray
-            return KeyMaterial(
-                array[0].asCoseKey.ecPrivateKey,
-                array[1].asX509CertChain,
-                Algorithm.fromCoseAlgorithmIdentifier(array[2].asNumber.toInt()),
-                array[3].asTstr,
-            )
-        }
-
-        fun createKeyMaterial(): KeyMaterial {
-            val now = Clock.System.now()
-            val validFrom = now
-            val validUntil = now.plus(DateTimePeriod(years = 10), TimeZone.currentSystemDefault())
-
-            // Create Reader Root w/ self-signed certificate.
-            //
-            // TODO: Migrate to Curve P-384 once we migrate off com.nimbusds.* which
-            // only supports Curve P-256.
-            //
-            val readerRootKey = Crypto.createEcPrivateKey(EcCurve.P256)
-            val readerRootKeySignatureAlgorithm = Algorithm.ES256
-            val readerRootKeySubject = "CN=OWF Multipaz Online Verifier Reader Root Key"
-            val readerRootKeyCertificate = MdocUtil.generateReaderRootCertificate(
-                readerRootKey = readerRootKey,
-                subject = X500Name.fromName(readerRootKeySubject),
-                serial = ASN1Integer(1L),
-                validFrom = validFrom,
-                validUntil = validUntil,
-                crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
-            )
-
-            return KeyMaterial(
-                readerRootKey,
-                X509CertChain(listOf(readerRootKeyCertificate)),
-                readerRootKeySignatureAlgorithm,
-                readerRootKeySubject,
-            )
-        }
-
-    }
-}
-
 @OptIn(ExperimentalSerializationApi::class)
 val prettyJson = Json {
     prettyPrint = true
@@ -337,33 +284,6 @@ private val verifierSessionTableSpec = StorageTableSpec(
     supportPartitions = false,
     supportExpiration = true
 )
-
-private val verifierRootStateTableSpec = StorageTableSpec(
-    name = "VerifierRootState",
-    supportPartitions = false,
-    supportExpiration = false
-)
-
-private val keyMaterialLock = Mutex()
-
-private suspend fun getKeyMaterial(): KeyMaterial =
-    BackendEnvironment.cache(KeyMaterial::class) { _, _ ->
-        val verifierRootStateTable = BackendEnvironment.getTable(verifierRootStateTableSpec)
-        keyMaterialLock.withLock {
-            val existingBlob = verifierRootStateTable.get("verifierKeyMaterial")
-            if (existingBlob != null) {
-                KeyMaterial.fromCbor(existingBlob.toByteArray())
-            } else {
-                val keyMaterial = KeyMaterial.createKeyMaterial()
-                verifierRootStateTable.insert(
-                    key = "verifierKeyMaterial",
-                    data = ByteString(keyMaterial.toCbor()),
-                )
-                keyMaterial
-            }
-        }
-    }
-
 
 private val documentTypeRepo: DocumentTypeRepository by lazy {
     val repo =  DocumentTypeRepository()
@@ -379,69 +299,61 @@ private val documentTypeRepo: DocumentTypeRepository by lazy {
 
 private suspend fun clientId(): String {
     val configuration = BackendEnvironment.getInterface(Configuration::class)!!
-    var ret = configuration.getValue("verifierClientId")
+    var ret = configuration.getValue("verifier_client_id")
     if (ret.isNullOrEmpty()) {
         // Remove the http:// or https:// from the baseUrl.
-        val baseUrl = configuration.getValue("base_url")!!
+        val baseUrl = configuration.baseUrl
         val startIndex = baseUrl.findAnyOf(listOf("://"))?.first
         ret = if (startIndex == null) baseUrl else baseUrl.removeRange(0, startIndex+3)
     }
     return "x509_san_dns:$ret"
 }
 
-private fun createSingleUseReaderKey(dnsName: String): Pair<EcPrivateKey, X509CertChain> {
+private suspend fun getReaderIdentity(): ServerIdentity =
+    BackendEnvironment.getServerIdentity("reader_root_identity") {
+        val subjectAndIssuer = X500Name.fromName("CN=Multipaz TEST Reader CA")
+
+        val validFrom = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+        val validUntil = validFrom.plus(DateTimePeriod(years = 5), TimeZone.currentSystemDefault())
+        val serial = ASN1Integer(
+            BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray()
+        )
+
+        val readerRootKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val readerRootCertificate =
+            MdocUtil.generateReaderRootCertificate(
+                readerRootKey = readerRootKey,
+                subject = subjectAndIssuer,
+                serial = serial,
+                validFrom = validFrom,
+                validUntil = validUntil,
+                crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
+            )
+        ServerIdentity(readerRootKey, X509CertChain(listOf(readerRootCertificate)))
+    }
+
+private suspend fun createSingleUseReaderKey(dnsName: String): Pair<EcPrivateKey, X509CertChain> {
     val now = Clock.System.now()
     val validFrom = now.plus(DateTimePeriod(minutes = -10), TimeZone.currentSystemDefault())
     val validUntil = now.plus(DateTimePeriod(minutes = 10), TimeZone.currentSystemDefault())
     val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
     val readerKeySubject = "CN=OWF Multipaz Online Verifier Single-Use Reader Key"
 
-    // TODO: for now, instead of using the per-site Reader Root generated at first run, use the
-    //  well-know OWF IC Reader root checked into Git.
-    val owfIcReaderRootKeyPub = EcPublicKey.fromPem(
-        """
-                -----BEGIN PUBLIC KEY-----
-                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE+QDye70m2O0llPXMjVjxVZz3m5k6agT+
-                wih+L79b7jyqUl99sbeUnpxaLD+cmB3HK3twkA7fmVJSobBc+9CDhkh3mx6n+YoH
-                5RulaSWThWBfMyRjsfVODkosHLCDnbPV
-                -----END PUBLIC KEY-----
-            """.trimIndent().trim(),
-        EcCurve.P384
-    )
-    val owfIcReaderRootKey = EcPrivateKey.fromPem(
-        """
-                -----BEGIN PRIVATE KEY-----
-                MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCcRuzXW3pW2h9W8pu5
-                /CSR6JSnfnZVATq+408WPoNC3LzXqJEQSMzPsI9U1q+wZ2yhZANiAAT5APJ7vSbY
-                7SWU9cyNWPFVnPebmTpqBP7CKH4vv1vuPKpSX32xt5SenFosP5yYHccre3CQDt+Z
-                UlKhsFz70IOGSHebHqf5igflG6VpJZOFYF8zJGOx9U4OSiwcsIOds9U=
-                -----END PRIVATE KEY-----
-            """.trimIndent().trim(),
-        owfIcReaderRootKeyPub
-    )
-    val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
-    val certsValidUntil = LocalDate.parse("2034-12-01").atStartOfDayIn(TimeZone.UTC)
-    val owfIcReaderRootCert = MdocUtil.generateReaderRootCertificate(
-        readerRootKey = owfIcReaderRootKey,
-        subject = X500Name.fromName("CN=OWF Multipaz TestApp Reader Root"),
-        serial = ASN1Integer(1L),
-        validFrom = certsValidFrom,
-        validUntil = certsValidUntil,
-        crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
-    )
+    val readerIdentity = getReaderIdentity()
 
+    val cert = readerIdentity.certificateChain.certificates.first()
     val readerKeyCertificate = X509Cert.Builder(
         publicKey = readerKey.publicKey,
-        signingKey = owfIcReaderRootKey,
-        signatureAlgorithm = owfIcReaderRootKey.curve.defaultSigningAlgorithm,
+        signingKey = readerIdentity.privateKey,
+        signatureAlgorithm = readerIdentity.privateKey.curve.defaultSigningAlgorithm,
         serialNumber = ASN1Integer(1L),
         subject = X500Name.fromName(readerKeySubject),
-        issuer = owfIcReaderRootCert.subject,
+        issuer = cert.subject,
         validFrom = validFrom,
         validUntil = validUntil
     )
         .includeSubjectKeyIdentifier()
-        .setAuthorityKeyIdentifierToCertificate(owfIcReaderRootCert)
+        .setAuthorityKeyIdentifierToCertificate(cert)
         .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
         .addExtension(
             OID.X509_EXTENSION_SUBJECT_ALT_NAME.oid,
@@ -461,7 +373,7 @@ private fun createSingleUseReaderKey(dnsName: String): Pair<EcPrivateKey, X509Ce
 
     return Pair(
         readerKey,
-        X509CertChain(listOf(readerKeyCertificate) + owfIcReaderRootCert)
+        X509CertChain(listOf(readerKeyCertificate) + readerIdentity.certificateChain.certificates)
     )
 }
 
@@ -939,7 +851,7 @@ private suspend fun handleOpenID4VPBegin(
         protocol = protocol
     )
     val verifierSessionTable = BackendEnvironment.getTable(verifierSessionTableSpec)
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
     val clientId = clientId()
     val sessionId = verifierSessionTable.insert(
         key = null,
@@ -980,7 +892,7 @@ private suspend fun handleOpenID4VPRequest(
     val encodedSession = verifierSessionTable.get(sessionId)
         ?: throw InvalidRequestException("No session for sessionId $sessionId")
     val session = Session.fromCbor(encodedSession.toByteArray())
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
 
     val responseUri = baseUrl + "/verifier/openid4vpResponse?sessionId=${sessionId}"
 
@@ -1065,7 +977,7 @@ private suspend fun handleGetReaderRootCert(
     call: ApplicationCall
 ) = call.respondText(
     contentType = ContentType.Text.Plain,
-    text = getKeyMaterial().readerRootKeyCertificates.certificates[0].toPem()
+    text = getReaderIdentity().certificateChain.certificates.joinToString { it.toPem() }
 )
 
 private suspend fun handleOpenID4VPResponse(
@@ -1146,7 +1058,7 @@ private suspend fun handleOpenID4VPResponse(
         expiration = Clock.System.now() + SESSION_EXPIRATION_INTERVAL
     )
 
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
     val redirectUri = baseUrl + "/verifier_redirect.html?sessionId=${sessionId}"
     val json = Json { ignoreUnknownKeys = true }
     call.respondText(
@@ -1951,3 +1863,8 @@ private fun generateBrowserSessionTranscript(
         }
     )
 }
+
+private data class ReaderIdentity(
+    val privateKey: EcPrivateKey,
+    val certificateChain: X509CertChain
+)

@@ -5,15 +5,12 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
-import org.multipaz.device.AssertionPoPKey
 import org.multipaz.device.DeviceAssertion
-import org.multipaz.device.DeviceAttestationAndroid
 import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.provisioning.ApplicationSupport
 import org.multipaz.provisioning.LandingUrlUnknownException
-import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.rpc.cache
 import org.multipaz.rpc.backend.getTable
 import org.multipaz.provisioning.validateDeviceAssertionBindingKeys
@@ -21,7 +18,6 @@ import org.multipaz.securearea.KeyAttestation
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
-import org.multipaz.util.validateAndroidKeyAttestation
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
