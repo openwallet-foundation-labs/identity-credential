@@ -150,10 +150,13 @@ class DeviceEngagementFragment : Fragment() {
         } else {
             shouldRequestPermission()
         }
-        transferManager.setNdefDeviceEngagement(
-            NfcAdapter.getDefaultAdapter(requireContext()),
-            requireActivity()
-        )
+        val adapter = NfcAdapter.getDefaultAdapter(requireContext())
+        if (adapter != null) {
+            transferManager.setNdefDeviceEngagement(
+                adapter,
+                requireActivity()
+            )
+        }
     }
 
     private fun disableReader() {
