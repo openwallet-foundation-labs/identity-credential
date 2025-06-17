@@ -1,5 +1,6 @@
 package org.multipaz.crypto
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
@@ -7,6 +8,9 @@ import org.multipaz.cose.CoseKey
 import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.toCoseLabel
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -39,8 +43,9 @@ data class EcPublicKeyDoubleCoordinate(
         additionalClaims: JsonObject?,
     ): JsonObject {
         return buildJsonObject {
-            put("kty", "EC")
+            // Keep in lexicographic order for toJwkThumbprint()
             put("crv", curve.jwkName)
+            put("kty", "EC")
             put("x", x.toBase64Url())
             put("y", y.toBase64Url())
             if (additionalClaims != null) {
@@ -49,6 +54,19 @@ data class EcPublicKeyDoubleCoordinate(
                 }
             }
         }
+    }
+
+    override fun toJwkThumbprint(digestAlgorithm: Algorithm): ByteString {
+        // See https://datatracker.ietf.org/doc/html/rfc7638#section-3 for the algorithm
+        val jsonStr = Json {
+            prettyPrint = false
+        }.encodeToString(toJwk(additionalClaims = null))
+        return ByteString(
+            Crypto.digest(
+                algorithm = digestAlgorithm,
+                message = jsonStr.encodeToByteArray()
+            )
+        )
     }
 
     init {

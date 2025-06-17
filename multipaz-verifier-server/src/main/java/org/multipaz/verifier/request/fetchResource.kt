@@ -4,6 +4,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respondBytes
+import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.rpc.backend.BackendEnvironment
@@ -33,11 +34,19 @@ suspend fun fetchResource(call: ApplicationCall, path: String) {
             provider = { resource.bytes.toByteArray() }
         )
     } catch (err: ResourceNotFoundException) {
-        call.respondText(
-            text = "Resource not found: $path",
-            contentType = ContentType.Text.Plain,
-            status = HttpStatusCode.NotFound
-        )
+        // Old verifier used to be at server/verifier.html, for convenience redirect users
+        if (path.startsWith("server")) {
+            call.respondRedirect(
+                url = "/",
+                permanent = true
+            )
+        } else {
+            call.respondText(
+                text = "Resource not found: $path",
+                contentType = ContentType.Text.Plain,
+                status = HttpStatusCode.NotFound
+            )
+        }
     }
 }
 

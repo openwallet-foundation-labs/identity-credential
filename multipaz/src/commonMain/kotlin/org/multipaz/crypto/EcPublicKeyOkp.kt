@@ -1,5 +1,8 @@
 package org.multipaz.crypto
 
+import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -38,8 +41,9 @@ data class EcPublicKeyOkp(
         additionalClaims: JsonObject?,
     ): JsonObject {
         return buildJsonObject {
-            put("kty", "OKP")
+            // Keep in lexicographic order for toJwkThumbprint()
             put("crv", curve.jwkName)
+            put("kty", "OKP")
             put("x", x.toBase64Url())
             if (additionalClaims != null) {
                 for ((k, v) in additionalClaims) {
@@ -47,6 +51,19 @@ data class EcPublicKeyOkp(
                 }
             }
         }
+    }
+
+    override fun toJwkThumbprint(digestAlgorithm: Algorithm): ByteString {
+        // See https://datatracker.ietf.org/doc/html/rfc7638#section-3 for the algorithm
+        val jsonStr = Json {
+            prettyPrint = false
+        }.encodeToString(toJwk(additionalClaims = null))
+        return ByteString(
+            Crypto.digest(
+                algorithm = digestAlgorithm,
+                message = jsonStr.encodeToByteArray()
+            )
+        )
     }
 
     init {

@@ -1,5 +1,6 @@
 package org.multipaz.crypto
 
+import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toHex
 import org.multipaz.util.fromHex
 import kotlin.experimental.xor
@@ -286,6 +287,40 @@ class CryptoTests {
     @Test fun testJwkEncodeDecode_X25519() = testJwkEncodeDecode(EcCurve.X25519)
     @Test fun testJwkEncodeDecode_ED448() = testJwkEncodeDecode(EcCurve.ED448)
     @Test fun testJwkEncodeDecode_X448() = testJwkEncodeDecode(EcCurve.X448)
+
+    // Grrr, no test vectors for EC keys in https://datatracker.ietf.org/doc/html/rfc7638#section-3.1
+    // so we make our own in the following two tests...
+    //
+
+    @Test
+    fun testJwkThumbprintEcDoubleCoordinate() {
+        val x = "PvnLfXAKYSRIMLP8PjeBXK61-_nkl-DfkoGEvnRtK8A"
+        val y = "7kO_op1NpbOBgZ9Y0bm7uFprjWVq8iNQQJhCwsM3hPk"
+        val expectedJson = """
+            {"crv":"P-256","kty":"EC","x":"$x","y":"$y"}
+        """.trimIndent().trim()
+        val expectedSha256Thumbprint = Crypto.digest(Algorithm.SHA256, expectedJson.encodeToByteArray())
+        val key = EcPublicKeyDoubleCoordinate(
+            curve = EcCurve.P256,
+            x = x.fromBase64Url(),
+            y = y.fromBase64Url()
+        )
+        assertContentEquals(expectedSha256Thumbprint, key.toJwkThumbprint(Algorithm.SHA256).toByteArray())
+    }
+
+    @Test
+    fun testJwkThumbprintEcOkp() {
+        val x = "TuUs-NklnyKcW_McTzPpVbMzW6C5wSdRDQcjeaoylHk"
+        val expectedJson = """
+            {"crv":"Ed25519","kty":"OKP","x":"$x"}
+        """.trimIndent().trim()
+        val expectedSha256Thumbprint = Crypto.digest(Algorithm.SHA256, expectedJson.encodeToByteArray())
+        val key = EcPublicKeyOkp(
+            curve = EcCurve.ED25519,
+            x = x.fromBase64Url(),
+        )
+        assertContentEquals(expectedSha256Thumbprint, key.toJwkThumbprint(Algorithm.SHA256).toByteArray())
+    }
 
     fun testPemEncodeDecode(curve: EcCurve) {
         // TODO: use assumeTrue() when available in kotlin-test

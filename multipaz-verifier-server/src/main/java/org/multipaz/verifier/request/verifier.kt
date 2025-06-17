@@ -64,6 +64,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -72,6 +73,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
@@ -92,6 +94,7 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.openid.OpenID4VP
 import org.multipaz.rpc.cache
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.sdjwt.SdJwt
@@ -131,7 +134,8 @@ enum class Protocol {
     W3C_DC_PREVIEW,
     W3C_DC_ARF,
     W3C_DC_MDOC_API,
-    W3C_DC_OPENID4VP,
+    W3C_DC_OPENID4VP_24,
+    W3C_DC_OPENID4VP_29,
     PLAIN_OPENID4VP,
     EUDI_OPENID4VP,
     MDOC_OPENID4VP,
@@ -232,6 +236,7 @@ private data class DCBeginRequest(
 @Serializable
 private data class DCBeginRawDcqlRequest(
     val rawDcql: String,
+    val protocol: String,
     val origin: String,
     val host: String,
     val signRequest: Boolean,
@@ -319,7 +324,7 @@ data class KeyMaterial(
     }
 }
 
-@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@OptIn(ExperimentalSerializationApi::class)
 val prettyJson = Json {
     prettyPrint = true
     prettyPrintIndent = "  "
@@ -527,7 +532,8 @@ private suspend fun handleDcBegin(
         "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
         "w3c_dc_arf" -> Protocol.W3C_DC_ARF
         "w3c_dc_mdoc_api" -> Protocol.W3C_DC_MDOC_API
-        "w3c_dc_openid4vp" -> Protocol.W3C_DC_OPENID4VP
+        "w3c_dc_openid4vp_24" -> Protocol.W3C_DC_OPENID4VP_24
+        "w3c_dc_openid4vp_29" -> Protocol.W3C_DC_OPENID4VP_29
         "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
         "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
         "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -589,9 +595,15 @@ private suspend fun handleDcBeginRawDcql(
 ) {
     val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
     val request = Json.decodeFromString<DCBeginRawDcqlRequest>(requestString)
-    Logger.i(TAG, "rawDcql ${request.rawDcql}")
+    Logger.i(TAG, "rawDcql ${request.protocol} ${request.rawDcql}")
 
-    val protocol = Protocol.W3C_DC_OPENID4VP
+    val (protocol, version) = when (request.protocol) {
+        // Keep in sync with verifier.html
+        "w3c_dc_openid4vp_24" -> Pair(Protocol.W3C_DC_OPENID4VP_24, 24)
+        "w3c_dc_openid4vp_29" -> Pair(Protocol.W3C_DC_OPENID4VP_29, 29)
+        else -> throw InvalidRequestException("Unknown protocol '$request.protocol'")
+    }
+    Logger.i(TAG, "version $version")
 
     // Create a new session
     val session = Session(
@@ -617,6 +629,7 @@ private suspend fun handleDcBeginRawDcql(
     val (readerAuthKey, readerAuthKeyCertification) = createSingleUseReaderKey(session.host)
 
     val dcRequestString = calcDcRequestStringOpenID4VPforDCQL(
+        version = version,
         session = session,
         nonce = session.nonce,
         readerPublicKey = session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate,
@@ -653,7 +666,8 @@ private suspend fun handleDcGetData(
         Protocol.W3C_DC_PREVIEW ->handleDcGetDataPreview(session, request.credentialResponse)
         Protocol.W3C_DC_ARF -> handleDcGetDataArf(session, request.credentialResponse)
         Protocol.W3C_DC_MDOC_API -> handleDcGetDataMdocApi(session, request.credentialResponse)
-        Protocol.W3C_DC_OPENID4VP -> handleDcGetDataOpenID4VP(session, request.credentialResponse)
+        Protocol.W3C_DC_OPENID4VP_24 -> handleDcGetDataOpenID4VP(24, session, request.credentialResponse)
+        Protocol.W3C_DC_OPENID4VP_29 -> handleDcGetDataOpenID4VP(29, session, request.credentialResponse)
         else -> throw IllegalArgumentException("unsupported protocol ${session.protocol}")
     }
 
@@ -805,6 +819,7 @@ private fun handleDcGetDataMdocApi(
 }
 
 private fun handleDcGetDataOpenID4VP(
+    version: Int,
     session: Session,
     credentialResponse: String
 ) {
@@ -824,7 +839,11 @@ private fun handleDcGetDataOpenID4VP(
     Logger.iJson(TAG, "vpToken", vpToken)
 
     // TODO: handle multiple vpTokens being returned
-    val vpTokenForCred = vpToken.values.first().jsonPrimitive.content
+    val vpTokenForCred = when (version) {
+        24 -> vpToken.values.first().jsonPrimitive.content
+        29 -> vpToken.values.first().jsonArray.first().jsonPrimitive.content
+        else -> throw IllegalArgumentException("Unsupported OpenID4VP version $version")
+    }
 
     // This is a total hack but in case of Raw DCQL we actually don't really
     // know what was requested. This heuristic to determine if the token is
@@ -844,13 +863,31 @@ private fun handleDcGetDataOpenID4VP(
         } else {
             "web-origin:${session.origin}"
         }
-        val handoverInfo = Cbor.encode(
-            buildCborArray {
-                add(session.origin)
-                add(effectiveClientId)
-                add(session.nonce.toByteArray().toBase64Url())
+        val handoverInfo = when (version) {
+            24 -> {
+                Cbor.encode(
+                    buildCborArray {
+                        add(session.origin)
+                        add(effectiveClientId)
+                        add(session.nonce.toByteArray().toBase64Url())
+                    }
+                )
             }
-        )
+            29 -> {
+                Cbor.encode(
+                    buildCborArray {
+                        add(session.origin)
+                        add(session.nonce.toByteArray().toBase64Url())
+                        if (session.encryptResponse) {
+                            add(session.encryptionKey.publicKey.toJwkThumbprint(Algorithm.SHA256).toByteArray())
+                        } else {
+                            add(Simple.NULL)
+                        }
+                    }
+                )
+            }
+            else -> throw IllegalStateException("Unsupported OpenID4VP version $version")
+        }
         session.sessionTranscript = Cbor.encode(
             buildCborArray {
                 add(Simple.NULL) // DeviceEngagementBytes
@@ -881,7 +918,8 @@ private suspend fun handleOpenID4VPBegin(
         "w3c_dc_preview" -> Protocol.W3C_DC_PREVIEW
         "w3c_dc_arf" -> Protocol.W3C_DC_ARF
         "w3c_dc_mdoc_api" -> Protocol.W3C_DC_MDOC_API
-        "w3c_dc_openid4vp" -> Protocol.W3C_DC_OPENID4VP
+        "w3c_dc_openid4vp_24" -> Protocol.W3C_DC_OPENID4VP_24
+        "w3c_dc_openid4vp_29" -> Protocol.W3C_DC_OPENID4VP_29
         "openid4vp_plain" -> Protocol.PLAIN_OPENID4VP
         "openid4vp_eudi" -> Protocol.EUDI_OPENID4VP
         "openid4vp_mdoc" -> Protocol.MDOC_OPENID4VP
@@ -1332,8 +1370,26 @@ private fun calcDcRequestString(
                 readerAuthKeyCertification
             )
         }
-        Protocol.W3C_DC_OPENID4VP -> {
+        Protocol.W3C_DC_OPENID4VP_24 -> {
             return calcDcRequestStringOpenID4VP(
+                24,
+                documentTypeRepository,
+                format,
+                session,
+                request,
+                nonce,
+                origin,
+                readerKey,
+                readerPublicKey,
+                readerAuthKey,
+                readerAuthKeyCertification,
+                signRequest,
+                encryptResponse,
+            )
+        }
+        Protocol.W3C_DC_OPENID4VP_29 -> {
+            return calcDcRequestStringOpenID4VP(
+                29,
                 documentTypeRepository,
                 format,
                 session,
@@ -1390,6 +1446,7 @@ private fun mdocCalcDcRequestStringPreview(
 }
 
 private fun calcDcRequestStringOpenID4VPforDCQL(
+    version: Int,
     session: Session,
     nonce: ByteString,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1399,6 +1456,28 @@ private fun calcDcRequestStringOpenID4VPforDCQL(
     encryptResponse: Boolean,
     dcql: JsonObject,
 ): String {
+    return when (version) {
+        24 -> OpenID4VP.generateRequestDraft24(
+            origin = session.origin,
+            clientId = "x509_san_dns:${session.host}",
+            nonce = nonce.toByteArray().toBase64Url(),
+            responseEncryptionKey = if (encryptResponse) readerPublicKey else null,
+            requestSigningKey = if (signRequest) readerAuthKey else null,
+            requestSigningKeyCertification = if (signRequest) readerAuthKeyCertification else null,
+            dclqQuery = dcql
+        )
+        29 -> OpenID4VP.generateRequest(
+            origin = session.origin,
+            clientId = "x509_san_dns:${session.host}",
+            nonce = nonce.toByteArray().toBase64Url(),
+            responseEncryptionKey = if (encryptResponse) readerPublicKey else null,
+            requestSigningKey = if (signRequest) readerAuthKey else null,
+            requestSigningKeyCertification = if (signRequest) readerAuthKeyCertification else null,
+            dclqQuery = dcql
+        )
+        else -> throw IllegalArgumentException("Unsupport OpenID4VP version $version")
+    }.toString()
+    /*
     val responseMode = if (encryptResponse) {
         Logger.i(TAG, "readerPublicKey is ${readerPublicKey}")
         "dc_api.jwt"
@@ -1473,9 +1552,12 @@ private fun calcDcRequestStringOpenID4VPforDCQL(
         put("request", JsonPrimitive(signedRequestElement))
     }
     return signedRequest.toString()
+
+     */
 }
 
 private fun calcDcRequestStringOpenID4VP(
+    version: Int,
     documentTypeRepository: DocumentTypeRepository,
     format: String,
     session: Session,
@@ -1540,6 +1622,7 @@ private fun calcDcRequestStringOpenID4VP(
         }
     }
     return calcDcRequestStringOpenID4VPforDCQL(
+        version = version,
         session = session,
         nonce = nonce,
         readerPublicKey = readerPublicKey,

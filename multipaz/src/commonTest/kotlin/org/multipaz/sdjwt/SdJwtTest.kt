@@ -2427,8 +2427,8 @@ class SdJwtTest {
                   "iss": "https://pid-issuer.bund.de.example",
                   "cnf": {
                     "jwk": {
-                      "kty": "EC",
                       "crv": "P-256",
+                      "kty": "EC",
                       "x": "${(kbKey.publicKey as EcPublicKeyDoubleCoordinate).x.toBase64Url()}",
                       "y": "${(kbKey.publicKey as EcPublicKeyDoubleCoordinate).y.toBase64Url()}"
                     }
@@ -2466,8 +2466,8 @@ class SdJwtTest {
         assertEquals(
             """
                 {
-                  "kty": "EC",
                   "crv": "P-256",
+                  "kty": "EC",
                   "x": "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
                   "y": "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ"
                 }

@@ -37,6 +37,7 @@ object JsonWebEncryption {
      * @param apu agreement PartyUInfo (apu) parameter or `null`.
      * @param apv agreement PartyVInfo (apv) parameter or `null`.
      * @param random the [Random] used to generate a nonce.
+     * @param kid if not `null`, this will be included as the value for the `kid` parameter in the header.
      * @param compressionLevel The compression level to use for DEFLATE compression or `null` to not compress.
      * @return the compact serialization of the JWE.
      */
@@ -47,6 +48,7 @@ object JsonWebEncryption {
         apu: ByteString?,
         apv: ByteString?,
         random: Random = Random.Default,
+        kid: String? = null,
         compressionLevel: Int? = null
     ): String {
         val keyDataLenBits = when (encAlg) {
@@ -64,6 +66,7 @@ object JsonWebEncryption {
             apu?.let { put("apu", it.toByteArray().toBase64Url()) }
             apv?.let { put("apv", it.toByteArray().toBase64Url()) }
             put("epk", senderEphemeralKey.publicKey.toJwk())
+            kid?.let { put("kid", it) }
             if (compressionLevel != null) {
                 put("zip", "DEF")
             }

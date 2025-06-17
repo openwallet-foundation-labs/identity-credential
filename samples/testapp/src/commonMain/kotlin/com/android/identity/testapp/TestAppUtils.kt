@@ -522,7 +522,9 @@ object TestAppUtils {
                     nonSdClaims = buildJsonObject {
                         put("iss", "https://example-issuer.com")
                         put("vct", credential.vct)
-                        // TODO: other attributes e.g. iat
+                        put("iat", signedAt.epochSeconds)
+                        put("nbf", validFrom.epochSeconds)
+                        put("exp", validUntil.epochSeconds)
                     },
                 )
                 credential.certify(

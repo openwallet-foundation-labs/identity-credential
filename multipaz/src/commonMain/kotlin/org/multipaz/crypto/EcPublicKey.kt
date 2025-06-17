@@ -1,5 +1,6 @@
 package org.multipaz.crypto
 
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.DataItem
@@ -54,6 +55,15 @@ sealed class EcPublicKey(
     abstract fun toJwk(
         additionalClaims: JsonObject? = null,
     ): JsonObject
+
+    /**
+     * Gets the Json Web Key Thumbprint.
+     *
+     * This is defined in [RFC 7638](https://datatracker.ietf.org/doc/html/rfc7638)
+     *
+     * @param digestAlgorithm the digest algorithm to use for creating the thumbprint.
+     */
+    abstract fun toJwkThumbprint(digestAlgorithm: Algorithm): ByteString
 
     fun toDataItem(): DataItem = toCoseKey().toDataItem()
 

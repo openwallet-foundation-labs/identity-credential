@@ -41,12 +41,14 @@ import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.multipaz.cbor.addCborArray
 import org.multipaz.cbor.addCborMap
@@ -84,7 +86,7 @@ internal suspend fun digitalCredentialsPresentment(
                 source = source,
                 showConsentPrompt = showConsentPrompt
             )
-            "openid4vp" -> digitalCredentialsOpenID4VPProtocol(
+            "openid4vp", "openid4vp-v1-unsigned", "openid4vp-v1-signed" -> digitalCredentialsOpenID4VPProtocol(
                 documentTypeRepository = documentTypeRepository,
                 presentmentModel = model,
                 presentmentMechanism = mechanism,
@@ -274,6 +276,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
+    val isOneDotOh = presentmentMechanism.protocol.let { it == "openid4vp-v1-unsigned" || it == "openid4vp-v1-signed" }
     var requesterCertChain: X509CertChain? = null
     val preReq = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
 
@@ -335,32 +338,58 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
 
     // Get public key to encrypt response against...
     var reEncAlg: Algorithm = Algorithm.UNSET
+    var reKid: String? = null
     val reReaderPublicKey: EcPublicKey? = when (responseMode) {
         "dc_api" -> null
         "dc_api.jwt", "direct_post.jwt" -> {
             val clientMetadata = req["client_metadata"]!!.jsonObject
-            val reAlg = clientMetadata["authorization_encrypted_response_alg"]?.jsonPrimitive?.content ?: "ECDH-ES"
-            if (reAlg != "ECDH-ES") {
-                throw IllegalStateException("Only ECDH-ES is supported for authorization_encrypted_response_alg")
-            }
-            val reEnc = clientMetadata["authorization_encrypted_response_enc"]?.jsonPrimitive?.content ?: "A128GCM"
-            reEncAlg = when (reEnc) {
-                "A128GCM" -> Algorithm.A128GCM
-                "A192GCM" -> Algorithm.A192GCM
-                "A256GCM" -> Algorithm.A256GCM
-                else -> {
-                    throw IllegalStateException("Only A128GCM, A192GCM, A256GCM is supported for authorization_encrypted_response_enc")
+            if (isOneDotOh) {
+                val jwks = clientMetadata["jwks"]!!.jsonObject
+                val keys = jwks["keys"]!!.jsonArray
+                val jwk = keys[0].jsonObject
+                val encKey = EcPublicKey.fromJwk(jwk)
+                reKid = jwk["kid"]?.jsonPrimitive?.content
+                val alg = jwk["alg"]?.jsonPrimitive?.content
+                /* comment back when digital-credentials.dev have been fixed
+                if (alg == null) {
+                    throw IllegalStateException("alg not set on response encryption key")
                 }
-            }
+                if (alg != "ECDH-ES") {
+                    throw IllegalStateException("alg is '$alg' but only ECDH-ES is supported")
+                }
 
-            // For now, just use the first key as encryption key (there should be only one). This
-            // will probably be specced out in OpenID4VP.
-            val jwks = clientMetadata["jwks"]!!.jsonObject
-            val keys = jwks["keys"]!!.jsonArray
-            val encKey = keys[0]
-            val x = encKey.jsonObject["x"]!!.jsonPrimitive.content.fromBase64Url()
-            val y = encKey.jsonObject["y"]!!.jsonPrimitive.content.fromBase64Url()
-            EcPublicKeyDoubleCoordinate(EcCurve.P256, x, y)
+                 */
+                // TODO: check encrypted_response_enc_values_supported
+                reEncAlg = Algorithm.A128GCM
+                encKey
+            } else {
+                val reAlg =
+                    clientMetadata["authorization_encrypted_response_alg"]?.jsonPrimitive?.content
+                        ?: "ECDH-ES"
+                if (reAlg != "ECDH-ES") {
+                    throw IllegalStateException("Only ECDH-ES is supported for authorization_encrypted_response_alg")
+                }
+                val reEnc =
+                    clientMetadata["authorization_encrypted_response_enc"]?.jsonPrimitive?.content
+                        ?: "A128GCM"
+                reEncAlg = when (reEnc) {
+                    "A128GCM" -> Algorithm.A128GCM
+                    "A192GCM" -> Algorithm.A192GCM
+                    "A256GCM" -> Algorithm.A256GCM
+                    else -> {
+                        throw IllegalStateException("Only A128GCM, A192GCM, A256GCM is supported for authorization_encrypted_response_enc")
+                    }
+                }
+
+                // For now, just use the first key as encryption key (there should be only one). This
+                // will probably be specced out in OpenID4VP.
+                val jwks = clientMetadata["jwks"]!!.jsonObject
+                val keys = jwks["keys"]!!.jsonArray
+                val encKey = keys[0]
+                val x = encKey.jsonObject["x"]!!.jsonPrimitive.content.fromBase64Url()
+                val y = encKey.jsonObject["y"]!!.jsonPrimitive.content.fromBase64Url()
+                EcPublicKeyDoubleCoordinate(EcCurve.P256, x, y)
+            }
         }
 
         else -> throw IllegalStateException("Unexpected response_mode $responseMode")
@@ -369,6 +398,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     val format = credential["format"]!!.jsonPrimitive.content
     val response = if (format == "mso_mdoc") {
         openID4VPMsoMdoc(
+            isOneDotOh = isOneDotOh,
             credential = credential,
             source = source,
             presentmentModel = presentmentModel,
@@ -380,10 +410,11 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
             nonce = nonce,
             requesterCertChain = requesterCertChain,
             reReaderPublicKey = reReaderPublicKey,
-            reEncAlg = reEncAlg
+            reEncAlg = reEncAlg,
         )
     } else if (format == "dc+sd-jwt") {
         openID4VPSdJwt(
+            isOneDotOh = isOneDotOh,
             credential = credential,
             source = source,
             presentmentModel = presentmentModel,
@@ -395,7 +426,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
             nonce = nonce,
             requesterCertChain = requesterCertChain,
             reReaderPublicKey = reReaderPublicKey,
-            reEncAlg = reEncAlg
+            reEncAlg = reEncAlg,
         )
     } else {
         throw IllegalArgumentException("Unsupported format $format")
@@ -404,9 +435,21 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         return
     }
 
-    val vpToken = buildJsonObject {
-        putJsonObject("vp_token") {
-            put(dcqlId, response)
+    Logger.i(TAG, "isOneDotOh: $isOneDotOh")
+    val vpToken = if (isOneDotOh) {
+        buildJsonObject {
+            putJsonObject("vp_token") {
+                // TODO: For now we only support returning a single Verifiable Presentation per requested credential,
+                putJsonArray(dcqlId) {
+                    add(response)
+                }
+            }
+        }
+    } else {
+        buildJsonObject {
+            putJsonObject("vp_token") {
+                put(dcqlId, response)
+            }
         }
     }
     Logger.iJson(TAG, "vpToken", vpToken)
@@ -420,7 +463,8 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
                     recipientPublicKey = reReaderPublicKey,
                     encAlg = reEncAlg,
                     apu = nonce.encodeToByteString(),
-                    apv = walletGeneratedNonce.encodeToByteString()
+                    apv = walletGeneratedNonce.encodeToByteString(),
+                    kid = reKid
                 )
             )
         }
@@ -432,6 +476,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
 }
 
 private suspend fun openID4VPMsoMdoc(
+    isOneDotOh: Boolean,
     credential: JsonObject,
     source: PresentmentSource,
     presentmentModel: PresentmentModel,
@@ -447,7 +492,7 @@ private suspend fun openID4VPMsoMdoc(
     nonce: String,
     requesterCertChain: X509CertChain?,
     reReaderPublicKey: EcPublicKey?,
-    reEncAlg: Algorithm,
+    reEncAlg: Algorithm
 ): String? {
     val meta = credential["meta"]!!.jsonObject
     val docType = meta["doctype_value"]!!.jsonPrimitive.content
@@ -488,12 +533,26 @@ private suspend fun openID4VPMsoMdoc(
     }
 
     val handoverInfo = Cbor.encode(
-        buildCborArray {
-            add(origin)
-            add(clientId)
-            add(nonce)
+        if (isOneDotOh) {
+            buildCborArray {
+                add(origin)
+                add(nonce)
+                if (reReaderPublicKey == null) {
+                    add(Simple.NULL)
+                } else {
+                    add(reReaderPublicKey.toJwkThumbprint(Algorithm.SHA256).toByteArray())
+                }
+            }
+        } else {
+            buildCborArray {
+                add(origin)
+                add(clientId)
+                add(nonce)
+            }
         }
     )
+    Logger.iCbor(TAG, "handoverInfo", handoverInfo)
+
     val encodedSessionTranscript = Cbor.encode(
         buildCborArray {
             add(Simple.NULL) // DeviceEngagementBytes
@@ -539,6 +598,7 @@ private suspend fun openID4VPMsoMdoc(
 }
 
 private suspend fun openID4VPSdJwt(
+    isOneDotOh: Boolean,
     credential: JsonObject,
     source: PresentmentSource,
     presentmentModel: PresentmentModel,
@@ -613,7 +673,7 @@ private suspend fun openID4VPSdJwt(
             kbAlias = sdjwtVcCredential.alias,
             kbKeyUnlockData = KeyUnlockInteractive(),
             nonce = nonce,
-            audience = clientId,
+            audience = if (isOneDotOh) "origin:$origin" else clientId,
             creationTime = Clock.System.now()
         ).compactSerialization
     } else {
